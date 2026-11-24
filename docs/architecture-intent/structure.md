@@ -6,6 +6,10 @@ This file states how Flywheel's source is organized: its layers, the kernel, mod
 
 Source layers depend one way: infra, then protocol, then workflows, then orchestration, then clients. Infra imports only types from the rest of the source tree, protocol imports only infra, and workflows import only infra and protocol. The CLI is the composition root: it may import every layer and holds no domain logic or UI components. Workspace members outside the source tree compile against the published protocol contract alone.
 
+## ARCH-STRUCTURE-045: Modules are deep and depend in one direction
+
+Sibling modules do not depend on each other in a circle through runtime references. A runtime read of a type's fields counts, and a reference that exists only in types does not. A module keeps its fields to itself and changes them only through its own methods. A module shows a narrow interface over the work it hides.
+
 ## ARCH-STRUCTURE-043: The source tree holds the binary, and other hosts are workspace members
 
 The source tree holds the runtime and the terminal client, which compile into the Flywheel binary. A host that runs on another platform is its own workspace member beside the source tree, with its own runtime types, dependencies, and deploy. These hosts are the web client in a browser, the editor extension in the editor, the desktop app in its native window, and the relay service with its hosted phone page.

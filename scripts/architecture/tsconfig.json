@@ -1,0 +1,13 @@
+{
+  // The program that `bun run check:architecture` judges: the four source
+  // trees, with the compiler options of the repository. Tests are not judged.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "rootDir": "../..", "noEmit": true, "types": [], "allowImportingTsExtensions": true },
+  "include": [
+    "../../src/**/*.ts", "../../src/**/*.tsx",
+    "../../webview/src/**/*.ts", "../../webview/src/**/*.tsx",
+    "../../vscode/src/**/*.ts", "../../vscode/src/**/*.tsx",
+    "../../relay/**/*.ts", "../../relay/**/*.tsx"
+  ],
+  "exclude": ["**/node_modules/**", "**/dist/**", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "**/test/**", "**/tests/**", "**/__tests__/**", "**/.*/**"]
+}

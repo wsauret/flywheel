@@ -125,6 +125,11 @@ jobs:
       - name: Layer boundaries
         if: matrix.lint
         run: bun run check:boundaries
+      # Its own step, not a part of lint: the compiler process that it starts
+      # needs about 6 GB beside the check, which lint's peak leaves no room for.
+      - name: Architecture
+        if: matrix.lint
+        run: bun run check:architecture
       # Real-time scanning on the hosted Windows image slows each file that
       # the unit suite reads and each process that it starts.
       - name: Stop real-time scanning

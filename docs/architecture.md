@@ -527,7 +527,7 @@ The shared web client follows the same ownership boundary. A linked child card s
 
 ## Where New Code Lives
 
-A new capability is a module unless it is kernel (`AGENTS.md` names the kernel). Each kind of code has one home; `bun run lint:module-containment` reconciles registries, canonical homes, imports, and owned vocabulary, while `bun run check:boundaries` enforces source-layer and client-host dependency direction.
+A new capability is a module unless it is kernel (`AGENTS.md` names the kernel). Each kind of code has one home; `bun run lint:module-containment` reconciles registries, canonical homes, imports, and owned vocabulary, while `bun run check:boundaries` enforces source-layer and client-host dependency direction. `bun run check:architecture` holds modules to ARCH-STRUCTURE-045: no sibling modules in a runtime circle, no fields changed from outside, and no shallow modules, against the reviewed findings in `scripts/architecture-allowlist.ts`.
 
 Module protocol domains, queries, mutations, and row selectors -> `protocol/modules/<id>.ts`, registered in `protocol/modules.ts`
 Module descriptor, runtime, process service, tools, projections, facts, and command handlers -> `orchestration/modules/<id>/`, registered in `orchestration/credential-provider-modules.ts` when the module claims a credential provider id, otherwise in `orchestration/modules.ts`
