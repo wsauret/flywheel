@@ -25,9 +25,10 @@ export interface ReadinessPlan {
   readonly builds: readonly ReleaseBuild[];
   readonly host?: ReleaseBuild;
   readonly linuxRuntime: readonly LinuxRuntimeEvidence[];
-  /** Owed on a Claude engine bump. One native glibc container proves the engine on Linux: every Linux target ships
-   *  the same engine and keeps its login the same way, and the package containers already prove each archive. */
-  readonly linuxClaudeLive?: LinuxContainerTarget;
+  /** The container of each live tier: owed on a Claude engine bump and on an Antigravity CLI bump. One native glibc
+   *  container proves an engine's live tier on Linux: every Linux target keeps its logins the same way, and the
+   *  package containers already prove each archive's engines. */
+  readonly linuxLive?: LinuxContainerTarget;
   /** Owed on an Antigravity CLI bump: the fake-host tier in one native glibc container. Each Linux target ships its
    *  own agy build, and the package containers run each archive's agy for its version. */
   readonly linuxAntigravityFakeHost?: LinuxContainerTarget;
@@ -72,7 +73,7 @@ export function readinessPlan(platform: string, arch: string, quick: boolean, to
   const native = linuxRuntime.find((runtime) => runtime.evidence === "native container functional evidence" && runtime.dockerImageSuffix === "");
   return {
     builds, host, linuxRuntime, performance: tools.tmux ? "required" : "unavailable", unavailable,
-    ...(native === undefined ? {} : { linuxClaudeLive: { target: native.target, dockerPlatform: native.dockerPlatform }, linuxAntigravityFakeHost: { target: native.target, dockerPlatform: native.dockerPlatform } }),
+    ...(native === undefined ? {} : { linuxLive: { target: native.target, dockerPlatform: native.dockerPlatform }, linuxAntigravityFakeHost: { target: native.target, dockerPlatform: native.dockerPlatform } }),
   };
 }
 
@@ -102,32 +103,41 @@ export function dockerRuntimeCommand(options: DockerRuntimeCommandOptions): read
   ];
 }
 
-/** The named Docker volume on the Mac that holds the Linux release login. It is the home of every container that logs
- *  in to Claude or runs the live Claude engine tier. The engine keeps the login's token in a file there, which no
- *  container copies out. */
+/** The named Docker volume on the Mac that holds the Linux release logins. It is the home of every container that logs
+ *  in or runs a live tier, of the Claude engine and of the Antigravity CLI. Each engine keeps its login's token in a
+ *  file there, which no container copies out. */
 export const RELEASE_LOGIN_VOLUME = "flywheel-readiness-claude";
 /** Where a container mounts the release login volume, as its HOME. */
 const RELEASE_LOGIN_CONTAINER_HOME = "/home/readiness";
 
 /** How a container installs the candidate that `/input/candidate.tar` holds, for Linux. */
 const INSTALL_CANDIDATE = "mkdir /work && tar -xf /input/candidate.tar -C /work && cd /work && bun install --frozen-lockfile";
+/** The image has neither git, which agy's private workspaces need, nor ps, which the Antigravity process checks read. */
+const INSTALL_AGY_TOOLS = "apt-get update -qq && apt-get install -qq -y --no-install-recommends git procps";
 
-/** What a container on the release login volume runs after it installs the candidate. */
+/** What a container on the release login volume runs, for each engine. An Antigravity login and its live tier run
+ *  agy, so their containers install its tools first. */
 const CONTAINER_STEPS = {
-  login: `bun run scripts/readiness-login.ts --in-home ${RELEASE_LOGIN_CONTAINER_HOME}`,
-  status: `bun run scripts/readiness-login.ts --status ${RELEASE_LOGIN_CONTAINER_HOME}`,
-  live: "bun run test:integration:claude-engine",
+  claude: {
+    login: `${INSTALL_CANDIDATE} && bun run scripts/readiness-login.ts --in-home ${RELEASE_LOGIN_CONTAINER_HOME}`,
+    status: `${INSTALL_CANDIDATE} && bun run scripts/readiness-login.ts --status ${RELEASE_LOGIN_CONTAINER_HOME}`,
+    live: `${INSTALL_CANDIDATE} && bun run test:integration:claude-engine`,
+  },
+  antigravity: {
+    login: `${INSTALL_AGY_TOOLS} && ${INSTALL_CANDIDATE} && bun run scripts/readiness-login.ts --in-home ${RELEASE_LOGIN_CONTAINER_HOME} antigravity`,
+    status: `${INSTALL_CANDIDATE} && bun run scripts/readiness-login.ts --status ${RELEASE_LOGIN_CONTAINER_HOME} antigravity`,
+    live: `${INSTALL_AGY_TOOLS} && ${INSTALL_CANDIDATE} && bun run test:integration:antigravity`,
+  },
 } as const;
 
-/** One container on the release login volume that installs the candidate for Linux and runs one step there, in the
- *  auth profile `liveAuthProfile`: the person's Claude login (`login`, interactive), the login's status line
- *  (`status`), or the live Claude engine tier (`live`). The status step asks the Linux engine of the candidate for the
- *  login's sign-in, so it needs the install too. It only reads the volume, so it mounts it read-only and keeps the
- *  container's own home, where its debug log goes. `candidate` is a tar of the candidate's tracked files, mounted
- *  read-only, and the image is the exact Bun that runs readiness. Bun's package cache stays in the container, so the
- *  volume holds only the login and what a run on it records. */
-export function releaseLoginContainerCommand(options: { readonly dockerPlatform: string; readonly bunVersion: string; readonly candidate: string; readonly liveAuthProfile: string; readonly step: keyof typeof CONTAINER_STEPS }): readonly string[] {
-  const step = CONTAINER_STEPS[options.step];
+/** One container on the release login volume that installs the candidate for Linux and runs one step of `engine`
+ *  there, in the auth profile `liveAuthProfile`: the person's login (`login`, interactive), the login's status line
+ *  (`status`), or the engine's live tier (`live`). The Claude status step asks the Linux engine of the candidate for
+ *  the login's sign-in, so it needs the install too. A status step only reads the volume, so it mounts it read-only
+ *  and keeps the container's own home, where its debug log goes. `candidate` is a tar of the candidate's tracked files,
+ *  mounted read-only, and the image is the exact Bun that runs readiness. Bun's package cache stays in the container,
+ *  so the volume holds only the logins and what a run on them records. */
+export function releaseLoginContainerCommand(options: { readonly dockerPlatform: string; readonly bunVersion: string; readonly candidate: string; readonly liveAuthProfile: string; readonly engine: keyof typeof CONTAINER_STEPS; readonly step: keyof (typeof CONTAINER_STEPS)["claude"] }): readonly string[] {
   const readOnly = options.step === "status";
   return [
     "docker", "run", "--rm", ...(options.step === "login" ? ["-it"] : []), `--platform=${options.dockerPlatform}`,
@@ -135,23 +145,21 @@ export function releaseLoginContainerCommand(options: { readonly dockerPlatform:
     "--mount", `type=bind,source=${options.candidate},target=/input/candidate.tar,readonly`,
     ...(readOnly ? [] : ["--env", `HOME=${RELEASE_LOGIN_CONTAINER_HOME}`]), "--env", "BUN_INSTALL_CACHE_DIR=/tmp/bun-install-cache",
     "--env", `${LIVE_AUTH_PROFILE_SETTING}=${options.liveAuthProfile}`,
-    `oven/bun:${options.bunVersion}`, "sh", "-c",
-    `${INSTALL_CANDIDATE} && ${step}`,
+    `oven/bun:${options.bunVersion}`, "sh", "-c", CONTAINER_STEPS[options.engine][options.step],
   ];
 }
 
 /** One container that installs the candidate for Linux and runs the Antigravity CLI's fake-host tier on the pinned
  *  Linux agy, through the guarded integration runner (scripts/test-integration.ts), which gives the tier a private
- *  TMPDIR and fails on leftovers. The image has neither git, which the tier's private workspaces need, nor ps, which
- *  its process checks read, so the container installs both. The runner downloads and verifies the pinned agy, so the
- *  container has network access. `candidate` is a tar of the candidate's tracked files, mounted read-only, and the image is the
- *  exact Bun that runs readiness. */
+ *  TMPDIR and fails on leftovers. The container installs agy's tools. The runner downloads and verifies the pinned
+ *  agy, so the container has network access. `candidate` is a tar of the candidate's tracked files, mounted read-only,
+ *  and the image is the exact Bun that runs readiness. */
 export function antigravityFakeHostContainerCommand(options: { readonly dockerPlatform: string; readonly bunVersion: string; readonly candidate: string }): readonly string[] {
   return [
     "docker", "run", "--rm", `--platform=${options.dockerPlatform}`,
     "--mount", `type=bind,source=${options.candidate},target=/input/candidate.tar,readonly`,
     "--env", "BUN_INSTALL_CACHE_DIR=/tmp/bun-install-cache",
     `oven/bun:${options.bunVersion}`, "sh", "-c",
-    `apt-get update -qq && apt-get install -qq -y --no-install-recommends git procps && ${INSTALL_CANDIDATE} && bun run test:integration:antigravity-engine`,
+    `${INSTALL_AGY_TOOLS} && ${INSTALL_CANDIDATE} && bun run test:integration:antigravity-engine`,
   ];
 }

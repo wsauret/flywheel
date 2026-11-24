@@ -16,7 +16,7 @@ import { TASKS, toolResult } from "./_replacement-provider.js"
 import { answerChoice, childOf, createReplacementHarness, LANE, launchWorkflow, openChat, parentCard, sessionRow, sessionStatus, startHeldChat, systemRows, until, workflowMember, workflowParent, workflowState } from "./_replacement-harness.js"
 
 const harness = createReplacementHarness("replacement-continuation")
-const { tmp: TMP, accountHome, userDataRoot, provider, makeProject, setInstalledBuild, requestCutover, serviceListening, stopAccountService, killAccountServiceUncleanly, startSuccessor, replace, continuationRows, allContinuationSessions, handoverSessions, entriesCarrying, conversationEntryIds, handoffRows, lockStore, useChatModel } = harness
+const { tmp: TMP, accountHome, userDataRoot, provider, makeProject, setInstalledBuild, requestCutover, serviceListening, stopAccountService, killAccountServiceUncleanly, startSuccessor, replace, continuationRows, allContinuationSessions, handoverSessions, entriesCarrying, conversationEntryIds, handoffRows, lockStore, useChatModel, toolUseIdFor } = harness
 const SERVING_GATE = `project-serving.${LANE}.lock`
 
 /** Whether the child's latest run completed after exactly one resume, read
@@ -249,10 +249,11 @@ describe("planned interruption and automatic continuation", () => {
     try {
       // The question is still open, unanswered, and the person's answer
       // continues the turn with no Resume.
-      const asked = await until("question still open", async () => (await secondA.client.query({ type: "questionSnapshot", sessionIds: [sessions.ask] })).views[0]?.view ?? null, (view) => view?.toolUseId === "ask-1")
+      const question = toolUseIdFor(projectA, sessions.ask, "ask-1")
+      const asked = await until("question still open", async () => (await secondA.client.query({ type: "questionSnapshot", sessionIds: [sessions.ask] })).views[0]?.view ?? null, (view) => view?.toolUseId === question)
       expect(asked?.answers).toBeUndefined()
       expect(provider.trace("ask").requests).toBe(1)
-      expect(await answerChoice(secondA.client, sessions.ask, "ask-1", "Yes")).toMatchObject({ ok: true })
+      expect(await answerChoice(secondA.client, sessions.ask, question, "Yes")).toMatchObject({ ok: true })
       await until("the answer continued the turn", async () => provider.trace("ask").requests, (count) => count === 2)
       expect(toolResult(JSON.parse(provider.trace("ask").lastBody ?? "null"), "ask-1")).toContain("Yes")
       // The request the answer continued carries no turn-end record: none was
