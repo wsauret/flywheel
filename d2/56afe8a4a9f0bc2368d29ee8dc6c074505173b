@@ -1,0 +1,866 @@
+bench/chat-ab/campaign-runner.ts
+  h_4b47e9e4a8b456 3
+bench/chat-ab/check-task.ts
+  h_4b47e9e4a8b456 24
+bench/linux-runtime-verification/smoke.ts
+  h_4b47e9e4a8b456 4
+bench/shared/native-persona-launcher.ts
+  h_4b47e9e4a8b456 15
+bench/shared/runtime.ts
+  h_4b47e9e4a8b456 16
+docs/provider-terms.md
+  h_4b47e9e4a8b456 131,241
+knip.jsonc
+  h_4b47e9e4a8b456 8
+scripts/aggregate-read-allowlist.ts
+  h_4b47e9e4a8b456 25
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 94,108,121-142
+scripts/architecture/build-model.ts
+  h_4b47e9e4a8b456 14-17,23-24,199-224,226-229,233,240-242,299-305,373-422
+scripts/check-module-containment.ts
+  h_4b47e9e4a8b456 161
+scripts/check-terminology.ts
+  h_4b47e9e4a8b456 146
+scripts/dev.ts
+  h_4b47e9e4a8b456 53
+scripts/dump-prompt.ts
+  h_4b47e9e4a8b456 11,247
+scripts/uat/harness.ts
+  h_4b47e9e4a8b456 49
+src/cli/account-service/account-module-request.ts
+  h_4b47e9e4a8b456 1
+src/cli/account-service/attached-acp-chat.ts
+  h_4b47e9e4a8b456 1-7
+src/cli/account-service/runtime-attach.ts
+  h_4b47e9e4a8b456 4-10,12-21,291,338,528
+src/cli/account-service/runtime-identity-record.ts
+  h_4b47e9e4a8b456 3-5
+src/cli/account-service/runtime-launch.ts
+  h_4b47e9e4a8b456 1-10,51,59
+src/cli/account-service/serve-address.ts
+  h_4b47e9e4a8b456 1-2
+src/cli/account-service/serve-contract.ts
+  h_4b47e9e4a8b456 6
+src/cli/account-service/serve-next-service.ts
+  h_4b47e9e4a8b456 4-9
+src/cli/account-service/serve-retirement.ts
+  h_4b47e9e4a8b456 6-11
+src/cli/account-service/serve.ts
+  h_4b47e9e4a8b456 4-33,35-38,46,261,391
+src/cli/account-service/service-error-log.ts
+  h_4b47e9e4a8b456 3-4
+src/cli/account-service/serving-build.ts
+  h_4b47e9e4a8b456 4-6
+src/cli/account-service/terminal-handoff.ts
+  h_4b47e9e4a8b456 3-7,94,101,127
+src/cli/binary-install.ts
+  h_4b47e9e4a8b456 30
+src/cli/commands/auth.ts
+  h_4b47e9e4a8b456 1-9,18-24
+src/cli/commands/font.ts
+  h_4b47e9e4a8b456 1-4,10-11
+src/cli/commands/headless-snapshot-auth.ts
+  h_4b47e9e4a8b456 2-10
+src/cli/commands/kill.ts
+  h_4b47e9e4a8b456 4-15
+src/cli/commands/update.ts
+  h_4b47e9e4a8b456 19-29,31-32
+src/cli/commands/web.ts
+  h_4b47e9e4a8b456 3-8
+src/cli/events/event-evidence.ts
+  h_4b47e9e4a8b456 1-2
+src/cli/events/event-maintain.ts
+  h_4b47e9e4a8b456 3-7,18-23
+src/cli/events/event-search-args.ts
+  h_4b47e9e4a8b456 1
+src/cli/events/event-search-format.ts
+  h_4b47e9e4a8b456 1-3
+src/cli/events/event-search.ts
+  h_4b47e9e4a8b456 3-6,8-9,13,161
+src/cli/index.ts
+  h_4b47e9e4a8b456 60,78
+src/cli/main.ts
+  h_4b47e9e4a8b456 11-14,144,149,214
+src/cli/readline-prompt.ts
+  h_4b47e9e4a8b456 4
+src/cli/remote-terminal.ts
+  h_4b47e9e4a8b456 14-15,59
+src/cli/startup/composition-probe.ts
+  h_4b47e9e4a8b456 2-12
+src/cli/startup/fatal-exit.ts
+  h_4b47e9e4a8b456 1-3,68-70,104,107
+src/cli/startup/startup-directories.ts
+  h_4b47e9e4a8b456 3-4
+src/cli/startup/startup.ts
+  h_4b47e9e4a8b456 4-16,18-22,24-25,92,112,114,125,127,141,143,192,343
+src/cli/subcommands.ts
+  h_4b47e9e4a8b456 47,51,55,63,99,136,139,144,166,168,179,191,206,254
+src/infra/auth/auth-context.ts
+  h_4b47e9e4a8b456 16,18-19
+src/infra/auth/auth-profile-normalization.ts
+  h_4b47e9e4a8b456 1-3,5
+src/infra/auth/openai/openai-auth-types.ts
+  h_4b47e9e4a8b456 2
+src/infra/auth/provider-account.ts
+  h_4b47e9e4a8b456 1-2
+src/infra/auth/provider-models/provider-model-catalog-store.ts
+  h_4b47e9e4a8b456 1-7
+src/infra/auth/provider-models/provider-model-preference-store.ts
+  h_4b47e9e4a8b456 2-5
+src/infra/auth/provider-models/provider-model-preferences.ts
+  h_4b47e9e4a8b456 1
+src/infra/auth/store/auth-profile-retirements.ts
+  h_4b47e9e4a8b456 2-3
+src/infra/auth/store/auth-profile-store.ts
+  h_4b47e9e4a8b456 5-7,11-13
+src/infra/auth/store/auth-store-mutations.ts
+  h_4b47e9e4a8b456 3-5
+src/infra/auth/store/auth-store-types.ts
+  h_4b47e9e4a8b456 2
+src/infra/auth/store/auth-store.ts
+  h_4b47e9e4a8b456 2,4-5
+src/infra/auth/store/locked-json-store.ts
+  h_4b47e9e4a8b456 14-18
+src/infra/auth/subscription/subscription-spend-consent-store.ts
+  h_4b47e9e4a8b456 3
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 3
+src/infra/llm/model-access-audit.ts
+  h_4b47e9e4a8b456 2
+src/infra/llm/model-catalog-resolution.ts
+  h_4b47e9e4a8b456 9
+src/infra/llm/model-listing-evidence.ts
+  h_4b47e9e4a8b456 2-3
+src/infra/llm/model-listing-rows.ts
+  h_4b47e9e4a8b456 9
+src/infra/llm/model-listing.ts
+  h_4b47e9e4a8b456 5-7
+src/infra/llm/subscription-usage-reader.ts
+  h_4b47e9e4a8b456 2
+src/infra/llm/subscription-usage-store-codec.ts
+  h_4b47e9e4a8b456 4
+src/infra/llm/subscription-usage-store.ts
+  h_4b47e9e4a8b456 11
+src/infra/llm/subscription-usage.ts
+  h_4b47e9e4a8b456 149
+src/infra/output/assistant-draft-projector.ts
+  h_4b47e9e4a8b456 6
+src/infra/output/projector/deferred-agent-meta.ts
+  h_4b47e9e4a8b456 1-5
+src/infra/output/projector/execute-presentation.ts
+  h_4b47e9e4a8b456 1
+src/infra/output/projector/file-change-settlement.ts
+  h_4b47e9e4a8b456 1
+src/infra/output/projector/output-projector.ts
+  h_4b47e9e4a8b456 1-4,7-8
+src/infra/output/projector/output-tool-projection-types.ts
+  h_4b47e9e4a8b456 1
+src/infra/output/projector/output-tool-projector.ts
+  h_4b47e9e4a8b456 2-9,11,13,25-28
+src/infra/output/projector/structured-event-tool-materializer.ts
+  h_4b47e9e4a8b456 1-6,8,11-12
+src/infra/output/projector/structured-event-tool-results.ts
+  h_4b47e9e4a8b456 2-11,14-20
+src/infra/output/projector/structured-output-agents.ts
+  h_4b47e9e4a8b456 1
+src/infra/output/projector/structured-output-builder.ts
+  h_4b47e9e4a8b456 16-17,19-21,25-26
+src/infra/output/projector/structured-output-grouping.ts
+  h_4b47e9e4a8b456 1
+src/infra/output/projector/structured-output-helpers.ts
+  h_4b47e9e4a8b456 1
+src/infra/output/projector/structured-output-state.ts
+  h_4b47e9e4a8b456 1
+src/infra/output/runtime-event-projector.ts
+  h_4b47e9e4a8b456 5-6
+src/infra/output/streaming/partial-json.ts
+  h_4b47e9e4a8b456 1
+src/infra/output/streaming/provisional-diff-input.ts
+  h_4b47e9e4a8b456 2-3,9-10
+src/infra/output/streaming/provisional-patch.ts
+  h_4b47e9e4a8b456 1,7,18
+src/infra/output/streaming/streaming-text-diff.ts
+  h_4b47e9e4a8b456 1-2
+src/infra/output/streaming/streaming-tool-inputs.ts
+  h_4b47e9e4a8b456 1-4,7
+src/infra/output/streaming/streaming-tool-text.ts
+  h_4b47e9e4a8b456 1-3
+src/orchestration/agent-runtime/llm/chatgpt-adapter/request.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/llm/chatgpt-adapter/transport.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/agent-runtime/llm/chatgpt-client.ts
+  h_4b47e9e4a8b456 5-6
+src/orchestration/agent-runtime/llm/client-factory.ts
+  h_4b47e9e4a8b456 19-20,22
+src/orchestration/agent-runtime/llm/errors.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/agent-runtime/llm/failover-client.ts
+  h_4b47e9e4a8b456 59,61
+src/orchestration/agent-runtime/llm/openai-chatgpt.ts
+  h_4b47e9e4a8b456 5-6
+src/orchestration/agent-runtime/llm/openai.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/agent-runtime/llm/provider-availability.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/agent-runtime/llm/provider-failure.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/agent-runtime/tools/streaming-edit-validation.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/tools/streaming-edit-validator.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/agent-runtime/web-search/chatgpt.ts
+  h_4b47e9e4a8b456 17-19,22
+src/orchestration/app-service/auth-profile-watcher-owner.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 1,14
+src/orchestration/app-service/auth-status-projection.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/app-service/command-keeper.ts
+  h_4b47e9e4a8b456 33
+src/orchestration/app-service/eligibility-preparation.ts
+  h_4b47e9e4a8b456 2-5,16
+src/orchestration/app-service/held-auth-store-load.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/app-service/project-control-runtime.ts
+  h_4b47e9e4a8b456 49
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/app-service/project-executor-client.ts
+  h_4b47e9e4a8b456 26
+src/orchestration/app-service/project-executor-protocol.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/app-service/provider-model-preference-persistence.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/app-service/provider-model-preference-service.ts
+  h_4b47e9e4a8b456 1,3
+src/orchestration/app-service/replacement-blockers.ts
+  h_4b47e9e4a8b456 50-74
+src/orchestration/app-service/replacement-owner.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/app-service/shipped-output.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/auth/auth-actions.ts
+  h_4b47e9e4a8b456 12,28-30,32
+src/orchestration/auth/auth-condition-owner.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/auth/auth-profile-manager.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/auth/credential-slot-classifier.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/auth/openai-oauth.ts
+  h_4b47e9e4a8b456 3-6
+src/orchestration/auth/provider-observations/subscription-usage-service.ts
+  h_4b47e9e4a8b456 3-4,6,16,21
+src/orchestration/config/models/llm-clients.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/config/models/model-assignment-providers.ts
+  h_4b47e9e4a8b456 2-4,13
+src/orchestration/config/models/model-assignment-types.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/config/models/model-assignments.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/config/models/role-resolution.ts
+  h_4b47e9e4a8b456 7-8
+src/orchestration/config/retired-config-tables.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/credential-provider-modules.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/headless/benchmark-auth-file.ts
+  h_4b47e9e4a8b456 6-9,14
+src/orchestration/headless/headless-profile-runtime.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/modules/development/claude-sdk/setup.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/development/definitions/skills/webview-rendering/references/rules.md
+  h_4b47e9e4a8b456 268
+src/orchestration/modules/mcp/credentials.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/modules/provider-chatgpt/catalog.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-chatgpt/module.ts
+  h_4b47e9e4a8b456 3-5
+src/orchestration/modules/provider-chatgpt/usage-reader.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/provider-claude-agent-sdk/bridge-state.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-claude-agent-sdk/profile-conversions.ts
+  h_4b47e9e4a8b456 4-9
+src/orchestration/modules/provider-github-copilot/auth-types.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-github-copilot/catalog.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/provider-github-copilot/module.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-google-vertex/module.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/provider-supergrok/module.ts
+  h_4b47e9e4a8b456 3,5
+src/orchestration/modules/provider-supergrok/oauth.ts
+  h_4b47e9e4a8b456 4,6
+src/orchestration/modules/provider-supergrok/token-refresh.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/provider-supergrok/usage-reader.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/remote/remote-pairing-store.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/remote/terminal-device-store.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/modules/side-question/request.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/modules/subagents/history/tool-summary.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/subscription-usage/provider-deps.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/runner/output-session.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/session/conversation/transcript/conversation-block-projection.ts
+  h_4b47e9e4a8b456 6,9-10,18,20
+src/orchestration/session/conversation/transcript/tool-child-presentation.ts
+  h_4b47e9e4a8b456 3-5,12
+src/orchestration/session/conversation/transcript/tool-result-meta.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/subscription-spend-consent/admission-capture.ts
+  h_4b47e9e4a8b456 1,3,16
+src/orchestration/subscription-spend-consent/capture-cache.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/subscription-spend-consent/runtime-composition.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/subscription-spend-consent/subscription-spend-consent-service.ts
+  h_4b47e9e4a8b456 1-4
+src/orchestration/workflow-host/frontend-attempts.ts
+  h_4b47e9e4a8b456 2
+src/protocol/auth-status-protocol-types.ts
+  h_4b47e9e4a8b456 1
+src/protocol/client/session-changes.ts
+  h_4b47e9e4a8b456 13-26
+src/protocol/subscription-spend-consent-protocol-types.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/auth-modal-account-actions.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/auth-modal-disconnect.ts
+  h_4b47e9e4a8b456 1
+src/tui/hooks/auth-modal-login-input.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/auth-modal-provider-settings.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/auth-modal-setting-edits.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/use-auth-modal.ts
+  h_4b47e9e4a8b456 5
+src/tui/modals/auth-modal-options.ts
+  h_4b47e9e4a8b456 1
+tests/e2e/seed-subscription-spend-consent.ts
+  h_4b47e9e4a8b456 2-5,8
+tests/e2e/seed-usage.ts
+  h_4b47e9e4a8b456 2-5
+tests/e2e/tui-subscription-spend-consent.sh
+  h_4b47e9e4a8b456 123
+tests/fixtures/owned-launch-entry.ts
+  h_4b47e9e4a8b456 4
+tests/fixtures/search-benchmark-queries.json
+  h_4b47e9e4a8b456 17
+tests/helpers/catalog-profile.ts
+  h_4b47e9e4a8b456 2-4
+tests/helpers/profile-auth-observation.ts
+  h_4b47e9e4a8b456 1
+tests/integration/bench/chat-ab-isolation.test.ts
+  h_4b47e9e4a8b456 5
+tests/integration/local/_account-service.ts
+  h_4b47e9e4a8b456 5-7
+tests/integration/local/_bash-mutation-repository.ts
+  h_4b47e9e4a8b456 4
+tests/integration/local/_launchd-error-log-job.ts
+  h_4b47e9e4a8b456 15
+tests/integration/local/_project-runtime.ts
+  h_4b47e9e4a8b456 3-4
+tests/integration/local/_replacement-harness.ts
+  h_4b47e9e4a8b456 7-10
+tests/integration/local/_vscode-account-service.ts
+  h_4b47e9e4a8b456 6-7
+tests/integration/local/account-service-probe-hold.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/integration/local/account-service-socket-runtime.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/integration/local/account-socket-heartbeat-contract.test.ts
+  h_4b47e9e4a8b456 12
+tests/integration/local/bash-mutations.test.ts
+  h_4b47e9e4a8b456 4
+tests/integration/local/bash-outside-writes.test.ts
+  h_4b47e9e4a8b456 4
+tests/integration/local/bash-owned-process.test.ts
+  h_4b47e9e4a8b456 6
+tests/integration/local/chat-workflow-interrupt-resume.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/integration/local/dev-source-snapshot.test.ts
+  h_4b47e9e4a8b456 9-12
+tests/integration/local/diagnostics-volume-budget.test.ts
+  h_4b47e9e4a8b456 6
+tests/integration/local/executor-commit-stream-order.test.ts
+  h_4b47e9e4a8b456 22
+tests/integration/local/executor-state-read-responsiveness.test.ts
+  h_4b47e9e4a8b456 17
+tests/integration/local/mcp-owned-process-crash.test.ts
+  h_4b47e9e4a8b456 3
+tests/integration/local/project-control-runtime.test.ts
+  h_4b47e9e4a8b456 9
+tests/integration/local/project-executor-runtime.test.ts
+  h_4b47e9e4a8b456 5
+tests/integration/local/project-lane-failure-recovery.test.ts
+  h_4b47e9e4a8b456 5
+tests/integration/local/provider-model-preference-worker.test.ts
+  h_4b47e9e4a8b456 4
+tests/integration/local/replacement-continuation.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/integration/local/replacement-edges.test.ts
+  h_4b47e9e4a8b456 3
+tests/integration/local/replacement-handover.test.ts
+  h_4b47e9e4a8b456 5
+tests/integration/local/replacement-hold.test.ts
+  h_4b47e9e4a8b456 3
+tests/integration/local/replacement-recovery.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/integration/local/replacement-surfaces.test.ts
+  h_4b47e9e4a8b456 4
+tests/integration/local/runtime-generation-ownership.test.ts
+  h_4b47e9e4a8b456 4
+tests/integration/local/serve-ensure.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/integration/local/session-auth-profile-scope.test.ts
+  h_4b47e9e4a8b456 5
+tests/integration/local/subagent-interrupt-resume.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/integration/local/terminal-reexecution.test.ts
+  h_4b47e9e4a8b456 7,357
+tests/integration/local/uncaught-failure-log.test.ts
+  h_4b47e9e4a8b456 11
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-recovery.test.ts
+  h_4b47e9e4a8b456 11
+tests/integration/providers/_live-client.ts
+  h_4b47e9e4a8b456 19
+tests/integration/scripts/check-architecture.test.ts
+  h_4b47e9e4a8b456 30-89,108-115,132-133,135-141,149
+tests/release/lib/isolated-serve.ts
+  h_4b47e9e4a8b456 10
+tests/release/run.ts
+  h_4b47e9e4a8b456 236
+tests/unit/bench/harbor-quota-preflight.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/cli/account-service/_serve-fixtures.ts
+  h_4b47e9e4a8b456 5-12
+tests/unit/cli/account-service/account-module-request.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/cli/account-service/runtime-attach-cutover.test.ts
+  h_4b47e9e4a8b456 5-10
+tests/unit/cli/account-service/runtime-attach-progress.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/cli/account-service/runtime-attach-protocol-boundary.test.ts
+  h_4b47e9e4a8b456 5-12
+tests/unit/cli/account-service/runtime-attach-start-failure.test.ts
+  h_4b47e9e4a8b456 4-11
+tests/unit/cli/account-service/runtime-attach.test.ts
+  h_4b47e9e4a8b456 6-15
+tests/unit/cli/account-service/serve-address.test.ts
+  h_4b47e9e4a8b456 5-17
+tests/unit/cli/account-service/serve-admission.test.ts
+  h_4b47e9e4a8b456 10-21
+tests/unit/cli/account-service/serve-client-hold.test.ts
+  h_4b47e9e4a8b456 6-12
+tests/unit/cli/account-service/serve-operations.test.ts
+  h_4b47e9e4a8b456 3-7
+tests/unit/cli/account-service/serve-residency.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/cli/account-service/serve-source-snapshot.test.ts
+  h_4b47e9e4a8b456 6-18
+tests/unit/cli/account-service/serve-start-failure.test.ts
+  h_4b47e9e4a8b456 6-14,221,223
+tests/unit/cli/account-service/serve-successor.test.ts
+  h_4b47e9e4a8b456 5-12,14
+tests/unit/cli/account-service/serve.test.ts
+  h_4b47e9e4a8b456 7-25,27-28
+tests/unit/cli/account-service/serving-build.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/cli/account-service/terminal-handoff.test.ts
+  h_4b47e9e4a8b456 6-9
+tests/unit/cli/commands/cli-auth.test.ts
+  h_4b47e9e4a8b456 2-3,8-17
+tests/unit/cli/commands/cli-font.test.ts
+  h_4b47e9e4a8b456 2-4
+tests/unit/cli/commands/headless-snapshot-auth.test.ts
+  h_4b47e9e4a8b456 5-11
+tests/unit/cli/commands/kill.test.ts
+  h_4b47e9e4a8b456 7-11
+tests/unit/cli/commands/update.test.ts
+  h_4b47e9e4a8b456 9-12
+tests/unit/cli/commands/web.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/cli/events/event-maintain-project-root.test.ts
+  h_4b47e9e4a8b456 5-11
+tests/unit/cli/events/event-maintain-usage.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/cli/events/event-search-reconstruct.test.ts
+  h_4b47e9e4a8b456 5-14
+tests/unit/cli/events/event-search-timeout.test.ts
+  h_4b47e9e4a8b456 2-5
+tests/unit/cli/index.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/cli/readline-prompt.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/cli/remote-terminal.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/cli/startup-imports.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/cli/startup/startup-directories.test.ts
+  h_4b47e9e4a8b456 11-13
+tests/unit/cli/startup/startup.test.ts
+  h_4b47e9e4a8b456 6-18
+tests/unit/infra/auth/auth-context.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/infra/auth/auth-profile-normalization.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/auth/openai/openai-auth-foundation.test.ts
+  h_4b47e9e4a8b456 2,6,31,34,97,108-109,112,147,150,182,186
+tests/unit/infra/auth/provider-models/provider-model-catalog-store.test.ts
+  h_4b47e9e4a8b456 5-16
+tests/unit/infra/auth/provider-models/provider-model-preference-store.test.ts
+  h_4b47e9e4a8b456 4-10
+tests/unit/infra/auth/store/auth-profile-store.test.ts
+  h_4b47e9e4a8b456 2,5-10
+tests/unit/infra/auth/store/auth-store-loading.test.ts
+  h_4b47e9e4a8b456 4-7
+tests/unit/infra/auth/store/auth-store-types.test.ts
+  h_4b47e9e4a8b456 1,4
+tests/unit/infra/auth/store/auth-store.test.ts
+  h_4b47e9e4a8b456 2,16-20
+tests/unit/infra/auth/store/locked-json-store.test.ts
+  h_4b47e9e4a8b456 2,12-15
+tests/unit/infra/auth/subscription/subscription-spend-consent-store.test.ts
+  h_4b47e9e4a8b456 3-7
+tests/unit/infra/auth/xai-token-refresh.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/cli-args.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/event-search.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/infra/llm/model-listing-persistence.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/infra/llm/model-listing-relationships.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/infra/llm/model-listing-supergrok.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/infra/llm/model-listing-vertex.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/llm/model-listing.test.ts
+  h_4b47e9e4a8b456 2,8-9
+tests/unit/infra/output/abandoned-tool-input.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/output/nested-fact-projection.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/infra/output/parser-agent-lifecycle.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/output/parser-assistant-draft.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/output/parser-nested-filter.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/output/parser-streaming.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/output/parser-subagent.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/infra/output/parser-tools.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/infra/output/projector/builder-agent.test.ts
+  h_4b47e9e4a8b456 2-5
+tests/unit/infra/output/projector/builder-drain-changes.test.ts
+  h_4b47e9e4a8b456 2-8
+tests/unit/infra/output/projector/builder-misc.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/output/projector/builder-pinned.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/output/projector/output-projection.test.ts
+  h_4b47e9e4a8b456 4-11
+tests/unit/infra/output/projector/seeded-agent-resume.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/output/projector/structured-event-tool-results.test.ts
+  h_4b47e9e4a8b456 3-12
+tests/unit/infra/output/runtime-event-projector.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/output/streaming/provisional-diff.test.ts
+  h_4b47e9e4a8b456 4-7
+tests/unit/infra/output/streaming/provisional-patch.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/infra/output/streaming/streaming-text-diff.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/output/streaming/streaming-tool-inputs-work-count.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/output/streaming/streaming-tool-text.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/rate-limit-event-output.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/infra/tools/ask-user-streaming-context.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/tools/file-change-materialization.test.ts
+  h_4b47e9e4a8b456 3,5
+tests/unit/infra/tools/partial-json.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/tools/streaming-tool-input.test.ts
+  h_4b47e9e4a8b456 2-3,5,8
+tests/unit/infra/tools/streaming-tool-validation.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/attempt-settlement-regressions.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/agent-runtime/llm/_openai-chatgpt-adapter-fixtures.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/orchestration/agent-runtime/llm/chatgpt-failed-request-dump.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
+  h_4b47e9e4a8b456 5,7
+tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
+  h_4b47e9e4a8b456 4-7
+tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/orchestration/agent-runtime/llm/copilot-token-persistence.test.ts
+  h_4b47e9e4a8b456 6,8
+tests/unit/orchestration/agent-runtime/llm/failover-client-auth.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/agent-runtime/llm/failover-client-model-access.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-account-affinity.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/agent-runtime/llm/openai-custom-tools.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/agent-runtime/llm/openai-responses-item-dedup.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/agent-runtime/llm/openai-responses-terminal.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/agent-runtime/llm/provider-availability-authority.test.ts
+  h_4b47e9e4a8b456 29
+tests/unit/orchestration/agent-runtime/llm/provider-availability-chatgpt-probe.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/agent-runtime/llm/provider-availability.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/agent-runtime/runner-stream-events.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/runtime-assembly-model-selection.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/orchestration/agent-runtime/streaming-tool-validation.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/agent-runtime/subagent/result-budget.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/tools/ask-user.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/agent-runtime/tools/streaming-edit-validation.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/tools/web.test.ts
+  h_4b47e9e4a8b456 5,7
+tests/unit/orchestration/app-service/auth-profile-watcher-owner.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/orchestration/app-service/auth-publication.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/app-service/auth-status-projection.test.ts
+  h_4b47e9e4a8b456 20,24
+tests/unit/orchestration/app-service/eligibility-preparation-models-dev.test.ts
+  h_4b47e9e4a8b456 2,5
+tests/unit/orchestration/app-service/eligibility-preparation-settlement.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/app-service/eligibility-preparation.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/app-service/held-profile-revisions.test.ts
+  h_4b47e9e4a8b456 4,7-10
+tests/unit/orchestration/app-service/model-assignment-read-admission.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/app-service/model-catalog-auth-eligibility.test.ts
+  h_4b47e9e4a8b456 11-14
+tests/unit/orchestration/app-service/model-catalog-chatgpt-login.test.ts
+  h_4b47e9e4a8b456 5-7
+tests/unit/orchestration/app-service/output-projection.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/app-service/provider-model-preference-audit.test.ts
+  h_4b47e9e4a8b456 5-7
+tests/unit/orchestration/app-service/provider-model-preference-service.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/app-service/replacement-owner.test.ts
+  h_4b47e9e4a8b456 2,4
+tests/unit/orchestration/app-service/runtime-composition-capabilities.test.ts
+  h_4b47e9e4a8b456 67,88
+tests/unit/orchestration/app-service/runtime-supervisor-settlement.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/app-service/transcript-group-children.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/app-service/transcript-mutation-protocol.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/auth/auth-actions.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/orchestration/auth/auth-condition-owner.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/auth/auth-profile-manager.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/auth/catalog-settlement.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/auth/login-abort.test.ts
+  h_4b47e9e4a8b456 5-7
+tests/unit/orchestration/auth/openai-oauth.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/auth/provider-observations/subscription-usage-service.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/chat/runner-profile-admission-filesystem.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/config/model-listing-client.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/config/model-provider-unavailable.test.ts
+  h_4b47e9e4a8b456 233,256
+tests/unit/orchestration/config/provider-model-preferences.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/config/runtime-config-owner.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/headless/auth-profile.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/headless/benchmark-auth-export.test.ts
+  h_4b47e9e4a8b456 6,15
+tests/unit/orchestration/headless/benchmark-auth-file.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/headless/headless-cached-catalog-ownership.test.ts
+  h_4b47e9e4a8b456 6,8
+tests/unit/orchestration/migrations/adopt-workflow-children.test.ts
+  h_4b47e9e4a8b456 35
+tests/unit/orchestration/modules/development/claude-sdk/setup.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 21
+tests/unit/orchestration/modules/provider-claude-agent-sdk/catalog.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/modules/provider-claude-agent-sdk/profile-conversions.test.ts
+  h_4b47e9e4a8b456 5-10
+tests/unit/orchestration/modules/provider-google-vertex/module.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/modules/remote/remote-cli.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/modules/synthetic-provider.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/session-store/agent-live.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/session/streaming-review-fixes.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/subscription-spend-consent/capture-cache-freshness.test.ts
+  h_4b47e9e4a8b456 2,4
+tests/unit/orchestration/subscription-spend-consent/capture-cache.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/subscription-spend-consent/subscription-spend-consent-service.test.ts
+  h_4b47e9e4a8b456 2,4-5
+tests/unit/orchestration/subscription-usage-provider-readers.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/protocol/client/streaming-text-edits.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/protocol/file-change-body.test.ts
+  h_4b47e9e4a8b456 8,10
+tests/unit/scripts/claude-engine-release.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/scripts/readiness-login.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/scripts/uat/harness.test.ts
+  h_4b47e9e4a8b456 6,8-9
+tests/unit/tui/output-blocks/thinking-block.test.tsx
+  h_4b47e9e4a8b456 10
+vscode/scripts/e2e-bootstrap.ts
+  h_4b47e9e4a8b456 41
+vscode/scripts/e2e-live.ts
+  h_4b47e9e4a8b456 28,32
+vscode/src/extension.ts
+  h_4b47e9e4a8b456 11
+vscode/src/runtime/connection/editor-client.ts
+  h_4b47e9e4a8b456 7
+vscode/src/runtime/connection/node-socket.ts
+  h_4b47e9e4a8b456 8
+vscode/src/webview/panel-mount.ts
+  h_4b47e9e4a8b456 8-9
+vscode/src/webview/socket-bridge.ts
+  h_4b47e9e4a8b456 8
+webview/src/app/app.tsx
+  h_4b47e9e4a8b456 35-37,39-43,45,47
+webview/src/app/background-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 9
+webview/src/app/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 19
+webview/src/app/capability-preset-interaction-fixture.ts
+  h_4b47e9e4a8b456 10-11
+webview/src/app/changes-content.tsx
+  h_4b47e9e4a8b456 3-4
+webview/src/app/command-panel.tsx
+  h_4b47e9e4a8b456 15
+webview/src/app/models-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 9-10
+webview/src/app/module-rows-fixture.ts
+  h_4b47e9e4a8b456 11
+webview/src/app/providers-sheet-focus.test.ts
+  h_4b47e9e4a8b456 6
+webview/src/app/providers-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 11-12
+webview/src/app/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 10-11
+webview/src/app/sheets/models/model-option-detail.tsx
+  h_4b47e9e4a8b456 2
+webview/src/app/sheets/models/model-sheet.tsx
+  h_4b47e9e4a8b456 3-5,7-13,15
+webview/src/app/sheets/models/models-sheet.tsx
+  h_4b47e9e4a8b456 4-10,12-13
+webview/src/app/sheets/providers/profiles-sheet.tsx
+  h_4b47e9e4a8b456 4-11
+webview/src/app/sheets/providers/provider-models-sheet.tsx
+  h_4b47e9e4a8b456 4-9
+webview/src/app/sheets/providers/providers-sheet.tsx
+  h_4b47e9e4a8b456 5-17
+webview/src/app/sheets/settings/capabilities-sheet.tsx
+  h_4b47e9e4a8b456 4-5,7
+webview/src/app/sheets/settings/capability-preset.ts
+  h_4b47e9e4a8b456 1-7
+webview/src/app/sheets/settings/setting-rows.tsx
+  h_4b47e9e4a8b456 4-20,22-23
+webview/src/app/sheets/settings/settings-sheet.test.ts
+  h_4b47e9e4a8b456 3-5
+webview/src/app/sheets/settings/settings-sheet.tsx
+  h_4b47e9e4a8b456 3-4,6-7
+webview/src/app/sheets/sheet.tsx
+  h_4b47e9e4a8b456 6,126-141
+webview/src/app/sheets/workspace/background-sheet.tsx
+  h_4b47e9e4a8b456 2,4,13-16,18-19
+webview/src/app/sheets/workspace/changes-sheet.tsx
+  h_4b47e9e4a8b456 2-4,6
+webview/src/app/sheets/workspace/status-sheet-budget.test.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/sheets/workspace/status-sheet-restart.test.tsx
+  h_4b47e9e4a8b456 4-5
+webview/src/app/sheets/workspace/status-sheet-runtime.test.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/sheets/workspace/status-sheet.tsx
+  h_4b47e9e4a8b456 2-3,5-18,20
+webview/src/app/sheets/workspace/workspace-surface.tsx
+  h_4b47e9e4a8b456 2-5
+webview/src/modules/workflows/stability-fixture.tsx
+  h_4b47e9e4a8b456 13,20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d256afe8a4a9f0bc2368d29ee8dc6c074505173b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
