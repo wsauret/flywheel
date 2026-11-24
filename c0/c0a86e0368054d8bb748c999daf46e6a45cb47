@@ -1,0 +1,46 @@
+docs/architecture.md
+  h_4b47e9e4a8b456 510
+src/tui/commands/command-definitions.ts
+  h_4b47e9e4a8b456 4,29
+src/tui/commands/command-dispatch.ts
+  h_4b47e9e4a8b456 10
+src/tui/commands/command-types.ts
+  h_4b47e9e4a8b456 3-5,8,33-47,51,57-58
+src/tui/context/toast-presenter.ts
+  h_4b47e9e4a8b456 3,69-95
+src/tui/hooks/composer/use-commands.ts
+  h_4b47e9e4a8b456 4
+src/tui/shell/create-keyboard-handler.ts
+  h_4b47e9e4a8b456 9
+src/tui/shell/shell-composer-core.ts
+  h_4b47e9e4a8b456 1-77
+src/tui/shell/shell-composer.tsx
+  h_4b47e9e4a8b456 2-3,12,26,29-30,61-62
+src/tui/shell/shell-header.tsx
+  h_4b47e9e4a8b456 11
+src/tui/shell/shell-navigation.ts
+  h_4b47e9e4a8b456 13,15-16
+src/tui/shell/shell-overlays.ts
+  h_4b47e9e4a8b456 14,30-31
+src/tui/shell/shell-places.ts
+  h_4b47e9e4a8b456 1-100
+src/tui/shell/shell.tsx
+  h_4b47e9e4a8b456 41-42,44-45
+tests/helpers/command-context.ts
+  h_4b47e9e4a8b456 16
+tests/unit/tui/commands/command-dispatch.test.ts
+  h_4b47e9e4a8b456 48
+tests/unit/tui/commands/font-command.test.ts
+  h_4b47e9e4a8b456 4-6,10-13,16,30,32-33,39-41,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c0c0a86e0368054d8bb748c999daf46e6a45cb47",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
