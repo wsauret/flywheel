@@ -1,0 +1,32 @@
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 119
+src/orchestration/agent-runtime/request-config.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/config/config-section.ts
+  h_4b47e9e4a8b456 3-4,8-11,51-62
+src/orchestration/config/loader.ts
+  h_4b47e9e4a8b456 7-8
+src/orchestration/config/schema.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 9-10
+src/orchestration/config/writer.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/module-catalog.ts
+  h_4b47e9e4a8b456 2,5,10-29
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 32,36,236
+tests/unit/orchestration/modules/config-contribution.test.ts
+  h_4b47e9e4a8b456 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5dce7b8cba4531f3735a0bf6d0d45ae524d7c88b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
