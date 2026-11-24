@@ -1,0 +1,22 @@
+bench/README.md
+  h_4b47e9e4a8b456 19
+bench/ab-persona/bench.ts
+  h_4b47e9e4a8b456 29,50,73-77,115,125,251
+src/orchestration/modules/development/benchmark/persona-benchmark.ts
+  h_4b47e9e4a8b456 32,123-124,324,438
+tests/unit/bench/cli.test.ts
+  h_4b47e9e4a8b456 18-19
+tests/unit/bench/persona-benchmark.test.ts
+  h_4b47e9e4a8b456 117-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f035da6dd302067c4eee6acf8a00322bc1fe0b82",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
