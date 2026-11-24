@@ -5,7 +5,7 @@ import type { FrontendToolEntry } from "../../../../../../src/protocol/app-servi
 import { blockIdentity } from "../../../../../../src/protocol/block-identity.js"
 import { foldReadRuns, type ReadRun, type RunRow } from "../../../../../../src/protocol/client/tool-run-category.js"
 import { toolActivity, toolProcess } from "../../../../../../src/protocol/client/transcript-model.js"
-import { rowIdentity, toolGroupKeys, toolGroupSummaryParts, type ToolGroup, type PresentedWebBlock } from "../../../../client/tool-runs.js"
+import { rowIdentity, toolGroupKeys, toolGroupSummaryParts, type ToolGroup, type PresentedWebBlock } from "../../../../client/session/residents/tool-runs.js"
 import type { BlockProps, createToolPresentation } from "../blocks.js"
 import { CompactToolRow } from "../compact-tool-row.js"
 import { Icon, ICONS } from "../../../controls/icons.js"

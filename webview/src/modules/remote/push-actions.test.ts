@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { enablePush } from "./push-actions.js"
 import { EMPTY_REMOTE_VIEW } from "../../../../src/protocol/modules/remote.js"
 import type { HostCapabilities } from "../../host.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 
 test("turn-on calls the permission path in the tap, without waiting for a subscription read", async () => {
   let prompted = false

@@ -3,7 +3,7 @@ import type { RuntimeConnection } from "../../../../src/protocol/client/connecti
 import type { WorkflowDetail } from "../../../../src/protocol/modules/workflows.js"
 import type { FrontendWorkflowView, WorkflowAgentLive, WorkflowLiveView } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import { workflowSurfaceReads, type WorkflowSurface } from "../../../../src/protocol/client/workflow-surface.js"
-import { createModuleDomainMonitor, type ModuleDomainMonitor } from "../../client/module-domain-monitor.js"
+import { createModuleDomainMonitor, type ModuleDomainMonitor } from "../../client/domains/module-domain-monitor.js"
 
 export interface WorkflowReading {
   readonly detail: WorkflowDetail | undefined

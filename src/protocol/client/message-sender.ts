@@ -1,6 +1,5 @@
 import type { FrontendMessageSender } from "../app-service-types.js"
 import type { ToolEntry, UserMessageBlock } from "../../infra/output-blocks.js"
-import { WORKFLOW_GLYPH } from "./glyphs.js"
 
 const RELATION_NAMES = {
   parent: "parent",
@@ -17,12 +16,6 @@ export function messageSenderLabel(from: Pick<FrontendMessageSender, "name" | "r
 
 /** The label above the words of the person that a sender attached. */
 export const PERSON_WORDS_LABEL = "From the person"
-
-/** Formats a proven session type for a message row. Workflow types carry the shared workflow marker. */
-export function messageSessionTypeLabel(type: string, workflow = false): string {
-  const label = type.charAt(0).toUpperCase() + type.slice(1)
-  return workflow ? `${WORKFLOW_GLYPH} ${label}` : label
-}
 
 /** A message row keeps its recorded name alone when history cannot prove a type. */
 export function messageSessionLabel(name: string, typeLabel?: string): string {

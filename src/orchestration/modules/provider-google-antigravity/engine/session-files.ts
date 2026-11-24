@@ -34,6 +34,11 @@ export function sessionTranscriptPath(loginDir: string, sessionId: string): stri
   return join(sessionFolders(loginDir).brain, sessionId, ".system_generated", "logs", "transcript_full.jsonl")
 }
 
+/** The conversation database in which agy records the model requests of the session `sessionId`. */
+export function sessionConversationPath(loginDir: string, sessionId: string): string {
+  return join(sessionFolders(loginDir).conversations, `${sessionId}.db`)
+}
+
 /** The owner's record of one engine process: the engine sessions it opened, and how many `session/new` requests it
  *  sent that have not answered yet, whose sessions can already have files under an id that the record cannot name. */
 export interface ProcessRecord {

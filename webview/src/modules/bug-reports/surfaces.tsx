@@ -5,7 +5,7 @@ import { Sheet } from "../../app/sheets/sheet.js"
 import { NOT_RELEASE_REPORT_STATUS, reportSentStatus, type BugReportInput, BUG_REPORT_COMMAND_NAME } from "../../../../src/protocol/modules/bug-reports.js"
 import { copyReport, createReportSubmission, reportInput } from "./report.js"
 import "./surfaces.css"
-import { describeFailure } from "../../client/failure-message.js"
+import { describeFailure } from "../../client/format/failure-message.js"
 
 /** A crash report is automatic, so its receipt also says where to turn automatic reports off. */
 function ReportStatus(props: { readonly submission: ReturnType<typeof createReportSubmission>; readonly kind: BugReportInput["kind"] }) {

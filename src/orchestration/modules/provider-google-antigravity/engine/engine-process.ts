@@ -19,7 +19,8 @@ import type { GateHookHandler } from "./hook-command.js"
 import type { ToolListener, ToolServerRegistration } from "../tools/mcp-server.js"
 import { acpLaunch, engineToolName, prepareLoginHome, writeLaunchMcpConfig } from "./private-home.js"
 import { createRetryWatch, failedAttemptLogReader, failedAttemptTranscriptDetail } from "./retry-watch.js"
-import { createProcessRecord, sessionTranscriptPath, sweepLogin } from "./session-files.js"
+import { readConversationRows, type ConversationRead } from "../usage/conversation-usage.js"
+import { createProcessRecord, sessionConversationPath, sessionTranscriptPath, sweepLogin } from "./session-files.js"
 import { keychainReachedFailure, prepareTokenStore, tokenStoreObservation, TokenStoreUnavailableError } from "./token-store.js"
 import type { McpToolDeclaration } from "../tools/tool-projection.js"
 
@@ -88,6 +89,8 @@ export interface EngineProcess {
   prompt(sessionId: string, prompt: readonly AcpTextBlock[]): Promise<AcpPromptResult>
   /** Sends `session/cancel` for `sessionId`. */
   cancel(sessionId: string): Promise<void>
+  /** The usage of each model request that agy recorded for `sessionId` after the request `afterIdx`. */
+  conversationRows(sessionId: string, afterIdx: number): ConversationRead
   /** Changes the model or a configuration option of a session between prompts. */
   configure<M extends "session/set_config_option" | "session/set_model">(method: M, params: AcpRequests[M]["params"]): Promise<AcpRequests[M]["result"]>
   /** Whether no prompt is open. */
@@ -492,6 +495,7 @@ function observeEngine(launch: ObservedLaunch): ObservedEngine {
       transcripts.delete(sessionId)
     },
     cancel: (sessionId) => connection.notify("session/cancel", { sessionId }),
+    conversationRows: (sessionId, afterIdx) => readConversationRows(sessionConversationPath(loginDir, sessionId), afterIdx),
     configure: (method, params) => request(method, params),
     idle: () => openPrompts.size === 0,
     whenIdle: () => openPrompts.size === 0 ? Promise.resolve() : new Promise((resolve) => { idleWaiters.push(resolve) }),

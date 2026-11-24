@@ -1,7 +1,7 @@
 import { createEffect, createSignal, For, on, onCleanup, onMount, Show, untrack } from "solid-js"
 
 import type { TranscriptSearchHit, TranscriptSearchResult } from "../../../../../src/protocol/transcript-protocol-types.js"
-import { summaryOf } from "../../../client/view-state.js"
+import { summaryOf } from "../../../client/session/view-state.js"
 import { useClient } from "../../client-context.js"
 import { Icon, ICONS } from "../../controls/icons.js"
 import { publishPaneHeight } from "../transcript-scroll.js"

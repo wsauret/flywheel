@@ -14,8 +14,8 @@ import type { WorkflowSurface } from "../../../../src/protocol/client/workflow-s
 import { mountMarkdown } from "./render-ownership-loader-fixture.js"
 import { createElement, createTextNode, MemoryElement, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { patchMarkdownChildren } from "./blocks/text/markdown-dom.js"
-import type { FrontendQuestionBlock } from "../../client/question-answer.js"
-import type { ComposerCheckpoint } from "../../client/input-reload-checkpoint.js"
+import type { FrontendQuestionBlock } from "../../client/questions/question-answer.js"
+import type { ComposerCheckpoint } from "../../client/input/input-reload-checkpoint.js"
 
 test("replacement transfers active, inactive, and new-chat drafts without renumbering prepared files", async () => {
   const original = mountComposerSubmission()

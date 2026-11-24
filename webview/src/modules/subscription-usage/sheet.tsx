@@ -6,7 +6,7 @@ import { explainedByConnection } from "../../../../src/protocol/client/connectio
 import { readRetainedQuery, type QueryReading } from "../../../../src/protocol/client/retained-query.js"
 import { USAGE_HISTORY_RANGES, type UsageAccountSource, type UsageAccountsResult, type UsageHistoryRange, type UsageHistoryResult, type UsageMutationResult, type UsageReadFailure, type UsageSpendResult, historySeries, spendSeries, type HistorySeries, USAGE_COMMAND_NAME, usageStatusLine } from "../../../../src/protocol/modules/subscription-usage.js"
 import { actionKey } from "../../client/action-key.js"
-import { describeFailure } from "../../client/failure-message.js"
+import { describeFailure } from "../../client/format/failure-message.js"
 
 import { accountStatus, accountSubtitle, activityLines, detailMetricCount, detailWindowCount, metricBars, prepaidBalanceLines, providerNotice, shortDate, spendGroups, type MetricBar, type UsageLine } from "./usage-format.js"
 import { useClient } from "../../app/client-context.js"

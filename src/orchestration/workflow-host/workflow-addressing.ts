@@ -1,5 +1,5 @@
 import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
-import { resolveWorkflowAgentTarget, resolveWorkflowTargets, workflowAddressLines, workflowTargetRefusal, type WorkflowAddress, type WorkflowTargetResolution } from "../../protocol/client/workflow-addresses.js"
+import { resolveWorkflowAgentTarget, resolveWorkflowTargets, workflowAddresses, type WorkflowAddress, type WorkflowTargetResolution } from "../../protocol/client/workflow-addresses.js"
 import { workflowTreeIndex } from "../../protocol/client/workflow-outline.js"
 import type { LoadedWorkflowView } from "../../protocol/workflow-view-protocol-types.js"
 import { addressReachesAgent, type AddressedAgent, type WorkflowMessageAddress } from "../../workflows/context-bundle/context-facts.js"
@@ -20,6 +20,73 @@ function messageAddress(address: WorkflowAddress): WorkflowMessageAddress {
   return address.kind === "agent"
     ? { _tag: "agent", nodeId: address.nodeId, definitionId: address.target }
     : { _tag: "item", listNodeId: address.groupId, itemNodeId: address.nodeId, key: address.target }
+}
+
+type View = Pick<LoadedWorkflowView, "attempts" | "tree">
+
+function shortened(text: string, limit: number): string {
+  return text.length <= limit ? text : `${text.slice(0, limit - 1)}…`
+}
+
+const ITEM_LIMIT = 60
+const DETAIL_LIMIT = 80
+
+function stateWord(address: WorkflowAddress): string {
+  return address.state === "parked" ? "interrupted" : address.state
+}
+
+/** One address as a line of the message targets: its key, its item when the item says
+ *  more than the key, its current agent, its state, and its activity. */
+function addressLine(address: WorkflowAddress): string {
+  const item = address.item === undefined || address.item === address.target ? [] : [shortened(address.item, ITEM_LIMIT)]
+  return `- ${[address.target, ...item, address.agent, stateWord(address), shortened(address.detail, DETAIL_LIMIT)].join(" | ")}`
+}
+
+function groupHeading(first: WorkflowAddress, count: number, open: boolean): string {
+  if (first.kind === "item") return `phase ${first.group}: ${count} ${count === 1 ? "item" : "items"}, ${open ? "one line per item" : "all finished"}`
+  if (count === 1) return `phase ${first.group}: one agent${open ? "" : ", finished"}`
+  return `phase ${first.group}: ${count} named agents, ${open ? "one line per agent" : "all finished"}`
+}
+
+/** The message targets of a workflow as a parent agent reads them: for each
+ *  list or phase that has not finished, a heading and one line per address,
+ *  and for each that finished, its heading alone, because none of its items
+ *  or agents takes a message. Empty for a tree with no phase yet. `cut`
+ *  is the word of the cut that holds the run, such as `interrupted`: a cut
+ *  returns its started agents to pending, so without it they read queued. */
+export function workflowAddressLines(view: View, cut?: string): readonly string[] {
+  const addresses = workflowAddresses(view, cut)
+  if (addresses.length === 0) return []
+  const groups = [...Map.groupBy(addresses, ({ groupId }) => groupId).values()]
+  const open = (rows: readonly WorkflowAddress[]) => rows.some(({ finished }) => !finished)
+  return [
+    ...(groups.some(open) ? ["message targets (name these item keys or agent ids in targets for message_session and process interrupt/resume; omit targets only for the whole workflow):"] : []),
+    ...groups.flatMap((rows) => {
+      const [first] = rows
+      if (first === undefined) return []
+      return open(rows) ? [groupHeading(first, rows.length, true), ...rows.map(addressLine)] : [groupHeading(first, rows.length, false)]
+    }),
+  ]
+}
+
+/** The refusal of a `targets` list, with every target that takes a
+ *  message now and its state, so a sender can choose again at once. */
+export function workflowTargetRefusal(resolution: Extract<WorkflowTargetResolution, { ok: false }>): string {
+  const reason = (() => {
+    switch (resolution.reason) {
+      case "none": return "this workflow has no item or agent that takes a message now: a list gets its items when it reads them, and a finished item or agent takes none"
+      case "unknown": return `no item or agent of this workflow has the target "${resolution.target}"`
+      case "ambiguous": return `more than one list or phase of this workflow that has not finished has the target "${resolution.target}"`
+      case "finished": return `"${resolution.target}" has finished and reads no more messages`
+    }
+  })()
+  const lines = resolution.valid.map(addressLine)
+  return [
+    `${reason}.`,
+    ...(lines.length > 0
+      ? ["Valid targets (key | item | agent | state | activity):", ...lines]
+      : resolution.reason === "none" ? ["Send the message without targets to reach the whole workflow."] : ["No item or agent of this workflow takes a message now. Send the message without targets to reach the whole workflow."]),
+  ].join("\n")
 }
 
 /** What a message or an interrupt names: the item keys and named-agent ids

@@ -12,7 +12,7 @@ import { SettingsSheet } from "./settings-sheet.js"
 import { createElement, insert, nodes, textContent } from "../../../test-support/render-ownership-host-fixture.js"
 import { createClientActions } from "../../../client/actions.js"
 import { fakeClient, fakeRuntimeSession, fakeViewState } from "../../client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"
 
 /** Mounts either real sheet over the real actions layer; only transport and dialog answers are fakes. */
 export function mountCapabilityPreset(sheet: "settings" | "capabilities") {

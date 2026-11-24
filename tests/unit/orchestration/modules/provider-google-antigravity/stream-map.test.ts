@@ -5,8 +5,9 @@ import { classifyProviderFailure, ProviderAttemptFailure } from "../../../../../
 import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream/stream-attempt.js";
 import { STREAM_IDLE_TIMEOUT_FAST_MS, STREAM_TTFT_TIMEOUT_MS } from "../../../../../src/orchestration/agent-runtime/llm/stream/stream-liveness.js";
 import type { ProviderStreamEvent, StreamTelemetryObservation } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { decodeSessionNotification, type AcpPromptResult, type AcpSessionUpdate } from "../../../../../src/orchestration/modules/provider-google-antigravity/acp/schema.js";
-import { createRequestStream, type McpToolCall, type RequestStream } from "../../../../../src/orchestration/modules/provider-google-antigravity/stream-map.js";
+import { decodeSessionNotification, type AcpPromptResult, type AcpSessionUpdate, type AcpUsage } from "../../../../../src/orchestration/modules/provider-google-antigravity/acp/schema.js";
+import type { RowUsage } from "../../../../../src/orchestration/modules/provider-google-antigravity/usage/conversation-usage.js";
+import { createRequestStream, type McpToolCall, type RequestStream, type RequestStreamOptions } from "../../../../../src/orchestration/modules/provider-google-antigravity/stream-map.js";
 import { controlledClock } from "../../agent-runtime/llm/stream/_stream-deadline-clock.js";
 
 spyOn(Log.create({ service: "provider-google-antigravity" }), "warn").mockImplementation(() => {});
@@ -28,10 +29,24 @@ function frame(update: RecordedUpdate): AcpSessionUpdate {
 
 const noLiveness = { preStream() {}, frame() {}, begin() {}, append() {}, complete() {} };
 
-function requestStream(promptTokensReported = 0) {
+/** A session ledger whose rows cannot state usage, so each request falls back to agy's ACP reports. */
+const NO_ROWS: RequestStreamOptions["usage"] = { settle: () => undefined, endPrompt() {} };
+
+function requestStream(promptTokensReported = 0, usage = NO_ROWS) {
   const occupancy: number[] = [];
-  const stream = createRequestStream({ requestId: "r1", liveness: noLiveness, onOccupancy: (used) => occupancy.push(used), promptTokensReported, modelRequested: () => true });
+  const stream = createRequestStream({ requestId: "r1", liveness: noLiveness, onOccupancy: (used) => occupancy.push(used), promptTokensReported, modelRequested: () => true, usage });
   return { stream, occupancy };
+}
+
+/** A session ledger that answers each settle with the next of `rows`, and records what the stream told it. */
+function rowLedger(...rows: RowUsage[]) {
+  const settled: number[] = [];
+  const aggregates: AcpUsage[] = [];
+  const usage: RequestStreamOptions["usage"] = {
+    settle: (used) => { settled.push(used); return rows.shift(); },
+    endPrompt: (aggregate) => { aggregates.push(aggregate); },
+  };
+  return { usage, settled, aggregates };
 }
 
 function feed(stream: RequestStream, updates: readonly RecordedUpdate[]): ProviderStreamEvent[] {
@@ -102,7 +117,28 @@ describe("request stream", () => {
     expect(stream.promptEnded(TEXT_RESULT)).toEqual([]);
   });
 
-  test("a call after the request's own model request reports that request's total as partial input usage", () => {
+  test("a call after the request's own model request reports the usage of its rows, complete with cached reads", () => {
+    const ledger = rowLedger({ inputTokens: 2120, cacheReadTokens: 2732, outputTokens: 30, reasoningTokens: 0 });
+    const { stream } = requestStream(0, ledger.usage);
+    const events = [...feed(stream, [{ sessionUpdate: "usage_update", used: 4882, size: 1048576 }, TOOL_CALL]), ...stream.toolCall(MCP_CALL)];
+    expect(events.filter((event) => event.kind === "usage")).toEqual([{ kind: "usage", final: true, inputTokens: 2120, outputTokens: 30, cacheReadTokens: 2732, cacheCreateTokens: 0, reasoningTokens: 0 }]);
+    expect(events.at(-1)).toEqual({ kind: "done", stopReason: "tool_use" });
+    expect(ledger.settled).toEqual([4882]);
+    expect(stream.usageReported).toBe(true);
+    expect(stream.tokensReported).toBe(4882);
+  });
+
+  test("the request that ends a prompt reports the usage of its own rows, and the aggregate only checks them", () => {
+    const ledger = rowLedger({ inputTokens: 2132, cacheReadTokens: 2823, outputTokens: 54, reasoningTokens: 3 });
+    const { stream } = requestStream(4882, ledger.usage);
+    const usage: AcpUsage = { inputTokens: 4252, outputTokens: 84, cachedReadTokens: 5555, cachedWriteTokens: 0, thoughtTokens: 3, totalTokens: 9891 };
+    const events = [...feed(stream, [MESSAGE, { sessionUpdate: "usage_update", used: 5009, size: 1048576 }]), ...stream.promptEnded({ stopReason: "end_turn", usage })];
+    expect(events.filter((event) => event.kind === "usage")).toEqual([{ kind: "usage", final: true, inputTokens: 2132, outputTokens: 54, cacheReadTokens: 2823, cacheCreateTokens: 0, reasoningTokens: 3 }]);
+    expect(ledger.settled).toEqual([5009]);
+    expect(ledger.aggregates).toEqual([usage]);
+  });
+
+  test("a call after the request's own model request whose rows cannot state its usage reports its total as partial input usage", () => {
     const { stream } = requestStream();
     const events = [...feed(stream, [IDLE_OCCUPANCY, { sessionUpdate: "usage_update", used: 1069, size: 1048576 }, TOOL_CALL]), ...stream.toolCall(MCP_CALL)];
     expect(events).toEqual([
@@ -112,10 +148,10 @@ describe("request stream", () => {
       { kind: "done", stopReason: "tool_use" },
     ]);
     expect(stream.usageReported).toBe(true);
-    expect(stream.partialTokens).toBe(1069);
+    expect(stream.tokensReported).toBe(1069);
     // A later occupancy report belongs to the next request.
     feed(stream, [{ sessionUpdate: "usage_update", used: 1174, size: 1048576 }]);
-    expect(stream.partialTokens).toBe(1069);
+    expect(stream.tokensReported).toBe(1069);
   });
 
   // A live prompt of three requests (agy 1.5.14): occupancy 1069, 1174, and 1252, and the aggregate below.
@@ -125,11 +161,11 @@ describe("request stream", () => {
     ["shrinks output only when earlier totals leave less than it", 3470, { inputTokens: 0, outputTokens: 25, reasoningTokens: 3 }],
     // Output includes reasoning, so reasoning never exceeds it.
     ["shrinks reasoning with output below the thought tokens", 3494, { inputTokens: 0, outputTokens: 1, reasoningTokens: 1 }],
-  ] as const)("the request that ends a prompt reports the rest of its aggregate: %s", (_name, reported, rest) => {
+  ] as const)("the request that ends a prompt without row usage reports the rest of its aggregate: %s", (_name, reported, rest) => {
     const { stream } = requestStream(reported);
     const events = [...feed(stream, [MESSAGE, { sessionUpdate: "usage_update", used: 1252, size: 1048576 }]), ...stream.promptEnded(AGGREGATE)];
     expect(events.filter((event) => event.kind === "usage")).toEqual([{ kind: "usage", final: true, ...rest, cacheReadTokens: 0, cacheCreateTokens: 0 }]);
-    expect(stream.partialTokens).toBe(0);
+    expect(stream.tokensReported).toBe(0);
   });
 
   test("a call that agy runs itself does not settle the request", () => {
@@ -145,7 +181,7 @@ describe("request stream", () => {
 
   test("a failure notice then end_turn without usage throws the typed failure and never starts the response", () => {
     let frames = 0;
-    const stream = createRequestStream({ requestId: "r1", liveness: { ...noLiveness, frame() { frames += 1; } }, onOccupancy: () => {}, promptTokensReported: 0, modelRequested: () => true });
+    const stream = createRequestStream({ requestId: "r1", liveness: { ...noLiveness, frame() { frames += 1; } }, onOccupancy: () => {}, promptTokensReported: 0, modelRequested: () => true, usage: NO_ROWS });
     expect(feed(stream, [RATE_LIMIT_NOTICE])).toEqual([]);
     expect(failureOf(() => stream.promptEnded({ stopReason: "end_turn" }))._tag).toBe("RateLimitFailure");
     expect(frames).toBe(0);
@@ -192,7 +228,7 @@ describe("request stream", () => {
     const attempt = withStreamAttempt<ProviderStreamEvent>(async function* (streamAttempt) {
       signal = streamAttempt.signal;
       const liveness = streamAttempt.armLiveness({ label: "test", provider: "Google Antigravity", telemetry: { observe: (observation) => { observed.push(observation); } }, clock: time.clock });
-      const stream = createRequestStream({ requestId: "r1", liveness, onDispatch: () => { dispatched += 1; }, onOccupancy: () => {}, promptTokensReported: 0, modelRequested: () => true });
+      const stream = createRequestStream({ requestId: "r1", liveness, onDispatch: () => { dispatched += 1; }, onOccupancy: () => {}, promptTokensReported: 0, modelRequested: () => true, usage: NO_ROWS });
       expect(dispatched).toBe(0);
       await stream.released();
       expect(dispatched).toBe(1);
