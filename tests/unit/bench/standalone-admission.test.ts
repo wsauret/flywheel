@@ -15,12 +15,12 @@ import { join } from "node:path";
 
 import { main } from "../../../bench/ab-persona/bench.js";
 import { captureProviderConnection, type AuthContext } from "../../../src/infra/auth/auth-context.js";
-import type { FailoverPlan } from "../../../src/infra/llm/access-provider.js";
+import type { FailoverPlan } from "../../../src/infra/llm/access/access-provider.js";
 import type { UsageAuthorityGeneration } from "../../../src/orchestration/agent-runtime/usage-settlement.js";
-import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/admission.js";
+import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import type { RunConfig } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
-import { createPersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
+import type { RunConfig } from "../../../src/orchestration/modules/development/benchmark/scoring/run-store.js";
+import { createPersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import type { WorkflowDeps } from "../../../src/orchestration/workflow-host/deps.js";
 import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";

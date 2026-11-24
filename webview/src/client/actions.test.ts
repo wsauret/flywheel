@@ -13,7 +13,7 @@ import { fakeRuntimeConnection } from "./runtime-connection-fixture.js"
 import { settingKeys } from "./settings-actions.js"
 import { createSurfaceOpener, type CaptureSurfaceOpener } from "../../../src/protocol/client/surface-presentation.js"
 import type { CommandOutcome } from "../../../src/protocol/command-catalog-protocol-types.js"
-import { createWorkspaceNavigation } from "../app/workspace-navigation.js"
+import { createWorkspaceNavigation } from "../app/screens/workspace-navigation.js"
 
 /** The actions layer owns every running action: a person who taps a control
  *  sees that it works until the result arrives, and a second tap joins the

@@ -10,11 +10,11 @@ import type { ClientCommand } from "../../../src/protocol/client/host-contract.j
 import { createClientActions } from "../client/actions.js"
 import type { RemoteHostSnapshot, RemoteHostCapability } from "../host.js"
 import type { WebModule } from "../web-module.js"
-import type { HistoryEntryState } from "./screen-stack.js"
+import type { HistoryEntryState } from "./screens/screen-stack.js"
 import { App, type AppProps } from "./app.js"
 import { WEB_MODULES } from "../modules.js"
 import type { ModuleId } from "../../../src/protocol/module-ids.js"
-import { createElement, insert, MemoryElement, nodes, textContent } from "./render-ownership-host-fixture.js"
+import { createElement, insert, MemoryElement, nodes, textContent } from "../test-support/render-ownership-host-fixture.js"
 
 /** A held project and a host that can publish real placement and auth changes. */
 /** What the held project publishes; `health` and `publish` change it. */

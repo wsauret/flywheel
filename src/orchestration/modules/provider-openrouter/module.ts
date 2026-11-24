@@ -1,9 +1,9 @@
 import { Redacted } from "effect";
 import { apiKey } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
+import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js";
+import { extractDataCatalogRows } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
-import { fetchCatalog } from "../../../infra/llm/model-listing.js";
+import { fetchCatalog } from "../../../infra/llm/access/model-listing.js";
 import { openRouterRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";

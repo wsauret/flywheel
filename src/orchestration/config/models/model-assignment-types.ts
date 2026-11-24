@@ -1,11 +1,11 @@
 import type { AuthContext } from "../../../infra/auth/auth-context.js";
 import type { FirstPartyModuleSnapshot } from "../../modules.js";
 import type { KeyResolver } from "../../../infra/auth/resolve-key.js";
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
-import type { ModelListingClient } from "../../../infra/llm/model-listing.js";
-import type { ModelInfo, ModelsClient } from "../../../infra/llm/models.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
+import type { ModelListingClient } from "../../../infra/llm/access/model-listing.js";
+import type { ModelInfo, ModelsClient } from "../../../infra/llm/models/models.js";
 import type { ResolvedProviderModels } from "../../../infra/auth/provider-models/provider-model-preferences.js";
-import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../infra/llm/access/access-provider.js";
 import type { PickerModelEligibility } from "./provider-model-eligibility.js";
 import type { ConfigValidity } from "../writer.js";
 import type { FlywheelConfig } from "../schema/schema.js";

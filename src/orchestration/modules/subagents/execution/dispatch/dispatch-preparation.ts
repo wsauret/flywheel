@@ -7,7 +7,7 @@ import { resolveDispatchModel, resolveChildRole, type ResolvedDispatchModel } fr
 import type { ContinuationTarget, SubagentContext, SubagentInput, SubagentResult } from "./control-actions.js"
 import type { SubagentDispatchDeps } from "./dispatch-deps.js"
 import type { AgentDefinition } from "../../../../../infra/agent-definition.js"
-import type { ProviderRequestOptions } from "../../../../../infra/llm/provider-options.js"
+import type { ProviderRequestOptions } from "../../../../../infra/llm/access/provider-options.js"
 import type { AgentOptions } from "../../../../agent-runtime/types.js"
 import { cloneInheritedToolNames, toolRegistryFromComposition, toolModuleRequirements } from "../../../../agent-runtime/tools/tool-registry.js"
 import { dispatchableAgents, grantedSubagentTypes, personaToolNames } from "../../../../../workflows/agents/subagent-reachability.js"

@@ -12,10 +12,10 @@ import { headlessClient } from "../../../webview/src/client/session-host-loader-
 import { selectionConnection } from "../../../webview/src/client/session-selection-fixture.js"
 import { settle } from "../../../webview/src/client/session-connection-fixture.js"
 import type { ComposerCheckpoint } from "../../../webview/src/client/input-reload-checkpoint.js"
-import type { HistoryEntryState } from "../../../webview/src/app/screen-stack.js"
+import type { HistoryEntryState } from "../../../webview/src/app/screens/screen-stack.js"
 
 // The fixture compiles under the web client's JSX project, not the root test project.
-const composerFixture = new URL("../../../webview/src/app/composer-submission-loader-fixture.ts", import.meta.url).href
+const composerFixture = new URL("../../../webview/src/app/composer/composer-submission-loader-fixture.ts", import.meta.url).href
 const { mountComposerSubmission }: { mountComposerSubmission(): {
   openChat(id: string): void; leaveSession(): void; type(text: string): void
   capture(): ComposerCheckpoint; adopt(checkpoint: ComposerCheckpoint): void

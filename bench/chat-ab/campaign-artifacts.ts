@@ -1,7 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
-import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { readJsonFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { readJsonFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 
 /** The ledger reference of an artifact below the campaign directory. Ledgers are portable records, so the
  * reference is a POSIX relative path on every OS and resolves on any OS that reads the ledger. */

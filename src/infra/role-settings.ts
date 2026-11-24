@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { ProviderRequestOptionsSchema } from "./llm/provider-options.js"
+import { ProviderRequestOptionsSchema } from "./llm/access/provider-options.js"
 
 /** Authored role fields. Missing fields inherit the owner's current profile policy. */
 export const RoleSettingEntrySchema = Schema.Struct({

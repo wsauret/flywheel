@@ -6,7 +6,7 @@ import { antigravityReleaseLoginStatus, inHomeLogin, parseReleaseLoginStatus, re
 import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-store.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import { authDir } from "../../../src/infra/paths.js";
-import type { TokenProbe } from "../../../src/orchestration/modules/provider-claude-agent-sdk/login-token.js";
+import type { TokenProbe } from "../../../src/orchestration/modules/provider-claude-agent-sdk/login/login-token.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { AuthProfileManager } from "../../../src/orchestration/auth/auth-profile-manager.js";
 import { temporaryDirectories } from "../../helpers/directories.js";

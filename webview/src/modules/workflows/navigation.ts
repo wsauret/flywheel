@@ -1,7 +1,7 @@
 import { batch, createEffect, createMemo, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
 import { workflowAgentModel, workflowAgentMove, type WorkflowAgentTarget } from "../../../../src/protocol/client/workflow-agent.js"
 import { workflowParked, workflowStateLabel } from "../../../../src/protocol/client/session-controls.js"
-import { LEVEL_KEY, SESSION_KEY, pushedOver, sessionOf, type HistoryEntryState } from "../../app/screen-stack.js"
+import { LEVEL_KEY, SESSION_KEY, pushedOver, sessionOf, type HistoryEntryState } from "../../app/screens/screen-stack.js"
 import type { WorkflowReading } from "./inspection.js"
 import type { SessionSummary } from "../../client/view-state.js"
 

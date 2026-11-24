@@ -14,8 +14,8 @@
 // writes a plan, so its judge reads a plan prompt against the task's known
 // requirements and never reads a fix.
 import { Schema } from "effect";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { completeJudge } from "../../src/orchestration/modules/development/benchmark/judge.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { completeJudge } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { namesShippedSite, SHIPPED_SITES } from "./workflow-audit-tests.js";
 import { modelNamePattern, type Redaction } from "./judge-inputs.js";
 import { eachJudgeJob, PAIR_JUDGE_INSTRUCTIONS, referenceFix, VerdictSchema, type ChatAbJudge } from "./pair-judge.js";

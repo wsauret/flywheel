@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineFact } from "../../../infra/event-registry.js"
-import { REASONING_EFFORTS } from "../../../infra/llm/models.js"
+import { REASONING_EFFORTS } from "../../../infra/llm/models/models.js"
 import { ConversationEntrySchema, HistoricalConversationEntrySchema, HistoricalStoredConversationEntrySchema, StoredConversationEntryV3Schema, StoredConversationEntryV4Schema, StoredConversationEntryV5Schema, StoredConversationEntryV6Schema, StoredConversationEntryV7Schema, StoredConversationEntryV8Schema, type StoredConversationEntry } from "./conversation-entry-schemas.js"
 
 const DateTimeStringSchema = Schema.String.check(

@@ -2,10 +2,10 @@ import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
-import { appendCampaignRecords, loadAllCampaignRecords, type CampaignHeader, type CellLine, type ScoreLine } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import { appendCampaignRecords, loadAllCampaignRecords, type CampaignHeader, type CellLine, type ScoreLine } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
 import { createBenchmarkCatalog, type ImplementTask } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/judge.js";
-import { regradeRecords } from "../../../src/orchestration/modules/development/benchmark/regrade.js";
+import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
+import { regradeRecords } from "../../../src/orchestration/modules/development/benchmark/records/regrade.js";
 import { MINIMAL_IMPLEMENTATION_PLAN } from "../../helpers/implementation-plan.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 

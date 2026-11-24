@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { MeasuredUsageEntrySchema, UncoveredUsageEntrySchema, UnmeasuredUsageEntrySchema } from "./llm/usage-entry.js";
+import { MeasuredUsageEntrySchema, UncoveredUsageEntrySchema, UnmeasuredUsageEntrySchema } from "./llm/usage/usage-entry.js";
 
 // Payloads of every recorded version of the `model.usage.measured` fact, which `runtime-fact-types.ts` registers.
 

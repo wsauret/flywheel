@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import type { UsageHourlySpend } from "../../../../../src/infra/llm/usage-authority.js"
+import type { UsageHourlySpend } from "../../../../../src/infra/llm/usage/usage-authority.js"
 import { projectUsageHistory, projectUsageSpend, type CurrentUsageObservationSet, type MeteredUsageSource } from "../../../../../src/orchestration/modules/subscription-usage/usage-projection.js"
 import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
 

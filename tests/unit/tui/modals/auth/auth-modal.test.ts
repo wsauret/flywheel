@@ -15,7 +15,7 @@ import {
   runtimeLogin,
   setAuthStatuses,
 } from "./auth-modal-test-harness.js"
-import { FREE_PLAN_REPLACE_QUESTION } from "../../../../../src/infra/llm/free-plan-accounts.js"
+import { FREE_PLAN_REPLACE_QUESTION } from "../../../../../src/infra/llm/access/free-plan-accounts.js"
 import { keptFreePlanMessage } from "../../../../../src/protocol/client/auth-login.js"
 
 /** Opens the modal on the unconfigured Copilot row and waits for the flow's

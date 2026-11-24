@@ -13,7 +13,7 @@ import { createViewProjection, type ClientViewState, type SessionSummary } from 
 import type { ClientHost } from "../host.js"
 import type { WebModuleClientHost } from "../web-module-client.js"
 import type { ClientContextValue } from "./client-context.js"
-import { createWebSurfaces } from "./surfaces.js"
+import { createWebSurfaces } from "./sheets/commands/surfaces.js"
 
 /** Typed fakes of everything a client component reaches, for render and
  *  interaction fixtures. Each builder returns a complete value of its type:

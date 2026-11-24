@@ -4,7 +4,7 @@ import { Effect, Exit, Scope } from "effect";
 import { Log } from "../../../../infra/log.js";
 import { errorMessage } from "../../../../infra/error-message.js";
 import type { StartupDirectories } from "../../../../infra/directory-authorities.js";
-import type { ProviderRequestOptions } from "../../../../infra/llm/provider-options.js";
+import type { ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";
 import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../../agent-runtime/model-interaction-profile.js";

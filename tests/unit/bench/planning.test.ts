@@ -10,9 +10,9 @@ import { formatPlanningReport, renderPlanningReport } from "../../../bench/chat-
 import { planningLedger, type PlanningCampaign } from "../../../bench/chat-ab/planning-store.js";
 import { loadPlanningTasks, PLANNING_INSTRUCTION, PLANNING_TASKS_DIR, qualifyPlanningTask } from "../../../bench/chat-ab/planning-task.js";
 import type { Sandbox } from "../../../bench/chat-ab/tasks.js";
-import { bytesIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
-import type { JudgeModel } from "../../../src/orchestration/modules/development/benchmark/judge.js";
+import { bytesIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import type { JudgeModel } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js";
 

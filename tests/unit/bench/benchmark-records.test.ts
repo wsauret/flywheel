@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { AttemptRecord } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
+import type { AttemptRecord } from "../../../src/orchestration/modules/development/benchmark/scoring/run-store.js";
 import {
   appendCampaignRecords,
   exportCampaignRecords,
@@ -9,7 +9,7 @@ import {
   type CampaignHeader,
   type CellLine,
   type ScoreLine,
-} from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+} from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const directory = temporaryDirectories();

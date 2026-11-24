@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../../../src/infra/llm/access/access-provider.js";
 import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "../../../../../src/orchestration/agent-runtime/failure-message.js";
 import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";
 import type { ProviderAvailability, RequestAdmission, SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";

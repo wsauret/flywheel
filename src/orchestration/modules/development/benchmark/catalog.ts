@@ -1,10 +1,10 @@
 import { readdir } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
-import { bytesIdentity, directoryIdentity, structuredIdentity } from "./content-identity.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "./campaign/content-identity.js";
 import { loadImplementTasks, PLAN_FILE, type ImplementTaskSpec } from "./implement-task.js";
-import { immutableGitObjectSelector, objectValue, type CommitSnapshot } from "./task-schema.js";
-import { containedPath, isPresent, realDirectoryUnder, realFileUnder } from "./paths.js";
-import { loadResearchTasks, type ResearchAnswerKey } from "./research-task.js";
+import { immutableGitObjectSelector, objectValue, type CommitSnapshot } from "./tasks/task-schema.js";
+import { containedPath, isPresent, realDirectoryUnder, realFileUnder } from "./campaign/paths.js";
+import { loadResearchTasks, type ResearchAnswerKey } from "./tasks/research-task.js";
 
 /** What a persona's cells produce and how they are scored. */
 export const BENCHMARK_MODES = ["research", "reviewer", "implement"] as const;

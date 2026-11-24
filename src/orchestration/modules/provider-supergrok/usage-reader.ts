@@ -1,8 +1,8 @@
 import { Redacted } from "effect";
 import type { StoredTokens } from "../../../infra/auth/openai/openai-auth-types.js";
 import { isRecord, type UnknownRecord } from "../../../infra/record.js";
-import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageJson, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
-import { malformed, oauthTokens, percent, prepaidBalance, readerIdentity, requiredNumber, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/subscription-usage-reader.js";
+import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageJson, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageSpendSource } from "../../../infra/llm/usage/subscription-usage.js";
+import { malformed, oauthTokens, percent, prepaidBalance, readerIdentity, requiredNumber, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/usage/subscription-usage-reader.js";
 import { ensureFreshXaiTokens, XaiTokenRefreshError } from "./token-refresh.js";
 
 const SUPERGROK_USAGE_URL = "https://cli-chat-proxy.grok.com/v1/billing?format=credits";

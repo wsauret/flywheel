@@ -1,7 +1,7 @@
 // The publication rules of reviewer benchmark fixtures built from recorded
 // reviews: the scan that refuses a fixture which would publish a private
 // detail. The scrub of other coding agents' names is the shared loader in
-// src/orchestration/modules/development/benchmark/harness-names.ts.
+// src/orchestration/modules/development/benchmark/records/harness-names.ts.
 // scripts/build-review-fixtures.ts is the one caller.
 
 /** The private details of the machine that builds fixtures. */

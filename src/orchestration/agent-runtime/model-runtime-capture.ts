@@ -5,7 +5,7 @@
  * factory read it.
  */
 
-import type { AccessProviderCandidate, AccessProviderModelEligibility, FailoverPlan } from "../../infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderModelEligibility, FailoverPlan } from "../../infra/llm/access/access-provider.js";
 import type { RequestAdmission } from "./llm/provider-availability-types.js";
 import type { ModelClient, ProviderSessionLifetime } from "./llm/types.js";
 import type { EffectiveProviderConnection } from "./llm/client-factory.js";

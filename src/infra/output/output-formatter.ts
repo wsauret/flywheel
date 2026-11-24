@@ -1,5 +1,5 @@
 import { sanitizeExternalText } from "../control-characters.js";
-import { boundProviderDetail, classifyApiError } from "../llm/provider-error-copy.js";
+import { boundProviderDetail, classifyApiError } from "../llm/errors/provider-error-copy.js";
 import type { LlmToolOutputPart } from "../llm/tool-output-part-schema.js";
 import type { AgentFailureDisplay } from "../output-blocks.js";
 

@@ -8,7 +8,7 @@ import type { EffortOptionRow, ModelAssignmentRow, ModelOptionRow, ModelTier } f
 import { actionKey } from "../../../client/action-key.js"
 import { describeFailure } from "../../../client/failure-message.js"
 import { useClient } from "../../client-context.js"
-import { createModelCatalogRevision } from "../../model-catalog.js"
+import { createModelCatalogRevision } from "./model-catalog.js"
 import { settingKeys, settingRowKey } from "../../../client/settings-actions.js"
 import { SettingRow, SheetSegment } from "../controls.js"
 import { ModelOptionDetail } from "./model-option-detail.js"

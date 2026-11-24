@@ -2,11 +2,11 @@ import { ReferenceReviewNoticeFields, ReviewNoticeMutationSchema } from "../../.
 import { Effect, Schema, SchemaGetter, SchemaIssue, SchemaTransformation } from "effect";
 import { LlmToolOutputPartSchema } from "../../../infra/llm/tool-output-part-schema.js";
 import { ToolContentReferencePartSchema } from "../../../infra/tool-content.js";
-import { AccessProviderIdSchema } from "../../../infra/llm/access-provider.js";
+import { AccessProviderIdSchema } from "../../../infra/llm/access/access-provider.js";
 import { ContentRepairSchema } from "../../../infra/llm/content-repair.js";
 import { SessionRelationSchema } from "../../../infra/chat-input-schema.js";
 import { LLM_APIS, LLM_STOP_REASONS, MODEL_FAMILIES } from "../../agent-runtime/llm/messages.js";
-import { REASONING_EFFORTS } from "../../../infra/llm/models.js";
+import { REASONING_EFFORTS } from "../../../infra/llm/models/models.js";
 
 const DateTimeStringSchema = Schema.String.check(
   Schema.makeFilter((value) => !Number.isNaN(Date.parse(value)) || "Expected ISO datetime string"),

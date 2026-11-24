@@ -1,9 +1,9 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { completeJudge, type JudgeCallSettlement } from "../../src/orchestration/modules/development/benchmark/judge.js";
-import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile, type JsonLinesLedger } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { completeJudge, type JudgeCallSettlement } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
+import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile, type JsonLinesLedger } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { admitChatAbJudge, eachJudgeJob } from "./pair-judge.js";
 
 interface ScoreRun<Call> {

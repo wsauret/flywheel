@@ -1,9 +1,9 @@
 import { Redacted } from "effect";
 import { apiKey } from "../infra/auth/auth-context.js";
 import { providerRequestHeaders } from "../infra/llm/provider-request-identity.js";
-import { customProviderModelInfo } from "../infra/llm/models.js";
+import { customProviderModelInfo } from "../infra/llm/models/models.js";
 import { customProviderModelUnavailableReason, customProviders, type CustomProviderDefinition } from "../infra/llm/custom-provider-registry.js";
-import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../infra/llm/access-provider.js";
+import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../infra/llm/access/access-provider.js";
 import { ApiError } from "./agent-runtime/llm/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "./agent-runtime/llm/client-factory.js";
 import { describeProvider } from "./agent-runtime/llm/provider-description.js";

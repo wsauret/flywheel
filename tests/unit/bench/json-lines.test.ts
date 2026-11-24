@@ -2,8 +2,8 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import * as fs from "node:fs"
 import { join } from "node:path"
 import { Schema } from "effect"
-import { createJsonFile, createJsonLinesLedger } from "../../../src/orchestration/modules/development/benchmark/json-lines.js"
-import { ensuredDirectoryUnder } from "../../../src/orchestration/modules/development/benchmark/paths.js"
+import { createJsonFile, createJsonLinesLedger } from "../../../src/orchestration/modules/development/benchmark/campaign/json-lines.js"
+import { ensuredDirectoryUnder } from "../../../src/orchestration/modules/development/benchmark/campaign/paths.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()

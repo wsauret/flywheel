@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { Schema } from "effect";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { readCampaignArtifact } from "./campaign-artifacts.js";
 import { campaignCellKey, campaignIdentity } from "./campaign-store.js";
 import type { JudgeJob } from "./block-judge.js";
@@ -26,7 +26,7 @@ export async function judgeWorkflowAuditCampaign(options: CampaignJudgeOptions, 
   const code = await Promise.all([
     "./workflow-audit-judge.ts", "./workflow-audit-family.ts", "./workflow-audit-tests.ts", "./campaign-pair-judge.ts",
     "./campaign-artifacts.ts", "./campaign-role-evidence.ts", "./block-judge.ts", "./judge-inputs.ts", "./pair-judge.ts",
-    "../../src/orchestration/modules/development/benchmark/judge.ts",
+    "../../src/orchestration/modules/development/benchmark/scoring/judge.ts",
   ].map(async (path) => structuredIdentity(await readFile(new URL(path, import.meta.url), "utf8"))));
   const tasks = await loadWorkflowAuditTasks(campaign.manifest.tasks.map(({ id }) => id));
   // Only a bug audit reads the reference fix, once; an answer test carries its own reference answer.

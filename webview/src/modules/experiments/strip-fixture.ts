@@ -1,7 +1,7 @@
 import { createComponent, createRoot, createSignal, Show } from "solid-js"
 
 import type { FrontendExperimentView } from "../../../../src/protocol/modules/experiments.js"
-import { createElement, insert, nodes, textContent } from "../../app/render-ownership-host-fixture.js"
+import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { ExperimentStrip, type ExperimentStripHandle } from "./strip.js"
 
 /** Mounts the strip the way App does: under a Show over the frame's view,

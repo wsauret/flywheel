@@ -30,13 +30,13 @@ import { loadAuthStoreWithDiagnostics, storedApiKeyHint, type AuthStoreCondition
 import { isCredentialCollection, type AuthStore, type Credential, type CredentialInstance, type CredentialProviderId } from "../../infra/auth/store/auth-store-types.js";
 import { isWebProviderId } from "../../infra/auth/web-providers.js";
 import { storedTokensToCredential } from "../../infra/auth/openai/openai-auth-types.js";
-import { FREE_PLAN_REPLACE_QUESTION, isFreePlan } from "../../infra/llm/free-plan-accounts.js";
-import type { SubscriptionUsageReader, SubscriptionUsageReport } from "../../infra/llm/subscription-usage.js";
-import { createUsageAuthority, type UsageAuthority } from "../../infra/llm/usage-authority.js";
-import type { SubscriptionUsageSnapshot } from "../../infra/llm/subscription-usage-store-codec.js";
+import { FREE_PLAN_REPLACE_QUESTION, isFreePlan } from "../../infra/llm/access/free-plan-accounts.js";
+import type { SubscriptionUsageReader, SubscriptionUsageReport } from "../../infra/llm/usage/subscription-usage.js";
+import { createUsageAuthority, type UsageAuthority } from "../../infra/llm/usage/usage-authority.js";
+import type { SubscriptionUsageSnapshot } from "../../infra/llm/usage/subscription-usage-store-codec.js";
 import { keptFreePlanMessage } from "../../protocol/client/auth-login.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { apiKeyRejectionReason, type AccessProviderDefinition, type BrowserLoginPorts, type DeviceCodeLoginPorts, type ExternalLoginDefinition, type OAuthLoginResult } from "../../infra/llm/access-provider.js";
+import { apiKeyRejectionReason, type AccessProviderDefinition, type BrowserLoginPorts, type DeviceCodeLoginPorts, type ExternalLoginDefinition, type OAuthLoginResult } from "../../infra/llm/access/access-provider.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import { Log } from "../../infra/log.js";
 import { customProviderRejections } from "../../infra/llm/custom-provider-registry.js";

@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { addedLines } from "../../../scripts/build-review-fixtures.js";
 import { exposurePatterns, exposures, publishedDiffLines } from "../../../scripts/review-fixture-publication.js";
-import { loadHarnessLint } from "../../../src/orchestration/modules/development/benchmark/harness-names.js";
+import { loadHarnessLint } from "../../../src/orchestration/modules/development/benchmark/records/harness-names.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const directory = temporaryDirectories();

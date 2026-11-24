@@ -3,8 +3,8 @@ import { createComponent } from "solid-js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import type { UsageAccountsResult, UsageMutationResult, UsageSpendResult } from "../../../../src/protocol/modules/subscription-usage.js"
 import { fakeLanes } from "../../../../tests/helpers/fake-lanes.js"
-import { mountClientSheet } from "../../app/budget-render-fixture.js"
-import { nodes, textContent } from "../../app/render-ownership-host-fixture.js"
+import { mountClientSheet } from "../../test-support/budget-render-fixture.js"
+import { nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { UsageSheet } from "./sheet.js"
 
 /** A read lost with its lane, built from the sheet's own copy of the class, which the build bundles with it. */

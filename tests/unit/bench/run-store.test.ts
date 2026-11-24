@@ -9,9 +9,9 @@ import {
   type JudgeAttemptRecord,
   type ResearchRunRecord,
   type RunConfig,
-} from "../../../src/orchestration/modules/development/benchmark/run-store.js";
-import { buildImplementRawResults } from "../../../src/orchestration/modules/development/benchmark/implement-scoring.js";
-import { createPersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
+} from "../../../src/orchestration/modules/development/benchmark/scoring/run-store.js";
+import { buildImplementRawResults } from "../../../src/orchestration/modules/development/benchmark/scoring/implement-scoring.js";
+import { createPersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import { writeSplitLedger } from "../../helpers/split-ledger.js";
 
 const ACCOUNTING = {

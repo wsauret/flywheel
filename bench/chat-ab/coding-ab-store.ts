@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/evidence.js";
+import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 import {
   CampaignId as Id, CampaignHash as Hash, CampaignCount as Count, CampaignText as Text,
   CampaignAttemptSchema as AttemptSchema, CampaignCellSchema as CellSchema, CampaignArtifactSchema as ArtifactSchema,
