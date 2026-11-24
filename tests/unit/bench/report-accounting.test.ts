@@ -2,9 +2,9 @@ import { describe, expect, it } from "bun:test";
 import {
   renderImplementReport as renderPersonaImplementReport,
   type ImplementCandidate,
-} from "../../../src/orchestration/modules/development/benchmark/implement-scoring.js";
-import { formatAccountingObservation } from "../../../src/orchestration/modules/development/benchmark/report-accounting.js";
-import { judgeOverhead, judgeOverheadNote, renderReport, unsuccessfulOverhead } from "../../../src/orchestration/modules/development/benchmark/reports.js";
+} from "../../../src/orchestration/modules/development/benchmark/scoring/implement-scoring.js";
+import { formatAccountingObservation } from "../../../src/orchestration/modules/development/benchmark/accounting/report-accounting.js";
+import { judgeOverhead, judgeOverheadNote, renderReport, unsuccessfulOverhead } from "../../../src/orchestration/modules/development/benchmark/scoring/reports.js";
 import type { ImplementTask } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 
 const ACCOUNTING = {

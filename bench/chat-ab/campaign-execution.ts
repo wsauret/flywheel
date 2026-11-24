@@ -1,5 +1,5 @@
-import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
-import { unavailableBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/evidence.js";
+import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/execution/headless-execution-contract.js";
+import { unavailableBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 import { campaignArtifactReference } from "./campaign-artifacts.js";
 import type { CampaignAttempt, CampaignExecutionOutcome } from "./campaign-store.js";
 

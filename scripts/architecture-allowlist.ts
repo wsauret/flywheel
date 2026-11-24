@@ -67,8 +67,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "src/orchestration/agent-runtime/llm/", reason: WIDE },
   { lint: "wide-directory", key: "src/orchestration/agent-runtime/tools/", reason: WIDE },
   { lint: "wide-directory", key: "src/orchestration/app-service/", reason: WIDE },
-  { lint: "wide-directory", key: "src/orchestration/modules/development/benchmark/", reason: WIDE },
-  { lint: "wide-directory", key: "src/orchestration/modules/provider-claude-agent-sdk/", reason: WIDE },
   { lint: "wide-directory", key: "src/orchestration/session/", reason: WIDE },
   { lint: "wide-directory", key: "src/protocol/", reason: WIDE },
   { lint: "wide-directory", key: "src/protocol/client/", reason: WIDE },

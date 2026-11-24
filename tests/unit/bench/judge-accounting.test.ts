@@ -11,8 +11,8 @@ import {
   type JudgeAttemptReport,
   type JudgeCandidate,
   type JudgeModel,
-} from "../../../src/orchestration/modules/development/benchmark/judge.js";
-import { scoreReviews, type ReviewCandidate } from "../../../src/orchestration/modules/development/benchmark/scoring.js";
+} from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
+import { scoreReviews, type ReviewCandidate } from "../../../src/orchestration/modules/development/benchmark/scoring/scoring.js";
 import type { ReviewManifest } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 
 const VERDICT = `{"winner":"A","rationale":"clearer citations"}`;

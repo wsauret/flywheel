@@ -3,9 +3,9 @@ import { cp, mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
-import type { ResearchAnswerKey } from "../../../src/orchestration/modules/development/benchmark/research-task.js";
+import type { ResearchAnswerKey } from "../../../src/orchestration/modules/development/benchmark/tasks/research-task.js";
 import { createBenchmarkCatalog, resolveReviewFixture } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { PLAN_FILE } from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
 
 const catalog = createBenchmarkCatalog(process.cwd());

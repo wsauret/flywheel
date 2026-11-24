@@ -1,9 +1,9 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
-import { writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/execution/headless-execution-contract.js";
+import { writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { parseDefinitionProvenanceFact } from "../../src/workflows/definition-provenance-facts.js";
 import { hashDefinition } from "../../src/workflows/definition-hash.js";
 import { canonicalWorkflowRecord } from "../../src/workflows/definition-records.js";

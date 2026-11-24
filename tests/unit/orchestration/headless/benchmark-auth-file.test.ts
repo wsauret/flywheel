@@ -9,7 +9,7 @@ import type { AccessProviderCandidate } from "../../../../src/infra/llm/access-p
 import { credentialForCandidate } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import { QuotaExhaustedError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { createProviderAvailability } from "../../../../src/orchestration/agent-runtime/llm/provider-availability.js"
-import { cliFailure, usageLimitRejection } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/sdk-events.js"
+import { cliFailure, usageLimitRejection } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/query/sdk-events.js"
 import { chain, fakeClient, served, subscriptionCandidate, textStream, throwingStream } from "../agent-runtime/llm/_provider-chain-harness.js"
 
 import { apiKey } from "../../../../src/infra/auth/auth-context.js"

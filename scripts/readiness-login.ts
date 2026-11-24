@@ -49,9 +49,9 @@ import { authDir } from "../src/infra/paths.js";
 import { AuthProfileManager } from "../src/orchestration/auth/auth-profile-manager.js";
 import { antigravityAccounts } from "../src/orchestration/modules/provider-google-antigravity/login/login.js";
 import { GOOGLE_ANTIGRAVITY_CLI_FLAG } from "../src/orchestration/modules/provider-google-antigravity/names.js";
-import { cliLoginEnvironment } from "../src/orchestration/modules/provider-claude-agent-sdk/cli-environment.js";
+import { cliLoginEnvironment } from "../src/orchestration/modules/provider-claude-agent-sdk/engine/cli-environment.js";
 import { CLAUDE_AGENT_SDK_CLI_FLAG } from "../src/orchestration/modules/provider-claude-agent-sdk/names.js";
-import { loginToken, type LoginToken, type TokenProbe } from "../src/orchestration/modules/provider-claude-agent-sdk/login-token.js";
+import { loginToken, type LoginToken, type TokenProbe } from "../src/orchestration/modules/provider-claude-agent-sdk/login/login-token.js";
 
 /** The readiness setting that names the release login home of this host. Only the live tiers read it. */
 export const RELEASE_LOGIN_SETTING = "FLYWHEEL_READINESS_CLAUDE_HOME";

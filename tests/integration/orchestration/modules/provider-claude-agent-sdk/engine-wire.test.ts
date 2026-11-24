@@ -15,7 +15,7 @@ import { createClaudeReminders } from "../../../../../src/orchestration/agent-ru
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js";
 import { cliLaunch, type ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
-import { describeCliLogin, readCliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import { describeCliLogin, readCliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { assistantMessage, captureDiagnostics, onFakeHost, ownInPlaceGate, removeEngineProbes, streamedText, streamedToolCalls, until } from "./_claude-sdk-client.js";
 import { CREDENTIAL_BETAS, declaredTools, nativeBetasOnFakeHost, type RecordedRequest } from "./_fake-host.js";

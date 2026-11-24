@@ -3,8 +3,8 @@
 // classifies every known requirement as addressed, uncertain, or missed.
 import { join } from "node:path";
 import { Schema } from "effect";
-import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/evidence.js";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { codingRedaction } from "./block-judge.js";
 import { readCampaignArtifact } from "./campaign-artifacts.js";
 import { campaignBlinding } from "./campaign-role-evidence.js";

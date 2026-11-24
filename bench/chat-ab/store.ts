@@ -1,8 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/evidence.js";
-import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { AcceptanceRecordSchema } from "./acceptance.js";
 
 const Usd = Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0));

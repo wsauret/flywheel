@@ -5,7 +5,7 @@ import { installModuleCatalog } from "../../src/orchestration/module-catalog.js"
 import { osAccount } from "../../src/infra/os-account.js";
 import type { FirstPartyModule } from "../../src/orchestration/modules.js";
 import type { createClaudeAgentSdkModule as CreateSdkModule } from "../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
-import { decodeNativePersonaRequest, nativePersonaStartupFailure, writeNativePersonaResult, NATIVE_CANDIDATE_TIMEOUT_MS, type NativePersonaResult } from "../../src/orchestration/modules/development/benchmark/native-persona-codec.js";
+import { decodeNativePersonaRequest, nativePersonaStartupFailure, writeNativePersonaResult, NATIVE_CANDIDATE_TIMEOUT_MS, type NativePersonaResult } from "../../src/orchestration/modules/development/benchmark/persona/native-persona-codec.js";
 
 const load = createRequire(import.meta.url);
 let accountHome: string;
@@ -46,9 +46,9 @@ async function main(requestPath: string, resultPath: string, cancelPath: string)
       import("./runtime.js"),
       import("../../src/orchestration/definition-catalog.js"),
       import("../../src/infra/directory-authorities.js"),
-      import("../../src/orchestration/modules/development/benchmark/admission.js"),
-      import("../../src/orchestration/modules/development/benchmark/persona-run.js"),
-      import("../../src/orchestration/modules/development/benchmark/content-identity.js"),
+      import("../../src/orchestration/modules/development/benchmark/persona/admission.js"),
+      import("../../src/orchestration/modules/development/benchmark/persona/persona-run.js"),
+      import("../../src/orchestration/modules/development/benchmark/campaign/content-identity.js"),
     ]);
     watcher = watch(dirname(cancelPath), (_event, name) => { if (name?.toString() === "cancel") onAbort(); });
     process.once("SIGTERM", onAbort);

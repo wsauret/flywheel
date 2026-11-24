@@ -8,7 +8,7 @@ import { createAccessProviderSelection } from "../../../../../src/infra/llm/acce
 import { createModelListingClient, type ModelDiscoveryMode } from "../../../../../src/infra/llm/model-listing.js";
 import type { AccessAuditProgressListener } from "../../../../../src/infra/llm/model-access-audit.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
-import type { CliLoginDescription, CliModelProbe, QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import type { CliLoginDescription, CliModelProbe, QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { modelInfo } from "../../../../helpers/model-tier-fixtures.js";

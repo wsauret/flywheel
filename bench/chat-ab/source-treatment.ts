@@ -2,7 +2,7 @@ import { lstat, mkdir, readdir, readFile, readlink, realpath, rm, copyFile, chmo
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { Schema } from "effect";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
-import { bytesIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { bytesIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 
 export const BenchmarkPatchPath = Schema.String.check(Schema.makeFilter((path) =>
   path.startsWith("bench/") && path.endsWith(".patch") && !path.includes("\\") &&

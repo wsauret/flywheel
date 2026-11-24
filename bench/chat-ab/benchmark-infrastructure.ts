@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import * as ownership from "../../src/infra/container-mark.js";
-import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { REPO_ROOT } from "./harness-paths.js";
 import { benchmarkHarnessIdentity } from "./source-treatment.js";
 

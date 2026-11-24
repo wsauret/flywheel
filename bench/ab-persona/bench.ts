@@ -14,13 +14,13 @@ import { createBenchmarkCatalog } from "../../src/orchestration/modules/developm
 import type {
   BenchmarkEvent,
   BenchmarkOptions,
-} from "../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
+} from "../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
 import { parseVariant, type VariantSpec } from "../../src/orchestration/modules/development/benchmark/variant.js";
 import type { OwnedBenchmarkRuntime } from "../shared/runtime.js";
-import { readJsonFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
-import { realDirectoryUnder } from "../../src/orchestration/modules/development/benchmark/paths.js";
-import { createPersonaStore } from "../../src/orchestration/modules/development/benchmark/persona-store.js";
-import { runningSourceIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { readJsonFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
+import { realDirectoryUnder } from "../../src/orchestration/modules/development/benchmark/campaign/paths.js";
+import { createPersonaStore } from "../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
+import { runningSourceIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -180,8 +180,8 @@ export async function main(
     { admitBenchmark, benchmarkPreflightReport, benchmarkModelSeats, personaCampaignJudge },
     { loadBenchmarkPersona, planPersonaBenchmark, runPersonaBenchmark },
   ] = await Promise.all([
-    import("../../src/orchestration/modules/development/benchmark/admission.js"),
-    import("../../src/orchestration/modules/development/benchmark/persona-benchmark.js"),
+    import("../../src/orchestration/modules/development/benchmark/persona/admission.js"),
+    import("../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js"),
   ]);
   const catalog = createBenchmarkCatalog(projectRoot, {
     ...(args.personaDir ? { personaOverlayDir: args.personaDir } : {}),
@@ -200,7 +200,7 @@ export async function main(
     const [{ createLauncherScope, createProcessSupervisor, guardianCommand }, { ownedCommandRunner }, { regradeRecords }] = await Promise.all([
       import("../../src/infra/process-supervisor.js"),
       import("../../src/infra/owned-command.js"),
-      import("../../src/orchestration/modules/development/benchmark/regrade.js"),
+      import("../../src/orchestration/modules/development/benchmark/records/regrade.js"),
     ]);
     const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
     const scope = createLauncherScope(supervisor);
@@ -262,7 +262,7 @@ export async function main(
 async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeof createBenchmarkCatalog>, createRuntime: CreateRuntime, projectRoot: string): Promise<void> {
   const requested = args.judge!;
   const [{ admitBenchmark, personaCampaignJudge }, { rejudgeRecords }] = await Promise.all([
-    import("../../src/orchestration/modules/development/benchmark/admission.js"),
+    import("../../src/orchestration/modules/development/benchmark/persona/admission.js"),
     import("../../src/orchestration/modules/development/benchmark/rejudge.js"),
   ]);
   await using owned = new AsyncDisposableStack();

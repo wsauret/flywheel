@@ -36,7 +36,7 @@ import type { FirstPartyModuleComposition } from "../src/orchestration/modules.j
 import { disabledAgentTypes } from "../src/orchestration/module-catalog.js";
 import { createCodeModeRuntime } from "../src/orchestration/modules/code-mode/runtime.js";
 import { createCodeModeService } from "../src/orchestration/modules/code-mode/service.js";
-import type { BenchmarkAdmissionDeps } from "../src/orchestration/modules/development/benchmark/admission.js";
+import type { BenchmarkAdmissionDeps } from "../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { createIosSimulatorTool } from "../src/orchestration/modules/development/ios-simulator-tool.js";
 import { createMcpRuntime } from "../src/orchestration/modules/mcp/runtime.js";
 import type { DefinitionOverrideOperations } from "../src/workflows/definitions/override-staleness.js";
