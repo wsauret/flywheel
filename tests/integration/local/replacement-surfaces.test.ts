@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test"
 import * as fs from "node:fs"
 
-import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
+import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
 import { projectWebPort, projectWebTokenPath } from "../../../src/infra/paths.js"
 import { projectServingPids } from "../../../src/orchestration/app-service/project-serving-lane.js"
 import { createIsolatedAccountRuntimeAttach, joinIsolatedAccountService } from "./_account-service.js"

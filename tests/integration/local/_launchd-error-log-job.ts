@@ -12,7 +12,7 @@
 import { appendFileSync, existsSync, readFileSync, writeSync } from "node:fs"
 import { join } from "node:path"
 
-import { keepServiceErrorLogBounded } from "../../../src/cli/service-error-log.js"
+import { keepServiceErrorLogBounded } from "../../../src/cli/account-service/service-error-log.js"
 import { Log } from "../../../src/infra/log.js"
 
 const [errorLog, markers] = process.argv.slice(2)

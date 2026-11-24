@@ -3,7 +3,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { tmpdir } from "node:os"
 
-import { readRuntimeIdentity } from "../../../src/cli/runtime-identity-record.js"
+import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-identity-record.js"
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import { accountServeRecordPath, LOG_DIR } from "../../../src/infra/paths.js"
 import type { RuntimeClient } from "../../../src/protocol/app-service-types.js"

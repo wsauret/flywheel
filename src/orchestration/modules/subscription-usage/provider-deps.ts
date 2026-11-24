@@ -1,5 +1,5 @@
 import { captureSubscriptionCredentials } from "../../../infra/auth/auth-context.js"
-import { loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../infra/auth/auth-store.js"
+import { loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../infra/auth/store/auth-store.js"
 import { subscriptionSpendAccountCorrelationId } from "../../../protocol/subscription-spend-consent-protocol-types.js"
 import type { MeteredUsageSource } from "./usage-projection.js"
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"

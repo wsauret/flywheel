@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline"
 import { Writable } from "node:stream"
 
-import { apiKeyHint } from "../infra/auth/api-key-hint.js"
+import { apiKeyHint } from "../infra/auth/store/api-key-hint.js"
 import type {
   StartupDirectoryFallback,
   StartupDirectoryFallbackCandidate,

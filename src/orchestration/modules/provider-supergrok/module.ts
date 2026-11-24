@@ -1,8 +1,8 @@
 import { Redacted } from "effect";
 import type { RuntimeOAuthCredential } from "../../../infra/auth/auth-context.js";
-import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutations.js";
+import { replaceCredentialInstance } from "../../../infra/auth/store/auth-store-mutations.js";
 import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
-import { type StoredTokens, storedTokensToCredential } from "../../../infra/auth/openai-auth-types.js";
+import { type StoredTokens, storedTokensToCredential } from "../../../infra/auth/openai/openai-auth-types.js";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
 import { canonicalizeProviderIdCatalogRow, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";

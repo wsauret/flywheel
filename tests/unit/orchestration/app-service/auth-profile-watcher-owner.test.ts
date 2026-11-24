@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import type { ActiveProfileWatcher, AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
-import type { AuthProfileRetirements } from "../../../../src/infra/auth/auth-profile-retirements.js"
+import type { ActiveProfileWatcher, AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js"
+import type { AuthProfileRetirements } from "../../../../src/infra/auth/store/auth-profile-retirements.js"
 import { createAuthProfileWatcherOwner, type WatchedCatalogSession } from "../../../../src/orchestration/app-service/auth-profile-watcher-owner.js"
 import { subscribeAuthOwners } from "../../../../src/orchestration/app-service/auth-owner-subscription.js"
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"

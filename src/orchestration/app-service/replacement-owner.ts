@@ -4,7 +4,7 @@ import { Log } from "../../infra/log.js"
 import type { SourceChange } from "../../infra/source-snapshot.js"
 import type { BuildFallbackTrigger } from "../update/build-fallback.js"
 import { PLANNED_CUT_LIMIT_MS } from "../session/planned-session-continuation.js"
-import { delaysReplacement, sameBlockers, type ReplacementBlocker } from "./replacement-blockers.js"
+import { delaysReplacement, sameBlockers, type ReplacementBlocker, type ReplacementState } from "./replacement-blockers.js"
 
 const log = Log.create({ service: "replacement-owner" })
 
@@ -12,30 +12,6 @@ const log = Log.create({ service: "replacement-owner" })
  *  while a replacement is requested. The projects report their own changes,
  *  so this only covers a report that was lost with its channel. */
 const REPOLL_MS = 5_000
-
-/** The account's one replacement state (PI-REMOTE-012, PI-REMOTE-019, PI-REMOTE-020, ARCH-RUNTIME-031). It lives
- *  here and nowhere else: every executor learns it from the value this owner
- *  last published, and no client ever sees it. The owner never refuses work,
- *  never asks a person anything, and shows nothing. It waits only for what
- *  the cut cannot carry across, an admitted call that has not returned and a
- *  project that is opening or recovering. It never waits for a shell command
- *  of any owner: the stop hands each running command to the successor, which
- *  adopts it, and the cut interrupts the rest for the successor to resume.
- *  - `none`: the current build serves; nothing waits.
- *  - `requested`: a successor waits, and `blockers` names every call and
- *    every opening or recovering project that delays it. New work is
- *    admitted as usual.
- *  - `draining`: nothing delays it any more. The handoff `handoffId` has
- *    begun: its row is recorded, the running work is being cut under it, and
- *    the service stops once the cut settles or its limit passes, so the
- *    successor can take over. Every executor that serves from then on hears this id,
- *    and its stop gives work admitted after the cut the same continuation
- *    authority and hands over every running command. A drain is not
- *    cancelled. */
-export type ReplacementState =
-  | { readonly kind: "none" }
-  | { readonly kind: "requested"; readonly blockers: readonly ReplacementBlocker[] }
-  | { readonly kind: "draining"; readonly handoffId: string }
 
 export interface ReplacementOwnerDeps {
   /** Every blocker across every open project, as they stand now. */

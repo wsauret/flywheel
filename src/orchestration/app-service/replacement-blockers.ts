@@ -10,7 +10,6 @@ import type { SessionStore } from "../session-store/types.js"
 import { entryActivity } from "../session-store/activity.js"
 import type { FlywheelAppService } from "./app-service.js"
 import type { CommandAdmission } from "./mutation-admission.js"
-import type { ReplacementState } from "./replacement-owner.js"
 
 /** What a unit of work in a project is doing, which keeps the project open
  *  and may delay a replacement:
@@ -47,6 +46,31 @@ export const ReplacementBlockerSchema = Schema.Struct({
 })
 export type ReplacementBlocker = typeof ReplacementBlockerSchema.Type
 export type ReplacementBlockerReason = ReplacementBlocker["reason"]
+
+/** The account's one replacement state (PI-REMOTE-012, PI-REMOTE-019, PI-REMOTE-020, ARCH-RUNTIME-031). Only
+ *  the replacement owner (replacement-owner.ts) holds it: every executor
+ *  learns it from the value that owner last published, and no client ever
+ *  sees it. The owner never refuses work,
+ *  never asks a person anything, and shows nothing. It waits only for what
+ *  the cut cannot carry across, an admitted call that has not returned and a
+ *  project that is opening or recovering. It never waits for a shell command
+ *  of any owner: the stop hands each running command to the successor, which
+ *  adopts it, and the cut interrupts the rest for the successor to resume.
+ *  - `none`: the current build serves; nothing waits.
+ *  - `requested`: a successor waits, and `blockers` names every call and
+ *    every opening or recovering project that delays it. New work is
+ *    admitted as usual.
+ *  - `draining`: nothing delays it any more. The handoff `handoffId` has
+ *    begun: its row is recorded, the running work is being cut under it, and
+ *    the service stops once the cut settles or its limit passes, so the
+ *    successor can take over. Every executor that serves from then on hears this id,
+ *    and its stop gives work admitted after the cut the same continuation
+ *    authority and hands over every running command. A drain is not
+ *    cancelled. */
+export type ReplacementState =
+  | { readonly kind: "none" }
+  | { readonly kind: "requested"; readonly blockers: readonly ReplacementBlocker[] }
+  | { readonly kind: "draining"; readonly handoffId: string }
 
 /** Whether this blocker delays a replacement rather than being interrupted
  *  or handed over by it. */

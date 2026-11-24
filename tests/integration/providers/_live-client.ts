@@ -16,7 +16,7 @@
  */
 import { LIVE_AUTH_PROFILE_UNSET, liveAuthProfile } from "../../../scripts/claude-engine-release.js";
 import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../../../src/orchestration/app-service/eligibility-preparation.js";
-import { AuthProfileStore } from "../../../src/infra/auth/auth-profile-store.js";
+import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-store.js";
 import { normalizeAuthProfile } from "../../../src/infra/auth/auth-profile-normalization.js";
 import { resolveAuthContext } from "../../../src/infra/auth/auth-context.js";
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../src/infra/auth/resolve-key.js";

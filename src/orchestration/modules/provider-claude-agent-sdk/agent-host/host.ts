@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { Cause, Effect, Exit, Queue } from "effect";
 import { DebugLog } from "../../../../infra/debug-log.js";
-import type { ModelRefusal } from "../../../../infra/auth/provider-model-catalog-store.js";
+import type { ModelRefusal } from "../../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import { asRecord } from "../../../../infra/record.js";
 import { classifyAnthropicError } from "../../../agent-runtime/llm/anthropic-adapter-helpers.js";
 import { LlmStreamError, ModelAccessRefusedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../agent-runtime/llm/errors.js";

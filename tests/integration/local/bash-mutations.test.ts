@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "bun:test"
 import { chmodSync, readFileSync, existsSync, mkdirSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { createCliLauncher } from "../../../src/cli/runtime-launch.js"
+import { createCliLauncher } from "../../../src/cli/account-service/runtime-launch.js"
 import { runOwnedCommand } from "../../../src/infra/owned-command.js"
 import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js"
 import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js"

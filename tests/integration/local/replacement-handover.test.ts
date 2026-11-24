@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import * as path from "node:path"
 
-import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
+import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
 import { LOG_DIR } from "../../../src/infra/paths.js"
 import { joinIsolatedAccountService } from "./_account-service.js"
 import { createReplacementHarness, sessionStatus, startHeldChat, until } from "./_replacement-harness.js"

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js";

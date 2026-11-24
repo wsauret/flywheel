@@ -12,7 +12,7 @@ async function main(requestPath: string, resultPath: string, cancelPath: string,
   try {
     const request = decodeNativePersonaRequest(JSON.parse(await Bun.file(requestPath).text()));
     phase = "imports";
-    const { createCliLauncher } = await import("../../src/cli/runtime-launch.js");
+    const { createCliLauncher } = await import("../../src/cli/account-service/runtime-launch.js");
     phase = "launcher";
     const launcher = await createCliLauncher();
     try {

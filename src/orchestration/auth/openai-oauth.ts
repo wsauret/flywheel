@@ -1,9 +1,9 @@
 import { Deferred, Effect, Redacted, Schema } from "effect";
 import { mergeAbortSignals } from "../../infra/abort.js";
-import type { StoredTokens, TokenResponse } from "../../infra/auth/openai-auth-types.js";
-import { CHATGPT_SCOPES, CLIENT_ID, ISSUER, OAUTH_PORT, TokenResponseSchema } from "../../infra/auth/openai-auth-types.js";
-import { extractAccountId, extractDisplayIdentityFromJwt } from "../../infra/auth/openai-jwt.js";
-import { generatePKCE, generateState } from "../../infra/auth/openai-pkce.js";
+import type { StoredTokens, TokenResponse } from "../../infra/auth/openai/openai-auth-types.js";
+import { CHATGPT_SCOPES, CLIENT_ID, ISSUER, OAUTH_PORT, TokenResponseSchema } from "../../infra/auth/openai/openai-auth-types.js";
+import { extractAccountId, extractDisplayIdentityFromJwt } from "../../infra/auth/openai/openai-jwt.js";
+import { generatePKCE, generateState } from "../../infra/auth/openai/openai-pkce.js";
 import { readBoundedJson } from "../../infra/auth/bounded-json.js";
 import { oauthExpiryFromLifetimeSeconds } from "../../infra/auth/oauth-expiry.js";
 import { Log } from "../../infra/log.js";

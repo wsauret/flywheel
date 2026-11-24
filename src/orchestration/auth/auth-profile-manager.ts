@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
-import { AuthProfileStore, findLogicalAuthProfile, type AuthProfileAccess, type AuthProfileDescriptor, type AuthProfileInspection, type AuthProfileOperation, type AuthProfilePreRemove } from "../../infra/auth/auth-profile-store.js";
-import type { AuthProfileRetirements } from "../../infra/auth/auth-profile-retirements.js";
+import { AuthProfileStore, findLogicalAuthProfile, type AuthProfileAccess, type AuthProfileDescriptor, type AuthProfileInspection, type AuthProfileOperation, type AuthProfilePreRemove } from "../../infra/auth/store/auth-profile-store.js";
+import type { AuthProfileRetirements } from "../../infra/auth/store/auth-profile-retirements.js";
 import { authDir, globalConfigFile, requireAuthProfileDisplayName, requireAuthProfileName } from "../../infra/paths.js";
 import { readConfigFile } from "../config/config-file.js";
 import { loadConfig } from "../config/loader.js";

@@ -230,7 +230,7 @@ describe("provider-unavailable model rows", () => {
   });
 
   test("keeps a current raw-catalog model unavailable when picker eligibility excludes it", async () => {
-    const catalogs = new Map<AccessProviderId, import("../../../../src/infra/auth/provider-model-preferences.js").ResolvedProviderModels>([["openai_api", {
+    const catalogs = new Map<AccessProviderId, import("../../../../src/infra/auth/provider-models/provider-model-preferences.js").ResolvedProviderModels>([["openai_api", {
       catalog: new Set(["gpt-5.5"]),
       curatedDefault: new Set(["gpt-5.5"]),
       effective: new Set(),
@@ -253,7 +253,7 @@ describe("provider-unavailable model rows", () => {
   });
 
   test("carries serving catalog provenance into selectable picker rows", async () => {
-    const catalogs = new Map<AccessProviderId, import("../../../../src/infra/auth/provider-model-preferences.js").ResolvedProviderModels>([["chatgpt", {
+    const catalogs = new Map<AccessProviderId, import("../../../../src/infra/auth/provider-models/provider-model-preferences.js").ResolvedProviderModels>([["chatgpt", {
       catalog: new Set(["gpt-5.5"]), curatedDefault: new Set(["gpt-5.5"]),
       effective: new Set(["gpt-5.5"]), enabled: new Set(), disabled: new Set(),
     }]]);

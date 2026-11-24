@@ -8,7 +8,7 @@ import * as windowsAcl from "../../../../../src/infra/windows-private-directory-
 import { createChatGPTClient } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-client.js";
 import { dumpFailedChatGptRequest } from "../../../../../src/orchestration/agent-runtime/llm/openai-chatgpt.js";
 import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability.js";
-import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../src/infra/auth/openai-auth-types.js";
+import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../src/infra/auth/openai/openai-auth-types.js";
 
 const DUMP_RELATIVE_DIR = join(".flywheel", "log", "chatgpt-adapter-failures");
 const CONNECTION = { authDir: join(tmpdir(), "flywheel-chatgpt-dump-auth"), oauthPersistence: "memory-only" as const };

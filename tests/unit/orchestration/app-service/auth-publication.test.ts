@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
+import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js"
 import { Log } from "../../../../src/infra/log.js"
 
 import { createAuthPublicationBaseline, createAuthStatusPublisher, createProviderModelAuthPublisher } from "../../../../src/orchestration/app-service/auth-publication.js"

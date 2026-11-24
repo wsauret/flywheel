@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { guardRelease } from "../../../src/cli/remote-terminal.js"
-import type { TerminalSuccessor } from "../../../src/cli/terminal-handoff.js"
+import type { TerminalSuccessor } from "../../../src/cli/account-service/terminal-handoff.js"
 import type { FrontendEvent } from "../../../src/protocol/app-service-types.js"
 import type { ReleaseInstall } from "../../../src/protocol/client/runtime-fault-copy.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../src/protocol/runtime-liveness.js"

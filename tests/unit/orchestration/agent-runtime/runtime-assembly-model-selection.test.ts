@@ -3,8 +3,8 @@ import { testProviderSessionLifetime } from "../../../helpers/provider-authority
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js"
-import { openExistingAuthProfileDirectory } from "../../../../src/infra/auth/auth-profile-store.js"
-import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js"
+import { openExistingAuthProfileDirectory } from "../../../../src/infra/auth/store/auth-profile-store.js"
+import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-models/provider-model-catalog-store.js"
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../src/infra/model-catalog-rows.js"
 import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"

@@ -1,5 +1,5 @@
 import { Redacted } from "effect";
-import type { StoredTokens } from "../../../infra/auth/openai-auth-types.js";
+import type { StoredTokens } from "../../../infra/auth/openai/openai-auth-types.js";
 import type { UnknownRecord } from "../../../infra/record.js";
 import { boundedProviderText, readBoundedSubscriptionUsageJson, unsupportedSubscriptionUsageOutcome, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageResetConsumer, type SubscriptionUsageResetCredits, type SubscriptionUsageJson, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
 import { malformed, oauthTokens, percent, prepaidBalance, readerIdentity, requiredNumber, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/subscription-usage-reader.js";

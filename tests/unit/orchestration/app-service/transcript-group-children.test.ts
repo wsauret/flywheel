@@ -10,7 +10,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js"
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js"
 import { hydrateDerivedOutputGroupChildren, paginateOutputGroupChildren } from "../../../../src/orchestration/app-service/transcript-queries.js"
 import {
   createFilteredSubagentStream,

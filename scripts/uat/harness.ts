@@ -46,7 +46,7 @@ export interface TuiUatSandbox {
  *  operator's own `flywheel serve` on 41000, and records that origin at one
  *  sandbox path. Whichever launch starts the service, `flywheel web` reads the
  *  same record and opens the sandbox hub. Same contract the release runner
- *  uses (src/cli/release-harness.ts). */
+ *  uses (src/cli/account-service/release-harness.ts). */
 export function sandboxEnvironment(sandbox: Pick<TuiUatSandbox, "root" | "authProfile">, nonSecretEnv?: TuiUatOptions["nonSecretEnv"]) {
   return {
     ...RELEASE_HARNESS_ENVIRONMENT,

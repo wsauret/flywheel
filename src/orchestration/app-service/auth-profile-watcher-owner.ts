@@ -1,5 +1,5 @@
-import type { AuthProfileStore } from "../../infra/auth/auth-profile-store.js"
-import type { AuthProfileRetirements } from "../../infra/auth/auth-profile-retirements.js"
+import type { AuthProfileStore } from "../../infra/auth/store/auth-profile-store.js"
+import type { AuthProfileRetirements } from "../../infra/auth/store/auth-profile-retirements.js"
 
 interface WatchedDefaultProfile {
   readonly id: string

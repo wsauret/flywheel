@@ -14,12 +14,12 @@
  */
 
 import { Redacted } from "effect";
-import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutations.js";
-import { loadAuthStoreWithDiagnostics } from "../../../infra/auth/auth-store.js";
-import { isCredentialCollection, type CredentialSlotClassifier } from "../../../infra/auth/auth-store-types.js";
+import { replaceCredentialInstance } from "../../../infra/auth/store/auth-store-mutations.js";
+import { loadAuthStoreWithDiagnostics } from "../../../infra/auth/store/auth-store.js";
+import { isCredentialCollection, type CredentialSlotClassifier } from "../../../infra/auth/store/auth-store-types.js";
 import { canonicalSubscriptionAccount, type ProviderConnection } from "../../../infra/auth/auth-context.js";
 import { isRecord } from "../../../infra/record.js";
-import { CHATGPT_BACKEND_API_BASE, credentialToStoredTokens, storedTokensToCredential } from "../../../infra/auth/openai-auth-types.js";
+import { CHATGPT_BACKEND_API_BASE, credentialToStoredTokens, storedTokensToCredential } from "../../../infra/auth/openai/openai-auth-types.js";
 import { createChatGPTTokenAccessor, getConnectionChatGPTTokenAccessor } from "../llm/openai-chatgpt.js";
 import { postJson } from "./http.js";
 import { WebSearchError, type WebSearchProvider, type WebSearchResponse, type WebSearchResult } from "./types.js";

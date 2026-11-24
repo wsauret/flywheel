@@ -2,7 +2,7 @@ import { Redacted } from "effect"
 import { batch, createEffect, onCleanup, untrack } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import { errorDetail, errorMessage } from "../../infra/error-message.js"
-import type { CredentialProviderId } from "../../infra/auth/auth-store-types.js"
+import type { CredentialProviderId } from "../../infra/auth/store/auth-store-types.js"
 
 import { Log } from "../../infra/log.js"
 import type { RuntimeAuthLoginResult } from "../../protocol/auth-login-protocol-types.js"

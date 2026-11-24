@@ -1,6 +1,6 @@
-import type { EligibilityInputRevision, ProviderModelPreferenceState } from "../../infra/auth/provider-model-preference-store.js"
+import type { EligibilityInputRevision, ProviderModelPreferenceState } from "../../infra/auth/provider-models/provider-model-preference-store.js"
 import type { AccessProviderModelEligibility } from "../../infra/llm/access-provider.js"
-import { resolveAccountProviderModelPreferences, transitionProviderAutoEnableNewModels, type ProviderModelCatalog, type ResolvedProviderModels } from "../../infra/auth/provider-model-preferences.js"
+import { resolveAccountProviderModelPreferences, transitionProviderAutoEnableNewModels, type ProviderModelCatalog, type ResolvedProviderModels } from "../../infra/auth/provider-models/provider-model-preferences.js"
 import { subscriptionSpendAccountCorrelationId } from "../../protocol/subscription-spend-consent-protocol-types.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
 import { createProfileRuntimeStateOwner, type ProfileRuntimeSnapshot } from "./profile-runtime-state.js"

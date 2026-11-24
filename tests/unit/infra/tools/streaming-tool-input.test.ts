@@ -1,11 +1,11 @@
 import { describe, test, expect, spyOn } from "bun:test";
-import { MAX_STREAMING_TOOL_INPUT_BYTES } from "../../../../src/infra/output/partial-json.js";
-import { StructuredOutputBuilder } from "../../../../src/infra/output/structured-output-builder.js";
+import { MAX_STREAMING_TOOL_INPUT_BYTES } from "../../../../src/infra/output/streaming/partial-json.js";
+import { StructuredOutputBuilder } from "../../../../src/infra/output/projector/structured-output-builder.js";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js";
-import { StreamingToolInputs, type StreamingInputUpdate } from "../../../../src/infra/output/streaming-tool-inputs.js";
+import { StreamingToolInputs, type StreamingInputUpdate } from "../../../../src/infra/output/streaming/streaming-tool-inputs.js";
 import { resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js";
 import { parseShell, ShellScanner } from "../../../../src/infra/tools/shell-words.js";
 

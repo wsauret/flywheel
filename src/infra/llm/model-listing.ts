@@ -2,9 +2,9 @@
 import { createHash } from "node:crypto";
 import { Redacted } from "effect";
 import { apiKeyCredential, currentCredentialLineage, type AuthContext, type CapturedSubscriptionCredential, type OAuthPersistencePolicy, type RuntimeCredential, type SubscriptionCredentials, type ProviderModelAccessSnapshot } from "../auth/auth-context.js";
-import type { CredentialLineages, CredentialSlotClassifier } from "../auth/auth-store-types.js";
-import { deleteProviderModelCatalog, liveModelRefusals, writeProviderModelCatalog, writeProviderModelCandidates, type CatalogProfile, type ModelRefusal, type SavedModelRefusals } from "../auth/provider-model-catalog-store.js";
-import { openExistingAuthProfileDirectory } from "../auth/auth-profile-store.js";
+import type { CredentialLineages, CredentialSlotClassifier } from "../auth/store/auth-store-types.js";
+import { deleteProviderModelCatalog, liveModelRefusals, writeProviderModelCatalog, writeProviderModelCandidates, type CatalogProfile, type ModelRefusal, type SavedModelRefusals } from "../auth/provider-models/provider-model-catalog-store.js";
+import { openExistingAuthProfileDirectory } from "../auth/store/auth-profile-store.js";
 import { createSavedListingEvidence } from "./model-listing-evidence.js";
 import { accessCandidateRows, assembleAuditedCatalog, readSavedAudit, runAccessAudit, type AccessAuditProgressListener } from "./model-access-audit.js";
 import { BoundedJsonError, readBoundedJson, readBoundedJsonWithByteLength } from "../auth/bounded-json.js";

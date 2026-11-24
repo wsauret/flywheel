@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { Redacted } from "effect";
-import type { StoredTokens } from "../../../../src/infra/auth/openai-auth-types.js";
+import type { StoredTokens } from "../../../../src/infra/auth/openai/openai-auth-types.js";
 import { ensureFreshXaiTokens, XaiTokenRefreshError, type XaiTokenRefreshDependencies } from "../../../../src/orchestration/modules/provider-supergrok/token-refresh.js";
 
 function tokens(overrides: Partial<StoredTokens> = {}): StoredTokens {

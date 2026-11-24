@@ -12,7 +12,7 @@ import { offeredControls, summaryOf } from "../client/view-state.js"
 import type { ClientContextValue } from "./client-context.js"
 import { copySessionId } from "./session-copy.js"
 import { promptSessionRename } from "./session-actions.js"
-import { createInPlaceSettingRows, createSettingRowState, type InPlaceSettingRow } from "./sheets/setting-rows.js"
+import { createInPlaceSettingRows, createSettingRowState, type InPlaceSettingRow } from "./sheets/settings/setting-rows.js"
 import { commandReading, commandRefusal, offeredCommandGroups } from "./surfaces.js"
 import "../styles/command-panel.css"
 

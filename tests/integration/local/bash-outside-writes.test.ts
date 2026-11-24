@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createCliLauncher } from "../../../src/cli/runtime-launch.js";
+import { createCliLauncher } from "../../../src/cli/account-service/runtime-launch.js";
 import { Effect } from "effect";
 import { createBashDefinition } from "../../../src/orchestration/agent-runtime/tools/bash.js";
 import { executeDispatchedTool } from "../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";

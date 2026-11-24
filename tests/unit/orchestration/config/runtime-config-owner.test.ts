@@ -7,7 +7,7 @@ import { installCustomProviders } from "../../../helpers/custom-providers.js";
 import { publishCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js";
 import { CONFIG_VALUE_ABSENT, createRuntimeConfigOwner, type RuntimeConfigOwnerOptions } from "../../../../src/orchestration/config/runtime-config-owner.js";
 import { ConfigPublicationError, withConfigOwnership } from "../../../../src/orchestration/config/config-file.js";
-import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
+import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
 import { resolveRoles } from "../../../../src/orchestration/config/models/role-resolution.js";
 
 // Custom providers publish into a process-wide registry that every module

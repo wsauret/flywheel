@@ -4,8 +4,7 @@ import type { InternalProcessChannelLimits, InternalProcessEndpoint } from "../.
 import { isRecord, type UnknownRecord } from "../../infra/record.js"
 import { PROJECT_STATE_MAX_BYTES } from "./project-state-protocol.js"
 import { RuntimeChatDefaultSchema } from "../../protocol/runtime-protocol-schemas.js"
-import { ReplacementBlockerSchema } from "./replacement-blockers.js"
-import type { ReplacementState } from "./replacement-owner.js"
+import { ReplacementBlockerSchema, type ReplacementState } from "./replacement-blockers.js"
 
 export type ProjectExecutorEndpointKind = "control" | "output" | "lifecycle" | "state"
 

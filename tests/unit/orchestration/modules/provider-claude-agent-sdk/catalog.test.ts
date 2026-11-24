@@ -3,7 +3,7 @@ import type { ModelInfo } from "@anthropic-ai/claude-agent-sdk";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { captureSubscriptionCredentials } from "../../../../../src/infra/auth/auth-context.js";
-import { AuthProfileStore } from "../../../../../src/infra/auth/auth-profile-store.js";
+import { AuthProfileStore } from "../../../../../src/infra/auth/store/auth-profile-store.js";
 import { createAccessProviderSelection } from "../../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient, type ModelDiscoveryMode } from "../../../../../src/infra/llm/model-listing.js";
 import type { AccessAuditProgressListener } from "../../../../../src/infra/llm/model-access-audit.js";

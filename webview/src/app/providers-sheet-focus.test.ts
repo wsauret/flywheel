@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { createRoot, createSignal } from "solid-js"
 
 import type { SheetFocus } from "../../../src/protocol/client/host-contract.js"
-import { observeProviderSheetFocus } from "./sheets/providers-sheet.js"
+import { observeProviderSheetFocus } from "./sheets/providers/providers-sheet.js"
 
 test("provider focus requests focus without starting authentication and repeat while mounted", async () => {
   await createRoot(async (dispose) => {

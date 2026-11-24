@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { quotaPreflightLines, quotaRefusal, readQuotaPreflight } from "../../../bench/harbor/quota-preflight.js";
-import { AuthProfileStore } from "../../../src/infra/auth/auth-profile-store.js";
+import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-store.js";
 import type { AccessProviderCandidate } from "../../../src/infra/llm/access-provider.js";
 import { AVAILABILITY_PROTOCOL_VERSION, createAvailabilityAuthority } from "../../../src/infra/llm/availability-store.js";
 import { authDir, availabilityAuthorityDbFile } from "../../../src/infra/paths.js";

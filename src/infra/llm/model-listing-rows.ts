@@ -6,7 +6,7 @@ import { offeringTransport, type CatalogCanonicalRow } from "../model-catalog-ro
 import type { CatalogJsonValue, CatalogModelOffering, OfferingTransport } from "../catalog-model-offering.js";
 import type { ModelInfo, ModelsClient, ProviderModelInfoField } from "./models.js";
 import { narrowContextWindow, preferCatalogModelInfoFields, providerModelInfo } from "./provider-model-info.js";
-import type { SavedModelRefusals } from "../auth/provider-model-catalog-store.js";
+import type { SavedModelRefusals } from "../auth/provider-models/provider-model-catalog-store.js";
 import { authoredCatalogModelId, canonicalCatalogModelId, canonicalModelId, isMovingModelAlias, preferredWireModelId, type CatalogDataUse } from "../model-id.js";
 import { canonicalize } from "../canonical-name.js";
 
