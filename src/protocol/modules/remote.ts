@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation } from "../protocol-module.js"
-import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 
 /** What the runtime publishes about its remote reachability: whether this
  *  account has paired devices, whether this placement holds a relay control

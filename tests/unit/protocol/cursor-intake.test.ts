@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { RuntimeCursorIdentity, RuntimeUiPatch, RuntimeUiPatchPayload } from "../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeCursorIdentity, RuntimeUiPatch, RuntimeUiPatchPayload } from "../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { createCursorIntake, type RecoveryRequest } from "../../../src/protocol/client/cursor-intake.js"
 import { createRuntimeUiPatchSequencer } from "../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 

@@ -5,7 +5,7 @@ import { OutputProjector } from "../../../../../src/infra/output/projector/outpu
 import { StructuredOutputBuilder } from "../../../../../src/infra/output/projector/structured-output-builder";
 import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../../src/infra/output/output-block-delta";
 import { askUserDisplay } from "../../../../../src/infra/tools/displays/ask-user";
-import { blockIdentity } from "../../../../../src/protocol/block-identity";
+import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity";
 
 describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", () => {
   let builder: StructuredOutputBuilder;

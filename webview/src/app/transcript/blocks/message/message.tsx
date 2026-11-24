@@ -1,10 +1,10 @@
 import { createEffect, createMemo, createSignal, For, on, Show } from "solid-js"
 
-import type { FrontendOutputBlock } from "../../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { attachmentKind } from "../../../../../../src/protocol/client/attachments.js"
 import { messageSenderLabel, PERSON_WORDS_LABEL } from "../../../../../../src/protocol/client/message-sender.js"
 import { undeliveredNotice, type LocalChatSubmission } from "../../../../../../src/protocol/client/chat-submissions.js"
-import type { HydratedOutputBlockBody } from "../../../../../../src/protocol/transcript-protocol-types.js"
+import type { HydratedOutputBlockBody } from "../../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { ImageViewer } from "./image-viewer.js"
 import { RowTime } from "../../reading/row-time.js"
 import { PersonText } from "./person-text.js"

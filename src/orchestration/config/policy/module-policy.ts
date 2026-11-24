@@ -21,7 +21,7 @@ import { defaultModuleState, moduleDescriptor, observeModuleState, type ModuleSt
 import type { ConfigWriteResult } from "../writer.js";
 import { migrateCapabilityModules, updateCapabilityModules } from "./module-selection-writer.js";
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../runtime-config-owner.js";
-import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/module-ids.js";
+import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/runtime/module-ids.js";
 
 /** What one admitted operation may do, fixed at its admission.
  *

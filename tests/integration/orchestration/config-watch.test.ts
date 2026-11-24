@@ -17,10 +17,10 @@ import { startModulePolicy } from "../../../src/orchestration/config/policy/modu
 import { createModuleProjection } from "../../../src/orchestration/app-service/projections/module-projection.js";
 import { persistentProcessPolicy } from "../../../src/orchestration/config/policy/persistent-process-policy.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
-import type { RuntimeModulesView } from "../../../src/protocol/module-protocol-types.js";
+import type { RuntimeModulesView } from "../../../src/protocol/runtime/module-protocol-types.js";
 import { createUpdatePolicyStore } from "../../../src/orchestration/update/update-policy.js";
 import { createUpdateService } from "../../../src/orchestration/update/update-service.js";
-import type { UpdateStatusView } from "../../../src/protocol/update-protocol-types.js";
+import type { UpdateStatusView } from "../../../src/protocol/runtime/update-protocol-types.js";
 
 const DEBOUNCE_MS = 5;
 

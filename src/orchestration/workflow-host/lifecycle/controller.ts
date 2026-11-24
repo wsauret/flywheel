@@ -7,7 +7,7 @@ import { chatInputText, type ChatInputLike } from "../../../infra/chat-input.js"
 import { childCallOf, readChildStop, readWorkflowAgentTurnEnds, workflowInteractionRefusal, workflowStopRefusal } from "../../session/control/chat-session-run-evidence.js"
 import { readToolExecution } from "../../session/runtime-facts/tool-execution-projection.js"
 import { recordChildWorkflowResume } from "../../session/control/children/child-workflow-result.js"
-import type { StoppedBy } from "../../../protocol/app-service-types.js"
+import type { StoppedBy } from "../../../protocol/runtime/app-service-types.js"
 import { parentMayContinue, personCutRefusal, workflowStepCut, type ChildCut } from "../../session/control/child-continuation.js"
 import type { ChildControlAnswer } from "../../module-seams.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../../session/conversation/addressed-workflow-messages.js"
@@ -29,7 +29,7 @@ import { resolveWorkflowDeliveryAddress, type WorkflowTargets } from "../workflo
 import { deliverWorkflowInput } from "../../session/control/messaging/session-input-delivery.js"
 import { personMessageKey } from "../../session/conversation/queued-user-inputs.js"
 import { recordPersonMessageReceipt, workflowPersonMessage } from "../../session/conversation/person-message-ledger.js"
-import type { WorkflowsMode } from "../../../protocol/module-protocol-types.js"
+import type { WorkflowsMode } from "../../../protocol/runtime/module-protocol-types.js"
 import type { DefinitionAvailabilityOwner } from "../../app-service/definitions/definition-availability.js"
 import {
   approvalRefusal,

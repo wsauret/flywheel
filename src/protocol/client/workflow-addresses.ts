@@ -9,7 +9,7 @@
  * outline and folds no hierarchy of its own.
  */
 
-import type { LoadedWorkflowView, WorkflowTreeNode } from "../workflow-view-protocol-types.js"
+import type { LoadedWorkflowView, WorkflowTreeNode } from "../session/workflow-view-protocol-types.js"
 import { workflowCurrentAgent, workflowOutline, workflowTreeIndex, type WorkflowPhaseAgent } from "./workflow-outline.js"
 import { workflowAgentDetail } from "./workflow-card.js"
 import type { WorkflowAgentModel } from "./workflow-agent.js"

@@ -1,5 +1,5 @@
-import type { AuthAccountAttention, AuthProviderAccountStatus, AuthProviderAttention, AuthProviderSource, AuthProviderStatus, RuntimeAuthLoginQuestion, RuntimeAuthView } from "../auth-status-protocol-types.js"
-import type { ProviderCatalogDiscovery } from "../provider-model-preference-protocol-types.js"
+import type { AuthAccountAttention, AuthProviderAccountStatus, AuthProviderAttention, AuthProviderSource, AuthProviderStatus, RuntimeAuthLoginQuestion, RuntimeAuthView } from "../auth/auth-status-protocol-types.js"
+import type { ProviderCatalogDiscovery } from "../auth/provider-model-preference-protocol-types.js"
 
 /** What the auth view states about one provider or one account. */
 export interface AuthStatusInput {

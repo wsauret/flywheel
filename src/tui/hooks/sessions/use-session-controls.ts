@@ -1,5 +1,5 @@
-import type { RuntimeClient, SessionRow } from "../../../protocol/app-service-types.js"
-import type { StatusView } from "../../../protocol/status-protocol-types.js"
+import type { RuntimeClient, SessionRow } from "../../../protocol/runtime/app-service-types.js"
+import type { StatusView } from "../../../protocol/session/status-protocol-types.js"
 import { dispatchInterrupt, isInterruptible, offeredSessionControls, resumeMutationType, stopMutation, type ControlRefusal, type OfferedSessionControls } from "../../../protocol/client/session-controls.js"
 import type { ShellServices } from "../state/shell-state.js"
 import type { Accessor } from "solid-js"

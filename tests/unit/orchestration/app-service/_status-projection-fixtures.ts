@@ -1,6 +1,6 @@
-import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
-import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
+import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import type { SessionEntry, SessionStoreReader } from "../../../../src/orchestration/session-store/types.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 

@@ -1,6 +1,6 @@
 import { HashMap } from "effect"
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
-import type { RuntimeBackgroundSummaryResult } from "../../../protocol/runtime-protocol-schemas.js"
+import type { RuntimeBackgroundSummaryResult } from "../../../protocol/rpc/runtime-protocol-schemas.js"
 import { buildDurableSessionCatalog, sessionCatalogStatsFromSummary, sessionMetadataCatalogFromState } from "../../session/metadata/catalog/session-catalog-read.js"
 import { projectSessionCatalogRow } from "../../session/control/session-catalog-row.js"
 import { createSessionMetadataProjection, sessionMetadataStateOf } from "../../session/metadata/session-metadata-projection.js"

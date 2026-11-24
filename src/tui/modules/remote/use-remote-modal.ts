@@ -1,6 +1,6 @@
 import { createMemo, createSignal, onCleanup, type Accessor, type JSX } from "solid-js"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { RuntimeClient } from "../../../protocol/app-service-types.js"
+import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { lostWithLane } from "../../../protocol/client/connection-failures.js"
 import { UNANSWERED_ACTION } from "../../../protocol/client/runtime-fault-copy.js"
 import type { RuntimeRemoteView } from "../../../protocol/modules/remote.js"

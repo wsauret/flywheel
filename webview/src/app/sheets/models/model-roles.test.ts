@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { ModelAssignmentRow } from "../../../../../src/protocol/model-assignment-protocol-types.js"
+import type { ModelAssignmentRow } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js"
 import { roleGroups } from "./model-roles.js"
 
 /** The role browser's rows, held to the runtime's order and to the one glyph

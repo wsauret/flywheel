@@ -2,7 +2,7 @@ import { ASK_USER_CANCELLED_RESULT, askUserLeadingContext, normalizeAskUserInput
 import type { QuestionEntry } from "../../../../infra/output-blocks.js";
 import type { AskUserController, AskUserResult } from "../../../runner/ask-user-controller.js";
 import type { AgentInputDecision } from "../../../session/agent-input/agent-input-facts.js";
-import type { AgentInputAnswers } from "../../../../protocol/question-protocol-types.js";
+import type { AgentInputAnswers } from "../../../../protocol/session/question-protocol-types.js";
 import type { ResolveWorkflowLaunchTarget } from "../../../workflow-host/lifecycle/launch-origin.js";
 import { workflowLaunchDecision, workflowRefusalText } from "../../../workflow-host/lifecycle/launch-origin.js";
 import { workflowSource } from "../../../../infra/tools/workflow-call-source.js";

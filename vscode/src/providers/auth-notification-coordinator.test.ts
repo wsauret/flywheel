@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { FrontendEvent, FrontendMutation } from "../../../src/protocol/app-service-types.js"
-import type { RuntimeAuthStatusSnapshotResult } from "../../../src/protocol/auth-status-protocol-types.js"
+import type { FrontendEvent, FrontendMutation } from "../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeAuthStatusSnapshotResult } from "../../../src/protocol/auth/auth-status-protocol-types.js"
 import type { ProtocolDomainSnapshot } from "../../../src/protocol/protocol-module.js"
 import type { NotificationActionView } from "../../../src/protocol/client/host-contract.js"
 import type { ProjectNotificationEpisode, projectNotificationsDomain } from "../../../src/protocol/modules/project-notifications.js"

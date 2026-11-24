@@ -1,4 +1,4 @@
-import type { SessionCatalogError } from "../../../../protocol/app-service-types.js"
+import type { SessionCatalogError } from "../../../../protocol/runtime/app-service-types.js"
 
 function errorKey(error: SessionCatalogError): string {
   return JSON.stringify([error.sessionId, error.scope, error.reason])

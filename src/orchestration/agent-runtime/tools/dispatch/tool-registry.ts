@@ -1,6 +1,6 @@
 import type { ToolAction } from "../../../../infra/workflow-types.js";
 import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
-import { canonicalModuleIds, MODULE_IDS, moduleDisabledReason, type ModuleId } from "../../../../protocol/module-ids.js";
+import { canonicalModuleIds, MODULE_IDS, moduleDisabledReason, type ModuleId } from "../../../../protocol/runtime/module-ids.js";
 import type { FirstPartyModuleComposition } from "../../../modules.js";
 import type { RuntimeToolSurfaces, RunnerToolSurfaces } from "../../types.js";
 import type { ToolInteractionContract } from "../../request/prompt/model-interaction-profile.js";

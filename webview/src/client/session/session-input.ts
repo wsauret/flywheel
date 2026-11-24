@@ -1,5 +1,5 @@
-import type { FrontendMutation, ProtocolChatAttachment, SessionRow } from "../../../../src/protocol/app-service-types.js"
-import type { AgentInputAnswer } from "../../../../src/protocol/question-protocol-types.js"
+import type { FrontendMutation, ProtocolChatAttachment, SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { AgentInputAnswer } from "../../../../src/protocol/session/question-protocol-types.js"
 import { createChatSubmissions, type ChatSubmissionResult, type ChatSubmissions, type LocalChatSubmission, type LocalRecall, type UnsentChatSubmission } from "../../../../src/protocol/client/chat-submissions.js"
 import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
 import { lostWithLane } from "../../../../src/protocol/client/connection-failures.js"

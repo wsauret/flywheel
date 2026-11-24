@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
-import { budgetCursor, isBudgetPayload, type BudgetView, type RuntimeBudgetSnapshotResult } from "../../../../src/protocol/budget-protocol-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
+import { budgetCursor, isBudgetPayload, type BudgetView, type RuntimeBudgetSnapshotResult } from "../../../../src/protocol/session/budget-protocol-types.js"
 import { createSessionReadingFamily } from "../../../../src/protocol/client/session-reading-family.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
 

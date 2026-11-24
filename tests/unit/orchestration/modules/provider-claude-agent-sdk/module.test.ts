@@ -10,7 +10,7 @@ import { processUsageReadings } from "../../../../../src/orchestration/modules/p
 import type { CliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { updateModuleMember } from "../../../../../src/orchestration/config/policy/module-selection-writer.js";
 import { composeFirstPartyModules, moduleProtocolRows, moduleSelectionFromConfig, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
-import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";
+import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
 import { observedLogins } from "../../../../helpers/login-observations.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";

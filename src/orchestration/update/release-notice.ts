@@ -1,7 +1,7 @@
 import { Log } from "../../infra/log.js"
 import { parseRepositoryIdentity } from "../../infra/update/release-manifest.js"
 import { compareReleaseVersions, parseReleaseVersion } from "../../infra/update/version-order.js"
-import type { ReleaseNotice } from "../../protocol/update-protocol-types.js"
+import type { ReleaseNotice } from "../../protocol/runtime/update-protocol-types.js"
 import { CONFIG_VALUE_ABSENT, type RuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import { readReleaseSummary, releaseNoticeMessage, type ReleaseNotesFetch } from "./release-notes-summary.js"
 import type { UpdateScheduler } from "./update-check.js"

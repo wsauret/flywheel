@@ -1,11 +1,11 @@
-import type { SessionRow } from "../../../../src/protocol/app-service-types.js"
+import type { SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { BudgetSummary } from "../../../../src/protocol/client/host-contract.js"
-import { budgetCursor, isBudgetPayload, type BudgetView } from "../../../../src/protocol/budget-protocol-types.js"
+import { budgetCursor, isBudgetPayload, type BudgetView } from "../../../../src/protocol/session/budget-protocol-types.js"
 import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
 import { mergeBudgetView } from "../../../../src/protocol/client/known-totals.js"
 import { createSessionReadingFamily, type SessionViewStore } from "../../../../src/protocol/client/session-reading-family.js"
-import { isStatusPayload, statusCursor, type StatusView } from "../../../../src/protocol/status-protocol-types.js"
-import { isQuestionPayload, questionCursor, type PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
+import { isStatusPayload, statusCursor, type StatusView } from "../../../../src/protocol/session/status-protocol-types.js"
+import { isQuestionPayload, questionCursor, type PendingQuestionView } from "../../../../src/protocol/session/question-protocol-types.js"
 
 /** Status and budget readings follow every live catalog row, every held
  *  child, the selection, which no list may name yet, and every child whose

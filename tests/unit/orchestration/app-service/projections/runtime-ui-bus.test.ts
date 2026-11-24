@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { createRuntimeUiBus } from "../../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
-import type { FrontendEvent } from "../../../../../src/protocol/app-service-types.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 function input(sessionId = "s1"): RuntimeUiPatchInput {
   return { cursor: { scope: "session", domain: "session", sessionId }, payload: { kind: "session.removed" } }

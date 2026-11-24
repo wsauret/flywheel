@@ -1,5 +1,5 @@
 import { runAccountShutdownBarrier } from "../runtime/runtime-shutdown.js"
-import type { StartupReached } from "../../../protocol/startup-steps.js"
+import type { StartupReached } from "../../../protocol/runtime/startup-steps.js"
 import { DebugLog } from "../../../infra/debug-log.js"
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
 import { Log } from "../../../infra/log.js"

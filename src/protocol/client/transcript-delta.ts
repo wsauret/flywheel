@@ -1,8 +1,8 @@
 import { Schema } from "effect"
-import { blockIdentity } from "../block-identity.js"
-import type { FrontendOutputBlock } from "../app-service-types.js"
-import type { OutputDelta, OutputView } from "../output-protocol-types.js"
-import { FrontendOutputBlockSchema } from "../transcript-protocol-schemas.js"
+import { blockIdentity } from "../transcript/block-identity.js"
+import type { FrontendOutputBlock } from "../runtime/app-service-types.js"
+import type { OutputDelta, OutputView } from "../transcript/output-protocol-types.js"
+import { FrontendOutputBlockSchema } from "../transcript/transcript-protocol-schemas.js"
 import { appendText, applyStreamingToolTextOps, applyValueEdits, editableBlock, type StreamingTextRejection } from "./streaming-text-edits.js"
 
 const isFrontendOutputBlock = Schema.is(FrontendOutputBlockSchema)

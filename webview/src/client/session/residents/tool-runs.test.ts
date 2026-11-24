@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/app-service-types.js"
-import { blockIdentity } from "../../../../../src/protocol/block-identity.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
+import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"
 import { foldTranscript } from "../../../../../src/protocol/client/transcript-model.js"
 import { blockEndTimes, createWebTranscript, presentWebTranscript, rowAtIndex, rowIdentity, rowIndex, runningTimeIds, toolGroupSummaryParts, toolWorkCounts } from "./tool-runs.js"
 import { mutationEvidenceFixture } from "../../../../../tests/fixtures/mutation-evidence-fixture.js"

@@ -20,7 +20,7 @@ import type { LauncherContext } from "../../../../src/infra/process-supervisor.j
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
 import { serveLaneFor } from "../../../../src/infra/cli-subprocess.js"
 import { accountServeDir, accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath, accountServeTokenPath } from "../../../../src/infra/paths.js"
-import { decodeServeStatusLine, ServeStartupFailure } from "../../../../src/protocol/serve-handshake.js"
+import { decodeServeStatusLine, ServeStartupFailure } from "../../../../src/protocol/runtime/serve-handshake.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
 import { runningBuildId } from "../../../../src/orchestration/app-service/runtime-executable.js"
 import { countStart, IDLE_SERVE, INSTALLED, startRecordText, statusRecords, unprobedLoginShellPath, unusedLauncher, waitFor } from "./_serve-fixtures.js"

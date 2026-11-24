@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util"
 import { workflowsProtocol, type WorkflowDetail } from "../../../../protocol/modules/workflows.js"
-import type { RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { createWorkflowViewProtocolReader, createWorkflowViewProtocolProjection } from "./view-protocol.js"
 import { readWorkflowLiveView, createWorkflowLiveProtocolProjection } from "./live-protocol.js"
 import type { ModuleBackgroundReaders, ModuleProtocolRuntime, ModuleProtocolServices } from "../../../app-service/module-protocol-host.js"
@@ -43,7 +43,7 @@ export const workflowProtocolServices: ModuleWorkflowRuns["protocolServices"] = 
     isRunning: input.hosts.isRunning, onHostChanged: input.hosts.onChange,
     projectRoot: input.projectRoot, controller: input.controller, auth: input.auth, authStatus: input.authStatus,
     onAuthChanged(listener: () => void) {
-      const observe = (event: import("../../../../protocol/app-service-types.js").FrontendEvent) => {
+      const observe = (event: import("../../../../protocol/runtime/app-service-types.js").FrontendEvent) => {
         if (event.type === "patch" && event.patch.payload.kind === "auth.changed") listener()
       }
       input.bus.addListener(observe)

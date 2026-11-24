@@ -1,4 +1,4 @@
-import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { foldTranscript } from "../../../../../src/protocol/client/transcript-model.js"
 import { presentWebTranscript, type PresentedWebBlock } from "./tool-runs.js"
 

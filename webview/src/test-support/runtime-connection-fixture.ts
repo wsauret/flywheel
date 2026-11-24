@@ -1,4 +1,4 @@
-import type { FrontendMutation, MutationResult, RuntimeQuery } from "../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, MutationResult, RuntimeQuery } from "../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"
 import { recordedQuery, runtimeQuery, type DispatchAnswers, type QueryAnswers } from "../../../tests/helpers/runtime-dispatch.js"

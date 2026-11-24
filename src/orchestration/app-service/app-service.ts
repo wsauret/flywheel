@@ -6,14 +6,14 @@ import type { RuntimeConfigProjection } from "./projections/runtime-config-proje
 import type { ProviderModelPreferenceService } from "./auth/models/provider-model-preference-service.js"
 import { readAppVersion } from "../../infra/app-version.js"
 import { runningDisplayBuildId } from "./runtime-executable.js"
-import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/app-service-types.js"
+import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/runtime/app-service-types.js"
 import { mergeCatalogRow } from "../../protocol/client/known-totals.js"
-import { commandCatalogCursor } from "../../protocol/command-catalog-protocol-types.js"
+import { commandCatalogCursor } from "../../protocol/commands/command-catalog-protocol-types.js"
 import type { CommandCatalogProjection } from "./definitions/commands/command-catalog-projection.js"
-import { authStatusCursor } from "../../protocol/auth-status-protocol-types.js"
+import { authStatusCursor } from "../../protocol/auth/auth-status-protocol-types.js"
 import type { AuthStatusProjection } from "./auth/auth-status-projection.js"
-import { capabilitiesCursor } from "../../protocol/module-protocol-types.js"
-import { runtimeConfigCursor } from "../../protocol/runtime-config-protocol-types.js"
+import { capabilitiesCursor } from "../../protocol/runtime/module-protocol-types.js"
+import { runtimeConfigCursor } from "../../protocol/settings/runtime-config-protocol-types.js"
 import { isProtocolModuleQuery, moduleMutationRefusal } from "../../protocol/modules.js"
 import type { ModuleProtocolRoutes } from "./module-protocol-host.js"
 import type { SessionDetailProjection } from "./projections/session-detail-projection.js"
@@ -27,10 +27,10 @@ import type { CommandInvokeService } from "./definitions/commands/command-invoke
 import type { FrontendProjection, SessionChange } from "./projections/frontend-projection.js"
 import type { OutputProjection } from "./projections/output/output-projection.js"
 import type { StatusProjection } from "./projections/catalog/status-projection.js"
-import { outputCursor } from "../../protocol/output-protocol-types.js"
+import { outputCursor } from "../../protocol/transcript/output-protocol-types.js"
 import type { RuntimeUiBus } from "./projections/runtime-ui-bus.js"
 import { runtimeReadAnchor } from "./projections/runtime-ui-patch-sequencer.js"
-import { sessionCursor, type RuntimeSessionViewsResult, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../protocol/runtime-ui-protocol-types.js"
+import { sessionCursor, type RuntimeSessionViewsResult, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { RuntimeSupervisor } from "./supervisor/runtime-supervisor-types.js"
 import type { AdmittedModelAssignmentService } from "./auth/models/model-assignment-admission.js"
 import { startupTrace } from "../../infra/startup-trace.js"
@@ -40,12 +40,12 @@ import { ADMISSION_CLOSED_ERROR, createMutationAdmission, type CommandAdmission 
 import { withLoggedAppServiceClient } from "./runtime/app-service-logging.js"
 import { shutdownOwner, type RuntimeShutdownRequest } from "./runtime/runtime-shutdown.js"
 
-import type { SubscriptionSpendConsentMutation, SubscriptionSpendConsentMutationResult } from "../../protocol/subscription-spend-consent-protocol-types.js"
-import { gitAiAttributionCursor } from "../../protocol/git-ai-attribution-protocol-types.js"
+import type { SubscriptionSpendConsentMutation, SubscriptionSpendConsentMutationResult } from "../../protocol/auth/subscription-spend-consent-protocol-types.js"
+import { gitAiAttributionCursor } from "../../protocol/git/git-ai-attribution-protocol-types.js"
 import type { GitAiAttributionProjection } from "./projections/changes/git-ai-attribution-projection.js"
-import { commandUsageCursor } from "../../protocol/command-usage-protocol-types.js"
+import { commandUsageCursor } from "../../protocol/commands/command-usage-protocol-types.js"
 import type { CommandUsageProjection } from "./definitions/commands/command-usage-projection.js"
-import { changesCursor } from "../../protocol/session-changes-protocol-types.js"
+import { changesCursor } from "../../protocol/session/session-changes-protocol-types.js"
 import type { BackgroundIndexOwner } from "./background/background-index-publisher.js"
 import type { MutationEvidenceService } from "./projections/changes/mutation-evidence-service.js"
 import type { SessionChangesService } from "./projections/changes/session-changes-service.js"
@@ -116,7 +116,7 @@ export interface FlywheelAppServiceDeps extends AuthMutationDeps, SettingsMutati
   readonly projectionReader: AsyncEventStateReadSurface
   /** The account-held public projection's resolved assignment. Snapshot reads
    * use this explicit input and never query the executor during render. */
-  readonly chatDefault: () => import("../../protocol/app-service-types.js").RuntimeChatDefault
+  readonly chatDefault: () => import("../../protocol/runtime/app-service-types.js").RuntimeChatDefault
   readonly sessionChanges: () => Promise<SessionChangesService>
   readonly mutationEvidence: () => Promise<MutationEvidenceService>
   /** The background index of each session a client follows, held from its

@@ -33,7 +33,7 @@ import { cleanupProjectRoots, createCapabilities, makeWorkflowDeps, noConversati
 import { capabilityAccessFor, type CapabilityAccess } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { holdQueuedUserInput, readWorkflowQueuedUserInputs } from "../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages.js"
-import { MODULE_IDS, moduleDisabledReason } from "../../../../src/protocol/module-ids.js"
+import { MODULE_IDS, moduleDisabledReason } from "../../../../src/protocol/runtime/module-ids.js"
 import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/lifecycle/publish"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { newTestRunner } from "../../../helpers/agent-runner"

@@ -1,4 +1,4 @@
-import type { InputDiagnosticSample, InputResponsivenessDiagnostic } from "../../../../src/protocol/runtime-client-diagnostics.js"
+import type { InputDiagnosticSample, InputResponsivenessDiagnostic } from "../../../../src/protocol/runtime/runtime-client-diagnostics.js"
 
 type TapTrace = { -readonly [K in keyof NonNullable<InputDiagnosticSample["tap"]>]: NonNullable<InputDiagnosticSample["tap"]>[K] }
 type MutableSample = { -readonly [K in keyof Omit<InputDiagnosticSample, "tap">]: InputDiagnosticSample[K] } & { tap?: TapTrace }

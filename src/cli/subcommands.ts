@@ -20,7 +20,7 @@ import type { LauncherContext } from "../infra/process-supervisor.js"
 import type { ProjectStateStandby } from "../orchestration/app-service/project-state/project-state-standby.js"
 import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/modules.js"
 import type { CliVerbSummary, CommandProcessResources } from "../orchestration/cli-contribution.js"
-import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/account-attach.js"
+import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/runtime/account-attach.js"
 
 export type SubcommandDispatch = (args: readonly string[], directories: StartupDirectories, launcher: LauncherContext, resources: CommandProcessResources) => void | Promise<void>
 
@@ -95,7 +95,7 @@ export const SUBCOMMANDS: KernelNouns = {
       const { openExternalUrl } = await import("../infra/open-external-url.js")
       const { promptFromReadline } = await import("./readline-prompt.js")
       const { composeRealmModuleSnapshot } = await import("../orchestration/modules.js")
-      const { MODULE_IDS } = await import("../protocol/module-ids.js")
+      const { MODULE_IDS } = await import("../protocol/runtime/module-ids.js")
       const { AUTH_OPERATIONS, runAuth } = await import("./commands/auth.js")
       const { createCatalogSettlement } = await import("../orchestration/auth/catalog-settlement.js")
       const resolveKey = createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope))

@@ -1,4 +1,4 @@
-import type { ChildSessionRow, FrontendEvent, FrontendMutation, FrontendOutputBlock, SessionCatalogRow } from "../../../../../src/protocol/app-service-types.js"
+import type { ChildSessionRow, FrontendEvent, FrontendMutation, FrontendOutputBlock, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
 import { CONNECTED_PROVIDER, fakeConnection } from "../../../test-support/session-connection-fixture.js"
 import { detailView, tailWindow } from "../../../../../tests/helpers/runtime-views.js"

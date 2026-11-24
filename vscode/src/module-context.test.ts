@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { describe, test } from "node:test"
 
-import { MODULE_IDS } from "../../src/protocol/module-ids.js"
+import { MODULE_IDS } from "../../src/protocol/runtime/module-ids.js"
 import { createModuleContextPublisher, moduleContext } from "./module-context.js"
 
 const manifest: { contributes: { menus: { commandPalette: readonly { readonly command: string; readonly when: string }[] } } } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"))

@@ -1,5 +1,5 @@
 import { createComposerReturns } from "../../../protocol/client/composer-returns.js"
-import type { AttachedRuntimeClient, SessionRow } from "../../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient, SessionRow } from "../../../protocol/runtime/app-service-types.js"
 import type { ChatSubmissions } from "../../../protocol/client/chat-submissions.js"
 import type { ChatInputLike } from "../../../infra/chat-input.js"
 import type { ComposerHandle } from "../../components/composer/composer-types.js"

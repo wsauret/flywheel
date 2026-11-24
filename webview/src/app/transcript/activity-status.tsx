@@ -1,6 +1,6 @@
 import { createEffect, createSignal, on, onCleanup, Show, useContext } from "solid-js"
 
-import { isActiveActivity, type FrontendActivity } from "../../../../src/protocol/app-service-types.js"
+import { isActiveActivity, type FrontendActivity } from "../../../../src/protocol/runtime/app-service-types.js"
 import { formatActivity, formatElapsed } from "../../../../src/protocol/client/format.js"
 import type { ClientViewState } from "../../client/session/view-state.js"
 import { TranscriptClock } from "./reading/row-time.js"

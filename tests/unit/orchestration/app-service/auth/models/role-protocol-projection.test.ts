@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { composeRoleProtocolProjection } from "../../../../../../src/orchestration/app-service/auth/models/role-protocol-projection.js"
 import { createRuntimeOwnership } from "../../../../../../src/orchestration/app-service/runtime/runtime-ownership.js"
 import { createSessionManager } from "../../../../../../src/orchestration/session/manager.js"
@@ -8,7 +8,7 @@ import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestWorkflow } fr
 import type { SessionManager, SessionMetadataChange } from "../../../../../../src/orchestration/session/manager.js"
 import type { ReplayedSession } from "../../../../../../src/orchestration/session/metadata/schemas.js"
 import { roleCapture } from "../../../../../helpers/role-capture.js"
-import { sessionServingLabel } from "../../../../../../src/protocol/role-protocol-types.js"
+import { sessionServingLabel } from "../../../../../../src/protocol/auth/role-protocol-types.js"
 import { countStateRequests } from "../../../../../helpers/state-requests.js"
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/event-store-types.js"
@@ -16,8 +16,8 @@ import type { ProviderConnectionCapture } from "../../../../../../src/orchestrat
 import { buildDurableSubagentCreated } from "../../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { prepareSessionFactAppend } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { repoDefinitions } from "../../../../../helpers/project-definitions.js"
-import type { FrontendEvent } from "../../../../../../src/protocol/app-service-types.js"
-import { authStatusCursor } from "../../../../../../src/protocol/auth-status-protocol-types.js"
+import type { FrontendEvent } from "../../../../../../src/protocol/runtime/app-service-types.js"
+import { authStatusCursor } from "../../../../../../src/protocol/auth/auth-status-protocol-types.js"
 
 function chat(model: string): ReplayedSession {
   return {

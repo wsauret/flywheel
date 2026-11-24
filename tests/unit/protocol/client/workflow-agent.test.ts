@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
 import { workflowAgentFigures } from "../../../../src/protocol/client/workflow-card.js"
 import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentLine, workflowAgentModel, workflowAgentMove, workflowAgentOpenTarget, workflowAgentTitle, workflowBriefLine, workflowNextAgentLabel, workflowSeatRoleText, type WorkflowAgentModel } from "../../../../src/protocol/client/workflow-agent.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"

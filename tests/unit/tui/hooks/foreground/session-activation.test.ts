@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { ChildSessionRow, SessionCatalogRow } from "../../../../../src/protocol/app-service-types.js"
-import type { RuntimeSessionDetailView } from "../../../../../src/protocol/session-detail-protocol-types.js"
+import type { ChildSessionRow, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeSessionDetailView } from "../../../../../src/protocol/session/session-detail-protocol-types.js"
 import { createLinkNavigator, createSessionActivator, createSessionActivatorById } from "../../../../../src/tui/hooks/foreground/session-activation.js"
-import { RuntimeCallTimeout } from "../../../../../src/protocol/runtime-client-deadlines.js"
+import { RuntimeCallTimeout } from "../../../../../src/protocol/rpc/runtime-client-deadlines.js"
 import { createOverlayLayers } from "../../../../../src/tui/components/modal-stack.js"
 import { runtimeDispatch, runtimeQuery, type DispatchAnswer } from "../../../../helpers/runtime-dispatch.js"
 

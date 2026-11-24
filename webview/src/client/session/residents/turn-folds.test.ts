@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "bun:test"
 import { createRoot } from "solid-js"
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { foldTranscript } from "../../../../../src/protocol/client/transcript-model.js"
 import { createBlockDisclosure } from "../../../app/transcript/blocks/block-disclosure.js"
 import { createBlockLanding } from "../../../app/transcript/transcript-scroll.js"

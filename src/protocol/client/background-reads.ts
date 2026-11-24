@@ -1,6 +1,6 @@
-import { reconnectBackoffMs } from "../reconnect-backoff.js"
+import { reconnectBackoffMs } from "../runtime/reconnect-backoff.js"
 import { explainedByConnection, lostWithLane } from "./connection-failures.js"
-import type { RuntimeClientDiagnostic } from "../runtime-client-diagnostics.js"
+import type { RuntimeClientDiagnostic } from "../runtime/runtime-client-diagnostics.js"
 
 interface ReadFailures {
   readonly pending: Set<object>

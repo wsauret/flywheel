@@ -5,7 +5,7 @@ import type { LocalChatSubmission } from "../../../../../src/protocol/client/cha
 import { createSessionChangesController, type SessionChangesController } from "../../../../../src/protocol/client/session-changes.js"
 import { backgroundIndexState, createBackgroundIndexReadings, type BackgroundIndexState, type HeldBackgroundIndex } from "../../../../../src/protocol/client/background-index.js"
 import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../../../../src/protocol/client/transcript-store.js"
-import type { HydratedOutputBlockBody } from "../../../../../src/protocol/transcript-protocol-types.js"
+import type { HydratedOutputBlockBody } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { CHAT_SLOT } from "./active-model.js"
 import { createSessionModuleMonitors, type SessionModuleMonitors } from "../../domains/module-domain-views.js"
 import { createSeatReading, type SeatReading } from "./session-seat.js"

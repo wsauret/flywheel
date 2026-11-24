@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import type { ProviderModelRow } from "../../../src/protocol/provider-model-preference-protocol-types.js"
+import type { ProviderModelRow } from "../../../src/protocol/auth/provider-model-preference-protocol-types.js"
 import { loadSemanticRows } from "./semantic-rows-loader-fixture.js"
 import { loadStabilityFixture } from "../modules/workflows/stability-fixture-loader.js"
 import { fakePanelSettings } from "../app/client-context-fixture.js"

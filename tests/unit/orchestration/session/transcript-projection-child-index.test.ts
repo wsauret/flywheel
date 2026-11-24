@@ -30,7 +30,7 @@ import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../sr
 import { composeControlRestatement } from "../../../../src/workflows/vm/control/companions"
 import { workflowCardHeaderParts } from "../../../../src/protocol/client/workflow-card"
 import { Schema } from "effect"
-import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas"
+import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript/transcript-protocol-schemas"
 import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 let baseDir: string

@@ -1,7 +1,7 @@
 import { createMemo, Show, type Accessor } from "solid-js"
 
 import type { BudgetSummary } from "../../../../src/protocol/client/host-contract.js"
-import { formatGenerationSpeed } from "../../../../src/protocol/generation-statistics.js"
+import { formatGenerationSpeed } from "../../../../src/protocol/session/generation-statistics.js"
 import type { WebModule } from "../../web-module.js"
 import { sessionLocationOf, summaryOf } from "../../client/session/view-state.js"
 import { actionKey } from "../../client/action-key.js"
@@ -12,7 +12,7 @@ import { ToolbarBadges } from "./toolbar-badges.js"
 import { ComposerStatus } from "./composer-status.js"
 import { ContextGauge } from "./context-gauge.js"
 import { describeUpdateStatus } from "../../../../src/protocol/client/update-status-copy.js"
-import type { UpdateStatus } from "../../../../src/protocol/update-protocol-types.js"
+import type { UpdateStatus } from "../../../../src/protocol/runtime/update-protocol-types.js"
 
 /** The update states the toolbar chip shows: a release a person can take or
  *  restart into, whose remedy is opening Status. A release that could not

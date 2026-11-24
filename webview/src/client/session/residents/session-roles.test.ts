@@ -1,8 +1,8 @@
 import { test } from "node:test"
 import { strict as assert } from "node:assert"
 
-import type { FrontendEvent } from "../../../../../src/protocol/app-service-types.js"
-import { rolesCursor, type RoleAssignmentView, type RuntimeRoleSnapshotResult } from "../../../../../src/protocol/role-protocol-types.js"
+import type { FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
+import { rolesCursor, type RoleAssignmentView, type RuntimeRoleSnapshotResult } from "../../../../../src/protocol/auth/role-protocol-types.js"
 import { createHeldRoles } from "./session-roles.js"
 import { backgroundReads } from "../../../../../src/protocol/client/background-reads.js"
 import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"

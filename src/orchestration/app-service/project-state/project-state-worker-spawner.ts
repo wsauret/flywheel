@@ -2,7 +2,7 @@ import { createBoundedWorkerSpawner, WorkerRoleAlreadyLive } from "../../../infr
 import type { StoredFact } from "../../../infra/event-store-types.js"
 import { terminateWorker } from "../../../infra/worker-termination.js"
 import type { ProjectDirectories } from "../../../infra/directory-authorities.js"
-import type { StartupReached } from "../../../protocol/startup-steps.js"
+import type { StartupReached } from "../../../protocol/runtime/startup-steps.js"
 import type { SessionMetadataChange } from "../../session/manager.js"
 import { createProjectStateClient, ProjectStateUnavailableError, type ProjectStateClient } from "./project-state-client.js"
 import {

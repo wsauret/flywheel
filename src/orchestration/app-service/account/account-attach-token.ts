@@ -2,7 +2,7 @@ import { closeSync, constants, existsSync, linkSync, openSync, readFileSync, rmS
 import { dirname } from "node:path"
 import { Redacted } from "effect"
 
-import { newAccountAttachCredential } from "../../../protocol/account-attach.js"
+import { newAccountAttachCredential } from "../../../protocol/runtime/account-attach.js"
 import type { ServeLane } from "../../../infra/cli-subprocess.js"
 import { accountServeTokenPath } from "../../../infra/paths.js"
 import { ensurePrivateFile, ensurePrivateRootDirectory, PRIVATE_FILE_MODE } from "../../../infra/private-path.js"

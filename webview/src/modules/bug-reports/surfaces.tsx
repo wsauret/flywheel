@@ -1,5 +1,5 @@
 import { createSignal, onMount, Show } from "solid-js"
-import type { RuntimeFaultReportOutcome, RuntimeHealth } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeFaultReportOutcome, RuntimeHealth } from "../../../../src/protocol/runtime/app-service-types.js"
 import { useClient } from "../../app/client-context.js"
 import { Sheet } from "../../app/sheets/sheet.js"
 import { NOT_RELEASE_REPORT_STATUS, reportSentStatus, type BugReportInput, BUG_REPORT_COMMAND_NAME } from "../../../../src/protocol/modules/bug-reports.js"

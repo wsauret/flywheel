@@ -1,6 +1,6 @@
 import { Log } from "../../../../infra/log.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { blockIdentity } from "../../../../protocol/block-identity.js"
+import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 import type { CommandKeeper, KeptOutputChange } from "../../runtime/command-keeper.js"
 import type { OutputSequence } from "./output-sequence.js"
 import { projectFrontendOutputBlock } from "./frontend-output-blocks.js"

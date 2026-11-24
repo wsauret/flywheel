@@ -6,7 +6,7 @@ import { createAccountSocketRouter } from "../../../../src/orchestration/app-ser
 import { createProjectRuntime } from "../../../../src/orchestration/app-service/account/projects/project-runtime.js"
 import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime/runtime-ownership.js"
 import { runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
-import { encodeAccountAttach, newAccountAttachCredential } from "../../../../src/protocol/account-attach.js"
+import { encodeAccountAttach, newAccountAttachCredential } from "../../../../src/protocol/runtime/account-attach.js"
 
 const deferred = <T>() => Promise.withResolvers<T>()
 

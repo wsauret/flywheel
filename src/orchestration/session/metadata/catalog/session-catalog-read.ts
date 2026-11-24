@@ -1,7 +1,7 @@
 import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
 import type { BudgetSummary } from "./budget-summary.js"
 import type { DiffStatSummary } from "./diff-stat-summary.js"
-import type { SessionDiffStats } from "../../../../protocol/app-service-types.js"
+import type { SessionDiffStats } from "../../../../protocol/runtime/app-service-types.js"
 import type { DurableSessionCatalogError, DurableSessionCatalogRow, SessionMetadataCatalog } from "./session-catalog-types.js"
 import type { SessionDurationProjectionState } from "../../runtime-facts/session-duration-projection.js"
 import type { SessionForkRecord } from "../session-fork-projection.js"

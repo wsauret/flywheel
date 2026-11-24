@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path"
 
 import { runningSourceSnapshot, runsThroughBun, sourceCheckout, sourceSnapshotHome } from "../../../../infra/cli-subprocess.js"
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
-import { isClientIdentity } from "../../../../protocol/account-attach.js"
+import { isClientIdentity } from "../../../../protocol/runtime/account-attach.js"
 
 const BUILD_TIMEOUT_MS = 600_000
 

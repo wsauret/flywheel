@@ -15,7 +15,7 @@ import { buildSystemPrompt } from "../../../../../../src/orchestration/agent-run
 import { renderSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { fileTemporaryDirectory, temporaryDirectories } from "../../../../../helpers/directories.js";
 import { promptOptions } from "../../../../../helpers/prompt-capabilities.js";
-import { moduleDisabledReason } from "../../../../../../src/protocol/module-ids.js";
+import { moduleDisabledReason } from "../../../../../../src/protocol/runtime/module-ids.js";
 import { agentCapabilityCheck } from "../../../../../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
 import type { AgentDefinition } from "../../../../../../src/infra/agent-definition.js";

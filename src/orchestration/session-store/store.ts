@@ -7,7 +7,7 @@ import type { AnyBlock } from "../../infra/output-blocks.js"
 import { isVisibleMessageBlock } from "../../infra/output-blocks.js"
 import { probeLoopUnit } from "../../infra/event-loop-lag.js"
 import { EMPTY_OUTPUT_CHANGE_BATCH, NO_CHANGED_TOOLS, mergeOutputChangeBatches, type OutputChangeBatch } from "../../infra/output/output-block-delta.js"
-import type { AgentInputAnswers } from "../../protocol/question-protocol-types.js"
+import type { AgentInputAnswers } from "../../protocol/session/question-protocol-types.js"
 import type { ChatRunner } from "../chat/runner-types.js"
 import type {
   ConversationSessionEntry,

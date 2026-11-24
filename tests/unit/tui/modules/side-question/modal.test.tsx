@@ -4,7 +4,7 @@ import { sideQuestionProtocol, type SideQuestionView } from "../../../../../src/
 import type { DomainReader } from "../../../../../src/protocol/protocol-module.js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
-import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { TuiControllerHost } from "../../../../../src/tui/tui-module.js"
 import type { Renderable, TextareaRenderable, ScrollBoxRenderable as ScrollBox } from "@opentui/core"
 const { createSignal, createRoot } = await import("solid-js")

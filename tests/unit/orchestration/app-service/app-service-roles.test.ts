@@ -8,7 +8,7 @@ import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { ReplayedSession } from "../../../../src/orchestration/session/metadata/schemas.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
 

@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show, t
 import { Key } from "@solid-primitives/keyed"
 import { sessionChangeNamesPath, type ChangesUndoState, type SessionChangesController } from "../../../../../src/protocol/client/session-changes.js"
 import { pathInside, sessionChangeFolderLabel, sessionChangeDiffStatusLine, sessionChangePathLabel, sessionChangesRows, sessionChangeWritersLabel, undoResultLine, type SessionChangesRow } from "../../../../../src/protocol/client/session-changes-copy.js"
-import type { SessionChangeFile, SessionChangesResult } from "../../../../../src/protocol/session-changes-protocol-types.js"
+import type { SessionChangeFile, SessionChangesResult } from "../../../../../src/protocol/session/session-changes-protocol-types.js"
 import type { ChangesReviewTarget } from "../../../../../src/protocol/client/host-contract.js"
 import { changesLabel } from "../../../client/format/changes-label.js"
 import { FileDiff } from "../../transcript/blocks/text/file-diff.js"

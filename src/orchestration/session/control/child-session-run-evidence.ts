@@ -1,5 +1,5 @@
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
-import type { ChildSessionRow, StoppedBy, SubagentSessionAction } from "../../../protocol/app-service-types.js"
+import type { ChildSessionRow, StoppedBy, SubagentSessionAction } from "../../../protocol/runtime/app-service-types.js"
 import { installedChildSessionHistory } from "./module-session-operations.js"
 import type { ChildSessionRun } from "../../module-seams.js"
 import { readPlannedSessionContinuationAsync } from "./planned-session-continuation.js"

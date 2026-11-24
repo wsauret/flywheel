@@ -1,5 +1,5 @@
-import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
-import { formatQuestionChoiceAnswer, type AgentInputAnswer } from "../../../../src/protocol/question-protocol-types.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
+import { formatQuestionChoiceAnswer, type AgentInputAnswer } from "../../../../src/protocol/session/question-protocol-types.js"
 import { questionRecordState } from "../../../../src/protocol/client/question-settlement.js"
 
 /** The wire form of one answered question, derived at submit. */

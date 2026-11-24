@@ -3,7 +3,7 @@ import net from "node:net"
 import {
   createAccountAttachResponseReader,
   encodeAccountAttach,
-} from "../../../src/protocol/account-attach.js"
+} from "../../../src/protocol/runtime/account-attach.js"
 import type { HostMessage, ViewMessage } from "../../../src/protocol/client/editor-host.js"
 import type { RuntimeSocketTarget } from "../runtime/connection/node-socket.js"
 

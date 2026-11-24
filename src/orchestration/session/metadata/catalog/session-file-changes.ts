@@ -6,7 +6,7 @@ import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact 
 import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js"
 import { createOrderedLane } from "../../../../infra/ordered-lane.js"
 import { heldProjection } from "../../../../infra/projection-registry.js"
-import type { SessionFileChangeCounts } from "../../../../protocol/session-changes-protocol-types.js"
+import type { SessionFileChangeCounts } from "../../../../protocol/session/session-changes-protocol-types.js"
 import { isReviewableSessionFile } from "../../../../protocol/client/session-changes-copy.js"
 import type { FileMutationFact } from "../../file-mutations/file-mutation-facts.js"
 import { readChangeFact } from "./session-change-sources.js"

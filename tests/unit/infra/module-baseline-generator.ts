@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import type { AuthContext } from "../../../src/infra/auth/auth-context.js";
 import { composeFirstPartyModules, moduleSelectionFromConfig, normalizeModuleSelection } from "../../../src/orchestration/modules.js";
-import { MODULE_IDS } from "../../../src/protocol/module-ids.js";
+import { MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js";
 import { ToolActionSchema } from "../../../src/infra/workflow-types.js";
 import { toolRegistryFromComposition, type ToolRegistration } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import type { AdvertisedTool } from "../../../src/orchestration/agent-runtime/tools/types.js";

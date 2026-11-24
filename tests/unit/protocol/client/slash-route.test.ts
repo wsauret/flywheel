@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "bun:test"
 import { routeSlashToken, type CommandCatalogReadiness } from "../../../../src/protocol/client/slash-route.js"
-import { runtimeCallPolicies } from "../../../../src/protocol/runtime-client-deadlines.js"
+import { runtimeCallPolicies } from "../../../../src/protocol/rpc/runtime-client-deadlines.js"
 
 /** A client's catalog intake: nothing until `arrive` publishes the owners. */
 function catalog(initial: readonly string[] | undefined) {

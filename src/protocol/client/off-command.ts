@@ -1,4 +1,4 @@
-import type { OffCommandDescriptor } from "../command-catalog-protocol-types.js"
+import type { OffCommandDescriptor } from "../commands/command-catalog-protocol-types.js"
 
 /** The one refusal for a slash token that only a turned-off module provides,
  *  or undefined when no off command has that id or alias. The terminal, the

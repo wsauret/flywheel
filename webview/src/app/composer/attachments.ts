@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js"
 
-import type { ProtocolChatAttachment } from "../../../../src/protocol/app-service-types.js"
+import type { ProtocolChatAttachment } from "../../../../src/protocol/runtime/app-service-types.js"
 import {
   ACCEPTED_IMAGE_TYPES, ATTACHMENT_LIMITS, attachmentKind, attachmentMarker, attachmentRefusalMessage, base64ByteLength, bytesToBase64, decodeUtf8Text,
   nextAttachmentOrdinal, type AttachmentKind, type AttachmentRefusal,

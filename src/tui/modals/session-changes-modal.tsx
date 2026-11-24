@@ -3,7 +3,7 @@ import { createMemo, onCleanup, Show, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import type { MutationDiff } from "../../infra/mutation-diff.js"
 import type { DiffColorMode } from "../../orchestration/config/schema/schema.js"
-import type { SessionChangeFile } from "../../protocol/session-changes-protocol-types.js"
+import type { SessionChangeFile } from "../../protocol/session/session-changes-protocol-types.js"
 import type { SessionChangesModalControls, SessionChangesView } from "./session-changes-modal-types.js"
 import { useModalDimensions } from "../components/modal/use-modal-dimensions.js"
 import { useTheme } from "../context/theme.js"
@@ -12,7 +12,7 @@ import { ModalFrame } from "../components/modal/modal-frame.js"
 import { DiffPreview, parseDiffs } from "../transcript/output-blocks/tools/diff-preview.js"
 import { BOLD } from "../terminal/text-attributes.js"
 import { sessionChangeDiffStatusLine, sessionChangeFolderLabel, sessionChangePathLabel, sessionChangesLabel, sessionChangeWritersLabel, undoResultLine, type SessionChangesRow } from "../../protocol/client/session-changes-copy.js"
-import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../protocol/commands/command-names.js"
 
 const DIFF_ACTION = { added: "add", modified: "update", removed: "delete" } as const
 

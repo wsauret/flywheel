@@ -4,7 +4,7 @@ import { fileDiffFiles, removedDirectoryGroups, removedDirectoryLabel, type File
 import { renderCode } from "./markdown.js"
 import { patchMarkdownChildren } from "./markdown-dom.js"
 import { writeSyntaxPresentation } from "./write-syntax.js"
-import type { WriteSyntaxThemeId } from "../../../../../../src/protocol/write-syntax-theme.js"
+import type { WriteSyntaxThemeId } from "../../../../../../src/protocol/settings/write-syntax-theme.js"
 import type { MutationEvidenceHandle, MutationEvidenceReader, MutationFilesView, MutationPatchView } from "../../../../../../src/protocol/client/mutation-evidence.js"
 
 function languageFromPath(path?: string): string | undefined {

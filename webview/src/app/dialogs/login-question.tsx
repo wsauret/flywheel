@@ -1,5 +1,5 @@
 import { createEffect, createSignal, on, onCleanup, type Accessor } from "solid-js"
-import type { RuntimeAuthLoginQuestion, RuntimeAuthView } from "../../../../src/protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthLoginQuestion, RuntimeAuthView } from "../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { loginQuestions } from "../../../../src/protocol/client/auth-status-state.js"
 import { LOGIN_QUESTION_COPY } from "../../../../src/protocol/client/provider-account-copy.js"
 import type { ConfirmRequest } from "../client-context.js"

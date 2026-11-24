@@ -10,7 +10,7 @@ import {
 import { resolveRoles } from "../../../../src/orchestration/config/models/role-resolution.js";
 import { fakeModelsClient, tierAvailableModels, tierModelIds } from "../../../helpers/model-tier-fixtures.js";
 import { mergeProviderOptions } from "../../../../src/infra/llm/access/provider-options.js";
-import { MODULE_IDS } from "../../../../src/protocol/module-ids.js";
+import { MODULE_IDS } from "../../../../src/protocol/runtime/module-ids.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { profileRoleSettings } from "../../../../src/orchestration/config/env.js";
 import { USER_DATA_ROOT } from "./_config-models-fixtures.js";

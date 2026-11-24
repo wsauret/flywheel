@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"

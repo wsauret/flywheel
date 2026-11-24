@@ -8,7 +8,7 @@ import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-id
 import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath } from "../../../src/infra/paths.js"
 import { sweepPersistentSpools } from "../../../src/infra/persistent-spool.js"
 import { createProcessTemporaryDirectory, removeProcessTemporaryDirectory } from "../../../src/infra/process-temporary-directory.js"
-import { createAccountAttachResponseReader, encodeAccountAttach } from "../../../src/protocol/account-attach.js"
+import { createAccountAttachResponseReader, encodeAccountAttach } from "../../../src/protocol/runtime/account-attach.js"
 import { defaultRoleSlots } from "../../../src/orchestration/config/models/role-selection.js"
 import { ROLE_MODEL_DEFAULTS } from "../../../src/orchestration/config/models/role-model-defaults.js"
 import { stopHarnessProcesses } from "../../helpers/real-process-fixture.js"

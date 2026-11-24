@@ -9,10 +9,10 @@ import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liven
 import { ACCOUNT_DRAIN_HARD_EXIT_MS } from "../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
 import { serveLaneFor } from "../../../../src/infra/cli-subprocess.js"
 import { accountServeTokenPath } from "../../../../src/infra/paths.js"
-import { createAccountAttachReader } from "../../../../src/protocol/account-attach.js"
-import { encodeServeStartFailure, ServeStartupFailure } from "../../../../src/protocol/serve-handshake.js"
-import { startupPhase } from "../../../../src/protocol/startup-steps.js"
-import type { RuntimeStartupStatus } from "../../../../src/protocol/app-service-types.js"
+import { createAccountAttachReader } from "../../../../src/protocol/runtime/account-attach.js"
+import { encodeServeStartFailure, ServeStartupFailure } from "../../../../src/protocol/runtime/serve-handshake.js"
+import { startupPhase } from "../../../../src/protocol/runtime/startup-steps.js"
+import type { RuntimeStartupStatus } from "../../../../src/protocol/runtime/app-service-types.js"
 
 /** What a launched service is apart from its output: these cases read its
  *  stdout and never its error output. */

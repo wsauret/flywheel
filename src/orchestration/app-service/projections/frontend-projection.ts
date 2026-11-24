@@ -14,7 +14,7 @@ import type {
   SessionCatalogSnapshot,
   SessionRow,
   Unsubscribe,
-} from "../../../protocol/app-service-types.js"
+} from "../../../protocol/runtime/app-service-types.js"
 import type { RuntimeSummaryProjection } from "./catalog/runtime-summary-projection.js"
 
 const DEFAULT_MAX_SNAPSHOT_HZ = 20

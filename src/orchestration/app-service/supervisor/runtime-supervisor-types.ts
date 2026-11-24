@@ -2,7 +2,7 @@ import type { WorkflowController } from "../../workflow-host/lifecycle/controlle
 import type { SuccessorRows } from "../executor/project-executor-protocol.js"
 import type { CommandKeeper } from "../runtime/command-keeper.js"
 import type { ChildSessionReconciliation, ChildSessionReconciliationOptions } from "../../session/control/children/child-session-reconciliation.js"
-import type { SessionChangesUndo, SessionChangesUndoResult } from "../../../protocol/session-changes-protocol-types.js"
+import type { SessionChangesUndo, SessionChangesUndoResult } from "../../../protocol/session/session-changes-protocol-types.js"
 import type { ChatInputLike } from "../../../infra/chat-input.js"
 import type { ProjectDirectories } from "../../../infra/directory-authorities.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
@@ -10,12 +10,12 @@ import type { EventStoreRuntime } from "../../../infra/event-store-effect.js"
 import type { PublishedWorkflowLaunch } from "../../agent-runtime/tools/definitions/workflow-tool.js"
 import type { ChatRunnerDeps } from "../../chat/runner.js"
 import type { ChatRunner } from "../../chat/runner-types.js"
-import type { AgentInputAnswer } from "../../../protocol/question-protocol-types.js"
+import type { AgentInputAnswer } from "../../../protocol/session/question-protocol-types.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { SessionKind } from "../../session/metadata/types.js"
 import type { SessionStore } from "../../session-store/types.js"
 import type { SessionViewLoader } from "../../session-store/view.js"
-import type { SessionRuntimeView, SessionTitlePatch } from "../../../protocol/app-service-types.js"
+import type { SessionRuntimeView, SessionTitlePatch } from "../../../protocol/runtime/app-service-types.js"
 import type { ModuleServices } from "../../../infra/module-service.js"
 import type { ProjectDefinitionRegistry } from "../../../workflows/definitions/definition-registry.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
@@ -24,12 +24,12 @@ import type { ChildSessionControl } from "../../session/control/messaging/child-
 import type { PersistentProcessClient } from "../../../infra/persistent-process-manager.js"
 import type { BridgedPersistentProcessClient } from "../../../infra/persistent-process-bridge.js"
 import type { KeyResolver } from "../../../infra/auth/resolve-key.js"
-import type { WorkflowsMode } from "../../../protocol/module-protocol-types.js"
+import type { WorkflowsMode } from "../../../protocol/runtime/module-protocol-types.js"
 import type { ModulePolicy } from "../../config/policy/module-policy.js"
 import type { ModelWorkflowLaunchRequest, WorkflowLaunchRefusal } from "../../workflow-host/lifecycle/launch-origin.js"
 import type { TranscriptProjectionCache } from "../projections/output/transcript-projection-cache.js"
 import type { ChatRunnerLoader } from "./chat-runner-loader.js"
-import type { RecallInput, RecallResult } from "../../../protocol/conversation-recall.js"
+import type { RecallInput, RecallResult } from "../../../protocol/transcript/conversation-recall.js"
 import type { ControlInterruption, WorkflowInterruption } from "../../session/conversation/turn-end-record.js"
 import type { ContinuationLanes } from "../../session/control/planned-session-continuation.js"
 import type { ModuleRetainedOperationAuthority, RetainedOperationAcceptance } from "../../module-seams.js"
@@ -167,7 +167,7 @@ export interface RuntimeRunnerCapabilities {
 }
 
 export interface RuntimeSupervisor {
-  claimComposerReturns(sessionId: string, submissionIds: readonly string[]): Promise<import("../../../protocol/composer-returns.js").ClaimComposerReturnsResult>
+  claimComposerReturns(sessionId: string, submissionIds: readonly string[]): Promise<import("../../../protocol/transcript/composer-returns.js").ClaimComposerReturnsResult>
   reconcileChildSessionCompletions(parentSessionId: string): Promise<ChildSessionReconciliation>
   undoChanges(request: SessionChangesUndo): Promise<SessionChangesUndoResult>
   /** Opens a new chat. A name gives it that catalog name in place of

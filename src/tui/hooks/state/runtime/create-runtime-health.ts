@@ -1,5 +1,5 @@
 import { createSignal, onCleanup } from "solid-js"
-import type { RuntimeClient, RuntimeTransportHealth } from "../../../../protocol/app-service-types.js"
+import type { RuntimeClient, RuntimeTransportHealth } from "../../../../protocol/runtime/app-service-types.js"
 
 /**
  * Whether the runtime answers this terminal, as the connection reports it

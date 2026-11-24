@@ -2,7 +2,7 @@
 
 import { TOOL_PREVIEW_LINE_LIMIT, type DiffOmission, type ProvisionalDiffFile } from "@infra/output-blocks"
 import type { MutationDiff } from "@infra/mutation-diff.js"
-import { diffOmittedLinesForFile } from "../../../../protocol/diff-omission.js"
+import { diffOmittedLinesForFile } from "../../../../protocol/transcript/diff-omission.js"
 import { RGBA, ScrollBoxRenderable, StyledText, bg as stBg, fg as stFg, type BoxRenderable, type TextChunk } from "@opentui/core"
 import { renderHunk, renderTypedDiffRows, type DiffSyntaxHighlighter } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff, type Hunk, type TypedDiffRow } from "@tui/adapters/diff-parser"

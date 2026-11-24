@@ -1,5 +1,5 @@
 import { createComponent, createRoot } from "solid-js"
-import type { RuntimeHealth } from "../../../src/protocol/app-service-types.js"
+import type { RuntimeHealth } from "../../../src/protocol/runtime/app-service-types.js"
 import type { LocalChatSubmission } from "../../../src/protocol/client/chat-submissions.js"
 import type { ProviderSetup } from "../../../src/protocol/client/provider-setup.js"
 import type { SessionMemory } from "../client/session/residents/session-residents.js"
@@ -13,7 +13,7 @@ import type { WebModule } from "../web-module.js"
 import type { HistoryEntryState } from "./screens/screen-stack.js"
 import { App, type AppProps } from "./app.js"
 import { WEB_MODULES } from "../modules.js"
-import type { ModuleId } from "../../../src/protocol/module-ids.js"
+import type { ModuleId } from "../../../src/protocol/runtime/module-ids.js"
 import { createElement, insert, MemoryElement, nodes, textContent } from "../test-support/render-ownership-host-fixture.js"
 
 /** A held project and a host that can publish real placement and auth changes. */

@@ -7,7 +7,7 @@ import { createModalScrollController } from "../../../../../src/tui/components/m
 import { projectNotificationsTui } from "../../../../../src/tui/modules/project-notifications/index.js"
 import { notificationCursor, resetNotificationCursor } from "../../../../../src/tui/modules/project-notifications/list.js"
 import type { TuiSurfaceHost } from "../../../../../src/tui/tui-module.js"
-import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
 
 const [surface] = projectNotificationsTui.surfaces

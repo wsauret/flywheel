@@ -1,10 +1,10 @@
 import { describe, expect, it, jest, spyOn } from "bun:test"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
-import { RuntimeCallTimeout } from "../../../../src/protocol/runtime-client-deadlines.js"
-import type { FrontendEvent, SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
-import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
+import { RuntimeCallTimeout } from "../../../../src/protocol/rpc/runtime-client-deadlines.js"
+import type { FrontendEvent, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
+import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import { createRuntimeUiPatchSequencer, type RuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
-import { sessionCursor, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import { sessionCursor, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatch } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { createFamilyIntake, type FamilyIntakeOptions } from "../../../../src/protocol/client/family-intake.js"
 
 interface Snapshot {

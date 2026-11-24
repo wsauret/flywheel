@@ -14,7 +14,7 @@ import { childSessionProjectionAttachment } from "../../session-store/child-sess
 import type { RuntimeOwnership } from "../runtime/runtime-ownership.js"
 import { startupTrace } from "../../../infra/startup-trace.js"
 import { createRuntimeUiBus, type RuntimeUiBus } from "../projections/runtime-ui-bus.js"
-import type { RuntimeUiPatch } from "../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { createTranscriptProjectionCache, type TranscriptProjectionCache } from "../projections/output/transcript-projection-cache.js"
 import { createFrontendProjections } from "../projections/frontend-projections.js"
 import type { RuntimeBackgroundLane } from "../background/runtime-background-lane.js"

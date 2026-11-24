@@ -4,7 +4,7 @@ import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-st
 import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { createProjectNotificationJournal } from "../../../../../src/orchestration/modules/project-notifications/journal.js"
 import { createProjectNotificationPublisher } from "../../../../../src/orchestration/modules/project-notifications/publisher.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"

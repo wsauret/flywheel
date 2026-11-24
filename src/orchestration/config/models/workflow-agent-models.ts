@@ -1,4 +1,4 @@
-import { type BriefDefaultFields, briefDefaultRoleId, briefPersonaRoleId, briefRoleId } from "../../../protocol/brief-role-id.js"
+import { type BriefDefaultFields, briefDefaultRoleId, briefPersonaRoleId, briefRoleId } from "../../../protocol/auth/brief-role-id.js"
 import type { AgentDefinition } from "../../../infra/agent-definition.js"
 import type { ResolvedAgent } from "../../../workflows/definitions/agent-resolution.js"
 import { agentRecords, type AgentRecordKeys, type WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"

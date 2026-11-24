@@ -9,7 +9,7 @@ import { createPapercutsProtocol } from "../../../../src/orchestration/modules/p
 import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
 import { composeModuleProtocolRuntimes, type ModuleProtocolServices } from "../../../../src/orchestration/app-service/module-protocol-host.js"
 import { papercutsModule } from "../../../../src/orchestration/modules/papercuts.js"
-import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"

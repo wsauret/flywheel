@@ -1,6 +1,6 @@
 import { createEffect, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
 import { createStore, produce, unwrap } from "solid-js/store"
-import type { AttachedRuntimeClient } from "../../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import {
   backgroundIndexState,
   createBackgroundIndexReadings,

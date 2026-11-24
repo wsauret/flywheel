@@ -2,7 +2,7 @@
 
 import type { TextBlock as TextBlockType } from "@infra/output-blocks"
 import { useLandingBackground } from "@tui/context/transcript/landing-highlight.js"
-import { blockEntryKeys, blockIdentity } from "../../../../protocol/block-identity.js"
+import { blockEntryKeys, blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 import { BlockFrame } from "../block-frame.js"
 import { MarkdownBody } from "../markdown/markdown-body.js"
 

@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { ToolStreamingText } from "@infra/output-blocks"
-import { blockIdentity } from "../../../../protocol/block-identity.js"
+import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 import { getToolDisplay } from "@infra/tools/tool-display-registry.js"
 import { StyledText, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { displayWidth } from "@tui/terminal/text.js"

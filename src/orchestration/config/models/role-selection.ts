@@ -1,9 +1,9 @@
 import { deslugify } from "../../../infra/canonical-name.js";
 import type { AttemptRow } from "../../../workflows/view/types.js";
 import { AGENT_ROLE_IDS, AUX_ROLE_IDS, DEFAULT_ROLES, parentRoleId, type ResolvedRole, type ResolvedRoles, type RoleId, TOP_LEVEL_ROLE_IDS } from "../roles.js";
-import { parseBriefRoleId, briefPersonaRoleId } from "../../../protocol/brief-role-id.js";
-import { activeServingSeat } from "../../../protocol/active-serving-seat.js";
-import type { ModelSelectionSlot } from "../../../protocol/model-assignment-protocol-types.js";
+import { parseBriefRoleId, briefPersonaRoleId } from "../../../protocol/auth/brief-role-id.js";
+import { activeServingSeat } from "../../../protocol/auth/active-serving-seat.js";
+import type { ModelSelectionSlot } from "../../../protocol/auth/model-assignment-protocol-types.js";
 
 /** The model selection slot one role occupies. */
 export function roleSlot(roleId: RoleId): ModelSelectionSlot {

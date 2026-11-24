@@ -1,5 +1,5 @@
 import { createEffect, createMemo, on, untrack } from "solid-js"
-import type { ProtocolChatInputObject } from "../../../../../src/protocol/app-service-types.js"
+import type { ProtocolChatInputObject } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createComposerDrafts } from "./composer-drafts.js"
 import type { SessionMemory } from "../../../client/session/residents/session-residents.js"
 

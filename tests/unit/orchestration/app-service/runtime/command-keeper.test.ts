@@ -21,7 +21,7 @@ import { readOutputSequence } from "../../../../../src/orchestration/app-service
 import { chatEntry } from "../_frontend-projection-fixtures.js"
 import { createKeptOutputProjection } from "../../../../../src/orchestration/app-service/projections/output/kept-output-projection.js"
 import { createShippedOutput } from "../../../../../src/orchestration/app-service/projections/output/shipped-output.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 const temporaryDirectory = temporaryDirectories()
 const jobs = createPrivateCopyJobs()

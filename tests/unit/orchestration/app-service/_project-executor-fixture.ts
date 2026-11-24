@@ -7,7 +7,7 @@ import type { ProcessorAdmission } from "../../../../src/orchestration/app-servi
 import { decodeProjectExecutorCommand, decodeProjectExecutorInitialization, encodeProjectExecutorCredential } from "../../../../src/orchestration/app-service/executor/project-executor-protocol.js"
 import { createProjectStateClient } from "../../../../src/orchestration/app-service/project-state/project-state-client.js"
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
-import type { RuntimeChatDefault } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeChatDefault } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createLoginShellPath, type LoginShellPath } from "../../../../src/infra/login-shell-path.js"
 import type { ProcessDiagnosticRecord } from "../../../../src/infra/process-diagnostic-reader.js"
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import type { RuntimeConfigView } from "../../../../../src/protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigView } from "../../../../../src/protocol/settings/runtime-config-protocol-types.js"
 import { createTranscriptVisibilityRefresh } from "../../../../../src/tui/hooks/transcript/create-transcript-visibility-refresh.js"
 import { createOutputTranscriptCache } from "../../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { configValues } from "../../modals/settings/_settings-modal-fixtures.js"

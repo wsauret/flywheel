@@ -43,7 +43,7 @@ import type { ModuleState } from "../../config/module-descriptor.js"
 import { moduleRequirementsForContribution } from "../../module-requirements.js"
 import { parentRoleId } from "../../config/roles.js"
 
-import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/module-ids.js"
+import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/runtime/module-ids.js"
 const log = Log.create({ service: "definition-availability" })
 
 /** What one definition needs, what it lacks, and how it may be invoked. */

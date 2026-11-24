@@ -6,7 +6,7 @@ import { workflowCallSource, workflowSource, workflowSourceLabel, type WorkflowC
 import type { ToolOutcome } from "../../../../infra/tool-outcome.js";
 import type { AgentFailureDisplay } from "../../../../infra/output-blocks.js";
 import type { BackgroundKillSource, BackgroundWorkResult, ChildInterruption } from "../../background-work/background-work-types.js";
-import type { WorkflowsMode } from "../../../../protocol/module-protocol-types.js";
+import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js";
 import {
   NO_WORKFLOW_DIRECTORY,
   type ModelWorkflowLaunchContext,

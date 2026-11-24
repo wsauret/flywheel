@@ -5,7 +5,7 @@ import type { ContextAdmission } from "../../../../agent-runtime/compaction/comp
 import type { ToolOutcome } from "../../../../../infra/tool-outcome.js"
 import { errorMessage } from "../../../../../infra/error-message.js"
 import { Schema } from "effect"
-import type { ModuleId } from "../../../../../protocol/module-ids.js"
+import type { ModuleId } from "../../../../../protocol/runtime/module-ids.js"
 import type { SubagentDispatchDeps } from "./dispatch-deps.js"
 import type { ChildSessionResumeAttempt } from "../../../../module-seams.js"
 import { readSubagentRuns } from "../../history/subagent-run-projection.js"

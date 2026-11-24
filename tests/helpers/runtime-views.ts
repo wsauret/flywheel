@@ -1,11 +1,11 @@
-import type { FrontendOutputBlock, SessionRow } from "../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock, SessionRow } from "../../src/protocol/runtime/app-service-types.js"
 import type { ProcessStatus } from "../../src/protocol/client/transcript-model.js"
-import type { RuntimeModulesView } from "../../src/protocol/module-protocol-types.js"
+import type { RuntimeModulesView } from "../../src/protocol/runtime/module-protocol-types.js"
 import type { WorkflowDetail } from "../../src/protocol/modules/workflows.js"
-import type { RuntimeConfigValues, RuntimeConfigView } from "../../src/protocol/runtime-config-protocol-types.js"
-import type { RuntimeSessionDetailView } from "../../src/protocol/session-detail-protocol-types.js"
-import type { StatusView } from "../../src/protocol/status-protocol-types.js"
-import type { OutputWindowSnapshot } from "../../src/protocol/transcript-protocol-types.js"
+import type { RuntimeConfigValues, RuntimeConfigView } from "../../src/protocol/settings/runtime-config-protocol-types.js"
+import type { RuntimeSessionDetailView } from "../../src/protocol/session/session-detail-protocol-types.js"
+import type { StatusView } from "../../src/protocol/session/status-protocol-types.js"
+import type { OutputWindowSnapshot } from "../../src/protocol/transcript/transcript-protocol-types.js"
 
 /** A session's status with `activity` and nothing else running. */
 export function statusView(activity: StatusView["activity"] = "idle"): StatusView {

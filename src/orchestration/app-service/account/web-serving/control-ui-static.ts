@@ -1,6 +1,6 @@
 import { realpath, stat } from "node:fs/promises"
 import { extname, isAbsolute, posix, relative, resolve, win32 } from "node:path"
-import { CLIENT_IDENTITY_PATTERN } from "../../../../protocol/client-identity.js"
+import { CLIENT_IDENTITY_PATTERN } from "../../../../protocol/runtime/client-identity.js"
 import type { ControlUiAssetState } from "./control-ui-assets"
 import { applyControlUiSecurityHeaders } from "./control-ui-csp"
 import { acceptsControlUiHtmlResponse, isReadHttpMethod, respondNotFound, respondPlainText } from "./control-ui-http-utils"

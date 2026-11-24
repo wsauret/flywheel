@@ -7,7 +7,7 @@ import { accountServeStartRecordPath } from "../../../../src/infra/paths.js"
 import type { LauncherContext } from "../../../../src/infra/process-supervisor.js"
 import { ServeLifetime } from "../../../../src/orchestration/app-service/account/serve-lifetime.js"
 import { admitServiceStart } from "../../../../src/orchestration/update/service-start.js"
-import { createServeStatusReader } from "../../../../src/protocol/serve-handshake.js"
+import { createServeStatusReader } from "../../../../src/protocol/runtime/serve-handshake.js"
 import { placeBuild } from "../../../helpers/placed-build.js"
 import { socketTemporaryRoot } from "../../../helpers/directories.js"
 

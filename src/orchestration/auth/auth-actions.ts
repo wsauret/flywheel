@@ -6,7 +6,7 @@
  * a fresh AuthContext snapshot.
  */
 
-import type { AuthAccountAttention, AuthProviderAttention } from "../../protocol/auth-status-protocol-types.js";
+import type { AuthAccountAttention, AuthProviderAttention } from "../../protocol/auth/auth-status-protocol-types.js";
 import { Redacted } from "effect";
 import { oauthCredentialDto, resolveAuthContext, runtimeCredential, type AuthContext } from "../../infra/auth/auth-context.js";
 import type { AuthProfileAccess } from "../../infra/auth/store/auth-profile-store.js";

@@ -12,7 +12,7 @@ import { verifyAuthoredWorkflow, verifyInstantiatedWorkflow, verifyRecoveredWork
 import { CorruptEventRowError, type StoredFact } from "../../../../infra/event-store-types.js"
 import { openReadonlyEventReader } from "../../../../infra/sqlite-event-store.js"
 import { resolveEventStoreDbFile } from "../../../../infra/paths.js"
-import type { WorkflowTree, WorkflowTreeJoin, WorkflowTreePhase } from "../../../../protocol/workflow-view-protocol-types.js"
+import type { WorkflowTree, WorkflowTreeJoin, WorkflowTreePhase } from "../../../../protocol/session/workflow-view-protocol-types.js"
 import { loadAccumulatedContextFromEvents } from "../../../../workflows/context-bundle/context-projection.js"
 import { describeWorkflowRecoveryDegradation, recoverWorkflowControl } from "../../../../workflows/vm/recovery/recovery.js"
 import { parseWorkflowSessionFact, workflowAggregateId } from "../../../../workflows/vm/facts/session-facts.js"

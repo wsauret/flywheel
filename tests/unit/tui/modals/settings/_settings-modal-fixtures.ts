@@ -3,22 +3,22 @@ import type { ModuleRow, ModuleRowAction } from "../../../../../src/protocol/pro
 import { createSignal } from "solid-js"
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
 import { testDirectories } from "../../../../helpers/directories.js"
-import type { UpdateStatusView } from "../../../../../src/protocol/update-protocol-types.js"
+import type { UpdateStatusView } from "../../../../../src/protocol/runtime/update-protocol-types.js"
 import { createSettingsStore, type SettingsOperations } from "../../../../../src/tui/hooks/state/create-settings-store.js"
 import { useSettingsModal, type SettingsModalHook } from "../../../../../src/tui/hooks/overlays/modals/settings/use-settings-modal.js"
 import { createAuthProfileSelection } from "../../../../../src/tui/hooks/overlays/modals/profile/auth-profile-selection.js"
-import type { RuntimeModulesView, WorkflowsMode } from "../../../../../src/protocol/module-protocol-types.js"
-import type { RuntimeAuthView } from "../../../../../src/protocol/auth-status-protocol-types.js"
-import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
-import type { RuntimeAuthProfileMutation, RuntimeAuthProfileMutationResult } from "../../../../../src/protocol/auth-profile-selection-protocol-types.js"
+import type { RuntimeModulesView, WorkflowsMode } from "../../../../../src/protocol/runtime/module-protocol-types.js"
+import type { RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
+import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeAuthProfileMutation, RuntimeAuthProfileMutationResult } from "../../../../../src/protocol/auth/auth-profile-selection-protocol-types.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
 import { MODULE_PRESETS, effectiveModuleIds as effectiveSelection, normalizeModuleSelection, moduleProtocolRows, workflowsModeOf, type ModuleId } from "../../../../../src/orchestration/modules.js"
 import { decodeModuleState } from "../../../../../src/orchestration/config/module-descriptor.js"
 import type { SettingsRow } from "../../../../../src/tui/modals/settings/settings-modal-types.js"
 import type { SettingsDestination } from "../../../../../src/tui/modals/settings/settings-destination.js"
-import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigValues, RuntimeConfigView } from "../../../../../src/protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigValues, RuntimeConfigView } from "../../../../../src/protocol/settings/runtime-config-protocol-types.js"
 
-import { canonicalModuleIds, MODULE_IDS, persistedDisabledModuleIds } from "../../../../../src/protocol/module-ids.js"
+import { canonicalModuleIds, MODULE_IDS, persistedDisabledModuleIds } from "../../../../../src/protocol/runtime/module-ids.js"
 export const DIRECTORIES = testDirectories(process.cwd())
 const launcher: import("../../../../../src/infra/process-supervisor.js").LauncherScope = {
   spawnOwned: () => { throw new Error("no process launch in this test") },
@@ -245,7 +245,7 @@ export function createModal(options: {
     "auth.profile.select": dispatch, "auth.profile.create": dispatch, "auth.profile.rename": dispatch,
     "auth.profile.bind_current_project": dispatch, "auth.profile.unbind_current_project": dispatch, "auth.profile.delete": dispatch,
   })
-  const query = mock(async (): Promise<import("../../../../../src/protocol/auth-profile-selection-protocol-types.js").RuntimeAuthProfileDeletionPreview> => ({ kind: "automatic", source: { id: "work", displayName: "Work" }, successor: { id: "default", displayName: "Default" } }))
+  const query = mock(async (): Promise<import("../../../../../src/protocol/auth/auth-profile-selection-protocol-types.js").RuntimeAuthProfileDeletionPreview> => ({ kind: "automatic", source: { id: "work", displayName: "Work" }, successor: { id: "default", displayName: "Default" } }))
   const [config, publishConfig] = createSignal<RuntimeConfigView>({
     revision: 1,
     values: configValues({

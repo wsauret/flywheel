@@ -1,5 +1,5 @@
 import type { GoneProof, HolderState, ProcessHolder } from "../../infra/process-holder.js"
-import type { ServeStartRefusal } from "../../protocol/serve-handshake.js"
+import type { ServeStartRefusal } from "../../protocol/runtime/serve-handshake.js"
 import { refusesAccess, type RendezvousProbe } from "./runtime-attach.js"
 import type { RuntimeIdentity } from "./runtime-identity-record.js"
 

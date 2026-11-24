@@ -1,4 +1,4 @@
-import type { ModuleId } from "../../../src/protocol/module-ids.js"
+import type { ModuleId } from "../../../src/protocol/runtime/module-ids.js"
 
 /** The kernel's actions that a control can wait on. A typed name lets the
  *  control that reads a working state and the action that records it agree:

@@ -60,7 +60,7 @@ describe("check-module-containment", () => {
       "src/orchestration/modules/gizmo/runtime.ts": 'export const kind = "gizmo"\n',
       "src/tui/modules/gizmo/strip.tsx": 'export const id = "gizmo"\n',
       "src/orchestration/modules.ts": 'export const ids = ["gizmo", "widget"]\n',
-      "src/protocol/module-ids.ts": 'export const MODULE_IDS = ["gizmo", "widget"] as const\n',
+      "src/protocol/runtime/module-ids.ts": 'export const MODULE_IDS = ["gizmo", "widget"] as const\n',
     });
     expect(summary(report)).toEqual([]);
   });

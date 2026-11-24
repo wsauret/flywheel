@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
-import type { HydratedOutputRange, RuntimeTranscriptWindow, OutputRangeRequest } from "../../../../../src/protocol/transcript-protocol-types.js"
+import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { HydratedOutputRange, RuntimeTranscriptWindow, OutputRangeRequest } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import type { SessionPreviewAppService, SessionPreviewReader } from "../../../../../src/tui/modals/session-picker/use-session-preview.js"
 import { hydrateDerivedOutputRange } from "../../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"

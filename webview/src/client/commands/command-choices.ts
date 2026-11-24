@@ -1,4 +1,4 @@
-import type { BuiltInCommandDescriptor, CommandSurfaceTarget, OffCommandDescriptor, RuntimeCommandCatalog } from "../../../../src/protocol/command-catalog-protocol-types.js"
+import type { BuiltInCommandDescriptor, CommandSurfaceTarget, OffCommandDescriptor, RuntimeCommandCatalog } from "../../../../src/protocol/commands/command-catalog-protocol-types.js"
 import type { CommandCatalogReadiness } from "../../../../src/protocol/client/slash-route.js"
 
 /** This client's copy of the runtime's command catalog. */

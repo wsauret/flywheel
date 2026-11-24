@@ -2,8 +2,8 @@ import { Redacted } from "effect"
 import { Key } from "@solid-primitives/keyed"
 import { createEffect, createMemo, createSignal, For, on, onCleanup, Show, type Accessor } from "solid-js"
 
-import type { RuntimeAuthLoginResult } from "../../../../../src/protocol/auth-login-protocol-types.js"
-import type { AuthProviderStatus, RuntimeAuthLoginQuestion } from "../../../../../src/protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthLoginResult } from "../../../../../src/protocol/auth/auth-login-protocol-types.js"
+import type { AuthProviderStatus, RuntimeAuthLoginQuestion } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { awaitsSettlement, initialLoginStep, keptFreePlanMessage, loginConfirmation, loginOutcome, loginSettlement, REPLACING_FREE_PLAN, type LoginStep, type LoginTarget } from "../../../../../src/protocol/client/auth-login.js"
 import { actionKey } from "../../../client/action-key.js"
 import { describeFailure } from "../../../client/format/failure-message.js"
@@ -14,7 +14,7 @@ import { useClient } from "../../client-context.js"
 import { Sheet, SheetEmpty, SheetLoading, SheetRow } from "../sheet.js"
 import { SheetField } from "../controls.js"
 import "../../../styles/providers.css"
-import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/commands/command-names.js"
 
 /** Authentication: who Flywheel can ask for a turn, and on what terms.
  *

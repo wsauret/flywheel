@@ -1,5 +1,5 @@
 import { summaryLine } from "../../../infra/summary-line.js";
-import type { WorkflowTree, WorkflowTreeAgent, WorkflowTreeDisposition, WorkflowTreeJoin, WorkflowTreeLoop, WorkflowTreeNode, WorkflowTreePhase } from "../../../protocol/workflow-view-protocol-types.js";
+import type { WorkflowTree, WorkflowTreeAgent, WorkflowTreeDisposition, WorkflowTreeJoin, WorkflowTreeLoop, WorkflowTreeNode, WorkflowTreePhase } from "../../../protocol/session/workflow-view-protocol-types.js";
 import { followUpForAttempt, forBodyRemainder } from "../transitions/attempt-continuation.js";
 import { whileOutcome } from "../graph/loop-signal.js";
 import type { CommittedWorkflowControl } from "../facts/committed-control.js";

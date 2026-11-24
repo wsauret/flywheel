@@ -27,7 +27,7 @@ import { composeFirstPartyModules, effectiveModuleIds, SHIPPED_MODULES, workflow
 import { reviewInstruction } from "../../../../src/orchestration/modules/learning/review/learning-review-prompts.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js";
-import type { ModuleId } from "../../../../src/protocol/module-ids.js";
+import type { ModuleId } from "../../../../src/protocol/runtime/module-ids.js";
 import { personaInstructions } from "../../../../src/workflows/agents/persona-instructions.js";
 import { grantedSubagentTypes, personaToolNames } from "../../../../src/workflows/agents/subagent-reachability.js";
 import { createProjectDefinitionRegistry } from "../../../../src/workflows/definitions/definition-registry.js";

@@ -1,6 +1,6 @@
 import { errorMessage } from "../../infra/error-message.js"
 import { CANCELED_LABEL, PARENT_CANCELED_LABEL, PARTIAL_LABEL, STOPPED_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/output/run-labels.js"
-import type { AttachedRuntimeClient } from "../app-service-types.js"
+import type { AttachedRuntimeClient } from "../runtime/app-service-types.js"
 import {
   backgroundCursor,
   isBackgroundPayload,
@@ -8,7 +8,7 @@ import {
   type BackgroundWorkProgress,
   type BackgroundWorkRow,
   type BackgroundWorkStatus,
-} from "../background-index-protocol-types.js"
+} from "../session/background-index-protocol-types.js"
 import { lostWithLane } from "./connection-failures.js"
 import { releaseAfterLastRead } from "./held-read-release.js"
 import { formatDuration } from "./format.js"

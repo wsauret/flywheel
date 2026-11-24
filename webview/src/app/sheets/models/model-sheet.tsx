@@ -1,10 +1,10 @@
 import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import { CHAT_SLOT } from "../../../client/session/residents/active-model.js"
-import { isProfileModelRole } from "../../../../../src/protocol/brief-role-id.js"
+import { isProfileModelRole } from "../../../../../src/protocol/auth/brief-role-id.js"
 import { summaryOf } from "../../../client/session/view-state.js"
 
-import type { EffortOptionRow, ModelAssignmentRow, ModelOptionRow, ModelTier } from "../../../../../src/protocol/model-assignment-protocol-types.js"
+import type { EffortOptionRow, ModelAssignmentRow, ModelOptionRow, ModelTier } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js"
 import { actionKey } from "../../../client/action-key.js"
 import { describeFailure } from "../../../client/format/failure-message.js"
 import { useClient } from "../../client-context.js"

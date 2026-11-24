@@ -7,7 +7,7 @@ import { connectProjectExecutionChannel, serveProjectExecutionChannel } from "..
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { createShippedOutput } from "../../../../src/orchestration/app-service/projections/output/shipped-output.js"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { batch, outputProjectionRuntime, textBlock, upsertChange } from "./_output-projection-fixtures.js"
 import { endpointPair, markerPosition } from "./project-execution-channel-fixtures.js"
 import { never } from "./_project-control-client-fixture.js"

@@ -2,7 +2,7 @@
 
 import { Key } from "@solid-primitives/keyed"
 import { createMemo, Show, type Accessor, type JSX } from "solid-js"
-import type { FrontendOutputBlock } from "../../../protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../protocol/runtime/app-service-types.js"
 import { BlockRenderer, type BlockRendererProps } from "./block-renderer.js"
 import { Divider } from "./system-block.js"
 import { terminalTranscript, visibleBlockIdentity, type PresentedTerminalRow } from "./visible-output-blocks.js"

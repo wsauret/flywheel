@@ -1,7 +1,7 @@
 import { observeGitDirectory } from "../../../../infra/env-detection.js"
 import { Log } from "../../../../infra/log.js"
-import { gitCursor, type GitDirectoryView, type GitView } from "../../../../protocol/git-protocol-types.js"
-import type { RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
+import { gitCursor, type GitDirectoryView, type GitView } from "../../../../protocol/git/git-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 
 const log = Log.create({ service: "git-projection" })
 

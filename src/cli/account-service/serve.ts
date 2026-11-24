@@ -19,7 +19,7 @@ import type { PersistentProcessManager } from "../../infra/persistent-process-ma
 import { createProcessWatchdog, type ProcessWatchdog } from "../../infra/process-watchdog.js"
 import { shutdownSignals } from "../../infra/shutdown-signals.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../protocol/runtime-liveness.js"
-import { encodeServeStartFailure, encodeServeStatusRecord, ServeStartupFailure, startHeldByHost, type ServeStartRefusal } from "../../protocol/serve-handshake.js"
+import { encodeServeStartFailure, encodeServeStatusRecord, ServeStartupFailure, startHeldByHost, type ServeStartRefusal } from "../../protocol/runtime/serve-handshake.js"
 import { readOrCreateAccountAttachToken } from "../../orchestration/app-service/account/account-attach-token.js"
 import { createAccountProjectRegistry } from "../../orchestration/app-service/account/account-project-registry.js"
 import { createAccountServiceRuntime, type AccountServiceRuntimeOptions } from "../../orchestration/app-service/account/account-service-runtime.js"

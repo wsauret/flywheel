@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { Redacted, Schema } from "effect"
-import { RuntimeQuerySchema, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeQuerySchema, runtimeQueryResultSchema } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"

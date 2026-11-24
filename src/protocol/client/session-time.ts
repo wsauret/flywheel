@@ -1,4 +1,4 @@
-import type { StatusView } from "../status-protocol-types.js"
+import type { StatusView } from "../session/status-protocol-types.js"
 
 /** An active time at `now`: the time worked before the open episode, plus
  *  the open episode up to `now` while one runs. An interrupt or a wait for a

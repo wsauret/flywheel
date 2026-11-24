@@ -1,5 +1,5 @@
 import { createComponent, createRoot } from "solid-js"
-import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { McpStatusRow } from "../../../../src/protocol/modules/mcp.js"
 import { fakeClient, fakeClientActions, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"
 import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"

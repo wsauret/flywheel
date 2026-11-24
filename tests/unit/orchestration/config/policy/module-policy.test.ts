@@ -7,7 +7,7 @@ import { startModulePolicy, type ModulePolicy, type RunModuleSelection } from ".
 import { decodeModuleState, defaultModuleState, type ModuleState } from "../../../../../src/orchestration/config/module-descriptor.js";
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js";
 
-import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";
+import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js";
 async function withConfig(source: string, run: (configPath: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "flywheel-capability-policy-"));
   const configPath = join(dir, "flywheel.toml");

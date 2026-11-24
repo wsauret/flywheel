@@ -2,7 +2,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join, resolve, sep } from "node:path";
 import { Schema } from "effect";
-import { decodeExecutionEvidence, type ExecutionEvidence } from "../../src/protocol/execution-evidence.js";
+import { decodeExecutionEvidence, type ExecutionEvidence } from "../../src/protocol/session/execution-evidence.js";
 import { CampaignAttemptSchema } from "./campaign-store.js";
 
 /** One span of a cell: chat, one workflow agent, one ordinary subagent, or background work. Times are milliseconds

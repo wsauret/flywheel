@@ -19,7 +19,7 @@
 
 import type { AsyncEventStateReadSurface, GuardedAppendResult } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
-import type { AgentInputAnswer } from "../../../protocol/question-protocol-types.js"
+import type { AgentInputAnswer } from "../../../protocol/session/question-protocol-types.js"
 import type { AgentInputDecision, AgentInputFact } from "./agent-input-facts.js"
 import { agentInputConsumedFact } from "./agent-input-facts.js"
 import { loadAgentInputProjection, type AgentInputEntry } from "./agent-input-projection.js"

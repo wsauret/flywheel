@@ -11,7 +11,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
 import { readOutputSequence } from "../../../../src/orchestration/app-service/projections/output/output-sequence.js"
 import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { chatEntry, fakeSessionStore } from "./app-service-doubles.js"

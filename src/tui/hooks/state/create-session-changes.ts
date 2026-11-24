@@ -1,5 +1,5 @@
 import { createEffect, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
-import type { AttachedRuntimeClient } from "../../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { createSessionChangesController } from "../../../protocol/client/session-changes.js"
 import type { SessionChangesView } from "../../modals/session-changes-modal-types.js"
 

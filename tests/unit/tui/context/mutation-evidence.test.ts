@@ -1,6 +1,6 @@
 import { expect, it, mock } from "bun:test"
 import { createComponent, createEffect, createRoot, createSignal } from "solid-js"
-import type { RuntimeQuery } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeQuery } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createMutationEvidenceReader, type MutationEvidenceReader } from "../../../../src/protocol/client/mutation-evidence.js"
 import { MutationEvidenceProvider, useMutationEvidence, type OpenMutationEvidence } from "../../../../src/tui/context/mutation-evidence.js"
 import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"

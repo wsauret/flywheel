@@ -1,10 +1,10 @@
 /** @jsxImportSource @opentui/solid */
 
 import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry as ToolEntryType, type ToolStreamingText } from "@infra/output-blocks"
-import { blockIdentity } from "../../../../protocol/block-identity.js"
+import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 import { toolActivity, toolProcess } from "../../../../protocol/client/transcript-model.js"
 import { conflictMarkersNotice, isShellMutationEntry, isShellMutationRunning, notAppliedNotice, presentsAsFileChange, rowPresentation, rowWritePolicy, selectFileChangeBody, shellMutationFiles, showsShellMutationOutput } from "../../../../protocol/client/file-change-body.js"
-import { totalDiffOmittedLines } from "../../../../protocol/diff-omission.js"
+import { totalDiffOmittedLines } from "../../../../protocol/transcript/diff-omission.js"
 import { getToolDisplay } from "@infra/tools/tool-display-registry.js"
 import { StyledText, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { highlightExecuteInputs, highlightToolDetail, linkifyChunks } from "@tui/adapters/tool-detail-highlight.js"

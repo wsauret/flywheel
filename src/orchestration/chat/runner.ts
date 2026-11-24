@@ -27,12 +27,12 @@ import type { CommandHandoverAuthority } from "../agent-runtime/background-execu
 import { ownedCommandRunner } from "../../infra/owned-command.js"
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import type { ChatEntryPatch } from "../session-store/types.js"
-import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
+import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js"
 import type { ModulePolicy } from "../config/policy/module-policy.js"
 import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
 import { unattendedModuleIds } from "../modules.js"
 
-import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
+import type { RecallInput, RecallResult } from "../../protocol/transcript/conversation-recall.js"
 import type { AttachChildSessionProjection } from "../module-seams.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 type ChatUpdateEntryFn = (patch: ChatEntryPatch) => void

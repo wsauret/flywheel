@@ -3,7 +3,7 @@ import { For } from "solid-js"
 import { useClient } from "../../client-context.js"
 import { modKeyLabel, SHORTCUTS } from "./shortcuts.js"
 import { Sheet } from "../sheet.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/commands/command-names.js"
 
 /** Every key the client answers, from the one table the shell acts on. */
 export function ShortcutsSheet() {

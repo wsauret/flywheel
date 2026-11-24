@@ -2,8 +2,8 @@
 
 import type { DividerBlock as DividerBlockType, SystemBlock as SystemBlockType } from "@infra/output-blocks"
 import { watchRowView } from "../../../protocol/client/transcript-model.js"
-import { blockIdentity } from "../../../protocol/block-identity.js"
-import { isReturnedInputNotice } from "../../../protocol/composer-returns.js"
+import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
+import { isReturnedInputNotice } from "../../../protocol/transcript/composer-returns.js"
 import { StyledText, bold as stBold, fg as stFg, type TextChunk, type TextRenderable } from "@opentui/core"
 import { useUnifiedToggle } from "@tui/transcript/output-blocks/use-body-toggle.js"
 import { BlankVerticalBarBorder, VerticalBarBorder } from "@tui/transcript/output-blocks/border"

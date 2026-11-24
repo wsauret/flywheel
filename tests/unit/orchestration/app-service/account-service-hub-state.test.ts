@@ -4,7 +4,7 @@ import type { AccountService, ProjectSlot } from "../../../../src/orchestration/
 import { startAccountWebAddresses, type ProjectBrowserState } from "../../../../src/orchestration/app-service/account/account-web-addresses.js"
 import type { ControlUiAssetState } from "../../../../src/orchestration/app-service/account/web-serving/control-ui-assets.js"
 import type { AccountHubOptions, AccountHubProject } from "../../../../src/orchestration/app-service/account/web-serving/hub.js"
-import { ServeStartupFailure } from "../../../../src/protocol/serve-handshake.js"
+import { ServeStartupFailure } from "../../../../src/protocol/runtime/serve-handshake.js"
 
 const record = { id: "opaque-a", projectRoot: "/work/alpha", label: "alpha", lastAttachedAt: 1 }
 const resolved = { kind: "resolved" as const, root: "/build/webview", identity: "a".repeat(64) }

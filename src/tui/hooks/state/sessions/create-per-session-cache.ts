@@ -1,6 +1,6 @@
 import { onCleanup, untrack } from "solid-js"
 import { createStore, produce, unwrap } from "solid-js/store"
-import type { RuntimeUiPatchPayload } from "../../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchPayload } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { createSessionReadingFamily, type SessionReadingFamilyOptions } from "../../../../protocol/client/session-reading-family.js"
 
 /** The terminal's per-session runtime cache: one session-scoped domain's

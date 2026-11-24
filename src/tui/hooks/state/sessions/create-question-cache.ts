@@ -1,5 +1,5 @@
-import type { AttachedRuntimeClient } from "../../../../protocol/app-service-types.js"
-import { isQuestionPayload, questionCursor, type PendingQuestionView } from "../../../../protocol/question-protocol-types.js"
+import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
+import { isQuestionPayload, questionCursor, type PendingQuestionView } from "../../../../protocol/session/question-protocol-types.js"
 import { createPerSessionCache, type PerSessionCache } from "./create-per-session-cache.js"
 
 export type QuestionCache = PerSessionCache<PendingQuestionView>

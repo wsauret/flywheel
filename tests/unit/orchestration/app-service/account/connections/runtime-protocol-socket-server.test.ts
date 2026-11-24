@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test"
 import { type Cause, Effect, Layer, ManagedRuntime, Queue, Schema, Stream } from "effect"
 import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcServer } from "effect/rpc"
-import { layerMsgPack } from "../../../../../../src/protocol/rpc-msgpack.js"
+import { layerMsgPack } from "../../../../../../src/protocol/rpc/rpc-msgpack.js"
 import { runtimeMsgPack } from "../../../../../helpers/runtime-msgpack.js"
 import { NetAddress } from "effect/net"
 import { Socket, SocketServer } from "effect/socket"
 
 import { runtimeProtocolSocketServer } from "../../../../../../src/orchestration/app-service/account/connections/runtime-protocol-socket-server.js"
 import { socketProtocolLayer } from "../../../../../../src/protocol/client/socket-protocol.js"
-import { stringRequestId } from "../../../../../../src/protocol/rpc-request-id.js"
+import { stringRequestId } from "../../../../../../src/protocol/rpc/rpc-request-id.js"
 
 /** The runtime's server protocol lets a stream's chunks travel ahead of the
  *  client's acknowledgements up to a byte window, and holds the stream only

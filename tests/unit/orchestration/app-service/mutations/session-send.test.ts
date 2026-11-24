@@ -8,7 +8,7 @@ import { fakeManager, fakeSessionStore, workflowController, workflowProtocol } f
 import { EARLIER_AGENT_SESSION_REFUSAL, type WorkflowTargets } from "../../../../../src/orchestration/workflow-host/workflow-addressing.js"
 import type { ReplayedSession } from "../../../../../src/orchestration/session/metadata/schemas.js"
 import type { WorkflowMembership } from "../../../../../src/infra/session-workflow-membership.js"
-import { runtimeDispatchResultSchema } from "../../../../../src/protocol/runtime-dispatch-result-schemas.js"
+import { runtimeDispatchResultSchema } from "../../../../../src/protocol/rpc/runtime-dispatch-result-schemas.js"
 import { initializedWorkflowFacts } from "../../../../helpers/workflow-root-fixtures.js"
 import { createMemoryStore } from "../../../workflows/vm/host-test-support.js"
 

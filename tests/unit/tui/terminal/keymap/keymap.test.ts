@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { createComponent, createMemo, createRoot, createSignal } from "solid-js"
 import { createKeymap, DEFAULT_BINDINGS } from "../../../../../src/tui/terminal/keymap/keymap.js"
 import { createToastPresenter } from "../../../../../src/tui/context/toast-presenter.js"
-import type { RuntimeConfigView } from "../../../../../src/protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigView } from "../../../../../src/protocol/settings/runtime-config-protocol-types.js"
 import { configView } from "../../../../helpers/runtime-views.js"
 
 const { KeymapProvider, presentKeymapIssues, useKeymap } = await import("../../../../../src/tui/context/keymap.js")

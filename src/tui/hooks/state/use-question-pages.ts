@@ -1,6 +1,6 @@
 import { createEffect, onCleanup, type Accessor } from "solid-js"
 import { notifyDesktop } from "../../../infra/desktop-notify.js"
-import type { RuntimeClient, SessionRow } from "../../../protocol/app-service-types.js"
+import type { RuntimeClient, SessionRow } from "../../../protocol/runtime/app-service-types.js"
 import { createQuestionPages } from "../../../protocol/client/question-pages.js"
 
 /** Pages the terminal while desktop notifications are on, once for each

@@ -1,4 +1,4 @@
-import type { RuntimeAuthLoginPrompt } from "../../../../../protocol/auth-login-protocol-types.js"
+import type { RuntimeAuthLoginPrompt } from "../../../../../protocol/auth/auth-login-protocol-types.js"
 import type { CredentialProviderId } from "../../../../../infra/auth/store/auth-store-types.js"
 import type { AuthView } from "../../../../modals/auth/auth-modal-options.js"
 

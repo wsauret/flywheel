@@ -19,7 +19,7 @@ import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
 import { createSessionManager } from "../../../src/orchestration/session/manager.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
 import { WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state-retirement.js"
-import { startRefusalOf } from "../../../src/protocol/serve-handshake.js"
+import { startRefusalOf } from "../../../src/protocol/runtime/serve-handshake.js"
 import { retainedDefinitions, retainedProject } from "../../fixtures/retired-workflows/retained-project.js"
 import { retiredFixtureWorkflow } from "../../helpers/retired-fixture-briefs.js"
 import { retiredStepIdentity } from "../../../src/workflows/vm/facts/retired-step-identity.js"
@@ -30,7 +30,7 @@ import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-
 import { workflowAggregateId } from "../../../src/workflows/vm/facts/session-facts.js"
 import { testDirectories } from "../../helpers/directories.js"
 import type { ProjectDirectories } from "../../../src/infra/directory-authorities.js"
-import { startupPhase, type StartupReached } from "../../../src/protocol/startup-steps.js"
+import { startupPhase, type StartupReached } from "../../../src/protocol/runtime/startup-steps.js"
 
 const tmpRoot = path.join(os.tmpdir(), `flywheel-workspace-state-${process.pid}-${Date.now()}`)
 

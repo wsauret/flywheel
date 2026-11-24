@@ -14,7 +14,7 @@ import { createTranscriptProjectionCache } from "../src/orchestration/app-servic
 import { createOutputProjection } from "../src/orchestration/app-service/projections/output/output-projection.js"
 import { createShippedOutput } from "../src/orchestration/app-service/projections/output/shipped-output.js"
 import { createRuntimeUiPatchSequencer } from "../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
-import type { RuntimeUiPatch } from "../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch } from "../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { createOutputSession } from "../src/orchestration/runner/output-session.js"
 import { createSessionStore } from "../src/orchestration/session-store/store.js"
 import { readSessionMetadata } from "../src/orchestration/session/metadata/catalog/session-metadata-store.js"

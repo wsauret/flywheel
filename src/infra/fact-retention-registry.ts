@@ -1,4 +1,4 @@
-import type { ModuleId } from "../protocol/module-ids.js"
+import type { ModuleId } from "../protocol/runtime/module-ids.js"
 
 /** The single place that declares, for each durable fact family, who owns it
  *  and how long its rows stay reachable. `bun run lint:fact-retention` fails

@@ -11,7 +11,7 @@ import { bugReportsService, createBugReportsService } from "../../../../../src/o
 import { BugReportSchema, type BugReportInput } from "../../../../../src/protocol/modules/bug-reports.js"
 import { composeAccountModuleProtocolRuntimes } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
 import { createRuntimeFaultReporting } from "../../../../../src/orchestration/app-service/executor/runtime-fault-reporting.js"
-import type { RuntimeExecutorState } from "../../../../../src/protocol/app-service-types.js"
+import type { RuntimeExecutorState } from "../../../../../src/protocol/runtime/app-service-types.js"
 
 const temporary = temporaryDirectories()
 const input: BugReportInput = { kind: "crash", error: { name: "TypeError", message: "undefined is not an object", stack: "TypeError\n at render" }, surface: "tui", sessionId: "s1", note: "It stopped while scrolling." }

@@ -1,8 +1,8 @@
 import { batch, createEffect, createMemo, createSignal, type Accessor, type JSX } from "solid-js"
 import { createKeyedListSelection } from "./create-keyed-list-selection.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import type { RuntimeClient } from "../../../../protocol/app-service-types.js"
-import type { BackgroundWorkRow, BackgroundWorkTarget } from "../../../../protocol/background-index-protocol-types.js"
+import type { RuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
+import type { BackgroundWorkRow, BackgroundWorkTarget } from "../../../../protocol/session/background-index-protocol-types.js"
 import {
   backgroundIndexEntries,
   backgroundRowDetail,
@@ -12,7 +12,7 @@ import {
   type BackgroundIndexFilter,
   type BackgroundIndexState,
 } from "../../../../protocol/client/background-index.js"
-import { sessionServingSelection } from "../../../../protocol/role-protocol-types.js"
+import { sessionServingSelection } from "../../../../protocol/auth/role-protocol-types.js"
 import { createListModalKeys } from "../../../components/modal/select/modal-list-keys.js"
 import { flattenWithCategories } from "../../../components/modal/select/modal-select-helpers.js"
 import type { ModalSelectOption, FilteredResult } from "../../../components/modal/select/modal-select-types.js"

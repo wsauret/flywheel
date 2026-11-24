@@ -27,7 +27,7 @@ import { join } from "node:path"
 
 import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
 import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js"
-import type { FrontendActivity, FrontendOutputBlock, MutationResult, RuntimeClient } from "../../../src/protocol/app-service-types.js"
+import type { FrontendActivity, FrontendOutputBlock, MutationResult, RuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"
 import { startLoopbackMcpServer } from "../../helpers/code-mode-loopback-mcp.js"
 import { appendSkillLoadHistory, GIANT_SESSION_ID, giantTranscript, SKILL_HISTORY_SESSION_ID, type SkillLoadCount } from "../fixtures/generate-store.js"
 import { readDebugLogRecords } from "../lib/debug-log-reader.js"

@@ -1,4 +1,4 @@
-import type { FrontendMutation } from "../app-service-types.js"
+import type { FrontendMutation } from "../runtime/app-service-types.js"
 import { PROTOCOL_MODULE_MUTATIONS } from "../modules.js"
 import { protocolMutationTable } from "../protocol-module.js"
 

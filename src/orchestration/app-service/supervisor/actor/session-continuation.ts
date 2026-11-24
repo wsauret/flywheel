@@ -1,4 +1,4 @@
-import { isActiveActivity } from "../../../../protocol/app-service-types.js"
+import { isActiveActivity } from "../../../../protocol/runtime/app-service-types.js"
 import { Log } from "../../../../infra/log.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
 import type { ChatRunner } from "../../../chat/runner-types.js"

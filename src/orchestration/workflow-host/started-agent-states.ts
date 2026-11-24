@@ -1,7 +1,7 @@
 import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/event-store-types.js"
 import { Log } from "../../infra/log.js"
 import { recordBackgroundFailure } from "../../infra/operation-log.js"
-import type { WorkflowAgentLive } from "../../protocol/workflow-view-protocol-types.js"
+import type { WorkflowAgentLive } from "../../protocol/session/workflow-view-protocol-types.js"
 import type { StartedAgent } from "../../workflows/vm/host/host-commit-controller.js"
 import { readChatTurnEndEvidence, readStartedWorkflowAgents, workflowAgentTurnEnd, type WorkflowAgentTurnEnd } from "../session/control/chat-session-run-evidence.js"
 import { entryLink } from "../session/conversation/conversation-entry-admission.js"

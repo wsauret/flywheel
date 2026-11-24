@@ -1,13 +1,13 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import { spyOn } from "bun:test"
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/app-service-types.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/runtime/app-service-types.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { createTranscriptStore } from "../../../../src/protocol/client/transcript-store.js"
 import * as transcriptDelta from "../../../../src/protocol/client/transcript-delta.js"
 import * as transcriptPaging from "../../../../src/protocol/client/transcript-store-paging.js"
-import { outputCursor, type OutputDelta } from "../../../../src/protocol/output-protocol-types.js"
-import type { HydratedOutputBlockBody, HydratedOutputGroupChildrenBatch } from "../../../../src/protocol/transcript-protocol-types.js"
+import { outputCursor, type OutputDelta } from "../../../../src/protocol/transcript/output-protocol-types.js"
+import type { HydratedOutputBlockBody, HydratedOutputGroupChildrenBatch } from "../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { SESSION, blocks, deltaPatch, fakeConnection, settle, textBlock, toolBlock } from "./_transcript-store-fixtures.js"
 
 function groupBlock(id: string): Extract<FrontendOutputBlock, { kind: "agentGroup" }> {

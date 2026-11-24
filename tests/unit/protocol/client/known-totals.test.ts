@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
-import type { BudgetView } from "../../../../src/protocol/budget-protocol-types.js"
+import type { SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { BudgetView } from "../../../../src/protocol/session/budget-protocol-types.js"
 import { mergeBudgetView, mergeCatalogRow } from "../../../../src/protocol/client/known-totals.js"
 
 function loading(title = "First"): SessionCatalogRow {

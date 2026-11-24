@@ -11,7 +11,7 @@ import { accountServeSocketPath, accountServeStartLockPath, accountServeStartRec
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
 import { ServeLifetime } from "../../../../src/orchestration/app-service/account/serve-lifetime.js"
 import { confirmServiceStart } from "../../../../src/orchestration/update/service-start.js"
-import { ServeStartupFailure } from "../../../../src/protocol/serve-handshake.js"
+import { ServeStartupFailure } from "../../../../src/protocol/runtime/serve-handshake.js"
 import { countStart, IDLE_SERVE, shortAccountHomes, startRecordText, unusedLauncher, waitFor } from "./_serve-fixtures.js"
 
 // A serve run in this test process serves the lane of this process's executable.

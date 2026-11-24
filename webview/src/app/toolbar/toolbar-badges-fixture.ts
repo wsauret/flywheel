@@ -1,7 +1,7 @@
 import { createComponent } from "solid-js"
 import { renderToString } from "solid-js/web"
 
-import type { ModuleId } from "../../../../src/protocol/module-ids.js"
+import type { ModuleId } from "../../../../src/protocol/runtime/module-ids.js"
 import type { ModuleDomainViews } from "../../client/domains/module-domain-views.js"
 import type { WebModule } from "../../web-module.js"
 import { ClientContext } from "../client-context.js"

@@ -3,7 +3,7 @@ import { formatAgentFailureDisplay } from "../../../../infra/output/output-forma
 import { Log } from "../../../../infra/log.js"
 import { containSessionReads } from "../../../../infra/session-read-containment.js"
 import { createReadQueue } from "../../../../infra/read-queue.js"
-import type { StoppedBy } from "../../../../protocol/app-service-types.js"
+import type { StoppedBy } from "../../../../protocol/runtime/app-service-types.js"
 import type { WorkflowView } from "../../../../workflows/view/types.js"
 import { loadQueueSnapshotFromReader } from "../../../../workflows/view/view-store.js"
 import { workflowCard, workflowCardCut, workflowCardSettled } from "../../../../protocol/client/workflow-card.js"

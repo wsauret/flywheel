@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { jest } from "bun:test"
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { settle } from "../../../../../../tests/unit/protocol/client/_session-changes-fixtures.js"
 import { mountAgentGroup } from "../../render-ownership-loader-fixture.js"
 

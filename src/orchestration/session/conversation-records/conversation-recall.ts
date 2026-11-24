@@ -19,7 +19,7 @@ import {
   type RecallInput,
   type RecallResult,
   type RecallScope,
-} from "../../../protocol/conversation-recall.js"
+} from "../../../protocol/transcript/conversation-recall.js"
 import { renderRecallEntry, renderRecallEntryText } from "./conversation-recall-render.js"
 
 const DEFAULT_RECENT = 25

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { sep } from "node:path"
 import { Schema } from "effect"
-import { RuntimeBackgroundRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeBackgroundRpc } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 
 describe("runtime server imports", () => {
   test("background RPCs route every request by canonical project root", async () => {

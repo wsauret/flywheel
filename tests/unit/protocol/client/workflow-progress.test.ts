@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { coveragePart, workflowProgress, workflowProgressCount, workflowSummaryText } from "../../../../src/protocol/client/workflow-progress"
 import { attemptOf, stage } from "../../workflows/vm/_map-fixtures.js"
 import { stepLoopControl, stepLoopBindings, drive, eachBindings, eachControl, dryBindings, dryControl, findingsBindings, findingsControl, frontendView, interrupt, items, mapBindings, mapControl, mapOutcome, startNext, surveyBindings, surveyControl, wideBindings, wideControl } from "../../workflows/vm/_tree-fixtures.js"
-import type { FrontendAttempt, WorkflowTree, WorkflowTreeNode } from "../../../../src/protocol/workflow-view-protocol-types"
+import type { FrontendAttempt, WorkflowTree, WorkflowTreeNode } from "../../../../src/protocol/session/workflow-view-protocol-types"
 
 type FrontendAttemptStatus = FrontendAttempt["status"]
 

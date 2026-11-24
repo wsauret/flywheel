@@ -15,7 +15,7 @@ import { temporaryDirectories } from "../../../../helpers/directories.js"
 import prePhaseLineage from "../golden/pre-phase-lineage.json"
 import type { WorkflowDefinition } from "../../../../../src/workflows/schema/workflow-schema.js"
 import { testSkill, testSkillRevision } from "../../../../helpers/skill-fixtures.js"
-import { moduleDisabledReason } from "../../../../../src/protocol/module-ids"
+import { moduleDisabledReason } from "../../../../../src/protocol/runtime/module-ids"
 import { loadedWorkflow } from "../../../../helpers/workflow-files.js"
 
 const reviewer: AgentDefinition = {

@@ -3,7 +3,7 @@ import { summaryOf } from "../../client/session/view-state.js"
 import { useClient } from "../client-context.js"
 import { copySessionId } from "./session-copy.js"
 import type { SessionListActions } from "./session-list.js"
-import { effectiveSessionShortTitle, SHORT_TITLE_MAX_CHARS, type SessionTitlePatch } from "../../../../src/protocol/app-service-types.js"
+import { effectiveSessionShortTitle, SHORT_TITLE_MAX_CHARS, type SessionTitlePatch } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { ClientContextValue } from "../client-context.js"
 import { createSignal } from "solid-js"
 

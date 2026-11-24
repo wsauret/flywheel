@@ -1,4 +1,4 @@
-import type { RuntimeConfigDiagnostic, RuntimeConfigStatusView } from "../runtime-config-protocol-types.js"
+import type { RuntimeConfigDiagnostic, RuntimeConfigStatusView } from "../settings/runtime-config-protocol-types.js"
 
 /** What one setting's configuration problem means, in the words every client
  *  shows under the setting. An invalid value in a file the runtime rejected

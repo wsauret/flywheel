@@ -1,9 +1,9 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
+import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import { createTranscriptStore } from "../../../../src/protocol/client/transcript-store.js"
 import { SESSION, blocks, textBlock, fakeConnection, deltaPatch, settle } from "./_transcript-store-fixtures.js"
 

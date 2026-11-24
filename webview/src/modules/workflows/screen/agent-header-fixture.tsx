@@ -1,6 +1,6 @@
 import { createComponent, createMemo, createRoot, createSignal } from "solid-js"
-import type { FrontendMutation, FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
-import type { LoadedWorkflowView, WorkflowAgentLive } from "../../../../../src/protocol/workflow-view-protocol-types.js"
+import type { FrontendMutation, FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { LoadedWorkflowView, WorkflowAgentLive } from "../../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { workflowAgentModel, workflowBriefLine, type WorkflowAgentTarget } from "../../../../../src/protocol/client/workflow-agent.js"
 import { workflowDetail } from "../../../../../tests/helpers/runtime-views.js"
 import type { ClientViewState, SessionSummary } from "../../../client/session/view-state.js"

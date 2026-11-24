@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test"
 import { Schema } from "effect"
-import { RuntimeClientDiagnosticSchema, type InputResponsivenessDiagnostic } from "../../../../src/protocol/runtime-client-diagnostics.js"
+import { RuntimeClientDiagnosticSchema, type InputResponsivenessDiagnostic } from "../../../../src/protocol/runtime/runtime-client-diagnostics.js"
 import { observeInputDiagnostics } from "./input-diagnostics.js"
 
 class Node {

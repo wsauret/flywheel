@@ -14,8 +14,8 @@ import { createAccountProjectRegistry } from "../../../src/orchestration/app-ser
 import { defaultRoleSlots } from "../../../src/orchestration/config/models/role-selection.js"
 import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"
 import { ROLE_MODEL_DEFAULTS } from "../../../src/orchestration/config/models/role-model-defaults.js"
-import { encodeAccountAttach } from "../../../src/protocol/account-attach.js"
-import type { AttachedRuntimeClient } from "../../../src/protocol/app-service-types.js"
+import { encodeAccountAttach } from "../../../src/protocol/runtime/account-attach.js"
+import type { AttachedRuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"
 import type { ScenarioContext } from "../scenarios/scenario-context.js"
 
 const READY_TIMEOUT_MS = 60_000

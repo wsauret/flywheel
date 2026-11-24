@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { AuthProviderAccountStatus, AuthProviderStatus } from "../../../../../src/protocol/auth-status-protocol-types.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import type { AuthProviderAccountStatus, AuthProviderStatus } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { buildAuthRows, buildProviderOptions, type AuthRow } from "../../../../../src/tui/modals/auth/auth-modal-options.js"
 
 /** The heading label, provider id, or account instance id a row shows. */

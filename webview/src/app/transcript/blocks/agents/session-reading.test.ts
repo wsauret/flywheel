@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert"
 import { test } from "node:test"
 import { createRoot, createSignal } from "solid-js"
 
-import type { RoleAssignmentView } from "../../../../../../src/protocol/role-protocol-types.js"
+import type { RoleAssignmentView } from "../../../../../../src/protocol/auth/role-protocol-types.js"
 import { createSessionReading } from "./session-reading.js"
 
 async function settle(): Promise<void> {

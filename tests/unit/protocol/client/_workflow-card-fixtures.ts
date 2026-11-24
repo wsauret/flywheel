@@ -1,5 +1,5 @@
 import { workflowOutline, type WorkflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
-import type { LoadedWorkflowView, WorkflowAgentLive, WorkflowTreeAgent, WorkflowTreeDisposition, WorkflowTreeNode } from "../../../../src/protocol/workflow-view-protocol-types.js"
+import type { LoadedWorkflowView, WorkflowAgentLive, WorkflowTreeAgent, WorkflowTreeDisposition, WorkflowTreeNode } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 
 type Attempt = LoadedWorkflowView["attempts"][number]
 

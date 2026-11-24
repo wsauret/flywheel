@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { Redacted } from "effect";
 import { join } from "node:path";
 import { createAccountSocketRouter } from "../../../../../../src/orchestration/app-service/account/connections/account-socket-router";
-import { createAccountAttachResponseReader, encodeAccountAttach, newAccountAttachCredential } from "../../../../../../src/protocol/account-attach";
-import { ServeStartupFailure } from "../../../../../../src/protocol/serve-handshake";
+import { createAccountAttachResponseReader, encodeAccountAttach, newAccountAttachCredential } from "../../../../../../src/protocol/runtime/account-attach";
+import { ServeStartupFailure } from "../../../../../../src/protocol/runtime/serve-handshake";
 
 const encoder = new TextEncoder();
 const remainBusy = async (): Promise<"busy"> => "busy";

@@ -3,10 +3,10 @@ import { describe, test } from "node:test"
 import { spyOn } from "bun:test"
 import hljs from "highlight.js/lib/common"
 
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/runtime/app-service-types.js"
 import * as markdown from "./blocks/text/markdown.js"
 import { createSessionChangesController } from "../../../../src/protocol/client/session-changes.js"
-import type { SessionChangeDiffResult, SessionChangeSummaryResult, SessionChangesSetViewedResult } from "../../../../src/protocol/session-changes-protocol-types.js"
+import type { SessionChangeDiffResult, SessionChangeSummaryResult, SessionChangesSetViewedResult } from "../../../../src/protocol/session/session-changes-protocol-types.js"
 import { deferred, fileA, fileB, fileC, retainedDiff, runtime, settle, waitForDiff } from "../../../../tests/unit/protocol/client/_session-changes-fixtures.js"
 
 import { reviewWindow, mountTimedRows, mountUserMessage, mountTool, mountAgentGroup, mountChanges, mountReview } from "./render-ownership-loader-fixture.js"

@@ -49,8 +49,8 @@ import { shutdownSignals, type ShutdownSignal } from "../../infra/shutdown-signa
 import type { BuildRef } from "../../infra/update/build-identity.js";
 import { ownBuild } from "../../infra/update/live-builds.js";
 import { countServiceStart, recordServiceListened, recordServiceServed, recordServiceStartFailure, type StartCauseKind, uncountServiceStart } from "../../infra/update/service-start-record.js";
-import type { RuntimeServiceState } from "../../protocol/app-service-types.js";
-import { decodeServeStartRefusal, type ServeStartRefusal } from "../../protocol/serve-handshake.js";
+import type { RuntimeServiceState } from "../../protocol/runtime/app-service-types.js";
+import { decodeServeStartRefusal, type ServeStartRefusal } from "../../protocol/runtime/serve-handshake.js";
 
 const log = Log.create({ service: "service-start-record" });
 

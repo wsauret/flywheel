@@ -3,7 +3,7 @@ import { describe, test } from "node:test"
 
 import { fileDiffFiles, type FileChangeBody } from "../../../../../../src/protocol/client/file-change-body.js"
 import { createBlockDisclosure } from "../block-disclosure.js"
-import type { FrontendToolEntry } from "../../../../../../src/protocol/app-service-types.js"
+import type { FrontendToolEntry } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { createMutationEvidenceReader } from "../../../../../../src/protocol/client/mutation-evidence.js"
 import type { MutationFilesView } from "../../../../../../src/protocol/client/mutation-evidence.js"
 import { fakeRuntimeConnection } from "../../../../test-support/runtime-connection-fixture.js"

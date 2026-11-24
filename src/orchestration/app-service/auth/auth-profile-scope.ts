@@ -1,5 +1,5 @@
 import { authDir } from "../../../infra/paths.js"
-import type { RuntimeAuthStatusScope } from "../../../protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthStatusScope } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { AuthProfileResolution } from "../../auth/auth-profile-manager.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { DurableSessionCatalogRow } from "../../session/metadata/catalog/session-catalog-types.js"

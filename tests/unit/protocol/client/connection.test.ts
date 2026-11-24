@@ -7,7 +7,7 @@ import { after, describe, test } from "node:test"
 
 import { Effect, Layer } from "effect"
 import { Socket } from "effect/socket"
-import type { RuntimeEventFrame } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeEventFrame } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createRuntimeConnection } from "../../../../src/protocol/client/connection.js"
 import { heartbeatRuntime, unixSocketLayer, waitFor } from "./_connection-fixtures.js"
 

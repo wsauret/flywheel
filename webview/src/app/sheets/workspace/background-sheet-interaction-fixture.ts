@@ -1,6 +1,6 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
-import type { FrontendEvent } from "../../../../../src/protocol/app-service-types.js"
-import { backgroundCursor, type BackgroundPatchPayload, type BackgroundWorkRow, type BackgroundWorkTarget } from "../../../../../src/protocol/background-index-protocol-types.js"
+import type { FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
+import { backgroundCursor, type BackgroundPatchPayload, type BackgroundWorkRow, type BackgroundWorkTarget } from "../../../../../src/protocol/session/background-index-protocol-types.js"
 import { backgroundIndexState, createBackgroundIndexReadings, type HeldBackgroundIndex } from "../../../../../src/protocol/client/background-index.js"
 import { ClientExtensionsProvider } from "../../client-extensions.js"
 import type { WebModuleClient } from "../../../web-module-client.js"

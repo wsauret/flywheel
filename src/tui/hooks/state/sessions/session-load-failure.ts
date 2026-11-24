@@ -1,4 +1,4 @@
-import type { RuntimeSessionDetailView } from "../../../../protocol/session-detail-protocol-types.js"
+import type { RuntimeSessionDetailView } from "../../../../protocol/session/session-detail-protocol-types.js"
 
 interface LoadedSessionDetail {
   readonly id: string

@@ -22,9 +22,9 @@ import type { RoleResolver } from "../../../config/roles.js";
 import type { FirstPartyModuleSnapshot } from "../../../modules.js";
 import type { AskUserController } from "../../../runner/ask-user-controller.js";
 import type { ProviderRequestAuditFact } from "../../../session/runtime-facts/provider-request-audit-facts.js";
-import type { RecallPort } from "../../../../protocol/conversation-recall.js"
+import type { RecallPort } from "../../../../protocol/transcript/conversation-recall.js"
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
-import type { WorkflowsMode } from "../../../../protocol/module-protocol-types.js";
+import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js";
 import type { BackgroundExecutionOwner } from "../../background-execution/background-execution-owner.js";
 import type { ForegroundBashHoldController } from "../../background-work/foreground-bash-hold.js";
 import type { CaptureProviderConnection, LLMClientFactory } from "../model-runtime-capture.js";

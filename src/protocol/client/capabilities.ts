@@ -1,4 +1,4 @@
-import type { ModuleProtocolRow, ModulePreset, RuntimeModulesView, WorkflowsMode } from "../module-protocol-types.js"
+import type { ModuleProtocolRow, ModulePreset, RuntimeModulesView, WorkflowsMode } from "../runtime/module-protocol-types.js"
 
 /** How every client reads and names the runtime's capability view, so the
  *  terminal and the web client show one vocabulary for one selection. */

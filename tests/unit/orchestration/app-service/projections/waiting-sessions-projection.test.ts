@@ -7,7 +7,7 @@ import { createWaitingSessionsProjection } from "../../../../../src/orchestratio
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
 import { Log } from "../../../../../src/infra/log.js"
 import { asAsyncEventReadSurface, StateRequestNotServedError, type AsyncEventReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../../src/infra/event-store-types.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
 
 const opened: Array<{ readonly store: LocalSqliteEventStore; readonly directory: string }> = []

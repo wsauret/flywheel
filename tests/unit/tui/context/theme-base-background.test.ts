@@ -6,7 +6,7 @@ import { createTerminalPalette, RGBA } from "@opentui/core"
 import { EventEmitter } from "node:events"
 import type { Clock, TerminalColors, TimerHandle } from "@opentui/core"
 import type { CompatibleRenderingMode } from "../../../../src/orchestration/config/schema/schema.js"
-import type { RuntimeConfigView } from "../../../../src/protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigView } from "../../../../src/protocol/settings/runtime-config-protocol-types.js"
 import { contrastRatio } from "../../../../src/tui/context/theme/color-contrast.js"
 import { configView } from "../../../helpers/runtime-views.js"
 

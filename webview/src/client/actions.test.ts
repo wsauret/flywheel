@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import { createMemo, createRoot } from "solid-js"
 
-import type { FrontendMutation } from "../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import { actionKey, controlActionKey } from "./action-key.js"
 import { createClientActions } from "./actions.js"
@@ -12,7 +12,7 @@ import { fakePanelSettings, fakeRuntimeSession } from "../app/client-context-fix
 import { fakeRuntimeConnection } from "../test-support/runtime-connection-fixture.js"
 import { settingKeys } from "./settings-actions.js"
 import { createSurfaceOpener, type CaptureSurfaceOpener } from "../../../src/protocol/client/surface-presentation.js"
-import type { CommandOutcome } from "../../../src/protocol/command-catalog-protocol-types.js"
+import type { CommandOutcome } from "../../../src/protocol/commands/command-catalog-protocol-types.js"
 import { createWorkspaceNavigation } from "../app/screens/workspace-navigation.js"
 
 /** The actions layer owns every running action: a person who taps a control

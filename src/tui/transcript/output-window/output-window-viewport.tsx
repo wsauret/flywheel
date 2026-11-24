@@ -22,7 +22,7 @@ import { RowGeometryProvider, type RowGeometryChannel } from "../../context/tran
 import { MutationEvidenceProvider } from "../../context/mutation-evidence.js"
 import { createRowChurnMonitor, type RowChurnHandle } from "./output-window-scroll-anomalies.js"
 import { widenTowards } from "./mount-range.js"
-import type { RoleAssignmentView } from "../../../protocol/role-protocol-types.js"
+import type { RoleAssignmentView } from "../../../protocol/auth/role-protocol-types.js"
 
 const log = Log.create({ service: "output-window-viewport" })
 

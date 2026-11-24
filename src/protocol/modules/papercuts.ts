@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineProtocolDomain, defineProtocolModule, type ModuleRow } from "../protocol-module.js"
-import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 
 /** The workspace-scoped `papercuts` contract: the count of recorded papercuts
  *  nobody has disposed yet, derived from the project's durable papercut facts. */

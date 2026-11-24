@@ -1,17 +1,17 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
 import { MODULE_DOMAIN_BINDINGS } from "../../../../src/protocol/client/module-domain.js"
 import type { FrontendExperimentView } from "../../../../src/protocol/modules/experiments.js"
-import { sessionDomainCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import { sessionDomainCursor } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { workflowViewCursor } from "../../../../src/protocol/modules/workflows.js"
 import { createModuleDomainMonitor } from "./module-domain-monitor.js"
 import { fakeLanes, LANE_BREAK } from "../../../../tests/helpers/fake-lanes.js"
 import { runtimeQuery } from "../../../../tests/helpers/runtime-dispatch.js"
 import { backgroundReads, type ReadTimers } from "../../../../src/protocol/client/background-reads.js"
-import type { RuntimeClientDiagnostic } from "../../../../src/protocol/runtime-client-diagnostics.js"
+import type { RuntimeClientDiagnostic } from "../../../../src/protocol/runtime/runtime-client-diagnostics.js"
 
 const settle = () =>
   new Promise<void>((resolve) => {

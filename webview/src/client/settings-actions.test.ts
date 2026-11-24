@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { FrontendMutation, MutationResult } from "../../../src/protocol/app-service-types.js"
-import type { RuntimeAuthStatusSnapshotResult } from "../../../src/protocol/auth-status-protocol-types.js"
+import type { FrontendMutation, MutationResult } from "../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeAuthStatusSnapshotResult } from "../../../src/protocol/auth/auth-status-protocol-types.js"
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
-import type { RuntimeConfigMutationResult } from "../../../src/protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigMutationResult } from "../../../src/protocol/settings/runtime-config-protocol-types.js"
 import type { HostCapabilities } from "../host.js"
 import { createClientActions } from "./actions.js"
 import { fakeConnection } from "../test-support/session-connection-fixture.js"

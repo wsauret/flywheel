@@ -1,4 +1,4 @@
-import type { FrontendMessageSender } from "../app-service-types.js"
+import type { FrontendMessageSender } from "../runtime/app-service-types.js"
 import type { ToolEntry, UserMessageBlock } from "../../infra/output-blocks.js"
 
 const RELATION_NAMES = {

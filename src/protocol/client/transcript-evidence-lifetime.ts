@@ -1,5 +1,5 @@
-import type { FrontendOutputBlock } from "../app-service-types.js"
-import { blockIdentity } from "../block-identity.js"
+import type { FrontendOutputBlock } from "../runtime/app-service-types.js"
+import { blockIdentity } from "../transcript/block-identity.js"
 import type { MutationEvidenceReader } from "./mutation-evidence.js"
 import { bodyId } from "./transcript-store-paging.js"
 import type { BlockReplacement, TranscriptView } from "./transcript-view.js"

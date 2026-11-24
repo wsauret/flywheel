@@ -1,5 +1,5 @@
 import type { AuthProfileManager, AuthProfileResolution } from "../../auth/auth-profile-manager.js"
-import type { RuntimeAuthProfileWriteScope } from "../../../protocol/auth-profile-selection-protocol-types.js"
+import type { RuntimeAuthProfileWriteScope } from "../../../protocol/auth/auth-profile-selection-protocol-types.js"
 import type { SessionAuthAdmission } from "../../session/metadata/session-auth-profile.js"
 import type { SessionStore } from "../../session-store/types.js"
 import type { WorkflowHosts } from "../../workflow-host/host-collection.js"

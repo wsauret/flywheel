@@ -1,5 +1,5 @@
 import type { PausedBy } from "../../../infra/output-blocks.js"
-import type { ChildRunStatus, StoppedBy } from "../../../protocol/app-service-types.js"
+import type { ChildRunStatus, StoppedBy } from "../../../protocol/runtime/app-service-types.js"
 import type { TurnEnd, TurnInterruption } from "../conversation/turn-end-record.js"
 import type { WorkflowAgentTurnEnd } from "./chat-session-run-evidence.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../conversation/addressed-workflow-messages.js"

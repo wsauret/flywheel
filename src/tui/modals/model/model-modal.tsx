@@ -18,7 +18,7 @@ import { scopeChromeColor } from "./model-modal-scope.js"
 import { ModalFooter } from "../../components/modal/modal-footer.js"
 import { MODAL_FRAME_WIDTHS } from "../../components/modal/modal-copy.js"
 import { costBarText, modelModalContentWidth, priceHeaderText, priceValueText } from "./model-modal-cost.js"
-import type { ModelOptionRow, ModelSelectionEffort } from "../../../protocol/model-assignment-protocol-types.js"
+import type { ModelOptionRow, ModelSelectionEffort } from "../../../protocol/auth/model-assignment-protocol-types.js"
 
 
 interface ModelModalProps {

@@ -16,7 +16,7 @@ import type { CapabilityGrant } from "../../../../../../src/orchestration/config
 import { composeFirstPartyModules, composeRealmModuleSnapshot, type ModuleId } from "../../../../../../src/orchestration/modules.js";
 import { testKernelToolDeps, admitEveryTool, requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
-import { moduleDisabledReason } from "../../../../../../src/protocol/module-ids"
+import { moduleDisabledReason } from "../../../../../../src/protocol/runtime/module-ids"
 import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 

@@ -1,5 +1,5 @@
 import { pack } from "msgpackr"
-import type { StartupReached } from "../../../../protocol/startup-steps.js"
+import type { StartupReached } from "../../../../protocol/runtime/startup-steps.js"
 import { ManagedRuntime } from "effect"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { DebugLog } from "../../../../infra/debug-log.js"

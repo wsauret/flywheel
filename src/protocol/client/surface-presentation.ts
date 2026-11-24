@@ -1,4 +1,4 @@
-import type { CommandSurfaceTarget } from "../command-catalog-protocol-types.js"
+import type { CommandSurfaceTarget } from "../commands/command-catalog-protocol-types.js"
 
 /** What a command hands the surface it opens: the target inside the surface
  *  and the command's argument text, such as the query of Find in transcripts. */

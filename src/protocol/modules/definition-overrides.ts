@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineProtocolDomain, defineProtocolModule, type ModuleRow } from "../protocol-module.js"
-import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 
 /** The workspace-scoped `definitionStaleness` contract: every user or project
  *  definition that overrides a bundled default and is in effect, whether the

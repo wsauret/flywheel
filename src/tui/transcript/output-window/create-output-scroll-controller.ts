@@ -2,7 +2,7 @@ import type { BaseRenderable, MouseEvent, ScrollBoxRenderable } from "@opentui/c
 import { type Accessor, batch, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js"
 import type { HeightIndex } from "./create-height-index.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
-import { blockIdentity } from "../../../protocol/block-identity.js"
+import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import { createOutputWindowScrollTelemetry } from "./output-window-scroll-diagnostics.js"
 import { createScrollFightMonitor } from "./output-window-scroll-anomalies.js"
 import type { TranscriptWindowProjection } from "./output-window-projection.js"

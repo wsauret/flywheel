@@ -1,7 +1,7 @@
 import type { UsageHourlySpend, UsageLedgerGroup, UsageQuotaAccounting as AuthorityQuotaAccounting, UsageRangeEntries } from "../../../infra/llm/usage/usage-authority.js"
 import { availableSubscriptionUsageResetCredits } from "../../../infra/llm/usage/subscription-usage.js"
 import type { SubscriptionUsageHistoryEntry } from "../../../infra/llm/usage/subscription-usage-store-codec.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../protocol/subscription-spend-consent-protocol-types.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 import type { SubscriptionUsageMetric, SubscriptionUsageSpendSource } from "../../../infra/llm/usage/subscription-usage.js"
 import type { UsageAccountSource, UsageAccountsResult, UsageHistoryResult, UsageHistorySource, UsageModelSummary, UsageProtocolMetadata, UsageQuotaAccounting, UsageSpendPoint, UsageSpendResult, UsageSpendSource, UsageSubscriptionObservation, UsageTokens } from "../../../protocol/modules/subscription-usage.js"
 

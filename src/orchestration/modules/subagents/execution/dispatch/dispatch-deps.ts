@@ -3,7 +3,7 @@ import type { AsyncEventStateReadSurface, StoredFact } from "../../../../../infr
 import type { ModelFamily } from "../../../../../infra/llm/models/model-family.js"
 import type { ModelInfo, ModelsClient } from "../../../../../infra/llm/models/models.js"
 import type { ProviderRequestOptions } from "../../../../../infra/llm/access/provider-options.js"
-import type { ModuleId } from "../../../../../protocol/module-ids.js"
+import type { ModuleId } from "../../../../../protocol/runtime/module-ids.js"
 import type { SkillRegistryRevision } from "../../../../../workflows/skills/skill-schema.js"
 import type { Agent, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "../../../../agent-runtime/types.js"
 import type { BackgroundWorkRegistry } from "../../../../agent-runtime/background-work/background-work.js"

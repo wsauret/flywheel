@@ -12,7 +12,7 @@ import { createMemoryStore, fixtureSkills, initialFacts, sequentialWorkflow, tes
 import { createAttemptExecutor } from "../../../../src/workflows/vm/host/attempt-runner.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
-import type { WorkflowTree } from "../../../../src/protocol/workflow-view-protocol-types.js"
+import type { WorkflowTree } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 import type { WorkflowTreeV1Schema } from "../../../../src/workflows/view/schemas.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 

@@ -1,4 +1,4 @@
-import { canonicalModuleIds } from "../../../../protocol/module-ids.js";
+import { canonicalModuleIds } from "../../../../protocol/runtime/module-ids.js";
 import { prepareSessionFactAppend } from "../../../session/persistence/session-fact-writer.js";
 import { buildDurableSubagentCreated, buildSubagentPrompted } from "../history/subagent-run-fact-writers.js";
 import { scopedAgentRegistry } from "./dispatch/dispatch-configuration.js";

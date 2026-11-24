@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { join } from "node:path"
 import { createAccountRuntimeAttach } from "../../../../src/cli/account-service/runtime-attach.js"
-import type { RuntimeStartupStatus } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeStartupStatus } from "../../../../src/protocol/runtime/app-service-types.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 

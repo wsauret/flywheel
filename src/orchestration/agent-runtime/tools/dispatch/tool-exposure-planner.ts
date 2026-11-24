@@ -22,7 +22,7 @@ import type { KernelToolDeps } from "../kernel-tool-deps.js";
 import { exposedToolName, toolRegistryFromComposition, type DeferredToolFactory, type RegisteredTool, type ToolFactoryResult, type ToolRegistry } from "./tool-registry.js";
 import type { AdvertisedTool, RuntimeTool, ToolProfile } from "../types.js";
 import { shortFormTool } from "./short-form.js";
-import { canonicalModuleIds, moduleDisabledReason, type ModuleId } from "../../../../protocol/module-ids.js";
+import { canonicalModuleIds, moduleDisabledReason, type ModuleId } from "../../../../protocol/runtime/module-ids.js";
 
 const CONTRACT_MISMATCH_REASON = "not selected by the request file edit contract";
 const NO_GATE_OMISSIONS: ReadonlyMap<string, string> = new Map();

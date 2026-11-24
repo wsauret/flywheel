@@ -1,8 +1,8 @@
 import { createComponent } from "solid-js"
 import { renderToString } from "solid-js/web"
 
-import type { RuntimeHealth } from "../../../../src/protocol/app-service-types.js"
-import type { ModuleId } from "../../../../src/protocol/module-ids.js"
+import type { RuntimeHealth } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { ModuleId } from "../../../../src/protocol/runtime/module-ids.js"
 import { ClientContext } from "../client-context.js"
 import { ComposerStatus, RuntimeFaultNotice } from "./composer-status.js"
 import { fakeClient, fakePanelSettings, fakeViewState } from "../client-context-fixture.js"

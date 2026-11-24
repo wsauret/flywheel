@@ -3,7 +3,7 @@ import { createRoot, createSignal, runWithOwner } from "solid-js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
 import { activate, clearMocks, createModal, flush, rowIds, rowOf, valueOf } from "./_settings-modal-fixtures.js"
 import { createAuthProfileSelection } from "../../../../../src/tui/hooks/overlays/modals/profile/auth-profile-selection.js"
-import type { RuntimeAuthProfileRenameResult } from "../../../../../src/protocol/auth-profile-selection-protocol-types.js"
+import type { RuntimeAuthProfileRenameResult } from "../../../../../src/protocol/auth/auth-profile-selection-protocol-types.js"
 
 describe("useSettingsModal auth profiles", () => {
   it("cycles the active profile training-route policy after Auth", async () => {

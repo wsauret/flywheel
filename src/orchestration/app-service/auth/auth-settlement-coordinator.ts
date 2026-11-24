@@ -1,4 +1,4 @@
-import type { AuthOperationNotice, RuntimeAuthStatusScope } from "../../../protocol/auth-status-protocol-types.js"
+import type { AuthOperationNotice, RuntimeAuthStatusScope } from "../../../protocol/auth/auth-status-protocol-types.js"
 
 interface AuthSettlementCoordinatorOptions {
   readonly refreshConfig: () => Promise<void>

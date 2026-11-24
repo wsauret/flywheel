@@ -1,7 +1,7 @@
 import { Key } from "@solid-primitives/keyed"
 import { createMemo, Show } from "solid-js"
 
-import { MODULE_SETTING_GROUPS, type ModuleProtocolRow, type ModuleSettingGroup } from "../../../../../src/protocol/module-protocol-types.js"
+import { MODULE_SETTING_GROUPS, type ModuleProtocolRow, type ModuleSettingGroup } from "../../../../../src/protocol/runtime/module-protocol-types.js"
 import { useClient } from "../../client-context.js"
 import { createSettingRowState, ModuleSwitchRow, SettingCatalogRowView } from "./setting-rows.js"
 import { Sheet, SheetLoading } from "../sheet.js"

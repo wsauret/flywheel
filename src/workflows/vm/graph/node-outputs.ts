@@ -1,6 +1,6 @@
 import { contentEvidence } from "../../../infra/content-evidence.js";
 import { requireReducer, runReducer } from "../../reducers/registry.js";
-import type { WorkflowTreeJoin } from "../../../protocol/workflow-view-protocol-types.js";
+import type { WorkflowTreeJoin } from "../../../protocol/session/workflow-view-protocol-types.js";
 import type { EarlierRound, HandoffReference, ReducerInput, ReducerInputSlot, ReducerOutput, SourceOutput } from "../../reducers/reducer.js";
 import { ITEM_POSITION_KEY, WORKFLOW_INPUT_SOURCE_ID } from "../../schema/workflow-schema.js";
 import type { CommittedWorkflowControl } from "../facts/committed-control.js";

@@ -11,7 +11,7 @@ import * as control from "../../../../../src/orchestration/modules/remote/relay-
 import * as identities from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
 import { installationOf } from "../../app-service/_account-service-fixtures.js"
 import { RELAY_PING, toBase64Url, type OpenFrame } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 class RemoteSocket extends EventTarget {
   readyState: WebSocket["readyState"] = WebSocket.CONNECTING

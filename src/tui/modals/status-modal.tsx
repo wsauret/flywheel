@@ -9,7 +9,7 @@ import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "@tui/components/modal/mo
 import { ModalFooter } from "@tui/components/modal/modal-footer"
 import { createEffect, For } from "solid-js"
 import type { StatusRow } from "./status-modal-types.js"
-import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../protocol/commands/command-names.js"
 
 interface StatusModalProps {
   rows: readonly StatusRow[]

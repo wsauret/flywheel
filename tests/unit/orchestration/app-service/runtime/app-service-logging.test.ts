@@ -3,9 +3,9 @@ import { RpcClientError } from "effect/rpc"
 import { Socket } from "effect/socket"
 import { withLoggedRuntimeClient } from "../../../../../src/orchestration/app-service/runtime/app-service-logging.js"
 import type { OperationLogger } from "../../../../../src/infra/operation-log.js"
-import type { RuntimeClient } from "../../../../../src/protocol/app-service-types.js"
+import type { RuntimeClient } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
-import { RuntimeProtocolError, type RuntimeProtocolErrorKind } from "../../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeProtocolError, type RuntimeProtocolErrorKind } from "../../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 
 type LogFields = { [key: string]: unknown } | undefined
 

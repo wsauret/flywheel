@@ -4,7 +4,7 @@ import { parseProjectionFact } from "../../../infra/event-projection.js"
 import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../../infra/event-store-types.js"
 
 import { countTranscriptIndex, indexedToolUseId, rankConversationsByBestMessage, searchTranscriptIndex, type TranscriptIndexHit } from "../../../infra/conversation-recall-search.js"
-import type { ChatSearchRequest, ChatSearchResult, FoundChat, TranscriptSearchHit, TranscriptSearchRequest, TranscriptSearchResult } from "../../../protocol/transcript-protocol-types.js"
+import type { ChatSearchRequest, ChatSearchResult, FoundChat, TranscriptSearchHit, TranscriptSearchRequest, TranscriptSearchResult } from "../../../protocol/transcript/transcript-protocol-types.js"
 import type { ReplayedSession } from "../metadata/schemas.js"
 import { contentSearchable } from "../../../protocol/client/chat-content-search.js"
 import { buildFtsMatch, typedWordIsPrefix } from "./conversation-recall.js"

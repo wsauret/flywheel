@@ -1,7 +1,7 @@
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
 import { loggedOperation, type CompletionLevel, type OperationFailure, type OperationLogger } from "../../../infra/operation-log.js"
 import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
-import type { FrontendMutation, FrontendEvent, RuntimeClient } from "../../../protocol/app-service-types.js"
+import type { FrontendMutation, FrontendEvent, RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { declinedByPausedProject, lostWithLane, supersededByGenerationChange } from "../../../protocol/client/connection-failures.js"
 
 interface MutationLogFields {

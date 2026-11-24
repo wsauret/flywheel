@@ -23,9 +23,9 @@ import type { FrontendQuestionBlock } from "../../client/questions/question-answ
 import { createQuestionAttention, createQuestionInteractions, QuestionPanel } from "./questions/question-panel.js"
 import { publishPaneHeight } from "../transcript/transcript-scroll.js"
 import { createSessionReading } from "../transcript/blocks/agents/session-reading.js"
-import { sessionServingSelection, type RoleAssignmentView } from "../../../../src/protocol/role-protocol-types.js"
+import { sessionServingSelection, type RoleAssignmentView } from "../../../../src/protocol/auth/role-protocol-types.js"
 import type { ActiveModel } from "../../client/session/residents/active-model.js"
-import type { SessionRow } from "../../../../src/protocol/app-service-types.js"
+import type { SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import "../../styles/composer.css"
 import { ComposerCheckpointSchema, type ComposerCheckpoint } from "../../client/input/input-reload-checkpoint.js"
 import { Schema } from "effect"
@@ -46,7 +46,7 @@ export interface ComposerHandle {
   settled(): Promise<void>
   focus(): void
   insertText(text: string): void
-  appendInput(sessionId: string, input: import("../../../../src/protocol/app-service-types.js").ProtocolChatInputObject): void
+  appendInput(sessionId: string, input: import("../../../../src/protocol/runtime/app-service-types.js").ProtocolChatInputObject): void
   /** Puts `/` in the draft, which opens the command panel. */
   openCommands(): void
   /** Starts an `@` at the caret, which opens the file picker. */

@@ -7,7 +7,7 @@ import { workflowAgentAddress } from "../../../../../src/protocol/client/workflo
 import type { WebModuleClientHost } from "../../../web-module-client.js"
 import { summaryOf } from "../../../client/session/view-state.js"
 import { createSessionReading } from "../../../app/transcript/blocks/agents/session-reading.js"
-import { sessionServingLabel } from "../../../../../src/protocol/role-protocol-types.js"
+import { sessionServingLabel } from "../../../../../src/protocol/auth/role-protocol-types.js"
 import { WORKFLOW_TEXT_GLYPH } from "../../../app/controls/icons.js"
 import { WorkflowPlanChits } from "../card.js"
 import { workflowCut, type WorkflowPlace } from "../navigation.js"

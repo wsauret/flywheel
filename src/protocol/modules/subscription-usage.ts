@@ -1,9 +1,9 @@
-import type { RuntimeAuthStatusScope } from "../auth-status-protocol-types.js"
+import type { RuntimeAuthStatusScope } from "../auth/auth-status-protocol-types.js"
 import { Schema } from "effect"
 import { type SubscriptionUsageMetric, type SubscriptionUsageSpendSource, SubscriptionUsageMetricSchema, SubscriptionUsageSpendSourceSchema } from "../../infra/llm/usage/subscription-usage.js"
-import { RuntimeAuthStatusScopeSchema } from "../auth-status-protocol-schemas.js"
+import { RuntimeAuthStatusScopeSchema } from "../auth/auth-status-protocol-schemas.js"
 import { defineProtocolModule, defineProtocolMutation, defineProtocolQuery, type ModuleRow } from "../protocol-module.js"
-import { formatGenerationSpeed, GenerationStatisticsSchema, type GenerationStatistics } from "../generation-statistics.js"
+import { formatGenerationSpeed, GenerationStatisticsSchema, type GenerationStatistics } from "../session/generation-statistics.js"
 
 
 export const USAGE_HISTORY_RANGES = ["24h", "7d", "Month", "All"] as const

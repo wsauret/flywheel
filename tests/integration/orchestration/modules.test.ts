@@ -37,8 +37,8 @@ import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runt
 import { createCommandCatalogProjection } from "../../../src/orchestration/app-service/definitions/commands/command-catalog-projection.js";
 import { createDefinitionAvailability } from "../../../src/orchestration/app-service/definitions/definition-availability.js";
 import { watchDefinitionRoots } from "../../../src/orchestration/app-service/definitions/definition-root-watcher.js";
-import type { RuntimeUiPatchInput } from "../../../src/protocol/runtime-ui-protocol-types.js";
-import type { RuntimeModulesView } from "../../../src/protocol/module-protocol-types.js";
+import type { RuntimeUiPatchInput } from "../../../src/protocol/runtime/runtime-ui-protocol-types.js";
+import type { RuntimeModulesView } from "../../../src/protocol/runtime/module-protocol-types.js";
 import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
 import { decodeModuleState } from "../../../src/orchestration/config/module-descriptor.js";
 import { admitWorkflowOperation } from "../../../src/orchestration/workflow-host/lifecycle/workflow-admission.js";
@@ -47,7 +47,7 @@ import { moduleRequirementsForContribution } from "../../../src/orchestration/mo
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 import { makeContext } from "../../unit/orchestration/agent-runtime/tools/_fixtures.js";
 import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
-import { canonicalModuleIds, missingModuleIds, MODULE_IDS, moduleDisabledReason } from "../../../src/protocol/module-ids.js";
+import { canonicalModuleIds, missingModuleIds, MODULE_IDS, moduleDisabledReason } from "../../../src/protocol/runtime/module-ids.js";
 
 const REPO = join(import.meta.dir, "..", "..", "..");
 /** One installed workflow every case admits against. */

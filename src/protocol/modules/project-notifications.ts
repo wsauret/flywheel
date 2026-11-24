@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { NotificationActionSchema, type NotificationAction, type NotificationSeverity } from "../../infra/notification-episode.js"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, type ModuleRow } from "../protocol-module.js"
-import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 
 /** The workspace-scoped `project_notifications` contract (ARCH-PROTOCOL-044): the
  *  episodes the runtime raised for this project, the fact-shaped patches that

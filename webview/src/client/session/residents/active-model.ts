@@ -1,4 +1,4 @@
-import type { ModelSelectionSlot } from "../../../../../src/protocol/model-assignment-protocol-types.js"
+import type { ModelSelectionSlot } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js"
 
 export const CHAT_SLOT: ModelSelectionSlot = { kind: "role", roleId: "chat" }
 

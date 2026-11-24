@@ -1,4 +1,4 @@
-import type { RuntimeHealth } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeHealth } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
 import { MODULE_DOMAIN_BINDINGS, moduleDomainReader, type ModuleDomainBinding } from "../../../../src/protocol/client/module-domain.js"
 import type { DomainReader } from "../../../../src/protocol/protocol-module.js"

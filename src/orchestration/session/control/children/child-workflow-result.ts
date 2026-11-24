@@ -8,7 +8,7 @@ import { childSessionResultFact, workflowNotificationLabel } from "./child-sessi
 import { prepareSessionFactAppend } from "../../persistence/session-fact-writer.js"
 import { holdsInterruptedGuess, readToolExecution } from "../../runtime-facts/tool-execution-projection.js"
 import { childCallOf } from "../chat-session-run-evidence.js"
-import type { StoppedBy } from "../../../../protocol/app-service-types.js"
+import type { StoppedBy } from "../../../../protocol/runtime/app-service-types.js"
 
 const MAX_CONFLICT_RETRIES = 3
 

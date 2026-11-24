@@ -1,5 +1,5 @@
-import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
-import { settingCatalogRow } from "../../protocol/setting-catalog.js"
+import { KERNEL_COMMAND_NAMES } from "../../protocol/commands/command-names.js"
+import { settingCatalogRow } from "../../protocol/settings/setting-catalog.js"
 import { createLazyTuiView } from "../components/lazy-tui-view.js"
 
 export const LazyAuthModal = createLazyTuiView(KERNEL_COMMAND_NAMES.auth, async () => (await import("./auth/auth-modal.js")).AuthModal)

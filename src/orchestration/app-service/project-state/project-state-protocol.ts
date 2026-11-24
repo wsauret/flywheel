@@ -1,5 +1,5 @@
 import { pack, unpack, unpackMultiple } from "msgpackr"
-import { isStartupStep, type StartupReached } from "../../../protocol/startup-steps.js"
+import { isStartupStep, type StartupReached } from "../../../protocol/runtime/startup-steps.js"
 import { Schema } from "effect"
 import {
   CorruptEventRowError,

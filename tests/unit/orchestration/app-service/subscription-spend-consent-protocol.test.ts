@@ -4,11 +4,11 @@ import { Schema } from "effect";
 import { createUsageAppService as createFlywheelAppService } from "../../../helpers/usage-app-service.js";
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js";
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js";
-import { FrontendMutationSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
+import { FrontendMutationSchema } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js";
 import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js";
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js";
 import { createInertSubscriptionUsageService } from "../../../helpers/subscription-usage-service-fixture.js";
-import { subscriptionSpendConsentEnvelopeIds, subscriptionSpendConsentNeedsReview } from "../../../../src/protocol/subscription-spend-consent-protocol-types.js";
+import { subscriptionSpendConsentEnvelopeIds, subscriptionSpendConsentNeedsReview } from "../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js";
 
 const consent = {
   kind: "available",

@@ -1,4 +1,4 @@
-import type { ChildSessionRow, SessionRow, SessionDiffStats, WorkflowDefinitionDrift } from "../../../protocol/app-service-types.js"
+import type { ChildSessionRow, SessionRow, SessionDiffStats, WorkflowDefinitionDrift } from "../../../protocol/runtime/app-service-types.js"
 import type { DurableSessionCatalogRow, SessionLaunchedFrom } from "../metadata/catalog/session-catalog-types.js"
 import type { ReplayedSession } from "../metadata/schemas.js"
 import { subagentRunOutcome, subagentSessionActions, subagentStoppedBy, type ChildSessionRunEvidence } from "./child-session-run-evidence.js"

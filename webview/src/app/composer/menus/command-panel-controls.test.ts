@@ -3,10 +3,10 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { importBuiltModule } from "../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../test-support/solid-transform.js"
-import { settingGroupHead, shownOn } from "../../../../../src/protocol/setting-catalog.js"
+import { settingGroupHead, shownOn } from "../../../../../src/protocol/settings/setting-catalog.js"
 import { inPlaceSettingCatalogRows } from "../../../../../tests/helpers/setting-catalog-rows.js"
-import { MODULE_SETTING_GROUPS } from "../../../../../src/protocol/module-protocol-types.js"
-import { WRITE_SYNTAX_THEME_OPTIONS } from "../../../../../src/protocol/write-syntax-theme.js"
+import { MODULE_SETTING_GROUPS } from "../../../../../src/protocol/runtime/module-protocol-types.js"
+import { WRITE_SYNTAX_THEME_OPTIONS } from "../../../../../src/protocol/settings/write-syntax-theme.js"
 
 const build = await Bun.build({
   entrypoints: [fileURLToPath(new URL("command-panel-controls-fixture.tsx", import.meta.url))],

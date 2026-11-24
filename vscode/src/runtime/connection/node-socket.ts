@@ -5,7 +5,7 @@ import { Socket } from "effect/socket"
 import {
   createAccountAttachResponseReader,
   encodeAccountAttach,
-} from "../../../../src/protocol/account-attach.js"
+} from "../../../../src/protocol/runtime/account-attach.js"
 
 export interface RuntimeSocketTarget {
   readonly socketPath: string

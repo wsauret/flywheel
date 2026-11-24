@@ -1,5 +1,5 @@
-import type { RuntimeModulesView } from "../module-protocol-types.js"
-import type { UpdateAutoInstall } from "../update-protocol-types.js"
+import type { RuntimeModulesView } from "../runtime/module-protocol-types.js"
+import type { UpdateAutoInstall } from "../runtime/update-protocol-types.js"
 
 /** How every client words the two runtime policies an override can hold for
  *  one run: persistent processes, which a command-line flag can force on, and

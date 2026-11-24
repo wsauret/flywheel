@@ -1,4 +1,4 @@
-import type { AuthOperationConfirmation, AuthOperationSettlement, RuntimeAuthView } from "../../../../../protocol/auth-status-protocol-types.js"
+import type { AuthOperationConfirmation, AuthOperationSettlement, RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import { loginSettlement } from "../../../../../protocol/client/auth-login.js"
 import type { AuthModalDeps } from "./auth-modal-types.js"
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import type { CommandMethod, CommandPrompt } from "../../../../../src/orchestration/app-service/definitions/commands/command-host.js"
-import type { CommandOutcome } from "../../../../../src/protocol/command-catalog-protocol-types.js"
+import type { CommandOutcome } from "../../../../../src/protocol/commands/command-catalog-protocol-types.js"
 import { executeExperimentCommand, type ExperimentCommandDeps } from "../../../../../src/orchestration/modules/experiments/experiment-command.js"
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js"
 

@@ -4,8 +4,8 @@ import { Redacted } from "effect"
 import type { WebPushMessage, WebPushOutcome } from "../../../../../src/infra/web-push.js"
 import type { PushTarget } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import { createRemoteNotifier, type RemoteNotifierOptions } from "../../../../../src/orchestration/modules/remote/remote-notifier.js"
-import type { FrontendEvent, SessionCatalogRow } from "../../../../../src/protocol/app-service-types.js"
-import type { StatusView } from "../../../../../src/protocol/status-protocol-types.js"
+import type { FrontendEvent, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
 
 /** The notifier reads the same patches every client reads. These tests feed it
  *  the patch shapes the runtime publishes and check its one rule: a phone hears

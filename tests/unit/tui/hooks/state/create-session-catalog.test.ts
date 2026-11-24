@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { createEffect, createRoot } from "solid-js"
-import type { AttachedRuntimeClient, FrontendEvent, RuntimeChatDefault, SessionCatalogError } from "../../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendEvent, RuntimeChatDefault, SessionCatalogError } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
-import type { RuntimeUiSnapshot } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiSnapshot } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import type { RuntimeIdentity } from "../../../../../src/protocol/client/runtime-identity.js"
 import { createSessionCatalog as createCatalog } from "../../../../../src/tui/hooks/state/create-session-catalog.js"
 

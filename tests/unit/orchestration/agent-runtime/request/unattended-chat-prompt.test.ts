@@ -11,7 +11,7 @@ import { installedDefinitionBundles } from "../../../../../src/orchestration/mod
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { CapabilityRequest } from "../../../../../src/orchestration/config/policy/module-policy.js";
 import { composeFirstPartyModules, unattendedModuleIds, type FirstPartyModuleComposition } from "../../../../../src/orchestration/modules.js";
-import { canonicalModuleIds } from "../../../../../src/protocol/module-ids.js";
+import { canonicalModuleIds } from "../../../../../src/protocol/runtime/module-ids.js";
 import { installedPersonaToolEntries } from "../../../../../src/orchestration/tool-catalog.js";
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../../../../src/workflows/definitions/definition-registry.js";
 import { publishSkillRevision, type SkillDefinition } from "../../../../../src/workflows/skills/skill-schema.js";

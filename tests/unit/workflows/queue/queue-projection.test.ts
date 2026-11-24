@@ -31,7 +31,7 @@ import { countStateRequests, factsRead } from "../../../helpers/state-requests.j
 import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js"
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/control/companions.js"
 import { createMemoryStore, initialFacts, testHost } from "../vm/host-test-support.js"
-import type { WorkflowTree } from "../../../../src/protocol/workflow-view-protocol-types.js"
+import type { WorkflowTree } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** Fact literals below carry the registered version of their type, so a queue

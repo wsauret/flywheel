@@ -34,7 +34,7 @@ describe("a source checkout's build identity", () => {
 
   test("is read from the checkout, not from the snapshot a dev service runs", async () => {
     const fixture = snapshotFixture(temporaryDirectory("flywheel-snapshot-protocol-"), ["src/orchestration/app-service/runtime-executable.ts"])
-    mkdirSync(join(fixture.checkout, "src", "protocol"), { recursive: true })
+    mkdirSync(join(fixture.checkout, "src", "protocol", "runtime"), { recursive: true })
     writeFileSync(join(fixture.checkout, "src", "protocol", "runtime-liveness.ts"), `export const RUNTIME_PROTOCOL_VERSION = ${RUNTIME_PROTOCOL_VERSION + 1}\n`)
     const snapshotted = await fixture.importFromSnapshot<typeof import("../../../../src/orchestration/app-service/runtime-executable.js")>("src/orchestration/app-service/runtime-executable.ts")
 

@@ -1,7 +1,7 @@
 import { isRecord } from "../../infra/record.js"
-import { classifyRuntimeUiPatch, cursorKey, type RuntimeCursorIdentity, type RuntimeInvalidationReason, type RuntimePatchClassification, type RuntimePosition, type RuntimeUiPatch } from "../runtime-ui-protocol-types.js"
-import { isRuntimeInvalidationPayload, isGlobalRuntimeInvalidation } from "../runtime-invalidation.js"
-import { runtimeDeliveryPolicy } from "../runtime-delivery-policy.js"
+import { classifyRuntimeUiPatch, cursorKey, type RuntimeCursorIdentity, type RuntimeInvalidationReason, type RuntimePatchClassification, type RuntimePosition, type RuntimeUiPatch } from "../runtime/runtime-ui-protocol-types.js"
+import { isRuntimeInvalidationPayload, isGlobalRuntimeInvalidation } from "../rpc/runtime-invalidation.js"
+import { runtimeDeliveryPolicy } from "../rpc/runtime-delivery-policy.js"
 
 /** The client half of ARCH-PROTOCOL-012: ordered intake of one runtime cursor.
  *

@@ -2,7 +2,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createSignal } from "solid-js"
-import type { FrontendMutation, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, RuntimeClient } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { BugReportResult } from "../../../../src/protocol/modules/bug-reports.js"
 import { ErrorComponent } from "../../../../src/tui/components/error-boundary.js"
 import { createTuiErrorReports } from "../../../../src/tui/modules.js"

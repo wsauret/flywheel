@@ -66,7 +66,7 @@ async function fatalExitCode(error: unknown, kind: FatalKind): Promise<number> {
   let SERVE_EXIT
   try {
     ;({ failServiceStart, serviceListened } = await import("../../orchestration/update/service-start.js"))
-    ;({ ServeStartupFailure, startHeldByHost } = await import("../../protocol/serve-handshake.js"))
+    ;({ ServeStartupFailure, startHeldByHost } = await import("../../protocol/runtime/serve-handshake.js"))
     ;({ SERVE_EXIT } = await import("../account-service/serve-contract.js"))
   } catch (loadError) {
     // A process that cannot load the start's own module never listened.

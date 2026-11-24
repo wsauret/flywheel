@@ -9,7 +9,7 @@ import { Redacted } from "effect"
 
 import { RUNTIME_PROTOCOL_VERSION } from "../../../src/protocol/runtime-liveness.js"
 import { startRefusalCopy } from "../../../src/protocol/client/runtime-fault-copy.js"
-import { createServeStatusReader, decodeServeListeningVersions, readServeDiagnostic, type ServeStartRefusal, type ServeStartStatus } from "../../../src/protocol/serve-handshake.js"
+import { createServeStatusReader, decodeServeListeningVersions, readServeDiagnostic, type ServeStartRefusal, type ServeStartStatus } from "../../../src/protocol/runtime/serve-handshake.js"
 import { probeVersion } from "./probe-version.js"
 
 export type StartFailure =

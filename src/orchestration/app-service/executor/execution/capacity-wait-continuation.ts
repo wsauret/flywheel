@@ -2,7 +2,7 @@ import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-t
 import { errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/log.js"
 import { coalesceRepeats } from "../../../../infra/repeat-coalescer.js"
-import type { RuntimeClient } from "../../../../protocol/app-service-types.js"
+import type { RuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 import { recordCapacityWait, type CapacityWaitLedger } from "../../../session/control/capacity-wait.js"
 import { liveSessionControl } from "../../../session/control/live-session-control.js"
 import { capacityContinuations, continuationTargetId, readPlannedSessionContinuationAsync, type CapacityWaitRow, type ContinuationLanes } from "../../../session/control/planned-session-continuation.js"

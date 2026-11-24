@@ -1,4 +1,4 @@
-import type { SessionCatalogRow, SessionRow, RuntimeClient } from "../../../protocol/app-service-types.js"
+import type { SessionCatalogRow, SessionRow, RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { resolveSessionRoute, type SessionRoute } from "../../../protocol/client/held-session-details.js"
 import { parseSessionLink } from "../../../protocol/client/session-links.js"
 import { errorMessage } from "../../../infra/error-message.js"

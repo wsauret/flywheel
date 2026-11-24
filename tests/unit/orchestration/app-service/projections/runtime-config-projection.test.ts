@@ -6,7 +6,7 @@ import { CONFIG_DEFAULTS, type FlywheelConfig } from "../../../../../src/orchest
 import { CONFIG_VALUE_ABSENT, createRuntimeConfigOwner, type ConfigMutationResult, type RuntimeConfigOwner, type RuntimeConfigSnapshot } from "../../../../../src/orchestration/config/runtime-config-owner.js"
 import { ConfigWriteError } from "../../../../../src/orchestration/config/writer.js"
 import { createRuntimeConfigProjection } from "../../../../../src/orchestration/app-service/projections/runtime-config-projection.js"
-import { runtimeQueryResultSchema } from "../../../../../src/protocol/runtime-protocol-schemas.js"
+import { runtimeQueryResultSchema } from "../../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { decodeRuntimeUiPatch } from "../../../../helpers/runtime-ui-patch.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { runtimeConfigView } from "../../../../helpers/runtime-config-view.js"

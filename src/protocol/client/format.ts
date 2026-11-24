@@ -3,7 +3,7 @@
  * client core so every client renders the same figures and activity words.
  */
 
-import type { FrontendActivity } from "../app-service-types.js"
+import type { FrontendActivity } from "../runtime/app-service-types.js"
 
 /** Reads the automatic deletion threshold: zero disables deletion. */
 export function formatAutoDeleteSessionDays(days: number): string {

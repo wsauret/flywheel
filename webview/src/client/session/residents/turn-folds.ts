@@ -1,11 +1,11 @@
 import { formatElapsed } from "../../../../../src/protocol/client/format.js"
 import { rowIdentity, toolWorkCounts, type TranscriptView, type TranscriptViewRow, type TurnFold } from "./tool-runs.js"
 import { selectFileChangeBody } from "../../../../../src/protocol/client/file-change-body.js"
-import type { HydratedOutputBlockBody } from "../../../../../src/protocol/transcript-protocol-types.js"
+import type { HydratedOutputBlockBody } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { isReviewableSessionFile } from "../../../../../src/protocol/client/session-changes-copy.js"
 import type { MutationFilesView } from "../../../../../src/protocol/client/mutation-evidence.js"
-import type { FrontendToolEntry } from "../../../../../src/protocol/app-service-types.js"
-import { isReturnedInputNotice } from "../../../../../src/protocol/composer-returns.js"
+import type { FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
+import { isReturnedInputNotice } from "../../../../../src/protocol/transcript/composer-returns.js"
 
 export type TurnFileEdit = { readonly callId: string; readonly evidence: NonNullable<FrontendToolEntry["mutationEvidence"]>; readonly entry: Extract<MutationFilesView["files"][number], { kind: "applied" | "display" }> }
 

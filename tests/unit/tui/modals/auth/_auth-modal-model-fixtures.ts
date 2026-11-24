@@ -1,4 +1,4 @@
-import type { RuntimeAuthView } from "../../../../../src/protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
 
 export const providerModelView = {
   profileId: "default",

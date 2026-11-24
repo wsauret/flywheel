@@ -6,7 +6,7 @@ import { ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND } from "./addressed-workflow-
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, RETAINED_INPUT_GAP_IN_FLIGHT_KIND } from "./queued-user-inputs.js"
 import { conversationHoldsEntries } from "./session-message-entries.js"
 import { owningChat } from "../metadata/session-metadata-projection.js"
-import { returnedInputNoticeId } from "../../../protocol/composer-returns.js"
+import { returnedInputNoticeId } from "../../../protocol/transcript/composer-returns.js"
 
 /** Where the ledger already holds a person's message: an entry of the
  *  conversation, a held cell that the next save point or reader commits,

@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
-import type { BackgroundWorkRow } from "../../../../../src/protocol/background-index-protocol-types.js"
+import type { BackgroundWorkRow } from "../../../../../src/protocol/session/background-index-protocol-types.js"
 import { importBuiltModule } from "../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../test-support/solid-transform.js"
 

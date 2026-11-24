@@ -1,9 +1,9 @@
 import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
 import { createReadRetry } from "../../../../../src/protocol/client/background-reads.js"
 import { createCursorIntake, isLaneBreak } from "../../../../../src/protocol/client/cursor-intake.js"
-import { rolesCursor, type RoleAssignmentView } from "../../../../../src/protocol/role-protocol-types.js"
-import type { RuntimePosition, RuntimeUiPatch } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
-import { isGlobalRuntimeInvalidation } from "../../../../../src/protocol/runtime-invalidation.js"
+import { rolesCursor, type RoleAssignmentView } from "../../../../../src/protocol/auth/role-protocol-types.js"
+import type { RuntimePosition, RuntimeUiPatch } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
+import { isGlobalRuntimeInvalidation } from "../../../../../src/protocol/rpc/runtime-invalidation.js"
 
 type RoleListener = (view: RoleAssignmentView | undefined) => void
 

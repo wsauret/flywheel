@@ -6,7 +6,7 @@ import { Log } from "../../../infra/log.js"
 import { messageInput } from "../../../infra/agent-loop-events.js"
 import type { Agent, AgentFactory, AgentPurpose } from "../../agent-runtime/types.js"
 import { createAgentGeneration } from "../../runner/host.js"
-import { SHORT_TITLE_MAX_CHARS } from "../../../protocol/app-service-types.js"
+import { SHORT_TITLE_MAX_CHARS } from "../../../protocol/runtime/app-service-types.js"
 import { TITLE_GENERATION_ROLE_ID, type RoleResolver } from "../../config/roles.js"
 
 const log = Log.create({ service: "session-title" })

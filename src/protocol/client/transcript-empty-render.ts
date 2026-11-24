@@ -1,4 +1,4 @@
-import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 import type { TranscriptStatus, TranscriptView } from "./transcript-view.js"
 import { showsNothingOfOutput } from "./transcript-store-paging.js"
 

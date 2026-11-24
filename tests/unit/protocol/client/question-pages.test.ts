@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { createQuestionPages, type DesktopNotice } from "../../../../src/protocol/client/question-pages.js"
-import type { FrontendEvent, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
-import { questionCursor, type PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
-import type { RuntimeSessionDetailView } from "../../../../src/protocol/session-detail-protocol-types.js"
+import type { FrontendEvent, RuntimeClient } from "../../../../src/protocol/runtime/app-service-types.js"
+import { questionCursor, type PendingQuestionView } from "../../../../src/protocol/session/question-protocol-types.js"
+import type { RuntimeSessionDetailView } from "../../../../src/protocol/session/session-detail-protocol-types.js"
 import { catalogRow } from "../../../helpers/session-catalog.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 

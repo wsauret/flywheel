@@ -1,7 +1,7 @@
 import { newestCall } from "../../../../infra/output/newest-call.js"
 import { isAgentInFlight, type AnyBlock } from "../../../../infra/output-blocks.js"
-import type { WorkflowAgentLive } from "../../../../protocol/workflow-view-protocol-types.js"
-import type { FrontendActivity } from "../../../../protocol/app-service-types.js"
+import type { WorkflowAgentLive } from "../../../../protocol/session/workflow-view-protocol-types.js"
+import type { FrontendActivity } from "../../../../protocol/runtime/app-service-types.js"
 
 /** What one running agent of a workflow has done so far: the operations it
  *  ran, counted from its runtime events as its attempt's outcome counts them,

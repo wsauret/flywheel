@@ -1,8 +1,8 @@
 import { createEffect, createMemo, createResource, createSignal, on, onCleanup, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
-import type { AuthProviderStatus } from "../../../../../src/protocol/auth-status-protocol-types.js"
-import type { ProviderModelTarget, ProviderModelView } from "../../../../../src/protocol/provider-model-preference-protocol-types.js"
+import type { AuthProviderStatus } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
+import type { ProviderModelTarget, ProviderModelView } from "../../../../../src/protocol/auth/provider-model-preference-protocol-types.js"
 import { actionKey } from "../../../client/action-key.js"
 import { describeFailure } from "../../../client/format/failure-message.js"
 import { useClient } from "../../client-context.js"

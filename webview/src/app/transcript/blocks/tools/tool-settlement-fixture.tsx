@@ -1,6 +1,6 @@
 import { createRoot, createSignal } from "solid-js"
 
-import type { FrontendToolEntry } from "../../../../../../src/protocol/app-service-types.js"
+import type { FrontendToolEntry } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { createBlockDisclosure } from "../block-disclosure.js"
 import { Block } from "../blocks.js"
 import { presentedBlock } from "../../../../client/session/residents/presented-block-fixture.js"

@@ -1,8 +1,8 @@
 import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
 import { createHeldView } from "../../../../../src/protocol/client/held-view.js"
-import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../../../../src/protocol/git-ai-attribution-protocol-types.js"
-import { updatesCursor, type UpdateStatusView } from "../../../../../src/protocol/update-protocol-types.js"
-import { waitingSessionsCursor, type WaitingSessionsView } from "../../../../../src/protocol/question-protocol-types.js"
+import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../../../../src/protocol/git/git-ai-attribution-protocol-types.js"
+import { updatesCursor, type UpdateStatusView } from "../../../../../src/protocol/runtime/update-protocol-types.js"
+import { waitingSessionsCursor, type WaitingSessionsView } from "../../../../../src/protocol/session/question-protocol-types.js"
 
 /** The workspace status views that read themselves: each one holds its own
  *  cursor, reads its snapshot, and adopts its own patches, so the session

@@ -4,7 +4,7 @@ import { toolRegistryFromComposition } from "../../../src/orchestration/agent-ru
 import { SHIPPED_MODULES, composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../src/orchestration/modules.js"
 import { installedModules } from "../../../src/orchestration/module-catalog.js"
 import { createToolRegistry } from "../../../src/orchestration/tool-catalog.js"
-import { EMPTY_MODULE_IDS, MODULE_IDS } from "../../../src/protocol/module-ids.js"
+import { EMPTY_MODULE_IDS, MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js"
 
 const everyShipped = SHIPPED_MODULES.map((module) => module.id)
 

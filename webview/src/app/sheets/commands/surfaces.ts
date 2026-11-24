@@ -1,4 +1,4 @@
-import type { BuiltInCommandDescriptor, CommandReading as CommandReadingKind, CommandSurfaceTarget, KernelSurface, SurfacePlace } from "../../../../../src/protocol/command-catalog-protocol-types.js"
+import type { BuiltInCommandDescriptor, CommandReading as CommandReadingKind, CommandSurfaceTarget, KernelSurface, SurfacePlace } from "../../../../../src/protocol/commands/command-catalog-protocol-types.js"
 import type { SurfaceOpening } from "../../../../../src/protocol/client/surface-presentation.js"
 import { commandMenuGroups } from "../../../../../src/protocol/client/command-menu.js"
 import { compactionReading, compactionTrigger } from "../../../../../src/protocol/client/context-compaction.js"

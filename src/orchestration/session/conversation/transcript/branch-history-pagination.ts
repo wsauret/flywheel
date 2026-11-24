@@ -1,6 +1,6 @@
 import type { AnyBlock } from "../../../../infra/output-blocks.js"
-import type { IdentifiedBlock } from "../../../../protocol/block-identity.js"
-import type { OutputRangeAnchor } from "../../../../protocol/transcript-protocol-types.js"
+import type { IdentifiedBlock } from "../../../../protocol/transcript/block-identity.js"
+import type { OutputRangeAnchor } from "../../../../protocol/transcript/transcript-protocol-types.js"
 
 export type BranchHistoryRangeAnchor = OutputRangeAnchor
 

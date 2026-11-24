@@ -1,16 +1,16 @@
 import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
-import type { EffortOptionRow, ModelOptionRow } from "../../../../../src/protocol/model-assignment-protocol-types.js"
+import type { EffortOptionRow, ModelOptionRow } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js"
 import { actionKey } from "../../../client/action-key.js"
-import { isProfileModelRole } from "../../../../../src/protocol/brief-role-id.js"
+import { isProfileModelRole } from "../../../../../src/protocol/auth/brief-role-id.js"
 import { describeFailure } from "../../../client/format/failure-message.js"
 import { roleGroups, type ModelScope, type SeatGroup, type SeatRow } from "./model-roles.js"
 import { useClient } from "../../client-context.js"
 import { createModelCatalogRevision } from "./model-catalog.js"
 import { ModelOptionDetail } from "./model-option-detail.js"
 import { Sheet, SheetEmpty, SheetLoading, SheetRow } from "../sheet.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/commands/command-names.js"
 
 /** Which model does each job.
  *

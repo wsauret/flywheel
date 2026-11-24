@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { createRoot, createSignal } from "solid-js"
 import { createWorkflowNavigation, type HistoryPort } from "./navigation.js"
 import type { WorkflowReading } from "./inspection.js"
-import type { LoadedWorkflowView } from "../../../../src/protocol/workflow-view-protocol-types.js"
+import type { LoadedWorkflowView } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 
 function memoryHistory() {
   const entries: unknown[] = [{ flywheelScreen: "chat", flywheelSession: "chat" }]

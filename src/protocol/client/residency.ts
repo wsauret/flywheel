@@ -1,6 +1,6 @@
-import type { AttachedRuntimeClient, FrontendEvent } from "../app-service-types.js"
-import { cursorKey } from "../runtime-ui-protocol-types.js"
-import { isRuntimeInvalidationPayload } from "../runtime-invalidation.js"
+import type { AttachedRuntimeClient, FrontendEvent } from "../runtime/app-service-types.js"
+import { cursorKey } from "../runtime/runtime-ui-protocol-types.js"
+import { isRuntimeInvalidationPayload } from "../rpc/runtime-invalidation.js"
 import { isLaneBreak } from "./cursor-intake.js"
 
 /** The half of a connection that a per-session reader listens on: its patches

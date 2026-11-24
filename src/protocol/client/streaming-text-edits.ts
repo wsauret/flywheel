@@ -1,8 +1,8 @@
 import { Schema } from "effect"
 import { ToolStreamingTextSchema } from "../../infra/output-blocks.js"
 import type { EditableValue, StreamingToolTextOp, ValueEdit, ValuePath } from "../../infra/output/output-block-delta.js"
-import type { FrontendOutputBlock, FrontendToolStreamingText } from "../app-service-types.js"
-import type { OutputView } from "../output-protocol-types.js"
+import type { FrontendOutputBlock, FrontendToolStreamingText } from "../runtime/app-service-types.js"
+import type { OutputView } from "../transcript/output-protocol-types.js"
 
 const isToolStreamingText = Schema.is(ToolStreamingTextSchema)
 

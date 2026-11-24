@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "bun:test"
-import type { AuthProviderStatus } from "../../../../src/protocol/auth-status-protocol-types.js"
+import type { AuthProviderStatus } from "../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { providerSetup, settledProviderSetup, type ProviderSetup } from "../../../../src/protocol/client/provider-setup.js"
-import { runtimeCallPolicies } from "../../../../src/protocol/runtime-client-deadlines.js"
+import { runtimeCallPolicies } from "../../../../src/protocol/rpc/runtime-client-deadlines.js"
 
 function view(...providers: ReadonlyArray<Pick<AuthProviderStatus, "group" | "source"> & { readonly expired?: boolean }>) {
   return { providers: providers.map((provider) => ({ expired: false, ...provider })) }

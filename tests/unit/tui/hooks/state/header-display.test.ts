@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import { createHeaderDisplay as buildHeaderDisplay } from "../../../../../src/tui/hooks/state/create-header-display.js"
-import type { SessionCatalogRow, ChildSessionRow } from "../../../../../src/protocol/app-service-types.js"
-import type { BudgetView } from "../../../../../src/protocol/budget-protocol-types.js"
+import type { SessionCatalogRow, ChildSessionRow } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { BudgetView } from "../../../../../src/protocol/session/budget-protocol-types.js"
 import { RGBA } from "@opentui/core"
 import { displayWidth } from "../../../../../src/tui/terminal/text.js"
 

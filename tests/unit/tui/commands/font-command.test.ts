@@ -3,7 +3,7 @@ import { createLauncherScope } from "../../../../src/infra/process-supervisor.js
 import { handleFontCommand } from "../../../../src/tui/commands/command-definitions.js"
 import type { CommandRuntimeConfig } from "../../../../src/tui/commands/command-types.js"
 import { mutateRuntimeConfig } from "../../../../src/tui/hooks/state/create-settings-store.js"
-import type { RuntimeClient } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeClient } from "../../../../src/protocol/runtime/app-service-types.js"
 import { configValues } from "../modals/settings/_settings-modal-fixtures.js"
 import { runtimeDispatch, type DispatchAnswer } from "../../../helpers/runtime-dispatch.js"
 

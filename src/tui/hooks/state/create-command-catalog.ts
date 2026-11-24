@@ -1,12 +1,12 @@
 import { createSignal, onCleanup } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
-import type { AttachedRuntimeClient } from "../../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import {
   commandCatalogCursor,
   type BuiltInCommandDescriptor,
   type OffCommandDescriptor,
   type RuntimeCommandCatalog,
-} from "../../../protocol/command-catalog-protocol-types.js"
+} from "../../../protocol/commands/command-catalog-protocol-types.js"
 import { createHeldView } from "../../../protocol/client/held-view.js"
 import type { CommandCatalogReadiness } from "../../../protocol/client/slash-route.js"
 

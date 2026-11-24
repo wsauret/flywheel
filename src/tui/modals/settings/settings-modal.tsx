@@ -17,7 +17,7 @@ import { ControlledTextField } from "../../components/controls/controlled-text-f
 import { useKeyedListScroll } from "../../components/modal/scroll/use-keyed-list-scroll.js"
 import { WORKFLOWS_MODE_LABELS } from "../../../protocol/client/capabilities.js"
 import { createModalScrollController } from "../../components/modal/scroll/modal-scroll-controller.js"
-import { KERNEL_COMMAND_NAMES } from "../../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../protocol/commands/command-names.js"
 interface SettingsModalProps {
   cursor: number
   view: SettingsView

@@ -14,7 +14,7 @@ import { createStartupTimeline } from "../../../../infra/startup-timeline.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import type { PersistentProcessClient } from "../../../../infra/persistent-process-manager.js"
 import type { BridgedPersistentProcessClient } from "../../../../infra/persistent-process-bridge.js"
-import type { RuntimeChatDefault } from "../../../../protocol/app-service-types.js"
+import type { RuntimeChatDefault } from "../../../../protocol/runtime/app-service-types.js"
 import { createReplacementReport, type ReplacementBlocker, type ReplacementState } from "../replacement-blockers.js"
 import { continueAfterReplacement } from "./replacement-continuation.js"
 import { capacityContinuer, type CapacityContinuation } from "./capacity-wait-continuation.js"
@@ -39,7 +39,7 @@ import { startModulePolicy } from "../../../config/policy/module-policy.js"
 import { prepareDefinitionReconciliation, shippedDefinitionBundles, type FirstPartyModuleComposition } from "../../../modules.js";
 import { createRuntimeModuleComposer } from "./runtime-module-composition.js"
 import { installedAccessProviderIds } from "../../../credential-provider-modules.js";
-import type { WorkflowsMode } from "../../../../protocol/module-protocol-types.js"
+import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js"
 import { definitionRoots, type ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import { watchDefinitionRoots } from "../../definitions/definition-root-watcher.js"
 import { skillStoreRoots } from "../../../../workflows/skills/skills.js"

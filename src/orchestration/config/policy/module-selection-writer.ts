@@ -1,10 +1,10 @@
 import { configLines, findFieldIndex, findSectionEnd, keyPattern, removeAssignment, removeSection, rootEndIndex, sectionHasKeyLines } from "../config-assignment.js";
 import { installedRetiredModuleConfig, MODULE_PRESETS, migrateLegacyCapabilityModules, moduleIdForSettingControl, moduleSelectionFromConfig, normalizeModuleSelection, selectionPolicyError, workflowsModeOf, type ModuleId } from "../../modules.js";
-import type { WorkflowsMode } from "../../../protocol/module-protocol-types.js";
+import type { WorkflowsMode } from "../../../protocol/runtime/module-protocol-types.js";
 import { decodeModuleState, statedRetiredOptOut } from "../module-descriptor.js";
 import { ConfigStaleWriteError, ConfigWriteError, patchRootField, updateConfigTextAwaited, type ConfigWriteResult, type UpdateModelSelectionOptions } from "../writer.js";
 
-import { MODULE_IDS, persistedDisabledModuleIds } from "../../../protocol/module-ids.js";
+import { MODULE_IDS, persistedDisabledModuleIds } from "../../../protocol/runtime/module-ids.js";
 type UnknownObject = { [K in string]: unknown };
 
 /** Add or remove one catalog module without restating the rest of the selection.

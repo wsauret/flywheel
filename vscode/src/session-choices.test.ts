@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import type { FrontendActivity, SessionCatalogRow } from "../../src/protocol/app-service-types.js"
+import type { FrontendActivity, SessionCatalogRow } from "../../src/protocol/runtime/app-service-types.js"
 import { sessionChoices } from "./session-choices.js"
 
 function row(id: string, lifecycleState: SessionCatalogRow["lifecycleState"], activity?: FrontendActivity): SessionCatalogRow {

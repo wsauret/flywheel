@@ -3,7 +3,7 @@ import { Key } from "@solid-primitives/keyed"
 import { scrollEdges } from "../../controls/scroll-edges.js"
 import { createEffect, createMemo, createSignal, on, Show } from "solid-js"
 
-import type { BuiltInCommandDescriptor } from "../../../../../src/protocol/command-catalog-protocol-types.js"
+import type { BuiltInCommandDescriptor } from "../../../../../src/protocol/commands/command-catalog-protocol-types.js"
 import { CAPABILITIES_DETAIL } from "../../../../../src/protocol/client/capabilities.js"
 import { moduleMenuRows } from "../../sheets/commands/module-menu-rows.js"
 import { catalogSummary, COMMAND_MENU_SECTIONS } from "../../../client/commands/command-choices.js"

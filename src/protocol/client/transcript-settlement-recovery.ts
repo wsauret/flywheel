@@ -1,5 +1,5 @@
-import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
-import type { OutputRangeAnchor } from "../transcript-protocol-types.js"
+import type { RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
+import type { OutputRangeAnchor } from "../transcript/transcript-protocol-types.js"
 
 /** Coalesces settlement requirements over serialized resident-window reads.
  * Numeric requirements use anchored coverage; opaque barriers need a fresh

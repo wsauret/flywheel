@@ -1,6 +1,6 @@
 import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
 import { createReadRetry } from "../../../../../src/protocol/client/background-reads.js"
-import type { ModelSelectionSlot } from "../../../../../src/protocol/model-assignment-protocol-types.js"
+import type { ModelSelectionSlot } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js"
 import type { ActiveModel } from "./active-model.js"
 import { readSeat, type PanelSeat } from "../../session-settings.js"
 import type { HeldRoles } from "./session-roles.js"

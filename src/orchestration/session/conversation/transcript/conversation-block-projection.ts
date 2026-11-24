@@ -19,11 +19,11 @@ import { mutationEvidenceSummaryDisplayPaths, provisionalDiffDisplayPaths } from
 import { resetFailedFileChange } from "../../../../infra/output/projector/file-change-settlement.js";
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
 import type { AgentInputEntry } from "../../agent-input/agent-input-projection.js";
-import { formatAgentInputAnswers } from "../../../../protocol/question-protocol-types.js";
+import { formatAgentInputAnswers } from "../../../../protocol/session/question-protocol-types.js";
 import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, RESUMED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../../infra/output/run-labels.js";
 import { isContextResetRecord, isHistoricalCompletionEntry, isVisibleTurnEnd, turnEndOfEntry } from "../turn-end-record.js";
 import { isBriefEntry } from "../tree/brief-entry.js";
-import { rawToolUseId } from "../../../../protocol/block-identity.js";
+import { rawToolUseId } from "../../../../protocol/transcript/block-identity.js";
 import { sessionMessageRecoveryNotice } from "../../../../infra/chat-input.js";
 import { watchNoticeRow } from "../../../../infra/watch-notices.js";
 import { CONTINUATION_MESSAGES } from "../../../agent-runtime/request/prompt/continuation-messages.js";

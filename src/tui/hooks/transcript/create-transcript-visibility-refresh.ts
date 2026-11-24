@@ -1,6 +1,6 @@
 import { createEffect } from "solid-js"
 import type { Accessor } from "solid-js"
-import type { RuntimeConfigView } from "../../../protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigView } from "../../../protocol/settings/runtime-config-protocol-types.js"
 import type { TranscriptResidency } from "../../transcript/transcript-store/output-transcript-cache-types.js"
 
 /** Refreshes resident transcripts when server-side visibility changes require hydration or row re-estimation. */

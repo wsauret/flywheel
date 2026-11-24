@@ -9,7 +9,7 @@ import type { ModuleRowAction } from "../../../../../src/protocol/protocol-modul
 import type { WebModule } from "../../../web-module.js"
 import { describeFailure } from "../../../client/format/failure-message.js"
 import type { BudgetSummary } from "../../../../../src/protocol/client/host-contract.js"
-import type { RuntimeHealth, RuntimeRestartReadiness } from "../../../../../src/protocol/app-service-types.js"
+import type { RuntimeHealth, RuntimeRestartReadiness } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { RESTART_CONFIRMATION, restartReadinessUnknownReason } from "../../../../../src/protocol/client/service-restart-copy.js"
 import { restartService } from "./service-restart.js"
 import { runtimeFaultCopy } from "../../../../../src/protocol/client/runtime-fault-copy.js"
@@ -17,7 +17,7 @@ import { actionKey } from "../../../client/action-key.js"
 import { useClient } from "../../client-context.js"
 import { ModuleRowView, SheetLoading, SheetRow } from "../sheet.js"
 import { WorkspaceSurface } from "./workspace-surface.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/commands/command-names.js"
 
 /** What the runtime knows about itself, in one place.
  *

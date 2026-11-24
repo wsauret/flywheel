@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 
-import { CLIENT_IDENTITY_PATTERN } from "../../client-identity.js"
+import { CLIENT_IDENTITY_PATTERN } from "../../runtime/client-identity.js"
 
 /** The relay contract: what the runtime, a paired device, and the relay say
  *  to each other before and around the runtime protocol.

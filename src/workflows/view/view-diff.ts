@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util"
 import { parseWorkflowQueueFact, type WorkflowQueueFact } from "./view-facts.js"
 import type { AttemptRow, MutationLogEntry, WorkflowView } from "./types.js"
-import type { WorkflowTree } from "../../protocol/workflow-view-protocol-types.js"
+import type { WorkflowTree } from "../../protocol/session/workflow-view-protocol-types.js"
 
 /** The queue facts that move the stored view from `current` to `target`.
  *  Each fact parses strictly, so a fact never stores a part of the view

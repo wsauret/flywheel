@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
 import { RGBA } from "@opentui/core"
 import { createRoot } from "solid-js"
-import type { FrontendOutputBlock, SessionCatalogRow } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createHeaderDisplay } from "../../../../../src/tui/hooks/state/create-header-display.js"
-import type { BudgetView } from "../../../../../src/protocol/budget-protocol-types.js"
+import type { BudgetView } from "../../../../../src/protocol/session/budget-protocol-types.js"
 
 const summary: SessionCatalogRow = {
   id: "session-1",

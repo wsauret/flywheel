@@ -4,7 +4,7 @@ import { CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } fro
 import { yieldToNextTask } from "../../../infra/task-scheduling.js"
 import { InvariantViolation } from "../../../infra/invariant.js"
 import type { DegradedBlock, QuestionEntry } from "../../../infra/output-blocks.js"
-import type { AgentInputAnswer } from "../../../protocol/question-protocol-types.js"
+import type { AgentInputAnswer } from "../../../protocol/session/question-protocol-types.js"
 import type { AgentInputDecision, AgentInputFact } from "./agent-input-facts.js"
 import { AGENT_INPUT_FACT_TYPES, parseAgentInputFact } from "./agent-input-facts.js"
 

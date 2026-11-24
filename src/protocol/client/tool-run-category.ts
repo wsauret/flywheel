@@ -1,7 +1,7 @@
 import type { ToolEntry, ToolPresentation } from "../../infra/output-blocks.js"
 import type { ToolAction } from "../../infra/workflow-types.js"
-import type { FrontendToolEntry } from "../app-service-types.js"
-import { blockIdentity } from "../block-identity.js"
+import type { FrontendToolEntry } from "../runtime/app-service-types.js"
+import { blockIdentity } from "../transcript/block-identity.js"
 import { isShellMutationEntry } from "./file-change-body.js"
 
 /** The one rule for which tool calls fold into a run, and which reads merge

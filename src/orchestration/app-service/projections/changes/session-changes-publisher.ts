@@ -1,8 +1,8 @@
 import type { StoredFact } from "../../../../infra/event-store-types.js"
 import { Log } from "../../../../infra/log.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
-import { changesCursor } from "../../../../protocol/session-changes-protocol-types.js"
-import type { RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
+import { changesCursor } from "../../../../protocol/session/session-changes-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { SessionPlacements } from "../../../session/metadata/catalog/session-metadata-store.js"
 import { addSubtreeOwners } from "../../../session/metadata/catalog/session-subtree.js"
 

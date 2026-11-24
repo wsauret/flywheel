@@ -1,7 +1,7 @@
-import type { RuntimeAuthStatusSnapshotResult, RuntimeAuthView } from "../../../../../src/protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthStatusSnapshotResult, RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { accountStatusInput, authStatusState } from "../../../../../src/protocol/client/auth-status-state.js"
 import { accountRepairLabel, accountTitle, disconnectConsequence, paidUseEvidence } from "../../../../../src/protocol/client/provider-account-copy.js"
-import { paidModeAwaitsAnswer, subscriptionSpendConsentEnvelopeIds, type SubscriptionSpendConsentMutation } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { paidModeAwaitsAnswer, subscriptionSpendConsentEnvelopeIds, type SubscriptionSpendConsentMutation } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 
 /** The provider list as the Authentication sheet shows it: every model provider,
  *  its accounts, and per account the paid-use modes a person may turn on,

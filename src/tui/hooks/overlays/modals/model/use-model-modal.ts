@@ -8,12 +8,12 @@ import type {
   ModelSelectionSlot,
   RuntimeModelAssignmentScope,
   RuntimeModelAssignmentWriteScope,
-} from "../../../../../protocol/model-assignment-protocol-types.js"
-import type { AttachedRuntimeClient } from "../../../../../protocol/app-service-types.js"
-import type { RuntimeAuthView } from "../../../../../protocol/auth-status-protocol-types.js"
+} from "../../../../../protocol/auth/model-assignment-protocol-types.js"
+import type { AttachedRuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
+import type { RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import { observeModelCatalog } from "./observe-model-catalog.js"
 import { defaultRoleSlots, sameSlot, roleSlot } from "../../../../../orchestration/config/models/role-selection.js"
-import { isProfileModelRole } from "../../../../../protocol/brief-role-id.js"
+import { isProfileModelRole } from "../../../../../protocol/auth/brief-role-id.js"
 import { buildModelModalItems, isSelectableItem } from "../../../../modals/model/model-modal-helpers.js"
 import type { ModelAssignmentItem, ModelModalState, ModelModalView } from "../../../../modals/model/model-modal-types.js"
 import { createModalDisclosureState, modalDisclosureAction } from "../../../../components/modal/modal-disclosure.js"

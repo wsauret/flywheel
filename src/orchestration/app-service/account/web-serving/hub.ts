@@ -1,7 +1,7 @@
 import type { ServeLane } from "../../../../infra/cli-subprocess.js"
 import { ACCOUNT_HUB_HOSTNAME, accountHubOrigin, accountHubPort } from "../../../../infra/paths.js"
 import { brandTileSvg } from "../../../../protocol/client/brand.js"
-import { ServeStartupFailure } from "../../../../protocol/serve-handshake.js"
+import { ServeStartupFailure } from "../../../../protocol/runtime/serve-handshake.js"
 import { applyControlUiSecurityHeaders } from "./control-ui-csp.js"
 import { escapeHtml, renderFlywheelPage, renderLoadingCard } from "./flywheel-page.js"
 import { authorizeHubMutation } from "./origin-check.js"

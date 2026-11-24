@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { shownOn } from "../../../../../src/protocol/setting-catalog.js"
+import { shownOn } from "../../../../../src/protocol/settings/setting-catalog.js"
 import { settingCatalogRows } from "../../../../../tests/helpers/setting-catalog-rows.js"
 import { loadStabilityFixture } from "../../../modules/workflows/stability-fixture-loader.js"
 

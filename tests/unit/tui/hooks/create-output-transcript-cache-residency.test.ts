@@ -4,8 +4,8 @@ import type { ChatInput } from "../../../../src/infra/chat-input.js"
 import { createChatSubmissions } from "../../../../src/protocol/client/chat-submissions.js"
 import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { content, fakeRuntimeClient, liveView, rangeOk, seedComplete, textBlock } from "./_output-transcript-cache-fixtures.js"
-import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
-import type { OutputView } from "../../../../src/protocol/output-protocol-types.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { OutputView } from "../../../../src/protocol/transcript/output-protocol-types.js"
 
 function outputView(cache: ReturnType<typeof createOutputTranscriptCache>, id: string): OutputView {
   const view = cache.view(id)

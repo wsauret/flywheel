@@ -4,7 +4,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter, EventReader, StoredF
 import type { ModuleServices } from "../../infra/module-service.js"
 import type { ProtocolBackgroundDomain, ProtocolBackgroundSnapshot, ProtocolModuleMutation, ProtocolModuleMutationResult, ProtocolModuleMutationType, ProtocolModuleQuery, ProtocolModuleQueryResult, ProtocolModuleQueryType, ProtocolRegistryModule } from "../../protocol/modules.js"
 import type { BackgroundSnapshotOf, ProtocolDomainQuery, ProtocolDomainSnapshot, ProtocolModule, ProtocolMutationOf, ProtocolMutationRequest, ProtocolMutationResult, ProtocolQueryOf, ProtocolQueryRequest, ProtocolQueryResult } from "../../protocol/protocol-module.js"
-import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { RuntimeUiPatchSequencer } from "./projections/runtime-ui-patch-sequencer.js"
 import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js"
 import type { FirstPartyModule } from "../modules.js"

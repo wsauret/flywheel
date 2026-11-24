@@ -1,5 +1,5 @@
 import type { Accessor } from "solid-js"
-import type { SessionCatalogRow } from "../../../protocol/app-service-types.js"
+import type { SessionCatalogRow } from "../../../protocol/runtime/app-service-types.js"
 import type { ShellSignals } from "../state/shell-state.js"
 import type { TabInfo } from "../create-tabs.js"
 

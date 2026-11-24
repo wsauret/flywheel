@@ -13,7 +13,7 @@ import { ModalFrame } from "../components/modal/modal-frame.js"
 import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "../components/modal/modal-copy.js"
 import { ModalFooter } from "../components/modal/modal-footer.js"
 import { useHoverHighlight } from "../components/controls/use-hover-highlight.js"
-import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../protocol/commands/command-names.js"
 
 interface BackgroundModalProps {
   result: FilteredResult<BackgroundIndexEntry>

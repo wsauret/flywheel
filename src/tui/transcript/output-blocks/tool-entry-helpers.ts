@@ -1,5 +1,5 @@
 import { TOOL_PREVIEW_LINE_LIMIT } from "@infra/output-blocks"
-import type { FrontendToolEntry } from "../../../protocol/app-service-types.js"
+import type { FrontendToolEntry } from "../../../protocol/runtime/app-service-types.js"
 import { foldReadRuns, mergeableRead, readRowLabel, type ReadRun } from "../../../protocol/client/tool-run-category.js"
 
 type ToolEntryDetailSegment = {

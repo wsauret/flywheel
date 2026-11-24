@@ -1,4 +1,4 @@
-import type { RuntimeModulesView } from "../../../../../src/protocol/module-protocol-types.js"
+import type { RuntimeModulesView } from "../../../../../src/protocol/runtime/module-protocol-types.js"
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"

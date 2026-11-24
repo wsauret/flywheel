@@ -2,7 +2,7 @@ import { Layer } from "effect"
 import { Socket } from "effect/socket"
 
 import { mountClient } from "../src/index.js"
-import type { RuntimeHealth } from "../../src/protocol/app-service-types.js"
+import type { RuntimeHealth } from "../../src/protocol/runtime/app-service-types.js"
 import { showGate } from "./gate.js"
 import { createAddressFollower, sessionFromPath } from "./route.js"
 import { applyTabIdentity, reloadWhenRestoredFromCache } from "./tab.js"

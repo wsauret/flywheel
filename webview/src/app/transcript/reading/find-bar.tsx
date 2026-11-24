@@ -1,13 +1,13 @@
 import { createEffect, createSignal, For, on, onCleanup, onMount, Show, untrack } from "solid-js"
 
-import type { TranscriptSearchHit, TranscriptSearchResult } from "../../../../../src/protocol/transcript-protocol-types.js"
+import type { TranscriptSearchHit, TranscriptSearchResult } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { summaryOf } from "../../../client/session/view-state.js"
 import { useClient } from "../../client-context.js"
 import { Icon, ICONS } from "../../controls/icons.js"
 import { publishPaneHeight } from "../transcript-scroll.js"
 import { scrollEdges } from "../../controls/scroll-edges.js"
 import "../../../styles/find.css"
-import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/commands/command-names.js"
 import { snippetParts } from "../../../../../src/protocol/client/search-snippet.js"
 
 const DEBOUNCE_MS = 200

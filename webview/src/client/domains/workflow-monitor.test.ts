@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { FrontendEvent, RuntimeQuery } from "../../../../src/protocol/app-service-types.js"
-import type { FrontendAttempt, LoadedWorkflowView } from "../../../../src/protocol/workflow-view-protocol-types.js"
+import type { FrontendEvent, RuntimeQuery } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { FrontendAttempt, LoadedWorkflowView } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { workflowLiveCursor, workflowViewCursor } from "../../../../src/protocol/modules/workflows.js"
 import { MODULE_DOMAIN_BINDINGS } from "../../../../src/protocol/client/module-domain.js"
 import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"

@@ -1,5 +1,5 @@
-import type { AuthProviderStatus } from "../auth-status-protocol-types.js"
-import { runtimeCallPolicies } from "../runtime-client-deadlines.js"
+import type { AuthProviderStatus } from "../auth/auth-status-protocol-types.js"
+import { runtimeCallPolicies } from "../rpc/runtime-client-deadlines.js"
 
 /** Whether a chat send can reach any model provider, as the auth view states
  *  it. "loading" means the client has no auth view yet, so it cannot tell

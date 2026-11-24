@@ -1,14 +1,14 @@
 import { createEffect, createMemo, createSignal, on, onCleanup, Show, untrack } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
-import type { RuntimeAuthProfileView } from "../../../../../src/protocol/auth-status-protocol-types.js"
-import type { RuntimeAuthProfileDeletionPreview, RuntimeAuthProfileMutation } from "../../../../../src/protocol/auth-profile-selection-protocol-types.js"
+import type { RuntimeAuthProfileView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
+import type { RuntimeAuthProfileDeletionPreview, RuntimeAuthProfileMutation } from "../../../../../src/protocol/auth/auth-profile-selection-protocol-types.js"
 import { actionKey } from "../../../client/action-key.js"
 import { describeFailure } from "../../../client/format/failure-message.js"
 import { useClient } from "../../client-context.js"
 import { Sheet, SheetLoading, SheetRow } from "../sheet.js"
 import { SheetField } from "../controls.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/commands/command-names.js"
 
 /** Auth profiles: which set of credentials this project uses.
  *

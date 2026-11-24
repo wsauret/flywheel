@@ -5,7 +5,7 @@ import { ChildSessionViewer, createChildSessionViewerInput } from "../../../../s
 import { ThemeProvider } from "../../../../src/tui/context/theme.js"
 import { TickPoolProvider } from "../../../../src/tui/context/tick-pool-context.js"
 import type { BackgroundModalTarget } from "../../../../src/tui/hooks/overlays/modals/use-background-modal.js"
-import type { StatusView } from "../../../../src/protocol/status-protocol-types.js"
+import type { StatusView } from "../../../../src/protocol/session/status-protocol-types.js"
 import { transcriptOf } from "../transcript/output-window/_output-window-transcript.js"
 import { viewerSurface } from "./_child-session-viewer-fixtures.js"
 import { createChatSubmissions } from "../../../../src/protocol/client/chat-submissions.js"

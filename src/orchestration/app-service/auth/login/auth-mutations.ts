@@ -1,7 +1,7 @@
 import { errorMessage } from "../../../../infra/error-message.js"
 import { startupTrace } from "../../../../infra/startup-trace.js"
-import type { FrontendMutation, MutationResult } from "../../../../protocol/app-service-types.js"
-import type { RuntimeModelCatalogRefreshScope } from "../../../../protocol/provider-model-preference-protocol-types.js"
+import type { FrontendMutation, MutationResult } from "../../../../protocol/runtime/app-service-types.js"
+import type { RuntimeModelCatalogRefreshScope } from "../../../../protocol/auth/provider-model-preference-protocol-types.js"
 import type { AuthLoginService } from "./auth-login-service.js"
 import type { RuntimeAuthProfileSelectionService } from "../auth-profile-selection-service.js"
 

@@ -8,7 +8,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-facto
 import { createOutputProjection } from "../../../../../src/orchestration/app-service/projections/output/output-projection.js"
 import { createShippedOutput } from "../../../../../src/orchestration/app-service/projections/output/shipped-output.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
-import type { RuntimeUiPatch } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { emitContextUpdate, emitToolInputComplete, emitToolResult } from "../../../../../src/orchestration/agent-runtime/runner/emit.js"
 
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"

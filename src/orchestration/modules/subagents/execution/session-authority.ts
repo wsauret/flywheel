@@ -1,5 +1,5 @@
 import { readCapturedFacts } from "../../../../infra/event-store-types.js"
-import type { RecallInput, RecallResult } from "../../../../protocol/conversation-recall.js"
+import type { RecallInput, RecallResult } from "../../../../protocol/transcript/conversation-recall.js"
 import type { SessionManager } from "../../../session/manager.js"
 import { prepareSessionFactAppend } from "../../../session/persistence/session-fact-writer.js"
 import { acquireChildExecutionResources } from "../../../session/control/children/child-execution-resources.js"

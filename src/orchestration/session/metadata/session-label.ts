@@ -1,4 +1,4 @@
-import { SHORT_TITLE_MAX_CHARS, type SessionTitlePatch } from "../../../protocol/app-service-types.js"
+import { SHORT_TITLE_MAX_CHARS, type SessionTitlePatch } from "../../../protocol/runtime/app-service-types.js"
 
 /** Normalize a user edit without reading or replacing its unchanged counterpart. Refuse empty edits and blank supplied names. */
 export function editedSessionLabels(patch: SessionTitlePatch): { label?: string; shortLabel?: string } | null {

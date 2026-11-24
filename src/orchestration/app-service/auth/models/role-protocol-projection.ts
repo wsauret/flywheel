@@ -1,5 +1,5 @@
-import { rolesCursor, type RoleAssignmentView } from "../../../../protocol/role-protocol-types.js"
-import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
+import { rolesCursor, type RoleAssignmentView } from "../../../../protocol/auth/role-protocol-types.js"
+import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { SessionManager } from "../../../session/manager.js"
 import type { RoleAssignmentSnapshot } from "../../../session/metadata/schemas.js"
 import { Log } from "../../../../infra/log.js"

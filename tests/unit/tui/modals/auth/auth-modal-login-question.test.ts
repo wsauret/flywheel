@@ -3,7 +3,7 @@ import { Redacted } from "effect"
 import { createAuthModalLoginQuestion } from "../../../../../src/tui/hooks/overlays/modals/auth/auth-modal-login-question.js"
 import type { AuthModalDeps } from "../../../../../src/tui/hooks/overlays/modals/auth/auth-modal-types.js"
 import type { AuthView } from "../../../../../src/tui/modals/auth/auth-modal-options.js"
-import type { RuntimeAuthView, RuntimeAuthLoginQuestion } from "../../../../../src/protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthView, RuntimeAuthLoginQuestion } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { createRoot, createSignal } from "solid-js"
 import { createModal, LOCAL_SIGN_IN } from "./auth-modal-test-harness.js"
 import { signInPage } from "../../../../../src/tui/terminal-attach.js"
@@ -11,14 +11,14 @@ import { fakeLanes } from "../../../../helpers/fake-lanes.js"
 import { recordedDispatch, runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
 import { useLoginQuestion } from "../../../../../src/tui/hooks/overlays/questions/use-login-question.js"
 import { useAutomaticAuth } from "../../../../../src/tui/hooks/overlays/questions/automatic-dialogs.js"
-import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 
 const question: RuntimeAuthLoginQuestion = { questionId: "episode", providerId: "claude_agent_sdk", instanceId: "account", profileId: "personal", profileDisplayName: "Personal", providerDisplayName: "Anthropic Subscription", accountDisplayName: "personal@example.com" }
 function auth(settlement?: RuntimeAuthView["settlement"], questions = [question]): RuntimeAuthView {
   return { providers: [], warnings: [], authFilePath: "/scratch/auth.json", profile: { id: "default", displayName: "Default", source: "default", availableProfiles: [] }, subscriptionSpendConsent: { kind: "unavailable", profileId: "default", message: SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE }, loginQuestions: questions, ...(settlement === undefined ? {} : { settlement }) }
 }
 const acknowledge = async () => ({ ok: true as const })
-function fixture(response: Promise<import("../../../../../src/protocol/auth-login-protocol-types.js").RuntimeAuthLoginResult> = Promise.resolve({ kind: "browser", providerId: question.providerId, operationId: "op", authorizeUri: "https://example.com/login" }), page = LOCAL_SIGN_IN) {
+function fixture(response: Promise<import("../../../../../src/protocol/auth/auth-login-protocol-types.js").RuntimeAuthLoginResult> = Promise.resolve({ kind: "browser", providerId: question.providerId, operationId: "op", authorizeUri: "https://example.com/login" }), page = LOCAL_SIGN_IN) {
   let view: AuthView = { kind: "list" }
   let currentAuth = auth()
   let closes = 0

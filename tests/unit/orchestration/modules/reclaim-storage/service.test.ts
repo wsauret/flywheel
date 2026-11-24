@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import type { AccountService } from "../../../../../src/orchestration/app-service/account/account-service.js"
 import { AUTOMATIC_CONVERSION_MAX_STORE_BYTES, createProjectStorage, createStorageReclaims, type StorageReclaimHost } from "../../../../../src/orchestration/app-service/account/projects/project-storage.js"
 import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js"

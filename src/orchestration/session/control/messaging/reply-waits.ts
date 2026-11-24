@@ -11,7 +11,7 @@ import { dropReplyWait, holdReplyWait, isReplyWaitNoticeKey, readReplyWaits, REP
 import { liveSessionControl, liveWorkflowControl, onLiveSessionRemoved, onLiveWorkChanged, type LiveWorkKey } from "../live-session-control.js"
 import type { RecipientState } from "../../message-disposition.js"
 import { sessionDisplayName, type ReplayedSession } from "../../metadata/schemas.js"
-import type { ReplyWaitView } from "../../../../protocol/status-protocol-types.js"
+import type { ReplyWaitView } from "../../../../protocol/session/status-protocol-types.js"
 import type { PausedBy } from "../../../../infra/output-blocks.js"
 
 const log = Log.create({ service: "reply-waits" })

@@ -9,7 +9,7 @@ import { remoteModule } from "../../../../../src/orchestration/modules/remote/mo
 import { createRemoteService, remoteService } from "../../../../../src/orchestration/modules/remote/service.js"
 import type { createRemoteAccess, RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import { EMPTY_REMOTE_VIEW } from "../../../../../src/protocol/modules/remote.js"
-import type { FrontendEvent } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createLauncherScope } from "../../../../../src/infra/process-supervisor.js"
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js"
 import { kernelPorts } from "../../../../helpers/module-kernel.js"

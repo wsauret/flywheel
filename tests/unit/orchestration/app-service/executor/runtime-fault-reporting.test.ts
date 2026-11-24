@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import type { RuntimeExecutorState, RuntimeServiceState } from "../../../../../src/protocol/app-service-types.js"
+import type { RuntimeExecutorState, RuntimeServiceState } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createRuntimeFaultReporting, type RuntimeFaultReporter } from "../../../../../src/orchestration/app-service/executor/runtime-fault-reporting.js"
 
 type FaultReportResult = Awaited<ReturnType<RuntimeFaultReporter>>

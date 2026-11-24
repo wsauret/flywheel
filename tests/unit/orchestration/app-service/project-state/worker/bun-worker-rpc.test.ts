@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { Effect, Exit, Fiber } from "effect"
 import { Worker as EffectWorker } from "effect/workers"
 import { bunWorkerClientLayers } from "../../../../../../src/orchestration/app-service/project-state/worker/bun-worker-rpc.js"
-import { applyRuntimeCallPolicy } from "../../../../../../src/protocol/runtime-client-deadlines.js"
+import { applyRuntimeCallPolicy } from "../../../../../../src/protocol/rpc/runtime-client-deadlines.js"
 
 function fakeWorker() {
   const listeners = new Map<string, Set<(event: Event) => void>>()

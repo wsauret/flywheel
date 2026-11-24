@@ -9,7 +9,7 @@ import { skillClosureIds } from "../../skills/skill-closure.js"
 import { renderSkillContext } from "../../skills/skill-render.js"
 import type { SkillRegistryRevision } from "../../skills/skill-schema.js"
 import { agentRecords, type WorkflowDefinition } from "../../schema/workflow-schema.js"
-import type { WorkflowDefinitionChange, WorkflowDefinitionDrift } from "../../../protocol/app-service-types.js"
+import type { WorkflowDefinitionChange, WorkflowDefinitionDrift } from "../../../protocol/runtime/app-service-types.js"
 
 const IdSchema = Schema.NonEmptyString
 

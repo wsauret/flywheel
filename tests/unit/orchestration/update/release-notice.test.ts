@@ -1,7 +1,7 @@
 import { expect, mock, spyOn, test } from "bun:test"
 import { readFileSync, writeFileSync } from "node:fs"
 import { globalConfigFile } from "../../../../src/infra/paths.js"
-import type { ReleaseNotice } from "../../../../src/protocol/update-protocol-types.js"
+import type { ReleaseNotice } from "../../../../src/protocol/runtime/update-protocol-types.js"
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js"
 import { createRuntimeConfigProjection } from "../../../../src/orchestration/app-service/projections/runtime-config-projection.js"
 import { startReleaseNotice } from "../../../../src/orchestration/update/release-notice.js"

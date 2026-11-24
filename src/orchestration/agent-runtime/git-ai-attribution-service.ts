@@ -5,7 +5,7 @@ import { processLoginShellPath, type LoginShellPath } from "../../infra/login-sh
 import { createBackgroundLane } from "../../infra/ordered-lane.js"
 import type { OwnedCommandRunner } from "../../infra/owned-command.js"
 import { withDeadline } from "../../infra/with-deadline.js"
-import type { GitAiAttributionStatus } from "../../protocol/git-ai-attribution-protocol-types.js"
+import type { GitAiAttributionStatus } from "../../protocol/git/git-ai-attribution-protocol-types.js"
 
 const CHECKPOINT_ARGS = Object.freeze(["checkpoint", "agent-v1", "--hook-input", "stdin"])
 const COMMAND_TIMEOUT_MS = 2_000

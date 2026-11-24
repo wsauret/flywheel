@@ -11,7 +11,7 @@ import type { TabInfo } from "./create-tabs.js"
 import type { ShellServices, ShellSignals } from "./state/shell-state.js"
 import type { SessionRoute } from "../../protocol/client/held-session-details.js"
 import type { ChatSubmissions } from "../../protocol/client/chat-submissions.js"
-import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../protocol/runtime/app-service-types.js"
 
 /** A diff file's disclosure key minted from its position in one process's
  *  rendering; another process mints its own, so the key does not travel. */

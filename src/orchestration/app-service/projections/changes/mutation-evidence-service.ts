@@ -6,8 +6,8 @@ import { MutationEvidenceEntrySchema } from "../../../../infra/mutation-evidence
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../infra/output-blocks.js"
 import { mutationEvidenceDisplayPaths } from "../../../../infra/output/display-paths.js"
 import { readSessionContentRecords } from "../../../../infra/session-content.js"
-import { MUTATION_FILE_PREVIEW_BYTES, MutationFilesQuerySchema, MutationPatchWindowQuerySchema, type MutationFilesEntry, type MutationFilesQuery, type MutationFilesResult, type MutationPatchWindowQuery, type MutationPatchWindowResult } from "../../../../protocol/mutation-evidence-protocol-types.js"
-import { fitMutationEvidenceWindow } from "../../../../protocol/mutation-evidence-window.js"
+import { MUTATION_FILE_PREVIEW_BYTES, MutationFilesQuerySchema, MutationPatchWindowQuerySchema, type MutationFilesEntry, type MutationFilesQuery, type MutationFilesResult, type MutationPatchWindowQuery, type MutationPatchWindowResult } from "../../../../protocol/session/mutation-evidence-protocol-types.js"
+import { fitMutationEvidenceWindow } from "../../../../protocol/session/mutation-evidence-window.js"
 import type { SessionManager } from "../../../session/manager.js"
 import { readRecordedExecutionCwd } from "../../../session/metadata/session-execution-directory.js"
 

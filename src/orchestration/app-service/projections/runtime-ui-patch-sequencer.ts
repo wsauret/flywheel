@@ -1,9 +1,9 @@
-import type { RuntimeQuery } from "../../../protocol/app-service-types.js"
-import { RUNTIME_READ_DOMAINS } from "../../../protocol/runtime-protocol-schemas.js"
+import type { RuntimeQuery } from "../../../protocol/runtime/app-service-types.js"
+import { RUNTIME_READ_DOMAINS } from "../../../protocol/rpc/runtime-protocol-schemas.js"
 import { PROTOCOL_MODULE_DOMAINS } from "../../../protocol/modules.js"
-import { classifyRuntimeUiPatch, cursorKey, type RuntimeCursorIdentity, type RuntimeCursorState, type RuntimePatchClassification, type RuntimePosition, type RuntimeUiDomain, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
-import { isRuntimeInvalidationPayload } from "../../../protocol/runtime-invalidation.js"
-import { runtimePatchContent } from "../../../protocol/runtime-delivery-policy.js"
+import { classifyRuntimeUiPatch, cursorKey, type RuntimeCursorIdentity, type RuntimeCursorState, type RuntimePatchClassification, type RuntimePosition, type RuntimeUiDomain, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
+import { isRuntimeInvalidationPayload } from "../../../protocol/rpc/runtime-invalidation.js"
+import { runtimePatchContent } from "../../../protocol/rpc/runtime-delivery-policy.js"
 
 /** What one read takes its position from, and which baselines it voids.
  *  A cursor anchor reports that cursor's last publication. A workspace anchor

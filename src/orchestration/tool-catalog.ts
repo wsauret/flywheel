@@ -1,6 +1,6 @@
 import { resolve } from "node:path"
 import { composeModules } from "../infra/module-descriptor.js"
-import { moduleDisabledReason } from "../protocol/module-ids.js"
+import { moduleDisabledReason } from "../protocol/runtime/module-ids.js"
 import { personaToolEntries, registrationNamed, toolRegistryFromComposition, type ToolRegistry } from "./agent-runtime/tools/dispatch/tool-registry.js"
 import type { RuntimeToolInput, ShellCommand } from "./agent-runtime/tools/types.js"
 import { installedModules, validateModuleFactPrefixes } from "./module-catalog.js"

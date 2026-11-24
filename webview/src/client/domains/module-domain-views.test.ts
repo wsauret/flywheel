@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import type { RuntimeHealth } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeHealth } from "../../../../src/protocol/runtime/app-service-types.js"
 import { EMPTY_REMOTE_VIEW, remoteDomain, type RuntimeRemoteView } from "../../../../src/protocol/modules/remote.js"
 import { pageDomainReader } from "./module-domain-views.js"
 

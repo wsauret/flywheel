@@ -1,5 +1,5 @@
-import type { AttachedRuntimeClient } from "../../../../protocol/app-service-types.js"
-import { budgetCursor, isBudgetPayload, type BudgetView } from "../../../../protocol/budget-protocol-types.js"
+import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
+import { budgetCursor, isBudgetPayload, type BudgetView } from "../../../../protocol/session/budget-protocol-types.js"
 import { mergeBudgetView } from "../../../../protocol/client/known-totals.js"
 import { createPerSessionCache, type PerSessionCache } from "./create-per-session-cache.js"
 

@@ -2,9 +2,9 @@ import { diagnosticDetail, errorMessage } from "../../../../infra/error-message.
 import { Log } from "../../../../infra/log.js"
 import { DebugLog } from "../../../../infra/debug-log.js"
 import { startupTrace } from "../../../../infra/startup-trace.js"
-import type { AttachedRuntimeClient, FrontendEvent, FrontendMutation, MutationResult, RuntimeClient, RuntimeQuery, RuntimeQueryResult, RuntimeStartupStatus, Unsubscribe } from "../../../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendEvent, FrontendMutation, MutationResult, RuntimeClient, RuntimeQuery, RuntimeQueryResult, RuntimeStartupStatus, Unsubscribe } from "../../../../protocol/runtime/app-service-types.js"
 import { createRuntimeConnection } from "../../../../protocol/client/connection.js"
-import { ServeStartupFailure } from "../../../../protocol/serve-handshake.js"
+import { ServeStartupFailure } from "../../../../protocol/runtime/serve-handshake.js"
 import { withLoggedRuntimeClient } from "../../runtime/app-service-logging.js"
 import { bunSocketClientLayer } from "./bun-socket-rpc.js"
 

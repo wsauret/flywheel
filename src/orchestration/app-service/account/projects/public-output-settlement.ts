@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
-import type { StatusView } from "../../../../protocol/status-protocol-types.js"
-import type { RuntimeUiPatch } from "../../../../protocol/runtime-ui-protocol-types.js"
+import type { StatusView } from "../../../../protocol/session/status-protocol-types.js"
+import type { RuntimeUiPatch } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { RuntimeUiBus } from "../../projections/runtime-ui-bus.js"
 
 /** Relates one executor generation's output to the account's public publications.

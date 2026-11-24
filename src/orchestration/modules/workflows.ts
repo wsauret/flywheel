@@ -39,7 +39,7 @@ import { ORCHESTRATION_REMINDER, orchestrationSection } from "./workflows/orches
 import type { LaunchingSessionAuthority } from "../workflow-host/lifecycle/path-workflow.js"
 import type { DefinitionAvailabilitySnapshot } from "../app-service/definitions/definition-availability.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
-import { moduleDisabledReason } from "../../protocol/module-ids.js"
+import { moduleDisabledReason } from "../../protocol/runtime/module-ids.js"
 import type { WorkflowToolDeps } from "../agent-runtime/tools/definitions/workflow-tool.js"
 import { createWorkflowTool, WORKFLOW_RUNTIME_INVOCATION_TOOL } from "../agent-runtime/tools/definitions/workflow.js"
 import { createModelsTool, MODELS_TOOL_DEFINITION } from "./workflows/models.js"

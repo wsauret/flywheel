@@ -23,7 +23,7 @@ import type { WorkflowRunner } from "../../src/orchestration/workflow-host/runne
 import type { SessionStore } from "../../src/orchestration/session-store/types.js"
 import { testDirectories } from "../helpers/directories.js"
 import { runtimeDispatch } from "../helpers/runtime-dispatch.js"
-import type { FrontendMutation, MutationResult, RuntimeClient } from "../../src/protocol/app-service-types.js"
+import type { FrontendMutation, MutationResult, RuntimeClient } from "../../src/protocol/runtime/app-service-types.js"
 import type { SessionAuthAdmission } from "../../src/orchestration/session/metadata/session-auth-profile.js"
 import type { WorkflowDeps } from "../../src/orchestration/workflow-host/deps.js"
 import { fixtureDefinitions } from "../helpers/project-definitions.js"

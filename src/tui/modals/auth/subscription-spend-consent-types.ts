@@ -1,4 +1,4 @@
-import type { SubscriptionSpendConsentView } from "../../../protocol/subscription-spend-consent-protocol-types.js"
+import type { SubscriptionSpendConsentView } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 
 export type AvailableConsentView = Extract<SubscriptionSpendConsentView, { readonly kind: "available" }>
 

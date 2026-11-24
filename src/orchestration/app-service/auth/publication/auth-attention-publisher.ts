@@ -3,7 +3,7 @@ import { Log } from "../../../../infra/log.js"
 import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../infra/notification-episode.js"
 import { loggedOperation, type OperationFailure } from "../../../../infra/operation-log.js"
 import { coalesceRepeats } from "../../../../infra/repeat-coalescer.js"
-import type { RuntimeAuthView } from "../../../../protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthView } from "../../../../protocol/auth/auth-status-protocol-types.js"
 
 const log = Log.create({ service: "auth-attention" })
 const FAILURE_WINDOW_MS = 30_000

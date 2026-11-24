@@ -11,7 +11,7 @@ import { workflowMembershipReader } from "../../../../src/orchestration/session/
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog"
 import type { WorkflowControllerDeps } from "../../../../src/orchestration/workflow-host/lifecycle/controller"
 import { cleanupProjectRoots, createCapabilities, createDeps, createMockManager, modelLaunch, until } from "./_workflow-controller-fixtures"
-import { moduleDisabledReason } from "../../../../src/protocol/module-ids"
+import { moduleDisabledReason } from "../../../../src/protocol/runtime/module-ids"
 import type { WorkflowHandBack } from "../../../../src/orchestration/workflow-host/runner-types"
 import { contentEvidence } from "../../../../src/infra/content-evidence"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"

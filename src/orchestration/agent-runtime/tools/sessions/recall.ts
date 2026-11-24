@@ -1,5 +1,5 @@
 import type { AdvertisedTool, RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../types.js";
-import { RECALL_EXPAND_MAX, RECALL_PAGE_SIZE, RECALL_READ_DEFAULT_LIMIT, RECALL_READ_MAX_LIMIT, type RecallEntryReference, type RecallPort } from "../../../../protocol/conversation-recall.js";
+import { RECALL_EXPAND_MAX, RECALL_PAGE_SIZE, RECALL_READ_DEFAULT_LIMIT, RECALL_READ_MAX_LIMIT, type RecallEntryReference, type RecallPort } from "../../../../protocol/transcript/conversation-recall.js";
 import { formatRecallOutput } from "./recall/format-recall.js";
 import { normalizeRecallScope } from "./recall/recall-scope.js";
 

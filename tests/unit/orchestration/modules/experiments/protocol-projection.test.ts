@@ -11,7 +11,7 @@ import type { SessionEntry, SessionStore } from "../../../../../src/orchestratio
 import type { ModuleProtocolServices } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
 import { NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js"
 import { protocolBackgroundSchema } from "../../../../../src/protocol/modules.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { Schema } from "effect"
 import { refusingEventWriter } from "../../../../helpers/event-writer-doubles.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"

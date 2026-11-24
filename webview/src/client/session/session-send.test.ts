@@ -3,7 +3,7 @@ import { test } from "node:test"
 
 import { createRuntimeSession } from "./session.js"
 import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { CONNECTED_PROVIDER, settle } from "../../test-support/session-connection-fixture.js"
 import { selectionConnection, waitForSelection } from "./session-selection-fixture.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"

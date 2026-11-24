@@ -1,5 +1,5 @@
 import type { ProjectUpdates } from "../../src/orchestration/app-service/account/projects/project-control-client.js"
-import type { UpdateStatusView } from "../../src/protocol/update-protocol-types.js"
+import type { UpdateStatusView } from "../../src/protocol/runtime/update-protocol-types.js"
 
 const AUTO_INSTALL_ON = { persisted: true, forcedOff: false, effective: true }
 

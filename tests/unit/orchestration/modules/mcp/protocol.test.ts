@@ -17,7 +17,7 @@ import type { McpManager } from "../../../../../src/orchestration/modules/mcp/ma
 import { createMcpProtocol } from "../../../../../src/orchestration/modules/mcp/protocol.js"
 import { createMcpService, type McpService } from "../../../../../src/orchestration/modules/mcp/service.js"
 import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpCursor, mcpDomain, mcpEnabledAction, mcpRepairAction, mcpProjectEnabledAction, mcpRemovable, mcpRemovalConfirmation, mcpProtocol, mcpScopeDetail, type McpStatusRow } from "../../../../../src/protocol/modules/mcp.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { testDirectories, temporaryDirectories } from "../../../../helpers/directories.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"

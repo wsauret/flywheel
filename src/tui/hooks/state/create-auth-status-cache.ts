@@ -1,8 +1,8 @@
 import { createEffect, createSignal, type Accessor } from "solid-js"
-import type { AttachedRuntimeClient } from "../../../protocol/app-service-types.js"
-import { authStatusCursor, type AuthPatchPayload, type RuntimeAuthStatusScope, type RuntimeAuthStatusSnapshotResult, type RuntimeAuthView } from "../../../protocol/auth-status-protocol-types.js"
-import type { RuntimeUiPatch } from "../../../protocol/runtime-ui-protocol-types.js"
-import { cursorKey } from "../../../protocol/runtime-ui-protocol-types.js"
+import type { AttachedRuntimeClient } from "../../../protocol/runtime/app-service-types.js"
+import { authStatusCursor, type AuthPatchPayload, type RuntimeAuthStatusScope, type RuntimeAuthStatusSnapshotResult, type RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
+import type { RuntimeUiPatch } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
+import { cursorKey } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { runtimeSnapshotScopeKey } from "../../../protocol/client/family-intake.js"
 import { createOrderedPatchReceiver } from "./create-ordered-patch-receiver.js"
 

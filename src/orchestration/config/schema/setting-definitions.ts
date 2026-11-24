@@ -4,12 +4,12 @@ import { isAuthProfileName } from "../../../infra/paths.js";
 import { TierConfigSchema } from "../../../infra/workflow-types.js";
 import { CacheRetentionPolicySchema } from "../../../infra/llm/access/provider-options.js";
 import { DEFAULT_BUDGET } from "../../../workflows/run/budget.js";
-import { MODULE_IDS } from "../../../protocol/module-ids.js";
+import { MODULE_IDS } from "../../../protocol/runtime/module-ids.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { installedModules } from "../../module-catalog.js";
 import { installedConfigSections } from "./config-section.js";
-import { settingCatalogRowFor, type SettingCatalogRow } from "../../../protocol/setting-catalog.js";
-import { DEFAULT_WRITE_SYNTAX_THEME_ID, WRITE_SYNTAX_THEME_IDS, WRITE_SYNTAX_THEME_OPTIONS, WriteSyntaxThemeIdSchema } from "../../../protocol/write-syntax-theme.js";
+import { settingCatalogRowFor, type SettingCatalogRow } from "../../../protocol/settings/setting-catalog.js";
+import { DEFAULT_WRITE_SYNTAX_THEME_ID, WRITE_SYNTAX_THEME_IDS, WRITE_SYNTAX_THEME_OPTIONS, WriteSyntaxThemeIdSchema } from "../../../protocol/settings/write-syntax-theme.js";
 
 const DEFAULT_PROACTIVE_COMPACTION_THRESHOLD = 500_000;
 export const MIN_PROACTIVE_COMPACTION_THRESHOLD = 50_000;

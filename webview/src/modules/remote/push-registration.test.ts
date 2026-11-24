@@ -4,7 +4,7 @@ import { fakeClient, fakeClientHost, fakePanelSettings, fakeViewState } from "..
 import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 import type { SessionSummary } from "../../client/session/view-state.js"
 import type { HostCapabilities, RemoteHostSnapshot } from "../../host.js"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { EMPTY_REMOTE_VIEW } from "../../../../src/protocol/modules/remote.js"
 import { createPushRegistration } from "./push-registration.js"
 import { mountPerPlacement } from "../../../phone/placement-client.js"

@@ -10,8 +10,8 @@ import type { SessionEntry, SessionStore } from "../../../../src/orchestration/s
 import { chatEntry, fakeSessionStore } from "./app-service-doubles.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createShippedOutput } from "../../../../src/orchestration/app-service/projections/output/shipped-output.js"
-import type { OutputDelta } from "../../../../src/protocol/output-protocol-types.js"
-import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { OutputDelta } from "../../../../src/protocol/transcript/output-protocol-types.js"
+import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 export const tailRequest = { anchor: { kind: "tail" as const }, maxBlocks: 50, maxBytes: 1024 * 1024 }
 

@@ -5,7 +5,7 @@ import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui
 import { createEffect, createMemo, createSignal, Show, untrack, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { RuntimeClient } from "../../../protocol/app-service-types.js"
+import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { dispatchInterrupt, offeredSessionControls, resumeMutation, sessionControls, workflowParked, workflowStateLabel, type ControlRefusal } from "../../../protocol/client/session-controls.js"
 import { workflowAgentPlace, workflowOutline } from "../../../protocol/client/workflow-outline.js"
 import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentModel, workflowAgentMove, workflowAgentOpenTarget, workflowBriefLine, workflowNextAgentLabel, type WorkflowAgentHeaderDrop, type WorkflowAgentTarget } from "../../../protocol/client/workflow-agent.js"

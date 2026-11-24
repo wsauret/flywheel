@@ -1,5 +1,5 @@
 import type { Accessor, JSX } from "solid-js"
-import type { SessionCatalogError, SessionCatalogRow, RuntimeClient } from "../../../../../protocol/app-service-types.js"
+import type { SessionCatalogError, SessionCatalogRow, RuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
 import type { SelectablePickerRow, SessionPickerResult } from "../../../../modals/session-picker/picker-types.js"
 import type { ModalContext } from "../../../../components/modal-stack.js"
 import type { ShellServices, ShellSignals } from "../../../state/shell-state.js"

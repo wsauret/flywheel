@@ -11,7 +11,7 @@ import { parseFileMutationFact, type FileMutationFact } from "../../../../../src
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { createExperimentOperation, findExperimentInterruption } from "../../../../../src/orchestration/modules/experiments/operation-owner.js";
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js";
-import { moduleDisabledReason } from "../../../../../src/protocol/module-ids"
+import { moduleDisabledReason } from "../../../../../src/protocol/runtime/module-ids"
 import type { SessionContentNode } from "../../../../../src/infra/session-content.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"

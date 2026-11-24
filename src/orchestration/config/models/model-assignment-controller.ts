@@ -10,7 +10,7 @@ import type {
   ModelAssignmentRow,
   ModelOptionRow,
   ModelSelectionSlot,
-} from "../../../protocol/model-assignment-protocol-types.js";
+} from "../../../protocol/auth/model-assignment-protocol-types.js";
 import type { ModelConfigDeps, ModelPickerConfigDeps } from "./model-assignment-types.js";
 import type { FlywheelConfig } from "../schema/schema.js";
 import {
@@ -26,7 +26,7 @@ import { isBriefSlot, roleSlot, slotLabel, type AgentPersonaRoles } from "./role
 import { parentRoleId } from "../roles.js";
 import type { RoleSettingEntry as RoleAssignmentEntry, RoleSettings, RoleAssignments, RoleAssignmentSnapshot } from "../../session/metadata/schemas.js";
 import { ensureSessionRoleSnapshot, captureRoleAssignments, withInheritedRoles } from "./session-role-resolver.js";
-import { briefRoleId, isProfileModelRole, parseBriefRoleId } from "../../../protocol/brief-role-id.js";
+import { briefRoleId, isProfileModelRole, parseBriefRoleId } from "../../../protocol/auth/brief-role-id.js";
 import { Schema } from "effect";
 
 /** Persistent brief seats are retained for compatibility, not editable defaults. */

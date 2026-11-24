@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createWebSearchProviderResolver, SHIPPED_MODULES, composeFirstPartyModules, moduleProtocolRows, webAuthProviderDefinitions, type FirstPartyModuleComposition } from "../../../src/orchestration/modules.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
-import { MODULE_IDS } from "../../../src/protocol/module-ids.js";
+import { MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js";
 import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../src/infra/module-runtime.js";
 import { NO_MODULE_SERVICES } from "../../../src/infra/module-service.js";
 import { capabilityAccessFor, type RuntimeTool } from "../../../src/orchestration/agent-runtime/tools/types.js";

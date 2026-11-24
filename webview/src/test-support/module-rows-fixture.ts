@@ -2,7 +2,7 @@ import { createComponent } from "solid-js"
 import { renderToString } from "solid-js/web"
 
 import type { ModuleRowAction } from "../../../src/protocol/protocol-module.js"
-import { MODULE_IDS } from "../../../src/protocol/module-ids.js"
+import { MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js"
 import { moduleRows } from "../../../src/protocol/modules.js"
 import { pageDomainReader, type ModuleDomainViews } from "../client/domains/module-domain-views.js"
 import { ClientContext } from "../app/client-context.js"

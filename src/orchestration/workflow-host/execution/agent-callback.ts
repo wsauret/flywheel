@@ -8,7 +8,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infr
 import type { ModelFamily } from "../../../infra/llm/models/model-family.js"
 import type { ControlInterruption, PlannedCutInterrupt, TurnInterruption } from "../../session/conversation/turn-end-record.js"
 import type { ModuleRuntimes } from "../../../infra/module-runtime.js"
-import type { RecallInput, RecallResult } from "../../../protocol/conversation-recall.js"
+import type { RecallInput, RecallResult } from "../../../protocol/transcript/conversation-recall.js"
 import { resolveSessionDir } from "../../../infra/paths.js"
 import type { AttemptRow } from "../../../workflows/view/types.js"
 import type { SkillRegistryRevision } from "../../../workflows/skills/skill-schema.js"

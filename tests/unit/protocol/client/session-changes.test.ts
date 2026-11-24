@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
-import type { AttachedRuntimeClient } from "../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../../src/protocol/runtime/app-service-types.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { createSessionChangesController } from "../../../../src/protocol/client/session-changes.js"
-import type { SessionChangeDiffResult, SessionChangeSummaryResult, SessionChangesResult, SessionChangesSetViewedResult } from "../../../../src/protocol/session-changes-protocol-types.js"
+import type { SessionChangeDiffResult, SessionChangeSummaryResult, SessionChangesResult, SessionChangesSetViewedResult } from "../../../../src/protocol/session/session-changes-protocol-types.js"
 import { deferred, diff, diffQueries, fileA, fileB, fileC, list, listQueries, opened, retainedDiff, runtime, settle } from "./_session-changes-fixtures.js"
 
 test("construction is passive and start acquires the summary", async () => {

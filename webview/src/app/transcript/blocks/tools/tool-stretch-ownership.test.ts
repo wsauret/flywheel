@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { mountToolGroup } from "../../render-ownership-loader-fixture.js"
 import { mutationEvidenceFixture } from "../../../../../../tests/fixtures/mutation-evidence-fixture.js"
 

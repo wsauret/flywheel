@@ -19,7 +19,7 @@ import type { BridgedPersistentProcessClient } from "../../../infra/persistent-p
 import type { ModuleRuntimes } from "../../../infra/module-runtime.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js";
-import { canonicalModuleIds, MODULE_IDS, type ModuleId } from "../../../protocol/module-ids.js";
+import { canonicalModuleIds, MODULE_IDS, type ModuleId } from "../../../protocol/runtime/module-ids.js";
 type ToolExecutionMode = "foreground" | "background";
 type ToolTraceKind = "tool" | "subagent";
 

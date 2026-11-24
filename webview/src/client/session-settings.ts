@@ -1,11 +1,11 @@
-import type { ModuleId } from "../../../src/protocol/module-ids.js"
+import type { ModuleId } from "../../../src/protocol/runtime/module-ids.js"
 import { configProblemText } from "../../../src/protocol/client/config-problem-copy.js"
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
-import type { ModelSelectionSlot } from "../../../src/protocol/model-assignment-protocol-types.js"
-import type { ModuleConfigBooleanControl, ModuleConfigNumberListControl, RuntimeModulesView } from "../../../src/protocol/module-protocol-types.js"
+import type { ModelSelectionSlot } from "../../../src/protocol/auth/model-assignment-protocol-types.js"
+import type { ModuleConfigBooleanControl, ModuleConfigNumberListControl, RuntimeModulesView } from "../../../src/protocol/runtime/module-protocol-types.js"
 import { capabilityPreset, switchableModules, type CapabilityPresetReading } from "../../../src/protocol/client/capabilities.js"
-import type { WriteSyntaxThemeId } from "../../../src/protocol/write-syntax-theme.js"
-import type { RuntimeServingSeat } from "../../../src/protocol/role-protocol-types.js"
+import type { WriteSyntaxThemeId } from "../../../src/protocol/settings/write-syntax-theme.js"
+import type { RuntimeServingSeat } from "../../../src/protocol/auth/role-protocol-types.js"
 
 /** One effort stop the chat seat can be set to, as the panel's slider shows it. */
 interface PanelEffortOption {

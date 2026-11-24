@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import type { RuntimeAuthView } from "../../../../../src/protocol/auth-status-protocol-types.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import type { RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { openRouterAuthView, providerModelView } from "./_auth-modal-model-fixtures.js"
 import { createModal, settle } from "./_auth-modal-model-harness.js"
 

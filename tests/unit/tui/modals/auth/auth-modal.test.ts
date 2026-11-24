@@ -3,7 +3,7 @@ import { Redacted } from "effect"
 import { createRoot } from "solid-js"
 import { isConfigured, statusText } from "../../../../../src/tui/modals/auth/auth-modal-options.js"
 import { signInPage } from "../../../../../src/tui/terminal-attach.js"
-import type { RuntimeAuthLoginResult } from "../../../../../src/protocol/auth-login-protocol-types.js"
+import type { RuntimeAuthLoginResult } from "../../../../../src/protocol/auth/auth-login-protocol-types.js"
 import {
   clearMocks,
   COPILOT_PROMPT,

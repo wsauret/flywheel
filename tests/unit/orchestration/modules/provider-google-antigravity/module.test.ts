@@ -17,7 +17,7 @@ import { currentEngineRuntime, openEngineRuntime } from "../../../../../src/orch
 import { registerLiveEngine } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/live-engines.js"
 import { loginGateAddress } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/login-gate.js"
 import { createGoogleAntigravityModule, googleAntigravityModule } from "../../../../../src/orchestration/modules/provider-google-antigravity/module.js"
-import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js"
+import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js"
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js"
 import { moduleProcessServices } from "../../../../helpers/module-kernel.js"
 import { AGY, fakeAgy, pastePorts } from "./_fake-agy.js"

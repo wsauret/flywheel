@@ -8,7 +8,7 @@ import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "@tui/components/modal/mo
 import type { CommandPaletteState } from "./command-palette-types.js"
 import { ModalSelect } from "../components/modal/select/modal-select.js"
 import { ControlledTextField } from "../components/controls/controlled-text-field.js"
-import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../protocol/commands/command-names.js"
 
 interface CommandPaletteProps {
   state: CommandPaletteState

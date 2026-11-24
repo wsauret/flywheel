@@ -6,7 +6,7 @@ import { PROVIDER_MODEL_PREFERENCES_FILE, providerModelPreferencesRevision, type
 import type { KeyResolver } from "../../../../infra/auth/resolve-key.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import { resolveProviderModelCatalog } from "../../../config/models/model-assignment-providers.js"
-import type { ProviderCatalogDiscovery } from "../../../../protocol/provider-model-preference-protocol-types.js"
+import type { ProviderCatalogDiscovery } from "../../../../protocol/auth/provider-model-preference-protocol-types.js"
 import type { FirstPartyModuleSnapshot, FirstPartyModuleComposition } from "../../../modules.js"
 import { credentialSlotClassifier } from "../../../auth/credential-slot-classifier.js"
 import type { ProviderModelEligibilitySnapshots, ProviderModelEligibilityState, ProviderModelInventoryCandidate } from "./provider-model-preference-service.js"

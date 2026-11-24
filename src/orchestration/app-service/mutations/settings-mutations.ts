@@ -1,5 +1,5 @@
 import { ConfigStaleWriteError, type ConfigWriteResult } from "../../config/writer.js"
-import type { FrontendMutation, MutationResult } from "../../../protocol/app-service-types.js"
+import type { FrontendMutation, MutationResult } from "../../../protocol/runtime/app-service-types.js"
 import type { ModuleProjection } from "../projections/module-projection.js"
 import type { RuntimeConfigProjection } from "../projections/runtime-config-projection.js"
 

@@ -4,7 +4,7 @@ import type { KernelToolDeps } from "../../agent-runtime/tools/kernel-tool-deps.
 import type { ToolDeclaration } from "../../agent-runtime/tools/dispatch/tool-registry.js"
 import type { FirstPartyModule } from "../../modules.js"
 import { backgroundShellModuleRequirements } from "../../module-requirements.js"
-import { moduleDisabledReason } from "../../../protocol/module-ids.js"
+import { moduleDisabledReason } from "../../../protocol/runtime/module-ids.js"
 
 function holdMs(kernel: KernelToolDeps): number | undefined {
   const seconds = kernel.foregroundBashHoldSeconds

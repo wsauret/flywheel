@@ -1,4 +1,4 @@
-import { createAccountModuleAnswerReader, type AccountModuleAnswerHandler } from "../../protocol/account-attach.js"
+import { createAccountModuleAnswerReader, type AccountModuleAnswerHandler } from "../../protocol/runtime/account-attach.js"
 
 /** One `module` attach: writes its preface and reads answers until the
  *  service ends the request. A close before the first byte cannot say why on

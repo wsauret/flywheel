@@ -1,8 +1,8 @@
-import type { FrontendOutputBlock } from "../../../protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../protocol/runtime/app-service-types.js"
 import type { MutationEvidenceReader } from "../../../protocol/client/mutation-evidence.js"
 import type { SessionNotice } from "../../../infra/session-notice.js"
-import type { RuntimeTranscriptWindow } from "../../../protocol/transcript-protocol-types.js"
-import type { OutputView } from "../../../protocol/output-protocol-types.js"
+import type { RuntimeTranscriptWindow } from "../../../protocol/transcript/transcript-protocol-types.js"
+import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
 import type { OutputHeightEstimate } from "./output-height-estimates.js"
 
 /** The resident-block budget: how many timeline blocks the TUI will hold

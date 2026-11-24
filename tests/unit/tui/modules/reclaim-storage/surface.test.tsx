@@ -4,7 +4,7 @@ import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../../hel
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
 import { storageDomain, type RuntimeStorageView, type StorageReclaimResult } from "../../../../../src/protocol/modules/reclaim-storage.js"
 import type { StorageReclaimPreview } from "../../../../../src/protocol/store-reclaim.js"
-import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 const [{ testRender }, { createSignal }, { createComponent }, { ThemeProvider }, { createReclaimStorageSurface }, { createModalStack }] = await Promise.all([
   import("@opentui/solid"), import("solid-js"), import("solid-js/web"), import("../../../../../src/tui/context/theme.js"),
   import("../../../../../src/tui/modules/reclaim-storage/surface.js"), import("../../../../../src/tui/components/modal-stack.js"),

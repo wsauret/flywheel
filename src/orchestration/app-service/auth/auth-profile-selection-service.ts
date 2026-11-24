@@ -20,7 +20,7 @@ import type {
   RuntimeAuthProfileWriteScope,
   RuntimeAuthProfileUnbindMutation,
   RuntimeAuthProfileUnbindResult,
-} from "../../../protocol/auth-profile-selection-protocol-types.js"
+} from "../../../protocol/auth/auth-profile-selection-protocol-types.js"
 
 export interface RuntimeAuthProfileSelectionServiceDeps {
   readonly profileManager: Pick<AuthProfileManager, "resolve" | "create" | "select" | "rename" | "bind" | "unbind" | "delete" | "previewDelete">

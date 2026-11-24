@@ -12,7 +12,7 @@ import { roleSlot, type AgentPersonaRoles } from "../../../../src/orchestration/
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { createRoleAssignmentReader } from "../../../../src/orchestration/app-service/auth/models/role-assignment-projection.js"
 import type { AgentPersonas } from "../../../../src/orchestration/workflow-host/frontend-attempts.js"
-import { sessionServingSelection } from "../../../../src/protocol/role-protocol-types.js"
+import { sessionServingSelection } from "../../../../src/protocol/auth/role-protocol-types.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
 import { modelInfo, makeModelsClient } from "../../../helpers/model-tier-fixtures.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"

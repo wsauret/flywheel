@@ -1,4 +1,4 @@
-import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
 import { mountAgentGroup } from "../../app/transcript/render-ownership-fixture.js"
 import { fakeWebModuleHost } from "../../app/client-context-fixture.js"
 import type { WebModuleClient } from "../../web-module-client.js"

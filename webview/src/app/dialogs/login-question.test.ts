@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import type { RuntimeAuthLoginQuestion, RuntimeAuthView } from "../../../../src/protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthLoginQuestion, RuntimeAuthView } from "../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { observeLoginQuestions } from "./login-question.js"
-import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 
 const question: RuntimeAuthLoginQuestion = { questionId: "episode-b", providerId: "claude_agent_sdk", instanceId: "account-b", profileId: "b", profileDisplayName: "Background", providerDisplayName: "Anthropic Subscription", accountDisplayName: "long-personal-account@example.invalid" }
 function view(questions: readonly RuntimeAuthLoginQuestion[]): RuntimeAuthView {

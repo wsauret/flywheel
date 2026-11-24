@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { RuntimeLaneLost, RuntimeSilent } from "../../../../src/protocol/client/connection-failures.js"
 import { readModuleStatusRows, sameModuleStatusScope } from "../../../../src/protocol/client/module-status.js"
-import { RuntimeCallTimeout } from "../../../../src/protocol/runtime-client-deadlines.js"
+import { RuntimeCallTimeout } from "../../../../src/protocol/rpc/runtime-client-deadlines.js"
 import type { ModuleRow } from "../../../../src/protocol/protocol-module.js"
 
 const scope = { sessionId: "chat", profileId: "personal", moduleIds: ["first", "broken", "last"] }

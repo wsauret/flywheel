@@ -10,8 +10,8 @@ import { join } from "node:path";
 import { type BunRawSocketConnection, bunSocketClientLayer, createBunRawSocketServer } from "../../../../../../src/orchestration/app-service/account/connections/bun-socket-rpc.js";
 import { runtimeProtocolSocketServer } from "../../../../../../src/orchestration/app-service/account/connections/runtime-protocol-socket-server.js";
 import { createAccountSocketRouter } from "../../../../../../src/orchestration/app-service/account/connections/account-socket-router.js";
-import { encodeAccountAttach, newAccountAttachCredential } from "../../../../../../src/protocol/account-attach.js";
-import { stringRequestId } from "../../../../../../src/protocol/rpc-request-id.js";
+import { encodeAccountAttach, newAccountAttachCredential } from "../../../../../../src/protocol/runtime/account-attach.js";
+import { stringRequestId } from "../../../../../../src/protocol/rpc/rpc-request-id.js";
 import { socketRpcServerLayer } from "../../../../../helpers/socket-rpc-server.js";
 
 /** The socket placement of the runtime protocol server carries the three shapes

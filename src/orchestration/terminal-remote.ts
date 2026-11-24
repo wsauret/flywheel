@@ -1,5 +1,5 @@
 import { compareReleaseVersions, parseReleaseVersion } from "../infra/update/version-order.js"
-import type { AttachedRuntimeClient } from "../protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../protocol/runtime/app-service-types.js"
 
 /** The seam through which the terminal opens a project on another machine
  *  (PI-REMOTE-016). The kernel runs the terminal for the project; the module

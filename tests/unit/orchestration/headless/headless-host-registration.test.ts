@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MODULE_IDS } from "../../../../src/protocol/module-ids.js";
+import { MODULE_IDS } from "../../../../src/protocol/runtime/module-ids.js";
 import * as registration from "../../../../src/orchestration/headless/host-registration.js";
 import type { ModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
 import { capabilityAccessFor } from "../../../../src/orchestration/agent-runtime/tools/types.js";

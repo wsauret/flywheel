@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry } from "../../../../../../src/infra/output-blocks.js"
-import { FrontendOutputBlockSchema } from "../../../../../../src/protocol/transcript-protocol-schemas.js"
+import { FrontendOutputBlockSchema } from "../../../../../../src/protocol/transcript/transcript-protocol-schemas.js"
 import { getToolDisplay, resolveToolRowPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js"
 import flywheelThemeJson from "../../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../../src/tui/context/theme/resolve.js"
@@ -9,7 +9,7 @@ import { highlightShellCommand } from "../../../../../../src/tui/adapters/shell-
 import { renderToolEntry as renderEntry, type RenderToolEntryOptions } from "./_tool-entry-render.js"
 import type { MutationDiff } from "../../../../../../src/infra/mutation-diff.js"
 import { RGBA } from "@opentui/core"
-import { getWriteSyntaxColors } from "../../../../../../src/protocol/write-syntax-theme.js"
+import { getWriteSyntaxColors } from "../../../../../../src/protocol/settings/write-syntax-theme.js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"
 import { processStatus } from "../../../../../helpers/runtime-views.js"
 

@@ -1,7 +1,7 @@
 import type { Accessor } from "solid-js"
 import { errorMessage } from "../../../../../infra/error-message.js"
-import type { RuntimeClient } from "../../../../../protocol/app-service-types.js"
-import type { RuntimeAuthProfileScope } from "../../../../../protocol/auth-profile-selection-protocol-types.js"
+import type { RuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
+import type { RuntimeAuthProfileScope } from "../../../../../protocol/auth/auth-profile-selection-protocol-types.js"
 import type { ShellServices } from "../../../state/shell-state.js"
 
 export const AUTH_PROFILE_PENDING = "Auth profiles are unavailable until the runtime publishes its auth view"

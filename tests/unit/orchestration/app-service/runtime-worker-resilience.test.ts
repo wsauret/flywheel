@@ -17,7 +17,7 @@ import { Cause, Effect, Exit } from "effect"
 import { RpcTest } from "effect/rpc"
 import { runtimeHandlers } from "../../../../src/orchestration/app-service/account/connections/runtime-protocol-handlers.js"
 import { createOutputWatches } from "../../../../src/orchestration/app-service/account/projects/output-watches.js"
-import { RuntimeProtocolError, RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeProtocolError, RuntimeProtocolRpc } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { diagnosticTier, isRegisteredDiagnostic } from "../../../../src/infra/diagnostics-registry.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 

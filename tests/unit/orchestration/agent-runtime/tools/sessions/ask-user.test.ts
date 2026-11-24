@@ -7,7 +7,7 @@ import type { ResolveWorkflowLaunchTarget } from "../../../../../../src/orchestr
 import { answeredAskUserResult, createAskUserTool } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/ask-user.js";
 import { normalizeAskUserInput } from "../../../../../../src/infra/tools/displays/ask-user.js";
 import type { DispatchedToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
-import type { AgentInputAnswer } from "../../../../../../src/protocol/question-protocol-types.js";
+import type { AgentInputAnswer } from "../../../../../../src/protocol/session/question-protocol-types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
 import type { SessionFact, SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";

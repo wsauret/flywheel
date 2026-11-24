@@ -6,7 +6,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/e
 import { canonicalMutationPath, withMutationQueueKeys } from "../../infra/file-mutation-queue.js"
 import { redactSecrets } from "../../infra/redact-secrets.js"
 import { sanitizeExternalText } from "../../infra/control-characters.js"
-import { SessionChangesUndoSchema, type SessionChangesUndo, type SessionChangesUndoResult } from "../../protocol/session-changes-protocol-types.js"
+import { SessionChangesUndoSchema, type SessionChangesUndo, type SessionChangesUndoResult } from "../../protocol/session/session-changes-protocol-types.js"
 import { fileAccessProof } from "../session/file-mutations/file-mutation-access.js"
 import { loadSessionPendingFileMutations } from "../session/file-mutations/file-mutation-recovery.js"
 import type { PreparedFileMutation } from "../session/file-mutations/file-mutation-fact-writers.js"

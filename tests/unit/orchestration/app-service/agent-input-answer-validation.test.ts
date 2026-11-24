@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 
 import { validAgentInputAnswers } from "../../../../src/orchestration/app-service/supervisor/actor/session-runtime-actor-helpers.js"
 import type { AgentInputEntry } from "../../../../src/orchestration/session/agent-input/agent-input-projection.js"
-import type { AgentInputAnswers } from "../../../../src/protocol/question-protocol-types.js"
+import type { AgentInputAnswers } from "../../../../src/protocol/session/question-protocol-types.js"
 
 const entry: Extract<AgentInputEntry, { kind: "pending" }> = {
   kind: "pending",

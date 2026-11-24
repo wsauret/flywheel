@@ -38,7 +38,7 @@ import type { StartModelWorkflow } from "./tools/definitions/workflow-tool.js";
 import type { CapabilityAccess, ToolProfile } from "./tools/types.js";
 import type { ModuleRuntimes } from "../../infra/module-runtime.js";
 import type { AgentLoopMaintenance, AgentLoopPersistence, AgentLoopTerminal, FinalizedCheckpointSwap, RestoredAgentWait } from "./agent-loop-types.js";
-import type { RecallPort } from "../../protocol/conversation-recall.js";
+import type { RecallPort } from "../../protocol/transcript/conversation-recall.js";
 import type { ModuleServices } from "../../infra/module-service.js";
 import type { EnvCaptureResolver } from "../../infra/env-detection.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
@@ -47,7 +47,7 @@ import type { BridgedPersistentProcessClient } from "../../infra/persistent-proc
 import type { SkillRegistryRevision } from "../../workflows/skills/skill-schema.js";
 import type { ForegroundBashHoldController } from "./background-work/foreground-bash-hold.js";
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js";
-import type { WorkflowsMode } from "../../protocol/module-protocol-types.js";
+import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js";
 import type { GitAiAttributionService } from "./git-ai-attribution-service.js";
 import type { StreamingEditValidationService } from "./tools/edit/streaming-edit-validation.js";
 import type { ChildSessionAuthority } from "../module-seams.js";

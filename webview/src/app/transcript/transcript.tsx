@@ -1,9 +1,9 @@
 import { Key } from "@solid-primitives/keyed"
 import { type Accessor, batch, createComponent, createComputed, createEffect, createMemo, createSignal, mergeProps, on, onCleanup, onMount, Show, untrack } from "solid-js"
 
-import { isActiveActivity, type FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import { DEFAULT_WRITE_SYNTAX_THEME_ID } from "../../../../src/protocol/write-syntax-theme.js"
+import { isActiveActivity, type FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
+import { DEFAULT_WRITE_SYNTAX_THEME_ID } from "../../../../src/protocol/settings/write-syntax-theme.js"
 import { unseenMessageCount } from "../../../../src/protocol/client/return-to-latest.js"
 import { restoredScrollTop, type ReadingState } from "../../../../src/protocol/client/reading-state.js"
 import { blockEndTimes, createWebTranscript, rowAtIndex, rowBlockIdentities, rowHolding, rowIdentity, rowIndex, runningTimeIds, type PresentedWebBlock } from "../../client/session/residents/tool-runs.js"

@@ -1,6 +1,6 @@
 import { CorruptEventRowError, StateRequestNotServedError, type AsyncEventStateReadSurface, type StoredFact } from "../../../infra/event-store-types.js"
 import { parseProjectionFact } from "../../../infra/event-projection.js"
-import type { ChatSessionAction, StoppedBy, WorkflowSessionAction } from "../../../protocol/app-service-types.js"
+import type { ChatSessionAction, StoppedBy, WorkflowSessionAction } from "../../../protocol/runtime/app-service-types.js"
 import type { WorkflowView } from "../../../workflows/view/types.js"
 import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
 import { parseConversationTreeFact, type ConversationTreeFact } from "../conversation/conversation-facts.js"

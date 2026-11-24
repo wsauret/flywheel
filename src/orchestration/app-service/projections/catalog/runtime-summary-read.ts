@@ -1,6 +1,6 @@
-import type { SessionRow } from "../../../../protocol/app-service-types.js"
-import type { BudgetView } from "../../../../protocol/budget-protocol-types.js"
-import type { RuntimeBackgroundSummaryResult } from "../../../../protocol/runtime-protocol-schemas.js"
+import type { SessionRow } from "../../../../protocol/runtime/app-service-types.js"
+import type { BudgetView } from "../../../../protocol/session/budget-protocol-types.js"
+import type { RuntimeBackgroundSummaryResult } from "../../../../protocol/rpc/runtime-protocol-schemas.js"
 
 // The summary read contract: the background reads that state session totals,
 // and the views that one read states. The summary projection consumes it and

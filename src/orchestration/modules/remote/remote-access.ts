@@ -19,7 +19,7 @@ import {
 } from "../../../protocol/modules/remote/relay-protocol.js"
 import { remoteCursor, remoteProtocol, type RemotePairingWindowView, type RemotePushSubscription, type RuntimeRemoteView } from "../../../protocol/modules/remote.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../protocol/runtime-liveness.js"
-import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
 import type { AccountProjectRegistry } from "../../app-service/account/account-project-registry.js"
 import { createMutationAdmission } from "../../app-service/mutations/mutation-admission.js"

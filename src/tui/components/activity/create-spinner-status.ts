@@ -3,7 +3,7 @@ import { createEffect, createMemo, on } from "solid-js"
 import { Log } from "../../../infra/log.js"
 import type { ConnectionState, StreamPhase } from "../../../infra/output-blocks.js"
 import type { SessionNotice } from "../../../infra/session-notice.js"
-import type { StatusView } from "../../../protocol/status-protocol-types.js"
+import type { StatusView } from "../../../protocol/session/status-protocol-types.js"
 import { replyWaitLabel } from "../../../protocol/client/session-controls.js"
 import type { AnimationState } from "./spinner-status-model.js"
 import {

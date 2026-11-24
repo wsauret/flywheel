@@ -1,5 +1,5 @@
 import { Index, Show } from "solid-js"
-import type { ModelOptionRow } from "../../../../../src/protocol/model-assignment-protocol-types.js"
+import type { ModelOptionRow } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js"
 
 /** The one-line detail of a model picker row: the providers in resolution order up to the one that would serve now,
  *  which is emphasized, then a count of the providers after it, then `parts`. When no provider serves now, every

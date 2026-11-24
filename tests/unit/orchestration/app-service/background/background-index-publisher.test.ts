@@ -5,7 +5,7 @@ import type { SessionStore } from "../../../../../src/orchestration/session-stor
 import { markCommandKept, writeCommandHandover } from "../../../../../src/orchestration/session/command-handover"
 import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/metadata/catalog/session-metadata-store"
 import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact } from "../../../../../src/orchestration/session/metadata/session-metadata-facts"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types"
 import { countStateRequests } from "../../../../helpers/state-requests"
 import { adoptTestWorkflow } from "../../session/_session-manager-fixtures"
 import { backgroundIndexFixtures, byId } from "./_background-index-fixtures"

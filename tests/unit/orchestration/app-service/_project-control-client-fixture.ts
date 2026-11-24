@@ -1,6 +1,6 @@
 import type { ProjectControlClientOptions, ProjectControlExecutor } from "../../../../src/orchestration/app-service/account/projects/project-control-client.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
-import type { FrontendMutation, RuntimeChatDefault, RuntimeExecutorState } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, RuntimeChatDefault, RuntimeExecutorState } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"

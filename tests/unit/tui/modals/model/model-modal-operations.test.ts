@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import type { ModelAssignmentRow, ModelSelectionSlot, ModelOptionRow, RuntimeModelAssignmentWriteScope } from "../../../../../src/protocol/model-assignment-protocol-types.js";
-import type { AttachedRuntimeClient, FrontendEvent, FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
-import { authStatusCursor, type RuntimeAuthStatusScope, type RuntimeAuthView } from "../../../../../src/protocol/auth-status-protocol-types.js"
+import type { ModelAssignmentRow, ModelSelectionSlot, ModelOptionRow, RuntimeModelAssignmentWriteScope } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js";
+import type { AttachedRuntimeClient, FrontendEvent, FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
+import { authStatusCursor, type RuntimeAuthStatusScope, type RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { modalTitle, contextLine } from "../../../../../src/tui/modals/model/model-modal-chrome.js"
 import { createOverlayLayers, type ModalContext, type OverlayLayers } from "../../../../../src/tui/components/modal-stack.js"
 import { useModelModal } from "../../../../../src/tui/hooks/overlays/modals/model/use-model-modal.js"
@@ -10,7 +10,7 @@ import { createSettingsTree } from "../../../../../src/tui/hooks/overlays/modals
 import { fakeRow } from "./_model-modal-fixtures"
 
 import { roleSlot } from "../../../../../src/orchestration/config/models/role-selection.js";
-import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { fakeLanes } from "../../../../helpers/fake-lanes.js"
 import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"

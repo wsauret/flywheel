@@ -1,5 +1,5 @@
 import type { ChangesDiffState, ChangesSummaryState } from "./session-changes.js"
-import type { SessionChangeFile, SessionChangesUndoResult } from "../session-changes-protocol-types.js"
+import type { SessionChangeFile, SessionChangesUndoResult } from "../session/session-changes-protocol-types.js"
 
 /** Whether a canonical file path is outside the project's Flywheel state directory.
  * Runtime callers resolve the state directory's physical identity before calling. */

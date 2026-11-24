@@ -1,5 +1,5 @@
 import type { QuestionBlock, QuestionChoice, QuestionEntry } from "@infra/output-blocks"
-import { formatQuestionChoiceAnswer, type AgentInputAnswer } from "../../../protocol/question-protocol-types.js"
+import { formatQuestionChoiceAnswer, type AgentInputAnswer } from "../../../protocol/session/question-protocol-types.js"
 import { type Accessor, batch, createEffect, createSignal, on } from "solid-js"
 import { questionSkip } from "../../../protocol/client/question-settlement.js"
 import { createControlledTextEditor, MULTILINE_TEXT_ENTRY_POLICY, type TextEditorPresentation, type TextEntryVisualLine } from "../../terminal/keymap/text-entry.js"

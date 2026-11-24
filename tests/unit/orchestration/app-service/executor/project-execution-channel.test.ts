@@ -11,7 +11,7 @@ import type {
   MutationResult,
   RuntimeQuery,
   RuntimeQueryResult,
-} from "../../../../../src/protocol/app-service-types.js"
+} from "../../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeUiPatchFixtures } from "../../../protocol/runtime-ui-patch-fixtures.js"
 import { deferred, endpointPair, markerEvent, markerPosition, requestFrame, responseFrame, runtimeHarness } from "../project-execution-channel-fixtures.js"
 import { recordedDispatch, recordedQuery, runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"

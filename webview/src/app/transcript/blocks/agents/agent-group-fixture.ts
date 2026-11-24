@@ -1,6 +1,6 @@
-import type { ChildSessionRow, FrontendEvent, FrontendMutation } from "../../../../../../src/protocol/app-service-types.js"
+import type { ChildSessionRow, FrontendEvent, FrontendMutation } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeConnection } from "../../../../../../src/protocol/client/connection.js"
-import type { RuntimeSessionDetailSnapshotResult } from "../../../../../../src/protocol/session-detail-protocol-types.js"
+import type { RuntimeSessionDetailSnapshotResult } from "../../../../../../src/protocol/session/session-detail-protocol-types.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../../../tests/helpers/runtime-dispatch.js"
 import { createRuntimeSession } from "../../../../client/session/session.js"
 import { selectionConnection } from "../../../../client/session/session-selection-fixture.js"

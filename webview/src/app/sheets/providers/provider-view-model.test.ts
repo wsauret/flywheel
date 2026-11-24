@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { RuntimeAuthStatusSnapshotResult } from "../../../../../src/protocol/auth-status-protocol-types.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import type { RuntimeAuthStatusSnapshotResult } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { buildProviderViewState, createProviderConsentMutation } from "./provider-view-model.js"
 
 const profileId = "profile"

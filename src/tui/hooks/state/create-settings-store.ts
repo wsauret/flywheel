@@ -1,12 +1,12 @@
 import type { Accessor } from "solid-js"
 import { Schema } from "effect"
 import { MODAL_SETTINGS_DEFAULTS, type ProfileBooleanSettingId } from "../../../orchestration/config/schema/setting-definitions.js"
-import type { ModuleConfigBooleanSettingId, ModuleConfigNumberListControl, ModuleConfigSettingControl, ModuleProviderSetting } from "../../../protocol/module-protocol-types.js"
+import type { ModuleConfigBooleanSettingId, ModuleConfigNumberListControl, ModuleConfigSettingControl, ModuleProviderSetting } from "../../../protocol/runtime/module-protocol-types.js"
 import type { CompatibleRenderingMode, DiffColorMode, WebSearchProvider } from "../../../orchestration/config/schema/schema.js"
-import { WriteSyntaxThemeIdSchema, type WriteSyntaxThemeId } from "../../../protocol/write-syntax-theme.js"
+import { WriteSyntaxThemeIdSchema, type WriteSyntaxThemeId } from "../../../protocol/settings/write-syntax-theme.js"
 import type { getFontStatus, fontInstallSummary, installBundledFont } from "../../../orchestration/font-installer.js"
-import type { RuntimeClient } from "../../../protocol/app-service-types.js"
-import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigStatusView, RuntimeConfigView } from "../../../protocol/runtime-config-protocol-types.js"
+import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
+import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigStatusView, RuntimeConfigView } from "../../../protocol/settings/runtime-config-protocol-types.js"
 import type { RuntimeConfigCache } from "./runtime/create-runtime-config-cache.js"
 
 type SectionBooleanControl = Extract<ModuleConfigSettingControl, { readonly section: string; readonly control: "config-boolean" }>

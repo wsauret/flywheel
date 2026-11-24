@@ -41,7 +41,7 @@ import { createIosSimulatorTool } from "../src/orchestration/modules/development
 import { createMcpRuntime } from "../src/orchestration/modules/mcp/runtime.js";
 import type { DefinitionOverrideOperations } from "../src/workflows/definitions/override-staleness.js";
 import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
-import type { WorkflowsMode } from "../src/protocol/module-protocol-types.js";
+import type { WorkflowsMode } from "../src/protocol/runtime/module-protocol-types.js";
 import { workflowLaunchTargets } from "../src/orchestration/workflow-host/lifecycle/launch-origin.js";
 import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definitions/definition-registry.js";
 import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/control/messaging/session-messaging.js";

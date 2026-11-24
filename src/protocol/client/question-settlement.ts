@@ -5,7 +5,7 @@
  * it in the same words (PI-INTERACTION-009).
  */
 
-import type { AgentInputAnswer, AgentInputAnswers } from "../question-protocol-types.js"
+import type { AgentInputAnswer, AgentInputAnswers } from "../session/question-protocol-types.js"
 
 /** What a skip sends: the answers the person already gave, or a cancel. */
 export type QuestionSkip =

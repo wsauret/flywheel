@@ -3,11 +3,11 @@ import { describe, test } from "node:test"
 import { jest } from "bun:test"
 import { Schema } from "effect"
 
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/app-service-types.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/runtime/app-service-types.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
+import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import { createTranscriptStore } from "../../../../src/protocol/client/transcript-store.js"
-import type { HydratedOutputGroupChildrenBatch } from "../../../../src/protocol/transcript-protocol-types.js"
+import type { HydratedOutputGroupChildrenBatch } from "../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { SESSION, textBlock, toolBlock, fakeConnection, deltaPatch, settle } from "./_transcript-store-fixtures.js"
 
 

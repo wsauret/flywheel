@@ -1,5 +1,5 @@
 import type { ProjectServiceState } from "../../src/orchestration/app-service/account/projects/project-control-client.js"
-import type { RuntimeRestartReadiness, RuntimeServiceState } from "../../src/protocol/app-service-types.js"
+import type { RuntimeRestartReadiness, RuntimeServiceState } from "../../src/protocol/runtime/app-service-types.js"
 
 /** What the account service reports about itself, as a project reaches it,
  *  serving and never moving: for a project composition whose case is not

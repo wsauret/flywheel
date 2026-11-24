@@ -7,7 +7,7 @@ import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js
 import { openReadonlyEventReader } from "../../../src/infra/sqlite-event-store.js"
 import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"
 import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/metadata/catalog/session-summary-index.js"
-import { encodeAccountAttach } from "../../../src/protocol/account-attach.js"
+import { encodeAccountAttach } from "../../../src/protocol/runtime/account-attach.js"
 import {
   LARGE_SESSION_SUMMARY_HISTORY,
   SESSION_SUMMARY_FIXTURE_FACT_TYPES,

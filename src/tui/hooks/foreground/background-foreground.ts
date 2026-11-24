@@ -1,4 +1,4 @@
-import type { RuntimeClient } from "../../../protocol/app-service-types.js"
+import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import type { DraftCache } from "../../components/composer/create-draft-cache.js"
 import type { ShellServices } from "../state/shell-state.js"
 

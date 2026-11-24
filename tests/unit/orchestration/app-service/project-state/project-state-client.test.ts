@@ -15,7 +15,7 @@ import { contentEvidence } from "../../../../../src/infra/content-evidence.js"
 import { WorkerGenerationBudgetExhausted, WorkerRoleAlreadyLive } from "../../../../../src/infra/bounded-worker-spawner.js"
 import type { SessionMetadataChange } from "../../../../../src/orchestration/session/manager.js"
 import { startProjectStateStandby } from "../../../../../src/orchestration/app-service/project-state/project-state-standby.js"
-import { ServeStartupFailure, startRefusalOf } from "../../../../../src/protocol/serve-handshake.js"
+import { ServeStartupFailure, startRefusalOf } from "../../../../../src/protocol/runtime/serve-handshake.js"
 import { pack, unpack } from "msgpackr"
 import { buildSessionContent, type SessionContentNodeRow } from "../../../../../src/infra/session-content.js"
 

@@ -17,7 +17,7 @@ import { remoteConfigSection } from "../../../../src/orchestration/modules/remot
 import { kernelPorts } from "../../../helpers/module-kernel.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
 import type { Schema } from "effect"
-import type { AccountModuleRequest } from "../../../../src/protocol/account-attach.js"
+import type { AccountModuleRequest } from "../../../../src/protocol/runtime/account-attach.js"
 
 interface ProbeService {
   readonly received: NotificationEpisodeInput[]

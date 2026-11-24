@@ -4,7 +4,7 @@ import { Rpc, RpcTest } from "effect/rpc"
 import { createOutputWatches } from "../../../../../../src/orchestration/app-service/account/projects/output-watches.js"
 import { runtimeHandlers } from "../../../../../../src/orchestration/app-service/account/connections/runtime-protocol-handlers.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../../../src/protocol/runtime-liveness.js"
-import { RuntimeProtocolRpc } from "../../../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeProtocolRpc } from "../../../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 
 describe("output watches", () => {
   test("the union counts each session once however many connections watch it, and changes only when a session enters or leaves it", () => {

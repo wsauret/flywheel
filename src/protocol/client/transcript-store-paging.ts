@@ -1,10 +1,10 @@
-import type { FrontendOutputBlock } from "../app-service-types.js"
-import { blockIdentity } from "../block-identity.js"
-import type { HydratedOutputRange, OutputRangeAnchor } from "../transcript-protocol-types.js"
-import type { OutputDelta } from "../output-protocol-types.js"
+import type { FrontendOutputBlock } from "../runtime/app-service-types.js"
+import { blockIdentity } from "../transcript/block-identity.js"
+import type { HydratedOutputRange, OutputRangeAnchor } from "../transcript/transcript-protocol-types.js"
+import type { OutputDelta } from "../transcript/output-protocol-types.js"
 import { foldAgentGroupBlock, totalBlocksAfterDelta } from "./transcript-delta.js"
 import type { TranscriptReader, TranscriptView } from "./transcript-view.js"
-import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 
 /** Insert identity can refresh without growing the window, so its applied
  * end, not its operation count, determines the total. */

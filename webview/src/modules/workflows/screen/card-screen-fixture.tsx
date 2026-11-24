@@ -1,5 +1,5 @@
 import { createComponent, createRoot } from "solid-js"
-import type { LoadedWorkflowView } from "../../../../../src/protocol/workflow-view-protocol-types.js"
+import type { LoadedWorkflowView } from "../../../../../src/protocol/session/workflow-view-protocol-types.js"
 import type { WorkflowDetail } from "../../../../../src/protocol/modules/workflows.js"
 import { fakeClientActions, fakeWebModuleHost } from "../../../app/client-context-fixture.js"
 import type { WorkflowAgentViewTarget } from "../navigation.js"

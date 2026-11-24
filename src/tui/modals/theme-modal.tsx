@@ -6,7 +6,7 @@ import { ModalSelect } from "../components/modal/select/modal-select.js"
 import type { FilteredResult } from "../components/modal/select/modal-select-types.js"
 import { ModalFrame } from "../components/modal/modal-frame.js"
 import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "../components/modal/modal-copy.js"
-import { settingCatalogRow } from "../../protocol/setting-catalog.js"
+import { settingCatalogRow } from "../../protocol/settings/setting-catalog.js"
 
 interface ThemeModalProps {
   result: FilteredResult<string>

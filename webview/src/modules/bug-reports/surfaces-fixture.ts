@@ -1,5 +1,5 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
-import type { FrontendMutation, RuntimeHealth, RuntimeQuery } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, RuntimeHealth, RuntimeQuery } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { BugReportResult } from "../../../../src/protocol/modules/bug-reports.js"
 import { ClientContext } from "../../app/client-context.js"
 import { fakeClient, fakeClientHost, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"

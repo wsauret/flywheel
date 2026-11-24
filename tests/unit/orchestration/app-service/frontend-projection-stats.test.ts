@@ -2,7 +2,7 @@ import { tmpdir } from "node:os"
 import { describe, expect, test } from "bun:test"
 import { createFrontendProjection, type SessionChange } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"
 import type { RuntimeSummaryView } from "../../../../src/orchestration/app-service/projections/catalog/runtime-summary-read.js"
-import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
+import type { SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import { chatEntry, durableRow, fakeSessionStore, managerWithSessions } from "./_frontend-projection-fixtures.js"
 
 function readyRow(tokens: number): Extract<SessionCatalogRow, { readonly totalsLoading: false }> {

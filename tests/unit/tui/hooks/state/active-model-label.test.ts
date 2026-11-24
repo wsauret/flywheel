@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { sessionModelLabel } from "../../../../../src/tui/hooks/state/active-model-label.js"
-import type { RoleAssignmentView } from "../../../../../src/protocol/role-protocol-types.js"
+import type { RoleAssignmentView } from "../../../../../src/protocol/auth/role-protocol-types.js"
 
 function reading(model: string, effort: string): RoleAssignmentView {
   return { assignments: { chat: { model: "not-serving", effort: "low" } }, serving: { slot: { kind: "role", roleId: "chat" }, selection: { model, effort } } }

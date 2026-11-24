@@ -26,7 +26,7 @@ import { loadConfig } from "../config/loader.js";
 import type { ConfigReadResult } from "../config/config-file.js";
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../config/runtime-config-owner.js";
 import { ConfigStaleWriteError, patchDefinedSetting, updateConfigTextAwaited } from "../config/writer.js";
-import type { UpdateAutoInstall } from "../../protocol/update-protocol-types.js";
+import type { UpdateAutoInstall } from "../../protocol/runtime/update-protocol-types.js";
 import type { UpdatePolicyStore } from "./update-service.js";
 
 export interface DisposableUpdatePolicyStore extends UpdatePolicyStore {

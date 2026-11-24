@@ -10,7 +10,7 @@
  */
 
 import type { ToolPresentation, WorkflowAgentState } from "../../infra/output-blocks.js"
-import type { LoadedWorkflowView, WorkflowAgentLive, WorkflowAgentPersona, WorkflowTree, WorkflowTreeAgent, WorkflowTreeJoin, WorkflowTreeNode, WorkflowTreePhase } from "../workflow-view-protocol-types.js"
+import type { LoadedWorkflowView, WorkflowAgentLive, WorkflowAgentPersona, WorkflowTree, WorkflowTreeAgent, WorkflowTreeJoin, WorkflowTreeNode, WorkflowTreePhase } from "../session/workflow-view-protocol-types.js"
 import { coveragePart, coverageText, coverageTone, loopOutcomeText, selectionText, unexpandedList, workflowProgress, workflowTreeUnits, type SummaryPart, type WorkflowProgress } from "./workflow-progress.js"
 import { summaryLine } from "../../infra/summary-line.js"
 

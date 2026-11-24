@@ -1,4 +1,4 @@
-import type { RuntimeUiPatch, RuntimeUiPatchPayload } from "../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch, RuntimeUiPatchPayload } from "../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { sideQuestionCursor, sideQuestionRequestCursor, type SideQuestionView } from "../../../src/protocol/modules/side-question.js"
 
 const sessionRow = {

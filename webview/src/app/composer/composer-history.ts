@@ -1,4 +1,4 @@
-import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
 
 /** What the composer's box holds. `live` is the person's draft. `browsing`
  *  shows the sent message at `index` (0 the newest) exactly as the transcript

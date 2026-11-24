@@ -1,5 +1,5 @@
 import { errorMessage } from "../../infra/error-message.js"
-import type { ChatSettlementOutcome } from "../../protocol/chat-settlement-protocol-types.js"
+import type { ChatSettlementOutcome } from "../../protocol/session/chat-settlement-protocol-types.js"
 import { assembleProjectRuntime, type RuntimeComposition, type RuntimeCompositionOptions } from "../app-service/executor/execution/project-execution-runtime.js"
 import { createRuntimeChatKernel } from "../app-service/supervisor/runtime-chat-kernel.js"
 import { claimHeadlessProjectExecution } from "../app-service/account/projects/project-serving-lane.js"

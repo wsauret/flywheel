@@ -1,4 +1,4 @@
-import type { RuntimeAuthLoginQuestion, RuntimeAuthView } from "../../../../../protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthLoginQuestion, RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import { Redacted } from "effect"
 import { errorMessage } from "../../../../../infra/error-message.js"
 import type { AuthModalDeps } from "./auth-modal-types.js"

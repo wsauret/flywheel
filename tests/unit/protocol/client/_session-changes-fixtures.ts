@@ -1,8 +1,8 @@
-import type { AttachedRuntimeClient, FrontendEvent, FrontendMutation, RuntimeQuery } from "../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendEvent, FrontendMutation, RuntimeQuery } from "../../../../src/protocol/runtime/app-service-types.js"
 import { recordedDispatch, recordedQuery, runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
 import { createSessionChangesController, type SessionChangesController } from "../../../../src/protocol/client/session-changes.js"
-import { changesCursor, type SessionChangeDiffQuery, type SessionChangeDiffResult, type SessionChangeFile, type SessionChangeSummaryResult, type SessionChangesResult, type SessionChangesSetViewedResult, type SessionChangesUndoResult } from "../../../../src/protocol/session-changes-protocol-types.js"
+import { changesCursor, type SessionChangeDiffQuery, type SessionChangeDiffResult, type SessionChangeFile, type SessionChangeSummaryResult, type SessionChangesResult, type SessionChangesSetViewedResult, type SessionChangesUndoResult } from "../../../../src/protocol/session/session-changes-protocol-types.js"
 
 export const fileA: SessionChangeFile = { fileId: "file:canonical:a", path: "/work/a.txt", change: "modified", editToken: { position: 1, eventId: "edit-a-1" }, review: { status: "unviewed" }, writers: [] }
 export const fileB: SessionChangeFile = { fileId: "file:canonical:b", path: "/work/b.txt", change: "added", editToken: { position: 2, eventId: "edit-b-1" }, review: { status: "unviewed" }, writers: [{ sessionId: "explorer", title: "Explorer" }, { sessionId: "reviewer", title: "Reviewer" }, { sessionId: "helper", title: "Helper" }] }

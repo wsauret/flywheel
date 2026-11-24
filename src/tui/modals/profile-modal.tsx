@@ -6,7 +6,7 @@ import { ModalSelect } from "../components/modal/select/modal-select.js"
 import type { FilteredResult } from "../components/modal/select/modal-select-types.js"
 import { ModalFrame } from "../components/modal/modal-frame.js"
 import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "../components/modal/modal-copy.js"
-import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../protocol/commands/command-names.js"
 
 interface ProfileModalProps {
   result: FilteredResult<string>

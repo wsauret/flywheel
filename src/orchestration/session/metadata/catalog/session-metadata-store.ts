@@ -18,7 +18,7 @@ import {
 import { createSessionMetadataProjection, createSessionPlacementProjection, createSingleSessionMetadataProjection, recoverSessionMetadata, sessionMetadataStateOf, type PerSessionMetadataState, type SessionMetadataProjectionState } from "../session-metadata-projection.js"
 import { createPushFedView } from "../../../../infra/push-fed-view.js"
 import { isValidTransition, type SessionLifecycleState } from "../types.js"
-import { effectiveSessionShortTitle } from "../../../../protocol/app-service-types.js"
+import { effectiveSessionShortTitle } from "../../../../protocol/runtime/app-service-types.js"
 
 interface SessionMetadataStoreDeps {
   reader: AsyncEventStateReadSurface

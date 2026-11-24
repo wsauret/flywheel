@@ -1,9 +1,9 @@
 import { createSignal, onCleanup, untrack } from "solid-js"
-import type { AttachedRuntimeClient } from "../../../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 import type { ModuleDomainBinding, ModuleDomainSnapshot } from "../../../../protocol/client/module-domain.js"
 import type { ProtocolModuleWorkflowDomain } from "../../../../protocol/modules.js"
 import { runtimeSnapshotScopeKey } from "../../../../protocol/client/family-intake.js"
-import type { RuntimeUiPatchPayload, RuntimeWorkflowCursorIdentity } from "../../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchPayload, RuntimeWorkflowCursorIdentity } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { createOrderedPatchReceiver } from "../create-ordered-patch-receiver.js"
 
 /** Passive aggregate reads, independent of session activation and transcript holds. */

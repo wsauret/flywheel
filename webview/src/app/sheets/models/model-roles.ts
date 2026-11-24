@@ -1,4 +1,4 @@
-import type { ModelAssignmentExpected, ModelAssignmentRow } from "../../../../../src/protocol/model-assignment-protocol-types.js"
+import type { ModelAssignmentExpected, ModelAssignmentRow } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js"
 
 /** The role browser's rows, as pure projections of what the runtime reports.
  *

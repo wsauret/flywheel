@@ -3,8 +3,8 @@ import { appendFileEnsuringDir, writeFileAtomic } from "../../../../infra/atomic
 import { errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/log.js"
 import { slashCommandToken } from "../../../../infra/slash-command.js"
-import { commandUsageCursor, type CommandUsageView } from "../../../../protocol/command-usage-protocol-types.js"
-import type { RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
+import { commandUsageCursor, type CommandUsageView } from "../../../../protocol/commands/command-usage-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 
 const log = Log.create({ service: "command-usage" })
 

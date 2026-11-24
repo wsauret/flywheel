@@ -6,7 +6,7 @@ import { accountServeErrorLogPath } from "../../../../src/infra/paths.js"
 import { recordServiceStartFailure } from "../../../../src/infra/update/service-start-record.js"
 import { ACCOUNT_DRAIN_HARD_EXIT_MS } from "../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
 import { AccountServiceInstallationError } from "../../../../src/orchestration/app-service/account/installation/service-manager-command.js"
-import { ServeStartupFailure } from "../../../../src/protocol/serve-handshake.js"
+import { ServeStartupFailure } from "../../../../src/protocol/runtime/serve-handshake.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 

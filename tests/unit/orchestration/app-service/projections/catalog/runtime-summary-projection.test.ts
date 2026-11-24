@@ -2,8 +2,8 @@ import { describe, expect, mock, spyOn, test } from "bun:test"
 import { DebugLog } from "../../../../../../src/infra/debug-log.js"
 import type { StoredFact } from "../../../../../../src/infra/event-store-types.js"
 import { createRuntimeSummaryProjection } from "../../../../../../src/orchestration/app-service/projections/catalog/runtime-summary-projection.js"
-import type { RuntimeBackgroundSummaryResult } from "../../../../../../src/protocol/runtime-protocol-schemas.js"
-import type { SessionCatalogRow } from "../../../../../../src/protocol/app-service-types.js"
+import type { RuntimeBackgroundSummaryResult } from "../../../../../../src/protocol/rpc/runtime-protocol-schemas.js"
+import type { SessionCatalogRow } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import type { ReplayedSession } from "../../../../../../src/orchestration/session/metadata/schemas.js"
 
 function readyRow(id: string, totalTokens: number): Extract<SessionCatalogRow, { readonly totalsLoading: false }> {

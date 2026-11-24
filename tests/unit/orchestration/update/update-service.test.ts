@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { Log } from "../../../../src/infra/log.js";
 import type { UpdateCheckResult } from "../../../../src/orchestration/update/update-check.js";
 import type { UpdateService } from "../../../../src/orchestration/update/update-service.js";
-import type { UpdateStatus } from "../../../../src/protocol/update-protocol-types.js";
+import type { UpdateStatus } from "../../../../src/protocol/runtime/update-protocol-types.js";
 import { candidate, fakeAuthority, harness, statuses, blockingInstaller } from "./_update-service-harness.js";
 
 /** The build a rollback refused on the account of most cases. */

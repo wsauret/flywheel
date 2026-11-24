@@ -1,6 +1,6 @@
-import type { FrontendOutputBlock, FrontendToolEntry, FrontendToolStreamingText } from "../app-service-types.js"
-import type { HydratedOutputBlockBody } from "../transcript-protocol-types.js"
-import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry, FrontendToolStreamingText } from "../runtime/app-service-types.js"
+import type { HydratedOutputBlockBody } from "../transcript/transcript-protocol-types.js"
+import type { RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 
 /** The transcript contract a client reads: the resident window the store
  *  publishes, the slots a delta rewrote, and the reader position the client

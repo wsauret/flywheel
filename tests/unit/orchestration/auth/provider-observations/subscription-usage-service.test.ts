@@ -10,7 +10,7 @@ import { createSubscriptionUsageService, type SubscriptionUsageService } from ".
 import { captureCopilotAllowanceAdmission } from "../../../../../src/orchestration/modules/provider-github-copilot/allowance-admission.js"
 import { createChatGPTUsageReader } from "../../../../../src/orchestration/modules/provider-chatgpt/usage-reader.js"
 import { createRuntimeUsageDeps } from "../../../../../src/orchestration/modules/subscription-usage/provider-deps.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js"
 import { createProfileFixture, definition, readerFor, registry, report, writeAccounts } from "./_service-fixtures.js"
 import type { ExternalAccount } from "../../../../../src/infra/auth/provider-account.js"

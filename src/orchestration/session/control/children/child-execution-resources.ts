@@ -6,7 +6,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../i
 import { ensureSessionDir, resolveSessionDir, sessionRelativeDir } from "../../../../infra/paths.js"
 import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js"
 import { directoryComponents, removeTreeUnder } from "../../../../infra/write-file-under.js"
-import type { RecallInput, RecallResult } from "../../../../protocol/conversation-recall.js"
+import type { RecallInput, RecallResult } from "../../../../protocol/transcript/conversation-recall.js"
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../../../chat/tree-writer.js"
 import type { AttachChildSessionProjection, ChildSessionKind } from "../../../module-seams.js"
 import { createSessionBudgetStore } from "../../runtime-facts/budget-store.js"

@@ -3,7 +3,7 @@
 import { useTheme } from "@tui/context/theme"
 import { BOLD } from "@tui/terminal/text-attributes"
 import { createSignal, For, Show } from "solid-js"
-import type { RuntimeClient } from "../../protocol/app-service-types.js"
+import type { RuntimeClient } from "../../protocol/runtime/app-service-types.js"
 import type { TuiErrorReport, TuiErrorReportProps } from "../tui-module.js"
 import { Button } from "./controls/button.js"
 import type { Clipboard } from "../terminal/clipboard.js"

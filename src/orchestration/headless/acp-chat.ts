@@ -8,15 +8,15 @@ import {
   JSON_RPC_ERROR, acpBlockUpdates, acpConfigOptions, acpElicitationReply, acpElicitationRequest, acpError, acpPromptUsage, acpQuestionAnswers, acpQuestionForm,
   acpResult, acpToolOpen, acpUpdate, acpUsageUpdate,
   type AcpConfigOption, type AcpElicitationReply, type AcpStopReason, type AcpStreamed, type JsonRpcId,
-} from "../../protocol/acp.js"
-import type { ChatSettlementOutcome, ChatTurnEnding } from "../../protocol/chat-settlement-protocol-types.js"
-import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeEventFrame } from "../../protocol/app-service-types.js"
-import { blockIdentity } from "../../protocol/block-identity.js"
-import { isBudgetPayload } from "../../protocol/budget-protocol-types.js"
+} from "../../protocol/rpc/acp.js"
+import type { ChatSettlementOutcome, ChatTurnEnding } from "../../protocol/session/chat-settlement-protocol-types.js"
+import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeEventFrame } from "../../protocol/runtime/app-service-types.js"
+import { blockIdentity } from "../../protocol/transcript/block-identity.js"
+import { isBudgetPayload } from "../../protocol/session/budget-protocol-types.js"
 import { createTranscriptStore, type TranscriptStore } from "../../protocol/client/transcript-store.js"
-import type { ModelSelectionEffort, ModelSelectionSlot } from "../../protocol/model-assignment-protocol-types.js"
-import type { PendingQuestionView } from "../../protocol/question-protocol-types.js"
-import { isRolePayload } from "../../protocol/role-protocol-types.js"
+import type { ModelSelectionEffort, ModelSelectionSlot } from "../../protocol/auth/model-assignment-protocol-types.js"
+import type { PendingQuestionView } from "../../protocol/session/question-protocol-types.js"
+import { isRolePayload } from "../../protocol/auth/role-protocol-types.js"
 import type { HeadlessChatChannel, HeadlessChatFraming } from "./headless-chat-channel.js"
 
 /** One read of the output a recovered window skipped over. */
@@ -39,7 +39,7 @@ interface AcpAnswer {
   readonly submitted: boolean
 }
 
-/** Agent Client Protocol version 1 over headless chat (protocol/acp.ts). The
+/** Agent Client Protocol version 1 over headless chat (protocol/rpc/acp.ts). The
  *  channel's root chat is the one ACP session: `session/new` opens a chat, and
  *  `session/load` or `session/resume` attaches a saved chat of the project.
  *  Each refuses a second session or a `cwd` other than `executionCwd`, where

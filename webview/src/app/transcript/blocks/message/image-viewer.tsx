@@ -1,5 +1,5 @@
 import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
-import type { HydratedOutputBlockBody } from "../../../../../../src/protocol/transcript-protocol-types.js"
+import type { HydratedOutputBlockBody } from "../../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import "../../../../styles/image-viewer.css"
 
 type AttachmentImage = NonNullable<HydratedOutputBlockBody["images"]>[number]

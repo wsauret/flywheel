@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import type { FrontendMutation, FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createRuntimeSession } from "../session.js"
 import { settle } from "../../../test-support/session-connection-fixture.js"
 import { createSessionNavigation, type SessionNavigationDeps } from "./session-navigation.js"

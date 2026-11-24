@@ -1,4 +1,4 @@
-import type { SessionChangeDiffResult } from "../../../../../src/protocol/session-changes-protocol-types.js"
+import type { SessionChangeDiffResult } from "../../../../../src/protocol/session/session-changes-protocol-types.js"
 import { retainedDiff } from "../../../../../tests/unit/protocol/client/_session-changes-fixtures.js"
 import { reviewWindow } from "../../transcript/render-ownership-loader-fixture.js"
 

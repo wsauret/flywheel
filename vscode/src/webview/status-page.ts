@@ -1,4 +1,4 @@
-import type { RuntimeTransportHealth } from "../../../src/protocol/app-service-types.js"
+import type { RuntimeTransportHealth } from "../../../src/protocol/runtime/app-service-types.js"
 import { runtimeFaultCopy, startRefusalCopy } from "../../../src/protocol/client/runtime-fault-copy.js"
 import { describeInstallFailure } from "../runtime/bootstrap-install.js"
 import type { HostFailure, HostPhase } from "../runtime/host-lifecycle.js"

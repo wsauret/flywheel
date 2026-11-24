@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import type { FrontendToolEntry } from "../../../../../../src/protocol/app-service-types.js"
+import type { FrontendToolEntry } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import type { MutationEvidenceReader, MutationFilesView, MutationPatchView } from "../../../../../../src/protocol/client/mutation-evidence.js"
 import { mutationEvidenceFixture } from "../../../../../../tests/fixtures/mutation-evidence-fixture.js"
 import { rendered } from "../blocks-render-loader-fixture.js"

@@ -1,9 +1,9 @@
-import type { FrontendActivity, RuntimeHealth } from "../app-service-types.js"
-import type { BudgetView } from "../budget-protocol-types.js"
-import type { ModuleId } from "../module-ids.js"
+import type { FrontendActivity, RuntimeHealth } from "../runtime/app-service-types.js"
+import type { BudgetView } from "../session/budget-protocol-types.js"
+import type { ModuleId } from "../runtime/module-ids.js"
 import type { ChangesSummaryState } from "./session-changes.js"
 import type { ProviderSummary } from "./provider-summary.js"
-import type { RuntimeAuthLoginQuestion } from "../auth-status-protocol-types.js"
+import type { RuntimeAuthLoginQuestion } from "../auth/auth-status-protocol-types.js"
 import type { NotificationAction } from "../../infra/notification-episode.js"
 
 /** What crosses between the web client and the host that mounts it.

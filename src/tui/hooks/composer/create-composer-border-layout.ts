@@ -1,7 +1,7 @@
 import type { Accessor } from "solid-js"
 import { createMemo, createSignal } from "solid-js"
 import type { ModuleComposerStatus } from "../../../protocol/protocol-module.js"
-import type { UpdateStatusView } from "../../../protocol/update-protocol-types.js"
+import type { UpdateStatusView } from "../../../protocol/runtime/update-protocol-types.js"
 import type { ShellSignals } from "../state/shell-state.js"
 import type { ComposerBorderLayout, ComposerBorderUpdate } from "../../components/composer/frame/composer-border-layout.js"
 import { computeComposerBorderLayout } from "../../components/composer/frame/composer-border-layout.js"

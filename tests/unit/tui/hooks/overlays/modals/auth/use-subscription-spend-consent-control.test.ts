@@ -2,7 +2,7 @@ import { describe, expect, it, mock } from "bun:test"
 import { createRoot } from "solid-js"
 import { createModalStack } from "../../../../../../../src/tui/components/modal-stack.js"
 import { useSubscriptionSpendConsentControl } from "../../../../../../../src/tui/hooks/overlays/modals/auth/use-subscription-spend-consent-control.js"
-import type { SubscriptionSpendConsentMutation, SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import type { SubscriptionSpendConsentMutation, SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 
 type AvailableConsent = Extract<SubscriptionSpendConsentView, { kind: "available" }>
 

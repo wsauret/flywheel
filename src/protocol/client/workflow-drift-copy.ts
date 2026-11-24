@@ -5,7 +5,7 @@
  * builds its refusal from this module, so it stays free of client transport.
  */
 
-import type { WorkflowDefinitionChange, WorkflowDefinitionDrift } from "../app-service-types.js"
+import type { WorkflowDefinitionChange, WorkflowDefinitionDrift } from "../runtime/app-service-types.js"
 
 /** How many names of one kind the drift explanation shows before it counts
  *  the rest, so a large drift still reads as one short paragraph. */

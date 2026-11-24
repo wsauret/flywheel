@@ -1,11 +1,11 @@
 import { formatModuleNumberList, parseModuleNumberList } from "../../../../../protocol/client/module-number-list.js"
 import type { Accessor } from "solid-js"
-import type { RuntimeAuthView } from "../../../../../protocol/auth-status-protocol-types.js"
-import { MODULE_SETTING_GROUPS, type BinaryModule, type ModuleConfigBooleanSettingId, type ModuleConfigNumberListControl, type ModuleConfigSettingControl, type ModuleProtocolRow, type ModuleSettingGroup, type RuntimeModulesView, type WorkflowsMode } from "../../../../../protocol/module-protocol-types.js"
+import type { RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
+import { MODULE_SETTING_GROUPS, type BinaryModule, type ModuleConfigBooleanSettingId, type ModuleConfigNumberListControl, type ModuleConfigSettingControl, type ModuleProtocolRow, type ModuleSettingGroup, type RuntimeModulesView, type WorkflowsMode } from "../../../../../protocol/runtime/module-protocol-types.js"
 import { providerModuleValue } from "../../../../modals/auth/auth-status-presentation.js"
 import { CAPABILITY_PRESET_LABELS, capabilityPreset, moduleUnavailableReason, stepWorkflowsMode, WORKFLOWS_MODE_LABELS } from "../../../../../protocol/client/capabilities.js"
 import { settingsGroupDescription } from "../../../../components/modal/modal-copy.js"
-import { settingCatalogRow, shownOn } from "../../../../../protocol/setting-catalog.js"
+import { settingCatalogRow, shownOn } from "../../../../../protocol/settings/setting-catalog.js"
 import { cycleRowActions, type SettingsEditResult, type SettingsRow } from "../../../../modals/settings/settings-modal-types.js"
 
 type BooleanControl = ModuleConfigBooleanSettingId | Extract<ModuleConfigSettingControl, { readonly section: string; readonly control: "config-boolean" }>

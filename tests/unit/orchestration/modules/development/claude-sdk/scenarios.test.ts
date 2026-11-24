@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js";
-import type { FrontendOutputBlock } from "../../../../../../src/protocol/app-service-types.js";
-import type { StatusView } from "../../../../../../src/protocol/status-protocol-types.js";
+import type { FrontendOutputBlock } from "../../../../../../src/protocol/runtime/app-service-types.js";
+import type { StatusView } from "../../../../../../src/protocol/session/status-protocol-types.js";
 import { runScenario } from "../../../../../../src/orchestration/modules/development/claude-sdk/scenarios.js";
 import { quickTitleFromMessage } from "../../../../../../src/orchestration/session/metadata/session-title.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";

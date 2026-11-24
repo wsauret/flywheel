@@ -1,5 +1,5 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
-import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeStorageView, StorageReclaimResult } from "../../../../src/protocol/modules/reclaim-storage.js"
 import type { StorageReclaimPreview } from "../../../../src/protocol/store-reclaim.js"
 import { ClientContext } from "../../app/client-context.js"

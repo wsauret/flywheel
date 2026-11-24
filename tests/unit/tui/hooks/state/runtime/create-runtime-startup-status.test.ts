@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import type { AttachedRuntimeClient, FrontendEvent, RuntimeStartupStatus } from "../../../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendEvent, RuntimeStartupStatus } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { createRuntimeStartupStatus } from "../../../../../../src/tui/hooks/state/runtime/create-runtime-startup-status.js"
 import { fakeLanes } from "../../../../../helpers/fake-lanes.js"
 

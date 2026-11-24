@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { beforeEach, afterEach, test } from "node:test"
-import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { rendered } from "./blocks-render-loader-fixture.js"
 import { mountTurnChanges, mountUserMessage } from "../render-ownership-loader-fixture.js"
 import type { TurnFold } from "../../../client/session/residents/tool-runs.js"

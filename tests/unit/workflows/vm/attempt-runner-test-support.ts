@@ -1,7 +1,7 @@
 // Shared fixtures of the attempt-runner suites: the bound skill one attempt
 // runs, the committed control the runner reads, and the invocation itself.
 import { createContextAccumulator } from "../../../../src/workflows/context-bundle/context.js";
-import { moduleDisabledReason } from "../../../../src/protocol/module-ids.js";
+import { moduleDisabledReason } from "../../../../src/protocol/runtime/module-ids.js";
 import type { AgentOutput } from "../../../../src/workflows/vm/host/agent-outcome.js";
 import type { ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution.js";
 import {

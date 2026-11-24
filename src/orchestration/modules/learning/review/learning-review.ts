@@ -32,7 +32,7 @@ import { reviewInstruction, type ReviewHalf } from "./learning-review-prompts.js
 import type { ModuleId, FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../modules.js";
 import { moduleRequirementsForContribution, hasModuleContribution } from "../../../module-requirements.js";
 
-import { canonicalModuleIds } from "../../../../protocol/module-ids.js";
+import { canonicalModuleIds } from "../../../../protocol/runtime/module-ids.js";
 const log = Log.create({ service: "learning-review" });
 
 /** The fork budget: the prompts direct multi-step sequences and

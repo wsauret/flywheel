@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Schema } from "effect";
-import { decodeExecutionEvidence, ExecutionEvidenceSchema, type ExecutionEvidence } from "../../../../../src/protocol/execution-evidence.js";
+import { decodeExecutionEvidence, ExecutionEvidenceSchema, type ExecutionEvidence } from "../../../../../src/protocol/session/execution-evidence.js";
 import { subcommandDispatch } from "../../../../../src/cli/subcommands.js";
 import type { LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
@@ -86,7 +86,7 @@ async function invoke(root: string, sessionId: string): Promise<{ output: string
 describe("durable execution evidence", () => {
   test("the consumer codec bundles for browsers and refuses unknown versions and unsafe identity fields", async () => {
     const bundled = await Bun.build({
-      entrypoints: [fileURLToPath(new URL("../../../../../src/protocol/execution-evidence.ts", import.meta.url))],
+      entrypoints: [fileURLToPath(new URL("../../../../../src/protocol/session/execution-evidence.ts", import.meta.url))],
       target: "browser",
     });
     expect(bundled.success).toBe(true);

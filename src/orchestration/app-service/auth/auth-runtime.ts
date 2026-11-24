@@ -19,7 +19,7 @@ import { legacyModelSpellingCatalog } from "./models/legacy-model-spelling-catal
 import { createAuthPublicationBaseline, createAuthStatusPublisher, createProviderModelAuthPublisher } from "./publication/auth-publication.js"
 import { createAuthStatusProjection, type AuthStatusProjection } from "./auth-status-projection.js"
 import { createAuthAttentionPublisher } from "./publication/auth-attention-publisher.js"
-import type { AuthOperationNotice, RuntimeAuthStatusScope } from "../../../protocol/auth-status-protocol-types.js"
+import type { AuthOperationNotice, RuntimeAuthStatusScope } from "../../../protocol/auth/auth-status-protocol-types.js"
 import { authProfileEligibilityInputRevision, createEligibilityPreparation, requireLoginCatalog } from "./models/eligibility-preparation.js"
 import { createProviderModelPreferenceService, type ProfileBoundProviderModelPreferenceService } from "./models/provider-model-preference-service.js"
 import { providerModelPreferencePersistence } from "./models/provider-model-preference-persistence.js"
@@ -35,7 +35,7 @@ import type { SubscriptionUsageServiceLease, SubscriptionUsageServicePool } from
 import { createProfileRefreshCoordinator } from "./profile-refresh-coordinator.js"
 import { getSharedModelsClient } from "../../config/models/llm-clients.js"
 import { createSubscriptionSpendConsentRuntime } from "../../subscription-spend-consent/runtime-composition.js"
-import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE, type SubscriptionSpendConsentMutation, type SubscriptionSpendConsentMutationResult, type SubscriptionSpendConsentView } from "../../../protocol/subscription-spend-consent-protocol-types.js"
+import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE, type SubscriptionSpendConsentMutation, type SubscriptionSpendConsentMutationResult, type SubscriptionSpendConsentView } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 import type { SubscriptionSpendConsentCapture } from "../../subscription-spend-consent/subscription-spend-consent-service.js"
 import { createSubscriptionSpendConsentCaptureCache } from "../../subscription-spend-consent/capture-cache.js"
 import { createAuthConditionOwner } from "../../auth/auth-condition-owner.js"
@@ -60,8 +60,8 @@ import { connectionEligibilitySources } from "../../headless/snapshot-eligibilit
 
 import { accessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js"
 import { capacityWaitRechecks, type CapacityWaits } from "./capacity-wait-rechecks.js"
-import type { RuntimeChatDefault } from "../../../protocol/app-service-types.js"
-import type { RuntimeModelCatalogRefreshScope } from "../../../protocol/provider-model-preference-protocol-types.js"
+import type { RuntimeChatDefault } from "../../../protocol/runtime/app-service-types.js"
+import type { RuntimeModelCatalogRefreshScope } from "../../../protocol/auth/provider-model-preference-protocol-types.js"
 import { isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../../infra/auth/provider-account.js"
 const log = Log.create({ service: "auth-runtime" })
 

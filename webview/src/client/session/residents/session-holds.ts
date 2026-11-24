@@ -1,4 +1,4 @@
-import type { SessionRow } from "../../../../../src/protocol/app-service-types.js"
+import type { SessionRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
 import { createOpenSessionKeeper } from "../../../../../src/protocol/client/open-session-keeper.js"
 import type { Residency } from "../../../../../src/protocol/client/residency.js"

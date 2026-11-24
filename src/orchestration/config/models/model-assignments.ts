@@ -6,7 +6,7 @@ import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import { offeringTransportFamily } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import type { ResolvedProviderModels } from "../../../infra/auth/provider-models/provider-model-preferences.js";
 import { resolveEnabledProviderModelCatalog } from "./model-assignment-providers.js";
-import type { EffortOptionRow, ModelAssignmentExpected, ModelAssignmentPatch, ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort, ModelSelectionSlot, ModelTier } from "../../../protocol/model-assignment-protocol-types.js";
+import type { EffortOptionRow, ModelAssignmentExpected, ModelAssignmentPatch, ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort, ModelSelectionSlot, ModelTier } from "../../../protocol/auth/model-assignment-protocol-types.js";
 import type { ModelConfigDeps, ModelPickerConfigDeps } from "./model-assignment-types.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 import {
@@ -15,7 +15,7 @@ import {
   modelPowerSortRank,
   resolveSelectedRouteRanks,
 } from "./model-tiers.js";
-import { isModelTierReference } from "../../../protocol/model-tier-reference.js";
+import { isModelTierReference } from "../../../protocol/auth/model-tier-reference.js";
 import { type RoleModelCandidate, selectRoleModelDefault } from "./role-model-defaults.js";
 import { defaultRoleSlots, isBriefSlot, resolveSlotRole, slotLabel, roleSlot } from "./role-selection.js";
 import { parentRoleId, type ResolvedRole } from "../roles.js";
@@ -23,7 +23,7 @@ import { canonicalRoleId } from "../retired-config-names.js";
 import { effectiveRoleAssignments, enabledModelsFromEligibility, previewSessionRoles } from "./session-role-resolver.js";
 import { profileRoleSettings } from "../env.js";
 import type { RoleResolutionOptions } from "./role-resolution.js";
-import { parseBriefRoleId, briefPersonaRoleId, briefRoleId } from "../../../protocol/brief-role-id.js";
+import { parseBriefRoleId, briefPersonaRoleId, briefRoleId } from "../../../protocol/auth/brief-role-id.js";
 import type { FlywheelConfig } from "../schema/schema.js";
 import { createRuntimeConfigOwner } from "../runtime-config-owner.js";
 import { configuredRoleAssignment, pruneStaleConfig, updateModelAssignments } from "../writer.js";

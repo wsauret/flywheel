@@ -1,5 +1,5 @@
 import { generateSessionId } from "../../infra/session-id.js"
-import type { AttachedRuntimeClient, FrontendMutation, MutationResult } from "../app-service-types.js"
+import type { AttachedRuntimeClient, FrontendMutation, MutationResult } from "../runtime/app-service-types.js"
 import { lostWithLane } from "./connection-failures.js"
 
 /** Opens a new chat under an id this client chooses, and answers the chat's

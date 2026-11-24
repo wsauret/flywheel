@@ -1,10 +1,10 @@
 import { describe, expect, jest, test } from "bun:test"
-import type { RuntimeClient, SessionRow } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeClient, SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import { backgroundReads, type ReadTimers } from "../../../../src/protocol/client/background-reads.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { createHeldSessionDetails, resolveSessionRoute } from "../../../../src/protocol/client/held-session-details.js"
-import type { RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import type { RuntimeSessionDetailSnapshotResult, RuntimeSessionDetailView } from "../../../../src/protocol/session-detail-protocol-types.js"
+import type { RuntimeUiPatch } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
+import type { RuntimeSessionDetailSnapshotResult, RuntimeSessionDetailView } from "../../../../src/protocol/session/session-detail-protocol-types.js"
 import { LANE_BREAK } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 

@@ -9,7 +9,7 @@ import { settleWorkspaceGeneration, readGenerationEpoch, WORKSPACE_STATE_EPOCH }
 import { migrateAgentInputAnswers } from "./migrations/agent-input-answer.js"
 import { readFactPassSettlement, recordFactPassSettlement } from "./migrations/engine.js"
 import { excludeStateFromGit } from "./state-git-exclude.js"
-import type { StartupReached } from "../protocol/startup-steps.js"
+import type { StartupReached } from "../protocol/runtime/startup-steps.js"
 import { observeReleaseMemoryPhase, startReleaseMemorySampler } from "../infra/startup-trace.js"
 
 const PRIVATE = { privateDirectories: true } as const

@@ -8,7 +8,7 @@
  * help, hints) read `chordFor()` so they always show the effective binding.
  */
 
-import { KERNEL_COMMAND_NAMES } from "../../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../protocol/commands/command-names.js"
 
 /** App-level default bindings. Adding a binding means adding a row here. The
  *  label is what the help modal and the generated key reference show; adjacent

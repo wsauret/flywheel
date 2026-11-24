@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { formatRecallOutput } from "../../../../../../../src/orchestration/agent-runtime/tools/sessions/recall/format-recall.js";
-import type { RecallHit } from "../../../../../../../src/protocol/conversation-recall.js";
+import type { RecallHit } from "../../../../../../../src/protocol/transcript/conversation-recall.js";
 
 describe("formatRecallOutput", () => {
   it("shows no-entries message without query", () => {

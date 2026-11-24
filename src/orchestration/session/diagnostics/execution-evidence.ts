@@ -1,5 +1,5 @@
 import { asAsyncEventReadSurface } from "../../../infra/event-store-types.js";
-import type { ExecutionEvidence } from "../../../protocol/execution-evidence.js";
+import type { ExecutionEvidence } from "../../../protocol/session/execution-evidence.js";
 import { resolveEventStoreDbFile } from "../../../infra/paths.js";
 import { openReadonlyEventReader } from "../../../infra/sqlite-event-store.js";
 import { usageEntriesFromFacts } from "../runtime-facts/durable-usage.js";

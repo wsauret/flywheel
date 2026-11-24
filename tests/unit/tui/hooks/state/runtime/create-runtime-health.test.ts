@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import type { FrontendEvent, RuntimeClient } from "../../../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent, RuntimeClient } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { createRuntimeHealth } from "../../../../../../src/tui/hooks/state/runtime/create-runtime-health.js"
 
 function fakeAppService() {

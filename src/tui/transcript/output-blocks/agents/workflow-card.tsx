@@ -9,7 +9,7 @@ import { workflowAgentOperations, workflowCardLines, workflowCardTime, type Work
 import type { WorkflowOutline } from "../../../../protocol/client/workflow-outline.js"
 import { workflowSeatRoleText } from "../../../../protocol/client/workflow-agent.js"
 import type { SummaryPart } from "../../../../protocol/client/workflow-progress.js"
-import type { WorkflowAgentLive } from "../../../../protocol/workflow-view-protocol-types.js"
+import type { WorkflowAgentLive } from "../../../../protocol/session/workflow-view-protocol-types.js"
 import { useHoverHighlight } from "../../../components/controls/use-hover-highlight.js"
 import { hitsDrawnContent } from "../../../terminal/content-hit.js"
 import { bindStyledTextContent } from "../../../context/find/reactive-text.js"

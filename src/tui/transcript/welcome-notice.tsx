@@ -14,7 +14,7 @@ import { formatRuntimeIdentity, type RuntimeIdentity } from "../../protocol/clie
 import { Button } from "../components/controls/button.js"
 import { startupTrace } from "../../infra/startup-trace.js"
 import { NO_PROVIDER_READY } from "../../protocol/client/provider-setup.js"
-import type { ReleaseNotice } from "../../protocol/update-protocol-types.js"
+import type { ReleaseNotice } from "../../protocol/runtime/update-protocol-types.js"
 import { stLink } from "../terminal/text-attributes.js"
 
 /** The boot-trace phase the release startup gate reads as part of "ready":

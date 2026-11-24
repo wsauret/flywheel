@@ -5,7 +5,7 @@ import { isAbortError } from "../../../../../src/infra/abort.js"
 import { errorMessage } from "../../../../../src/infra/error-message.js"
 import { bunWorkerRunnerLayer } from "../../../../../src/orchestration/app-service/project-state/worker/bun-worker-rpc.js"
 import { createProcessBackgroundClient } from "../../../../../src/orchestration/app-service/background/worker-background-client.js"
-import { RuntimeBackgroundRpc, RuntimeProtocolError, type RuntimeBackgroundSummaryResult } from "../../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeBackgroundRpc, RuntimeProtocolError, type RuntimeBackgroundSummaryResult } from "../../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 
 const originalWorker = globalThis.Worker
 
