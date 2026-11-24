@@ -5,7 +5,7 @@ const { testRender } = await import("@opentui/solid")
 const { createSignal } = await import("solid-js")
 const { Button } = await import("../../../../src/tui/components/button.js")
 const { ThemeProvider, useTheme } = await import("../../../../src/tui/context/theme.js")
-const { BOLD } = await import("../../../../src/tui/utils/text-attributes.js")
+const { BOLD } = await import("../../../../src/tui/text-attributes.js")
 
 describe("Button", () => {
   it.each(["dark", "light"] as const)("shares hover and focus highlights in %s mode", async (mode) => {

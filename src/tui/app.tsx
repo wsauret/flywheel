@@ -26,7 +26,7 @@ import { createTuiErrorReports } from "./modules.js"
 import { setExitHandler, setRendererHandoff } from "./exit.js"
 import { ownedCommandRunner } from "../infra/owned-command.js"
 import type { LauncherScope } from "../infra/process-supervisor.js"
-import { createClipboard } from "./utils/clipboard.js"
+import { createClipboard } from "./clipboard.js"
 import { createTerminalOutput, type TerminalOutput } from "./terminal-output.js"
 import { createRuntimeConfigCache } from "./hooks/create-runtime-config-cache.js"
 

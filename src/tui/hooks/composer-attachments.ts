@@ -7,8 +7,8 @@ import { isImageAttachment, normalizeChatInput, type ChatInput } from "../../inf
 import { resizeImage } from "../../orchestration/agent-runtime/tools/image-resize.js"
 import { unescapeShellPath } from "../../orchestration/agent-runtime/tools/tool-paths.js"
 import { ATTACHMENT_LIMITS, attachmentKind, attachmentMarker, attachmentRefusalMessage, base64ByteLength, nextAttachmentOrdinal } from "../../protocol/client/attachments.js"
-import type { Clipboard } from "../utils/clipboard.js"
-import { readFileAttachment, type PendingAttachment, type ReadAttachment } from "../utils/file-attachments.js"
+import type { Clipboard } from "../clipboard.js"
+import { readFileAttachment, type PendingAttachment, type ReadAttachment } from "./file-attachments.js"
 import type { ComposerDraftAttachment } from "./composer-draft.js"
 
 const IMAGE_PATH = /\.(?:png|jpe?g|gif|webp|bmp|heic|heif|avif|tiff?)$/i

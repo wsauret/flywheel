@@ -92,7 +92,7 @@ describe("check-terminal-io", () => {
   it("permits known TUI stdout terminal-control writes", () => {
     const root = tmpRepo();
     write(root, "src/tui/components/error-boundary.tsx", "process.stdout.write('\\x1b[2J')\n");
-    write(root, "src/tui/utils/clipboard.ts", "process.stdout.write('\\x1b]52;c;abc\\x07')\n");
+    write(root, "src/tui/clipboard.ts", "process.stdout.write('\\x1b]52;c;abc\\x07')\n");
     expect(findTerminalIoViolations(root)).toEqual([]);
   });
 });

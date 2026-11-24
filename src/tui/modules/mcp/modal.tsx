@@ -12,8 +12,8 @@ import { useTheme } from "../../context/theme.js"
 import type { TuiTheme } from "../../context/theme/tui-theme.js"
 import { useHoverHighlight } from "../../hooks/use-hover-highlight.js"
 import { useModalDimensions } from "../../hooks/use-modal-dimensions.js"
-import { BOLD } from "../../utils/text-attributes.js"
-import { displayWidth, truncateToWidth, useWrappedLineCount } from "../../utils/text.js"
+import { BOLD } from "../../text-attributes.js"
+import { displayWidth, truncateToWidth, useWrappedLineCount } from "../../text.js"
 import type { McpList } from "./list.js"
 
 /** Scoped server management uses protocol rows and opening-owned review state. */

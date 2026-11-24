@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { TextAttributes } from "@opentui/core"
-import { BOLD, stStrike } from "../../../../src/tui/utils/text-attributes.js"
+import { BOLD, stStrike } from "../../../src/tui/text-attributes.js"
 
 describe("text-attributes", () => {
   test("stStrike preserves existing chunk attributes", () => {

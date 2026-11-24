@@ -3,7 +3,7 @@ import type { RuntimeAuthProfileView, RuntimeAuthView } from "../../protocol/aut
 import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
 import type { ExternalUrlOpener } from "../../infra/open-external-url.js"
 import type { ModalContext } from "../components/modal-stack.js"
-import type { Clipboard } from "../utils/clipboard.js"
+import type { Clipboard } from "../clipboard.js"
 import type { ShellServices } from "./shell-state.js"
 import type { AuthProfileSelection } from "./auth-profile-selection.js"
 import type { AuthRow, AuthView, ProviderOption } from "./auth-modal-options.js"

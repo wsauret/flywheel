@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../src/infra/owned-command.js"
-import { chooseFiles } from "../../../../src/tui/utils/file-chooser.js"
+import { chooseFiles } from "../../../../src/tui/hooks/file-chooser.js"
 
 const has = (...tools: string[]) => (tool: string) => (tools.includes(tool) ? `/usr/bin/${tool}` : null)
 

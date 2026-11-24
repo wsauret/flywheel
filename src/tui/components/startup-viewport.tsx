@@ -4,7 +4,7 @@ import { createMemo, Match, Show, Switch } from "solid-js"
 import type { RuntimeStartupStatus } from "../../protocol/app-service-types.js"
 import type { RuntimeFaultCopy } from "../../protocol/client/runtime-fault-copy.js"
 import { useTheme } from "../context/theme.js"
-import { BOLD } from "../utils/text-attributes.js"
+import { BOLD } from "../text-attributes.js"
 import { RuntimeNotice } from "./runtime-notice.js"
 import { StartupProgress } from "./startup-progress.js"
 

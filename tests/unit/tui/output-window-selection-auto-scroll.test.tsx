@@ -8,7 +8,7 @@ import type { TextBlock } from "../../../src/infra/output-blocks.js"
 import { ThemeProvider } from "../../../src/tui/context/theme.js"
 import { createTranscriptSelectionDrag } from "../../../src/tui/hooks/create-transcript-selection-drag.js"
 import { OutputWindow } from "../../../src/tui/output-window/output-window.js"
-import { consumeSelectedText } from "../../../src/tui/utils/selection.js"
+import { consumeSelectedText } from "../../../src/tui/selection.js"
 import { transcriptOf } from "./_output-window-transcript.js"
 import { scrollFrameHook } from "../../helpers/scroll-frame-hook.js"
 

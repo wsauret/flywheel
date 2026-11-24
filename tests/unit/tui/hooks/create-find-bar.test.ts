@@ -20,7 +20,7 @@ function harness(answer: (request: TranscriptFindRequest) => TranscriptFindResul
       client: { query: async ({ request }) => { requests.push(request); return answer(request) } },
       sessionId: () => "s1",
       includeThinking: () => false,
-      transcript: () => ({ freshness: () => cache.freshness("s1") }),
+      transcript: () => ({ freshness: () => cache.bindSession(() => "s1").freshness() }),
       report: (message) => { reports.push(message) },
     })
     const type = (text: string) => { for (const name of text) bar.input({ name, raw: name }) }

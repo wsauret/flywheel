@@ -37,7 +37,7 @@
  */
 
 import type { Token } from "marked"
-import { textChunksEqual } from "@tui/utils/text.js"
+import { textChunksEqual } from "@tui/text.js"
 import { configureMarkdownLexer } from "./format-token.js"
 import { foldTokensToSegments, isBreakoutToken, lexMarkdown, TEXT_SEGMENT_LINES, type MarkdownSegment } from "./line-model.js"
 import type { MarkdownStyles } from "./markdown-styles.js"

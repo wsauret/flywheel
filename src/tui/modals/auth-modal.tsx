@@ -23,10 +23,10 @@ import { Button } from "../components/button.js"
 import { AUTH_CONTROL_COPY, AUTH_LIST_ACTION_COPY, MODAL_FRAME_WIDTHS, SUBSCRIPTION_SPEND_CONSENT_COPY } from "../components/modal-copy.js"
 import { CONSENT_ACTION_CURSOR, type SubscriptionSpendConsentControlState } from "../hooks/use-subscription-spend-consent-modal.js"
 import { paidUseQuestionFooterRows, paidUseQuestionLines, subscriptionSpendConsentDetail, subscriptionSpendFooterRows, subscriptionSpendWarnsPrepaid } from "./subscription-spend-consent-modal.js"
-import { displayWidth, truncateToWidth } from "../utils/text.js"
+import { displayWidth, truncateToWidth } from "../text.js"
 import { providerCatalogRequiresReconnect, providerCatalogStatusText } from "./provider-catalog-text.js"
 import { useKeyedListScroll } from "../hooks/use-keyed-list-scroll.js"
-import { BOLD } from "../utils/text-attributes.js"
+import { BOLD } from "../text-attributes.js"
 import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
 
 function apiKeyPlaceholder(prefix: string | undefined): string {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { baseSurfacesUseDefaultBackground } from "../../../../src/tui/utils/terminal-capabilities.js"
+import { baseSurfacesUseDefaultBackground } from "../../../../../src/tui/context/theme/terminal-capabilities.js"
 
 describe("baseSurfacesUseDefaultBackground", () => {
   test("true only for Terminal.app", () => {

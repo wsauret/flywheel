@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { existsSync } from "node:fs"
 
-import type { OwnedCommandResult } from "../../../../src/infra/owned-command.js"
-import { createClipboard } from "../../../../src/tui/utils/clipboard.js"
-import { fakeOwnedCommandRunner, ownedCommandResult } from "../../../helpers/owned-command-fake.js"
+import type { OwnedCommandResult } from "../../../src/infra/owned-command.js"
+import { createClipboard } from "../../../src/tui/clipboard.js"
+import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js"
 
 const NOTHING = ownedCommandResult()
 

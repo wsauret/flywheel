@@ -19,11 +19,11 @@ import { useTheme } from "@tui/context/theme.js"
 import { useTickPool } from "@tui/context/tick-pool-context.js"
 import { useHoverHighlight } from "@tui/hooks/use-hover-highlight.js"
 import { workflowFullCardRows, type WorkflowCardAction, type WorkflowCardRow, type WorkflowFullCardRows } from "@tui/output-blocks/workflow-card.js"
-import { hitsDrawnContent } from "@tui/utils/content-hit.js"
+import { hitsDrawnContent } from "@tui/content-hit.js"
 
 const NO_ROWS: WorkflowFullCardRows = { rows: [], bar: undefined }
 import { bindStyledTextContent } from "@tui/context/reactive-text.js"
-import { displayWidth, shareWidth, truncateToWidth } from "@tui/utils/text.js"
+import { displayWidth, shareWidth, truncateToWidth } from "@tui/text.js"
 import { Button } from "@tui/components/button.js"
 import { ModalFrame, MODAL_FRAME_CLOSE_WIDTH, MODAL_FRAME_HORIZONTAL_INSET, modalFrameBackWidth, sessionViewerBodyHeight, sessionViewerWidth } from "@tui/components/modal-frame.js"
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test"
 import { BoxRenderable, TextRenderable } from "@opentui/core"
 import { testRender } from "@opentui/solid"
-import { consumeSelectedText } from "../../../../src/tui/utils/selection.js"
+import { consumeSelectedText } from "../../../src/tui/selection.js"
 
 describe("consumeSelectedText", () => {
   it("returns selected text and clears the selection", () => {

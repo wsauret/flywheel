@@ -5,7 +5,7 @@ import { modalDisclosureHelp, modalDisclosureMarker } from "../components/modal-
 import { useTheme } from "@tui/context/theme"
 import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
 import { ModalFrame } from "@tui/components/modal-frame"
-import { displayWidth, truncateToWidth, useWrappedLineCount } from "@tui/utils/text"
+import { displayWidth, truncateToWidth, useWrappedLineCount } from "@tui/text"
 import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch } from "solid-js"
 import { ModalSelect } from "../components/modal-select.js"
 import type { FilteredResult } from "../components/modal-select-types.js"

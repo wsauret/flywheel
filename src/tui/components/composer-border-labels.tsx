@@ -1,7 +1,7 @@
 import { RGBA, fg as stFg, type TextChunk } from "@opentui/core"
 import { useSpinnerFrame } from "@tui/hooks/use-spinner-frame"
 import type { TuiTheme } from "@tui/context/theme/tui-theme"
-import { chunksLength } from "@tui/utils/text-attributes.js"
+import { chunksLength } from "@tui/text-attributes.js"
 import type { Accessor } from "solid-js"
 import { createMemo } from "solid-js"
 import { keyHintPlainText, keyHintSeparatorBefore } from "./key-hint-row-state.js"
