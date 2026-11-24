@@ -1,0 +1,34 @@
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 42
+src/workflows/attempt-row.ts
+  h_4b47e9e4a8b456 1-35
+src/workflows/definition-identity-mismatch.ts
+  h_4b47e9e4a8b456 1-84
+src/workflows/definition-provenance-fact-writers.ts
+  h_4b47e9e4a8b456 6
+src/workflows/definition-provenance-facts.ts
+  h_4b47e9e4a8b456 8,11
+src/workflows/view/schemas.ts
+  h_4b47e9e4a8b456 6
+src/workflows/view/view-facts.ts
+  h_4b47e9e4a8b456 3
+src/workflows/vm/definition-identity.ts
+  h_4b47e9e4a8b456 2
+src/workflows/vm/fact-fold.ts
+  h_4b47e9e4a8b456 13
+src/workflows/vm/retired-step-identity.ts
+  h_4b47e9e4a8b456 33
+src/workflows/vm/session-facts.ts
+  h_4b47e9e4a8b456 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "85e458347b0535e10042f0d5590968743c31d366",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
