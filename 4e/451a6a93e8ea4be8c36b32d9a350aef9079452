@@ -1,0 +1,258 @@
+bench/shared/runtime.ts
+  h_4b47e9e4a8b456 37-38,60-63,101-107,171,200,202-219,221-228,230-238,240,243-254
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 77-78
+scripts/check-terminal-io.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/app-service/session-detail-publisher.ts
+  h_4b47e9e4a8b456 4,45-73
+src/tui/adapters/tool-detail-highlight.ts
+  h_4b47e9e4a8b456 4
+src/tui/app.tsx
+  h_4b47e9e4a8b456 29
+src/tui/clipboard.ts
+  h_4b47e9e4a8b456 4-7
+src/tui/components/border-content.ts
+  h_4b47e9e4a8b456 4
+src/tui/components/button.tsx
+  h_4b47e9e4a8b456 6
+src/tui/components/child-session-body.tsx
+  h_4b47e9e4a8b456 26
+src/tui/components/composer-border-labels.tsx
+  h_4b47e9e4a8b456 4
+src/tui/components/composer-frame.tsx
+  h_4b47e9e4a8b456 10
+src/tui/components/composer-types.ts
+  h_4b47e9e4a8b456 10
+src/tui/components/controlled-text-field.tsx
+  h_4b47e9e4a8b456 6
+src/tui/components/error-boundary.tsx
+  h_4b47e9e4a8b456 4,9
+src/tui/components/find-bar.tsx
+  h_4b47e9e4a8b456 8
+src/tui/components/modal-frame.tsx
+  h_4b47e9e4a8b456 7-8
+src/tui/components/modal-help.tsx
+  h_4b47e9e4a8b456 8
+src/tui/components/modal-section.tsx
+  h_4b47e9e4a8b456 4
+src/tui/components/modal-select.tsx
+  h_4b47e9e4a8b456 5
+src/tui/components/modal.tsx
+  h_4b47e9e4a8b456 8
+src/tui/components/runtime-notice.tsx
+  h_4b47e9e4a8b456 7
+src/tui/components/spinner.tsx
+  h_4b47e9e4a8b456 6
+src/tui/components/startup-viewport.tsx
+  h_4b47e9e4a8b456 7
+src/tui/components/tabs-bar.tsx
+  h_4b47e9e4a8b456 6
+src/tui/context/find-highlight.ts
+  h_4b47e9e4a8b456 4
+src/tui/context/keymap.tsx
+  h_4b47e9e4a8b456 5
+src/tui/context/reactive-text.ts
+  h_4b47e9e4a8b456 4-5
+src/tui/context/theme.tsx
+  h_4b47e9e4a8b456 8
+src/tui/hooks/auth-modal-types.ts
+  h_4b47e9e4a8b456 6
+src/tui/hooks/composer-attachments.ts
+  h_4b47e9e4a8b456 10-11
+src/tui/hooks/create-attach-files-command.ts
+  h_4b47e9e4a8b456 9-10
+src/tui/hooks/create-background-hydration.ts
+  h_4b47e9e4a8b456 3,28
+src/tui/hooks/create-foreground-output-pager.ts
+  h_4b47e9e4a8b456 1,10
+src/tui/hooks/create-header-display.ts
+  h_4b47e9e4a8b456 6
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 17
+src/tui/hooks/create-session-surface.ts
+  h_4b47e9e4a8b456 244
+src/tui/hooks/create-terminal-background.ts
+  h_4b47e9e4a8b456 21
+src/tui/hooks/create-transcript-visibility-refresh.ts
+  h_4b47e9e4a8b456 4,9
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 13
+src/tui/hooks/use-body-toggle.ts
+  h_4b47e9e4a8b456 4-5
+src/tui/hooks/use-copy-selection.ts
+  h_4b47e9e4a8b456 4-5
+src/tui/hooks/use-session-modal-types.ts
+  h_4b47e9e4a8b456 7
+src/tui/keymap/text-entry.ts
+  h_4b47e9e4a8b456 10
+src/tui/modals/auth-modal.tsx
+  h_4b47e9e4a8b456 26,29
+src/tui/modals/model-modal-text.ts
+  h_4b47e9e4a8b456 3
+src/tui/modals/model-modal.tsx
+  h_4b47e9e4a8b456 8,11
+src/tui/modals/session-changes-modal.tsx
+  h_4b47e9e4a8b456 14
+src/tui/modals/settings-modal.tsx
+  h_4b47e9e4a8b456 8
+src/tui/modules/experiments/dashboard-lines.ts
+  h_4b47e9e4a8b456 5
+src/tui/modules/mcp/modal.tsx
+  h_4b47e9e4a8b456 15-16
+src/tui/modules/project-notifications/modal.tsx
+  h_4b47e9e4a8b456 14
+src/tui/modules/remote/modal.tsx
+  h_4b47e9e4a8b456 12
+src/tui/modules/remote/use-remote-modal.ts
+  h_4b47e9e4a8b456 11
+src/tui/modules/subscription-usage/modal.tsx
+  h_4b47e9e4a8b456 6-7
+src/tui/modules/subscription-usage/stats-surface.tsx
+  h_4b47e9e4a8b456 15
+src/tui/modules/workflows/activity-block.tsx
+  h_4b47e9e4a8b456 18-20
+src/tui/modules/workflows/agent-header.tsx
+  h_4b47e9e4a8b456 9
+src/tui/modules/workflows/agent-viewer.tsx
+  h_4b47e9e4a8b456 23
+src/tui/modules/workflows/card-viewer.tsx
+  h_4b47e9e4a8b456 22,26
+src/tui/output-blocks/agent-group-block.tsx
+  h_4b47e9e4a8b456 21,23
+src/tui/output-blocks/agent-line.ts
+  h_4b47e9e4a8b456 6
+src/tui/output-blocks/block-frame.tsx
+  h_4b47e9e4a8b456 7
+src/tui/output-blocks/block-renderer.tsx
+  h_4b47e9e4a8b456 7
+src/tui/output-blocks/diff-preview.tsx
+  h_4b47e9e4a8b456 22
+src/tui/output-blocks/markdown/markdown-body.tsx
+  h_4b47e9e4a8b456 7,9-10
+src/tui/output-blocks/markdown/markdown-styles.ts
+  h_4b47e9e4a8b456 3
+src/tui/output-blocks/markdown/markdown-table-helpers.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/output-blocks/markdown/markdown-table.tsx
+  h_4b47e9e4a8b456 6
+src/tui/output-blocks/markdown/streaming-line-model.ts
+  h_4b47e9e4a8b456 40
+src/tui/output-blocks/system-block.tsx
+  h_4b47e9e4a8b456 8,13
+src/tui/output-blocks/thinking-block.tsx
+  h_4b47e9e4a8b456 12
+src/tui/output-blocks/tool-entry.tsx
+  h_4b47e9e4a8b456 19-22
+src/tui/output-blocks/tool-row-wrap.ts
+  h_4b47e9e4a8b456 2
+src/tui/output-blocks/tool-row.tsx
+  h_4b47e9e4a8b456 7,13-15
+src/tui/output-blocks/user-message-block.tsx
+  h_4b47e9e4a8b456 6,8
+src/tui/output-blocks/workflow-card.tsx
+  h_4b47e9e4a8b456 14,16-17
+src/tui/question-dock-editor-layout.ts
+  h_4b47e9e4a8b456 1
+src/tui/question-dock.tsx
+  h_4b47e9e4a8b456 9
+src/tui/session-picker/session-picker-list.tsx
+  h_4b47e9e4a8b456 6
+src/tui/session-picker/session-picker-row.tsx
+  h_4b47e9e4a8b456 5
+src/tui/shell-composer.tsx
+  h_4b47e9e4a8b456 15
+src/tui/shell-overlays.ts
+  h_4b47e9e4a8b456 13-14
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 23
+src/tui/transcript-store/create-output-transcript-cache.ts
+  h_4b47e9e4a8b456 13,583-655,680
+src/tui/transcript-store/output-transcript-cache-types.ts
+  h_4b47e9e4a8b456 93-95,110,120-121,128-130,134-139,149-151,154-160,164-167,169-179,182,189-190,195-199
+src/tui/tui-module.ts
+  h_4b47e9e4a8b456 12
+src/tui/welcome-notice.tsx
+  h_4b47e9e4a8b456 9,18
+tests/unit/bench/runtime.test.ts
+  h_4b47e9e4a8b456 20,29-42,51,94,107,111,120-122,153,164,177-178,182
+tests/unit/orchestration/app-service/session-detail-publisher.test.ts
+  h_4b47e9e4a8b456 405-434
+tests/unit/orchestration/modules/provider-google-antigravity/mcp-server.test.ts
+  h_4b47e9e4a8b456 4,56-99,158-159,164
+tests/unit/scripts/check-terminal-io.test.ts
+  h_4b47e9e4a8b456 95
+tests/unit/tui/clipboard.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/tui/components/button.test.tsx
+  h_4b47e9e4a8b456 8
+tests/unit/tui/components/startup-viewport.test.tsx
+  h_4b47e9e4a8b456 13
+tests/unit/tui/context/mutation-evidence.test.ts
+  h_4b47e9e4a8b456 133,139,143,146-147
+tests/unit/tui/context/theme/terminal-capabilities.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/context/toast-presenter.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/hooks/_session-surface-transcript-fixture.ts
+  h_4b47e9e4a8b456 9-24
+tests/unit/tui/hooks/create-find-bar.test.ts
+  h_4b47e9e4a8b456 23
+tests/unit/tui/hooks/create-output-transcript-cache-live-range.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/tui/hooks/create-output-transcript-cache.test.ts
+  h_4b47e9e4a8b456 2,33,156,207,221,257,259-286,325-326,446,458,477,517,615
+tests/unit/tui/hooks/file-attachments.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/tui/hooks/file-chooser.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/hooks/header-display.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/tui/hooks/output-transcript-incremental-window.test.ts
+  h_4b47e9e4a8b456 22,33,66,78,80,91,110,131,162
+tests/unit/tui/hooks/use-body-toggle.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/tui/keymap.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/modals/modal-copy-budgets.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/modals/model-modal-regression-rendering.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/modules/experiments.test.tsx
+  h_4b47e9e4a8b456 7
+tests/unit/tui/output-blocks/agent-group-read-runs.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/tui/output-blocks/markdown-body.test.tsx
+  h_4b47e9e4a8b456 11-12
+tests/unit/tui/output-blocks/markdown-incremental-lexing.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/tui/output-blocks/markdown-table-helpers.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/tui/output-blocks/user-message-block.test.tsx
+  h_4b47e9e4a8b456 13
+tests/unit/tui/output-window-bottom-follow.test.tsx
+  h_4b47e9e4a8b456 14
+tests/unit/tui/output-window-near-edge.test.tsx
+  h_4b47e9e4a8b456 419
+tests/unit/tui/output-window-selection-auto-scroll.test.tsx
+  h_4b47e9e4a8b456 11
+tests/unit/tui/selection.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/text-attributes.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/text.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/welcome-notice.test.tsx
+  h_4b47e9e4a8b456 6,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4e451a6a93e8ea4be8c36b32d9a350aef9079452",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
