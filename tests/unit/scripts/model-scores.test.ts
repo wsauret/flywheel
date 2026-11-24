@@ -1,10 +1,10 @@
 import { afterEach, expect, setSystemTime, spyOn, test } from "bun:test";
 import { copyFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { benchmarkSlug, normalizeModelScores, recentScoreModel } from "../../../src/infra/llm/model-scores-document.js";
-import { readModelScores, scoresForModel } from "../../../src/infra/llm/model-scores.js";
+import { benchmarkSlug, normalizeModelScores, recentScoreModel } from "../../../src/infra/llm/models/model-scores-document.js";
+import { readModelScores, scoresForModel } from "../../../src/infra/llm/models/model-scores.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
-import { createModelsClient } from "../../../src/infra/llm/models.js";
+import { createModelsClient } from "../../../src/infra/llm/models/models.js";
 import { modelsDevDocument } from "../../helpers/model-catalog-fixtures.js";
 import { scoreCatalogModels } from "../../../src/orchestration/config/models/model-score-scope.js";
 

@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { createFactParser, defineFact } from "../../infra/event-registry.js"
-import { AttemptRowSchema, AttemptStatusSchema } from "../attempt-row.js"
+import { AttemptRowSchema, AttemptStatusSchema } from "../schema/attempt-row.js"
 import {
   MutationLogEntrySchema,
   MutationLogEntryV9Schema,

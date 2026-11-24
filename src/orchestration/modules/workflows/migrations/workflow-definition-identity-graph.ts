@@ -5,13 +5,13 @@ import type { ProjectDirectories } from "../../../../infra/directory-authorities
 import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
 import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
 import { isRecord } from "../../../../infra/record.js"
-import { hashDefinition } from "../../../../workflows/definition-hash.js"
+import { hashDefinition } from "../../../../workflows/provenance/definition-hash.js"
 import {
   DEFINITION_IDENTITY_GRAPH_MIGRATION_ID,
   DefinitionIdentitySchema,
   type DefinitionIdentity,
-} from "../../../../workflows/vm/definition-identity.js"
-import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/session-facts.js"
+} from "../../../../workflows/vm/facts/definition-identity.js"
+import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/facts/session-facts.js"
 import { MIGRATED_FACT_TYPE } from "./workflow-identity-chain.js"
 import { tableExists } from "../../../migrations/engine.js"
 

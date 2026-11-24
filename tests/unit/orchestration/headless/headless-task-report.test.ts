@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { UsageEntry } from "../../../../src/infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../../../src/infra/llm/usage/usage-entry.js";
 import type { AgentFactory } from "../../../../src/orchestration/agent-runtime/types.js";
 import { runHeadlessTask, type HeadlessTaskResult } from "../../../../src/orchestration/headless/run-headless-task.js";
 import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts.js";

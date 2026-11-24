@@ -25,8 +25,8 @@ import {
   type OperationState,
 } from "../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
 import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin } from "../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { publishSkillRevision } from "../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../src/workflows/skills.js";
+import { publishSkillRevision } from "../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../src/workflows/skills/skills.js";
 import type { ProjectDirectories } from "../../src/infra/directory-authorities.js";
 import { planSkillMutation, planLockPaths, storeRootDirs } from "../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import { resultOfPlan } from "../../src/orchestration/modules/learning/skills/skill-store.js";

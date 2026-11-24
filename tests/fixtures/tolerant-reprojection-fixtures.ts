@@ -5,7 +5,7 @@ import { SessionMetadataFactSchemas } from "../../src/orchestration/session/sess
 import { SessionRuntimeFactSchemas } from "../../src/orchestration/session/session-runtime-event-types.js"
 import { SubagentRunFactSchemas } from "../../src/orchestration/modules/subagents/facts.js"
 import { ConversationTreeFactSchemas } from "../../src/orchestration/session/conversation/conversation-facts.js"
-import { WORKFLOW_CONTROL_FACT_TYPES } from "../../src/workflows/vm/session-facts.js"
+import { WORKFLOW_CONTROL_FACT_TYPES } from "../../src/workflows/vm/facts/session-facts.js"
 
 /** A canonical absolute project directory (ARCH-DIRECTORIES-006) as these payloads state
  *  it. The corpus is byte-exact within one run, not across platforms: an

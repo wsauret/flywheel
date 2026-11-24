@@ -3,7 +3,7 @@ import { normalizeChatInput, type ChatInputLike } from "../../infra/chat-input.j
 import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightWrite } from "../../infra/event-store-types.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
-import { readWorkflowControlStatuses } from "../../workflows/vm/control-status.js"
+import { readWorkflowControlStatuses } from "../../workflows/vm/recovery/control-status.js"
 import type { WorkflowRunRecord } from "../workflow-host/run-record.js"
 import { childCallOf, readPendingTurnEnd, workflowInteractionRefusal, workflowStopRefusal } from "./chat-session-run-evidence.js"
 import { workflowRunReader, workflowRunOwner } from "../module-catalog.js"

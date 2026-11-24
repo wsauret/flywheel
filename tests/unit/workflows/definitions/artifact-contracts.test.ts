@@ -3,7 +3,7 @@ import { Schema } from "effect";
 import {
   ArtifactContractSchema,
   ArtifactContractsFrontmatterSchema,
-} from "../../../../src/workflows/artifact-contracts.js";
+} from "../../../../src/workflows/schema/artifact-contracts.js";
 
 describe("artifact contract codecs", () => {
   it("normalizes transient frontmatter forms to exact canonical contracts", () => {

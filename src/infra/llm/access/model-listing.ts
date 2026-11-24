@@ -1,0 +1,635 @@
+/** Provider model discovery with one first-party then models.dev fallback. */
+import { createHash } from "node:crypto";
+import { Redacted } from "effect";
+import { apiKeyCredential, currentCredentialLineage, type AuthContext, type CapturedSubscriptionCredential, type OAuthPersistencePolicy, type RuntimeCredential, type SubscriptionCredentials, type ProviderModelAccessSnapshot } from "../../auth/auth-context.js";
+import type { CredentialLineages, CredentialSlotClassifier } from "../../auth/store/auth-store-types.js";
+import { deleteProviderModelCatalog, liveModelRefusals, writeProviderModelCatalog, writeProviderModelCandidates, type CatalogProfile, type ModelRefusal, type SavedModelRefusals } from "../../auth/provider-models/provider-model-catalog-store.js";
+import { openExistingAuthProfileDirectory } from "../../auth/store/auth-profile-store.js";
+import { createSavedListingEvidence } from "./model-listing-evidence.js";
+import { accessCandidateRows, assembleAuditedCatalog, readSavedAudit, runAccessAudit, type AccessAuditProgressListener } from "./model-access-audit.js";
+import { BoundedJsonError, readBoundedJson, readBoundedJsonWithByteLength } from "../../auth/bounded-json.js";
+import { accessProviderAccountIdentity, compareAutomaticSelection, type AccessProviderCandidate, type AccessProviderCatalogFetchResult, type AccessProviderDefinition, type AccessProviderId, type AccessProviderSelection } from "./access-provider.js";
+import { customProviderById } from "../custom-provider-registry.js";
+import { recordCatalogDiscoveryDiagnostics, recordProviderCatalogFailure } from "../catalog/model-catalog-diagnostics.js";
+import { membershipFallback, resolveModelCatalog, type CatalogDiscovery, type ModelCatalogContribution, type ResolvedModelCatalog } from "../catalog/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogCanonicalRow, type CatalogLimits } from "../../model-catalog-rows.js";
+import type { CatalogJsonValue, CatalogModelOffering } from "../../catalog-model-offering.js";
+import { catalogRowsToModelMap, decodeDiscoveryRows, joinCatalogRows, modelsDevBaseline, preferredCatalog, reconcileSavedCatalogRows, staticOfferingMap, withModelRefusals, type AccessProviderCandidateModels, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
+import { settleTasks } from "./model-listing-settlement.js";
+import type { ModelsClient } from "../models/models.js";
+import { providerRequestHeaders } from "../provider-request-identity.js";
+import type { LauncherScope } from "../../process-supervisor.js";
+import { fillCatalogRouteModelInfos, sharedModelInfos } from "../catalog/provider-model-info.js";
+import { DebugLog } from "../../debug-log.js";
+import { type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../auth/provider-account.js";
+
+const REQUEST_TIMEOUT_MS = 10_000;
+/** The shared deadline of one listing call. A caller about to route requests waits no longer than this for the
+ *  access audit that follows a listing either. */
+export const LISTING_SETTLEMENT_MS = 15_000;
+const MAX_FETCH_CONCURRENCY = 4;
+
+export interface RequestHeaders { [name: string]: string }
+
+export function classifyFetchFailure(error: unknown): CatalogDiscovery {
+  if (error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError")) return { kind: "failed", reason: "timeout" };
+  if (error instanceof BoundedJsonError) {
+    return { kind: "failed", reason: error.kind === "body_too_large" ? "oversized" : "malformed" };
+  }
+  if (error instanceof Error && /exceeds|too large|content-length/i.test(error.message)) return { kind: "failed", reason: "oversized" };
+  if (error instanceof SyntaxError || error instanceof TypeError) return { kind: "failed", reason: "malformed" };
+  return { kind: "failed", reason: "transport" };
+}
+
+/** One unpaginated provider listing request, classified for the resolver. Provider modules call it from their catalog fetch. */
+export async function fetchCatalog(url: string, headers: RequestHeaders | undefined, contribution: Pick<ModelCatalogContribution, "limits" | "extractRows">, signal: AbortSignal): Promise<CatalogDiscovery> {
+  try {
+    const response = await fetch(url, { headers: { ...await providerRequestHeaders(), ...headers }, redirect: "error", signal: AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]) });
+    if (response.status === 401 || response.status === 403) return { kind: "auth-invalid", status: response.status };
+    if (!response.ok) return { kind: "failed", reason: "http", status: response.status };
+    const body = await readBoundedJson(response, contribution.limits.responseBytes);
+    const rows = contribution.extractRows(body);
+    if (rows.length > contribution.limits.canonicalRows) throw new TypeError("model catalog exceeds the row limit");
+    return { kind: "rows", rows };
+  } catch (error) {
+    if (signal.aborted) throw signal.reason;
+    return classifyFetchFailure(error);
+  }
+}
+
+/** A provider listing that pages: `nextPage` reads the page's cursor from its body, or ends the walk. */
+export async function fetchPaginatedCatalog(
+  url: string,
+  headers: RequestHeaders,
+  contribution: Pick<ModelCatalogContribution, "limits" | "extractRows">,
+  signal: AbortSignal,
+  nextPage: (body: CatalogJsonValue, currentUrl: string) => string | undefined,
+): Promise<CatalogDiscovery> {
+  const rows: unknown[] = [];
+  const visited = new Set<string>();
+  let pageUrl: string | undefined = url;
+  let pages = 0;
+  let retainedBytes = 0;
+  while (pageUrl !== undefined) {
+    try {
+      if (visited.has(pageUrl) || pages >= contribution.limits.canonicalRows) {
+        throw new TypeError("model catalog pagination did not make bounded progress");
+      }
+      visited.add(pageUrl);
+      pages += 1;
+      const response = await fetch(pageUrl, { headers: { ...await providerRequestHeaders(), ...headers }, redirect: "error", signal: AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]) });
+      if (response.status === 401 || response.status === 403) return { kind: "auth-invalid", status: response.status };
+      if (!response.ok) return { kind: "failed", reason: "http", status: response.status };
+      const page = await readBoundedJsonWithByteLength(response, contribution.limits.responseBytes);
+      retainedBytes += page.byteLength;
+      if (retainedBytes > contribution.limits.responseBytes) throw new BoundedJsonError("body_too_large");
+      const body = page.value;
+      const pageRows = contribution.extractRows(body);
+      if (rows.length + pageRows.length > contribution.limits.canonicalRows) {
+        throw new TypeError("model catalog pagination exceeds the row limit");
+      }
+      rows.push(...pageRows);
+      const nextUrl = nextPage(body, pageUrl);
+      if (nextUrl !== undefined && visited.has(nextUrl)) {
+        throw new TypeError("model catalog pagination cursor did not advance");
+      }
+      pageUrl = nextUrl;
+    } catch (error) {
+      if (signal.aborted) throw signal.reason;
+      return classifyFetchFailure(error);
+    }
+  }
+  return { kind: "rows", rows };
+}
+
+/** Runs the definition's own listing fetch for one candidate, or nothing when
+ *  the provider has no first-party listing or the account holds no credential. */
+async function fetchProviderCatalog(
+  definition: AccessProviderDefinition,
+  auth: AuthContext,
+  instance: CapturedSubscriptionCredential | undefined,
+  options: ModelListingClientOptions,
+  signal: AbortSignal,
+  launcher: LauncherScope | undefined,
+): Promise<AccessProviderCatalogFetchResult | undefined> {
+  const contribution = definition.dynamicCatalog;
+  const credential = instance?.credential ?? apiKeyCredential(auth, definition.id);
+  if (contribution?.fetch === undefined || !credential) return undefined;
+  return contribution.fetch({
+    credential,
+    ...(instance === undefined ? {} : { instance }),
+    authDir: options.authDir,
+    classifySlot: options.classifySlot,
+    oauthPersistence: options.oauthPersistence ?? "profile",
+    signal,
+    ...(launcher === undefined ? {} : { launcher }),
+  });
+}
+
+function runtimeCredentialIdentity(credential: RuntimeCredential): string {
+  const material = credential.type === "api_key" ? Redacted.value(credential.key)
+    : credential.type === "external" ? credential.configDir
+    : `${Redacted.value(credential.access)}\0${credential.refresh === undefined ? "" : Redacted.value(credential.refresh)}`;
+  return createHash("sha256").update(material).digest("hex");
+}
+
+/** Candidate-key map entries carry the typed candidate: the key is an opaque
+ *  identity string, so readers take the candidate from the value and never
+ *  decode the key. */
+interface AccessProviderCandidateCatalog extends AccessProviderCandidateModels {
+  readonly candidate: AccessProviderCandidate;
+}
+
+interface AccessProviderModelCatalogs {
+  readonly providers: ReadonlyMap<AccessProviderId, ReadonlySet<string>>;
+  readonly candidates: ReadonlyMap<string, AccessProviderCandidateCatalog>;
+}
+
+type ModelsDevBaselineForListing = (contribution: ModelCatalogContribution) => SharedModelsDevBaseline;
+
+export interface ModelListingClient {
+  getModelCatalogs(auth: AuthContext, request?: ModelListingRequest): Promise<AccessProviderModelCatalogs>;
+  /** Saves what a served request proved about one wire model for the exact account lineage that `auth` and
+   *  `subscriptions` hold, and the next listing applies it. Returns false, and saves nothing, for an access-only
+   *  connection, a provider without a saved catalog, or a credential that is no longer current. A failed write is a
+   *  warning, never an error. */
+  recordModelRefusal(input: ModelRefusalInput): Promise<boolean>;
+}
+
+interface ModelRefusalInput {
+  readonly auth: AuthContext;
+  readonly subscriptions: SubscriptionCredentials;
+  readonly candidate: AccessProviderCandidate;
+  readonly wireModelId: string;
+  readonly refusal: ModelRefusal;
+}
+
+/** One candidate's listing and the live and ended refusals saved for its account lineage. */
+interface ListedCandidate {
+  readonly listed: AccessProviderCandidateModels;
+  readonly refusals: SavedModelRefusals;
+}
+
+/** The inputs that belong to one listing call. */
+interface ModelListingRequest {
+  readonly signal?: AbortSignal;
+  /** `cached-first` when absent. */
+  readonly mode?: ModelDiscoveryMode;
+  /** Reports each conclusive probe result of an `audit` listing; no other mode probes. */
+  readonly onAccessAudit?: AccessAuditProgressListener;
+  /** Scopes an `audit` listing to that one exact account and marks it manual: every current candidate of the account is probed again, and no other account is probed. */
+  readonly recheckAccount?: AccessProviderAccountIdentity;
+  /** The caller's launch authority. A provider whose listing runs a local process launches it only in this scope, so
+   *  the process ends with the caller; without a scope that listing fails and its fallback applies. */
+  readonly launcher?: LauncherScope;
+}
+
+/** One candidate account to list, captured once with the evidence saved for its exact account lineage. */
+interface ListingCandidateContext {
+  readonly definition: AccessProviderDefinition;
+  readonly contribution: NonNullable<AccessProviderDefinition["dynamicCatalog"]>;
+  readonly auth: AuthContext;
+  readonly candidate: AccessProviderCandidate;
+  readonly instance: CapturedSubscriptionCredential | undefined;
+  readonly credential: RuntimeCredential;
+  readonly lineage: string | undefined;
+  readonly savedRows: readonly CatalogCanonicalRow[] | undefined;
+  readonly signal: AbortSignal;
+}
+
+/** What every candidate of one listing call shares. */
+interface ListingPass {
+  readonly mode: ModelDiscoveryMode;
+  readonly baselineForListing: ModelsDevBaselineForListing;
+  readonly onAccessAudit: AccessAuditProgressListener | undefined;
+  readonly recheckAccount: AccessProviderAccountIdentity | undefined;
+  readonly launcher: LauncherScope | undefined;
+}
+/** `cached-first` reads saved evidence only. `fresh` (interactive) and `refresh`
+ *  (owned) fetch the provider listing and record audit candidates, and probe
+ *  nothing. `audit` fetches no listing and probes what saved audits leave due
+ *  and every refused candidate again;
+ *  every other provider reads as it does under `cached-first`. */
+export type ModelDiscoveryMode = "cached-first" | "refresh" | "fresh" | "audit";
+
+export interface ModelListingClientOptions {
+  readonly authDir: string;
+  readonly classifySlot: CredentialSlotClassifier;
+  readonly providers: AccessProviderSelection;
+  readonly oauthPersistence?: OAuthPersistencePolicy;
+  readonly modelAccess?: readonly ProviderModelAccessSnapshot[];
+  readonly modelsClient?: ModelsClient;
+  readonly captureSubscriptions?: () => SubscriptionCredentials;
+  readonly captureCredentialLineages?: () => CredentialLineages;
+  readonly settlementTimeoutMs?: number;
+  readonly maxFetchConcurrency?: number;
+  /** The latest discovery diagnostic recorded for each provider. A process
+   *  shares one across the listing generations it replaces, so an unchanged
+   *  condition records once per process, not once per generation. */
+  readonly diagnosedDiscoveries?: Map<string, string>;
+  /** The clock that decides whether a saved refusal still applies. */
+  readonly now?: () => number;
+}
+
+function isDiscoveredListing(discovery: CatalogDiscovery | undefined): boolean {
+  return discovery?.kind === "rows" || discovery?.kind === "decoded-rows" || discovery?.kind === "resolved-rows";
+}
+
+/** Whether the shared settlement deadline, not a caller, ended the signal. */
+function settlementTimedOut(signal: AbortSignal): boolean {
+  return signal.reason instanceof DOMException && signal.reason.name === "TimeoutError";
+}
+
+export function createModelListingClient(options: ModelListingClientOptions): ModelListingClient {
+  const captureSubscriptions: () => SubscriptionCredentials = options.captureSubscriptions
+    ?? (() => new Map<string, readonly CapturedSubscriptionCredential[]>());
+  const definitions = new Map(options.providers.definitions.map((definition) => [definition.id, definition]));
+  const now = options.now ?? Date.now;
+  const diagnosedDiscoveries = options.diagnosedDiscoveries ?? new Map<string, string>();
+  function capturedCredentialLineage(candidate: AccessProviderCandidate, auth: AuthContext, instance: CapturedSubscriptionCredential | undefined): string | undefined {
+    return candidate.kind === "subscription" ? instance?.lineageId : auth.credentialLineages[candidate.providerId];
+  }
+
+  function credentialIsCurrent(candidate: AccessProviderCandidate, auth: AuthContext, instance: CapturedSubscriptionCredential | undefined, effectiveCredential?: RuntimeCredential): boolean {
+    const expected = capturedCredentialLineage(candidate, auth, instance);
+    if (expected === undefined) {
+      if (candidate.kind !== "subscription" || instance === undefined || effectiveCredential === undefined) return false;
+      const currentCredential = captureSubscriptions().get(candidate.providerId)?.find((entry) => entry.instanceId === candidate.instanceId)?.credential;
+      return currentCredential !== undefined && runtimeCredentialIdentity(currentCredential) === runtimeCredentialIdentity(effectiveCredential);
+    }
+    const current = candidate.kind === "subscription"
+      ? captureSubscriptions().get(candidate.providerId)?.find((entry) => entry.instanceId === candidate.instanceId)?.lineageId
+      : undefined;
+    const liveLineages = options.captureCredentialLineages?.();
+    const actual = candidate.kind === "subscription"
+      ? current ?? "removed"
+      : (liveLineages === undefined ? auth.credentialLineages[candidate.providerId] : liveLineages[candidate.providerId]) ?? "removed";
+    return actual === expected;
+  }
+
+  async function fetchSettled(
+    definition: AccessProviderDefinition,
+    auth: AuthContext,
+    instance: CapturedSubscriptionCredential | undefined,
+    credential: RuntimeCredential,
+    signal: AbortSignal,
+    launcher: LauncherScope | undefined,
+  ): Promise<AccessProviderCatalogFetchResult | undefined> {
+    const timedOut: AccessProviderCatalogFetchResult = { discovery: { kind: "failed", reason: "timeout" }, credential };
+    if (signal.aborted) {
+      if (settlementTimedOut(signal)) return timedOut;
+      throw signal.reason;
+    }
+    try {
+      return await fetchProviderCatalog(definition, auth, instance, options, signal, launcher);
+    } catch (error) {
+      if (!settlementTimedOut(signal)) throw error;
+      return timedOut;
+    }
+  }
+
+  async function withProfile<T>(use: (profile: CatalogProfile) => T | Promise<T>): Promise<T> {
+    const access = openExistingAuthProfileDirectory(options.authDir);
+    try {
+      return await use({ access, currentLineage: (account) => currentCredentialLineage(options.providers.definitions, options.authDir, options.classifySlot, account) });
+    } finally {
+      access.close();
+    }
+  }
+
+  const evidence = createSavedListingEvidence({ withProfile, now });
+  const readSaved = (account: AccessProviderAccountIdentity, lineage: string, limits: CatalogLimits) =>
+    options.oauthPersistence === "access-only" ? Promise.resolve(undefined) : evidence.read({ account, lineage }, limits);
+
+  async function recordModelRefusal(input: ModelRefusalInput): Promise<boolean> {
+    const { candidate, wireModelId, refusal } = input;
+    const instance = candidate.kind === "subscription" ? input.subscriptions.get(candidate.providerId)?.find(({ instanceId }) => instanceId === candidate.instanceId) : undefined;
+    const lineage = capturedCredentialLineage(candidate, input.auth, instance);
+    const limits = definitions.get(candidate.providerId)?.dynamicCatalog?.limits;
+    if (lineage === undefined || limits === undefined || options.oauthPersistence === "access-only") return false;
+    const saved = await evidence.recordRefusal({ account: accessProviderAccountIdentity(candidate), lineage }, wireModelId, refusal, limits);
+    DebugLog.record({ type: "model.refusal.recorded", payload: {
+      providerId: candidate.providerId, wireModelId, kind: refusal.kind, ...(refusal.kind === "extended-context" ? { contextLimit: refusal.contextLimit } : {}), saved,
+    } });
+    return saved;
+  }
+
+  /** Lists an audited account. Its models.dev candidates show at once, pending until the account's probe succeeds. A
+   *  listing that extends the baseline serves the models it names at once, so its candidates are only the models.dev
+   *  rows it does not name; its entry saves those listed rows, from which every later mode reads them. An `audit`
+   *  pass probes what the saved audit leaves due and every refused candidate again (`runAccessAudit`). */
+  async function listAuditedAccountModels(
+    { definition, contribution, auth, candidate, instance, credential: capturedCredential, lineage, savedRows, signal }: ListingCandidateContext,
+    probe: NonNullable<NonNullable<AccessProviderDefinition["dynamicCatalog"]>["probeAccess"]>,
+    { mode, baselineForListing, onAccessAudit, recheckAccount, launcher }: ListingPass,
+  ): Promise<AccessProviderCandidateModels> {
+    const account = accessProviderAccountIdentity(candidate);
+    const durableLineage = options.oauthPersistence === "access-only" ? undefined : lineage;
+    const fallback = baselineForListing(contribution);
+    const extendsBaseline = contribution.liveMembership === "extends-baseline";
+    let listed = extendsBaseline && savedRows !== undefined ? reconcileSavedCatalogRows(savedRows, fallback, contribution).rows : [];
+    let listedProvenance: "first-party" | "first-party-cached" = "first-party-cached";
+    let candidates = accessCandidateRows(fallback.canonicalRows, listed);
+    let joined: JoinedCatalogRows | undefined;
+    // The rows the account's entry saves: the listing's own rows, or the candidates of an account whose fetch lists nothing it serves.
+    const entryRows = () => extendsBaseline ? listed : candidates;
+    const readAudit = async () => durableLineage === undefined ? undefined : readSavedAudit(withProfile, account, durableLineage, contribution.limits);
+    let audit = await readAudit();
+    const invalid = (): AccessProviderCandidateModels => ({ models: null, visibleModels: catalogRowsToModelMap([...listed, ...candidates], definition.defaultChatTransport), outcome: { kind: "unavailable", reason: "authentication-invalid" }, audit: { remaining: candidates.length, refused: 0 } });
+    let discoveryFailure: ResolvedModelCatalog | undefined;
+    let credential = capturedCredential;
+    if (mode === "fresh" || mode === "refresh") {
+      const fetched = await fetchSettled(definition, auth, instance, credential, signal, launcher);
+      if (fetched?.discovery.kind === "auth-invalid") {
+        if (durableLineage !== undefined) {
+          await withProfile((profile) => deleteProviderModelCatalog(profile, { account, lineage: durableLineage }, contribution.limits));
+          evidence.forget({ account, lineage: durableLineage });
+        }
+        return invalid();
+      }
+      credential = fetched?.credential ?? credential;
+      if (!credentialIsCurrent(candidate, auth, instance, credential)) return invalid();
+      // An interactive listing states whether the account answered; an owned refresh keeps saved candidates through a failed listing.
+      if (mode === "fresh" && contribution.fetch !== undefined && !isDiscoveredListing(fetched?.discovery)) {
+        discoveryFailure = { kind: "unavailable", reason: "discovery-failed", discoveryReason: fetched?.discovery.kind === "failed" ? fetched.discovery.reason : "malformed" };
+      }
+      const decoded = extendsBaseline && fetched !== undefined ? decodeDiscoveryRows(fetched.discovery, contribution) : undefined;
+      joined = decoded === undefined ? undefined : joinCatalogRows(decoded, fallback, contribution);
+      if (joined !== undefined && joined.rows.length > 0) {
+        listed = joined.rows;
+        listedProvenance = "first-party";
+        candidates = accessCandidateRows(fallback.canonicalRows, listed);
+      }
+      const saved = entryRows();
+      if (discoveryFailure === undefined && durableLineage !== undefined && saved.length > 0
+        && await withProfile((profile) => writeProviderModelCandidates(profile, { account, lineage: durableLineage }, saved, candidates.map((row) => row.modelId), contribution.limits))) {
+        evidence.keepRows({ account, lineage: durableLineage }, saved);
+        audit = await readAudit();
+      }
+    } else if (mode === "audit" && durableLineage !== undefined && (recheckAccount === undefined ? audit !== undefined : accessProviderAccountKey(recheckAccount) === accessProviderAccountKey(account))) {
+      if (!credentialIsCurrent(candidate, auth, instance, credential)) return invalid();
+      audit = await runAccessAudit({
+        probe,
+        probeInput: { credential, ...(instance === undefined ? {} : { instance }), ...(lineage === undefined ? {} : { lineage }), authDir: options.authDir, classifySlot: options.classifySlot, oauthPersistence: options.oauthPersistence ?? "profile", signal, ...(launcher === undefined ? {} : { launcher }) },
+        account,
+        lineage: durableLineage,
+        limits: contribution.limits,
+        inconclusiveEndsPass: contribution.inconclusiveEndsPass === true,
+        withProfile,
+        // A committed result can end a saved refusal, so every read after it, starting with the progress listing,
+        // reads the entry again.
+        onAccessAudit: async (progress) => {
+          evidence.forget({ account, lineage: durableLineage });
+          await onAccessAudit?.(progress);
+        },
+        audit,
+        entryRows: entryRows(),
+        candidates,
+        manual: recheckAccount !== undefined,
+      });
+      signal.throwIfAborted();
+    }
+    const transferred = options.oauthPersistence === "access-only"
+      ? options.modelAccess?.find((entry) => entry.lineage === lineage && accessProviderAccountKey(entry.account) === accessProviderAccountKey(account))
+      : undefined;
+    return assembleAuditedCatalog({ contribution, defaultChatTransport: definition.defaultChatTransport, fallback, listed, listedProvenance, candidates, audit, transferred, joined, discoveryFailure });
+  }
+
+  /** Lists one candidate with the evidence saved for its exact account lineage, which is read once. */
+  async function resolveCandidate(
+    definition: AccessProviderDefinition,
+    auth: AuthContext,
+    candidate: AccessProviderCandidate,
+    instance: CapturedSubscriptionCredential | undefined,
+    signal: AbortSignal,
+    pass: ListingPass,
+  ): Promise<ListedCandidate> {
+    const credential = instance?.credential ?? apiKeyCredential(auth, definition.id);
+    const contribution = definition.dynamicCatalog;
+    if (!credential || !contribution) return { listed: { models: null }, refusals: {} };
+    const lineage = capturedCredentialLineage(candidate, auth, instance);
+    const reading = lineage === undefined ? Promise.resolve(undefined) : readSaved(accessProviderAccountIdentity(candidate), lineage, contribution.limits);
+    // A fresh listing never reads saved rows, so its fetch starts before the saved read settles.
+    const savedRows = pass.mode === "fresh" ? undefined : (await reading)?.rows;
+    const context: ListingCandidateContext = { definition, contribution, auth, candidate, instance, credential, lineage, savedRows, signal };
+    const listed = contribution.probeAccess !== undefined
+      ? await listAuditedAccountModels(context, contribution.probeAccess, pass)
+      : await listAccountModels(context, pass);
+    // An audit that committed a result forgot the entry, so it is read again with the refusals that the audit left.
+    const refusals = pass.mode === "audit" && lineage !== undefined ? readSaved(accessProviderAccountIdentity(candidate), lineage, contribution.limits) : reading;
+    return { listed, refusals: (await refusals)?.refusals ?? {} };
+  }
+
+  async function listAccountModels(
+    { definition, contribution, auth, candidate, instance, credential, lineage, savedRows, signal }: ListingCandidateContext,
+    pass: ListingPass,
+  ): Promise<AccessProviderCandidateModels> {
+    const { mode, baselineForListing } = pass;
+    const account = accessProviderAccountIdentity(candidate);
+    if (mode === "cached-first" || mode === "audit") {
+      const fallback = baselineForListing(contribution);
+      const metadataPreference = contribution.modelsDevMetadataFields === undefined
+        ? undefined
+        : { fields: contribution.modelsDevMetadataFields, rows: fallback.rows };
+      const reconciledSaved = savedRows === undefined
+        ? undefined
+        : reconcileSavedCatalogRows(
+            savedRows,
+            fallback,
+            contribution,
+          );
+      const outcome = resolveModelCatalog({
+        authenticated: true,
+        live: { kind: "not-attempted" },
+        contribution,
+        canonicalFallback: fallback.canonicalRows,
+        fallbackProvenance: fallback.provenance,
+        cachedFirstParty: reconciledSaved?.rows,
+        firstPartyProvenance: "first-party-cached",
+      });
+      // A provider with no first-party listing takes its whole catalog from
+      // models.dev, so the document the process holds is its saved evidence.
+      if (outcome.kind === "catalog" && (outcome.provenance === "first-party-cached" || contribution.fetch === undefined)) {
+        const models = catalogRowsToModelMap(outcome.rows, definition.defaultChatTransport, metadataPreference);
+        return {
+          models,
+          visibleModels: models,
+          outcome,
+        };
+      }
+      return {
+        models: null,
+        visibleModels: catalogRowsToModelMap(preferredCatalog(undefined, reconciledSaved?.rows, membershipFallback(contribution, fallback.canonicalRows)), definition.defaultChatTransport, metadataPreference),
+        outcome: { kind: "unavailable", reason: "discovery-pending" },
+      };
+    }
+    const fetched = await fetchSettled(definition, auth, instance, credential, signal, pass.launcher);
+    const decodedDiscovery = decodeDiscoveryRows(fetched?.discovery ?? { kind: "not-attempted" }, contribution);
+    const fallback = baselineForListing(contribution);
+    const metadataPreference = contribution.modelsDevMetadataFields === undefined
+      ? undefined
+      : { fields: contribution.modelsDevMetadataFields, rows: fallback.rows };
+    const joinedDiscovery = decodedDiscovery === undefined ? undefined : joinCatalogRows(decodedDiscovery, fallback, contribution);
+    const eligibleDiscovery: CatalogDiscovery = joinedDiscovery === undefined
+      ? fetched?.discovery ?? { kind: "not-attempted" }
+      : { kind: "resolved-rows", rows: joinedDiscovery.rows };
+    const catalogInput = {
+      authenticated: true,
+      live: eligibleDiscovery,
+      contribution,
+    } as const;
+    const discoveryCatalog = joinedDiscovery?.rows;
+    const reconciledSaved = savedRows === undefined
+      ? undefined
+      : reconcileSavedCatalogRows(
+          savedRows,
+          fallback,
+          contribution,
+        );
+    let outcome = resolveModelCatalog({
+      ...catalogInput,
+      canonicalFallback: fallback.canonicalRows,
+      fallbackProvenance: fallback.provenance,
+    });
+    if (mode === "refresh" && reconciledSaved !== undefined && fetched?.discovery.kind !== "auth-invalid" && (outcome.kind !== "catalog" || outcome.provenance !== "first-party")) {
+      outcome = resolveModelCatalog({
+        authenticated: true,
+        live: eligibleDiscovery,
+        contribution,
+        canonicalFallback: fallback.canonicalRows,
+        fallbackProvenance: fallback.provenance,
+        cachedFirstParty: reconciledSaved.rows,
+        firstPartyProvenance: "first-party-cached",
+      });
+    }
+    if (fetched) recordProviderCatalogFailure(definition.id, fetched.discovery, outcome);
+    const effectiveCredential = fetched?.credential ?? credential;
+    if (fetched?.discovery.kind === "auth-invalid" && lineage !== undefined && options.oauthPersistence !== "access-only") {
+      await withProfile((profile) => deleteProviderModelCatalog(profile, { account, lineage }, contribution.limits));
+      evidence.forget({ account, lineage });
+    }
+    if (!credentialIsCurrent(candidate, auth, instance, effectiveCredential)) {
+      return { models: null, outcome: { kind: "unavailable", reason: "authentication-invalid" } };
+    }
+    if (discoveryCatalog !== undefined && discoveryCatalog.length > 0 && lineage !== undefined && options.oauthPersistence !== "access-only"
+      && await withProfile((profile) => writeProviderModelCatalog(profile, { account, lineage }, discoveryCatalog, contribution.limits))) {
+      evidence.keepRows({ account, lineage }, discoveryCatalog);
+    }
+    if (outcome.kind !== "catalog") {
+      return {
+        models: null,
+        visibleModels: catalogRowsToModelMap(preferredCatalog(discoveryCatalog, reconciledSaved?.rows, membershipFallback(contribution, fallback.canonicalRows)), definition.defaultChatTransport, metadataPreference),
+        outcome,
+        ...(joinedDiscovery === undefined ? {} : {
+          diagnostics: {
+            baselineGeneration: fallback.generation,
+            unknownWireModelIds: joinedDiscovery.unknownWireModelIds,
+            collisions: joinedDiscovery.collisions,
+          },
+        }),
+      };
+    }
+    const models = catalogRowsToModelMap(outcome.rows, definition.defaultChatTransport, metadataPreference);
+    return Object.freeze({
+      models,
+      visibleModels: models,
+      outcome,
+      ...(joinedDiscovery === undefined ? {} : {
+        diagnostics: {
+          baselineGeneration: fallback.generation,
+          unknownWireModelIds: joinedDiscovery.unknownWireModelIds,
+          collisions: joinedDiscovery.collisions,
+        },
+      }),
+    });
+  }
+
+  async function getModelCatalogs(auth: AuthContext, request: ModelListingRequest = {}): Promise<AccessProviderModelCatalogs> {
+    const mode = request.mode ?? "cached-first";
+    const subscriptions = auth.subscriptionCredentials ?? captureSubscriptions();
+    const configured = [...new Set([...options.providers.getConfigured(auth), ...subscriptions.keys()])];
+    const tasks: Array<(signal: AbortSignal) => Promise<{ providerId: AccessProviderId; candidate?: AccessProviderCandidate; result: AccessProviderCandidateModels; refusals?: SavedModelRefusals }>> = [];
+    const baselines = new Map<string, SharedModelsDevBaseline>();
+    const baselineForListing: ModelsDevBaselineForListing = (contribution) => {
+      const { limits } = contribution;
+      const key = JSON.stringify([
+        contribution.modelsDevCatalogIds,
+        limits.responseBytes,
+        limits.canonicalRows,
+        limits.modelIdLength,
+        limits.durableBytes,
+        limits.metadataDepth ?? null,
+        limits.metadataNodes ?? null,
+      ]);
+      let baseline = baselines.get(key);
+      if (baseline === undefined) {
+        baseline = modelsDevBaseline(contribution, options.modelsClient);
+        baselines.set(key, baseline);
+      }
+      return baseline;
+    };
+    const pass: ListingPass = { mode, baselineForListing, onAccessAudit: request.onAccessAudit, recheckAccount: request.recheckAccount, launcher: request.launcher };
+    for (const providerId of configured) {
+      const custom = customProviderById(providerId);
+      if (custom) {
+        const candidate: AccessProviderCandidate = { kind: "singleton", providerId, spendMode: options.providers.spendMode(providerId) };
+        const catalogId = options.providers.catalogId(providerId);
+        const catalog = catalogId === undefined || options.modelsClient === undefined ? [] : options.modelsClient.getProviderCatalog([catalogId], DEFAULT_DYNAMIC_CATALOG_LIMITS.canonicalRows);
+        const models = staticOfferingMap(custom.modelIds, "chat-completions", catalog);
+        tasks.push(async () => ({ providerId, candidate, result: { models } }));
+        continue;
+      }
+      const definition = definitions.get(providerId);
+      if (!definition) continue;
+      const instances = subscriptions.get(providerId);
+      if (instances && instances.length > 0) {
+        for (const instance of instances) {
+          const candidate: AccessProviderCandidate = { kind: "subscription", providerId, instanceId: instance.instanceId, spendMode: "included" };
+          tasks.push(async (signal) => {
+            const { listed, refusals } = await resolveCandidate(definition, auth, candidate, instance, signal, pass);
+            return { providerId, candidate, result: listed, refusals };
+          });
+        }
+      } else {
+        const candidate: AccessProviderCandidate = { kind: "singleton", providerId, spendMode: options.providers.spendMode(providerId) };
+        tasks.push(async (signal) => {
+          const { listed, refusals } = await resolveCandidate(definition, auth, candidate, undefined, signal, pass);
+          return { providerId, candidate, result: listed, refusals };
+        });
+      }
+    }
+    const settled = await settleTasks(tasks, request.signal, mode === "audit" ? undefined : options.settlementTimeoutMs ?? LISTING_SETTLEMENT_MS, options.maxFetchConcurrency ?? MAX_FETCH_CONCURRENCY);
+    recordCatalogDiscoveryDiagnostics(diagnosedDiscoveries, settled.map(({ providerId, result }) => ({ providerId, diagnostics: result.diagnostics })));
+    const byProvider = new Map<AccessProviderId, ReadonlySet<string>>();
+    const byCandidate = new Map<string, AccessProviderCandidateCatalog>();
+    const at = now();
+    // Refusals apply after the shared metadata fill, so a narrowed window stays with its own account.
+    for (const { providerId, candidate, result: filled, refusals } of completeRouteMetadata(settled)) {
+      const result = refusals === undefined ? filled : withModelRefusals(filled, liveModelRefusals(refusals, at));
+      if (result.models && result.models.size > 0) byProvider.set(providerId, new Set([...(byProvider.get(providerId) ?? []), ...result.models.keys()]));
+      if (candidate) byCandidate.set(accessProviderAccountKey(candidate), { candidate, ...result });
+    }
+    return { providers: byProvider, candidates: byCandidate };
+  }
+
+  /** Resolves each model once across every account that offers it, then fills
+   *  what a route's own provider and catalog left as defaults from that shared
+   *  record. A provider that lists only model IDs thereby still carries the
+   *  price, efforts, and limits another source states for the same model. */
+  function completeRouteMetadata<Settled extends { readonly providerId: AccessProviderId; readonly candidate?: AccessProviderCandidate; readonly result: AccessProviderCandidateModels }>(
+    settled: readonly Settled[],
+  ): readonly Settled[] {
+    const rank = ({ providerId, candidate }: Settled) => ({ spendMode: candidate?.spendMode ?? "aggregator" as const, rank: definitions.get(providerId)?.rank ?? Number.MAX_SAFE_INTEGER });
+    const ordered = settled.toSorted((left, right) => compareAutomaticSelection(rank(left), rank(right)));
+    const shared = sharedModelInfos(ordered.flatMap(({ result }) => [...(result.visibleModels ?? result.models ?? [])]));
+    return settled.map((entry) => {
+      const provider = definitions.get(entry.providerId)?.dynamicCatalog?.modelsDevCatalogIds[0] ?? entry.providerId;
+      const fill = (catalog: ReadonlyMap<string, readonly CatalogModelOffering[]>) => fillCatalogRouteModelInfos(catalog, shared, provider);
+      const models = entry.result.models === null ? null : fill(entry.result.models);
+      const visibleModels = entry.result.visibleModels === entry.result.models ? models ?? undefined : entry.result.visibleModels && fill(entry.result.visibleModels);
+      return { ...entry, result: { ...entry.result, models, ...(visibleModels === undefined ? {} : { visibleModels }) } };
+    });
+  }
+
+  return { getModelCatalogs, recordModelRefusal };
+}

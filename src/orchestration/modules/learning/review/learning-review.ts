@@ -20,7 +20,7 @@ import { buildMutationEvidence, readMutationEvidenceFiles, type MutationEvidence
 import type { ReadSessionContentNode } from "../../../../infra/session-content.js";
 import { Log } from "../../../../infra/log.js";
 import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
-import { skillReviewCompletedFact, type SkillReviewCompletedFact } from "../../../../workflows/skill-facts.js";
+import { skillReviewCompletedFact, type SkillReviewCompletedFact } from "../../../../workflows/skills/skill-facts.js";
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
 import { failureTerminal, type AgentRunResult } from "../../../agent-runtime/types.js";
 import { LEARNING_REVIEW_ROLE_ID, requireRole, type ResolvedRole, type ResolvedRoles } from "../../../config/roles.js";

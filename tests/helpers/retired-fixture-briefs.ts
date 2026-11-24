@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { basename, dirname, join, posix } from "node:path";
 import { Schema } from "effect";
 import { parseFrontmatter } from "../../src/infra/frontmatter.js";
-import { loadBriefs, loadWorkflowInputContract, type LoadedBrief } from "../../src/workflows/brief.js";
-import { definitionAssets, resolveAssetRef, type AssetLocation } from "../../src/workflows/definition-assets.js";
-import { decodeWorkflowFile } from "../../src/workflows/workflow-file.js";
-import { agentRecords, isRepeat, type AuthoredWorkflow, type WorkflowDefinition, type WorkflowPhase } from "../../src/workflows/workflow-schema.js";
-import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/definition-registry.js";
+import { loadBriefs, loadWorkflowInputContract, type LoadedBrief } from "../../src/workflows/definitions/brief.js";
+import { definitionAssets, resolveAssetRef, type AssetLocation } from "../../src/workflows/definitions/definition-assets.js";
+import { decodeWorkflowFile } from "../../src/workflows/vm/admission/workflow-file.js";
+import { agentRecords, isRepeat, type AuthoredWorkflow, type WorkflowDefinition, type WorkflowPhase } from "../../src/workflows/schema/workflow-schema.js";
+import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/definitions/definition-registry.js";
 import { nonEmpty } from "./non-empty.js";
 
 const historicalBrief = Schema.Struct({

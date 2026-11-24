@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { workflowAuditAnswer, workflowAuditFamily, loadWorkflowAuditTasks, prepareWorkflowAuditProject, workflowAuditGrade, workflowAuditSites } from "../../../bench/chat-ab/workflow-audit-family.js";
 import { TEST1_WORKFLOW, test1Message, authoredTestMessage, answerReference, SHIPPED_SITES } from "../../../bench/chat-ab/workflow-audit-tests.js";
-import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporary = temporaryDirectories();

@@ -4,7 +4,7 @@
  *  candidate leaves behind is the retries' aggregate, never one failure. */
 
 import { describe, expect, test } from "bun:test";
-import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../../../src/infra/llm/access/access-provider.js";
 import { AllCandidatesExhaustedError, LlmStreamError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import type { ProviderResample, ProviderRetry, RepetitionGuard, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";

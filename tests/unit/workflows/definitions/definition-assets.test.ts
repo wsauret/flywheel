@@ -8,10 +8,10 @@ import {
   resolveAssetRef,
   type AssetLocation,
   type DefinitionAssetReader,
-} from "../../../../src/workflows/definition-assets.js";
-import { workflowAssets } from "../../../../src/workflows/asset-manifest.js";
-import { withLoadedContent } from "../../../../src/workflows/loader.js";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
+} from "../../../../src/workflows/definitions/definition-assets.js";
+import { workflowAssets } from "../../../../src/workflows/provenance/asset-manifest.js";
+import { withLoadedContent } from "../../../../src/workflows/definitions/loader.js";
+import { WorkflowDefinitionSchema } from "../../../../src/workflows/schema/workflow-schema.js";
 import { parseWorkflowYaml } from "../../../../src/infra/workflow-yaml.js";
 
 const PROJECT: AssetLocation = { root: { kind: "directory", dir: "/scratch/project/workflows" }, path: "nested/flow.yaml" };
@@ -76,7 +76,7 @@ describe("the definition assets of a compiled binary", () => {
   // manifest. A fresh instance of the module does the same here.
   beforeAll(async () => {
     Object.assign(workflowAssets, embedded);
-    const binary: typeof import("../../../../src/workflows/definition-assets.js") = await import(`../../../../src/workflows/definition-assets.js?manifest=${crypto.randomUUID()}`);
+    const binary: typeof import("../../../../src/workflows/definitions/definition-assets.js") = await import(`../../../../src/workflows/definitions/definition-assets.js?manifest=${crypto.randomUUID()}`);
     reader = binary.definitionAssets;
   });
 

@@ -6,8 +6,8 @@
  *  below it receives the object. */
 
 import type { AsyncEventReadSurface } from "../../../infra/event-store-types.js"
-import { readRunDefinitionLineage } from "../../../workflows/definition-provenance-projection.js"
-import { recordedWorkflow } from "../../../workflows/loader.js"
+import { readRunDefinitionLineage } from "../../../workflows/run/definition-provenance-projection.js"
+import { recordedWorkflow } from "../../../workflows/definitions/loader.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import type { WorkflowDefinitionResolution, WorkflowDefinitionResolver } from "./workflow-admission.js"
 

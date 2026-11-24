@@ -1,7 +1,7 @@
 import { createModuleCatalogSlot } from "../infra/module-descriptor.js"
 import type { ModuleRuntimeInvocationTool, SupersededFactInvalidationResult } from "./module-seams.js"
 import type { FirstPartyModule } from "./modules.js"
-import type { DefinitionBundle } from "../workflows/loader.js"
+import type { DefinitionBundle } from "../workflows/definitions/loader.js"
 import type { AnyFactSchema } from "../infra/event-registry.js"
 import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../infra/event-store-types.js"
 import type { WorkflowRunReader, WorkflowRunWriter } from "./workflow-host/run-record.js"

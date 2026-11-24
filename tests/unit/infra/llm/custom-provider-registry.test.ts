@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { buildCustomProviderSlice, customProviderById, customProviderIds, customProviderModelUnavailableReason, isCustomProviderModel, publishCustomProviderSlice, subscribeCustomProviderRetirement } from "../../../../src/infra/llm/custom-provider-registry.js";
 import { installCustomProviders } from "../../../helpers/custom-providers.js";
-import { detectModelFamily } from "../../../../src/infra/llm/model-family.js";
+import { detectModelFamily } from "../../../../src/infra/llm/models/model-family.js";
 
 // The registry is the process projection of [custom_providers] config. These
 // tests cover its replace semantics and how family detection and the

@@ -1,7 +1,7 @@
 import { createComponent } from "solid-js"
 
 import type { UsageSessionStats } from "../../../../src/protocol/modules/subscription-usage.js"
-import { mountClientSheet } from "../../app/budget-render-fixture.js"
+import { mountClientSheet } from "../../test-support/budget-render-fixture.js"
 import { StatsSheet } from "./stats-sheet.js"
 
 /** Mounts the production Stats sheet with caller-controlled session-scoped responses. */

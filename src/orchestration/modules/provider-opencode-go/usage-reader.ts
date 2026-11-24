@@ -1,6 +1,6 @@
 import { Redacted } from "effect";
-import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageJson, type SubscriptionUsageMetric, type SubscriptionUsageReader } from "../../../infra/llm/subscription-usage.js";
-import { malformed, percent, readerIdentity, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/subscription-usage-reader.js";
+import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageJson, type SubscriptionUsageMetric, type SubscriptionUsageReader } from "../../../infra/llm/usage/subscription-usage.js";
+import { malformed, percent, readerIdentity, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/usage/subscription-usage-reader.js";
 import { OPENCODE_GO_V1_BASE } from "./wire.js";
 
 const OPENCODE_GO_USAGE_URL = `${OPENCODE_GO_V1_BASE}/usage`;

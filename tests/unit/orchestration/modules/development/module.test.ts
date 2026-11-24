@@ -10,7 +10,7 @@ import { createToolRegistry, installedPersonaToolEntries } from "../../../../../
 import { composeModuleServices, NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js";
 import { moduleRequirementsForContribution } from "../../../../../src/orchestration/module-requirements.js";
 import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";
-import { createProjectDefinitionRegistry } from "../../../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../../../../../src/workflows/definitions/definition-registry.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { personaToolEntries } from "../../../../../src/orchestration/agent-runtime/tools/tool-registry.js";
 import { loadStandalonePersonaRegistry } from "../../../../../src/workflows/agents/registry.js";

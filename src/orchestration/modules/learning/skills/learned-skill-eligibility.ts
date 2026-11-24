@@ -1,8 +1,8 @@
 import type { PreparedPackage } from "../../../agent-runtime/review-types.js";
 import { realpathSync } from "node:fs";
 import { sep } from "node:path";
-import { readSkillPackageFiles } from "../../../../workflows/skill-context.js";
-import type { SkillDefinition, SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
+import { readSkillPackageFiles } from "../../../../workflows/skills/skill-context.js";
+import type { SkillDefinition, SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { prepareSkillPackage } from "./skill-package-planning.js";
 
 

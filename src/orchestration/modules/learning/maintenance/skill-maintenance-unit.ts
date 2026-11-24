@@ -24,7 +24,7 @@
  *  that stays. It proves that wholesale loss is refused rather than published,
  *  which is the failure a rewrite actually produces. */
 
-import { SKILL_BODY_BUDGET_CHARS } from "../../../../workflows/skill-schema.js";
+import { SKILL_BODY_BUDGET_CHARS } from "../../../../workflows/skills/skill-schema.js";
 import type { SkillMutation } from "../skills/skill-store-types.js";
 import { unitReceiver, type SkillMaintenanceUnit } from "./skill-maintenance-survey.js";
 

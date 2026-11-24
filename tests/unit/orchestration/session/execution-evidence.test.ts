@@ -9,7 +9,7 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js";
 import type { LauncherContext } from "../../../../src/infra/process-supervisor.js";
 import * as sqliteEventStore from "../../../../src/infra/sqlite-event-store.js";
-import type { UsageEntry } from "../../../../src/infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../../../src/infra/llm/usage/usage-entry.js";
 import { Log } from "../../../../src/infra/log.js";
 import type { CommandProcessResources } from "../../../../src/orchestration/cli-contribution.js";
 import { hashSystemPrompt, hashToolSurface } from "../../../../src/orchestration/session/provider-request-audit-hash.js";

@@ -1,8 +1,8 @@
 import { lstat, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { containsSecret } from "../../src/infra/redact-secrets.js";
-import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { campaignArtifactReference } from "./campaign-artifacts.js";
 import type { CampaignDesign, CampaignFamily } from "./campaign-runner.js";
 import type { CampaignTreatment } from "./campaign-subject.js";

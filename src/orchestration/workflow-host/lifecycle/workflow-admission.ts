@@ -14,14 +14,14 @@
  *  below it reads the live projection or looks the definition up again. */
 
 import { agentCompositions, type DefinitionAvailabilityOwner, type DefinitionAvailabilitySnapshot } from "../../app-service/definition-availability.js"
-import { attendedClosureMembers, describeClosureFailure } from "../../../workflows/skill-closure.js"
+import { attendedClosureMembers, describeClosureFailure } from "../../../workflows/skills/skill-closure.js"
 import { capabilityAccessFor, type CapabilityAccess } from "../../agent-runtime/tools/types.js"
-import type { WorkflowCapabilityBoundary } from "../../../workflows/run-facts.js"
+import type { WorkflowCapabilityBoundary } from "../../../workflows/run/run-facts.js"
 import type { CapabilityGrant, ModulePolicy } from "../../config/policy/module-policy.js"
-import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definition-registry.js"
-import type { WorkflowDefinition } from "../../../workflows/workflow-schema.js"
+import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"
+import type { WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"
 import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/module-ids.js"
-import type { WorkflowFileDiagnostic } from "../../../workflows/workflow-file.js"
+import type { WorkflowFileDiagnostic } from "../../../workflows/vm/admission/workflow-file.js"
 
 /** What resolving one operation's definition found: at least the
  *  definition object. A path launch adds what its file pipeline found. */

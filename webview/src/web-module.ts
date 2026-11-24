@@ -7,7 +7,7 @@ import type { RuntimeHealth } from "../../src/protocol/app-service-types.js"
 import type { ModuleRow, DomainReader } from "../../src/protocol/protocol-module.js"
 import type { ClientHost } from "./host.js"
 import type { ClientContextValue } from "./app/client-context.js"
-import type { PlacementLabels } from "./app/screen-stack.js"
+import type { PlacementLabels } from "./app/screens/screen-stack.js"
 import type { WebModuleClient, WebModuleClientHost } from "./web-module-client.js"
 
 /** The web client's module contract. A module contributes its presence

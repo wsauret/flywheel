@@ -103,11 +103,17 @@ it("keeps the work of a status change independent of how often the pointer cross
     expect(row).toBeGreaterThanOrEqual(0)
     const column = lines[row]!.indexOf("detach")
 
+    // A computation subscribed to the status re-runs inside the write itself,
+    // so the count stops when the write returns. Frames read the status again
+    // on their own clock: the running row's spinner ticks every 80 ms and
+    // every frame rechecks the hover under the pointer, so a count that spans
+    // a render grows with elapsed time, not with the pointer's history.
     const readsOfOneChange = async (accumulatedActiveMs: number) => {
       takeReads()
       publish({ ...held, accumulatedActiveMs })
+      const reads = takeReads()
       await result.renderOnce()
-      return takeReads()
+      return reads
     }
     // The pointer rests on the row for both counts, so the row is in the
     // same hover state and only the moves between them differ.

@@ -3,7 +3,7 @@ import { skillsConfigSection } from "../config.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import type { ProjectDirectories, StartupDirectories } from "../../../../infra/directory-authorities.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
-import type { SkillFinding } from "../../../../workflows/skill-health.js"
+import type { SkillFinding } from "../../../../workflows/skills/skill-health.js"
 import { withEventStore } from "../../../../infra/with-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../infra/event-store-types.js"
 import { applySkillLifecycleTransitions } from "../maintenance/skill-prune.js"
@@ -12,7 +12,7 @@ import { reconcileGlobalSkillStores } from "../skills/global-skill-mutation.js"
 import { startModulePolicy } from "../../../config/policy/module-policy.js"
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import { restoreSkill } from "../skills/skill-store.js"
-import type { ProjectDefinitionRegistry } from "../../../../workflows/definition-registry.js"
+import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js"
 import { prepareWorkspaceState } from "../../../workspace-state.js"
 import { moduleRequirementsForContribution } from "../../../module-requirements.js"
 import { createInstalledDefinitionRegistry } from "../../../definition-catalog.js"
@@ -277,7 +277,7 @@ export async function runSkillsDoctor(args: readonly string[], directories: Proj
     return
   }
   await withProjectState(directories, async () => {
-    const { inspectSkillLibrary, repairMovedPaths } = await import("../../../../workflows/skill-health.js")
+    const { inspectSkillLibrary, repairMovedPaths } = await import("../../../../workflows/skills/skill-health.js")
     const definitions = openProject(directories)
     let findings = inspectSkillLibrary({ revision: definitions.skills(), directories, ...(includeUnowned ? { includeUnowned: true } : {}) })
     if (fix) {

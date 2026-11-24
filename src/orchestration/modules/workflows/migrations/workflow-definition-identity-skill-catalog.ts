@@ -5,8 +5,8 @@ import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
 import { factRowsChanged } from "../../../../infra/sqlite-event-store-core.js"
 import { Log } from "../../../../infra/log.js"
 import { isRecord } from "../../../../infra/record.js"
-import { parseHistoricalWorkflowControlV2 } from "../../../../workflows/vm/historical-codecs.js"
-import { DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID } from "../../../../workflows/vm/definition-identity.js"
+import { parseHistoricalWorkflowControlV2 } from "../../../../workflows/vm/facts/historical-codecs.js"
+import { DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID } from "../../../../workflows/vm/facts/definition-identity.js"
 import {
   normalizeLegacyIdentityMembers,
   selectAdoptionCandidates,

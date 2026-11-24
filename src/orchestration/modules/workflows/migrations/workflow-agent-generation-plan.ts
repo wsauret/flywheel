@@ -1,7 +1,7 @@
 import { CorruptEventRowError, type EventStoreReadSurface, type StoredFact } from "../../../../infra/event-store-types.js"
 import { generateSessionId } from "../../../../infra/session-id.js"
-import { committedWorkflowEvent, parseWorkflowSessionFact, workflowRootControl } from "../../../../workflows/vm/session-facts.js"
-import { workflowRecoveryBasis } from "../../../../workflows/vm/recovery.js"
+import { committedWorkflowEvent, parseWorkflowSessionFact, workflowRootControl } from "../../../../workflows/vm/facts/session-facts.js"
+import { workflowRecoveryBasis } from "../../../../workflows/vm/recovery/recovery.js"
 import type { WorkflowMembership } from "../../../../infra/session-workflow-membership.js"
 
 export interface ImportedWorkflowGeneration {

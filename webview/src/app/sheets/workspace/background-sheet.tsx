@@ -1,5 +1,5 @@
 import { createMemo, createSignal, Show, type Accessor } from "solid-js"
-import { keyedRows } from "../../keyed-rows.js"
+import { keyedRows } from "../../controls/keyed-rows.js"
 
 import type { BackgroundWorkRow } from "../../../../../src/protocol/background-index-protocol-types.js"
 import {

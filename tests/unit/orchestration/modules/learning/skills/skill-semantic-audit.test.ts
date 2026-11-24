@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { skillSemanticAuditEvidenceIsCurrent, verifySkillSemanticAudit } from "../../../../../../src/orchestration/modules/learning/skills/skill-semantic-audit.js";
-import { publishSkillRevision, type BundledSkillPackage, type SkillDefinition } from "../../../../../../src/workflows/skill-schema.js";
+import { publishSkillRevision, type BundledSkillPackage, type SkillDefinition } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { prepareSkillPackage } from "../../../../../../src/orchestration/modules/learning/skills/skill-package-planning.js";
 
 function prepared(dependencies: readonly string[] = []) {

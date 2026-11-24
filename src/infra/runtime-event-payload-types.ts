@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { UsageEntrySchema } from "./llm/usage-entry.js";
+import { UsageEntrySchema } from "./llm/usage/usage-entry.js";
 import { LlmToolOutputPartSchema } from "./llm/tool-output-part-schema.js";
 import { ContentBlockSchema } from "./runtime-content-blocks.js";
 import { TOOL_OUTCOME_VALUES } from "./tool-outcome.js";

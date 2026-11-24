@@ -1,6 +1,6 @@
 import { removeSemanticSubtree, renameSemanticTable, quoteTomlKey, rewriteSemanticAssignmentKeys, type SemanticKeyRewrite } from "./config-assignment.js";
 import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
-import { RETIRED_BRIEFS } from "../../workflows/retired-bindings.js";
+import { RETIRED_BRIEFS } from "../../workflows/definitions/retired-bindings.js";
 
 /** Retired config names: the role-id spellings that user config, the
  *  `FLYWHEEL_ROLES` table, and stored session role snapshots may carry, and

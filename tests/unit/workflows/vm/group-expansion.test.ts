@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test";
-import { authoredGuardrailLimits, compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
+import { authoredGuardrailLimits, compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile.js";
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";
 import { inputMapWorkflow, mapSkills } from "./_map-fixtures.js";
 
 it.each([undefined, 7])("refuses oversized launch input before reading any item with attempt limit %s", (max_attempts) => {

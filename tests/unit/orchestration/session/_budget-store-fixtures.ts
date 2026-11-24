@@ -8,7 +8,7 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
 import { createSessionBudgetStore } from "../../../../src/orchestration/session/budget-store.js";
 import { readBudgetSummaryFromReader } from "../../../../src/orchestration/session/budget-summary.js";
-import type { BudgetLimits } from "../../../../src/workflows/budget";
+import type { BudgetLimits } from "../../../../src/workflows/run/budget";
 import type { EmitFn } from "../../../../src/infra/event-bus";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
 import type { SessionBudgetStore } from "../../../../src/orchestration/session/budget-store-types.js";

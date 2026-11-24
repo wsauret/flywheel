@@ -11,18 +11,18 @@ import phaseCutoverHistories from "./golden/committed-v10-phase-cutover-historie
 import repeatBoundHistory from "./golden/committed-v10-repeat-bound.json";
 import { frontendView, stepLoopBindings } from "./_tree-fixtures.js";
 import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/client/workflow-progress.js";
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery.js";
-import { continueWorkflowReplay } from "../../../../src/workflows/vm/replay.js";
-import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
-import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact, WorkflowSessionFactSchema } from "../../../../src/workflows/vm/session-facts.js";
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
+import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery/recovery.js";
+import { continueWorkflowReplay } from "../../../../src/workflows/vm/host/replay.js";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js";
+import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact, WorkflowSessionFactSchema } from "../../../../src/workflows/vm/facts/session-facts.js";
 import type { AsyncEventWriter, EventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js";
 import { retiredFixtureWorkflow } from "../../../helpers/retired-fixture-briefs.js";
 import { retainedDefinitions, retainedProject } from "../../../fixtures/retired-workflows/retained-project.js";
 import { acknowledge, runningControl } from "./_machine-semantics-fixtures.js";
-import { WorkflowDefinitionDriftError } from "../../../../src/workflows/vm/definition-identity.js";
-import { recordedWorkflow } from "../../../../src/workflows/loader.js";
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
+import { WorkflowDefinitionDriftError } from "../../../../src/workflows/vm/facts/definition-identity.js";
+import { recordedWorkflow } from "../../../../src/workflows/definitions/loader.js";
+import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js";
 import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js";
 
 const retainedRoot = retainedProject({ legacyRaindropAudit: true });
@@ -325,7 +325,7 @@ describe("frozen graph version 3 codecs", () => {
   });
 
   it("imports only types from the current graph, control, and event modules", async () => {
-    const source = await Bun.file(new URL("../../../../src/workflows/vm/historical-codecs.ts", import.meta.url)).text();
+    const source = await Bun.file(new URL("../../../../src/workflows/vm/facts/historical-codecs.ts", import.meta.url)).text();
     const current = /from "\.\/(graph-types|committed-control|events)\.js"/;
     const imports = source.split("\n").filter((line) => current.test(line));
     expect(imports.length).toBeGreaterThan(0);

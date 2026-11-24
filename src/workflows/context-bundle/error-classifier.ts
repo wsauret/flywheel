@@ -2,7 +2,7 @@ import { assertNever } from "../../infra/assert-never.js";
 import { InvariantViolation } from "../../infra/invariant.js";
 import { PersistenceWriteRefused } from "../../infra/event-store-types.js";
 import { HandoffInvalidError, HandoffNotProducedError } from "./handoff-errors.js";
-import type { AgentFailureKind } from "../vm/agent-outcome.js";
+import type { AgentFailureKind } from "../vm/host/agent-outcome.js";
 
 /** Typed carrier for a worker's terminal failure across the attempt runner's
  *  classification boundary. Carrying the kind lets classification consume typed data instead

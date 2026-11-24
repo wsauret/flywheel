@@ -2,7 +2,7 @@ import type { ConversationMessage, ServingAttempt, StreamOptions, SystemOriginMe
 import { SYSTEM_PROMPT_SEPARATOR, type SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js";
 import type { ProviderTransportAddition, ProviderTransportContext, ProviderTransportHiddenRequest } from "../../../session/provider-request-audit-types.js";
 import type { CliMessage, CliView } from "../cli-view.js";
-import type { ResultRewrite } from "../request-plan.js";
+import type { ResultRewrite } from "../query/request-plan.js";
 
 // The text that the shared agent host's engine adds to each request of a hosted agent. Each constant must equal the
 // bytes that the engine sends: canonical history records the engine's additions as hidden entries (ARCH-CONTEXT-008),

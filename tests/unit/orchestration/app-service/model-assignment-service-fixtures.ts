@@ -7,7 +7,7 @@ import { decodeModuleState } from "../../../../src/orchestration/config/module-d
 import type { ModuleId } from "../../../../src/orchestration/modules.js"
 import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
-import type { ModelFamily } from "../../../../src/infra/llm/model-family.js"
+import type { ModelFamily } from "../../../../src/infra/llm/models/model-family.js"
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"
 
 export const EXPLORER: Extract<AgentDefinition, { readonly kind: "persona" }> = {

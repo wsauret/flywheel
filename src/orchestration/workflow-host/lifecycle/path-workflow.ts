@@ -24,17 +24,17 @@ import { errnoCode, errorMessage } from "../../../infra/error-message.js"
 import { sessionScratchDir } from "../../../infra/paths.js"
 import { WORKFLOW_FILE_EXTENSION, workflowContentFileName, type WorkflowCallSource } from "../../../infra/tools/workflow-call-source.js"
 import type { ToolAction } from "../../../infra/workflow-types.js"
-import type { DefinitionAssetReader } from "../../../workflows/definition-assets.js"
-import { hashDefinition } from "../../../workflows/definition-hash.js"
-import { canonicalWorkflowRecord } from "../../../workflows/definition-records.js"
-import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definition-registry.js"
+import type { DefinitionAssetReader } from "../../../workflows/definitions/definition-assets.js"
+import { hashDefinition } from "../../../workflows/provenance/definition-hash.js"
+import { canonicalWorkflowRecord } from "../../../workflows/schema/definition-records.js"
+import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"
 import { resolveToolPath } from "../../agent-runtime/tools/tool-paths.js"
-import { resolveWorkflowAgents, type ResolvedAgent } from "../../../workflows/agent-resolution.js"
-import { canonicalStepWorkflowRecord } from "../../../workflows/retired-step-grammar/records.js"
-import { stepGrammarWarning } from "../../../workflows/retired-step-grammar/convert.js"
-import { verifyAuthoredWorkflow } from "../../../workflows/vm/verify.js"
-import { structuralRemedy, type WorkflowStructureRejectedError } from "../../../workflows/vm/structural-admission.js"
-import { launchVerificationWarnings, type WorkflowVerificationReport } from "../../../workflows/vm/verify-types.js"
+import { resolveWorkflowAgents, type ResolvedAgent } from "../../../workflows/definitions/agent-resolution.js"
+import { canonicalStepWorkflowRecord } from "../../../workflows/schema/retired-step-grammar/records.js"
+import { stepGrammarWarning } from "../../../workflows/schema/retired-step-grammar/convert.js"
+import { verifyAuthoredWorkflow } from "../../../workflows/vm/compile/verify.js"
+import { structuralRemedy, type WorkflowStructureRejectedError } from "../../../workflows/vm/graph/structural-admission.js"
+import { launchVerificationWarnings, type WorkflowVerificationReport } from "../../../workflows/vm/compile/verify-types.js"
 import {
   decodeWorkflowFile,
   loadDecodedWorkflow,
@@ -42,9 +42,9 @@ import {
   workflowDiagnosticText,
   workflowPhaseLocations,
   type WorkflowFileDiagnostic,
-} from "../../../workflows/workflow-file.js"
+} from "../../../workflows/vm/admission/workflow-file.js"
 import { WORKFLOW_FILE_MAX_BYTES } from "../../../infra/workflow-yaml.js"
-import { agentLabel, agentRecords, DEFAULT_COUNTED_LIST_MAX, dotFreeSlugIssue, namedAgents, phaseLabel, walkPhases, type AgentRecordKeys, type AuthoredWorkflow, type WorkflowDefinition } from "../../../workflows/workflow-schema.js"
+import { agentLabel, agentRecords, DEFAULT_COUNTED_LIST_MAX, dotFreeSlugIssue, namedAgents, phaseLabel, walkPhases, type AgentRecordKeys, type AuthoredWorkflow, type WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"
 import type { WorkflowDefinitionRefusal, WorkflowDefinitionResolution } from "./workflow-admission.js"
 
 /** What a workflow file may grant an agent: the tools and personas of the

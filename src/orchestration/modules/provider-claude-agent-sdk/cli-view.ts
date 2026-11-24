@@ -4,7 +4,7 @@ import type { AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
 import { parseRuntimeReminder, type RuntimeReminder } from "../../agent-runtime/llm/runtime-reminders.js";
 import type { BlockOrigin } from "../../agent-runtime/llm/block-origin.js";
 import type { BlockOrigins } from "../../agent-runtime/llm/conversions/anthropic-messages.js";
-import { ANTHROPIC_RESERVED_BODY_KEYS } from "../../../infra/llm/provider-options.js";
+import { ANTHROPIC_RESERVED_BODY_KEYS } from "../../../infra/llm/access/provider-options.js";
 import { ProviderRequestValidationError } from "../../agent-runtime/llm/errors.js";
 import { CLAUDE_AGENT_SDK_LABEL, TOOL_MCP_PREFIX } from "./names.js";
 

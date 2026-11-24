@@ -7,8 +7,8 @@ import { loadQueueSnapshotFromReader } from "../../workflows/view/view-store.js"
 import type { WorkflowView } from "../../workflows/view/types.js"
 import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
 import { frontendAttempts } from "./frontend-attempts.js"
-import { startedAgents } from "../../workflows/vm/host-commit-controller.js"
-import { attemptNodeIdOf } from "../../workflows/vm/graph-types.js"
+import { startedAgents } from "../../workflows/vm/host/host-commit-controller.js"
+import { attemptNodeIdOf } from "../../workflows/vm/graph/graph-types.js"
 
 /** The workflow view of one session as every client reads it: its attempts
  *  and its one operational tree, from the held view projection. */

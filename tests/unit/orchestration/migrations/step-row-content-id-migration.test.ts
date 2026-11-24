@@ -4,7 +4,7 @@ import { join } from "node:path"
 import type { EventPayload } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { migrateStepRowContentId } from "../../../../src/orchestration/modules/workflows/migrations/step-row-content-id.js"
-import { parseDefinitionProvenanceFact } from "../../../../src/workflows/definition-provenance-facts.js"
+import { parseDefinitionProvenanceFact } from "../../../../src/workflows/provenance/definition-provenance-facts.js"
 import { parseWorkflowQueueFact } from "../../../../src/workflows/view/view-facts.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { workflowDriftExplanation } from "../../../../src/protocol/client/workflow-drift-copy.js"
-import { parseDefinitionProvenanceFact } from "../../../../src/workflows/definition-provenance-facts.js"
-import { publishedDefinitionDrift } from "../../../../src/workflows/vm/definition-identity.js"
-import { currentDefinitionDriftRejection } from "../../../../src/workflows/vm/recovery.js"
+import { parseDefinitionProvenanceFact } from "../../../../src/workflows/provenance/definition-provenance-facts.js"
+import { publishedDefinitionDrift } from "../../../../src/workflows/vm/facts/definition-identity.js"
+import { currentDefinitionDriftRejection } from "../../../../src/workflows/vm/recovery/recovery.js"
 
 describe("workflow drift copy", () => {
   test("says why a workflow whose definition changed cannot continue, names each changed part once, and says that Resume continues it once they are restored", () => {

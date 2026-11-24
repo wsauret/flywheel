@@ -8,7 +8,7 @@ import { installedAccessProviderDefinitions } from "../../../../../src/orchestra
 import { composeFirstPartyModules, moduleProtocolRows, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js"
 import type { EngineLaunchOptions, EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-process.js"
 import { Effect, Exit, Scope } from "effect"
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js"
+import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js"
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import { RouteUnavailableError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { ProviderAuthenticationError } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js"

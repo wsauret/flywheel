@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { normalizeAuthProfile } from "../../../../src/infra/auth/auth-profile-normalization.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
-import type { AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderDefinition } from "../../../../src/infra/llm/access/access-provider.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();

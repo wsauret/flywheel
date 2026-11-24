@@ -1,4 +1,4 @@
-import { REASONING_EFFORTS, type ModelInfo, type ProviderReasoningEffort, type ReasoningEffort } from "../../../infra/llm/models.js";
+import { REASONING_EFFORTS, type ModelInfo, type ProviderReasoningEffort, type ReasoningEffort } from "../../../infra/llm/models/models.js";
 import { canonicalModelId } from "../../../infra/model-id.js";
 
 /**

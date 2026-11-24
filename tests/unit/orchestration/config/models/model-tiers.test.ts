@@ -4,7 +4,7 @@ import {
   resolveModelForTierAcrossFamilies,
   type TierResolutionOptions,
 } from "../../../../../src/orchestration/config/models/model-tiers.js";
-import type { ModelFamily } from "../../../../../src/infra/llm/model-family.js";
+import type { ModelFamily } from "../../../../../src/infra/llm/models/model-family.js";
 import { modelTierForReference } from "../../../../../src/protocol/model-tier-reference.js";
 import { fakeModelInfos, makeModelsClient, modelInfo, tierAvailableModels, tierModelIds } from "../../../../helpers/model-tier-fixtures.js";
 

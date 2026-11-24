@@ -79,7 +79,7 @@ export function applyPlannedMutation(
   plan: SkillMutationPlan,
   guard?: () => boolean | Promise<boolean>,
   publication?: {
-    readonly currentRevision?: () => import("../../../../workflows/skill-schema.js").SkillRegistryRevision;
+    readonly currentRevision?: () => import("../../../../workflows/skills/skill-schema.js").SkillRegistryRevision;
     readonly openAudit?: () => PendingAudit | undefined;
   },
 ): Promise<SkillStoreResult> {

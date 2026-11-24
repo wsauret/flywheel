@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { chordFor, modKeyLabel, SHORTCUTS } from "../../../webview/src/app/shortcuts.js"
+import { chordFor, modKeyLabel, SHORTCUTS } from "../../../webview/src/app/sheets/shortcuts/shortcuts.js"
 
 const event = (overrides: Partial<Parameters<typeof chordFor>[0]>) =>
   ({ key: "k", metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...overrides })

@@ -4,9 +4,9 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/lifecycle/publish.js"
 import { makeWorkflowDeps } from "./_workflow-controller-fixtures.js"
-import { WorkflowStructureRejectedError } from "../../../../src/workflows/vm/structural-admission.js"
+import { WorkflowStructureRejectedError } from "../../../../src/workflows/vm/graph/structural-admission.js"
 import { nonEmpty } from "../../../helpers/non-empty.js"
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const LINEAR_WORKFLOW = loadedWorkflow({

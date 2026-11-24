@@ -6,9 +6,9 @@ import { codingLedger, type CodingCampaign, type CodingOutcomeRecord } from "../
 import { renderCodingReport } from "../../../bench/chat-ab/coding-ab-report.js";
 import { findCodingTask } from "../../../bench/chat-ab/coding-task.js";
 import type { ChatAbJudge } from "../../../bench/chat-ab/pair-judge.js";
-import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
-import { JudgeCallFailure, type JudgeModel } from "../../../src/orchestration/modules/development/benchmark/judge.js";
-import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import { JudgeCallFailure, type JudgeModel } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
+import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporary = temporaryDirectories();

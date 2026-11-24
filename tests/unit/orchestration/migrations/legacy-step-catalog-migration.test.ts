@@ -5,8 +5,8 @@ import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync,
 import { join } from "node:path"
 import { migrateLegacyStepCatalog } from "../../../../src/orchestration/modules/workflows/migrations/legacy-step-catalog-filesystem.js"
 import { tryWithPackageLocksSync } from "../../../../src/infra/package-directory-lock.js"
-import { loadSkillDefinitions } from "../../../../src/workflows/skills.js"
-import type { SkillDefinition } from "../../../../src/workflows/skill-schema.js"
+import { loadSkillDefinitions } from "../../../../src/workflows/skills/skills.js"
+import type { SkillDefinition } from "../../../../src/workflows/skills/skill-schema.js"
 import type { ProjectDirectories } from "../../../../src/infra/directory-authorities.js"
 
 const STEP_ID = "flywheel.plan-create"

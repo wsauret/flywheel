@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { clampRailWidth, readRailLayout, writeRailLayout } from "../../../webview/src/app/rail-layout.js"
+import { clampRailWidth, readRailLayout, writeRailLayout } from "../../../webview/src/app/screens/rail-layout.js"
 
 class MemoryStorage {
   readonly values = new Map<string, string>()

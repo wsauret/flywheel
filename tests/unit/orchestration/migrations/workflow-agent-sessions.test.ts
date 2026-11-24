@@ -9,7 +9,7 @@ import { workflowMembershipReader } from "../../../../src/orchestration/session/
 import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/runs/run-record.js"
 import { convertWorkflowAgentSessions, workflowAgentSessionsNeedConversion } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions.js"
 import { Database } from "bun:sqlite"
-import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery.js"
+import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery/recovery.js"
 import { recoverProject } from "../../../helpers/project-recovery.js"
 import { appendOutputSeamCorpusFacts, parseOutputSeamCorpus } from "../../../../scripts/regenerate-output-seam-corpus.js"
 import { resolveEventStoreDbFile, resolveSessionSummaryDbFile } from "../../../../src/infra/paths.js"

@@ -1,11 +1,11 @@
-import type { ResolvedAgent } from "../../../workflows/agent-resolution.js"
-import { buildWorkflowCompilationFacts } from "../../../workflows/definition-provenance-fact-writers.js"
-import type { DefinitionProvenanceFact } from "../../../workflows/definition-provenance-facts.js"
-import type { WorkflowVerificationResult } from "../../../workflows/vm/verify-types.js"
+import type { ResolvedAgent } from "../../../workflows/definitions/agent-resolution.js"
+import { buildWorkflowCompilationFacts } from "../../../workflows/definitions/definition-provenance-fact-writers.js"
+import type { DefinitionProvenanceFact } from "../../../workflows/provenance/definition-provenance-facts.js"
+import type { WorkflowVerificationResult } from "../../../workflows/vm/compile/verify-types.js"
 import type { AttemptRow } from "../../../workflows/view/types.js"
-import { resolveSkillClosure } from "../../../workflows/skill-closure.js"
-import type { SkillRegistryRevision } from "../../../workflows/skill-schema.js"
-import type { WorkflowDefinition } from "../../../workflows/workflow-schema.js"
+import { resolveSkillClosure } from "../../../workflows/skills/skill-closure.js"
+import type { SkillRegistryRevision } from "../../../workflows/skills/skill-schema.js"
+import type { WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"
 
 export interface WorkflowDefinitionLineageInput {
   workflow: WorkflowDefinition

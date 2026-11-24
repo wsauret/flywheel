@@ -15,7 +15,7 @@ import type {
   PreparedOverrideResolution,
   PreparedOverrideTarget,
 } from "../../workflows/definitions/override-staleness.js"
-import { packagePathRefusal } from "../../workflows/skill-package-path.js"
+import { packagePathRefusal } from "../../workflows/skills/skill-package-path.js"
 import type { DefinitionOverrideBaselineOwner } from "../../workflows/definitions/override-baselines.js"
 
 

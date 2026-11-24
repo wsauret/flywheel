@@ -4,7 +4,7 @@ import { pageDomainReader } from "../../client/module-domain-views.js"
 import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
 import { Sheet, SheetEmpty } from "../../app/sheets/sheet.js"
 import { useClient } from "../../app/client-context.js"
-import { Markdown } from "../../app/markdown-view.js"
+import { Markdown } from "../../app/transcript/blocks/text/markdown-view.js"
 import "./sheet.css"
 
 /** Temporary answers read the session domain. Only selection and the unsent follow-up are local. */

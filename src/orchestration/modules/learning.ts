@@ -1,7 +1,7 @@
 import { createChatLearningReview, learningChatHost } from "./learning/review/chat-review.js";
-import { ImprovementFactSchemas } from "../../workflows/improvements/improvement-facts.js";
-import { MemoryFactSchemas } from "../../workflows/memory/memory-facts.js";
-import { SkillFactSchemas } from "../../workflows/skill-facts.js";
+import { ImprovementFactSchemas } from "../../workflows/learning/improvements/improvement-facts.js";
+import { MemoryFactSchemas } from "../../workflows/learning/memory/memory-facts.js";
+import { SkillFactSchemas } from "../../workflows/skills/skill-facts.js";
 import { createMemoryStoreConfig, renderMemorySnapshot } from "./learning/memory-store.js";
 import { createManagedPackageWrites } from "./learning/managed-package-writes.js";
 import { memoryConfigSection, skillsConfigSection } from "./learning/config.js";

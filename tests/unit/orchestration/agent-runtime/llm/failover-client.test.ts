@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { AccessProviderCandidate, AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderId } from "../../../../../src/infra/llm/access/access-provider.js";
 import { AllCandidatesExhaustedError, ContentRefusedError, QuotaExhaustedError, LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { classifyProviderFailure, isFailoverFailure, normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { candidateReadiness } from "../../../../../src/orchestration/agent-runtime/llm/failover-client.js";

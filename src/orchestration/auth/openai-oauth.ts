@@ -7,7 +7,7 @@ import { generatePKCE, generateState } from "../../infra/auth/openai/openai-pkce
 import { readBoundedJson } from "../../infra/auth/bounded-json.js";
 import { oauthExpiryFromLifetimeSeconds } from "../../infra/auth/oauth-expiry.js";
 import { Log } from "../../infra/log.js";
-import type { BrowserLoginPorts } from "../../infra/llm/access-provider.js";
+import type { BrowserLoginPorts } from "../../infra/llm/access/access-provider.js";
 
 /** ChatGPT OAuth: the browser login that yields an account's tokens, and
  *  the refresh the runtime's token accessor runs on every ChatGPT-backed

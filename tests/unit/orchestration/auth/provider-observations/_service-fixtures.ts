@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { AccessProviderDefinition } from "../../../../../src/infra/llm/access-provider.js"
+import type { AccessProviderDefinition } from "../../../../../src/infra/llm/access/access-provider.js"
 import { composeModules } from "../../../../../src/infra/module-descriptor.js"
-import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/llm/subscription-usage.js"
+import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/llm/usage/subscription-usage.js"
 
 import { accessProviderRegistry, type AccessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 import type { AccessProviderFactory } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"

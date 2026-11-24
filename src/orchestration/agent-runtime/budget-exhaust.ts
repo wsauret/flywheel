@@ -14,8 +14,8 @@
 
 import { Effect, Exit, Scope } from "effect";
 import type { PersistenceWriteRefused } from "../../infra/event-store-types.js";
-import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
-import type { ReasoningEffort } from "../../infra/llm/models.js";
+import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
+import type { ReasoningEffort } from "../../infra/llm/models/models.js";
 import { Log } from "../../infra/log.js";
 import { fixedTurnOutputBound } from "./compaction/compaction-policy.js";
 import type { AgentLoopOptions } from "./agent-loop-types.js";

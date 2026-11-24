@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import type { UsageEntry } from "../../../src/infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../../src/infra/llm/usage/usage-entry.js";
 import type { Agent, AgentFactory, AgentOptions, AgentRunResult, OmitAgentOptions, RuntimeToolSurfaces } from "../../../src/orchestration/agent-runtime/types.js";
-import { createBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting.js";
-import { invokeBenchmarkAgent } from "../../../src/orchestration/modules/development/benchmark/invocation.js";
+import { createBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/accounting.js";
+import { invokeBenchmarkAgent } from "../../../src/orchestration/modules/development/benchmark/execution/invocation.js";
 
 const BASE_USAGE: UsageEntry = {
   attemptId: "00000000-0000-4000-8000-000000000001",

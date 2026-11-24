@@ -4,7 +4,7 @@ import { runWithResilience } from "../../../src/orchestration/agent-runtime/agen
 import { workerOutcome } from "../../../src/orchestration/workflow-host/attempt/worker-outcome.js"
 import type { AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js"
 import type { ConnectionState } from "../../../src/infra/output-blocks.js"
-import { exhaustedProvidersCopy } from "../../../src/infra/llm/provider-error-copy.js"
+import { exhaustedProvidersCopy } from "../../../src/infra/llm/errors/provider-error-copy.js"
 
 describe("workerOutcome", () => {
   it("returns 'completed' when the run completed cleanly", () => {

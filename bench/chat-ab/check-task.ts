@@ -23,7 +23,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";
 import { ownedCommandRunner } from "../../src/infra/owned-command.js";
-import { objectValue } from "../../src/orchestration/modules/development/benchmark/task-schema.js";
+import { objectValue } from "../../src/orchestration/modules/development/benchmark/tasks/task-schema.js";
 import { baselineDrift, baselineOf, classifyAcceptance, scoreAcceptance, type AcceptanceBaseline } from "./acceptance.js";
 import { HARNESS_DIR, REPO_ROOT } from "./harness-paths.js";
 import { captureSandbox, loadDraftTask, provisionSandbox } from "./tasks.js";

@@ -14,8 +14,8 @@ import { loadAgentInputProjection } from "../../../../../../src/orchestration/se
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
 import { reconcileLearning } from "../../../../../../src/orchestration/modules/learning/review/reconciliation.js";
 import type { SkillWriteOrigin } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
+import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
 import { operationIdentity, readOperationManifest } from "../../../../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
 import { makeContext } from "../../../agent-runtime/tools/_fixtures.js";
 

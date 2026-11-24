@@ -1,6 +1,6 @@
 import { parseProjectionFact } from "../../infra/event-projection.js";
 import type { StoredFact } from "../../infra/event-store-types.js";
-import type { UsageEntry } from "../../infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../infra/llm/usage/usage-entry.js";
 import { Log } from "../../infra/log.js";
 import { parseSessionRuntimeFact } from "../../infra/runtime-fact-parser.js";
 import { currentUsageMeasurement, SESSION_RUNTIME_FACT_DEFINITIONS, type UsageMeasurement } from "../../infra/runtime-fact-types.js";

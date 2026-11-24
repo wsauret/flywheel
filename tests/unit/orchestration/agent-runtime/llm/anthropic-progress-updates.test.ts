@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
 import { tmpdir } from "node:os";
-import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models/models.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
 import { createAnthropicAdapter, operationsFromAnthropicClient } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import type { ConversationMessage, ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";

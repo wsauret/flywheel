@@ -23,7 +23,7 @@ import {
   stagingDir,
   type OperationManifest,
 } from "../../../../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
-import { SKILL_FILE } from "../../../../../../src/workflows/skill-schema.js";
+import { SKILL_FILE } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { createGlobalSkillHarness, type GlobalSkillHarness } from "../../../../../helpers/global-skill-operations.js";
 
 // A manifest names its directories canonically, and recovery compares them

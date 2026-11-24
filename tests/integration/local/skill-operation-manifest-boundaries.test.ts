@@ -13,7 +13,7 @@ import {
   type ProposalRecord,
 } from "../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
 import type { SkillMutationPlan, SkillStoreConfig } from "../../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { publishSkillRevision } from "../../../src/workflows/skill-schema.js";
+import { publishSkillRevision } from "../../../src/workflows/skills/skill-schema.js";
 
 const TMP = join(tmpdir(), `flywheel-operation-record-boundaries-${process.pid}-${Date.now()}`);
 const GLOBAL_ROOT = join(TMP, "skills");

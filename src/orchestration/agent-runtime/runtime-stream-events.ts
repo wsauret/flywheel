@@ -1,4 +1,4 @@
-import { boundProviderDetail, classifyApiError } from "../../infra/llm/provider-error-copy.js";
+import { boundProviderDetail, classifyApiError } from "../../infra/llm/errors/provider-error-copy.js";
 import { createRuntimeEvent } from "../../infra/runtime-event-factory.js";
 import type { SessionNoticeOperation } from "../../infra/session-notice.js";
 import { PROVIDER_NOTICE_SCOPE, resolveProviderNotices } from "./agent-resilience.js";
