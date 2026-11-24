@@ -59,7 +59,7 @@ async function currentWriterVersion(file: string, conversationId: string) {
       expect(sessions).toHaveLength(1)
       return { chat: facts[0]?.version, session: sessions[0]?.version }
     } finally {
-      tree.getStorage().dispose()
+      tree.dispose()
     }
   } finally {
     store.close()
@@ -248,7 +248,7 @@ describe("release performance fixture", () => {
         expect(branch).toHaveLength(227)
         expect(branch.at(-1)).toMatchObject({ kind: "message", message: { kind: "system", content: TERMINAL_ANNOTATION } })
       } finally {
-        giantTree?.getStorage().dispose()
+        giantTree?.dispose()
       }
 
       expect(await currentWriterVersion(probeFile, "after-fixture")).toEqual(productionVersion)

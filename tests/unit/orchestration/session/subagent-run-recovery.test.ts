@@ -49,7 +49,7 @@ describe("stale subagent run recovery", () => {
     const writer = asAsyncEventWriter(store)
     const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer })
     await tree.appendMessage({ kind: "user", content: "delegated task" })
-    await tree.getStorage().dispose()
+    await tree.dispose()
     await writer.append(prepareSessionFactAppend(sessionId, buildDurableSubagentCreated({
       childSessionId: sessionId,
       childRunId: "run-durable-child",
@@ -100,7 +100,7 @@ describe("stale subagent run recovery", () => {
 
     const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer })
     await tree.appendMessage({ kind: "user", content: "dispatch something" })
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     appendStampedLegacyRun(store, sessionId, { childRunId: "child-1", toolUseId: "tool-1", modelRequestId: "request-1", conversationId, description: "explore the repo" })
 
@@ -131,7 +131,7 @@ describe("stale subagent run recovery", () => {
     for (const conversationId of [first, second]) {
       const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer })
       await tree.appendMessage({ kind: "user", content: `step of ${conversationId}` })
-      await tree.getStorage().dispose()
+      await tree.dispose()
     }
     appendStampedLegacyRun(store, sessionId, { childRunId: "child-b", toolUseId: "tool-b", modelRequestId: "request-b", conversationId: second, description: "explore for step b" })
 

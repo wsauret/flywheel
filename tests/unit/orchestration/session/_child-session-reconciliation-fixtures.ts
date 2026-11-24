@@ -154,7 +154,7 @@ export async function reconcileChatLaunchedWorkflowCompletions(
         id: notification.key,
         message: redactMessage({ kind: "user", content: notification.text, replyRequired: true }, false),
       }])
-      tree.getStorage().dispose()
+      tree.dispose()
       if (append) {
         await input.writer.appendBatch([{
           ...append,
@@ -256,7 +256,7 @@ export async function recordCompletionEntry(
   if (!tree) throw new Error("missing parent conversation")
   const message_ = redactMessage({ kind: "user", content: message, ...(options.replyRequired === true ? { replyRequired: true } : {}) }, false)
   const [append] = await tree.prepareMessagesAppend([{ id: entryId, message: message_ }])
-  await tree.getStorage().dispose()
+  await tree.dispose()
   if (!append) throw new Error("completion entry was not prepared")
   await writer.appendBatch([append])
 }
@@ -337,7 +337,7 @@ export async function addSubagentChild(
   const end = interruptedTurnEnd("person")
   await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, childRunId))
   await tree.appendMessage({ kind: "user", content: "Also check the tests.", origin: "human" })
-  tree.getStorage().dispose()
+  tree.dispose()
 }
 
 /** Records the model's launching call before the child publication. */
@@ -423,7 +423,7 @@ export async function createHistoricalChat(store: LocalSqliteEventStore, writer:
     store: asAsyncEventReadSurface(store),
     writer,
   })
-  tree.getStorage().dispose()
+  tree.dispose()
   store.append({
     aggregateId: `session:${id}`,
     sessionId: id,

@@ -344,7 +344,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       ...(opts.initialRoles ? { initialRoles: opts.initialRoles } : {}),
       beforePersist: async () => {
         const tree = await createConversationTree({ conversationId, sessionId: id, now: () => now, store: projectionReader, writer })
-        tree.getStorage().dispose()
+        tree.dispose()
         startupTrace("session manager create tree created")
       },
     })
@@ -450,7 +450,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       }
       await runInTaskSlices("conversation:context-publication", validateRawForkBranchWork(await tree.getBranch()))
     } finally {
-      tree.getStorage().dispose()
+      tree.dispose()
     }
     await appendChildPublication(
       targetSessionId,

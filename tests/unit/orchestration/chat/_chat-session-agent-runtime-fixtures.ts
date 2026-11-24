@@ -331,7 +331,7 @@ export async function createStoredChatSession(input: {
   const handle = { conversationId, sessionId, store: reader, writer }
   const tree = await tryOpenConversationTree(handle) ?? await createConversationTree(handle)
   await input.seed(tree)
-  tree.getStorage().dispose()
+  tree.dispose()
   const calls: ConversationMessage[][] = []
   const parks: boolean[] = []
   const createClient = async () => asModelClient({
@@ -377,7 +377,7 @@ export async function createStoredChatSession(input: {
         return end ? [end] : []
       })
     } finally {
-      reopened.getStorage().dispose()
+      reopened.dispose()
     }
   }
   return { chat, calls, parks, parked, turnEnds }

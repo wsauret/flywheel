@@ -154,7 +154,7 @@ describe("chat turn-end read", () => {
       expect(costs[0]).toBeLessThanOrEqual(3)
       expect(new Set(costs.slice(1))).toEqual(new Set([2]))
     } finally {
-      tree.getStorage().dispose()
+      tree.dispose()
       store.close()
     }
   })
@@ -183,7 +183,7 @@ describe("chat turn-end read", () => {
       expect(await readChatTurnEnd(counter.reader, "asks")).toEqual({ end, recorded: true, backgroundWait: true })
       expect(inFlightReads()).toBe(1)
     } finally {
-      tree.getStorage().dispose()
+      tree.dispose()
       store.close()
     }
   })
@@ -204,7 +204,7 @@ describe("chat turn-end read", () => {
         await tree.appendMessage({ kind: "user", content: "Interrupted", origin: "system" }, id)
         const entry = (await tree.getBranch()).find((candidate) => candidate.id === id)!
         await tree.appendMessage({ kind: "user", content: "Later notice", origin: "system" })
-        tree.getStorage().dispose()
+        tree.dispose()
         expected.push({ attemptId: step.id, conversationId: step.lastConversationId, turnEnd: { recorded: true, end: { reason: "paused", pausedBy: by } }, timestamp: Date.parse(entry.timestamp) })
       }
       const evidence = await readWorkflowAgentTurnEnds(reader, "workflow")
@@ -246,11 +246,11 @@ describe("chat turn-end read", () => {
         for (const entry of after) {
           await tree.appendMessage(entry === "queued" ? { kind: "user", content: "Also check the tests.", origin: "human" } : { kind: "assistant", content: [{ type: "text", text: "Done." }] })
         }
-        tree.getStorage().dispose()
+        tree.dispose()
       }
       const short = await createConversationTree({ conversationId: "short", sessionId: "session-short", store: reader, writer })
       await short.appendMessage({ kind: "user", content: "Do the work.", origin: "human" })
-      short.getStorage().dispose()
+      short.dispose()
       const batches = (id: string) => store.read({ aggregateId: `conversation:${id}`, types: ["chat.entries.appended"], order: "desc" })
       const db = new Database(path)
       try {
@@ -284,7 +284,7 @@ describe("chat turn-end read", () => {
       const end = interruptedTurnEnd("person")
       await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, "key"))
       for (let notice = 0; notice < notices; notice += 1) await tree.appendMessage({ kind: "user", content: `Notice ${notice}.`, origin: "system" })
-      tree.getStorage().dispose()
+      tree.dispose()
       await use(reader, conversationId)
     } finally {
       store.close()
@@ -333,7 +333,7 @@ describe("chat turn-end read", () => {
         await tree.appendMessage({ kind: "user", content: "PING", producer: { kind: "session", sessionId: child, conversationId: `${child}-conversation`, toolUseId: "call-1", hop: 0, envelope: { name: child, relation: "child", waits: true } } }, `msg:${child}:call-1`)
       }
       const branch = await tree.getBranch()
-      tree.getStorage().dispose()
+      tree.dispose()
       expect(chatTurnEndOf(branch)).toEqual(interrupted)
       expect(await readChatTurnEnd(reader, conversationId)).toEqual(interrupted)
     } finally {
@@ -359,7 +359,7 @@ describe("chat turn-end read", () => {
       expect(await readPendingTurnEnd(reader, conversationId)).toEqual({ reason: "paused", pausedBy: "agent" })
       // An answer after the record ran a model step, so no cut is pending.
       await tree.appendMessage({ kind: "assistant", content: [{ type: "text", text: "Done." }] })
-      tree.getStorage().dispose()
+      tree.dispose()
       expect(await readPendingTurnEnd(reader, conversationId)).toBeUndefined()
     } finally {
       store.close()
@@ -376,7 +376,7 @@ describe("chat turn-end read", () => {
       await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "call-1", name: "search", input: {} }] })
       await tree.appendMessage({ kind: "toolResult", toolUseId: "call-1", content: [{ type: "text", text: "found" }] })
       await tree.appendMessage({ kind: "user", content: "The qa workflow could not start: required skills are missing", origin: "system" }, turnEndEntryId({ reason: "settled" }, "operation-1"))
-      tree.getStorage().dispose()
+      tree.dispose()
       expect(await readChatTurnEnd(reader, conversationId)).toEqual({ end: { reason: "crash" }, recorded: false })
     } finally {
       store.close()

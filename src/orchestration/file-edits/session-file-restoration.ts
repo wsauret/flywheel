@@ -85,10 +85,11 @@ export async function reconstructOriginal(reader: AsyncEventStateReadSurface, re
     const last = steps.at(-1)
     requireProof(last, "unretained")
     requireProof(authority.canonicalPath === file.path, "drifted")
-    requireProof(!authority.snapshot || authority.text !== undefined, "drifted")
+    const admitted = authority.admittedSnapshot()
+    requireProof(!admitted || authority.text !== undefined, "drifted")
     let text = authority.text
-    let bytes = authority.snapshot?.content
-    let access = authority.snapshot ? fileAccessProof(authority.snapshot.metadata) : null
+    let bytes = admitted?.content
+    let access = admitted ? fileAccessProof(admitted.metadata) : null
     requireProof(matchesEndpoint(bytes, last.payload.after) && sameAccess(access, last.payload.afterAccess), "drifted")
     for (const { payload, patch } of steps.toReversed()) {
       requireProof(matchesEndpoint(bytes, payload.after) && sameAccess(access, payload.afterAccess), "unretained")

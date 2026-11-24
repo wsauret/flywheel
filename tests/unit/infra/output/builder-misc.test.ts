@@ -88,7 +88,7 @@ describe("StructuredOutputBuilder — misc", () => {
     // The eviction wiring is cap-independent, so a small injected cap proves
     // it without paying for 40k pushes against the production 20k.
     it("caps blocks at the injected cap, dropping oldest on overflow", () => {
-      const capped = new StructuredOutputBuilder(100);
+      const capped = new StructuredOutputBuilder({ blocksCap: 100 });
       const now = Date.now();
       for (let i = 0; i < 60; i++) {
         // Alternate text and standalone tool to prevent merging/grouping

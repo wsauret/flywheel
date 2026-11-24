@@ -25,22 +25,22 @@ describe("StructuredOutputBuilder streaming methods", () => {
     }
   });
 
-  test("streamingText.append records live text without touching the block tree", () => {
+  test("appendToolText records live text without touching the block tree", () => {
     const builder = new StructuredOutputBuilder();
     const idx = builder.pushTool("write", { name: "Write", detail: "" }, Date.now(), undefined, undefined, undefined, undefined, true);
     const blocksBefore = builder.getBlocks();
-    builder.streamingText.append("tc-1", "hello ");
-    builder.streamingText.append("tc-1", "world", "typescript");
-    expect(builder.streamingText.snapshot()).toEqual({ "tc-1": { content: "hello world", filetype: "typescript" } });
+    builder.appendToolText("tc-1", "hello ");
+    builder.appendToolText("tc-1", "world", "typescript");
+    expect(builder.streamingToolText).toEqual({ "tc-1": { content: "hello world", filetype: "typescript" } });
     const block = builder.getBlocks()[idx];
     expect(block).toBe(blocksBefore[idx]!);
   });
 
-  test("streamingText.clear removes the live text entry", () => {
+  test("clearToolText removes the live text entry", () => {
     const builder = new StructuredOutputBuilder();
-    builder.streamingText.append("tc-1", "partial content");
-    builder.streamingText.clear("tc-1");
-    expect(builder.streamingText.snapshot()).toEqual({});
+    builder.appendToolText("tc-1", "partial content");
+    builder.clearToolText("tc-1");
+    expect(builder.streamingToolText).toEqual({});
   });
 
   test("finalizeStandaloneTool sets detail/diff/content on the block", () => {

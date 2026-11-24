@@ -615,7 +615,7 @@ async function durableUserCount(sessionId: string, conversationId: string): Prom
     const branch = await tree.getBranch()
     return branch.filter(isUserTurn).length
   } finally {
-    await tree.getStorage().dispose()
+    await tree.dispose()
   }
 }
 

@@ -170,7 +170,7 @@ describe("a chat host built with a command handover", () => {
     await tree.appendMessage({ kind: "user", content: "keep the dev server running", origin: "human" })
     const cut = interruptedTurnEnd("replacement")
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(cut.pausedBy, false), origin: "system" }, turnEndEntryId(cut, crypto.randomUUID()))
-    tree.getStorage().dispose()
+    tree.dispose()
     const calls: ConversationMessage[][] = []
     const createClient = async () => asModelClient({
       accessProvider: "anthropic_api",
@@ -232,7 +232,7 @@ describe("a chat host built with a command handover", () => {
     await tree.appendMessage({ kind: "user", content: "keep the dev server running", origin: "human" })
     const cut = interruptedTurnEnd("replacement")
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(cut.pausedBy, false), origin: "system" }, turnEndEntryId(cut, crypto.randomUUID()))
-    tree.getStorage().dispose()
+    tree.dispose()
     const calls: ConversationMessage[][] = []
     const createClient = async () => asModelClient({
       accessProvider: "anthropic_api",

@@ -259,7 +259,7 @@ function completeWorkflowDelivery(
         index.durable.add(id)
         if (notification.sequence !== undefined) liveWorkflowControl(input.reader, id)?.acknowledgeCompletion?.(notification.sequence)
       }
-    } finally { for (const tree of conversations.values()) tree?.getStorage().dispose() }
+    } finally { for (const tree of conversations.values()) tree?.dispose() }
     const linkedNonterminalWorkflowToolUseIds = [...index.nonterminal.values()]
     return {
       reconciledCount,
@@ -379,7 +379,7 @@ async function publishSubagentCompletions(
     const missingResults = currentCandidates.filter((candidate) =>
       candidate.tool.status === "called" || candidate.tool.status === "interrupted")
     if (notificationCandidates.length === 0 && missingResults.length === 0) {
-      tree.getStorage().dispose()
+      tree.dispose()
       return 0
     }
 
@@ -420,7 +420,7 @@ async function publishSubagentCompletions(
     }
     const lifecycleAppends = await prepareLifecycleAppends(context, [...latestCandidateByChild.values()], now)
     const appends: GuardedEventStoreAppend[] = [...resultAppends, ...lifecycleAppends]
-    tree.getStorage().dispose()
+    tree.dispose()
     if (appends.length > 0) {
       const result = await input.writer.appendBatchGuarded(appends)
       if (result.kind === "conflict") {
@@ -541,7 +541,7 @@ async function reconcileChild(
       && (candidate.tool.resultOutcome !== expectedOutcome || !recorded.some((words) => candidate.tool.contentSha256 === contentEvidence(words).sha256))
     const existingBaseEntry = state.entriesById[notificationId]
     if (candidate.unchangedSinceResult && existingBaseEntry) {
-      tree.getStorage().dispose()
+      tree.dispose()
       return { wrote: false, durable: true, terminalSequence: candidate.terminal.aggregateSeq }
     }
     const entryId = existingBaseEntry && isRecordedCompletion(existingBaseEntry)
@@ -549,7 +549,7 @@ async function reconcileChild(
       : workflowCompletionEntryId(childSessionId, candidate.terminal.aggregateSeq, message, existingBaseEntry)
     const existingEntry = state.entriesById[entryId]
     if (existingEntry && !isRecordedCompletion(existingEntry)) {
-      tree.getStorage().dispose()
+      tree.dispose()
       return { wrote: false, durable: false }
     }
     const notificationHeld = (await input.projectionReader.readInFlight(
@@ -560,7 +560,7 @@ async function reconcileChild(
     const durable = existingEntry !== undefined || deliveredAsHistory
     if (!durable) context.index.pendingWorkflows.set(childSessionId, { conversationId: candidate.conversationId, key: entryId, sequence: candidate.terminal.aggregateSeq })
     const delivery = !durable && !notificationHeld ? { key: entryId, text: message } : null
-    tree.getStorage().dispose()
+    tree.dispose()
     if (!resultMissing && !resultCorrection && !delivery) return {
       wrote: false, durable, terminalSequence: candidate.terminal.aggregateSeq,
     }
@@ -649,7 +649,7 @@ async function deliverSettledNotification(context: ReconciliationContext, candid
   const entryId = revised ? revisedCompletionEntryId(candidate.childSessionId, candidate.revision, candidate.content) : baseId
   const existing = state.entriesById[entryId] ?? state.entriesById[historicalCompletionEntryId(candidate.childSessionId)]
   if (!existing) context.index.pendingWorkflows.set(candidate.childSessionId, { conversationId: candidate.conversationId, key: entryId })
-  tree.getStorage().dispose()
+  tree.dispose()
   const held = heldRows.some((row) => row.key === entryId)
   if (existing || held) return { wrote: false, durable: existing !== undefined }
   const payload = { conversationId: candidate.conversationId, text: candidate.content }

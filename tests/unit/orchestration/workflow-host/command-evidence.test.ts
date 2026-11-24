@@ -88,7 +88,7 @@ describe("command evidence source", () => {
         { kind: "toolResult", toolUseId: "call_read", content: [{ type: "text", text: "1|import" }] },
         { kind: "toolResult", toolUseId: "tool-verify", content: [{ type: "text", text: "pass\n[exit code: 0]" }] },
       ]);
-      tree.getStorage().dispose();
+      tree.dispose();
 
       let drained = false;
       const source = createCommandEvidenceSource({

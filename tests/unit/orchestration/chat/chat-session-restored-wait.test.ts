@@ -87,7 +87,7 @@ describe("a restored background wait", () => {
       const childTree = await tryOpenConversationTree({ conversationId: "child-conversation", sessionId: "child", store: reader, writer })
       if (!childTree) throw new Error("missing child conversation")
       await appendTurnEnd(childTree, interruptedTurnEnd("replacement"))
-      childTree.getStorage().dispose()
+      childTree.dispose()
       await writer.append(prepareSessionFactAppend("child", buildSubagentPaused({ childRunId: "child-run", pausedBy: "runtime" })))
       await authorizePlannedSessionContinuation({ reader, writer, continuation: { target: { sessionId: "child", kind: "subagent" }, runId: "child-run", handoffId: "handoff" } })
       const stored = await createStoredChatSession({
@@ -369,7 +369,7 @@ describe("a restored background wait", () => {
       try {
         await seedWait(interruptedTurnEnd("replacement"), undefined, kind)(tree)
         if (kind === "reply") await holdReplyWait(writer, sessionId, { addresseeSessionId: "child", toolUseId: "wait-child", openedAtMs: Date.now() })
-      } finally { tree.getStorage().dispose() }
+      } finally { tree.dispose() }
     } finally { setSystemTime() }
     // A successor that took over the cut wait retired the row; the
     // predecessor of a replacement still in progress holds it.

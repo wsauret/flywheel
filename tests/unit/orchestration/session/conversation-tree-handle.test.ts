@@ -230,7 +230,7 @@ describe("tryOpenConversationTree", () => {
     const conversationId = await conversationIdOf(mgr, id);
     const tree = await openExistingTree({ conversationId, sessionId: id, store });
     expect(await tree.getLeafId()).toBeNull();
-    await tree.getStorage().dispose();
+    await tree.dispose();
   });
 
   it("returns null for a conversation that has no chat tree fact", async () => {
@@ -295,7 +295,7 @@ describe("borrowed tree handle lifecycle", () => {
     const conversationId = await conversationIdOf(mgr, id);
     const tree = await openExistingTree({ conversationId, sessionId: id, store });
 
-    await tree.getStorage().dispose();
+    await tree.dispose();
 
     expect(store.countByAggregate(`conversation:${conversationId}`)).toBeGreaterThan(0);
   });
@@ -332,7 +332,7 @@ describe("model deliberation persistence", () => {
       },
       { kind: "toolResult", toolUseId: "t1", content: [{ type: "text", text: "ok" }] },
     ]);
-    await tree.getStorage().dispose();
+    await tree.dispose();
 
     const reopened = await openExistingTree({ conversationId, sessionId: id, store, writer: immediateWriter(store) });
     const context = await reopened.buildContext({ allowAssistantTail: true });
@@ -346,7 +346,7 @@ describe("model deliberation persistence", () => {
     // replays the verbatim provider reasoning item.
     const wire = JSON.stringify(toOpenAIResponsesRequestInput({ ...openaiAttribution, sharedHost: false }, context.messages).input);
     expect(wire).toContain("ciphertext");
-    await reopened.getStorage().dispose();
+    await reopened.dispose();
   });
 
   it("replays rebuilt Anthropic thinking with its signature", async () => {
@@ -367,14 +367,14 @@ describe("model deliberation persistence", () => {
       },
       { kind: "user", content: "continue" },
     ]);
-    await tree.getStorage().dispose();
+    await tree.dispose();
 
     const reopened = await openExistingTree({ conversationId, sessionId: id, store, writer: immediateWriter(store) });
     const context = await reopened.buildContext();
     const request = toAnthropicMessagesRequest({ ...anthropicAttribution, sharedHost: false, cacheRetention: "none" }, context.messages);
     const assistantWire = request.messages.find((message) => message.role === "assistant");
     expect(assistantWire?.content).toContainEqual({ type: "thinking", thinking: "signed chain", signature: "anthropic-sig" });
-    await reopened.getStorage().dispose();
+    await reopened.dispose();
   });
 
   it("keeps a response's reported reasoning tokens and request effort through a rebuild while every entries fact keeps the shape an earlier build reads", async () => {
@@ -387,7 +387,7 @@ describe("model deliberation persistence", () => {
     const counted: ConversationMessage = { kind: "assistant", ...anthropicAttribution, reasoningTokens: 4_716, reasoningEffort: "high", content: [{ type: "thinking", thinking: "", signature: "sig-1" }, { type: "text", text: "first" }] };
     await tree.appendMessages([counted, { kind: "user", content: "again" }]);
     const leaf = await tree.getLeafId();
-    await tree.getStorage().dispose();
+    await tree.dispose();
     const [entriesFact, countsFact, effortsFact] = store.read({ aggregateId: `conversation:${conversationId}` }).slice(-3);
     if (!entriesFact) throw new Error("expected the counted batch");
     // The entries keep version 3, which every earlier build reads in full; the count and the effort travel in their
@@ -415,7 +415,7 @@ describe("model deliberation persistence", () => {
     const assistants = history.filter((message) => message.kind === "assistant");
     expect(assistants[0]).toEqual(counted);
     expect(assistants.at(-1)).toEqual({ kind: "assistant", ...anthropicAttribution, content: [{ type: "thinking", thinking: "", signature: "sig-2" }, { type: "text", text: "earlier" }] });
-    await reopened.getStorage().dispose();
+    await reopened.dispose();
   });
 
   it("keeps deliberation and canonical tool_use on an incomplete assistant message", async () => {
@@ -443,7 +443,7 @@ describe("model deliberation persistence", () => {
       { type: "thinking", thinking: "partial chain" },
       { type: "tool_use", id: "t1", name: "bash", input: { command: "ls" } },
     ]);
-    await tree.getStorage().dispose();
+    await tree.dispose();
   });
 
   it("round-trips a content-repair decision into the rebuilt context", async () => {
@@ -454,11 +454,11 @@ describe("model deliberation persistence", () => {
     const decision = { kind: "system", content: "The provider refused two tool calls; they are removed.", contentRepair: { kind: "remove", toolUseIds: ["toolu_1", "toolu_2"] } } as const;
     await tree.appendMessage({ kind: "user", content: "ask" });
     await tree.appendMessage(decision);
-    await tree.getStorage().dispose();
+    await tree.dispose();
 
     const reopened = await openExistingTree({ conversationId, sessionId: id, store, writer: immediateWriter(store) });
     expect((await reopened.buildContext()).messages).toEqual([{ kind: "user", content: "ask" }, decision]);
-    await reopened.getStorage().dispose();
+    await reopened.dispose();
   });
 });
 
@@ -482,7 +482,7 @@ describe("dangling tool_use sweep at adoption", () => {
       },
       { kind: "toolResult", toolUseId: "t1", content: [{ type: "text", text: "ok" }] },
     ]);
-    await tree.getStorage().dispose();
+    await tree.dispose();
     return { id, conversationId };
   }
 
@@ -560,7 +560,7 @@ describe("dangling tool_use sweep at adoption", () => {
       { kind: "assistant", content: [{ type: "tool_use", id: "t1", name: "bash", input: {} }] },
       { kind: "toolResult", toolUseId: "t1", content: [{ type: "text", text: "ok" }] },
     ]);
-    await tree.getStorage().dispose();
+    await tree.dispose();
     removeOwnerPid(id, baseDir);
     const branch = await readReconciledBranch({ conversationId, sessionId: id, store: asAsyncEventReadSurface(store), writer: immediateWriter(store), projectRoot: baseDir });
     expect(branch?.length).toBe(3);
@@ -578,7 +578,7 @@ describe("readReconciledBranch ownership gate", () => {
     const tree = await openExistingTree({ conversationId, sessionId: id, store, writer: immediateWriter(store) });
     await tree.appendMessage({ kind: "user", content: "hello" });
     await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "t1", name: "search", input: {} }] });
-    await tree.getStorage().dispose();
+    await tree.dispose();
     return { id, conversationId };
   }
 
@@ -595,7 +595,7 @@ describe("readReconciledBranch ownership gate", () => {
         { type: "tool_use", id: "ask-1", name: "ask_user", input: {} },
       ],
     });
-    await tree.getStorage().dispose();
+    await tree.dispose();
     removeOwnerPid(id, baseDir);
 
     const branch = await readReconciledBranch({
@@ -619,7 +619,7 @@ describe("readReconciledBranch ownership gate", () => {
     const tree = await openExistingTree({ conversationId, sessionId: id, store, writer: immediateWriter(store) });
     await tree.appendMessage({ kind: "user", content: "start workflow" });
     await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "workflow-1", name: "workflow", input: {} }] });
-    tree.getStorage().dispose();
+    tree.dispose();
     removeOwnerPid(id, baseDir);
 
     const transcript = await readReconciledTranscript({

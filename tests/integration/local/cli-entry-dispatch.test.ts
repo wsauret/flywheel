@@ -201,7 +201,7 @@ describe("the CLI entry's subcommand dispatch", () => {
     const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot));
     const tree = await createConversationTree({ conversationId: "conversation-1", sessionId: "session-1", store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) });
     for (let index = 0; index < 200; index += 1) await tree.appendMessage({ kind: "user", content: `message ${index} ${"x".repeat(500)}` });
-    await tree.getStorage().dispose();
+    await tree.dispose();
     store.close();
     const fast = await runEntry(["events", "search", "--json", "--limit", "0"]);
     expect(fast.exitCode).toBe(0);

@@ -54,7 +54,7 @@ export async function recoverStaleSubagentRuns(input: SessionHistoryRecoveryInpu
           })))
           return { interruptedCount: 0, recoveryMessageCount: 0 }
         }
-      } finally { tree.getStorage().dispose() }
+      } finally { tree.dispose() }
     }
   }
   const planned = await readPlannedSessionContinuationAsync(input.projectionReader, input.sessionId)

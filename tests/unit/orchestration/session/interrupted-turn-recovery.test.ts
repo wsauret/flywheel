@@ -48,7 +48,7 @@ function conversationFacts(): string[] {
 }
 
 async function reopenContextStore(): Promise<ConversationTree> {
-  await (await ctx.tree.getStorage()).dispose();
+  await ctx.tree.dispose();
   ctx.store.close();
   ctx.store = createSqliteEventStore(resolveEventStoreDbFile(ctx.baseDir));
   const reopened = await tryOpenConversationTree({ conversationId: ctx.conversationId, sessionId: ctx.sessionId, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) });
@@ -687,7 +687,7 @@ describe("a background notification queued mid-turn", () => {
       expect(copies).toHaveLength(1);
       expect(ctx.store.readInFlight(ctx.sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toHaveLength(0);
     } finally {
-      await (await otherTree.getStorage()).dispose();
+      await otherTree.dispose();
       otherStore.close();
     }
   });

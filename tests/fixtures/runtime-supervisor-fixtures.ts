@@ -94,7 +94,7 @@ export function supervisorConversationFixture(currentContext: () => SupervisorTe
     const tree = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
     if (!tree) throw new Error(`expected conversation tree ${conversationId}`)
     const result = await tree.appendMessages(messages)
-    await tree.getStorage().dispose()
+    await tree.dispose()
     if (result.kind !== "committed") throw new Error(`tree append failed: ${result.kind}`)
   }
 

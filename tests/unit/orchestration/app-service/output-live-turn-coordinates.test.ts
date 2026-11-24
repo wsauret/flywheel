@@ -26,7 +26,7 @@ describe("live/derived output equivalence", () => {
     const live = createOutputSession({ updateEntry: () => {}, sessionId, executionCwd: realpathSync(tmpDir) })
     try {
       const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
-      const allocate = () => tree.getStorage().allocateId()
+      const allocate = () => tree.allocateId()
       const [userId, firstId, readResultId, bashResultId, secondId] = [await allocate(), await allocate(), await allocate(), await allocate(), await allocate()]
       const delta = (blockKey: string, data: { type: string, thinking?: string, text?: string, presentation?: "progress", provisional_block_key?: string }) =>
         live.dispatchRuntimeEvent({ type: "model.content.delta", data: { delta: data, block_key: blockKey } })
@@ -77,7 +77,7 @@ describe("live/derived output equivalence", () => {
         { kind: "assistant", content: secondStep },
       ], [userId, firstId, readResultId, bashResultId, secondId])
       if (appended.kind !== "committed") throw new Error("expected durable coordinate messages")
-      tree.getStorage().dispose()
+      tree.dispose()
 
       const projection = testSessionDetailProjection({
         projectRoot: tmpDir,
@@ -112,7 +112,7 @@ describe("live/derived output equivalence", () => {
     const live = createOutputSession({ updateEntry: () => {}, sessionId, executionCwd: realpathSync(tmpDir) })
     try {
       const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
-      const allocate = () => tree.getStorage().allocateId()
+      const allocate = () => tree.allocateId()
       const [userId, summarizedId, resultId, rawId, nextUserId, unpersistedId, thinkOnlyUserId, interruptedUserId, failedUserId] = [await allocate(), await allocate(), await allocate(), await allocate(), await allocate(), await allocate(), await allocate(), await allocate(), await allocate()]
       const context = {
         options: { onEvent: (event: RuntimeEvent) => live.dispatchRuntimeEvent(event) },
@@ -198,7 +198,7 @@ describe("live/derived output equivalence", () => {
         { kind: "user", content: "fail now" },
       ], [userId, summarizedId, resultId, rawId, nextUserId, unpersistedId, thinkOnlyUserId, interruptedUserId, failedUserId])
       if (appended.kind !== "committed") throw new Error("expected durable reasoning messages")
-      tree.getStorage().dispose()
+      tree.dispose()
 
       const projection = testSessionDetailProjection({
         projectRoot: tmpDir,

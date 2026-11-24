@@ -87,7 +87,7 @@ test.each(["close", "delete"] as const)("%s cannot be undone by a queued cold-se
     try {
       expect((await tree.appendMessages([{ kind: "user", content: "Earlier user turn" }])).kind).toBe("committed")
     } finally {
-      await tree.getStorage().dispose()
+      await tree.dispose()
     }
     const undo = supervisor.undoChanges(request)
     const signal = await started.promise

@@ -326,7 +326,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     expect(resumes).toBe(1)
     const tree = await openExistingTree({ conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
     const leaf = (await tree.getBranch()).at(-1)
-    await tree.getStorage().dispose()
+    await tree.dispose()
     expect(leaf?.kind === "message" && leaf.message.kind === "toolResult" ? leaf.message.toolUseId : null).toBe("ask-1")
     expect(leaf?.kind === "message" && leaf.message.kind === "toolResult" ? leaf.message.interrupted : undefined).not.toBe(true)
 
@@ -357,7 +357,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     expect(resumes).toBe(0)
     const tree = await openExistingTree({ conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
     const branch = await tree.getBranch()
-    await tree.getStorage().dispose()
+    await tree.dispose()
     expect(branch.at(-1)).toMatchObject({
       kind: "message",
       message: { kind: "system", content: "Interrupted by user." },
@@ -419,7 +419,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     expect(ctx.sessionStore.get(sessionId)?.runner?.sessionId).toBe(sessionId)
     const tree = await openExistingTree({ conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
     const leaf = (await tree.getBranch()).at(-1)
-    await tree.getStorage().dispose()
+    await tree.dispose()
     expect(leaf?.kind === "message" && leaf.message.kind === "toolResult" ? leaf.message.toolUseId : null).toBe("ask-1")
 
     await supervisor.disposeAll()
@@ -567,7 +567,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     if (!conversationId) throw new Error(`no conversationId for ${sessionId}`)
     const tree = await openExistingTree({ conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
     const recovery = (await tree.getBranch()).at(-1)
-    tree.getStorage().dispose()
+    tree.dispose()
     expect(recovery?.kind).toBe("message")
     if (recovery?.kind !== "message" || recovery.message.kind !== "user") throw new Error("missing recovery turn")
     expect(recovery.id).toBe(`subagent-recovery:${recoveryId}`)

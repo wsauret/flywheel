@@ -26,9 +26,9 @@ describe("live/derived tool pipeline equivalence", () => {
     const live = createOutputSession({ updateEntry: () => {}, sessionId, executionCwd: realpathSync(tmpDir) })
     try {
       const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
-      const entryId = await tree.getStorage().allocateId()
-      const resultEntryId = await tree.getStorage().allocateId()
-      const afterEntryId = await tree.getStorage().allocateId()
+      const entryId = await tree.allocateId()
+      const resultEntryId = await tree.allocateId()
+      const afterEntryId = await tree.allocateId()
       const onEvent: AgentOptions["onEvent"] = event => { live.dispatchRuntimeEvent(event) }
       const costTracker = createTurnUsageTracker({ emit: onEvent, budgetStreamId: "test" })
       const context: Parameters<typeof emitAgentStreamEvent>[1] = {
@@ -77,7 +77,7 @@ describe("live/derived tool pipeline equivalence", () => {
         { kind: "toolResult", toolUseId: toolCall.id, content: [{ type: "text", text: "src/\ntests/" }] },
         { kind: "assistant", content: [{ type: "text", text: "AFTER" }] },
       ], [entryId, resultEntryId, afterEntryId])
-      tree.getStorage().dispose()
+      tree.dispose()
       const projection = testSessionDetailProjection({
         projectRoot: tmpDir,
         sessionStore: { get: () => undefined },

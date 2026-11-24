@@ -334,7 +334,7 @@ describe("workflow card summaries", () => {
     await authorizePlannedSessionContinuation({ reader, writer, continuation: { target: { kind: "workflow", workflowId: "workflow-child" }, handoffId: "handoff-2" } })
     const end = interruptedTurnEnd("person")
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, "person"))
-    tree.getStorage().dispose()
+    tree.dispose()
     expect((await summaries.replay()).summaries.get("workflow-tool")).toMatchObject({ status: "paused", pausedBy: "person" })
   })
 
@@ -372,7 +372,7 @@ describe("workflow card summaries", () => {
     const writer = asAsyncEventWriter(store)
     const summaries = createWorkflowToolSummaryReader(reader, parent)
     const tree = await cutByReplacement(reader)
-    tree.getStorage().dispose()
+    tree.dispose()
     await authorizePlannedSessionContinuation({ reader, writer, continuation: { target: { kind: "workflow", workflowId: "workflow-child" }, handoffId: "handoff" } })
     if (read === "later") {
       // A measured card holds its members' totals, which the next read advances.
@@ -541,7 +541,7 @@ describe("workflow card summaries", () => {
     // The person interrupts the step: only the step's conversation records it.
     const end = interruptedTurnEnd("person")
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, "key"))
-    tree.getStorage().dispose()
+    tree.dispose()
     const interrupted = await summaries.replay()
     expect([...interrupted.changedToolUseIds]).toEqual(["workflow-tool"])
     expect(interrupted.summaries.get("workflow-tool")).toMatchObject({ status: "paused", pausedBy: "person" })

@@ -86,7 +86,7 @@ it("reads every child session its cards link in a fixed number of reads, not in 
         childRunId: id, status: "completed", isError: false, durationMs: 10, totalTokens: 20, toolUses: 1, result: "Done", resultBytes: 4, resultSha256: "sha", resultPreview: "Done",
       } })
     }
-    tree.getStorage().dispose()
+    tree.dispose()
     const { reader: counted, take } = countStateRequests(asAsyncEventReadSurface(store))
     const cache = createTranscriptProjectionCache({ reader: counted, projectionReader: counted, sessionStore: { get: () => undefined }, projectRoot: baseDir })
     try {

@@ -133,7 +133,7 @@ describe("SessionManager.forkChat", () => {
       expect((await tree.buildContext({ allowAssistantTail: true })).messages)
         .toEqual(captured)
     } finally {
-      tree.getStorage().dispose()
+      tree.dispose()
     }
     expect(target).toMatchObject({
       lifecycleState: "inactive",

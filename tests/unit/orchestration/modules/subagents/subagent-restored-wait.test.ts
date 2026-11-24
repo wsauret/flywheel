@@ -31,7 +31,7 @@ test.each(["runtime", "person"] as const)("a %s cut supplies the saved wait poli
     await tree.appendMessage({ kind: "toolResult", toolUseId: "wait-command", content: [{ type: "text", text: "Wait acknowledged." }] })
     const end = interruptedTurnEnd(by)
     await tree.appendMessage({ kind: "user", origin: "system", content: interruptedTurnMessage(end.pausedBy, false) }, turnEndEntryId(end, "wait-cut"))
-  } finally { setSystemTime(); tree.getStorage().dispose() }
+  } finally { setSystemTime(); tree.dispose() }
   const stop = new AbortController()
   const parked = Promise.withResolvers<void>()
   const requested = Promise.withResolvers<void>()
@@ -88,7 +88,7 @@ test("a planned cut in the middle of a child's turn continues its open wait thro
     await tree.appendMessage({ kind: "toolResult", toolUseId: "read-1", content: [{ type: "text", text: "notes" }] })
     const end = interruptedTurnEnd("replacement")
     await tree.appendMessage({ kind: "user", origin: "system", content: interruptedTurnMessage(end.pausedBy, false) }, turnEndEntryId(end, "planned-cut"))
-  } finally { setSystemTime(); tree.getStorage().dispose() }
+  } finally { setSystemTime(); tree.dispose() }
   const stop = new AbortController()
   const parked = Promise.withResolvers<string>()
   let requests = 0

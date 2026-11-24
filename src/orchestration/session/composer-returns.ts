@@ -4,7 +4,6 @@ import { Log } from "../../infra/log.js"
 import { ComposerReturnSchema, returnedInputNoticeId, type ClaimComposerReturnsResult } from "../../protocol/composer-returns.js"
 import { createSessionPlacementProjection, sessionMetadataStateOf } from "./session-metadata-projection.js"
 import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
-import { createConversationMessageEntry } from "./conversation/conversation-tree.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, queuedInputPayload, type QueuedUserInputCell } from "./conversation/queued-user-inputs.js"
 import { liveSessionControl } from "./live-session-control.js"
 
@@ -45,9 +44,7 @@ export async function returnUnreadHumanInput(store: {
       const message = `Subagent "${source.name}" finished before reading your message:\n\n${cell.text}`
       const timestamp = new Date().toISOString()
       for (;;) {
-        const appends = await tree.getStorage().prepareEntriesAppend(async (state) => state.entriesById[noticeId] ? [] : [
-          createConversationMessageEntry({ kind: "system", content: message, displayOnly: true }, noticeId, state.leafId, timestamp),
-        ])
+        const appends = await tree.prepareDisplayNoticeAppend(noticeId, message, timestamp)
         if (appends.length === 0) break
         try {
           const result = await store.writer.appendBatchGuarded(appends.map((append) => ({
@@ -66,7 +63,7 @@ export async function returnUnreadHumanInput(store: {
         break
       }
     }
-  } finally { tree.getStorage().dispose() }
+  } finally { tree.dispose() }
 }
 
 /** Claims only copies naming a submission sent by the caller, exactly once. The transcript notice is

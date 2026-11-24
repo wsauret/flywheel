@@ -28,7 +28,7 @@ describe("RuntimeEventProjector — subagent", () => {
   let parser: RuntimeEventProjector;
 
   beforeEach(() => {
-    projector = new OutputProjector({ executionCwd: "/workspace" });
+    projector = new OutputProjector({ executionCwd: "/workspace", onChange: () => {} });
     parser = new RuntimeEventProjector(projector);
   });
 
@@ -137,7 +137,6 @@ describe("RuntimeEventProjector — subagent", () => {
     });
 
     it("refines a dispatch in place before its long prompt completes", () => {
-      projector.onChange = () => {};
       projector.apply({ type: "tool-use", toolUseId: "dispatch", name: "subagent", input: {}, timestamp: 1000 });
       projector.apply({ type: "push-system-message", message: "Intervening content", timestamp: 1001 });
       const view = { blocks: [...projector.getBlocks()], streamingToolText: {} };
@@ -183,7 +182,7 @@ describe("RuntimeEventProjector — subagent", () => {
     });
 
     it("retains the child's goal after its card leaves the capped live viewport", () => {
-      const builder = new StructuredOutputBuilder(2);
+      const builder = new StructuredOutputBuilder({ blocksCap: 2 });
       const tools = new OutputToolProjector(builder, { executionCwd: "/workspace" });
       tools.handleToolUse({ type: "tool-use", toolUseId: "dispatch", name: "subagent", input: { kind: "dispatch", description: "Inspect retained identity" }, timestamp: 0 });
       tools.setChildLink("dispatch", "flywheel://session/child");
@@ -242,7 +241,7 @@ describe("RuntimeEventProjector — subagent", () => {
       if (status === "paused") projector.apply({ type: "agent-paused", toolUseId: "retry", pausedBy: "person", timestamp: 1001 });
       else projector.apply({ type: "tool-result", toolUseId: "retry", outcome: status === "cancelled" ? "cancelled" : "ok", details: { partial: status === "partial" }, timestamp: 1001 });
       expect(toolRow(projector.getBlocks()[0])).toMatchObject(status === "cancelled"
-        ? { status: "error", errorMessage: "Canceled" }
+        ? { status: "error", errorMessage: "Canceled by the parent" }
         : { status: "blocked", statusMessage: status === "paused" ? "Interrupted" : "Partial" });
       if (status === "paused") {
         const reopened = new OutputProjector({ executionCwd: "/workspace" });

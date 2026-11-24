@@ -259,7 +259,7 @@ export function createChildSessionPublication(ports: ChildSessionPublicationPort
       if (!append) throw new Error(`Runtime workflow invocation entry already exists: ${payload.parentEntryId}`)
       return [retainedOperation ? { ...append, inFlight: [retainedOperation] } : append, ...rest]
     } finally {
-      tree.getStorage().dispose()
+      tree.dispose()
     }
   }
 

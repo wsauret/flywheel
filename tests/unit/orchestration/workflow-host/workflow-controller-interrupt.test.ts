@@ -53,7 +53,7 @@ async function seedStepConversation(deps: WorkflowControllerDeps, interrupted: b
   await tree.appendMessage({ kind: "user", content: "Implement the parser", origin: "system" })
   if (interrupted) await tree.appendMessage({ kind: "user", content: interruptedTurnMessage("person", true), origin: "system" }, turnEndEntryId({ reason: "paused", pausedBy: "person" }, "k"))
   else await tree.appendMessage({ kind: "assistant", content: "Working on it." })
-  tree.getStorage().dispose()
+  tree.dispose()
 }
 
 /** A live workflow whose step is parked: an entry with idle activity and a

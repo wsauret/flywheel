@@ -39,7 +39,7 @@ describe("raw live conversation capture", () => {
     const resume = Promise.withResolvers<void>();
     let clock = 0;
     let paused = false;
-    const capturedTree = new ConversationTree(tree.getStorage(), {
+    const capturedTree = new ConversationTree(ctx.storage, {
       now: () => { clock += 8; return clock; },
       yieldToNextTask: async () => {
         if (paused) return;
@@ -286,7 +286,7 @@ describe("ConversationTreeWriter — retained operations", () => {
       expect(branch.at(-1)?.id).toBe(noticeId);
       expect(chatTurnEndOf(branch)).toEqual({ end: { reason: "crash" }, recorded: true });
     } finally {
-      recovered.getStorage().dispose();
+      recovered.dispose();
     }
   });
 
@@ -593,7 +593,7 @@ describe("ConversationTreeWriter — dispose and error surfacing", () => {
     writer.beginTurn();
     await writer.enqueueMessage(assistantMessage("queued"));
     // Force a failure by disposing the underlying storage, then flushing.
-    await (await tree.getStorage()).dispose();
+    await tree.dispose();
     await expect(writer.flushSavePoint()).rejects.toThrow();
   });
 });

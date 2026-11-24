@@ -272,7 +272,7 @@ describe("worker conversation tree", () => {
     for (const { sessionId: concurrentSessionId, conversationId, prompt } of sessions) {
       const tree = await tryOpenConversationTree({ conversationId, sessionId: concurrentSessionId, store: asAsyncEventReadSurface(store) })
       const branch = await tree!.getBranch()
-      await tree!.getStorage().dispose()
+      await tree!.dispose()
       const texts = branch
         .filter((entry) => entry.kind === "message")
         .map((entry) => typeof entry.message.content === "string"
@@ -310,7 +310,7 @@ describe("worker conversation tree", () => {
       .map((entry) => typeof entry.message.content === "string" ? entry.message.content : entry.message.content.map((b) => ("text" in b ? b.text : "")).join(""))
     expect(texts1).toEqual(["do the work\n\nstep task", "first-answer"])
     await afterFirst!.appendMessage({ kind: "user", content: "resume work" })
-    await afterFirst!.getStorage().dispose()
+    await afterFirst!.dispose()
 
     // Resume run with the SAME conversationId: the worker replays priorMessages
     // from the tree rather than re-seeding, and the conversation continues upward.
@@ -329,7 +329,7 @@ describe("worker conversation tree", () => {
 
     const afterSecond = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store) })
     const branch2 = await afterSecond!.getBranch()
-    await afterSecond!.getStorage().dispose()
+    await afterSecond!.dispose()
     expect(branch2).toHaveLength(4)
   })
 
@@ -368,7 +368,7 @@ describe("worker conversation tree", () => {
     await tree.appendMessage({ kind: "user", content: "do the work", origin: "system" })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "text", text: "halfway there" }] })
     await tree.appendMessage({ kind: "user", content: "continue" })
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     const texts = async (): Promise<string[]> => {
       const captured: CapturedRun[] = []
@@ -386,7 +386,7 @@ describe("worker conversation tree", () => {
     await tree.appendMessage({ kind: "user", content: "do the work", origin: "system" })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "text", text: "halfway there" }] })
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage("person", true), origin: "system" }, turnEndEntryId({ reason: "paused", pausedBy: "person" }, "k"))
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     const captured: CapturedRun[] = []
     await makeWorker(makeCapturingFactory(captured, "resumed-answer"))(
@@ -409,7 +409,7 @@ describe("worker conversation tree", () => {
     await tree.appendMessage({ kind: "assistant", content: [{ type: "text", text: "halfway there" }] })
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(by, true), origin: "system" }, turnEndEntryId({ reason: "paused", pausedBy: by }, "restore"))
     const timestamp = Date.parse((await tree.getBranch()).at(-1)!.timestamp)
-    await tree.getStorage().dispose()
+    await tree.dispose()
     const inputs = createWorkflowAgentInputs({ sessionId, store: asAsyncEventReadSurface(store), wake: "planned" })
     const captured: CapturedRun[] = []
     let cuts = 0
@@ -428,7 +428,7 @@ describe("worker conversation tree", () => {
     const tree = await memberTree(conversationId)
     await tree.appendMessage({ kind: "user", content: "do the work" })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "text", text: "waiting for background work" }] })
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     const captured: CapturedRun[] = []
     await makeWorker(makeCapturingFactory(captured, "resumed-answer"))(
@@ -445,7 +445,7 @@ describe("worker conversation tree", () => {
 
     const repaired = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store) })
     const branch = await repaired!.getBranch()
-    await repaired!.getStorage().dispose()
+    await repaired!.dispose()
     expect(branch.filter((entry) => entry.kind === "message").map((entry) => entry.message.kind)).toEqual([
       "user",
       "assistant",
@@ -467,7 +467,7 @@ describe("worker agent-input recovery", () => {
     const tree = await memberTree(conversationId)
     await tree.appendMessage({ kind: "user", content: "do the work" })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "ask-restart", name: "ask_user", input: {} }] })
-    await tree.getStorage().dispose()
+    await tree.dispose()
     store.append({
       aggregateId: `session:${sessionId}`,
       sessionId,
@@ -502,7 +502,7 @@ describe("worker agent-input recovery", () => {
 
     const reopened = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store) })
     const results = (await reopened!.getBranch()).filter((entry) => entry.kind === "message" && entry.message.kind === "toolResult")
-    await reopened!.getStorage().dispose()
+    await reopened!.dispose()
     expect(results).toHaveLength(1)
   })
 })

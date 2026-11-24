@@ -22,6 +22,7 @@ describe("retained file edit authority", () => {
     } finally { absent.close() }
     const existing = RetainedFileEditAuthority.admit(target)
     try {
+      existing.admittedSnapshot()!.content.fill(0)
       existing.verifyPrecondition()
       writeFileSync(target, "changed")
       expect(() => existing.verifyPrecondition()).toThrow("changed after admission")
@@ -106,7 +107,7 @@ describe("retained file edit authority", () => {
     mkdirSync(selected)
     const authority = RetainedFileEditAuthority.admitWritable(join(missing, "nested", "target.bin"), selected)
     try {
-      expect(authority.snapshot).toBeUndefined()
+      expect(authority.admittedFile).toBeUndefined()
       expect(authority.text).toBeUndefined()
       expect(existsSync(missing)).toBe(false)
       authority.publish(Buffer.from([0, 1, 2]))

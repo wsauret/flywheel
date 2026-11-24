@@ -294,8 +294,8 @@ describe("live/derived output equivalence", () => {
       const backgroundSettled = { toolUseId: "background-1", processId: "proc-1", description: "sleep 45", startedAtMs: 1_000, state: "settled" as const, status: "completed" as const, exitCode: 0, settledAtMs: 46_600 }
       const mutationEvidence = await buildMutationDiffEvidence(fileMutation, "example", async nodes => { store.stageSessionContentNodes(sessionId, nodes) })
       const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
-      const userEntryId = await tree.getStorage().allocateId()
-      const assistantEntryId = await tree.getStorage().allocateId()
+      const userEntryId = await tree.allocateId()
+      const assistantEntryId = await tree.allocateId()
       live.pushUserMessage("sanitized request", 1_000, { entryId: userEntryId })
       live.dispatchRuntimeEvent({
         type: "model.assistant_message.recorded",
@@ -348,7 +348,7 @@ describe("live/derived output equivalence", () => {
         { kind: "system", content: "Sanitized stream interrupted" },
       ], [userEntryId, assistantEntryId])
       if (appended.kind !== "committed") throw new Error("expected durable pipeline messages")
-      tree.getStorage().dispose()
+      tree.dispose()
       store.append({
         aggregateId: `session:${sessionId}`,
         type: "tool.result.recorded",
@@ -483,7 +483,7 @@ describe("live/derived output equivalence", () => {
         { kind: "toolResult", toolUseId: "search-1", content: budgetedParts },
       ])
       if (appended.kind !== "committed") throw new Error("expected budgeted conversation result")
-      await tree.getStorage().dispose()
+      await tree.dispose()
 
       const readBody = async () => {
         const projection = testSessionDetailProjection({ projectRoot: tmpDir, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
@@ -510,7 +510,7 @@ describe("live/derived output equivalence", () => {
       const durableResult = (await contextTree.getBranch()).find((entry) => entry.kind === "message" && entry.message.kind === "toolResult")
       if (!durableResult || durableResult.kind !== "message" || durableResult.message.kind !== "toolResult") throw new Error("expected budgeted provider result")
       expect(durableResult.message.content).toEqual(budgetedParts)
-      await contextTree.getStorage().dispose()
+      await contextTree.dispose()
       expect(Buffer.from(openContent ?? "")).toEqual(Buffer.from(canonicalContent))
       expect(Buffer.from(reopenedContent ?? "")).toEqual(Buffer.from(canonicalContent))
       expect(JSON.stringify(budgetedParts)).not.toContain(canonicalContent)
@@ -556,7 +556,7 @@ describe("live/derived output equivalence", () => {
       const messages = Array.from({ length: 96 }, (_, index) => ({ kind: "user" as const, content: `bounded-turn-${index}:${"x".repeat(64)}` }))
       const appended = await tree.appendMessages(messages)
       if (appended.kind !== "committed") throw new Error("expected bounded parity history")
-      await tree.getStorage().dispose()
+      await tree.dispose()
 
       const request = { anchor: { kind: "tail" as const }, maxBlocks: 200, maxBytes: 1024 * 1024 }
       const openProjection = testSessionDetailProjection({ projectRoot: tmpDir, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })

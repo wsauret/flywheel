@@ -86,7 +86,7 @@ function conversation(options: AgentOptions) {
 async function branch(conversationId: string) {
   const tree = await tryOpenConversationTree({ sessionId, conversationId, store: asAsyncEventReadSurface(store) })
   if (!tree) throw new Error("expected committed tree")
-  try { return await tree.getBranch() } finally { await tree.getStorage().dispose() }
+  try { return await tree.getBranch() } finally { await tree.dispose() }
 }
 function factory(observe: (options: AgentOptions) => AgentRunTerminal): AgentFactory {
   return (options) => {

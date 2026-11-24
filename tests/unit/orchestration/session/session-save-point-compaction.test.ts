@@ -37,7 +37,7 @@ async function openExistingTree(): Promise<ConversationTree> {
 
 describe("ConversationTreeWriterController reset compaction", () => {
   it("records tokensAfter as the prompt prefix plus reset history", async () => {
-    await tree.getStorage().dispose();
+    await tree.dispose();
     let recordedTokensAfter = 0;
     const controller = createController();
     try {
@@ -60,12 +60,12 @@ describe("ConversationTreeWriterController reset compaction", () => {
       const compaction = (await reopened.getBranch()).find((entry): entry is CompactionEntry => entry.kind === "compaction");
       expect(compaction).toMatchObject({ mode: "reset", tokensAfter: recordedTokensAfter });
     } finally {
-      await reopened.getStorage().dispose();
+      await reopened.dispose();
     }
   });
 
   it("records sourceLeafId at the post-flush leaf", async () => {
-    await tree.getStorage().dispose();
+    await tree.dispose();
     const controller = createController();
     try {
       await controller.commitUserTurn("first");
@@ -90,12 +90,12 @@ describe("ConversationTreeWriterController reset compaction", () => {
       expect(messages).toHaveLength(2);
       expect(compaction).toMatchObject({ mode: "reset", sourceLeafId: messages[1]?.id });
     } finally {
-      await reopened.getStorage().dispose();
+      await reopened.dispose();
     }
   });
 
   it("returns null when the tree has no entry to anchor against", async () => {
-    await tree.getStorage().dispose();
+    await tree.dispose();
     const controller = createController();
     try {
       expect(await controller.recordCompaction({

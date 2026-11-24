@@ -49,7 +49,7 @@ async function commitUserTurn(conversationId: string, sessionId: string): Promis
   const tree = await tryOpenConversationTree(options)
     ?? await createConversationTree(options)
   await tree.appendMessage({ kind: "user", content: "hello" })
-  await tree.getStorage().dispose()
+  await tree.dispose()
 }
 
 async function recordBudget(sessionId: string, opts: { cost?: number; input?: number; output?: number; contextPrompt?: number; contextWindow?: number }): Promise<void> {

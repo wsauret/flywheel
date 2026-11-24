@@ -88,7 +88,7 @@ async function cutChild(store: ReturnType<typeof openStore>["store"], writer: As
   await tree.appendMessage({ kind: "user", content: "Investigate.", origin: "human" })
   const cut = interruptedTurnEnd("replacement")
   await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(cut.pausedBy, false), origin: "system" }, turnEndEntryId(cut, "cut"))
-  tree.getStorage().dispose()
+  tree.dispose()
   await writer.append(prepareSessionFactAppend(childSessionId, buildSubagentPaused({ childRunId: "run", pausedBy: "runtime" })))
   await authorizePlannedSessionContinuation({ reader: asAsyncEventReadSurface(store), writer, continuation: { target: { sessionId: childSessionId, kind: "subagent" }, handoffId: "h1", runId: "run" } })
 }
@@ -117,7 +117,7 @@ describe("planned session continuation", () => {
       await tree.appendMessage({ kind: "user", content: "Work.", origin: "human" })
       const cut = interruptedTurnEnd("replacement")
       await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(cut.pausedBy, false), origin: "system" }, turnEndEntryId(cut, conversationId))
-      tree.getStorage().dispose()
+      tree.dispose()
     }
     await authorizePlannedSessionContinuation({ reader, writer, continuation: { target: { workflowId: "flow", kind: "workflow" }, handoffId: "h1" } })
     const lanes = createContinuationLanes()
@@ -244,7 +244,7 @@ describe("planned session continuation", () => {
     // interrupted, so no step waits for it.
     const person = interruptedTurnEnd("person")
     await childTree.appendMessage({ kind: "user", content: interruptedTurnMessage(person.pausedBy, false), origin: "system" }, turnEndEntryId(person, "person"))
-    childTree.getStorage().dispose()
+    childTree.dispose()
     expect(await Promise.race([awaitPlannedChildResumes(step).then(() => "went on"), Bun.sleep(20).then(() => "waiting")])).toBe("went on")
     store.close()
   })

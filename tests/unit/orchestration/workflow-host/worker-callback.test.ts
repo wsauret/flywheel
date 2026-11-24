@@ -198,7 +198,7 @@ describe("a step's loop notices", () => {
       const end = interruptedTurnEnd(by)
       await tree.appendMessage({ kind: "user", origin: "system", content: interruptedTurnMessage(end.pausedBy, false) }, turnEndEntryId(end, "wait-cut"))
     } finally { setSystemTime() }
-    tree.getStorage().dispose()
+    tree.dispose()
     const inputs = workflowAgentInputs(authority.projectionReader, WORKFLOW)
     if (by === "person") inputs.agentInputs.interrupt(WHOLE_WORKFLOW, "person")
     const stop = new AbortController()
@@ -253,7 +253,7 @@ describe("a step's loop notices", () => {
       const end = interruptedTurnEnd("replacement")
       await tree.appendMessage({ kind: "user", origin: "system", content: interruptedTurnMessage(end.pausedBy, false) }, turnEndEntryId(end, "planned-cut"))
     } finally { setSystemTime() }
-    tree.getStorage().dispose()
+    tree.dispose()
     const stop = new AbortController()
     const parked = Promise.withResolvers<string>()
     const task = Promise.withResolvers<BackgroundWorkResult>()

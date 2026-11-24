@@ -69,7 +69,7 @@ describe("subagent child completion recovery", () => {
     if (!parentTree) throw new Error("missing parent conversation")
     await parentTree.appendMessage({ kind: "user", content: "delegate" })
     await parentTree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: toolUseId, name: "subagent", input: toolInput }] })
-    parentTree.getStorage().dispose()
+    parentTree.dispose()
 
     const runInput: Parameters<typeof buildDurableSubagentCreated>[0] = {
       childSessionId,
@@ -122,7 +122,7 @@ describe("subagent child completion recovery", () => {
       if (!tree) throw new Error("missing paused child's conversation")
       const end = interruptedTurnEnd(by)
       await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, id))
-      tree.getStorage().dispose()
+      tree.dispose()
       const pausedWriter = createSessionFactWriter({ sessionId: id, writer })
       await pausedWriter.record(buildSubagentPaused({ childRunId: id, pausedBy: by === "agent" ? "person" : by }))
       pausedWriter.dispose()
@@ -283,7 +283,7 @@ describe("subagent completion reconciliation", () => {
     if (!parentTree) throw new Error("missing parent conversation")
     await parentTree.appendMessage({ kind: "user", content: "delegate" })
     await parentTree.appendMessage({ kind: "assistant", content: children.map((id) => ({ type: "tool_use" as const, id: `tool-${id}`, name: "subagent", input: toolInput })) })
-    parentTree.getStorage().dispose()
+    parentTree.dispose()
     for (const id of children) {
       const launchedFrom = { parentSessionId, conversationId: "parent-conversation", toolUseId: `tool-${id}` }
       await manager.publishSubagent({
@@ -351,7 +351,7 @@ describe("subagent Stop", () => {
     if (!parentTree) throw new Error("missing parent conversation")
     await parentTree.appendMessage({ kind: "user", content: "delegate" })
     await parentTree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: toolUseId, name: "subagent", input: toolInput }] })
-    parentTree.getStorage().dispose()
+    parentTree.dispose()
     await manager.publishSubagent({
       id: childSessionId,
       conversationId: "child-conversation",

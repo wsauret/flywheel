@@ -82,7 +82,7 @@ describe("streaming tool validation and failure", () => {
         ...(call.isError ? { isError: true } : {}),
       });
       await writer.flushSavePoint();
-      await tree.getStorage().dispose();
+      await tree.dispose();
       store.close();
 
       const reopenedStore = createSqliteEventStore(resolveEventStoreDbFile(root));
@@ -93,7 +93,7 @@ describe("streaming tool validation and failure", () => {
       expect(toolBlock(blocks, "error")).toMatchObject({ status: "error", errorMessage: "No match" });
       expect(JSON.stringify(blocks)).not.toContain("live advisory");
       expect(JSON.stringify(blocks)).not.toContain("interrupted");
-      await reopened.getStorage().dispose();
+      await reopened.dispose();
       reopenedStore.close();
     } finally {
       output.dispose();

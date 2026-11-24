@@ -38,7 +38,7 @@ describe("tolerant reprojection workspace", () => {
         const tree = await tryOpenConversationTree({ conversationId, sessionId: id, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
         if (!tree) throw new Error(`missing ${id} tree`)
         const append = await tree.appendMessages([{ kind: "user", content: `new-${id}` }])
-        await tree.getStorage().dispose()
+        await tree.dispose()
         expect(append.kind).toBe("committed")
       }
 

@@ -27,7 +27,9 @@ interface OutputProjectionSnapshot {
 
 interface OutputProjectorOptions {
   onChange?: () => void;
-  sessionId?: string;
+  /** The session id that log metadata names, read at each record; its owner
+   *  can change it, as a completed turn reports the provider's session id. */
+  sessionId?: () => string | undefined;
   /** Directory relative tool paths, file links, and diffs resolve against
    *  (ARCH-DIRECTORIES-007). The owning session's recorded execution directory; never the
    *  reader's own process directory. */
@@ -37,31 +39,20 @@ interface OutputProjectorOptions {
 export class OutputProjector {
   private readonly builder: StructuredOutputBuilder;
   private readonly tools: OutputToolProjector;
+  private readonly sessionId: () => string | undefined;
 
   constructor(options: OutputProjectorOptions) {
-    this.builder = new StructuredOutputBuilder();
-    this.tools = new OutputToolProjector(this.builder, { executionCwd: options.executionCwd });
     // Forward directly: the builder's change latch only arms while a listener
     // exists, so wrapping the handler in an always-present closure would make
-    // pre-wiring notifications latch it with nobody to re-arm.
-    this.builder.onChange = options.onChange ?? null;
-    if (options.sessionId) this.tools.sessionId = options.sessionId;
+    // notifications without a listener latch it with nobody to re-arm.
+    this.builder = new StructuredOutputBuilder({ onChange: options.onChange });
+    this.sessionId = options.sessionId ?? (() => undefined);
+    this.tools = new OutputToolProjector(this.builder, { executionCwd: options.executionCwd, sessionId: this.sessionId });
   }
 
-  set sessionId(id: string | undefined) {
-    this.tools.sessionId = id;
-  }
-
-  get sessionId(): string | undefined {
-    return this.tools.sessionId;
-  }
-
-  set onChange(handler: (() => void) | null) {
-    this.builder.onChange = handler;
-  }
-
-  get onChange(): (() => void) | null {
-    return this.builder.onChange;
+  /** Stops change notification; the projector's listener never hears it again. */
+  dispose(): void {
+    this.builder.dispose();
   }
 
   get streamPhase(): StreamPhase | null {
@@ -74,7 +65,7 @@ export class OutputProjector {
       visibleMessageCountSuffix: this.builder.visibleMessageCountSuffix,
       streamPhase: this.streamPhase,
       streamingOutputChars: this.builder.streamingOutputChars,
-      streamingToolText: this.builder.streamingText.snapshot(),
+      streamingToolText: this.builder.streamingToolText,
     };
   }
 
@@ -268,7 +259,7 @@ export class OutputProjector {
     const agentId = this.tools.parentAgentId(toolUseId);
     if (!agentId) {
       log.warn(`${operation}: parentAgentId not found`, {
-        sessionId: this.tools.sessionId,
+        sessionId: this.sessionId(),
         toolUseId,
         ...meta,
         trackedToolCount: this.tools.trackedToolCount,
@@ -321,7 +312,7 @@ export class OutputProjector {
     if (finalStatus === "completed") this.builder.closePendingAgentBlocks(timestamp);
     else if (finalStatus === "paused") this.builder.interruptPendingAgentBlocks(timestamp);
     else this.builder.interruptOpenAgentBlocks(timestamp);
-    this.builder.streamingText.clearAll();
+    this.builder.clearAllToolText();
     this.builder.resetPhase();
   }
 }

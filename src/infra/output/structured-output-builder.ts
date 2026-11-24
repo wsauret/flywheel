@@ -10,6 +10,8 @@ import {
   type UserMessageImage,
   type UserMessageBlock,
   type MessageSender,
+  type ProvisionalDiff,
+  type ToolStreamingText,
   isVisibleMessageBlock,
 } from "../output-blocks.js";
 import { formatAgentFailureDisplay } from "./output-formatter.js";
@@ -89,9 +91,15 @@ function nextResponsePhase(current: ResponsePhase | null, event: ResponsePhaseEv
 }
 
 export class StructuredOutputBuilder {
-  // blocksCap is a test seam: eviction wiring is identical at any cap, and
-  // exceeding the production 20k in a test is seconds of pure allocation.
-  constructor(private readonly blocksCap: number = BLOCKS_CAP) {}
+  /** `onChange` hears that the blocks changed; with none, the builder neither
+   *  notifies nor records changes for drainChanges. `blocksCap` is a test seam:
+   *  eviction wiring is identical at any cap, and exceeding the production 20k
+   *  in a test is seconds of pure allocation. */
+  constructor(options: { readonly onChange?: () => void; readonly blocksCap?: number } = {}) {
+    this.onChange = options.onChange ?? null;
+    this.blocksCap = options.blocksCap ?? BLOCKS_CAP;
+  }
+  private readonly blocksCap: number;
   // Mints the stable id for blocks that carry no natural one (system/
   // divider/userMessage and provider-less tools): a uuid, unique across
   // reactivation seeds with no counter to resume.
@@ -99,7 +107,7 @@ export class StructuredOutputBuilder {
   private blocks: AnyBlock[] = [];
   private _visibleMessageCountSuffix = 0;
   private changePending = false;
-  readonly streamingText = new StreamingToolTextStore(() => this.notifyChange());
+  private readonly streamingText = new StreamingToolTextStore(() => this.notifyChange());
   private agentIndexById = new Map<string, number>();
   private contentIndexById = new Map<string, number>();
   // Top-level tool blocks by their stable id, maintained beside the agent and
@@ -124,9 +132,14 @@ export class StructuredOutputBuilder {
   // the current block array from the session's base offset.
   private pendingChanges: OutputBlockChange[] = [];
   private needsFullResync = false;
-  onChange: (() => void) | null = null;
+  private onChange: (() => void) | null;
   private changeHolds = 0;
   private changeHeld = false;
+  /** Stops notification and change recording for good: the listener's owner
+   *  has gone, and nobody drains the changes again. */
+  dispose(): void {
+    this.onChange = null;
+  }
   private notifyChange(): void {
     // No listener: don't arm the latch. A notification fired into the void
     // would otherwise suppress every later one until getBlocks() re-arms,
@@ -206,6 +219,40 @@ export class StructuredOutputBuilder {
   addStreamingChars(count: number): void {
     this._streamingOutputChars += count;
     this.notifyChange();
+  }
+  /** The live text of every tool that is writing its input or output: one
+   *  cached, read-only map per state, so a changed identity means changed text. */
+  get streamingToolText(): Readonly<{ [toolUseId in string]: ToolStreamingText }> { return this.streamingText.snapshot(); }
+  /** Appends one chunk of a tool's streamed input body to its live text. */
+  appendToolText(toolUseId: string, text: string, filetype?: string): void {
+    this.streamingText.append(toolUseId, text, filetype);
+  }
+  /** Sets a tool's whole live text: an execution-output tail arrives
+   *  cumulative, not chunked. */
+  replaceToolText(toolUseId: string, text: string): void {
+    this.streamingText.replace(toolUseId, text);
+  }
+  /** Shows the diff that a streaming edit proposes in place of its text. */
+  proposeToolDiff(toolUseId: string, proposedDiff: ProvisionalDiff): void {
+    this.streamingText.setProposedDiff(toolUseId, proposedDiff);
+  }
+  /** Sets the advice of a proposed edit's preview check; null removes it. */
+  setToolPreviewCheck(toolUseId: string, advice: string | null): void {
+    if (advice === null) this.streamingText.clearPreviewCheck(toolUseId);
+    else this.streamingText.setPreviewCheck(toolUseId, advice);
+  }
+  /** Ends a tool's live text. */
+  clearToolText(toolUseId: string): void {
+    this.streamingText.clear(toolUseId);
+  }
+  /** Ends a tool's live text without a notification of its own: the row
+   *  change that the caller makes next publishes it. */
+  clearToolTextSilently(toolUseId: string): void {
+    this.streamingText.clearSilently(toolUseId);
+  }
+  /** Ends the live text of every tool. */
+  clearAllToolText(): void {
+    this.streamingText.clearAll();
   }
   setStreamPhase(phase: StreamPhase | null, timestamp: number): void {
     const before = this.phase?.kind ?? null;

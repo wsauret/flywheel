@@ -605,7 +605,7 @@ export async function recordInterrupt(input: Pick<SessionInterrupt, "projectionR
   try {
     await createConversationTreeWriter({ tree }).commitTurnEnd(by)
   } finally {
-    tree.getStorage().dispose()
+    tree.dispose()
   }
 }
 

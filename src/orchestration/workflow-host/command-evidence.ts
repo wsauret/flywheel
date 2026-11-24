@@ -46,7 +46,7 @@ async function completedToolUseIds(
     }
     return new Set([...calls].filter((id) => results.has(id)));
   } finally {
-    tree.getStorage().dispose();
+    tree.dispose();
   }
 }
 

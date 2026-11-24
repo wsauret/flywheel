@@ -42,7 +42,7 @@ async function seedRequest(): Promise<string> {
   await tree.appendMessage({ kind: "user", origin: "system", content: "a runtime notice" });
   const treeLeafEntryId = await tree.getLeafId();
   const { messages } = buildSessionContext(await tree.getBranch());
-  await tree.getStorage().dispose();
+  await tree.dispose();
   const requestId = await appendProviderRequestFacts(store, SESSION_ID, {
     identity: { providerSessionKey: CONVERSATION_ID, conversationId: CONVERSATION_ID }, turn: 1, promptKind: "chat",
     systemPrompt: "be helpful",

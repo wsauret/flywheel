@@ -54,7 +54,7 @@ async function append(ctx: SupervisorTestContext, writer: AsyncEventWriter, sess
   const handle = { conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store), writer }
   const tree = await tryOpenConversationTree(handle) ?? await createConversationTree(handle)
   await tree.appendMessage(message, id)
-  tree.getStorage().dispose()
+  tree.dispose()
 }
 
 const userTurn: ConversationMessage = { kind: "user", content: "Do the fixture work.", origin: "human" }

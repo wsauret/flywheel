@@ -400,7 +400,7 @@ describe("addressed messages", () => {
     const blocks = branchBlocks(await tree.getBranch(), { executionCwd: "/scratch" })
     expect(blocks).toMatchObject([{ kind: "userMessage", from: { sessionId: member } }, { kind: "system", message: expect.stringContaining("No exact reply target is available.") }])
     expect(JSON.stringify(store.read({ aggregateId: `conversation:${identity.conversationId}` })) ).toBe(before)
-    tree.getStorage().dispose()
+    tree.dispose()
   })
 
   const group = "input-mapped:node:1"

@@ -30,7 +30,7 @@ function captureSnapshot(retention: SnapshotRetention, executionCwd: string, pat
   try {
     const snapshot = {
       path,
-      ...(authority.snapshot ? { content: authority.strictText() } : {}),
+      ...(authority.admittedFile ? { content: authority.strictText() } : {}),
     }
     const bytes = Buffer.byteLength(snapshot.path) + Buffer.byteLength(snapshot.content ?? "")
     if (retainedSnapshotBytes + bytes > FILE_EDIT_LIMITS.maxOutputBytes) {

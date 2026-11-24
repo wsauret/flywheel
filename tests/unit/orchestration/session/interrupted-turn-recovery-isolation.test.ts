@@ -25,7 +25,7 @@ afterEach(async () => {
 describe("interrupted-turn recovery session isolation", () => {
   it("recovers a healthy conversation without selecting a later corrupt session's tool fact", async () => {
     await createConversationTreeWriter({ tree }).commitUserTurn(userMessage("hello"));
-    const boundary = await (await tree.getStorage()).getInterruptionBoundary();
+    const boundary = await ctx.storage.getInterruptionBoundary();
     const corrupt = ctx.store.append({
       aggregateId: "session:other",
       sessionId: "other",

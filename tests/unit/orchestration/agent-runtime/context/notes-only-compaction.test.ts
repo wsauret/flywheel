@@ -180,7 +180,7 @@ for (const trigger of ["manual", "automatic", "overflow", "idle"] as const) {
         await checkpoint.replace("currentState", "Changed after reset.");
         expect((await tree.buildContext({ allowAssistantTail: true })).messages[0]).toEqual(opening);
       }
-      await tree.getStorage().dispose();
+      await tree.dispose();
     } finally { await writer.dispose(); store.close(); rmSync(projectRoot, { recursive: true, force: true }); }
   });
 }

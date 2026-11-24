@@ -83,7 +83,7 @@ async function workflowRun(firstReport: "pending" | "fails" | "delayed", resumeS
     const tree = key === undefined ? undefined : await tryOpenConversationTree({ conversationId: parent.conversationId, sessionId: parentSessionId, store: reader, writer: ctx.store })
     if (!tree || key === undefined) return false
     const [append] = await tree.prepareMessagesAppend([{ id: key, message: redactMessage({ kind: "user", content: text, replyRequired: true }, false) }])
-    tree.getStorage().dispose()
+    tree.dispose()
     if (append) await ctx.store.appendBatch([{ ...append, inFlight: [{ op: "drop", kind: QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, key }] }])
     return true
   }

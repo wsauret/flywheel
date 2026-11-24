@@ -1,9 +1,8 @@
 import { ConversationTreeStorage } from "./conversation-tree-storage.js";
 import { ConversationTree } from "./conversation-tree.js";
 import { isSessionOwnerGone } from "../pid-lock.js";
-import type { ConversationTreeProjectionState, ConversationTreeTranscriptEntry } from "./conversation-projection.js";
+import type { ConversationTreeTranscriptEntry } from "./conversation-projection.js";
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js";
-import { InvariantViolation } from "../../../infra/invariant.js";
 import type { ConversationMessage, ContentBlock } from "../../agent-runtime/llm/types.js";
 import { interruptedToolResult } from "../../agent-runtime/llm/heal-messages.js";
 import type { ConversationEntry } from "./conversation-entry-types.js";
@@ -42,9 +41,9 @@ export async function readTranscript(options: Omit<OpenConversationTreeOptions, 
   const tree = await tryOpenConversationTree(options);
   if (!tree) return null;
   try {
-    return await tree.getStorage().getTranscriptToRoot(await tree.getLeafId());
+    return await tree.getTranscript();
   } finally {
-    tree.getStorage().dispose();
+    tree.dispose();
   }
 }
 
@@ -60,7 +59,7 @@ export async function readReconciledBranch(
     await reconcileConversationTree(tree, options);
     return await tree.getBranch();
   } finally {
-    tree.getStorage().dispose();
+    tree.dispose();
   }
 }
 
@@ -73,9 +72,9 @@ export async function readReconciledTranscript(
   if (!tree) return null;
   try {
     await reconcileConversationTree(tree, options);
-    return await tree.getStorage().getTranscriptToRoot(await tree.getLeafId());
+    return await tree.getTranscript();
   } finally {
-    tree.getStorage().dispose();
+    tree.dispose();
   }
 }
 
@@ -142,34 +141,8 @@ export async function durableBranchHasUserMessage(options: OpenConversationTreeO
   const tree = await tryOpenConversationTree(options);
   if (!tree) return false;
   try {
-    return branchHasUserMessage(tree.getStorage().openedState());
+    return tree.branchHasUserMessage();
   } finally {
-    tree.getStorage().dispose();
+    tree.dispose();
   }
-}
-
-/** Does the current branch contain any user turn? Walks the immutable parent
- *  chain from the leaf over the already-loaded projection snapshot, returning as
- *  soon as it sees a user message. The snapshot is taken once at the call site
- *  (`tree.getState()`), so the walk is pure in-memory pointer-chasing - a deep
- *  branch costs no per-hop SQLite round-trip, and an early hit near the leaf stops
- *  short of the root. This is the durable authority for tombstone decisions: a
- *  committed user turn is visible here even when no in-memory cache remembers it. */
-function branchHasUserMessage(state: Pick<ConversationTreeProjectionState, "leafId" | "entriesById">): boolean {
-  let currentId = state.leafId;
-  while (currentId !== null) {
-    const entry = state.entriesById[currentId];
-    if (!entry) {
-      throw new InvariantViolation({
-        kind: "missing-producer-event",
-        eventType: "chat.branch.read",
-        eventPosition: -1,
-        aggregateId: state.leafId ?? "",
-        detail: `active branch references missing entry ${currentId}`,
-      });
-    }
-    if (entry.kind === "message" && entry.message.kind === "user") return true;
-    currentId = entry.parentId;
-  }
-  return false;
 }

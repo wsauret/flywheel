@@ -436,7 +436,7 @@ describe("project state read and write boundary", () => {
       await childTree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "nested", name: "read", input: {} }] })
       await childTree.appendMessage({ kind: "toolResult", toolUseId: "nested", content: [{ type: "text", text: "output" }] })
     } finally {
-      childTree.getStorage().dispose()
+      childTree.dispose()
     }
     const { planFinalizedToolResultCheckpointPage } = await import("../../../../src/orchestration/migrations/finalized-tool-result-checkpoints")
     const plan = planFinalizedToolResultCheckpointPage(path, 0)

@@ -56,7 +56,7 @@ describe("subagent private input at handoff", () => {
       expect(JSON.stringify(await tree!.buildContext())).not.toContain("keep my words")
       expect(harness.store.readInFlight(parent, COMPOSER_RETURN_KIND)).toMatchObject([{ payload: { input: { text: "keep my words" } } }])
       expect(harness.store.readInFlight(child, QUEUED_USER_INPUT_IN_FLIGHT_KIND)).toEqual([])
-      tree!.getStorage().dispose()
+      tree!.dispose()
     } finally { for (const result of runs.results) result.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); await harness.close() }
   })
   test("handoff close waits for a pending recall without also returning its input to the parent", async () => {
@@ -102,7 +102,7 @@ describe("subagent private input at handoff", () => {
       expect(harness.store.readInFlight(child, QUEUED_USER_INPUT_IN_FLIGHT_KIND)).toEqual([])
       const tree = await tryOpenConversationTree({ sessionId: parent, conversationId: parentConversation, store: harness.reader, writer: harness.writer })
       try { expect(JSON.stringify(await tree!.getBranch())).not.toContain("recalled words") }
-      finally { tree!.getStorage().dispose() }
+      finally { tree!.dispose() }
     } finally {
       retirement.resolve()
       for (const result of runs.results) result.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } })
@@ -158,7 +158,7 @@ describe("subagent private input at handoff", () => {
       for (const [sessionId, conversationId] of [[parent, parentConversation], [child, childMetadata.conversationId]] as const) {
         const tree = await tryOpenConversationTree({ sessionId, conversationId, store: harness.reader, writer: harness.writer })
         try { expect(JSON.stringify(await tree!.getBranch())).not.toContain("refused words") }
-        finally { tree!.getStorage().dispose() }
+        finally { tree!.dispose() }
       }
     } finally {
       admission.resolve()
@@ -174,7 +174,7 @@ describe("subagent private input at handoff", () => {
       const tree = await tryOpenConversationTree({ sessionId: child, conversationId: "child-conversation", store: harness.reader, writer: harness.writer })
       await tree!.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "handoff", name: "handoff", input: { summary: "done" } }] })
       await tree!.appendMessage({ kind: "toolResult", toolUseId: "handoff", content: [{ type: "text", text: "recorded" }] })
-      tree!.getStorage().dispose()
+      tree!.dispose()
       harness.store.putInFlight(child, QUEUED_USER_INPUT_IN_FLIGHT_KIND, "person:send", { conversationId: "child-conversation", text: "previous unread words", origin: "human", submissionIds: ["send"] })
       removeOwnerPid(child, harness.projectRoot)
       await recoverStaleSubagentRuns({ sessionId: child, fallbackConversationId: "child-conversation", projectRoot: harness.projectRoot, reader: harness.reader, projectionReader: harness.reader, writer: harness.writer })

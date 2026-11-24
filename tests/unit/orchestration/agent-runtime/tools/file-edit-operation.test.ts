@@ -32,7 +32,10 @@ function fakeAuthority(path: string, events: string[], options: FakeAuthorityOpt
   const snapshot: ContainedFileSnapshot = { content: Buffer.from("before"), identity: `id:${path}`, linkCount: 1, executable: false, metadata: POSIX_METADATA }
   return {
     canonicalPath: options.canonicalPath ?? path,
-    snapshot,
+    admittedFile: { identity: snapshot.identity, byteLength: snapshot.content.byteLength },
+    admittedSnapshot: () => snapshot,
+    admittedMetadata: () => snapshot.metadata,
+    admittedSha256: () => createHash("sha256").update(snapshot.content).digest("hex"),
     text: "before",
     mayCreateMissingParents: false,
     encode: (content) => Buffer.from(content),
@@ -182,10 +185,12 @@ describe("shared file edit publication", () => {
       paths: ["a"],
       admit: path => {
         const authority = fakeAuthority(path, [])
+        const admitted = { ...authority.admittedSnapshot()!, metadata: { kind: "posix" as const, mode: 0o4754 } }
         return {
           ...authority,
-          snapshot: { ...authority.snapshot!, metadata: { kind: "posix" as const, mode: 0o4754 } },
-          readBackAndVerify: bytes => ({ ...authority.snapshot!, content: Buffer.from(bytes), metadata: { kind: "posix", mode: 0o754 } }),
+          admittedSnapshot: () => admitted,
+          admittedMetadata: () => admitted.metadata,
+          readBackAndVerify: bytes => ({ ...admitted, content: Buffer.from(bytes), metadata: { kind: "posix", mode: 0o754 } }),
         }
       },
       plan: admitted => admitted.map(entry => ({ admitted: entry, after: "after", metadata: { kind: "posix" as const, mode: 0o4754 } })),

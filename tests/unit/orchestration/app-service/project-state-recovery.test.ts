@@ -164,7 +164,7 @@ describe("project execution recovery after a generation closes", () => {
       expect(prefixes).toEqual([undefined, `${session.conversationId}:`])
       expect(store.readInFlight(id, "finalized-tool-result")).toEqual([])
       expect((await recoverProject({ directories, reader, writer }, "ownerless")).sessionIds).toEqual([])
-    } finally { tree.getStorage().dispose() }
+    } finally { tree.dispose() }
   })
 
   test("a session whose history this release cannot read is reported and never holds the project", async () => {
@@ -260,7 +260,7 @@ describe("project execution recovery after a generation closes", () => {
       expect(result.sessionIds).toEqual([id])
       expect(await manager.read(id)).toMatchObject({ lifecycleState: "inactive" })
       expect(await readChatTurnEnd(reader, session.conversationId)).toMatchObject({ end: { reason: "crash" }, recorded: true })
-    } finally { tree.getStorage().dispose() }
+    } finally { tree.dispose() }
   })
 
   test.skipIf(!POSIX_FAILURE_STAGING)("a process start leaves an active session whose owner record it cannot read active and untouched", async () => {
@@ -308,7 +308,7 @@ describe("project execution recovery after a generation closes", () => {
         const called = await tree.appendMessages([{ kind: "assistant", content: [{ type: "tool_use", id: `${name}-call`, name: "bash", input: { command: "sleep 600" } }] }])
         if (called.kind !== "committed") throw called.cause
         return { sessionId, conversationId: session.conversationId }
-      } finally { tree.getStorage().dispose() }
+      } finally { tree.dispose() }
     }
     const interrupted = await unfinished("interrupted", false)
     const crashed = await unfinished("crashed", false)
@@ -320,12 +320,12 @@ describe("project execution recovery after a generation closes", () => {
     const turnEnds = async (target: { readonly sessionId: string; readonly conversationId: string }): Promise<string[]> => {
       const tree = await tryOpenConversationTree({ ...target, store: asAsyncEventReadSurface(store), writer })
       if (!tree) throw new Error("expected conversation tree")
-      try { return (await tree.getBranch()).flatMap((entry) => entry.id.startsWith("itb-") ? [entry.id] : []) } finally { tree.getStorage().dispose() }
+      try { return (await tree.getBranch()).flatMap((entry) => entry.id.startsWith("itb-") ? [entry.id] : []) } finally { tree.dispose() }
     }
     const lastEntryId = async (target: { readonly sessionId: string; readonly conversationId: string }): Promise<string | undefined> => {
       const tree = await tryOpenConversationTree({ ...target, store: asAsyncEventReadSurface(store), writer })
       if (!tree) throw new Error("expected conversation tree")
-      try { return (await tree.getBranch()).at(-1)?.id } finally { tree.getStorage().dispose() }
+      try { return (await tree.getBranch()).at(-1)?.id } finally { tree.dispose() }
     }
     for (const [target, recorded] of [[interrupted, /^itb-paused-person-/], [crashed, /^itb-crash-/], [interruptedInCall, /^itb-paused-person-/], [crashedInCall, /^itb-crash-/]] as const) {
       expect(await lastEntryId(target)).toMatch(recorded)
@@ -338,7 +338,7 @@ describe("project execution recovery after a generation closes", () => {
     if (!next) throw new Error("expected conversation tree")
     try {
       await createConversationTreeWriter({ tree: next }).commitUserTurn({ kind: "user", content: "Carry on", origin: "human" })
-    } finally { next.getStorage().dispose() }
+    } finally { next.dispose() }
     const [personTurnEnd, ...later] = await turnEnds(interruptedInCall)
     expect(personTurnEnd).toMatch(/^itb-paused-person-/)
     expect(later).toEqual([])
@@ -362,7 +362,7 @@ describe("project execution recovery after a generation closes", () => {
       { kind: "assistant", content: [{ type: "tool_use", id: "ask-1", name: "ask_user", input: {} }] },
       { kind: "system", content: "Interrupted by user.", displayOnly: true },
     ])
-    tree.getStorage().dispose()
+    tree.dispose()
     if (appended.kind !== "committed") throw appended.cause
     await store.appendBatch([{
       aggregateId: `session:${sessionId}`, sessionId, type: "tool.input.completed", version: 1, actor: "agent", timestamp: 1,
@@ -414,7 +414,7 @@ describe("project recovery behind the writer lane", () => {
     try {
       const asked = await tree.appendMessages([{ kind: "user", content: "unfinished", origin: "human" }])
       if (asked.kind !== "committed") throw asked.cause
-    } finally { tree.getStorage().dispose() }
+    } finally { tree.dispose() }
     removeOwnerPid(sessionId, directories.projectRoot)
     return { sessionId, conversationId: session.conversationId }
   }
@@ -505,7 +505,7 @@ describe("project recovery behind the writer lane", () => {
     try {
       await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: toolUseId, name: "subagent", input: toolInput }] })
       await tree.appendMessage({ kind: "toolResult", toolUseId, content: [{ type: "text", text: "Dispatched." }] })
-    } finally { tree.getStorage().dispose() }
+    } finally { tree.dispose() }
     await manager.publishSubagent({
       id: childSessionId, conversationId, description: "Review", executionCwd: directories.projectRoot,
       launchedFrom: { parentSessionId: parent.sessionId, conversationId: parent.conversationId, toolUseId }, initialRoles: {},
@@ -566,7 +566,7 @@ describe("project recovery behind the writer lane", () => {
       expect(JSON.stringify(store.read({ aggregateId: `conversation:${cut.conversationId}` }).map((fact) => fact.payload))).toContain("subagent-completions:subagent-child-run")
       // A later owner in the same Worker opens the recovered conversation.
       const reopened = await tryOpenConversationTree({ ...cut, store: projectionReader, writer: store })
-      reopened?.getStorage().dispose()
+      reopened?.dispose()
       await manager.listActive()
       const started = foldsFromStart(counter.take())
       // A generation close claims again over the same reader.
@@ -644,7 +644,7 @@ describe("project recovery behind the writer lane", () => {
     try {
       const asked = await tree.appendMessages([{ kind: "user", content: "review", origin: "human" }])
       if (asked.kind !== "committed") throw asked.cause
-    } finally { tree.getStorage().dispose() }
+    } finally { tree.dispose() }
     const child = await launchSubagent(state, parent, "subagent-child", "completes")
     await leftActive(state, parent.sessionId)
     await leftActive(state, child.sessionId)

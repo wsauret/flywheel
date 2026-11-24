@@ -133,7 +133,7 @@ export async function reconcileAgentInput(options: ReconcileAgentInputOptions): 
       pendingToolUseIds,
     }
   } finally {
-    tree.getStorage().dispose()
+    tree.dispose()
   }
 }
 

@@ -325,12 +325,12 @@ export function createConversationTreeWriterController(
   }
 
   async function reserveMessageId(): Promise<string> {
-    return (await ensureResolved()).tree.getStorage().allocateId()
+    return (await ensureResolved()).tree.allocateId()
   }
 
   function releaseMessageId(id: string): void {
     if (!resolved) throw new Error("Tree writer is not attached before releasing a message identity")
-    resolved.tree.getStorage().releaseId(id)
+    resolved.tree.releaseId(id)
   }
 
   async function recordCanonicalMessage(message: ConversationMessage, entryId?: string): Promise<void> {
@@ -411,7 +411,7 @@ export function createConversationTreeWriterController(
   async function dropQueuedUserInputs(dispatchIds: readonly string[]): Promise<void> {
     for (const dispatchId of dispatchIds) {
       await dropQueuedInput(deps.writer, deps.sessionId, dispatchId)
-      resolved?.tree.getStorage().releaseId(dispatchId)
+      resolved?.tree.releaseId(dispatchId)
     }
   }
 
@@ -490,7 +490,7 @@ export function createConversationTreeWriterController(
       await writer.endTurn()
     } finally {
       liveNotificationKeys.clear()
-      tree.getStorage().dispose()
+      tree.dispose()
     }
   }
 

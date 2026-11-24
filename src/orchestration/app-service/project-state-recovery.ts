@@ -296,7 +296,7 @@ function createProjectRecovery(input: ProjectRecoveryPorts & {
             // finished: recorded here, it is what Resume continues.
             await tree.recordInterruptedTurn(cause, { ownerDead: true, cutsRestoredWait, holdsWait: (id) => openReplyWaits.has(id) })
           }
-        } finally { tree.getStorage().dispose() }
+        } finally { tree.dispose() }
       }
       await recoverSessionHistory({ sessionId, reader: projectionReader, projectionReader, writer, projectRoot: directories.projectRoot, fallbackConversationId, protectedToolUseIds })
       await repairInterruptedToolExecutions(tools, facts, protectedToolUseIds)

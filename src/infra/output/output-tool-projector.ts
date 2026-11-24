@@ -59,15 +59,14 @@ export class OutputToolProjector {
   // Identity survives viewport eviction and foreground turn resets.
   private readonly childGoalsByLink = new Map<string, string>();
   private readonly executionCwd: string;
-  private _sessionId: string | undefined;
+  /** The session id that log metadata names; its owner can change it. */
+  private readonly sessionId: () => string | undefined;
 
-  constructor(private readonly builder: StructuredOutputBuilder, options: { executionCwd: string }) {
+  constructor(private readonly builder: StructuredOutputBuilder, options: { executionCwd: string; sessionId?: () => string | undefined }) {
     this.executionCwd = options.executionCwd;
+    this.sessionId = options.sessionId ?? (() => undefined);
     this.streamingInputs = new StreamingToolInputs(options.executionCwd);
   }
-
-  get sessionId(): string | undefined { return this._sessionId; }
-  set sessionId(id: string | undefined) { this._sessionId = id; }
 
   private get opts(): ToolMaterializerOptions {
     return {
@@ -75,7 +74,7 @@ export class OutputToolProjector {
       trackedTools: this.trackedTools,
       streamingToolIds: this.streamingToolIds,
       executionCwd: this.executionCwd,
-      sessionId: this._sessionId,
+      sessionId: this.sessionId(),
       // A subagent call names its child by `session_id`, a message by `to`,
       // and a control of a child by `process_id`.
       targetDescription: (input) => {
@@ -147,7 +146,7 @@ export class OutputToolProjector {
       this.pendingTools.delete(toolUseId);
       this.streamingInputs.discard(toolUseId);
       this.streamingToolIds.delete(toolUseId);
-      this.builder.streamingText.clear(toolUseId);
+      this.builder.clearToolText(toolUseId);
     }
   }
 
@@ -173,7 +172,7 @@ export class OutputToolProjector {
       || (parentTracked === undefined && event.parentToolUseId !== undefined && this.pendingTools.get(event.parentToolUseId)?.name === "code");
     if (event.parentToolUseId && !nestedInCode) {
       log.debug("dropping nested event under a parent that is not a script", {
-        sessionId: this.sessionId,
+        sessionId: this.sessionId(),
         parentToolUseId: event.parentToolUseId,
         toolUseId,
         name,
@@ -221,9 +220,9 @@ export class OutputToolProjector {
   handleToolInputDelta(toolUseId: string, delta: string): void {
     const update = this.streamingInputs.append(toolUseId, delta);
     if (!update) return;
-    if (update.proposedDiff) this.builder.streamingText.setProposedDiff(toolUseId, update.proposedDiff);
+    if (update.proposedDiff) this.builder.proposeToolDiff(toolUseId, update.proposedDiff);
     if (update.kind === "failed") {
-      if (!update.proposedDiff) this.builder.streamingText.clear(toolUseId);
+      if (!update.proposedDiff) this.builder.clearToolText(toolUseId);
       refineStreamingTool(this.opts, toolUseId, {});
       return;
     }
@@ -244,26 +243,22 @@ export class OutputToolProjector {
         : undefined;
       if (body) {
         const [field, presentation] = body;
-        const filePath = extractFilePath(update.fields);
+        const filePath = update.filePath;
         const filetype = presentation === "diff" ? "diff" : filePath ? getFiletype(filePath) : undefined;
-        this.builder.streamingText.append(toolUseId, update.additions[field] ?? "", filetype);
+        this.builder.appendToolText(toolUseId, update.additions[field] ?? "", filetype);
       }
     }
   }
 
   handleToolPreviewCheck(toolUseId: string, operation: { type: "set"; advice: string } | { type: "clear" }): void {
     if (!this.streamingInputs.proposes(toolUseId)) return;
-    if (operation.type === "set") {
-      this.builder.streamingText.setPreviewCheck(toolUseId, operation.advice);
-    } else {
-      this.builder.streamingText.clearPreviewCheck(toolUseId);
-    }
+    this.builder.setToolPreviewCheck(toolUseId, operation.type === "set" ? operation.advice : null);
   }
 
   handleToolExecutionOutput(toolUseId: string, output: string): void {
     const tracked = this.trackedTools.get(toolUseId);
     if (tracked?.kind === "agent") return;
-    this.builder.streamingText.replace(toolUseId, output);
+    this.builder.replaceToolText(toolUseId, output);
   }
 
   handleToolExecutionOutputRecorded(toolUseId: string, settled: SettledExecution): void {
@@ -275,7 +270,7 @@ export class OutputToolProjector {
     const index = this.builder.toolBlockIndex(toolUseId);
     const block = index !== undefined ? this.builder.getBlocks()[index] : undefined;
     if (index !== undefined && block?.kind === "tool" && block.status === "completed" && getToolDisplay(block.name).resultContentFromExecutionOutput) {
-      this.builder.streamingText.clearSilently(toolUseId);
+      this.builder.clearToolTextSilently(toolUseId);
       this.builder.completeTool(index, {
         content: settled.output,
         ...(settled.mutationEvidence ? { mutationEvidence: mutationEvidenceSummaryDisplayPaths(settled.mutationEvidence, this.executionCwd) } : {}),
@@ -307,7 +302,7 @@ export class OutputToolProjector {
       this.pendingTools.delete(toolUseId);
       this.streamingInputs.discard(toolUseId);
       this.streamingToolIds.delete(toolUseId);
-      this.builder.streamingText.clear(toolUseId);
+      this.builder.clearToolText(toolUseId);
       return;
     }
     const pending = this.pendingTools.get(toolUseId);
@@ -321,13 +316,13 @@ export class OutputToolProjector {
         this.streamingInputs.discard(toolUseId);
         this.streamingToolIds.delete(toolUseId);
         materializePendingTool(this.opts, { ...pending, renderLayout: "subagent" }, toolUseId, input, false);
-        this.builder.streamingText.clear(toolUseId);
+        this.builder.clearToolText(toolUseId);
         return;
       }
       const proposal = this.streamingInputs.complete(toolUseId, name, input);
-      if (proposal) this.builder.streamingText.clearSilently(toolUseId);
+      if (proposal) this.builder.clearToolTextSilently(toolUseId);
       finalizeStreamingTool(this.opts, toolUseId, input, proposal);
-      this.builder.streamingText.clear(toolUseId);
+      this.builder.clearToolText(toolUseId);
       return;
     }
 
@@ -341,9 +336,9 @@ export class OutputToolProjector {
     }
     this.insertLeadingText(toolUseId, name, input, timestamp, leadingTextId);
     const proposal = this.streamingInputs.complete(toolUseId, name, input);
-    if (proposal) this.builder.streamingText.clearSilently(toolUseId);
+    if (proposal) this.builder.clearToolTextSilently(toolUseId);
     finalizeStreamingTool(this.opts, toolUseId, input, proposal);
-    this.builder.streamingText.clear(toolUseId);
+    this.builder.clearToolText(toolUseId);
   }
 
   private insertLeadingText(toolUseId: string, name: string, input: ToolInput, timestamp: number, leadingTextId?: string): void {
@@ -362,7 +357,7 @@ export class OutputToolProjector {
     if (source === "conversation" && this.deferredToolResults.has(toolUseId)) return;
     const streamed = this.streamingInputs.settle(toolUseId);
     if (streamed) retainStreamingProposal(this.opts, toolUseId, streamed.fileChangeKind, streamed.proposedDiff);
-    if (!isBackgroundResult(details)) this.builder.streamingText.clear(toolUseId);
+    if (!isBackgroundResult(details)) this.builder.clearToolText(toolUseId);
     this.deferredToolResults.delete(toolUseId);
     this.pendingTools.delete(toolUseId);
     this.streamingToolIds.delete(toolUseId);
@@ -370,7 +365,7 @@ export class OutputToolProjector {
     if (!tracked) return;
     if (tracked.kind === "agent") {
       log.debug("resolving agent tool result", {
-        sessionId: this.sessionId,
+        sessionId: this.sessionId(),
         toolUseId,
         agentId: tracked.agentId,
         source,

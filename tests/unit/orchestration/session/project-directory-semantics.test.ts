@@ -97,7 +97,7 @@ async function recordRelativeToolCall(store: LocalSqliteEventStore, sessionId: s
     },
     { kind: "toolResult", toolUseId: "tool_write_1", content: [{ type: "text", text: `Wrote 12 bytes to ${relativePath}` }] },
   ])
-  tree.getStorage().dispose()
+  tree.dispose()
 }
 
 function historyProjection(store: LocalSqliteEventStore, projectRoot: string, manager: Parameters<typeof testSessionDetailProjection>[0]["manager"]) {

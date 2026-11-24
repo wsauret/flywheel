@@ -297,7 +297,7 @@ describe("bounded output history protocol", () => {
     if (appended.kind !== "committed") throw new Error("expected committed chat tree entries")
     const assistantEntryId = appended.ids[1]
     if (!assistantEntryId) throw new Error("expected assistant entry id")
-    tree.getStorage().dispose()
+    tree.dispose()
     let conversationReads = 0
     const reader: EventStoreReadSurface = {
       ...store,
@@ -330,7 +330,7 @@ describe("bounded output history protocol", () => {
 
     const refreshedTree = await openExistingTree({ conversationId: "conv-durable", sessionId: "durable-chat", store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
     const refreshedTip = await refreshedTree.appendMessage({ kind: "user", content: "new durable fact" })
-    refreshedTree.getStorage().dispose()
+    refreshedTree.dispose()
     const refreshed = await projection.outputRange("durable-chat", { anchor: { kind: "tail" }, maxBlocks: 10, maxBytes: 1024 * 1024 })
     if (refreshed.kind !== "ok") throw new Error("expected refreshed chat range")
     expect(refreshed.consistencyToken).not.toBe(range.consistencyToken)
@@ -347,7 +347,7 @@ describe("bounded output history protocol", () => {
     await tree.appendMessage({ kind: "assistant", content: Array.from({ length: toolCount }, (_, index) => ({
       type: "tool_use" as const, id: `read-${index}`, name: "read", input: { path: `file-${index}` },
     })) })
-    tree.getStorage().dispose()
+    tree.dispose()
     for (let index = 0; index < toolCount; index += 1) {
       store.append({ aggregateId: "session:durable-chat", sessionId: "durable-chat", timestamp: index, type: "tool.execution_output.recorded", version: 1, actor: "flywheel", payload: { toolUseId: `read-${index}`, output: `output-${index}` } })
     }
@@ -390,7 +390,7 @@ describe("bounded output history protocol", () => {
       { kind: "assistant", content: "workflow output from the tree" },
     ])
     if (appended.kind !== "committed") throw new Error("expected committed workflow tree entries")
-    tree.getStorage().dispose()
+    tree.dispose()
 
     const projection = detailProjection({ manager: { read: async () => workflowSession() }, store })
     const request = { anchor: { kind: "tail" }, maxBlocks: 10, maxBytes: 1024 * 1024 } as const
@@ -428,7 +428,7 @@ describe("bounded output history protocol", () => {
       { kind: "assistant", content: "durable-context" },
     ])
     if (appended.kind !== "committed") throw new Error("expected committed sequence entries")
-    tree.getStorage().dispose()
+    tree.dispose()
     const runtimeBlocks = [textBlock(1, "durable-context"), textBlock(2, "unflushed-tail")]
     const projection = detailProjection({
       sessionStore: {
@@ -452,7 +452,7 @@ describe("bounded output history protocol", () => {
     const { store } = temporaryStore("flywheel-output-save-point-seam-")
     const tree = await createConversationTree({ conversationId: "conv-save-point", sessionId: "live-save-point", store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
     const initialTip = await tree.appendMessage({ kind: "user", content: "durable-prefix" })
-    tree.getStorage().dispose()
+    tree.dispose()
 
     let runtimeBlocks = [textBlock(1, "live-context"), textBlock(2, "unflushed-tail")]
     let runtimeRevision = 11
@@ -479,7 +479,7 @@ describe("bounded output history protocol", () => {
 
     const refreshedTree = await openExistingTree({ conversationId: "conv-save-point", sessionId: "live-save-point", store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
     const committedTip = await refreshedTree.appendMessage({ kind: "assistant", content: "live-context" })
-    refreshedTree.getStorage().dispose()
+    refreshedTree.dispose()
     entry.outputSequenceStart = 2
     runtimeBlocks = [textBlock(2, "unflushed-tail"), textBlock(3, "next-unflushed-tail")]
     runtimeRevision = 12

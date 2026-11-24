@@ -164,8 +164,8 @@ describe("session detail publisher", () => {
       expect(isInterruptible((await read(siblingMember.sessionId)).view?.status)).toBe(true)
       expect(p.failures).toEqual([])
     } finally {
-      sibling.getStorage().dispose()
-      tree.getStorage().dispose()
+      sibling.dispose()
+      tree.dispose()
       p.details.dispose()
       store.close()
     }
@@ -203,8 +203,8 @@ describe("session detail publisher", () => {
       expect(p.titleOf("chat")).toEqual(["Renamed"])
       expect(p.failures).toEqual([])
     } finally {
-      chatTree.getStorage().dispose()
-      childTree.getStorage().dispose()
+      chatTree.dispose()
+      childTree.dispose()
       p.details.dispose()
       store.close()
     }

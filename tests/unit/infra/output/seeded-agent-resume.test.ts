@@ -31,7 +31,7 @@ function card(projector: OutputProjector): AgentGroupBlock {
 describe("a seeded child card across resume", () => {
   for (const status of ["paused", "interrupted"] as const) {
     it(`re-dispatches a seeded ${status} card as active and completes it from the dispatch tool's result`, () => {
-      const projector = new OutputProjector({ executionCwd: "/scratch/seeded-agent-resume", sessionId: "parent" })
+      const projector = new OutputProjector({ executionCwd: "/scratch/seeded-agent-resume", sessionId: () => "parent" })
       projector.seedBlocks([seededCard(status)], 0)
 
       projector.apply({ type: "agent-dispatched", toolUseId: "dispatch-1", timestamp: 2_000 })
@@ -48,7 +48,7 @@ describe("a seeded child card across resume", () => {
     // opens the parent: activation reseeds the durable fold over the live
     // blocks. The fold reads the created run as active, and the later pause
     // event routes to the same card.
-    const projector = new OutputProjector({ executionCwd: "/scratch/seeded-agent-resume", sessionId: "parent" })
+    const projector = new OutputProjector({ executionCwd: "/scratch/seeded-agent-resume", sessionId: () => "parent" })
     projector.apply({ type: "tool-use", toolUseId: "dispatch-1", name: "subagent", input: { persona: "explorer", description: "Fixture child" }, timestamp: 1_000 })
     projector.apply({ type: "agent-dispatched", toolUseId: "dispatch-1", timestamp: 1_100 })
     expect(card(projector)).toMatchObject({ status: "active" })
@@ -61,7 +61,7 @@ describe("a seeded child card across resume", () => {
   })
 
   it("a seeded active card on a fresh runner takes the child's pause and completion", () => {
-    const projector = new OutputProjector({ executionCwd: "/scratch/seeded-agent-resume", sessionId: "parent" })
+    const projector = new OutputProjector({ executionCwd: "/scratch/seeded-agent-resume", sessionId: () => "parent" })
     projector.seedBlocks([seededCard("active")], 0)
 
     projector.apply({ type: "agent-paused", toolUseId: "dispatch-1", timestamp: 2_000, pausedBy: "runtime" })
@@ -73,7 +73,7 @@ describe("a seeded child card across resume", () => {
   })
 
   it("leaves a settled seeded card alone", () => {
-    const projector = new OutputProjector({ executionCwd: "/scratch/seeded-agent-resume", sessionId: "parent" })
+    const projector = new OutputProjector({ executionCwd: "/scratch/seeded-agent-resume", sessionId: () => "parent" })
     projector.seedBlocks([{ ...seededCard("interrupted"), status: "completed" }], 0)
 
     projector.apply({ type: "agent-dispatched", toolUseId: "dispatch-1", timestamp: 2_000 })

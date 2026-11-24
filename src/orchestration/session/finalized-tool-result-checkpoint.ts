@@ -241,7 +241,7 @@ export async function retireLegacyFinalizedToolResultCheckpoints(options: {
       for (const entry of Object.values(state.entriesById)) {
         if (entry.kind === "message" && entry.message.kind === "toolResult") derivatives.add(entry.message.toolUseId);
       }
-    } finally { tree.getStorage().dispose(); }
+    } finally { tree.dispose(); }
   }
   const evidence = await readSessionRecoveryEvidence(options);
   const completed = legacy.filter(({ checkpoint }) =>

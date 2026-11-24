@@ -340,7 +340,7 @@ describe("commit window", () => {
       const reads = sequenceReads(operations())
       expect(reads.filter((aggregateId) => aggregateId.startsWith("conversation:"))).toEqual([])
       expect(reads.length).toBeGreaterThan(0)
-      for (const tree of trees) tree.getStorage().dispose()
+      for (const tree of trees) tree.dispose()
       await closeFixtures()
     }
   })

@@ -96,8 +96,8 @@ describe("subagent completion delivery", () => {
           expect(entryVisits).toBe(0)
         } finally {
           traversal.mockRestore()
-          validated?.getStorage().dispose()
-          tree.getStorage().dispose()
+          validated?.dispose()
+          tree.dispose()
         }
         const requests = counter.take()
         costs.push({ requests: requests.length, facts: factsRead(requests) })
@@ -176,7 +176,7 @@ describe("subagent completion delivery", () => {
     await parentTree.appendMessage({ kind: "user", content: "delegate" })
     await parentTree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: toolUseId, name: "subagent", input: toolInput }] })
     await parentTree.appendMessage({ kind: "toolResult", toolUseId, content: [{ type: "text", text: "Dispatched." }] })
-    parentTree.getStorage().dispose()
+    parentTree.dispose()
 
     await manager.publishSubagent({
       id: childSessionId,

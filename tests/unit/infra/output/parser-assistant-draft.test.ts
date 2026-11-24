@@ -17,7 +17,7 @@ describe("RuntimeEventProjector — assistant draft reconciliation", () => {
   let turn: AssistantTurnResult;
 
   beforeEach(() => {
-    projector = new OutputProjector({ executionCwd: "/workspace" });
+    projector = new OutputProjector({ executionCwd: "/workspace", onChange: () => {} });
     parser = new RuntimeEventProjector(projector);
     turn = {
       entryId: "entry", outcome: { kind: "ok", stopReason: "unknown" }, assistantContent: [], toolCalls: [],
@@ -59,7 +59,6 @@ describe("RuntimeEventProjector — assistant draft reconciliation", () => {
    *  thought rows after each event and whether any change batch was a full
    *  resync, which is how a retraction reaches clients. */
   function respond(events: readonly ProviderStreamEvent[], recorded = (content: AssistantTurnResult["assistantContent"]) => content) {
-    projector.onChange = () => {};
     projector.drainChanges();
     const context = {
       options: { onEvent: (event: RuntimeEvent) => parser.dispatch(event, 1000) },
@@ -141,7 +140,6 @@ describe("RuntimeEventProjector — assistant draft reconciliation", () => {
   });
 
   it("corrects terminal narration in place under its canonical public identity", () => {
-    projector.onChange = () => {};
     parser.dispatch(makeTextDelta("draft answer", "entry:0"), 1000);
     projector.drainChanges();
     parser.dispatch({
@@ -239,7 +237,6 @@ describe("RuntimeEventProjector — assistant draft reconciliation", () => {
   });
 
   it("uses one canonical run for adjacent provider parts from their first public output", () => {
-    projector.onChange = () => {};
     parser.dispatch(makeTextDelta("first ", "draft:1"), 1000);
     expect(projector.drainChanges().changes).toEqual([
       { kind: "insert", index: 0, block: expect.objectContaining({ kind: "text", content: "first " }) },
@@ -379,7 +376,6 @@ describe("RuntimeEventProjector — assistant draft reconciliation", () => {
   });
 
   it("does not retract independent emitted text blocks", () => {
-    projector.onChange = () => {};
     parser.dispatch(makeTextDelta("partial ", "run1:text:1"), 1000);
     parser.dispatch(makeTextDelta("answer", "run1:text:2"), 1001);
     expect(projector.getBlocks()).toHaveLength(1);

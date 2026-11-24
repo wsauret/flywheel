@@ -76,7 +76,7 @@ describe("SessionTranscriptProjection questions", () => {
       expect(store.read({ aggregateId: `session:${sessionId}` })).toEqual(before)
     } finally {
       await cache.dispose()
-      writer.getStorage().dispose()
+      writer.dispose()
     }
   })
 
@@ -187,7 +187,7 @@ describe("SessionTranscriptProjection questions", () => {
       },
     })
     await reopened.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 
   it("reprojects a durable ask_user cancellation", async () => {
@@ -230,6 +230,6 @@ describe("SessionTranscriptProjection questions", () => {
       cancelled: true,
     })
     await projection.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 })

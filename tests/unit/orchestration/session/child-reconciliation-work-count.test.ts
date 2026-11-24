@@ -130,13 +130,13 @@ describe("child reconciliation work", () => {
       const counter = countStateRequests(asAsyncEventReadSurface(store))
       const input = { reader: counter.reader, projectionReader: counter.reader, writer }
       const first = await readChildCompletionConversation({ input }, parentSessionId, conversationId)
-      first?.getStorage().dispose()
+      first?.dispose()
       counter.take()
       await tree.appendMessage({ kind: "user", content: "new message" })
       const next = await readChildCompletionConversation({ input }, parentSessionId, conversationId)
       expect((await next?.getState())?.leafId).toBe(await tree.getLeafId())
-      next?.getStorage().dispose()
-      tree.getStorage().dispose()
+      next?.dispose()
+      tree.dispose()
       // The tree's one fold both validates and serves the conversation.
       expect(factsRead(counter.take())).toBe(1)
     }
@@ -190,7 +190,7 @@ describe("child reconciliation work", () => {
         const tree = await tryOpenConversationTree({ store: asAsyncEventReadSurface(store), writer, sessionId: parentSessionId, conversationId: "parent-conversation" })
         if (!tree) throw new Error("missing parent")
         for (let i = 0; i < history; i += 1) await tree.appendMessage({ kind: "user", content: `message ${i}` })
-        tree.getStorage().dispose()
+        tree.dispose()
         const statuses = ["paused", "created", "completed", "completed"] as const
         for (let i = 0; i < children; i += 1) await addSubagentChild(store, writer, projectRoot, parentSessionId, "parent-conversation", i, statuses[i % statuses.length] ?? "completed", history)
         // The parent's earlier owner settled every finished child.

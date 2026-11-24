@@ -52,7 +52,7 @@ test("keeps only the messages that the step read from its parent session", async
       { type: "image", mediaType: "image/png", data: "iVBORw0KGgo=" },
     ], "parent", { personWords: "follow the plan" }), "msg:parent-session:call-2")
   } finally {
-    tree.getStorage().dispose()
+    tree.dispose()
   }
   // A build before session messages wrote a parent's message with a
   // `parent-agent` producer. It decodes with no envelope, so it never
@@ -102,6 +102,6 @@ test("message, entry, and tool-call lookups share an advancing conversation inde
       expect(factsRead(counter.take())).toBe(1)
     }
   } finally {
-    tree.getStorage().dispose()
+    tree.dispose()
   }
 })

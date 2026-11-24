@@ -59,7 +59,7 @@ export async function rebaseChange(change: CopyChange, context: RebaseContext): 
   const real = join(context.realRoot, change.path);
   let theirs: Buffer | undefined;
   try {
-    theirs = readContainedFile(real, context.realRoot);
+    theirs = RetainedFileEditAuthority.readDetachedBytes(real, context.realRoot);
   } catch (error) {
     if (error instanceof ContainedPathError) return notApplied("it is no longer a regular file");
     throw error;
@@ -90,19 +90,6 @@ export async function rebaseChange(change: CopyChange, context: RebaseContext): 
   const expected = theirs === undefined ? { kind: "absent" as const } : expectedOver(real, theirs);
   if (!expected) return { kind: "changed" };
   return { kind: "merged", change: { ...change, after: merged, expected }, marked: merge.exitCode > 0 };
-}
-
-/** The project file's bytes, read through the same no-follow walk below the
- *  project root that publication admits through, or undefined when no file is
- *  there. Throws `ContainedPathError` when a link or a non-directory holds part
- *  of the path, or a non-regular file holds the path itself. */
-function readContainedFile(path: string, realRoot: string): Buffer | undefined {
-  const authority = RetainedFileEditAuthority.admitWritable(path, realRoot, Number.POSITIVE_INFINITY);
-  try {
-    return authority.snapshot?.content;
-  } finally {
-    authority.close();
-  }
 }
 
 /** The state the merged bytes are expected over: the file's fingerprint,

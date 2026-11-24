@@ -125,7 +125,8 @@ export async function undoSessionChanges(context: SessionUndoContext, input: Ses
       await checkPending(context, fresh, prepared)
       authority.verifyPrecondition()
     }
-    const currentAccess = authority.snapshot ? fileAccessProof(authority.snapshot.metadata) : null
+    const currentMetadata = authority.admittedMetadata()
+    const currentAccess = currentMetadata ? fileAccessProof(currentMetadata) : null
     if (original === authority.text && sameAccess(originalAccess, currentAccess)) {
       return await withMutationQueueKeys([file.path], async () => {
         await recheck()

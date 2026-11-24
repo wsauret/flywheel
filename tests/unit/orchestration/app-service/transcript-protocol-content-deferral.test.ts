@@ -188,7 +188,7 @@ describe("bounded output history content deferral", () => {
 
       const tree = await openExistingTree({ conversationId: "conv-1", sessionId: "session-1", store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
       const appended = await tree.appendMessages([{ kind: "user", content: "advance the durable tip" }])
-      tree.getStorage().dispose()
+      tree.dispose()
       if (appended.kind !== "committed") throw new Error(`tree append failed: ${appended.kind}`)
 
       const body = await projection.outputBlockBody("session-1", { blockId: `tool:${tool.id}` })
@@ -270,7 +270,7 @@ describe("bounded output history content deferral", () => {
       }, "notice", nodes => asAsyncEventWriter(store).stageSessionContentNodes("session-1", nodes))
       const tree = await openExistingTree({ conversationId: "conv-1", sessionId: "session-1", store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
       await tree.appendMessages([{ kind: "system", content: "Updated skill: `provider-quirks`.", mutationEvidence }])
-      tree.getStorage().dispose()
+      tree.dispose()
       const range = await projection.outputRange("session-1", { anchor: { kind: "tail" }, maxBlocks: 3, maxBytes: 1024 * 1024 })
       if (range.kind !== "ok") throw new Error("expected hydrated range")
       const notice = range.blocks.find((block) => block.kind === "system")
@@ -487,7 +487,7 @@ async function withDerivedChatHistory(
   try {
     const tree = await createConversationTree({ conversationId: "conv-1", sessionId: "session-1", store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
     const appended = await tree.appendMessages(messages)
-    tree.getStorage().dispose()
+    tree.dispose()
     if (appended.kind !== "committed") throw new Error(`tree append failed: ${appended.kind}`)
 
     const recovered = createMutationEvidenceRecovery(asAsyncEventReadSurface(store), asAsyncEventWriter(store)).reader

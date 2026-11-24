@@ -11,11 +11,10 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
   let builder: StructuredOutputBuilder;
 
   beforeEach(() => {
-    builder = new StructuredOutputBuilder();
     // Every recording method short-circuits with no listener (same guard as
     // notifyChange), matching the one real production wiring (OutputProjector
-    // always sets onChange before anything runs).
-    builder.onChange = () => {};
+    // always passes onChange at construction).
+    builder = new StructuredOutputBuilder({ onChange: () => {} });
   });
 
   it("stays empty with no listener wired, even after real mutations", () => {
@@ -202,8 +201,7 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
   });
 
   it("visible suffix tracks seeded messages, retraction, and cap eviction", () => {
-    const capped = new StructuredOutputBuilder(4);
-    capped.onChange = () => {};
+    const capped = new StructuredOutputBuilder({ onChange: () => {}, blocksCap: 4 });
     capped.seedBlocks([{ kind: "text", id: "durable", content: "history", timestamp: 0 }], 0);
     capped.pushText("first", 1, "first");
     expect(capped.visibleMessageCountSuffix).toBe(2);
@@ -280,8 +278,7 @@ describe("StructuredOutputBuilder: open thoughts and absolute indexes", () => {
   });
 
   it("a thought followed by text closes the thought once", () => {
-    const builder = new StructuredOutputBuilder();
-    builder.onChange = () => {};
+    const builder = new StructuredOutputBuilder({ onChange: () => {} });
     builder.pushThinking("plan", 1, "thought");
     builder.drainChanges();
 
@@ -296,8 +293,7 @@ describe("StructuredOutputBuilder: open thoughts and absolute indexes", () => {
   });
 
   it("a seeded thought that still streams completes with the next text", () => {
-    const builder = new StructuredOutputBuilder();
-    builder.onChange = () => {};
+    const builder = new StructuredOutputBuilder({ onChange: () => {} });
     builder.seedBlocks([{ kind: "thinking", id: "seeded", content: "plan", status: "streaming", timestamp: 0 }], 0);
     builder.drainChanges();
 
@@ -307,8 +303,7 @@ describe("StructuredOutputBuilder: open thoughts and absolute indexes", () => {
   });
 
   it("a builder seeded at sequenceStart 500 reports index 503 for its fourth block", () => {
-    const builder = new StructuredOutputBuilder();
-    builder.onChange = () => {};
+    const builder = new StructuredOutputBuilder({ onChange: () => {} });
     builder.seedBlocks([0, 1, 2].map((index): AnyBlock => ({ kind: "text", id: `seed-${index}`, content: "history", timestamp: index })), 500);
 
     builder.pushText("four", 3, "fourth");

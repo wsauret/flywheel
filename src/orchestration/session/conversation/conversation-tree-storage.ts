@@ -1,10 +1,11 @@
-import type { AsyncEventAppender, AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend, InFlightWrite, StoredFact } from "../../../infra/event-store-types.js"
+import type { AsyncEventAppender, AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend, InFlightRecord, InFlightWrite, StoredFact } from "../../../infra/event-store-types.js"
 import { runInTaskSlices, runToCompletion, type TaskSliceScheduling } from "../../../infra/task-scheduling.js"
 import { chatEntriesFacts, parseConversationTreeFact, type ConversationTreeFact } from "./conversation-facts.js"
 import { extractTreeFactContent } from "./conversation-tree-content-extraction.js"
 import { branchVisibleTranscriptWork, createConversationTreeProjection, type ConversationTreeProjectionState, type ConversationTreeTranscriptEntry, type DegradedTranscriptSequence } from "./conversation-projection.js"
 import type { LeafEntry, ConversationEntry } from "./conversation-entry-types.js"
 import { walkBranchWork, type BranchWalkGap } from "./conversation-tree-context.js"
+import { readInterruptedWork, type InterruptedWork } from "./interrupted-turn-summary.js"
 import { Log } from "../../../infra/log.js"
 
 const log = Log.create({ service: "conversation-tree" })
@@ -320,10 +321,16 @@ export class ConversationTreeStorage {
     }, contextOnly)
   }
 
-  /** The reader this handle folds from, for a caller that needs facts this
-   *  conversation's aggregate does not carry. */
-  getStore(): AsyncEventStateReadSurface {
-    return this.store
+  /** The work that this conversation's session recorded after `boundary`:
+   *  the turn's tool calls and file changes, which the conversation aggregate
+   *  does not carry. Calls in `answeredToolUseIds` count as finished. */
+  readInterruptedWorkAfter(boundary: number, answeredToolUseIds: ReadonlySet<string>): Promise<InterruptedWork> {
+    return readInterruptedWork(this.store, { sessionId: this.sessionId, conversationId: this.conversationId, answeredToolUseIds }, boundary)
+  }
+
+  /** The in-flight cells of the kinds `kinds` that this conversation's session holds. */
+  readSessionInFlight(kinds: readonly string[]): Promise<InFlightRecord[]> {
+    return this.store.readInFlight(this.sessionId, kinds)
   }
 
   /** Session this conversation belongs to. Its facts carry the turn's actions,
@@ -335,12 +342,6 @@ export class ConversationTreeStorage {
   /** The workflow whose agent this conversation is, if any. */
   getWorkflowId(): string | undefined {
     return this.workflowId
-  }
-
-  /** The conversation whose provider requests own its turns' actions among
-   *  the session's facts. */
-  getConversationId(): string {
-    return this.conversationId
   }
 
   /** Store position of the newest fact this conversation folded. */

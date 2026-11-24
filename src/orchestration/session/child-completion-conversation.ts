@@ -24,7 +24,7 @@ export async function readChildCompletionConversation(
     store: input.projectionReader,
     writer: input.writer,
   })
-  if (!tree?.getStorage().openedState().degraded.unreadable) return tree
-  tree.getStorage().dispose()
+  if (!tree?.holdsUnreadableFact()) return tree
+  tree.dispose()
   throw new Error(`Conversation ${conversationId} holds a fact this build cannot decode; the child completion is not published`)
 }

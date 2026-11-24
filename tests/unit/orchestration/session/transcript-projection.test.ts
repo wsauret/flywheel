@@ -35,7 +35,7 @@ describe("SessionTranscriptProjection", () => {
     const { sessionId, conversationId } = await createChat()
     const tree = await openExistingTree({ sessionId, conversationId, store })
     await tree.appendMessage({ kind: "assistant", content: "Read-only history" })
-    tree.getStorage().dispose()
+    tree.dispose()
     const reader = openReadonlyEventReader(resolveEventStoreDbFile(baseDir))
     const projection = new SessionTranscriptProjection({ sessionId, conversationId, store: asAsyncEventReadSurface(reader), executionCwd: baseDir })
     try {
@@ -84,7 +84,7 @@ describe("SessionTranscriptProjection", () => {
     } finally {
       for (const probe of Object.values(probes)) probe.mockRestore()
       await projection.dispose()
-      tree.getStorage().dispose()
+      tree.dispose()
     }
   })
 
@@ -99,7 +99,7 @@ describe("SessionTranscriptProjection", () => {
     expect(await before?.readBlock(0)).toMatchObject({ status: "interrupted" })
     expect(await after?.readBlock(0)).toMatchObject({ status: "completed", content: "done" })
     await projection.dispose()
-    tree.getStorage().dispose()
+    tree.dispose()
   })
 
   it("replays once, append-folds new branch entries, and preserves blocks on an unchanged read", async () => {
@@ -119,7 +119,7 @@ describe("SessionTranscriptProjection", () => {
     expect(unchanged).toBe(appended)
     await projection.dispose()
     await projection.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 
   it("keeps degraded blocks in incremental reads and fresh opens", async () => {
@@ -159,7 +159,7 @@ describe("SessionTranscriptProjection", () => {
     expect(JSON.stringify(await blocks(opened))).not.toContain("RAW_SENTINEL")
     await fresh.dispose()
     await projection.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 
   it("reprojects a persisted review notice with the skill mutations it recorded", async () => {
@@ -173,7 +173,7 @@ describe("SessionTranscriptProjection", () => {
       { name: "provider-quirks", action: "support_file", reach: "project" as const, mutation },
     ]
     const parentId = await writer.appendMessage({ kind: "user", content: "hello" })
-    writer.getStorage().dispose()
+    writer.dispose()
     const historical = store.append({
       aggregateId: `conversation:${conversationId}`, sessionId,
       type: "chat.entries.appended", version: 6, actor: "flywheel", timestamp: Date.now(),
@@ -227,7 +227,7 @@ describe("SessionTranscriptProjection", () => {
     expect(await blocks(actual)).toEqual([...expected.blocks])
     expect(actual?.tipEntryId).toBe(expected.tipEntryId)
     await projection.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 
   it("renders an ask_user context field as a text block before the tool row", async () => {
@@ -251,7 +251,7 @@ describe("SessionTranscriptProjection", () => {
     expect((await blocks(history)).map((block) => block.kind)).toEqual(["text", "tool"])
     expect(await history?.readBlock(0)).toMatchObject({ kind: "text", content: "Background the user needs." })
     await projection.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 
   it("re-settles an existing subagent block when its run facts arrive late", async () => {
@@ -276,7 +276,7 @@ describe("SessionTranscriptProjection", () => {
     expect(after?.consistencyToken).not.toBe(before?.consistencyToken)
     expect(await projection.read()).toBe(after)
     await projection.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 
   it("re-settles a deferred workflow row when its terminal result fact arrives", async () => {
@@ -322,7 +322,7 @@ describe("SessionTranscriptProjection", () => {
     })
     expect(after?.consistencyToken).not.toBe(before?.consistencyToken)
     await projection.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 
   it("rebuilds a refused workflow launch card from history with the refusal the live card showed", async () => {
@@ -372,7 +372,7 @@ describe("SessionTranscriptProjection", () => {
       failure: { title: "Workflow not started", message: "Confirmation q-7 was already used, and one approval launches one workflow." },
     })
     await projection.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 
   it.each(["launch", "adoption"] as const)("anchors runtime-origin %s cards to the visible branch and refreshes settlement", async (origin) => {
@@ -439,7 +439,7 @@ describe("SessionTranscriptProjection", () => {
     const memberHistory = await memberProjection.read()
     expect((await blocks(memberHistory)).find((block) => block.kind === "tool")).toMatchObject({ name: "read", id: "workflow-read" })
     await memberProjection.dispose()
-    memberTree.getStorage().dispose()
+    memberTree.dispose()
 
     // Reconciliation records the call's result once the run is terminal.
     await succeedTestWorkflowMember(manager, store, childId)
@@ -469,7 +469,7 @@ describe("SessionTranscriptProjection", () => {
 
     await reopened.dispose()
     await projection.dispose()
-    writer.getStorage().dispose()
+    writer.dispose()
   })
 
   it("reads a tool row again after a failed source read", async () => {
@@ -494,7 +494,7 @@ describe("SessionTranscriptProjection", () => {
     } finally {
       await projection.dispose()
       await fresh.dispose()
-      tree.getStorage().dispose()
+      tree.dispose()
     }
   })
 
@@ -583,7 +583,7 @@ describe("SessionTranscriptProjection", () => {
       held.resolve()
       await projection.dispose()
       await fresh.dispose()
-      tree.getStorage().dispose()
+      tree.dispose()
     }
   })
 
@@ -612,7 +612,7 @@ describe("SessionTranscriptProjection", () => {
     expect(store.read({ aggregateId: `conversation:${conversationId}` })).toHaveLength(factCount)
     expect((await tree.getBranch()).some((entry) => entry.kind === "message" && entry.message.kind === "toolResult")).toBe(false)
     await projection.dispose()
-    tree.getStorage().dispose()
+    tree.dispose()
   })
 
   it("preserves a durable pending ask_user gap during transcript reads", async () => {
@@ -646,7 +646,7 @@ describe("SessionTranscriptProjection", () => {
     expect(store.read({ aggregateId: `conversation:${conversationId}` })).toHaveLength(factCount)
     expect((await tree.getBranch()).some((entry) => entry.kind === "message" && entry.message.kind === "toolResult")).toBe(false)
     await projection.dispose()
-    tree.getStorage().dispose()
+    tree.dispose()
   })
 })
 

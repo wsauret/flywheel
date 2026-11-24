@@ -223,7 +223,7 @@ describe("sanitized historical edit replay", () => {
         { kind: "toolResult", toolUseId: "edit-1", content: [{ type: "text", text: "Sanitized recorded content" }] },
       ])
       if (appended.kind !== "committed") throw new Error("expected committed edit entries")
-      tree.getStorage().dispose()
+      tree.dispose()
       const resultFact: EventStoreAppend = {
         aggregateId: `session:${sessionId}`,
         type: "tool.result.recorded",

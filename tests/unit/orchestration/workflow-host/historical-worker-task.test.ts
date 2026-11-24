@@ -122,7 +122,7 @@ async function tree() {
 
 async function branch() {
   const opened = await tree()
-  try { return await opened.getBranch() } finally { await opened.getStorage().dispose() }
+  try { return await opened.getBranch() } finally { await opened.dispose() }
 }
 
 function prior(options: AgentOptions) {
@@ -197,7 +197,7 @@ test("retains later assistant, tool-result, and operator history without replayi
   await opened.appendMessage({ kind: "user", content: "Do not redo that write", origin: "human" })
   await opened.appendMessage({ kind: "assistant", content: [{ type: "text", text: "waiting at the historical leaf" }] })
   const originalBranch = await opened.getBranch()
-  await opened.getStorage().dispose()
+  await opened.dispose()
   const originalFacts = store.read({ aggregateId: `conversation:${conversationId}` })
   const captured: AgentOptions[] = []
   await worker(capturingFactory(captured))(step, attemptBrief(canonicalPrompt), undefined, conversationId)
@@ -270,7 +270,7 @@ test("compaction can remove the task from provider context without removing its 
   await opened.appendCompaction({ sourceLeafId: key, tokensBefore: 1000, tokensAfter: 0, opening: [] })
   await opened.appendMessage({ kind: "user", origin: "system", content: "Continue from the retained working notes." })
   const compacted = await opened.getBranch()
-  await opened.getStorage().dispose()
+  await opened.dispose()
   await worker(capturingFactory(captured))(step, attemptBrief("Do not append this later prompt"), undefined, conversationId)
   expect(captured).toHaveLength(2)
   expect(prior(captured[1]!)).toEqual([{ kind: "user", origin: "system", content: "Continue from the retained working notes." }])

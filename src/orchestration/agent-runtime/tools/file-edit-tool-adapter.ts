@@ -44,7 +44,7 @@ export async function publishToolFileEditOutcome<Plan extends PlannedFileEdit>(c
       const { authority } = publication.plan.admitted
       settleFileMutationArtifact(context, {
         path: authority.canonicalPath,
-        beforeContent: authority.snapshot?.content ?? "",
+        beforeContent: publication.before?.content ?? "",
         afterContent: publication.bytes ?? "",
       })
       if (publication.bytes === undefined) context.readLedger?.forget(authority.canonicalPath)
@@ -99,7 +99,7 @@ export async function publishToolFileEdits(context: ToolContext, options: Pick<F
       ...options,
       onPrepared: async (publications) => {
         for (const publication of publications) {
-          const warning = await readWarning(context, publication.plan)
+          const warning = await readWarning(context, publication)
           if (warning) warnings.push(warning)
         }
       },
@@ -166,10 +166,10 @@ export async function publishToolFileEdits(context: ToolContext, options: Pick<F
 }
 
 /** Read evidence informs the model but never blocks publication. Per-item CAS owns race refusal. */
-async function readWarning(context: ToolContext, plan: ToolFileEditPlan): Promise<string | undefined> {
+async function readWarning(context: ToolContext, { plan, before }: FileEditPublication<ToolFileEditPlan>): Promise<string | undefined> {
   const { authority } = plan.admitted
-  if (!context.readLedger || !authority.snapshot) return undefined
-  const staleness = context.readLedger.staleness(authority.canonicalPath, authority.snapshot.content, plan.changedLines)
+  if (!context.readLedger || !before) return undefined
+  const staleness = context.readLedger.staleness(authority.canonicalPath, before.content, plan.changedLines)
   if (!staleness) return undefined
   return describeStaleness(context, plan.admitted.path, authority.canonicalPath, staleness)
 }
@@ -209,11 +209,11 @@ async function changedBy(context: ToolContext, canonicalPath: string, sincePosit
 async function describePublication(context: ToolContext, publication: FileEditPublication): Promise<string[]> {
   const path = publication.plan.admitted.path
   if (publication.bytes === undefined) return [`Deleted ${path}`]
-  if (publication.plan.admitted.authority.snapshot === undefined) return [`Created ${path} (${publication.bytes.toString("utf8").split("\n").length} lines)`]
+  if (publication.plan.admitted.authority.admittedFile === undefined) return [`Created ${path} (${publication.bytes.toString("utf8").split("\n").length} lines)`]
   const evidence = publication.mutation?.evidence
   if (!context.sessionEventWriter) {
     // Standalone callers have no retained content owner. This preview is never durable evidence.
-    const before = textEndpoint(publication.plan.admitted.authority.snapshot?.content)
+    const before = textEndpoint(publication.before?.content)
     const after = textEndpoint(publication.bytes)
     const mutation = buildMutationDiff(before && after ? [{ path, before, after }] : [])
     const file = mutation.files[0]

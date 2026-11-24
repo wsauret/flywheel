@@ -107,8 +107,8 @@ describe("runtime session protocol contract", () => {
       expect(catalogPatches.filter((patch) => patch.cursor.scope === "session" && patch.cursor.sessionId === childId)).toEqual([])
       expect(f.failures).toEqual([])
     } finally {
-      tree.getStorage().dispose()
-      stepTree.getStorage().dispose()
+      tree.dispose()
+      stepTree.dispose()
       unsubscribe()
       stop()
       await client.close()

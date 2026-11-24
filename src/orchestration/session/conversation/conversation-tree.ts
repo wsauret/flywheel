@@ -1,14 +1,15 @@
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js";
-import { hasInterruptedWork, interruptedTurnEntryId, interruptedWorkMessage, readInterruptedWork, type InterruptedTurnReason } from "./interrupted-turn-summary.js";
+import { hasInterruptedWork, interruptedTurnEntryId, interruptedWorkMessage, type InterruptedTurnReason } from "./interrupted-turn-summary.js";
 import { chatTurnEndOf, endsAtTurnEnd, isPlannedCut, questionExchangeOf } from "./turn-end-record.js";
 import { isRecoveredToolResultEntryId } from "../finalized-tool-result-checkpoint.js";
 import { decodeQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND, queuedInputDrops, queuedInputMessage, type QueuedUserInputCell, type QueuedUserInputCommitResult } from "./queued-user-inputs.js";
 import { decodeQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, queuedBackgroundNotificationDrops, queuedBackgroundNotificationMessage, type QueuedBackgroundNotification } from "./queued-background-notifications.js";
 import { replyWaitRetirements } from "./reply-wait-cells.js";
 import type { ConversationInputCapture, ConversationTreeStorage } from "./conversation-tree-storage.js";
-import { InFlightSwapConflictError, type EventStoreAppend, type InFlightWrite } from "../../../infra/event-store-types.js";
+import { InFlightSwapConflictError, type EventStoreAppend, type GuardedEventStoreAppend, type InFlightWrite } from "../../../infra/event-store-types.js";
 import { runInTaskSlices, type TaskSliceScheduling } from "../../../infra/task-scheduling.js";
-import type { ConversationTreeProjectionState } from "./conversation-projection.js";
+import { InvariantViolation } from "../../../infra/invariant.js";
+import type { ConversationTreeProjectionState, ConversationTreeTranscriptEntry } from "./conversation-projection.js";
 import type { BranchSummaryEntry, CompactionEntry, MessageEntry, ConversationEntry } from "./conversation-entry-types.js";
 import { AssistantPrefillSessionContextError, buildCommittedForkMessagesWork, buildSessionContextWork, reconstructRawSessionMessages, type BuildSessionContextOptions, type SessionContext } from "./conversation-tree-context.js";
 
@@ -136,13 +137,50 @@ type AppendMessagesOutcome =
   | { kind: "committed"; ids: string[] }
   | { kind: "notCommitted"; cause: unknown };
 
+/** Walks the immutable parent chain from the leaf over the already-loaded
+ *  projection state, returning as soon as it sees a user message, so a deep
+ *  branch costs no per-hop SQLite round-trip, and an early hit near the leaf
+ *  stops short of the root. */
+function branchHasUserMessage(state: Pick<ConversationTreeProjectionState, "leafId" | "entriesById">): boolean {
+  let currentId = state.leafId;
+  while (currentId !== null) {
+    const entry = state.entriesById[currentId];
+    if (!entry) {
+      throw new InvariantViolation({
+        kind: "missing-producer-event",
+        eventType: "chat.branch.read",
+        eventPosition: -1,
+        aggregateId: state.leafId ?? "",
+        detail: `active branch references missing entry ${currentId}`,
+      });
+    }
+    if (entry.kind === "message" && entry.message.kind === "user") return true;
+    currentId = entry.parentId;
+  }
+  return false;
+}
+
 export class ConversationTree {
   private cachedContext: SessionContext | null = null;
   private cachedBranchLeaf: string | null | undefined = undefined;
   constructor(private readonly storage: ConversationTreeStorage, private readonly scheduling?: TaskSliceScheduling) {}
 
-  getStorage(): ConversationTreeStorage {
-    return this.storage;
+  /** Ends this handle: every later read or append through it throws, and
+   *  releasing a reserved id stays allowed. The borrowed store stays open.
+   *  Repeated calls do nothing. */
+  dispose(): void {
+    this.storage.dispose();
+  }
+
+  /** Reserves an entry id that no committed entry and no other reservation
+   *  holds, for a caller that names its message before it appends it. */
+  allocateId(): Promise<string> {
+    return this.storage.allocateId();
+  }
+
+  /** Returns a reserved id whose message will never be appended. */
+  releaseId(id: string): void {
+    this.storage.releaseId(id);
   }
 
   getLeafId(): Promise<string | null> {
@@ -157,6 +195,28 @@ export class ConversationTree {
 
   getState(): Promise<ConversationTreeProjectionState> {
     return this.storage.getState();
+  }
+
+  /** Whether the conversation holds a fact this build cannot decode, as of
+   *  open or the last read, with no new read. For a handle opened moments ago
+   *  this is the durable answer; a long-held handle must read first to see
+   *  another process's commits. */
+  holdsUnreadableFact(): boolean {
+    return this.storage.openedState().degraded.unreadable;
+  }
+
+  /** Whether the selected branch holds a user turn, as of open or the last
+   *  read, with no new read. This is the durable authority for tombstone
+   *  decisions: a committed user turn is visible here even when no in-memory
+   *  cache remembers it. */
+  branchHasUserMessage(): boolean {
+    return branchHasUserMessage(this.storage.openedState());
+  }
+
+  /** The selected branch for transcript display, with a notice in place of
+   *  each fact this build cannot read. */
+  async getTranscript(): Promise<ConversationTreeTranscriptEntry[]> {
+    return this.storage.getTranscriptToRoot(await this.storage.getLeafId());
   }
 
   async getBranch(fromId?: string): Promise<ConversationEntry[]> {
@@ -246,6 +306,16 @@ export class ConversationTree {
     });
   }
 
+  /** Prepares a display-only system notice under `id`, chained off the leaf,
+   *  without publishing it, for a caller that commits it in one store
+   *  transaction with its own in-flight changes. Empty when the tree already
+   *  holds `id`. The append is guarded on the leaf it extends. */
+  prepareDisplayNoticeAppend(id: string, content: string, timestamp: string): Promise<readonly GuardedEventStoreAppend[]> {
+    return this.storage.prepareEntriesAppend(async (state) => state.entriesById[id] ? [] : [
+      createConversationMessageEntry({ kind: "system", content, displayOnly: true }, id, state.leafId, timestamp),
+    ]);
+  }
+
   /** Record what a turn that never reached its save point had already done,
    *  if any turn was, then restore any user messages the dead process had
    *  queued but never made durable.
@@ -280,11 +350,7 @@ export class ConversationTree {
       // call in the transcript, but that turn still ended in the crash.
       const answeredToolUseIds = new Set(branch.flatMap((entry) =>
         entry.kind === "message" && entry.message.kind === "toolResult" && !isRecoveredToolResultEntryId(entry.id) ? [entry.message.toolUseId] : []));
-      const work = await readInterruptedWork(this.storage.getStore(), {
-        sessionId: this.storage.getSessionId(),
-        conversationId: this.storage.getConversationId(),
-        answeredToolUseIds,
-      }, boundary);
+      const work = await this.storage.readInterruptedWorkAfter(boundary, answeredToolUseIds);
       // Only recovery over a dead owner may read an unanswered message as an
       // unfinished turn: a live writer commits a task and its held input at
       // consecutive idle boundaries with no request between them. For the
@@ -316,10 +382,9 @@ export class ConversationTree {
 
   /** Restore process-local messages from their distinct durable checkpoints. */
   private async recoverQueuedMessages(ownsBackgroundNotification?: (key: string) => boolean, ownsQueuedUserInput?: (key: string) => boolean): Promise<void> {
-    const store = this.storage.getStore();
     const sessionId = this.storage.getSessionId();
     const conversationId = (await this.storage.getState()).conversationId ?? "";
-    const rows = await store.readInFlight(sessionId, [
+    const rows = await this.storage.readSessionInFlight([
       QUEUED_USER_INPUT_IN_FLIGHT_KIND,
       QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND,
     ]);

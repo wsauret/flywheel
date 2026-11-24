@@ -178,7 +178,7 @@ describe("the end rules", () => {
     if (!tree) throw new Error("Expected the published member conversation")
     const end = interruptedTurnEnd(by)
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, by))
-    tree.getStorage().dispose()
+    tree.dispose()
     a.state = "interrupted"
     await run.changed()
     await settle()
@@ -236,7 +236,7 @@ describe("the end rules", () => {
     if (!tree) throw new Error("The child requires its conversation")
     const end = interruptedTurnEnd(by)
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, "key"))
-    tree.getStorage().dispose()
+    tree.dispose()
     const writer = createSessionFactWriter({ sessionId: child, writer: here.writer })
     await writer.record(buildSubagentPaused({ childRunId: `${child}-run`, pausedBy: by === "agent" ? "person" : by }))
     writer.dispose()

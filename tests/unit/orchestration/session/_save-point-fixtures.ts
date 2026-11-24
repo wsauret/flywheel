@@ -8,7 +8,8 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
 import { createSessionManager } from "../../../../src/orchestration/session/manager";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
-import type { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
+import { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
 
 export interface SavePointTestContext {
@@ -16,6 +17,8 @@ export interface SavePointTestContext {
   sessionId: string;
   conversationId: string;
   tree: ConversationTree;
+  /** The storage under `tree`, for a test that reads what the tree keeps private. */
+  storage: ConversationTreeStorage;
   store: LocalSqliteEventStore;
 }
 
@@ -25,18 +28,18 @@ export async function createSavePointContext(): Promise<SavePointTestContext> {
   const mgr = createSessionManager({ projectRoot: baseDir, executionCwd: baseDir, store });
   const sessionId = await mgr.createChat({ name: "Chat" });
   const conversationId = (await mgr.listMetadata()).sessions.find((s) => s.id === sessionId)?.conversationId ?? "";
-  const tree = await tryOpenConversationTree({
+  const storage = await ConversationTreeStorage.tryOpen({
     conversationId,
     sessionId,
     store: asAsyncEventReadSurface(store),
     writer: asAsyncEventWriter(store),
   });
-  if (!tree) throw new Error(`expected conversation tree ${conversationId}`);
-  return { baseDir, sessionId, conversationId, tree, store };
+  if (!storage) throw new Error(`expected conversation tree ${conversationId}`);
+  return { baseDir, sessionId, conversationId, tree: new ConversationTree(storage), storage, store };
 }
 
 export async function disposeSavePointContext(ctx: SavePointTestContext): Promise<void> {
-  await ctx.tree.getStorage().dispose();
+  await ctx.tree.dispose();
   ctx.store.close();
   fs.rmSync(ctx.baseDir, { recursive: true, force: true });
 }

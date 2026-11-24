@@ -91,8 +91,15 @@ export class TopLevelJsonStringDecoder {
     }
   }
 
-  get fields(): Readonly<JsonObject> {
-    return this.decodedFields;
+  /** A copy of the fields decoded so far; later appends do not change it. */
+  get fields() {
+    return { ...this.decodedFields };
+  }
+
+  /** The value of a string field that has closed; undefined while it streams, or when it is absent or not a string. */
+  completedString(name: string): string | undefined {
+    const value = this.decodedFields[name];
+    return typeof value === "string" ? value : undefined;
   }
 
   get acceptedBytes(): number {

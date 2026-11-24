@@ -233,6 +233,6 @@ async function durableUserCount(sessionId: string, conversationId: string): Prom
   try {
     return (await tree.getBranch()).filter((e) => e.kind === "message" && e.message.kind === "user").length
   } finally {
-    tree.getStorage().dispose()
+    tree.dispose()
   }
 }

@@ -67,7 +67,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
       tokensAfter: 12,
       opening: [],
     })
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     const sessionEvents = store.read({ aggregateId: `session:${sessionId}` })
     const entry = loadProviderRequestAuditFromEvents(sessionEvents)[0]
@@ -101,7 +101,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     await tree.appendMessage({ kind: "user", content: "now summarize" })
     const leafEntryId = await tree.getLeafId()
     const context = buildSessionContext(await tree.getBranch())
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     // Mask exactly what the agent loop of a conversation restored at cutoff 3 sends, and record the mask.
     const masked = createStaleToolResultMasker({ cutoffIndex: 3, zone: 0 }).mask(context.messages, 0.3)
@@ -155,7 +155,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     })
     const leafEntryId = await tree.getLeafId()
     const context = buildSessionContext(await tree.getBranch())
-    await tree.getStorage().dispose()
+    await tree.dispose()
     const projected = lowerToolHistoryById(context.messages, ["patch-1"])
 
     await appendProviderRequestFacts(store, sessionId, {
@@ -197,7 +197,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     await tree.appendMessage({ kind: "user", content: "Go on." })
     const leafEntryId = await tree.getLeafId()
     const context = buildSessionContext(await tree.getBranch())
-    await tree.getStorage().dispose()
+    await tree.dispose()
     const edits = planHistoryLowering(context.messages, openAIResponsesTarget("openai_api", "gpt-5"))
     expect(edits.map(({ reason }) => reason)).toEqual(["agent-host-framing", "foreign-deliberation", "progress-as-text"])
     const sent = applyHistoryLowering(context.messages, edits)
@@ -239,7 +239,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const leafEntryId = await tree.getLeafId()
     // A later decision on the same conversation is not on the recorded branch.
     await tree.appendMessage({ kind: "system", content: "later", contentRepair: { kind: "withhold", toolUseId: "shot", partIndex: 0, partKind: "text" } })
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     // The view the live request sent: the image is the note, the removed call and
     // its result are gone, the remove note is an instruction, and the withhold
@@ -286,7 +286,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     for (const message of sent) await tree.appendMessage(message)
     const leafEntryId = await tree.getLeafId()
     const read = buildSessionContext(await tree.getBranch()).messages
-    await tree.getStorage().dispose()
+    await tree.dispose()
     expect(read.map((message) => message.kind === "user" ? message.framing : undefined)).toEqual([undefined, "claude", "agent-host", "agent-host", "agent-host"])
     await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
@@ -314,7 +314,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     await tree.appendMessage({ kind: "user", content: "hello" })
     const leafEntryId = await tree.getLeafId()
     const context = buildSessionContext(await tree.getBranch())
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
@@ -406,7 +406,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     await tree.appendMessage({ kind: "user", content: "hello" })
     const leafEntryId = await tree.getLeafId()
     const context = buildSessionContext(await tree.getBranch())
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
@@ -461,7 +461,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     await tree.appendMessage({ kind: "user", content: "legacy question" })
     const leafEntryId = await tree.getLeafId()
     const context = buildSessionContext(await tree.getBranch())
-    await tree.getStorage().dispose()
+    await tree.dispose()
 
     await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",

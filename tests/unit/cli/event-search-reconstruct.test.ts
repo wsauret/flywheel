@@ -57,7 +57,7 @@ async function recordFirstOfTurnRequest(
   await tree.appendMessage({ kind: "user", content: "first question" })
   const leafEntryId = await tree.getLeafId()
   const context = buildSessionContext(await tree.getBranch())
-  await tree.getStorage().dispose()
+  await tree.dispose()
 
   const auditStore: Pick<typeof store, "append"> = {
     append: (fact) => store.append({ ...fact, aggregateId: `${auditAggregate}:${sessionId}` }),
@@ -87,7 +87,7 @@ async function recordFirstOfTurnRequestInDebugLog(sessionId: string, conversatio
   await tree.appendMessage({ kind: "user", content: "first question" })
   const leafEntryId = await tree.getLeafId()
   const context = buildSessionContext(await tree.getBranch())
-  await tree.getStorage().dispose()
+  await tree.dispose()
   store.close()
 
   const requestId = crypto.randomUUID()

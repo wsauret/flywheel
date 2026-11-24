@@ -124,11 +124,11 @@ export const applyPatchDefinition: RuntimeTool = {
       paths: preparedPatch.paths,
       admit: resolvedPath => {
         const authority = RetainedFileEditAuthority.admitWritable(resolvedPath);
-        if (authority.snapshot && authority.text === undefined) {
+        if (authority.admittedFile && authority.text === undefined) {
           authority.close();
           throw new Error(`${resolvedPath} is not valid UTF-8`);
         }
-        const snapshotBytes = authority.snapshot?.content.byteLength ?? 0;
+        const snapshotBytes = authority.admittedFile?.byteLength ?? 0;
         if (snapshotBytes > MAX_FILE_EDIT_BYTES - admittedSnapshotBytes) {
           authority.close();
           throw new Error(`patch target snapshots exceed the ${MAX_FILE_EDIT_BYTES}-byte operation limit`);
@@ -165,7 +165,7 @@ function rejectAliasedTargets(admitted: readonly AdmittedFileEdit[]): void {
   for (const entry of admitted) {
     if (canonical.has(entry.authority.canonicalPath)) throw new Error(`Patch contains duplicate physical target: ${entry.path}`);
     canonical.add(entry.authority.canonicalPath);
-    const identity = entry.authority.snapshot?.identity;
+    const identity = entry.authority.admittedFile?.identity;
     if (identity && identities.has(identity)) throw new Error(`Patch contains paths to the same file object: ${entry.path}`);
     if (identity) identities.add(identity);
   }
@@ -213,7 +213,7 @@ function initialVirtualFiles(admitted: ReadonlyMap<string, AdmittedFileEdit>): M
   const files = new Map<string, VirtualPatchFile | undefined>();
   for (const [path, entry] of admitted) {
     const text = entry.authority.text;
-    const metadata = entry.authority.snapshot?.metadata;
+    const metadata = entry.authority.admittedMetadata();
     files.set(path, text === undefined ? undefined : virtualFile(text, metadata));
   }
   return files;

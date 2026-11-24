@@ -416,7 +416,7 @@ async function writeChatSession(
       }
     }
   } finally {
-    tree.getStorage().dispose()
+    tree.dispose()
   }
 }
 

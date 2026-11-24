@@ -114,7 +114,7 @@ it("prepares a learning review from populated history without starving host time
     });
     await withinTimerBudget(() => review.replay(context.messages));
   } finally {
-    tree.getStorage().dispose();
+    tree.dispose();
     writer.dispose();
     store.close();
   }

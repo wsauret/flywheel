@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto"
 import { resolve } from "node:path"
 import { PersistenceWriteRefused } from "../../infra/event-store-types.js"
 import { ContainedPathError, type ContainedFileMetadata, type ContainedFileSnapshot, type FileMutationAttemptResult } from "../../infra/descriptor-directory-contract.js"
@@ -8,13 +7,21 @@ import { prepareFileMutationOperation, retireFileMutationNotApplied, settleFileM
 import type { FileMutationOrigin } from "../session/file-mutation-facts.js"
 import { snapshotToFileObjectProof, type FilePreconditionProof } from "../session/file-mutation-operation.js"
 import { observeFileState, sameObservedState, type ExpectedFileState } from "./file-state.js"
+import type { AdmittedFileSummary } from "./retained-file-edit-host.js"
 
 /** One retained target. Publication performs its own per-item compare-and-swap even after preflight. */
 export interface FileEditAuthority {
   readonly canonicalPath: string
-  readonly snapshot: ContainedFileSnapshot | undefined
+  /** What admission found at the target, or undefined when no file was there. */
+  readonly admittedFile: AdmittedFileSummary | undefined
   readonly text: string | undefined
   readonly mayCreateMissingParents: boolean
+  /** A detached copy of the admitted target state; changing it never changes the publication baseline. */
+  admittedSnapshot(): ContainedFileSnapshot | undefined
+  /** A detached copy of the admitted access metadata. */
+  admittedMetadata(): ContainedFileMetadata | undefined
+  /** The SHA-256 hex digest of the admitted bytes, or undefined when no file was there. */
+  admittedSha256(): string | undefined
   encode(content: string): Buffer
   verifyPrecondition(): void
   publish(bytes: Uint8Array, metadata?: ContainedFileMetadata): FileMutationAttemptResult
@@ -42,10 +49,9 @@ export interface PlannedFileEdit {
 
 /** Runs after admission read the target, so an unchanged fingerprint proves the admitted bytes are the expected ones. */
 function admittedAsExpected(authority: FileEditAuthority, expected: ExpectedFileState): boolean {
-  if (expected.kind === "absent") return authority.snapshot === undefined
-  const snapshot = authority.snapshot
-  if (!snapshot || snapshot.content.byteLength !== expected.size) return false
-  if (expected.sha256 !== undefined && createHash("sha256").update(snapshot.content).digest("hex") !== expected.sha256) return false
+  if (expected.kind === "absent") return authority.admittedFile === undefined
+  if (authority.admittedFile?.byteLength !== expected.size) return false
+  if (expected.sha256 !== undefined && authority.admittedSha256() !== expected.sha256) return false
   return sameObservedState(observeFileState(authority.canonicalPath), expected)
 }
 
@@ -61,6 +67,9 @@ export interface FileEditContext {
 
 export interface FileEditPublication<Plan extends PlannedFileEdit = PlannedFileEdit> {
   readonly plan: Plan
+  /** The one detached copy of the admitted target state that this publication takes, so every later reader of the
+   *  old bytes shares it instead of copying them again. Undefined when no file was there. */
+  readonly before: ContainedFileSnapshot | undefined
   readonly bytes: Buffer | undefined
   readonly mutation: PreparedFileMutation | undefined
 }
@@ -175,19 +184,21 @@ async function publishAdmitted<Plan extends PlannedFileEdit>(context: FileEditCo
 
 async function preparePublications<Plan extends PlannedFileEdit>(context: FileEditContext, plans: readonly Plan[]): Promise<readonly FileEditPublication<Plan>[]> {
   const outputs = plans.map(plan => plan.after === undefined ? undefined : typeof plan.after === "string" ? plan.admitted.authority.encode(plan.after) : Buffer.from(plan.after.buffer, plan.after.byteOffset, plan.after.byteLength))
+  const befores = plans.map(plan => plan.admitted.authority.admittedSnapshot())
   const mutationPlans: FileMutationPlan[] = plans.map((plan, index) => {
     const { authority } = plan.admitted
+    const before = befores[index]
     return {
       change: {
         path: authority.canonicalPath,
         displayPath: plan.admitted.path,
-        changeKind: authority.snapshot === undefined ? "created" : plan.after === undefined ? "deleted" : "modified",
-        beforeContent: authority.snapshot?.content ?? null,
+        changeKind: before === undefined ? "created" : plan.after === undefined ? "deleted" : "modified",
+        beforeContent: before?.content ?? null,
         afterContent: outputs[index] ?? null,
       },
       evidence: {
-        beforeSnapshot: authority.snapshot ?? null,
-        ...(plan.metadata ?? authority.snapshot?.metadata ? { postconditionAccess: plan.metadata ?? authority.snapshot?.metadata } : {}),
+        beforeSnapshot: before ?? null,
+        ...(plan.metadata ?? before?.metadata ? { postconditionAccess: plan.metadata ?? before?.metadata } : {}),
         ...(authority.mayCreateMissingParents ? { mayCreateMissingParents: true } : {}),
       },
       ...(plan.conflictMarkers === undefined ? {} : { conflictMarkers: plan.conflictMarkers }),
@@ -198,6 +209,7 @@ async function preparePublications<Plan extends PlannedFileEdit>(context: FileEd
   const mutations = context.origin ? await prepareFileMutationOperation({ sessionEventWriter: context.sessionEventWriter, origin: context.origin }, mutationPlans) : []
   return plans.map((plan, index) => ({
     plan,
+    before: befores[index],
     bytes: outputs[index],
     mutation: mutations[index],
   }))
@@ -223,7 +235,7 @@ async function publishPrepared<Plan extends PlannedFileEdit>(context: FileEditCo
     const untouchedSuffix = publications.slice(index + 1)
     if (context.signal?.aborted) return refuse(context, current, committedPrefix, untouchedSuffix, { reason: "cancelled" })
     const { authority } = current.plan.admitted
-    const metadata = current.plan.metadata ?? authority.snapshot?.metadata
+    const metadata = current.plan.metadata ?? authority.admittedMetadata()
     let attempt: FileMutationAttemptResult
     try {
       attempt = current.bytes === undefined ? authority.delete() : authority.publish(current.bytes, metadata)

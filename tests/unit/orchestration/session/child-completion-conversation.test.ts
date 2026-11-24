@@ -25,7 +25,7 @@ describe("child completion conversation", () => {
     const { sessionId, conversationId, input } = await parentConversation()
     const tree = await readChildCompletionConversation({ input }, sessionId, conversationId)
     expect(tree).not.toBeNull()
-    tree?.getStorage().dispose()
+    tree?.dispose()
   })
 
   test("refuses a parent conversation that holds a fact this build cannot decode", async () => {

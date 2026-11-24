@@ -164,7 +164,7 @@ async function commitHeld(input: SubagentEndInput, conversationId: string, perso
     }
     for (const notice of notices) await tree.commitQueuedBackgroundNotification(notice)
   } finally {
-    await tree.getStorage().dispose()
+    await tree.dispose()
   }
 }
 

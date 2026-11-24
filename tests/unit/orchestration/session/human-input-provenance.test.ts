@@ -39,7 +39,7 @@ async function reopenedMessages() {
   try {
     return (await tree.buildContext({ allowAssistantTail: true })).messages;
   } finally {
-    tree.getStorage().dispose();
+    tree.dispose();
   }
 }
 
@@ -331,7 +331,7 @@ describe("explicit human input provenance", () => {
     const tree = await tryOpenConversationTree({ conversationId: ctx.conversationId, sessionId: ctx.sessionId, store: asAsyncEventReadSurface(ctx.store) });
     if (!tree) throw new Error("expected committed conversation");
     const entry = await tree.getEntry("workflow-completion:child");
-    tree.getStorage().dispose();
+    tree.dispose();
     expect(entry).toMatchObject({
       kind: "message",
       message: {

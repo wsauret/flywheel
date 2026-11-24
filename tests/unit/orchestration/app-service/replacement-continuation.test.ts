@@ -69,7 +69,7 @@ describe("continuing a planned replacement's work", () => {
       if (wait.reply) await holdReplyWait(writer, sessionId, { addresseeSessionId: "child", toolUseId: "wait", openedAtMs: Date.now() })
     }
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, true), origin: "system" }, turnEndEntryId(end, sessionId))
-    tree.getStorage().dispose()
+    tree.dispose()
     if (handoffId !== undefined) await authorizePlannedSessionContinuation({ reader: asAsyncEventReadSurface(ctx.store), writer, continuation: { target: { sessionId, kind: "chat" }, handoffId } })
     return sessionId
   }
@@ -83,7 +83,7 @@ describe("continuing a planned replacement's work", () => {
     if (!tree) throw new Error("The child has no conversation tree")
     const end = interruptedTurnEnd("replacement")
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, id))
-    tree.getStorage().dispose()
+    tree.dispose()
     await writer.append(prepareSessionFactAppend(id, buildSubagentPaused({ childRunId: `${id}-run`, pausedBy: "runtime" })))
     await authorizePlannedSessionContinuation({ reader: asAsyncEventReadSurface(ctx.store), writer, continuation: { target: { sessionId: id, kind: "subagent" }, runId: `${id}-run`, handoffId: "nested-handoff" } })
     return id
@@ -153,7 +153,7 @@ describe("continuing a planned replacement's work", () => {
       writer,
     })
     if (!parentTree) throw new Error("the retained launch parent has no conversation tree")
-    parentTree.getStorage().dispose()
+    parentTree.dispose()
     const childSessionId = "reserved-published-workflow"
     const prepared = await prepareWorkflowLaunch({
       workflow: workflowIn(fixtureDefinitions().captureRevision(), FIXTURE_WORKFLOW_ID),
@@ -490,7 +490,7 @@ describe("continuing a planned replacement's work", () => {
     if (!tree) throw new Error("missing tree")
     const end = interruptedTurnEnd("replacement")
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, "second-cut"))
-    tree.getStorage().dispose()
+    tree.dispose()
     expect((await readChatTurnEndEvidence(asAsyncEventReadSurface(ctx.store), session.conversationId, { restoreWait: true }))?.restoredWait).toEqual(restored)
     await supervisor.disposeAll()
   })
@@ -581,7 +581,7 @@ describe("continuing a planned replacement's work", () => {
     const tree = await tryOpenConversationTree({ conversationId: chat.conversationId, sessionId: cut, now: () => new Date().toISOString(), store: asAsyncEventReadSurface(ctx.store), writer: ctx.runtime.runSync(EventStoreWriterService) })
     if (!tree) throw new Error("the chat has no conversation tree")
     await tree.appendMessage({ kind: "user", content: CONTINUATION_MESSAGES.resumed, origin: "system" })
-    tree.getStorage().dispose()
+    tree.dispose()
     expect(await readPlannedSessionContinuationAsync(asAsyncEventReadSurface(ctx.store), cut)).toEqual({ version: 3, target: { sessionId: cut, kind: "chat" }, handoffId: "handoff-3" })
 
     // The next attempt runs in the executor that replaces it.

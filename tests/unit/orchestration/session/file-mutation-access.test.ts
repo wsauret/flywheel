@@ -97,7 +97,7 @@ describe("durable file access evidence", () => {
         paths: ["source", "destination"],
         admit: path => RetainedFileEditAuthority.admit(path),
         plan: admitted => [
-          { admitted: admitted[1]!, after: admitted[0]!.authority.text, metadata: admitted[0]!.authority.snapshot!.metadata },
+          { admitted: admitted[1]!, after: admitted[0]!.authority.text, metadata: admitted[0]!.authority.admittedMetadata() },
           { admitted: admitted[0]!, after: undefined },
         ],
       })

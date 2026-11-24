@@ -148,7 +148,7 @@ test.each(["answer", "dismiss"] as const)("close during recovered question %s ad
     { kind: "user", content: "Ask me" },
     { kind: "assistant", content: [{ type: "tool_use", id: "ask-1", name: "ask_user", input: {} }] },
   ])
-  await tree.getStorage().dispose()
+  await tree.dispose()
   if (appended.kind !== "committed") throw new Error(`tree append failed: ${appended.kind}`)
   await ctx.store.append({
     aggregateId: `session:${sessionId}`, sessionId, type: "agent_input.requested", version: 3, actor: "agent", timestamp: 1,
@@ -205,7 +205,7 @@ test.each(["answer", "dismiss"] as const)("close during recovered question %s ad
     const recovered = await tryOpenConversationTree({ conversationId: session.conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store) })
     if (!recovered) throw new Error("missing recovered conversation tree")
     const leaf = (await recovered.getBranch()).at(-1)
-    await recovered.getStorage().dispose()
+    await recovered.dispose()
     expect(leaf?.kind === "message" && leaf.message.kind === "toolResult" ? leaf.message.toolUseId : null).toBe("ask-1")
     await expect(closing).resolves.toBe(true)
   } finally {

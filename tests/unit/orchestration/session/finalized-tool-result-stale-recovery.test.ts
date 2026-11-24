@@ -66,7 +66,7 @@ describe("finalized tool result checkpoint recovery", () => {
       });
       expect((await resumed.getBranch()).filter(entry => entry.kind === "message" && entry.message.kind === "toolResult")).toHaveLength(1);
     } finally {
-      resumed.getStorage().dispose();
+      resumed.dispose();
     }
   });
 
@@ -221,7 +221,7 @@ describe("finalized tool result checkpoint recovery", () => {
         db.close();
       }
     } finally {
-      damaged.getStorage().dispose();
+      damaged.dispose();
     }
   });
 
@@ -253,7 +253,7 @@ describe("finalized tool result checkpoint recovery", () => {
       expect(ctx.store.readInFlight(ctx.sessionId, "finalized-tool-result")).toEqual([]);
       expect((await child.getBranch()).filter(entry => entry.kind === "message" && entry.message.kind === "toolResult")).toHaveLength(1);
     } finally {
-      child.getStorage().dispose();
+      child.dispose();
     }
   });
 
@@ -371,7 +371,7 @@ describe("finalized tool result checkpoint recovery", () => {
       const results = (await resumed.getBranch()).flatMap((entry) => entry.kind === "message" && entry.message.kind === "toolResult" ? [entry.message] : []);
       expect(results.filter((message) => JSON.stringify(message.content).includes("<persisted-output>")).map((message) => message.toolUseId)).toEqual(persisted);
     } finally {
-      resumed.getStorage().dispose();
+      resumed.dispose();
     }
   });
 

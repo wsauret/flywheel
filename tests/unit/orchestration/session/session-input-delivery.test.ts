@@ -97,7 +97,7 @@ describe("deliverSessionInput", () => {
       displayOnly: true,
     }))
     expect(JSON.stringify(await tree!.buildContext())).not.toContain(text)
-    tree!.getStorage().dispose()
+    tree!.dispose()
     await holdQueuedUserInput(writer, child, { target: "conversation", conversationId: "child-conversation" }, { text: "sender disconnected", producer: { kind: "human" }, submissionIds: ["disconnected"] })
     await returnUnreadHumanInput({ reader, writer }, { sessionId: child, name: "Child" }, await readUnreadMessages(reader, child))
     const pendingReturns = store.readInFlight(parent, COMPOSER_RETURN_KIND)

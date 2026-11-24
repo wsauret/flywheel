@@ -30,8 +30,8 @@ export type StreamingInputUpdate =
     readonly proposedDiff: ProvisionalDiff | undefined;
     /** Newly decoded text of the declared fields. */
     readonly additions: DecodedStringAppend["additions"];
-    /** Every declared field decoded so far. */
-    readonly fields: TopLevelJsonStringDecoder["fields"];
+    /** The call's `path` field once its string closes. */
+    readonly filePath: string | undefined;
     /** Present when a declared presentation field changed: the partial input a row header refines from. */
     readonly presentationInput: ToolInput | undefined;
     /** Present with `presentationInput` when the display derives its row from
@@ -92,18 +92,19 @@ export class StreamingToolInputs {
     let presentationInput: ToolInput | undefined;
     let row: ToolRowPresentation | undefined;
     if (declaration && presentationChanged) {
-      presentationInput = { ...decoder.fields };
+      const fields = decoder.fields;
+      presentationInput = { ...fields };
       for (const field of declaration.presentationFields) {
         const value = decoder.field(field);
         if (value !== undefined) presentationInput[field] = value;
       }
-      row = entry.row?.advance(decoded.additions, decoder.fields);
+      row = entry.row?.advance(decoded.additions, fields);
     }
     return {
       kind: "decoded",
       proposedDiff: proposal ? this.displayed(proposal.input) : undefined,
       additions: decoded.additions,
-      fields: decoder.fields,
+      filePath: decoder.completedString("path"),
       presentationInput,
       row,
     };
@@ -157,7 +158,8 @@ export class StreamingToolInputs {
     const bodyStarted = Object.keys(decoded.additions).some((field) => bodyFields.includes(declaredFieldName(field)))
       || bodyFields.some((field) => decoder.field(field) !== undefined);
     if (!bodyStarted) return undefined;
-    const partialInput: ToolInput = { ...decoder.fields };
+    const fields = decoder.fields;
+    const partialInput: ToolInput = { ...fields };
     for (const field of bodyFields) {
       const value = decoder.field(field);
       if (value !== undefined) partialInput[field] = value;
@@ -165,7 +167,7 @@ export class StreamingToolInputs {
     const kind = contract.fileChangeKind(partialInput);
     const proposal = { kind, input: createProvisionalDiffInput(kind) };
     const priorFields: { [field: string]: string } = {};
-    for (const [field, value] of Object.entries(decoder.fields)) {
+    for (const [field, value] of Object.entries(fields)) {
       if (typeof value === "string" && decoded.additions[field] === undefined) priorFields[field] = value;
     }
     proposal.input.append(priorFields, Object.keys(priorFields));

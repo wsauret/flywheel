@@ -253,7 +253,7 @@ describe("workflow attempt continuation publication", () => {
     const predecessor = await tryOpenConversationTree({ conversationId: "first-conversation", sessionId: member.sessionId, store: reader, writer });
     await predecessor!.appendMessage({ kind: "user", content: "Do the work.", origin: "system" }, briefEntryId("first"));
     await predecessor!.appendMessage({ kind: "assistant", content: "Started." });
-    predecessor!.getStorage().dispose();
+    predecessor!.dispose();
     const commit = (event: Parameters<typeof commitWorkflowEvent>[3]) => commitWorkflowEvent({ manager, projectionReader: reader }, "run", workflow, event);
     await commit({ type: "ATTEMPT_FAILED", failure: { attemptId: "first", kind: "fatal", reason: "provider failed", conversationId: "first-conversation" } });
     await commit({ type: "RESUME", readers: {} });
@@ -268,7 +268,7 @@ describe("workflow attempt continuation publication", () => {
     expect((await members.conversation("run", "first-conversation"))?.sessionId).toBe(member.sessionId);
     const tree = await tryOpenConversationTree({ conversationId: "first-conversation", sessionId: member.sessionId, store: reader });
     const branch = await tree!.getBranch();
-    tree!.getStorage().dispose();
+    tree!.dispose();
     expect(branch.filter((entry) => isBriefEntry(entry.id)).map((entry) => entry.id)).toEqual([briefEntryId("first")]);
     expect(branch.map((entry) => entry.kind === "message" ? entry.message.content : entry.kind)).toEqual(["Do the work.", "Started."]);
 
@@ -317,7 +317,7 @@ describe("workflow attempt continuation publication", () => {
     const tree = await tryOpenConversationTree({ conversationId: "copy-conversation", sessionId: copy.sessionId, store: reader, writer });
     await tree!.appendMessage({ kind: "user", content: "Do the work.", origin: "system" }, briefEntryId(successorAttemptId));
     await tree!.appendMessage({ kind: "assistant", content: "Started." });
-    tree!.getStorage().dispose();
+    tree!.dispose();
 
     expect((await members.list("run")).map(({ sessionId }) => sessionId)).toEqual([first.sessionId, copy.sessionId]);
     expect(copy.membership).toMatchObject({ kind: "attempt", attemptId: successorAttemptId });

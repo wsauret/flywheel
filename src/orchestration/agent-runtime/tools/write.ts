@@ -94,12 +94,13 @@ function createWriteDefinition(updateTool?: string): RuntimeTool {
         plan: ([admitted]) => {
           if (!admitted) throw new Error(`${path} was not admitted`);
           const { authority } = admitted;
-          if (!authority.snapshot) {
+          const before = authority.admittedSnapshot();
+          if (!before) {
             const metadata = authority.defaultPublicationMetadata();
             return [metadata ? { admitted, after: content, metadata } : { admitted, after: content }];
           }
           // A context without a ledger has seen nothing, so it may only create.
-          switch (context.readLedger ? context.readLedger.versionStaleness(authority.canonicalPath, authority.snapshot.content) : "unread") {
+          switch (context.readLedger ? context.readLedger.versionStaleness(authority.canonicalPath, before.content) : "unread") {
             case "unread":
               throw new FileEditRefusal(`write refused: ${path} already exists, and this run has no verified version of it: no ${readTool} tool read, shell output that showed it whole, or file edit. Read it with ${readTool} before you replace the whole file, or use ${editTool} to change part of it.`);
             case "changed":

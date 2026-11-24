@@ -69,7 +69,7 @@ describe("a step's opening turn", () => {
       const tree = await tryOpenConversationTree({ conversationId: CONVERSATION, sessionId, store: authority.projectionReader, writer: authority.writer })
       if (!tree) throw new Error("Missing worker conversation")
       const committed = JSON.stringify(await tree.getState())
-      tree.getStorage().dispose()
+      tree.dispose()
       return { check: opening, usable, committed }
     } finally {
       Effect.runSync(Scope.close(scope, Exit.void))

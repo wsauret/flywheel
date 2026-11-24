@@ -493,8 +493,7 @@ describe("output projection", () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
-    const builder = new StructuredOutputBuilder()
-    builder.onChange = () => {}
+    const builder = new StructuredOutputBuilder({ onChange: () => {} })
     store.openSessionRuntime({ sessionId: "chat-ask-context", conversationId: "conv-ask-context" })
 
     builder.pushStandaloneToolEntry({

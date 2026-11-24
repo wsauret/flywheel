@@ -240,7 +240,7 @@ describe("SessionTranscriptProjection child indexes", () => {
     await step.appendMessage({ kind: "user", content: "Review the change.", origin: "human" })
     await step.appendMessage({ kind: "user", content: "The process exited.", origin: "system" }, turnEndEntryId({ reason: "crash" }, "exit"))
     await step.appendMessage({ kind: "user", content: CONTINUATION_MESSAGES.resumed, origin: "system" })
-    step.getStorage().dispose()
+    step.dispose()
     let child: Extract<SessionEntry, { kind: "workflow-agent" }> | undefined
     const cache = createTranscriptProjectionCache({ reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), sessionStore: { get: (id) => id === memberId ? child : undefined }, projectRoot: baseDir })
     const pending: AnyBlock = {
@@ -417,7 +417,7 @@ describe("SessionTranscriptProjection child indexes", () => {
     } finally {
       publication.dispose()
       await cache.dispose()
-      tree.getStorage().dispose()
+      tree.dispose()
     }
   })
   it("reads the tool and usage history of only the child sessions whose cards a read states", async () => {
@@ -452,7 +452,7 @@ describe("SessionTranscriptProjection child indexes", () => {
         childRunId: id, status: "completed", isError: false, durationMs: 10, totalTokens: 20, toolUses: 9, result: "Done", resultBytes: 4, resultSha256: "sha", resultPreview: "Done",
       } })
     }
-    tree.getStorage().dispose()
+    tree.dispose()
     const local = asAsyncEventReadSurface(store)
     const historyReads = new Set<string>()
     const record = (query: Parameters<typeof local.readSlice>[0]) => {
@@ -490,7 +490,7 @@ describe("SessionTranscriptProjection child indexes", () => {
     appendSessionFact(sessionId, { type: "tool.result.recorded", version: 1, actor: "flywheel", payload: { toolUseId: "dispatch", outcome: "ok" } })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "dispatch", name: "subagent", input }] })
     await tree.appendMessage({ kind: "toolResult", toolUseId: "dispatch", content: [{ type: "text", text: "done" }] })
-    tree.getStorage().dispose()
+    tree.dispose()
     appendSessionFact(sessionId, { type: "session.child.linked", version: 1, actor: "flywheel", payload: { childSessionId, lastUpdated: new Date().toISOString() } })
     appendSessionFact(childSessionId, { type: "child_run.created", version: 2, actor: "flywheel", payload: {
       childSessionId, childRunId: "dispatch", conversationId: `${childSessionId}-conversation`, parentSessionId: sessionId, parentConversationId: conversationId, parentToolCallId: "dispatch",
@@ -555,7 +555,7 @@ describe("SessionTranscriptProjection child indexes", () => {
       expect(await cache.children(sessionId, "parent", context)).toBe(updatedLive)
     } finally {
       await cache.dispose()
-      tree.getStorage().dispose()
+      tree.dispose()
     }
   })
 
@@ -607,6 +607,6 @@ describe("SessionTranscriptProjection child indexes", () => {
     expect(await inserted?.readBlock(4)).toMatchObject({ kind: "userMessage", content: "suffix" })
     expect(await inserted?.readBlock(2)).toBe(b)
     await projection.dispose()
-    tree.getStorage().dispose()
+    tree.dispose()
   })
 })

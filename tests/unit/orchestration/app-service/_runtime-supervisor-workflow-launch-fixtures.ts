@@ -216,7 +216,7 @@ export async function branch(ctx: SupervisorTestContext, sessionId: string) {
   try {
     return await tree.getBranch()
   } finally {
-    tree.getStorage().dispose()
+    tree.dispose()
   }
 }
 

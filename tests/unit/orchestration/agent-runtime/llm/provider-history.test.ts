@@ -198,7 +198,7 @@ describe("Claude framing", () => {
       for (const value of claudeOnly) expect(fork).not.toContain(value);
       expect(fork).toContain(text(notice));
     } finally {
-      await tree.getStorage().dispose();
+      await tree.dispose();
       store.close();
     }
   });

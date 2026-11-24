@@ -632,7 +632,7 @@ async function savedChat(createRunner: (deps: ChatRunnerDeps) => Promise<ChatRun
   try {
     expect((await tree.appendMessages([{ kind: "user", content: "Earlier user turn" }])).kind).toBe("committed")
   } finally {
-    await tree.getStorage().dispose()
+    await tree.dispose()
   }
   return { supervisor, id }
 }
@@ -659,7 +659,7 @@ async function durableUserTexts(sessionId: string, conversationId: string): Prom
   try {
     return (await tree.getBranch()).filter(isUserTurn).map(userTurnText)
   } finally {
-    tree.getStorage().dispose()
+    tree.dispose()
   }
 }
 

@@ -586,7 +586,7 @@ describe("chat runner lifecycle background notification turn gate", () => {
       const tree = await tryOpenConversationTree({ conversationId: deps.conversationId, sessionId: deps.sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
       if (!tree) throw new Error("the conversation did not open")
       await tree.recordInterruptedTurn("crash", { ownerDead: true })
-      tree.getStorage().dispose()
+      tree.dispose()
 
       expect(await lifecycle.deliverBackgroundNotification({ key: "workflow-completion:child", text: "Workflow completed" })).toBe(true)
       await flushMicrotasks()

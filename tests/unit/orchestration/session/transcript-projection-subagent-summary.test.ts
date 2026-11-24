@@ -46,7 +46,7 @@ it.each([
   if (!tree) throw new Error("Missing parent conversation")
   await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "dispatch", name: "subagent", input }] })
   await tree.appendMessage({ kind: "toolResult", toolUseId: "dispatch", content: [{ type: "text", text: originalContent }] })
-  tree.getStorage().dispose()
+  tree.dispose()
   const createAttempt = (childRunId: string) => append(childId, { type: "child_run.created", version: 2, actor: "flywheel", payload: {
     childSessionId: childId, childRunId, conversationId: `${childId}-conversation`, parentSessionId: sessionId, parentConversationId: conversationId, parentToolCallId: "dispatch",
     persona: { name: "explorer", kind: "persona" }, capabilityGrant: { operation: "subagent", required: [], capabilities: [], moduleIds: [], requireWorkflowConfirmation: false, workflowsMode: "off", identity: childRunId },

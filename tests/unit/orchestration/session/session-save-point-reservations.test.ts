@@ -69,9 +69,9 @@ describe("save-point identity reservations", () => {
     const writer = createConversationTreeWriter({ tree });
     await writer.commitUserTurn(userMessage("hi"));
     writer.beginTurn();
-    const id = await tree.getStorage().allocateId();
+    const id = await tree.allocateId();
     await writer.enqueueMessage(assistantMessage("partial reply"), id);
-    expect(tree.getStorage().getPendingEntries().at(-1)?.id).toBe(id);
+    expect(ctx.storage.getPendingEntries().at(-1)?.id).toBe(id);
     expect(await readEntries(tree)).toHaveLength(1);
 
     await writer.flushSavePoint();

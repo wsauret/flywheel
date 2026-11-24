@@ -66,7 +66,7 @@ describe("RuntimeSupervisor re-activation across SQLite reopen cycles", () => {
       const conversationId = session.conversationId
       const tree = await openExistingTree({ conversationId, sessionId, store: asAsyncEventReadSurface(cycle.store), writer: asAsyncEventWriter(cycle.store) })
       const appended = await tree.appendMessages(initialMessages)
-      await tree.getStorage().dispose()
+      await tree.dispose()
       if (appended.kind !== "committed") throw new Error(`initial append failed: ${appended.kind}`)
 
       expect(await cycle.supervisor.activateSession(sessionId)).toBe(true)
@@ -85,7 +85,7 @@ describe("RuntimeSupervisor re-activation across SQLite reopen cycles", () => {
       expect(cycle.sessionStore.get(sessionId)?.outputSequenceStart).toBe(6)
       const reopenedTree = await openExistingTree({ conversationId, sessionId, store: asAsyncEventReadSurface(cycle.store), writer: asAsyncEventWriter(cycle.store) })
       const suffixAppend = await reopenedTree.appendMessages([{ kind: "user", content: "durable-suffix" }])
-      await reopenedTree.getStorage().dispose()
+      await reopenedTree.dispose()
       if (suffixAppend.kind !== "committed") throw new Error(`suffix append failed: ${suffixAppend.kind}`)
       expect(await cycle.supervisor.closeChat(sessionId)).toBe(true)
       await cycle.supervisor.disposeAll()
@@ -125,7 +125,7 @@ describe("RuntimeSupervisor re-activation across SQLite reopen cycles", () => {
     if (session?.kind !== "chat") throw new Error("missing durable chat")
     const initialTree = await openExistingTree({ conversationId: session.conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
     await initialTree.appendMessage({ kind: "user", content: "initial" })
-    initialTree.getStorage().dispose()
+    initialTree.dispose()
     let runnerStarts = 0
     let reconciliations = 0
     const supervisor = createRuntimeSupervisor({
@@ -138,7 +138,7 @@ describe("RuntimeSupervisor re-activation across SQLite reopen cycles", () => {
           reconciliations += 1
           const tree = await openExistingTree({ conversationId: session.conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
           await tree.appendMessage({ kind: "user", content: "reconciled completion" })
-          tree.getStorage().dispose()
+          tree.dispose()
           return { reconciledCount: 1, workflowAggregateReads: 0 }
         },
       }),
@@ -180,7 +180,7 @@ describe("RuntimeSupervisor re-activation across SQLite reopen cycles", () => {
     const commit = async (message: ConversationMessage) => {
       const tree = await openExistingTree({ conversationId: session.conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
       const appended = await tree.appendMessages([message])
-      await tree.getStorage().dispose()
+      await tree.dispose()
       if (appended.kind !== "committed") throw new Error(`tree append failed: ${appended.kind}`)
     }
     await commit({ kind: "user", content: "hello" })

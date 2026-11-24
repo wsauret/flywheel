@@ -235,7 +235,7 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
         const existing = pending.map((record) => record.id);
         if (!(await Promise.all(existing)).includes(key) && await tree.getEntry(key) === undefined) return key;
       }
-      return tree.getStorage().allocateId();
+      return tree.allocateId();
     })() : Promise.resolve(id);
     pending.push({ message, id: reservedId });
     await tree.holdPendingMessage(message, await reservedId);
@@ -249,7 +249,7 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
     }
     // enqueueMessage owns any allocation failure; this follower only retires
     // allocations that succeeded after the turn was dropped.
-    for (const record of abandoned) void record.id.then((id) => tree.getStorage().releaseId(id), () => {});
+    for (const record of abandoned) void record.id.then((id) => tree.releaseId(id), () => {});
     tree.releasePendingMessages();
     phase = "idle";
   }

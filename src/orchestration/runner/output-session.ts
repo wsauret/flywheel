@@ -23,13 +23,10 @@ export type OutputSessionOptions = {
    *  index of the first one. */
   prior?: { readonly blocks: readonly AnyBlock[]; readonly sequenceStart: number }
   sessionId?: string
-} & (
-  /** Either the caller supplies the projector, or this session builds one - and
-   *  building one needs the owning session's execution directory (ARCH-DIRECTORIES-007) so
+  /** The owning session's execution directory (ARCH-DIRECTORIES-007), so
    *  rendered paths resolve the way the live run did. */
-  | { projector: OutputProjector; executionCwd?: undefined }
-  | { projector?: undefined; executionCwd: string }
-)
+  executionCwd: string
+}
 
 export interface OutputSession {
   /** `timestamp` is when the event happened, and it defaults to now. The
@@ -72,9 +69,9 @@ export interface OutputSession {
 export function createOutputSession(options: OutputSessionOptions): OutputSession {
   const { updateEntry } = options
 
-  const projector = options.projector !== undefined ? options.projector : new OutputProjector({ executionCwd: options.executionCwd })
-  if (options.sessionId) projector.sessionId = options.sessionId
-  const eventProjector = new RuntimeEventProjector(projector)
+  // Starts as the owning session's id; a completed turn replaces it with the
+  // provider's session id that the turn reports.
+  let sessionId: string | null = options.sessionId || null
 
   let disposed = false
   let syncPending = false
@@ -166,12 +163,13 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     syncStore()
   }
 
-  projector.onChange = scheduleSync
+  // Built after the sync state it notifies, and wired at construction: seedBlocks
+  // notifies, and a notification with no listener would latch the builder with
+  // no consumer to re-arm it, silencing every later change until the
+  // end-of-turn flush.
+  const projector = new OutputProjector({ executionCwd: options.executionCwd, sessionId: () => sessionId ?? undefined, onChange: scheduleSync })
+  const eventProjector = new RuntimeEventProjector(projector)
 
-  // Seed only after onChange is wired. seedBlocks notifies, and the builder's
-  // change latch stays armed until a sync reads getBlocks() — a notification
-  // fired into a null handler latches it with no consumer to re-arm, silencing
-  // every later change until the end-of-turn flush.
   if (options.prior !== undefined) projector.seedBlocks(options.prior.blocks, options.prior.sequenceStart)
 
   function beginTurn(): void {
@@ -192,7 +190,7 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     if (event.type === "tool.result.available") resultSyncs.add(event.data.tool_use_id)
     if (event.type === "model.turn.completed") {
       const sid = event.data.session_id
-      if (typeof sid === "string") projector.sessionId = sid
+      if (typeof sid === "string") sessionId = sid
     }
     eventProjector.dispatch(event, timestamp)
     // A settled command's end publishes before the status that drops it from
@@ -222,14 +220,14 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
       projector.apply({ type: "end-turn", timestamp: now, finalStatus });
     },
     get streamPhase() { return projector.streamPhase },
-    get sessionId() { return projector.sessionId ?? null },
+    get sessionId() { return sessionId },
     flush: flushNow,
     dispose(): void {
       if (disposed) return
       disposed = true
       if (syncTimer !== undefined) { clearTimeout(syncTimer); syncTimer = undefined }
       resultSyncs.clear()
-      projector.onChange = null
+      projector.dispose()
       eventProjector.reset()
     },
   }

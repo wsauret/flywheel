@@ -18,9 +18,11 @@ let baseDir: string;
 let store: LocalSqliteEventStore;
 const sessionId = "s_tree_context";
 const conversationId = "c_tree_context";
+function openStorage(): Promise<ConversationTreeStorage> {
+  return ConversationTreeStorage.create({ conversationId, sessionId, now: nextTimestamp, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) });
+}
 async function openTree(): Promise<ConversationTree> {
-  const storage = await ConversationTreeStorage.create({ conversationId, sessionId, now: nextTimestamp, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) });
-  return new ConversationTree(storage);
+  return new ConversationTree(await openStorage());
 }
 
 beforeEach(() => {
@@ -270,7 +272,8 @@ describe("buildSessionContext", () => {
   });
 
   it("buildContext preserves compacted context when walking from the source boundary", async () => {
-    const tree = await openTree();
+    const storage = await openStorage();
+    const tree = new ConversationTree(storage);
     const old = message(null, "11111111", "user", "old dropped");
     const older = message("11111111", "22222222", "user", "older dropped");
     const source = message("22222222", "33333333", "user", "source summarized");
@@ -281,8 +284,8 @@ describe("buildSessionContext", () => {
     const afterTwo = message("77777777", "88888888", "user", "after compaction two");
     const fullBranch = [old, older, source, suffixOne, suffixTwo, compacted, afterOne, afterTwo];
 
-    await tree.getStorage().appendEntries(fullBranch);
-    expect((await tree.getStorage().getContextPathToRoot("88888888")).map((entry) => entry.id)).toEqual(["33333333", "44444444", "55555555", "66666666", "77777777", "88888888"]);
+    await storage.appendEntries(fullBranch);
+    expect((await storage.getContextPathToRoot("88888888")).map((entry) => entry.id)).toEqual(["33333333", "44444444", "55555555", "66666666", "77777777", "88888888"]);
     const messages = (await tree.buildContext()).messages;
     expect(messages).toEqual(buildSessionContext(fullBranch).messages);
     expect(messages.map((m) => (typeof m.content === "string" ? m.content : ""))).toEqual(["retained one", "retained two", "compressed earlier turns", "source suffix one", "source suffix two", "after compaction one", "after compaction two"]);
@@ -395,13 +398,13 @@ describe("ConversationTree.moveTo and branch summary", () => {
     const m1 = await tree.appendMessage({ kind: "user", content: "alpha" });
     await tree.appendMessage({ kind: "user", content: "beta" });
     await tree.moveTo(m1);
-    await tree.getStorage().dispose();
+    await tree.dispose();
 
     const reopened = new ConversationTree(await ConversationTreeStorage.open({ conversationId, sessionId, store: asAsyncEventReadSurface(store) }));
     const ctx = await reopened.buildContext();
     const texts = ctx.messages.map((m) => (typeof m.content === "string" ? m.content : ""));
     expect(texts).toEqual(["alpha"]);
-    await reopened.getStorage().dispose();
+    await reopened.dispose();
   });
 
   it("keeps abandoned entries readable and reachable as branch siblings", async () => {
@@ -441,7 +444,7 @@ describe("ConversationTree.moveTo and branch summary", () => {
 
 describe("context cache", () => {
   it("pins ordinary, degraded, and pending history across cooperative yields", async () => {
-    const storage = (await openTree()).getStorage();
+    const storage = await openStorage();
     await storage.appendEntries([message(null, "capture1", "user", "captured")]);
     const appendGap = () => store.append({
       aggregateId: `conversation:${conversationId}`, sessionId, type: "chat.entries.appended",
@@ -559,7 +562,7 @@ describe("review notice entries", () => {
 
 describe("large tree reconstruction", () => {
   it("opens and walks a large tree without repeated full-file scans", async () => {
-    const tree = await openTree();
+    const storage = await openStorage();
     const batch: ConversationEntry[] = [];
     let parent: string | null = null;
     for (let i = 0; i < 500; i += 1) {
@@ -573,7 +576,7 @@ describe("large tree reconstruction", () => {
       });
       parent = id;
     }
-    await tree.getStorage().appendEntries(batch);
+    await storage.appendEntries(batch);
     const reopened = new ConversationTree(await ConversationTreeStorage.open({ conversationId, sessionId, store: asAsyncEventReadSurface(store) }));
     const branch = await reopened.getBranch();
     expect(branch.length).toBe(500);

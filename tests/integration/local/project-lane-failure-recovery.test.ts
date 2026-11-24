@@ -71,7 +71,7 @@ test("the real state Worker fences every executor state producer while account w
       identity: { providerSessionKey: "session", conversationId: "conversation" }, turn: 1,
     })
     const before = (await execution.eventReader.readSlice({})).facts
-    tree.getStorage().dispose()
+    tree.dispose()
     facts.dispose()
     await execution.eventStoreRuntime.dispose()
     const item = { sessionId: "session", events: [{ aggregateId: "session:session", sessionId: "session", type: "test.fenced", version: 1, timestamp: 1, actor: "test", payload: {} }] }
@@ -312,7 +312,7 @@ test("a pending question can be answered after its executor exits", async () => 
         { kind: "user", content: "Ask me", origin: "human" },
         { kind: "assistant", content: [{ type: "tool_use", id: "ask-1", name: "ask_user", input: {} }] },
       ])
-      await tree.getStorage().dispose()
+      await tree.dispose()
       await store.append({
         aggregateId: `session:${sessionId}`, sessionId, type: "agent_input.requested", version: 3, actor: "agent", timestamp: Date.now(),
         payload: {
@@ -355,7 +355,7 @@ test("a pending question can be answered after its executor exits", async () => 
       const reply = await tryOpenConversationTree({ conversationId: "waiting-conversation", sessionId, store: asAsyncEventReadSurface(recorded), writer: asAsyncEventWriter(recorded) })
       if (!reply) throw new Error("Missing recovered conversation")
       expect((await reply.getBranch()).some((entry) => entry.kind === "message" && entry.message.kind === "toolResult" && entry.message.toolUseId === "ask-1")).toBe(true)
-      await reply.getStorage().dispose()
+      await reply.dispose()
     }
     finally { recorded.close() }
   })

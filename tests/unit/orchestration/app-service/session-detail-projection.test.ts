@@ -146,7 +146,7 @@ describe("history query status projection", () => {
     await tree.appendMessage({ kind: "user", content: CONTINUATION_MESSAGES.resumed, origin: "system" })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "text", text: "Durable answer." }] })
     const live = createOutputSession({ updateEntry: () => {}, sessionId: memberId, executionCwd: projectRoot, prior: { blocks: branchBlocks(await tree.getBranch(), { executionCwd: projectRoot }), sequenceStart: 0 } })
-    tree.getStorage().dispose()
+    tree.dispose()
     live.pushSystemMessage("Background work still runs.", 2)
     live.pushUserMessage("Wrap up.", 3, { queued: true })
     live.flush()
@@ -449,7 +449,7 @@ describe("controls of a session a successor owes its continuation", () => {
     const end = interruptedTurnEnd("replacement")
     await tree.appendMessage({ kind: "user", content: "Do the work.", origin: "human" })
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, "cut"))
-    tree.getStorage().dispose()
+    tree.dispose()
   }
 
   /** The detail a client reads once the service that cut the session has
@@ -561,7 +561,7 @@ describe("controls of a session a successor owes its continuation", () => {
       const options = { conversationId: "conv-1", sessionId: "chat-1", store: asAsyncEventReadSurface(store), writer }
       const tree = await createConversationTree(options)
       await tree.appendMessage({ kind: "user", content: "Do the work.", origin: "human" })
-      tree.getStorage().dispose()
+      tree.dispose()
       await authorizePlannedSessionContinuation({ reader: asAsyncEventReadSurface(store), writer, continuation: { target: { sessionId: "chat-1", kind: "chat" }, continuesAt: Date.now() + 60_000 } })
 
       const waiting = await detailOf(store, "chat-1", metadata("inactive"))

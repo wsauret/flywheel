@@ -597,13 +597,13 @@ describe("WorkflowController", () => {
       await tree.appendMessage({ kind: "user", content: "worker prompt" })
       const end = interruptedTurnEnd(by)
       await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, "key"))
-      tree.getStorage().dispose()
+      tree.dispose()
       if (mixed) {
         const sibling = await createConversationTree({ conversationId: "conv-parent-step", sessionId, store: asAsyncEventReadSurface(eventReader), writer: asAsyncEventWriter(eventReader) })
         await sibling.appendMessage({ kind: "user", content: "sibling prompt" })
         const parentEnd = interruptedTurnEnd("agent")
         await sibling.appendMessage({ kind: "user", content: interruptedTurnMessage(parentEnd.pausedBy, false), origin: "system" }, turnEndEntryId(parentEnd, "parent-key"))
-        sibling.getStorage().dispose()
+        sibling.dispose()
       }
       const workflowHosts = createMockWorkflowHosts()
       const starts = workflowHosts._startCalls

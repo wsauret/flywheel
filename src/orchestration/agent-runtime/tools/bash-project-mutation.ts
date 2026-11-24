@@ -449,7 +449,7 @@ async function publishCopyChanges(context: MutationLandingContext & Pick<ToolCon
   ];
   const summary: FilesSummary = { files: applied.length, rebased: rebased.length, conflictMarkers: conflictMarkers.length, notApplied: notApplied.length, unsupported: unsupported.length, status: failure === undefined ? stop?.status ?? "completed" : "error" };
   const lines = [
-    ...(applied.length > 0 || removedDirectories.length > 0 ? ["Applied to the project:", ...removedDirectoryLines(removedDirectories), ...applied.slice(0, 4).map(publication => `${publication.bytes === undefined ? "Deleted" : publication.plan.admitted.authority.snapshot === undefined ? "Created" : "Updated"} ${publication.plan.admitted.path}`), ...(applied.length > 4 ? [`and ${applied.length - 4} more files (open Session Changes)`] : [])] : []),
+    ...(applied.length > 0 || removedDirectories.length > 0 ? ["Applied to the project:", ...removedDirectoryLines(removedDirectories), ...applied.slice(0, 4).map(publication => `${publication.bytes === undefined ? "Deleted" : publication.plan.admitted.authority.admittedFile === undefined ? "Created" : "Updated"} ${publication.plan.admitted.path}`), ...(applied.length > 4 ? [`and ${applied.length - 4} more files (open Session Changes)`] : [])] : []),
     ...(rebased.length > 0 ? [`These files also keep the changes the project made while the command ran: ${formatFileSamples(summarizeFileSamples(rebased))}`] : []),
     ...(conflictMarkers.length > 0 ? [`${formatConflictMarkers(summarizeFileSamples(conflictMarkers))}. Edit each file to resolve the marked sections.`] : []),
     ...(notApplied.length > 0 ? [`${formatNotAppliedFiles(refusalSummary)}. Make these changes again against the current files if they are still necessary.`] : []),
@@ -516,7 +516,7 @@ function plannedEdit(admitted: PlannedFileEdit["admitted"], change: CopyChange):
  *  executable. An existing file keeps its own, as every publication does, also when the command's file was merged
  *  into one the project created meanwhile. */
 function publicationMetadata(authority: FileEditAuthority, mode: number | undefined): ContainedFileMetadata | undefined {
-  if (authority.snapshot) return undefined;
+  if (authority.admittedFile) return undefined;
   return process.platform !== "win32" && mode !== undefined ? { kind: "posix", mode } : authority.defaultPublicationMetadata();
 }
 

@@ -1,6 +1,5 @@
 import { describe, it, expect, afterEach } from "bun:test"
 import { createOutputSession, type OutputSession } from "../../../../src/orchestration/runner/output-session"
-import { OutputProjector } from "../../../../src/infra/output/output-projector"
 import {
   createMocks,
   flushMicrotasks,
@@ -113,9 +112,8 @@ describe("createOutputSession — queue/lifecycle/question handling", () => {
 
   it("answerQuestion marks the matching question block answered", async () => {
     const { updateEntry } = createMocks()
-    const projector = new OutputProjector({ executionCwd: "/workspace" })
-    session = createOutputSession({ updateEntry, projector })
-    projector.apply({ type: "push-question", toolUseId: "tool_q1", questions: [{ question: "Which color?", choices: [{ kind: "option", label: "Red" }], multiSelect: false }], timestamp: 1 })
+    session = createOutputSession({ updateEntry, executionCwd: "/workspace" })
+    session.pushQuestion("tool_q1", [{ question: "Which color?", choices: [{ kind: "option", label: "Red" }], multiSelect: false }], 1)
     await flushMicrotasks()
     updateEntry.mockClear()
 
@@ -135,9 +133,8 @@ describe("createOutputSession — queue/lifecycle/question handling", () => {
 
   it("cancelQuestion marks the matching question block cancelled", async () => {
     const { updateEntry } = createMocks()
-    const projector = new OutputProjector({ executionCwd: "/workspace" })
-    session = createOutputSession({ updateEntry, projector })
-    projector.apply({ type: "push-question", toolUseId: "tool_q1", questions: [{ question: "Which color?", choices: [{ kind: "option", label: "Red" }], multiSelect: false }], timestamp: 1 })
+    session = createOutputSession({ updateEntry, executionCwd: "/workspace" })
+    session.pushQuestion("tool_q1", [{ question: "Which color?", choices: [{ kind: "option", label: "Red" }], multiSelect: false }], 1)
     await flushMicrotasks()
     updateEntry.mockClear()
 

@@ -102,7 +102,7 @@ async function recordLaunch(
     kind: "assistant",
     content: [{ type: "tool_use", id: toolUseId, name: "workflow", input }],
   })
-  tree.getStorage().dispose()
+  tree.dispose()
   await manager.publishWorkflow({
     id: childSessionId,
     description,
@@ -232,7 +232,7 @@ describe("fresh-store chat workflow completion recovery", () => {
     const tree = await tryOpenConversationTree({ conversationId: parent.conversationId, sessionId: parentSessionId, store: asAsyncEventReadSurface(cycle.store), writer: cycle.store })
     if (!tree) throw new Error("missing parent tree")
     await tree.appendMessage({ kind: "user", content: "wait for the workflow" })
-    tree.getStorage().dispose()
+    tree.dispose()
     const runnerStarts = { value: 0 }
     const live = createSupervisor(cycle, baseDir, runnerStarts)
     expect(await live.supervisor.activateSession(parentSessionId)).toBe(true)
@@ -269,7 +269,7 @@ describe("fresh-store chat workflow completion recovery", () => {
     const tree = await tryOpenConversationTree({ conversationId: parent.conversationId, sessionId: parentSessionId, store: asAsyncEventReadSurface(cycle.store), writer: cycle.store })
     if (!tree) throw new Error("missing parent tree")
     await tree.appendMessage({ kind: "user", content: "wait for the workflow" })
-    tree.getStorage().dispose()
+    tree.dispose()
     const runnerStarts = { value: 0 }
     const neverSettles = Promise.withResolvers<void>()
     const treeWriter = createConversationTreeWriterController({
@@ -370,7 +370,7 @@ describe("fresh-store chat workflow completion recovery", () => {
     const tree = await tryOpenConversationTree({ conversationId: parent.conversationId, sessionId: parentSessionId, store: asAsyncEventReadSurface(cycle.store), writer: cycle.store })
     if (!tree) throw new Error("missing parent tree")
     await tree.appendMessage({ kind: "user", content: "wait for the child" })
-    tree.getStorage().dispose()
+    tree.dispose()
     const runnerStarts = { value: 0 }
     const live = createSupervisor(cycle, baseDir, runnerStarts)
     expect(await live.supervisor.activateSession(parentSessionId)).toBe(true)
@@ -484,7 +484,7 @@ describe("fresh-store chat workflow completion recovery", () => {
     const tree = await tryOpenConversationTree({ conversationId: launch.conversationId, sessionId: parentSessionId, store: asAsyncEventReadSurface(cycle.store), writer: cycle.store })
     if (!tree) throw new Error("missing launch conversation")
     await tree.appendMessage({ kind: "toolResult", toolUseId: launch.toolUseId, content: [{ type: "text", text: "Workflow launched" }] })
-    tree.getStorage().dispose()
+    tree.dispose()
 
     await recoverClosedGeneration(cycle, baseDir)
 
@@ -504,7 +504,7 @@ describe("fresh-store chat workflow completion recovery", () => {
     const tree = await tryOpenConversationTree({ conversationId: launch.conversationId, sessionId: parentSessionId, store: asAsyncEventReadSurface(cycle.store), writer: cycle.store })
     if (!tree) throw new Error("missing launch conversation")
     await tree.appendMessage({ kind: "toolResult", toolUseId: launch.toolUseId, content: [{ type: "text", text: "Workflow launched" }] })
-    tree.getStorage().dispose()
+    tree.dispose()
 
     await recoverClosedGeneration(cycle, baseDir)
 
@@ -512,7 +512,7 @@ describe("fresh-store chat workflow completion recovery", () => {
     const recovered = await tryOpenConversationTree({ conversationId: launch.conversationId, sessionId: parentSessionId, store: asAsyncEventReadSurface(cycle.store) })
     if (!recovered) throw new Error("missing launch conversation")
     const [record, notification] = (await recovered.getBranch()).slice(-2)
-    recovered.getStorage().dispose()
+    recovered.dispose()
     expect(record).toMatchObject({ message: { kind: "user", origin: "system", content: expect.stringContaining("exited before the turn finished") } })
     // The acknowledgement the turn committed answers the launch call, so the
     // record does not name it as left-behind work.

@@ -162,7 +162,7 @@ test("a locked transcript index leaves public control and executor admission res
   expect(await bounded("initial FTS watermark", initializer.transcriptSearch({ query: "lockneedle", page: 1 }))).toMatchObject({ hits: [], total: 0 })
   await bounded("initial FTS client close", initializer.close())
   await tree.appendMessages([{ kind: "user", content: "Unique lockneedle survives derived catchup.", origin: "human" }])
-  tree.getStorage().dispose()
+  tree.dispose()
   store.close()
   prepared.generation.release()
 
@@ -274,7 +274,7 @@ test("a stalled executor start ends on its own wedge proof, every account record
     { kind: "user", content: "Read this after the executor ends", origin: "human" },
     { kind: "assistant", content: "Durable history survives the executor." },
   ])
-  tree.getStorage().dispose()
+  tree.dispose()
   store.close()
   prepared.generation.release()
 
@@ -472,7 +472,7 @@ test("provider-issued recall stays in the executor background Worker while accou
     const passiveSessionId = await manager.createChat({ id: "passive-chat", conversationId: "passive-conversation", name: "Passive", initialState: "inactive" })
     const passiveTree = await tryOpenConversationTree({ sessionId: passiveSessionId, conversationId: "passive-conversation", store: asAsyncEventReadSurface(store), writer })
     if (!passiveTree) throw new Error("Missing seeded passive chat tree")
-    const cancelTreeCleanup = defer("recall passive tree", () => { passiveTree.getStorage().dispose() })
+    const cancelTreeCleanup = defer("recall passive tree", () => { passiveTree.dispose() })
     const prewarm = createProcessBackgroundClient({ workerUrl: runtimeWorkerUrl(), logBase: root })
     const cancelPrewarmCleanup = defer("recall prewarm Worker", () => bounded("initial recall index Worker cleanup", prewarm.dispose()))
     const prewarmLane = prewarm.acquire(root)
@@ -483,7 +483,7 @@ test("provider-issued recall stays in the executor background Worker while accou
     await bounded("initial recall index Worker close", prewarm.dispose())
     cancelPrewarmCleanup()
     await passiveTree.appendMessages([{ kind: "user", content: "Passive history remains readable.", origin: "human" }])
-    passiveTree.getStorage().dispose()
+    passiveTree.dispose()
     cancelTreeCleanup()
     store.close()
     cancelStoreCleanup()

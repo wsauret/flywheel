@@ -463,7 +463,7 @@ async function commitAtEndedSenders(
     try {
       await tree.commitQueuedBackgroundNotification(notification)
     } finally {
-      await tree.getStorage().dispose()
+      await tree.dispose()
     }
     log.info("a returned-messages notice commits into the conversation of its ended sender", { senderSessionId, key: notification.key })
   }

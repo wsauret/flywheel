@@ -182,7 +182,7 @@ describe("deterministic provider streaming and recovery", () => {
     const canonicalInput = { path: "kept.ts", content: "canonical\n" };
     writer.enqueueMessage({ kind: "assistant", content: [{ type: "tool_use", id: "kept", name: "write", input: canonicalInput }] });
     await writer.flushSavePoint(new Set(["kept"]));
-    await tree.getStorage().dispose();
+    await tree.dispose();
     store.close();
 
     const reopenedStore = createSqliteEventStore(resolveEventStoreDbFile(root));
@@ -195,7 +195,7 @@ describe("deterministic provider streaming and recovery", () => {
       proposedDiff: { files: [{ path: "kept.ts", action: "add" }] },
     });
     expect(JSON.stringify(await reopened.getBranch())).not.toContain("must not survive");
-    await reopened.getStorage().dispose();
+    await reopened.dispose();
     reopenedStore.close();
   });
 
@@ -358,7 +358,7 @@ describe("deterministic provider streaming and recovery", () => {
       expect(store.readInFlight(sessionId, "finalized-tool-result")).toEqual([]);
       expect(output.getBlocks().filter((block) => block.kind === "tool" && block.id === EAGER_WRITE_TOOL_USE_ID)).toHaveLength(1);
 
-      await tree.getStorage().dispose();
+      await tree.dispose();
       store.close();
       const reopenedStore = createSqliteEventStore(resolveEventStoreDbFile(root));
       const reopened = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(reopenedStore), writer: asAsyncEventWriter(reopenedStore) });
@@ -370,7 +370,7 @@ describe("deterministic provider streaming and recovery", () => {
       expect(provider.requests).toHaveLength(2);
       const secondMessages = provider.requests[1]?.messages;
       expect(Array.isArray(secondMessages) ? secondMessages.filter((message) => typeof message === "object" && message !== null && "tool_call_id" in message).map((message) => message.tool_call_id) : []).toEqual([EAGER_WRITE_TOOL_USE_ID, EAGER_SLOW_TOOL_USE_ID]);
-      await reopened.getStorage().dispose();
+      await reopened.dispose();
       reopenedStore.close();
     } finally {
       provider.releaseInput();
@@ -396,7 +396,7 @@ describe("deterministic provider streaming and recovery", () => {
     treeWriter.beginTurn();
     treeWriter.enqueueMessage({ kind: "assistant", content: [{ type: "tool_use", id: EAGER_WRITE_TOOL_USE_ID, name: "write", input: { path: "fixture.txt", content: "once" } }] });
     await treeWriter.flushSavePoint(new Set([EAGER_WRITE_TOOL_USE_ID]));
-    await tree.getStorage().dispose();
+    await tree.dispose();
     store.close();
 
     const child = Bun.spawn([process.execPath, CRASH_HELPER, FINALIZED_RESULT_CRASH_MODE, dbPath, sessionId, conversationId, EAGER_WRITE_TOOL_USE_ID], {
@@ -428,7 +428,7 @@ describe("deterministic provider streaming and recovery", () => {
     expect(results).toEqual([{ kind: "toolResult", toolUseId: EAGER_WRITE_TOOL_USE_ID, content: [{ type: "text", text: "executed exactly once" }] }]);
     expect(reopenedStore.read({ aggregateId: `session:${sessionId}`, types: ["tool.result.recorded"] })).toHaveLength(1);
     expect(reopenedStore.readInFlight(sessionId, "finalized-tool-result")).toEqual([]);
-    await reopened.getStorage().dispose();
+    await reopened.dispose();
     reopenedStore.close();
   });
 });
