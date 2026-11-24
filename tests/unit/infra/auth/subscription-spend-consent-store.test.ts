@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { createSubscriptionAccountIdentity } from "../../../../src/infra/llm/subscription-account-identity.js";
+import { createSubscriptionAccountIdentity } from "../../../../src/infra/auth/subscription-account-identity.js";
 import { createSubscriptionSpendEnvelope } from "../../../../src/infra/auth/subscription-spend-consent.js";
 import { createSubscriptionSpendConsentStore, subscriptionSpendConsentRevision, SubscriptionSpendConsentCorruptError, SubscriptionSpendConsentStaleError } from "../../../../src/infra/auth/subscription-spend-consent-store.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";

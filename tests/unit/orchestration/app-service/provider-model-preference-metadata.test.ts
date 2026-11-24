@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
-import type { CatalogModelOffering } from "../../../../src/infra/llm/catalog-model-offering.js";
+import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
+import type { CatalogModelOffering } from "../../../../src/infra/catalog-model-offering.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js";
 import { authProviders } from "../../../helpers/auth-context.js";
@@ -8,6 +8,7 @@ import { TEST_CATALOG_LIMITS } from "../../../helpers/model-catalog-fixtures.js"
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { AUTH_NONE } from "../../orchestration/config/_model-listing-fixtures.js";
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 
 const CANDIDATE = { kind: "singleton", providerId: "openrouter", spendMode: "aggregator" } as const;
 const ACCOUNT_KEY = accessProviderAccountKey(CANDIDATE);

@@ -1,7 +1,8 @@
-import type { CatalogCanonicalRow, CatalogLimits, NormalizedCatalog } from "../llm/model-catalog-resolution.js";
-import { offeringTransport, validateCanonicalRows } from "../llm/model-catalog-resolution.js";
-import { accessProviderAccountKey, type AccessProviderAccountIdentity } from "../llm/access-provider.js";
+import type { CatalogCanonicalRow, CatalogLimits, NormalizedCatalog } from "../model-catalog-rows.js";
+import { offeringTransport, validateCanonicalRows } from "../model-catalog-rows.js";
+import type { ProviderModelAccessOutcome, ProviderModelAccessOutcomes } from "./auth-context.js";
 import type { AuthProfileAccess } from "./auth-profile-store.js";
+import { type AccessProviderAccountIdentity, type AccountLineage, accessProviderAccountKey } from "./provider-account.js";
 import { ContainedFileTooLargeError } from "../descriptor-directory-contract.js";
 import { Log } from "../log.js";
 
@@ -10,12 +11,6 @@ const FILE_NAME = "provider-model-catalogs.json";
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_ACCOUNTS = 128;
 const MAX_IDENTITY_BYTES = 1024;
-
-/** One exact account lineage: a provider account and the lineage of the credential that it holds. */
-export interface AccountLineage {
-  readonly account: AccessProviderAccountIdentity;
-  readonly lineage: string;
-}
 
 interface SavedProviderModelCatalog extends AccountLineage {
   readonly rows: readonly CatalogCanonicalRow[];
@@ -56,12 +51,6 @@ export interface SavedProviderModels {
   readonly refusals: SavedModelRefusals;
 }
 
-export type ProviderModelAccessOutcome = "completed" | "refused";
-interface ProviderModelAccessOutcomes { readonly [modelId: string]: ProviderModelAccessOutcome }
-/** Settled access checks transferred with the account lineage that proved them. No catalog rows or probe authority are carried. */
-export interface ProviderModelAccessSnapshot extends AccountLineage {
-  readonly outcomes: ProviderModelAccessOutcomes;
-}
 interface ProviderModelAudit {
   readonly candidateIds: readonly string[];
   readonly dueIds: readonly string[];

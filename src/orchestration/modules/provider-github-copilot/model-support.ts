@@ -1,5 +1,5 @@
 import type { CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
-import type { CatalogJsonValue } from "../../../infra/llm/catalog-model-offering.js";
+import type { CatalogJsonValue } from "../../../infra/catalog-model-offering.js";
 import type { ModelPricing, ProviderReasoningEffort } from "../../../infra/llm/models.js";
 import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 

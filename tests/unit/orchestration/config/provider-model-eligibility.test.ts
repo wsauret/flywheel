@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
 import type { AuthContext, RuntimeCredential } from "../../../../src/infra/auth/auth-context.js"
-import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js"
-import type { CatalogCanonicalRow } from "../../../../src/infra/llm/model-catalog-resolution.js"
-import type { CatalogModelOffering } from "../../../../src/infra/llm/catalog-model-offering.js"
+import { createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js"
+import type { CatalogCanonicalRow } from "../../../../src/infra/model-catalog-rows.js"
+import type { CatalogModelOffering } from "../../../../src/infra/catalog-model-offering.js"
 import { authProviders } from "../../../helpers/auth-context.js"
 import {
   providerModelEligibilityDecision,
@@ -11,6 +11,7 @@ import {
   type ProviderModelEligibilityDecisionInput,
   type ProviderModelEnabledCandidate,
 } from "../../../../src/orchestration/config/provider-model-eligibility.js"
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
 
 /** The exact-candidate admission of one decision, for cases that read no picker evidence or revision. */
 const workerEligibility = (input: Omit<ProviderModelEligibilityDecisionInput, "profileId" | "revision"> & { readonly profileId?: string }) =>

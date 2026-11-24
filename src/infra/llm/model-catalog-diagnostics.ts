@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { recordCanonicalModelCollisions, recordUnresolvedModelRelationships, type CatalogDiscovery, type CatalogSourceRow, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
-import type { CatalogDataUse } from "./model-id.js";
+import type { CatalogDataUse } from "../model-id.js";
 import { Log } from "../log.js";
 
 const MAX_DIAGNOSTIC_SAMPLES = 64;

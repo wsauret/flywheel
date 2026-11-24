@@ -19,7 +19,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ageDays, day, exitWithVerdict, FRESHNESS_WINDOW_DAYS, holdVerdict, isRecord, parseHold, plural, readOptionalText, type EngineBump, type FreshnessVerdict, type HoldRule } from "./engine-freshness.js";
-import type { ExternalAccount } from "../src/infra/llm/access-provider.js";
+import type { ExternalAccount } from "../src/infra/auth/provider-account.js";
 import { authDir } from "../src/infra/paths.js";
 import { compareSemanticVersions, parseSemanticVersion, type SemanticVersion } from "./release-version.js";
 import { AuthProfileManager } from "../src/orchestration/auth/auth-profile-manager.js";

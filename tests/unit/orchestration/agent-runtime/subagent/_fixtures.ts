@@ -28,7 +28,7 @@ import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-ty
 import { createConversationTreeProjection } from "../../../../../src/orchestration/session/conversation/conversation-projection.js";
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
-import { canonicalModelId } from "../../../../../src/infra/llm/model-id.js";
+import { canonicalModelId } from "../../../../../src/infra/model-id.js";
 import { Schema } from "effect";
 import { EffortSchema } from "../../../../../src/infra/workflow-types.js";
 import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js";

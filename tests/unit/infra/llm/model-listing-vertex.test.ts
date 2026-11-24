@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { accessProviderAccountKey, createAccessProviderSelection } from "../../../../src/infra/llm/access-provider.js";
+import { createAccessProviderSelection } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { testCapabilityModules, testProviderSelection } from "../../../helpers/provider-authority.js";
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
@@ -9,6 +9,7 @@ import { AUTH_NONE } from "../../orchestration/config/_model-listing-fixtures.js
 import { authProviders } from "../../../helpers/auth-context.js";
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 
 const classifySlot = credentialSlotClassifier(testCapabilityModules());
 const LINEAGE = "c16045ec-29e2-43c7-bcde-ea7dc1e95280";

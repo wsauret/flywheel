@@ -6,7 +6,7 @@ import { Redacted } from "effect";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
 import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js";
 import { DebugLog } from "../../../../src/infra/debug-log.js";
-import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
+import { createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { createModelsClient } from "../../../../src/infra/llm/models.js";
 import { providerModelEligibilityDecision } from "../../../../src/orchestration/config/provider-model-eligibility.js";
@@ -15,6 +15,7 @@ import { combinedModelsDevDocument, TEST_CATALOG_LIMITS } from "../../../helpers
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { AUTH_NONE } from "../../orchestration/config/_model-listing-fixtures.js";
 import { catalogProfile } from "../../../helpers/catalog-profile.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 
 const LINEAGE = "1e84c788-1c18-4a4f-bc46-a2b745eb4d26";
 /** The fetch of a provider that only writes a fixture catalog: it never lists. */
@@ -66,7 +67,7 @@ function auth() {
   };
 }
 
-function admittedWire(candidate: AccessProviderCandidate, models: ReadonlyMap<string, readonly import("../../../../src/infra/llm/catalog-model-offering.js").CatalogModelOffering[]>, allowTrainingRoutes: boolean) {
+function admittedWire(candidate: AccessProviderCandidate, models: ReadonlyMap<string, readonly import("../../../../src/infra/catalog-model-offering.js").CatalogModelOffering[]>, allowTrainingRoutes: boolean) {
   const canonicalModels = new Set(models.keys());
   const decision = providerModelEligibilityDecision({
     profileId: "default",

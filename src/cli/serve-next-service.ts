@@ -1,7 +1,12 @@
-import type { StartupDirectories } from "../infra/directory-authorities.js"
+import { existsSync } from "node:fs"
+import { isAbsolute } from "node:path"
+
+import type { AccountDirectories, StartupDirectories } from "../infra/directory-authorities.js"
 import { errorMessage } from "../infra/error-message.js"
 import { Log } from "../infra/log.js"
 import type { AccountServiceInstallation } from "../orchestration/app-service/account-service-platform.js"
+import { runtimeCommand } from "../orchestration/app-service/runtime-executable.js"
+import { RESTART_NO_STARTER_REASON, RESTART_TASK_SCHEDULER_REASON, restartLaunchMissingReason } from "../protocol/client/service-restart-copy.js"
 import { launchAccountRuntime } from "./runtime-attach.js"
 import { SERVE_EXIT } from "./serve-contract.js"
 
@@ -31,6 +36,29 @@ export function nextService(stop: ServeStop, service: { readonly resident: boole
   if (stop === "retired" && service.resident && !service.startedByManager) return "own successor"
   if (stop === "unheld" && service.startsRegisteredJob) return "registered job"
   return "none"
+}
+
+/** Why nothing would start a successor once this service retires, which a
+ *  person's restart from a client that cannot start a service needs, or
+ *  undefined when something does: the manager restarts a service it started,
+ *  and a resident service that no manager started starts its own, from the
+ *  program that `ownSuccessorRefusal` checks. Task Scheduler is not proven to
+ *  restart a task on its exit code (`SERVE_EXIT`), so on Windows a service it
+ *  started has no successor until the next client start request or logon. */
+export function restartRefusal(service: { readonly resident: boolean; readonly startedByManager: boolean }, platform: NodeJS.Platform, ownSuccessorRefusal: () => string | undefined): string | undefined {
+  if (service.startedByManager) return platform === "win32" ? RESTART_TASK_SCHEDULER_REASON : undefined
+  if (nextService("retired", { ...service, startsRegisteredJob: false }) !== "own successor") return RESTART_NO_STARTER_REASON
+  return ownSuccessorRefusal()
+}
+
+/** Why the successor that this service would start itself could not run,
+ *  checked while this service still answers: a path of its command that is
+ *  not there, such as an installed launcher that was removed. A successor
+ *  that runs and then fails to start is past this check; the client's own
+ *  wait for the successor says so. */
+export function successorLaunchRefusal(directories: AccountDirectories): string | undefined {
+  const missing = runtimeCommand(directories).filter(isAbsolute).find((path) => !existsSync(path))
+  return missing === undefined ? undefined : restartLaunchMissingReason(missing)
 }
 
 /** Starts the next service once this service's address and hub port are

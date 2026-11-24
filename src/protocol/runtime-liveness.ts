@@ -285,8 +285,11 @@
  *  chat's own turn has stopped, and the `settlement` workspace domain
  *  carries `settlement.changed`, a wake with no content. An older peer
  *  rejects the query and the patch.
+ *  Version 90: the `restartReadiness` query answers whether a restart would
+ *  bring the account service back, and the `service.restart` mutation
+ *  restarts it from a web client. An older peer rejects both.
  */
-export const RUNTIME_PROTOCOL_VERSION = 89
+export const RUNTIME_PROTOCOL_VERSION = 90
 
 const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 

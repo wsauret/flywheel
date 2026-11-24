@@ -1,4 +1,4 @@
-import type { AccessProviderAccountIdentity, AccessProviderId } from "./access-provider.js";
+import type { AccessProviderAccountIdentity } from "./provider-account.js";
 
 export interface ProviderModelDeltas {
   readonly enabled: ReadonlySet<string>;
@@ -36,10 +36,10 @@ export function transitionProviderAutoEnableNewModels(
 
 /** Derives provider-wide picker and admission sets from exact account state. */
 export function deriveProviderModelPreferences(
-  providers: ReadonlyMap<AccessProviderId, ProviderModelCatalog>,
+  providers: ReadonlyMap<string, ProviderModelCatalog>,
   accounts: Iterable<readonly [AccessProviderAccountIdentity, ResolvedProviderModels]>,
-): Map<AccessProviderId, ResolvedProviderModels> {
-  const byProvider = new Map<AccessProviderId, ResolvedProviderModels[]>();
+): Map<string, ResolvedProviderModels> {
+  const byProvider = new Map<string, ResolvedProviderModels[]>();
   for (const [account, models] of accounts) {
     const entries = byProvider.get(account.providerId) ?? [];
     entries.push(models);

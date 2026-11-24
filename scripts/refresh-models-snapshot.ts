@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { readBoundedModelsResponse } from "../src/infra/llm/models.js";
 import { admitCurrentModelsDocument } from "../src/infra/llm/models-document.js";
 import { assertModelCatalog } from "./check-model-catalog.js";
-import { canonicalCatalogModelId, parseCanonicalModelGeneration } from "../src/infra/llm/model-id.js";
+import { canonicalCatalogModelId, parseCanonicalModelGeneration } from "../src/infra/model-id.js";
 import { isRecord } from "../src/infra/record.js";
 
 const SNAPSHOT_PATH = join(import.meta.dir, "..", "src", "infra", "llm", "models-bundled.txt");

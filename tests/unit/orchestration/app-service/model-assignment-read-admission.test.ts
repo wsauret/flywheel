@@ -8,7 +8,7 @@ import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } fro
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { authDir } from "../../../../src/infra/paths.js"
-import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
 import { apiKey, captureProviderConnection, resolveAuthContext } from "../../../../src/infra/auth/auth-context.js"
 import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js"
 import { createAuthConditionOwner } from "../../../../src/orchestration/auth/auth-condition-owner.js"

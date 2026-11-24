@@ -5,10 +5,10 @@ import { AgentPolicyRecordSchema } from "./definition-records.js"
 import { DefinitionLoadedV8PayloadSchema } from "./definition-loaded-v8.js"
 import { USER_REQUEST_ARTIFACT_ID } from "./artifact-contracts.js"
 import { DefinitionProvenanceSchema } from "./definition-provenance.js"
-import { AttemptRowSchema } from "./view/schemas.js"
+import { AttemptRowSchema } from "./attempt-row.js"
 import { WorkflowDefinitionSchema } from "./workflow-schema.js"
 import { StepGrammarWorkflowSchema } from "./retired-step-grammar/schema.js"
-import { DefinitionIdentityMismatchSchema, type DefinitionIdentityMismatch } from "./vm/definition-identity.js"
+import { DefinitionIdentityMismatchSchema, type DefinitionIdentityMismatch } from "./definition-identity-mismatch.js"
 import type { WorkflowVerificationResult } from "./vm/verify-types.js"
 
 /** What one v1 hash names. The stored kind `step` is history from before

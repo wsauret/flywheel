@@ -1,5 +1,5 @@
 import type { AuthContext, ProviderConnection } from "../../infra/auth/auth-context.js";
-import { accessProviderAccountKey, type AccessProviderCandidate, type AccessProviderModelEligibility } from "../../infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../infra/llm/access-provider.js";
 import type { RequestAdmission } from "./llm/provider-availability-types.js";
 import type { ModelsClient } from "../../infra/llm/models.js";
 import { getSharedModelsClient } from "../config/llm-clients.js";
@@ -25,6 +25,7 @@ import type { AuthConditionOwner } from "../auth/auth-condition-owner.js";
 import type { UsageAuthorityGeneration } from "./usage-settlement.js";
 import { accessProviderRegistry, type AccessProviderRegistry } from "./llm/access-provider-registry.js";
 import type { CaptureProviderConnection, CaptureSubscriptionAdmission, LLMClientFactory } from "./model-runtime-capture.js";
+import { accessProviderAccountKey } from "../../infra/auth/provider-account.js";
 
 interface GenerationRuntimeToolSurfaces {
   moduleServices?: ModuleServices;

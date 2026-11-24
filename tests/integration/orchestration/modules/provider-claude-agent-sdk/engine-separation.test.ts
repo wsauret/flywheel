@@ -14,7 +14,7 @@ import { tmpdir, userInfo } from "node:os";
 import { join, relative } from "node:path";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js";
 import { privateTemporaryRoot } from "../../../../../src/infra/private-temporary-root.js";
-import type { ExternalAccount } from "../../../../../src/infra/llm/access-provider.js";
+import type { ExternalAccount } from "../../../../../src/infra/auth/provider-account.js";
 import { enginePath } from "../../../../../src/infra/claude-engine.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";

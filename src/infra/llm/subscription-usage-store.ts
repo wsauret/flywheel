@@ -8,6 +8,7 @@ import { applySqliteDurabilityPragmas, isSqliteBusyError } from "../sqlite-durab
 import { subscriptionUsageAuthorityDbFile } from "../paths.js";
 import { normalizeSubscriptionUsageReport, SubscriptionUsageMetricSchema, type NormalizedSubscriptionUsageReport, type SubscriptionUsageOutcome, type SubscriptionUsageReport } from "./subscription-usage.js";
 import type { CapturedSubscriptionCredential } from "../auth/auth-context.js";
+import { createSubscriptionAccountIdentity as accountKeyFromIdentity, subscriptionAccountIdentityFromRef as accountKeyFromRef, subscriptionAccountIdentityKey as keyString } from "../auth/subscription-account-identity.js";
 import { migrateSubscriptionUsageAuthority } from "./subscription-usage-store-migration.js";
 import { USAGE_AUTHORITY_PROTOCOL_VERSION } from "./usage-authority-codec.js";
 import {
@@ -17,8 +18,6 @@ import {
   SubscriptionUsageCorruptError,
   SubscriptionUsageProtocolError,
   SubscriptionUsageTransientError,
-  accountKeyFromIdentity,
-  accountKeyFromRef,
   bindings,
   isCorruption,
   decodeAlert,
@@ -27,7 +26,6 @@ import {
   decodeMetadata,
   decodeSnapshot,
   decodeThreshold,
-  keyString,
   metricUsedFraction,
   requireNumber,
   requireText,

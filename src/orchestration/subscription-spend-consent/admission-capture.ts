@@ -1,7 +1,7 @@
 import { openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../infra/auth/auth-profile-store.js"
 import { heldDirectoryDerivation } from "../../infra/watched-directory-values.js"
 import { SUBSCRIPTION_SPEND_CONSENT_FILE, subscriptionSpendConsentRevision, type SubscriptionSpendConsentRevision } from "../../infra/auth/subscription-spend-consent-store.js"
-import { accessProviderAccountKey, type AccessProviderCandidate, type AccessProviderDefinition } from "../../infra/llm/access-provider.js"
+import type { AccessProviderCandidate, AccessProviderDefinition } from "../../infra/llm/access-provider.js"
 import { providerSettingValues, type AccessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { availableSubscriptionUsageResetCredits } from "../../infra/llm/subscription-usage.js"
 import { metricUsedFraction } from "../../infra/llm/subscription-usage-store-codec.js"
@@ -13,7 +13,8 @@ import type { SubscriptionSpendConsentCaptureCache } from "./capture-cache.js"
 import { createSubscriptionSpendConsentRuntime } from "./runtime-composition.js"
 import type { SubscriptionSpendAuthorization, SubscriptionSpendConsentCapture } from "./subscription-spend-consent-service.js"
 import type { ProviderConnection } from "../../infra/auth/auth-context.js"
-import { createSubscriptionAccountIdentity } from "../../infra/llm/subscription-account-identity.js"
+import { createSubscriptionAccountIdentity } from "../../infra/auth/subscription-account-identity.js"
+import { accessProviderAccountKey } from "../../infra/auth/provider-account.js"
 
 export interface SubscriptionAdmissionCapture {
   readonly consent: SubscriptionSpendConsentCapture

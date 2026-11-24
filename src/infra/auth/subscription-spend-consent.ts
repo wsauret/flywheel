@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { subscriptionAccountIdentityKey, type SubscriptionAccountIdentity } from "../llm/subscription-account-identity.js";
+import { subscriptionAccountIdentityKey, type SubscriptionAccountIdentity } from "./subscription-account-identity.js";
 
 export type SubscriptionSpendMode = "prepaid" | "automatic";
 export type SubscriptionSpendDecision = "accepted" | "declined";

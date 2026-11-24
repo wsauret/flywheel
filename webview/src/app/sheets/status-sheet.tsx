@@ -1,5 +1,5 @@
 import { Key } from "@solid-primitives/keyed"
-import { createMemo, createResource, onCleanup, Show, type JSX } from "solid-js"
+import { createMemo, createResource, createSignal, onCleanup, Show, type JSX } from "solid-js"
 import { describeUpdateStatus } from "../../../../src/protocol/client/update-status-copy.js"
 
 import { readModuleStatusRows, sameModuleStatusScope, type ModuleStatusScope } from "../../../../src/protocol/client/module-status.js"
@@ -9,7 +9,9 @@ import type { ModuleRow, ModuleRowAction } from "../../../../src/protocol/protoc
 import type { WebModule } from "../../web-module.js"
 import { describeFailure } from "../../client/failure-message.js"
 import type { BudgetSummary } from "../../../../src/protocol/client/host-contract.js"
-import type { RuntimeHealth } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeHealth, RuntimeRestartReadiness } from "../../../../src/protocol/app-service-types.js"
+import { RESTART_CONFIRMATION, restartReadinessUnknownReason } from "../../../../src/protocol/client/service-restart-copy.js"
+import { restartService } from "../../client/service-restart.js"
 import { runtimeFaultCopy } from "../../../../src/protocol/client/runtime-fault-copy.js"
 import { actionKey } from "../../client/action-key.js"
 import { useClient } from "../client-context.js"
@@ -45,13 +47,16 @@ export function StatusSheet(props: { readonly docked?: boolean; readonly onClose
   const state = client.state
   const runtime = () => runtimeReading(state().health)
   const settled = async <T,>(read: Promise<T>): Promise<T | undefined> => read.catch(() => undefined)
+  const readRestartReadiness = async (): Promise<RestartReadinessRead> => client.connection.query({ type: "restartReadiness" })
+    .then((readiness) => ({ kind: "read" as const, readiness }), (cause: unknown) => ({ kind: "failed" as const, cause: describeFailure(cause) }))
   const [facts] = createResource(async () => {
     const sessionId = state().sessionId
-    const [detail, roles] = await Promise.all([
+    const [detail, roles, restartReadiness] = await Promise.all([
       sessionId === undefined ? undefined : settled(client.connection.query({ type: "sessionDetail", sessionId })),
       sessionId === undefined ? undefined : settled(client.connection.query({ type: "roleSnapshot", sessionIds: [sessionId] })),
+      readRestartReadiness(),
     ])
-    return { detail: detail?.view ?? undefined, roles: roles?.views[0]?.view ?? undefined }
+    return { detail: detail?.view ?? undefined, roles: roles?.views[0]?.view ?? undefined, restartReadiness }
   })
   const statusScope = createMemo<ModuleStatusScope, undefined>(() => ({ sessionId: state().sessionId, profileId: state().authStatus?.auth.profile.id, moduleIds: state().settings?.moduleIds ?? client.modules.map((module) => module.id) }), undefined, { equals: sameModuleStatusScope })
   let generation = 0
@@ -72,6 +77,24 @@ export function StatusSheet(props: { readonly docked?: boolean; readonly onClose
     if (!props.docked) client.closeSheet()
     if (action.kind === "command") client.actions.invokeCommand(action.id)
     else client.openSurface(action.id)
+  }
+
+  // A refusal or a lost request is said on the row until the next try. The
+  // readiness is read again after every try, because the service that
+  // answers then, or its residency, can differ from the one the sheet opened
+  // on; until that read lands the row keeps the last readiness it showed.
+  const [restartFailure, setRestartFailure] = createSignal<string>()
+  const [laterReadiness, setLaterReadiness] = createSignal<RestartReadinessRead>()
+  const restartKey = actionKey("service-restart")
+  const restart = () => restartReading(laterReadiness() ?? facts()?.restartReadiness, client.actions.working(restartKey), restartFailure())
+  const requestRestart = () => {
+    void client.confirm(RESTART_CONFIRMATION).then(async (confirmed) => {
+      if (!confirmed) return
+      setRestartFailure(undefined)
+      await client.actions.run(restartKey, () => restartService(client.connection), (cause) => setRestartFailure(describeFailure(cause)))
+      const readiness = await readRestartReadiness()
+      if (mounted) setLaterReadiness(readiness)
+    })
   }
 
   const copy = (text: string) => {
@@ -128,7 +151,23 @@ export function StatusSheet(props: { readonly docked?: boolean; readonly onClose
         <Key each={rows()} by="id">{(row) => <ModuleRowView row={row()} onAction={runAction} />}</Key>
 
         <div class="sheet-section">Application</div>
-        <Show when={state().update}>{(update) => <SheetRow label="Updates" value={describeUpdateStatus(update().status)} detail={update().autoInstall.effective ? "Automatic updates on" : "Automatic updates are off"} onClick={() => client.openSheet("settings")} />}</Show>
+        {/* Updates and Restart are always there, each one control. Their
+            value and lines are there, empty, before the update view and the
+            readiness arrive, so neither those nor a change of restart state
+            moves the rows or the rows below. */}
+        <SheetRow
+          label="Updates"
+          value={<>{state().update === undefined ? "" : describeUpdateStatus(state().update?.status)}</>}
+          detail={<span class="sheet-row-auto-update">{state().update === undefined ? "" : state().update?.autoInstall.effective ? "Automatic updates on" : "Automatic updates are off"}</span>}
+          onClick={() => client.openSheet("settings")}
+        />
+        <SheetRow
+          label="Restart"
+          detail={<span class={restart().tone === "warn" ? "sheet-row-restart tone-warn" : "sheet-row-restart"}>{restart().detail}</span>}
+          disabled={restart().disabled}
+          working={restart().working}
+          onClick={() => { if (!restart().working) requestRestart() }}
+        />
         {/* One version: the runtime serves this client and refuses any other build. */}
         <Show when={state().runtimeVersion}>{(version) => <SheetRow label="Version" value={`Flywheel ${version()}`} />}</Show>
         <SheetRow label="Runtime" value={runtime().value} detail={runtime().detail} tone={runtime().tone} working={client.actions.working(actionKey("reconnect"))} disabled={!runtime().reconnect} onClick={() => { if (runtime().reconnect) client.actions.reconnect() }} />
@@ -163,6 +202,30 @@ function runtimeReading(health: RuntimeHealth): RuntimeReading {
     case "restarting": return { value: "answering", detail: "Restarting this project's process", tone, reconnect: false }
     case "recovery_failed": return { value: "answering", detail: "Could not restore this project's sessions", tone, reconnect: false }
   }
+}
+
+/** The restart readiness as the sheet read it, or why it could not. */
+type RestartReadinessRead =
+  | { readonly kind: "read"; readonly readiness: RuntimeRestartReadiness }
+  | { readonly kind: "failed"; readonly cause: string }
+
+/** The Restart row, which is always there, and its status line, which
+ *  always holds one sentence, so a state change only rewrites that
+ *  sentence. A service that nothing would start again, and a
+ *  readiness that could not be read, make it unavailable with the reason. */
+interface RestartReading {
+  readonly detail: string
+  readonly tone?: "warn"
+  readonly working: boolean
+  readonly disabled: boolean
+}
+
+function restartReading(read: RestartReadinessRead | undefined, working: boolean, failure: string | undefined): RestartReading {
+  if (working) return { detail: "Restarting. This client reconnects on its own.", working: true, disabled: false }
+  if (read?.kind === "failed") return { detail: restartReadinessUnknownReason(read.cause), working: false, disabled: true }
+  if (read?.readiness.kind === "unavailable") return { detail: read.readiness.reason, working: false, disabled: true }
+  if (failure !== undefined) return { detail: `Could not restart: ${failure}`, tone: "warn", working: false, disabled: false }
+  return { detail: "Restarts the background service. Every client reconnects on its own.", working: false, disabled: false }
 }
 
 function spendReading(budget: BudgetSummary | null | undefined): { readonly value: string; readonly detail?: string; readonly busy?: true } | undefined {

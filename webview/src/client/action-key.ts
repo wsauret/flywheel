@@ -10,7 +10,7 @@ type KernelAction =
   | "profile-create" | "profile-pin" | "profile-rename" | "profile-select"
   | "provider-consent" | "provider-disconnect" | "provider-login" | "provider-login-finish"
   | "provider-model" | "provider-models" | "provider-models-recheck" | "provider-rename" | "providers-refresh"
-  | "recall-queued" | "reconnect" | "rename" | "restart" | "resume" | "setting" | "skip" | "stop" | "stop-tool"
+  | "recall-queued" | "reconnect" | "rename" | "restart" | "resume" | "service-restart" | "setting" | "skip" | "stop" | "stop-tool"
 
 /** A module names its own actions under its id, such as `mcp.authenticate`,
  *  so its words stay in its home. */

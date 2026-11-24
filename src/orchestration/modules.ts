@@ -29,12 +29,11 @@ import type { AccountModuleProtocolServices, ModuleProtocolContribution } from "
 import type { AccountModuleService, AccountModuleServiceInputs, AccountModuleServiceOptions, AccountProjectModuleServices, ModuleProcessServices, ModuleServiceInstance, PortableModuleServices } from "./app-service/module-service-host.js"
 import type { ModuleConfigSection } from "./config/config-section.js"
 import type { DefinitionBundle } from "../workflows/loader.js"
-import { installedDefinitionBundles, installedModules, publishShippedOtherModules, validateModuleFactPrefixes } from "./module-catalog.js"
+import { installedDefinitionBundles, installedModules, publishShippedOtherModules, validateModuleFactPrefixes, type InstalledModuleHistory } from "./module-catalog.js"
 import { CREDENTIAL_PROVIDER_MODULES } from "./credential-provider-modules.js"
-import type { AnyFactSchema } from "../infra/event-registry.js"
 import type { AuthProviderStatus } from "../protocol/auth-status-protocol-types.js"
 import { moduleRequirementsForContribution } from "./module-requirements.js"
-import type { DefinitionReconciliationInput, ModuleChildSessionHistory, ModuleDefinitionReconciliation, ModuleMaintenance, ModuleMaintenanceInput, ManagedPackageWrites, MemoryContribution, ModuleChatObserver, ModuleChatObserverContext, ModuleRetainedOperationContribution, ModuleRuntimeInvocationTool, ModuleSessionHistory, ModuleSessionAdmission, ModuleSessionDeletion, ModuleChildSession, QuestionDecisionContribution, SessionHistoryRecoveryInput, SessionToolSummaryReader, SkillChildGrantContribution, SupersededFactInvalidationResult, WorkspaceMigration } from "./module-seams.js"
+import type { DefinitionReconciliationInput, ModuleChildSessionHistory, ModuleDefinitionReconciliation, ModuleMaintenance, ModuleMaintenanceInput, ManagedPackageWrites, MemoryContribution, ModuleChatObserver, ModuleChatObserverContext, ModuleRetainedOperationContribution, ModuleSessionHistory, ModuleSessionAdmission, ModuleSessionDeletion, ModuleChildSession, QuestionDecisionContribution, SessionHistoryRecoveryInput, SessionToolSummaryReader, SkillChildGrantContribution, SupersededFactInvalidationResult, WorkspaceMigration } from "./module-seams.js"
 import type { ModuleRetainedDiagnostics } from "./module-diagnostics.js"
 import type { ModuleAgentTasks } from "./module-agent-tasks.js"
 import type { DEVELOPMENT_MODULES } from "./development-modules.js"
@@ -234,17 +233,8 @@ interface ModuleServiceDeclaration<Instance extends ModuleServiceInstance, Servi
  *  through the same activation walk. */
 type PortableServiceDeclaration<Instance extends ModuleServiceInstance> = ModuleServiceDeclaration<Instance, PortableModuleServices> & { readonly portable: true }
 
-export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, FirstPartyObserverMap, FirstPartyGateMap> & {
+export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, FirstPartyObserverMap, FirstPartyGateMap> & InstalledModuleHistory & {
   readonly runtime?: ModuleRuntimeDeclaration<unknown>
-  /** The type prefixes of the durable fact families this module owns. The
-   *  retention registry names the owner per family; the prefixes are the
-   *  module's namespace claim, and `bun run lint:fact-retention` fails a family
-   *  the registry gives this module that carries none of them (ARCH-STRUCTURE-023). */
-  readonly facts?: {
-    readonly prefixes: readonly string[]
-    readonly sessionSchemas?: () => readonly AnyFactSchema[]
-    readonly invalidateSuperseded?: (dbPath: string) => SupersededFactInvalidationResult
-  }
   readonly workspaceMigrations?: readonly WorkspaceMigration[]
   readonly definitionReconciliation?: ModuleDefinitionReconciliation
   readonly maintenance?: readonly ModuleMaintenance[]
@@ -252,13 +242,6 @@ export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, First
   /** Installed child-session semantics stay available for durable history even when dispatch is disabled. */
   readonly childSessionHistory?: ModuleChildSessionHistory
   readonly sessionDeletion?: ModuleSessionDeletion
-  /** Fact types that delete a session's conversation without a
-   *  `session.deleted` fact, so a derived transcript index drops that
-   *  session's rows. Installed for durable history even when the module is
-   *  disabled. */
-  readonly conversationDeletionFacts?: readonly string[]
-  /** Installed for durable history even when the module is disabled. */
-  readonly runtimeInvocationTool?: ModuleRuntimeInvocationTool
   readonly childSession?: ModuleChildSession
   readonly sessionAdmission?: ModuleSessionAdmission
   /** Durable module work restored only by an explicit consuming command. */

@@ -1,8 +1,9 @@
-import { accessProviderAccountKey, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderModelEligibility } from "../../infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderModelEligibility } from "../../infra/llm/access-provider.js";
 import type { ProviderCatalogDiscovery } from "../../protocol/provider-model-preference-protocol-types.js";
-import { offeringTransport } from "../../infra/llm/model-catalog-resolution.js";
-import type { CatalogModelOffering, OfferingTransport } from "../../infra/llm/catalog-model-offering.js";
+import { offeringTransport } from "../../infra/model-catalog-rows.js";
+import type { CatalogModelOffering, OfferingTransport } from "../../infra/catalog-model-offering.js";
 import type { IdleFreePlanMark } from "../../infra/llm/free-plan-accounts.js";
+import { accessProviderAccountKey } from "../../infra/auth/provider-account.js";
 
 interface ProviderCatalogEligibility {
   readonly effective: ReadonlySet<string>;

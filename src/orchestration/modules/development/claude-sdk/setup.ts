@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { AuthProfileStore } from "../../../../infra/auth/auth-profile-store.js";
-import type { ExternalAccount } from "../../../../infra/llm/access-provider.js";
+import type { ExternalAccount } from "../../../../infra/auth/provider-account.js";
 import { updateModelAssignments } from "../../../config/writer.js";
 import { AGENT_ROLE_IDS, DEFAULT_ROLES } from "../../../config/roles.js";
 

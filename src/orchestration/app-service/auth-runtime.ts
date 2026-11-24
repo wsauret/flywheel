@@ -60,9 +60,9 @@ import { connectionEligibilitySources } from "../headless/snapshot-eligibility.j
 
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { capacityWaitRechecks, type CapacityWaits } from "./capacity-wait-rechecks.js"
-import { isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../infra/llm/access-provider.js"
 import type { RuntimeChatDefault } from "../../protocol/app-service-types.js"
 import type { RuntimeModelCatalogRefreshScope } from "../../protocol/provider-model-preference-protocol-types.js"
+import { isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../infra/auth/provider-account.js"
 const log = Log.create({ service: "auth-runtime" })
 
 export interface AuthRuntimeOptions {

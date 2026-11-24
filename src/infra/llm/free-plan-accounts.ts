@@ -1,4 +1,5 @@
-import { accessProviderAccountKey, type AccessProviderDefinition, type SubscriptionPlanReading } from "./access-provider.js";
+import type { AccessProviderDefinition, SubscriptionPlanReading } from "./access-provider.js";
+import { accessProviderAccountKey } from "../auth/provider-account.js";
 
 /** The one statement of PI-MODEL-038, PI-MODEL-069: only paid subscription accounts rotate. A profile holds at most one free-plan
  *  account of a provider, and a free-plan account serves only while it is the only account of its provider. */

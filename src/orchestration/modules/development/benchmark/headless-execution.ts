@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { canonicalModelId } from "../../../../infra/llm/model-id.js";
+import { canonicalModelId } from "../../../../infra/model-id.js";
 import type { OwnedProcess } from "../../../../infra/owned-subprocess.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
 import { applyWindowsPrivateDirectoryAcl } from "../../../../infra/windows-private-directory-acl.js";

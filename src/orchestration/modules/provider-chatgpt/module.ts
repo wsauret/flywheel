@@ -4,7 +4,7 @@ import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutati
 import { type StoredTokens, storedTokensToCredential } from "../../../infra/auth/openai-auth-types.js";
 import { extractDisplayIdentityFromJwt } from "../../../infra/auth/openai-jwt.js";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/llm/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
 import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../agent-runtime/llm/provider-failure.js";
 import { ensureFreshChatGPTTokens, getConnectionChatGPTTokenAccessor, rotateChatGPTTokens } from "../../agent-runtime/llm/openai-chatgpt.js";

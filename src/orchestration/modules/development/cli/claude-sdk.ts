@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface, type Interface } from "node:readline";
 import { parseArgs } from "node:util";
-import { isExternalLoginDefinition, type ExternalAccount } from "../../../../infra/llm/access-provider.js";
 import { openExternalUrl } from "../../../../infra/open-external-url.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
 import type { CliNounContribution, CliVerb } from "../../../cli-contribution.js";
 import { installedAccessProviderDefinitions } from "../../../credential-provider-modules.js";
 import { CLAUDE_SDK_PROFILE, setupClaudeSdkHome, setupClaudeSdkProfile } from "../claude-sdk/setup.js";
+import { isExternalLoginDefinition, type ExternalAccount } from "../../../../infra/auth/provider-account.js";
 
 const SCENARIO_NAMES = ["chat", "child", "title", "workflow", "stop"] as const;
 export type ScenarioName = (typeof SCENARIO_NAMES)[number];

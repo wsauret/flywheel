@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { SQLiteError } from "bun:sqlite";
 import { errorMessage } from "../error-message.js";
-import type { SubscriptionAccountIdentity } from "./subscription-account-identity.js";
+import type { SubscriptionAccountIdentity } from "../auth/subscription-account-identity.js";
 import { SubscriptionUsageMetricSchema, SubscriptionUsageResetCreditsSchema, SubscriptionUsageSpendSourceSchema, type SubscriptionUsageResetCredits, type SubscriptionUsageSpendSource } from "./subscription-usage.js";
 
 /** The persisted records of the subscription usage authority: what one
@@ -308,12 +308,6 @@ function optionalText(value: unknown, at: string): string | undefined {
   if (typeof value !== "string") throw new SubscriptionUsageCorruptError(at, "expected text or null");
   return value;
 }
-
-export {
-  createSubscriptionAccountIdentity as accountKeyFromIdentity,
-  subscriptionAccountIdentityFromRef as accountKeyFromRef,
-  subscriptionAccountIdentityKey as keyString,
-} from "./subscription-account-identity.js";
 
 export function bindings(key: SubscriptionUsageAccountKey) {
   return { $provider: key.providerId, $instance: key.instanceId, $subject: key.subjectDigest } satisfies SqlBinding;

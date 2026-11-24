@@ -1,6 +1,6 @@
 import { canonicalize } from "../canonical-name.js";
 import { isCustomProviderModel } from "./custom-provider-registry.js";
-import { canonicalModelId } from "./model-id.js";
+import { canonicalModelId } from "../model-id.js";
 
 /** The wire family that serves a model: the Anthropic Messages API, the OpenAI Responses API, the vendor-neutral Chat
  *  Completions API, or the Google Generative AI API. It names the wire, not the vendor that trained the model. */

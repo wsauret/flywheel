@@ -1,11 +1,14 @@
 import { Schema } from "effect";
 import type { ProtocolExposure, SettingApplication } from "./setting-definitions.js";
+import { installedModules } from "../module-catalog.js";
+import type { FirstPartyModule } from "../modules.js";
 
 /** The module-facing half of the configuration file: what a module declares
  *  to own one retained section through its `config` contribution (ARCH-RUNTIME-064),
- *  and the one typed read of that section. A leaf on purpose: a module home
- *  imports this and never the catalog-composing files of the config layer,
- *  which import the module registry. */
+ *  the one typed read of that section, and the sections the installed catalog
+ *  contributes. A leaf on purpose: a module home imports this and never the
+ *  catalog-composing files of the config layer, which import the module
+ *  registry. It reads only the light installed catalog. */
 
 /** One issue a section owner explains in its own words, at the authored path. */
 export interface ConfigOwnerIssue {
@@ -44,4 +47,16 @@ export interface ModuleConfigSection<S extends Schema.Top = Schema.Top> {
 export function configSection<S extends Schema.Top & Schema.Decoder<unknown, never>>(config: { readonly [key: string]: unknown }, section: ModuleConfigSection<S>): S["Type"] {
   const sections: { readonly [key: string]: unknown } = config;
   return Schema.decodeUnknownSync(section.schema)(sections[section.key]);
+}
+
+/** Every config section the installed catalog contributes, whether or not a
+ *  project enables the owner: the loader decodes them all, so a section a
+ *  disabled module owns keeps its bytes and its meaning, and only the module's
+ *  service reads it while the module is on. */
+export function installedConfigSections(modules: readonly FirstPartyModule[] = installedModules()): readonly ModuleConfigSection[] {
+  return modules.flatMap((module) => module.contributions.flatMap((contribution) => {
+    if (contribution.domain !== "config") return [];
+    if (contribution.id !== contribution.value.key) throw new Error(`Config contribution id ${contribution.id} must equal its section key ${contribution.value.key}`);
+    return [contribution.value];
+  }));
 }
