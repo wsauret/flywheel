@@ -3,7 +3,7 @@ import { FLYWHEEL_EVENT_TYPES, type FlywheelEvent, toRuntimeEvent } from "../../
 import { formatCompactionReport } from "../../protocol/client/format.js"
 import { RUNTIME_EVENT_TYPES, type RuntimeEvent } from "../../infra/runtime-event-types.js"
 import type { OutputProjectionEvent } from "../../infra/output/output-projection-events.js"
-import type { OutputSession } from "../runner/output-session.js"
+import type { OutputSession } from "./output-session.js"
 import type { ChatEntryPatch } from "./types.js"
 
 const compactionTypes = new Set<RuntimeEvent["type"]>(["agent.compaction.started", "agent.compaction.completed"])

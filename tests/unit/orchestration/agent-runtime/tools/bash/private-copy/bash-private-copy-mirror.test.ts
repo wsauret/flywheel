@@ -6,7 +6,7 @@ import * as path from "node:path";
 import { cloneEntry, mirrorTree, type MirrorRequest, type MirrorState } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-mirror.js";
 import { copyProjectTree, scanCopyChanges, type CopiedTree, type CopyTreeRequest, type CopyTreeState } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-tree.js";
 import { scanSessionChanges, snapshotSessionFolder } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-session-observation.js";
-import { observeFileState, sameObservedState } from "../../../../../../../src/orchestration/file-edits/file-state.js";
+import { observeFileState, sameObservedState } from "../../../../../../../src/orchestration/agent-runtime/tools/file-edits/file-state.js";
 import { temporaryDirectories } from "../../../../../../helpers/directories.js";
 
 const createDirectory = temporaryDirectories();

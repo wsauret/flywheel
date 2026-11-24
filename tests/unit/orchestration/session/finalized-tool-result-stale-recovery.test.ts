@@ -8,7 +8,7 @@ import { recoverFinalizedToolResultCheckpoints, retireLegacyFinalizedToolResultC
 import { buildMutationEvidence, buildMutationFileEvidence } from "../../../../src/infra/mutation-evidence";
 import { hydrateToolContentFact } from "../../../../src/infra/tool-content-hydration";
 import { buildMutationDiff } from "../../../../src/infra/mutation-diff";
-import { retireRecordedFinalizedToolResultCheckpointPage } from "../../../../src/orchestration/migrations/finalized-tool-result-checkpoints";
+import { retireRecordedFinalizedToolResultCheckpointPage } from "../../../../src/orchestration/workspace-state/migrations/finalized-tool-result-checkpoints";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import {
   assistantToolUseMessage,

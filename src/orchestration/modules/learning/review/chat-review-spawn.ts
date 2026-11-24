@@ -1,6 +1,6 @@
-import type { ChatModuleHostInput } from "../../../chat-module-host.js"
+import type { ChatModuleHostInput } from "../../../chat/chat-module-host.js"
 import { resolveSessionDir } from "../../../../infra/paths.js"
-import { createAgentGeneration } from "../../../runner/host.js"
+import { createAgentGeneration } from "../../../agent-runtime/runner/turn-host/host.js"
 import { requireRole } from "../../../config/roles.js"
 import { renderSkillRecommendationNotification } from "./reconciliation.js"
 import { createReviewUsageAccounting, resolveReviewRoute, reviewReplay, type ReviewRunSpec, type SpawnedReview } from "./learning-review.js"

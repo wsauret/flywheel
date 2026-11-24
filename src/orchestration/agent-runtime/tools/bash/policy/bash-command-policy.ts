@@ -1,5 +1,4 @@
 import type { Node, Tree } from "web-tree-sitter";
-import type { ToolCall } from "../../../llm/types.js";
 import { bashCommandNodes, loadBashParser } from "./bash-parser.js";
 import { extractShellCommand, type ParsedCommand } from "./bash-command-parts.js";
 import { scopeAdmission, shellWriteViolation, type WriteScope } from "./bash-write-targets.js";
@@ -9,7 +8,6 @@ import { DebugLog } from "../../../../../infra/debug-log.js";
 import { WORKTREE_LIFECYCLE_SKILL_ID } from "../../../../../infra/directory-authorities.js";
 import { Log } from "../../../../../infra/log.js";
 import { coalesceRepeats } from "../../../../../infra/repeat-coalescer.js";
-import { toolIdentity } from "../../../../tool-catalog.js";
 
 interface NumberByUnit {
   [unit: string]: number;
@@ -476,17 +474,15 @@ function isPlainBunRunPackageScript(command: string): boolean {
 //      is bounded: the completing task re-drives the loop.
 //
 // The wait-intent requirement on shape 2 keeps harmless `echo hello` from
-// parking the turn.
-//
-// A background launch is never a placeholder, whatever its command: it starts
-// work that the turn then owes (ARCH-TOOLS-031), so the turn continues and
-// the pending-work reminder applies.
+// parking the turn. The agent loop judges the call itself: which tool it
+// calls, whether it runs in the background, and whether work is pending
+// (agent-loop-wait.ts).
 const BARE_NOOP_PATTERN = /^(true|:)\s*(#.*)?$/;
 const BARE_SLEEP_PATTERN = /^sleep\s+\d+(\.\d+)?[smhd]?\s*(#.*)?$/;
 const NOOP_COMMAND_PATTERN = /^(echo|printf|sleep|true|:)(\s|$)/;
 const WAIT_INTENT_PATTERN = /\b(wait|yield|standby|stand by|standing by|idle|holding|pending|in progress|still (?:run|work|process))/i;
 
-function isYieldPlaceholderCommand(command: string): boolean {
+export function isYieldPlaceholderCommand(command: string): boolean {
   const segments = command
     .split(/(?:&&|\|\||[;&|\n])/)
     .map((s) => s.trim())
@@ -495,10 +491,4 @@ function isYieldPlaceholderCommand(command: string): boolean {
   if (!first) return false;
   if (segments.every((seg) => BARE_SLEEP_PATTERN.test(seg) || BARE_NOOP_PATTERN.test(seg))) return true;
   return NOOP_COMMAND_PATTERN.test(first) && !first.includes(">") && WAIT_INTENT_PATTERN.test(first);
-}
-
-export function isYieldPlaceholderToolCall(toolCall: ToolCall, hasPendingBackgroundWork: boolean): boolean {
-  if (!hasPendingBackgroundWork || toolIdentity(toolCall.name) !== "bash" || toolCall.input.background === true) return false;
-  const command = toolCall.input.command;
-  return typeof command === "string" && isYieldPlaceholderCommand(command);
 }

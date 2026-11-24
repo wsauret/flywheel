@@ -3,7 +3,7 @@ import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-ser
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import type { OutputRangeRequest } from "../../../../src/protocol/transcript-protocol-types.js"
-import { outputSeamBlocks } from "../runner/_output-session-fixtures.js"
+import { outputSeamBlocks } from "../session-store/_output-session-fixtures.js"
 
 it("asserts every range anchor against one absolute sequence", async () => {
   const blocks = outputSeamBlocks()

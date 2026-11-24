@@ -9,7 +9,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseFrontmatter } from "../../../src/infra/frontmatter.js";
 import { SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
-import { createToolRegistry } from "../../../src/orchestration/tool-catalog.js";
+import { createToolRegistry } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { buildClaudePlugin, writePluginDirectory } from "../../../scripts/build-claude-plugin.js";
 import { NATIVE_TOOLS } from "../../../scripts/claude-plugin-host.js";
 import { zipArchive } from "../../../scripts/zip-archive.js";

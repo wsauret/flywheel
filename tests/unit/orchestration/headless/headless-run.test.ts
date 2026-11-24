@@ -19,7 +19,7 @@ import * as headlessDeadline from "../../../../src/orchestration/headless/headle
 import type { HeadlessDeadlineController } from "../../../../src/orchestration/headless/headless-deadline.js"
 import { runHeadlessTask } from "../../../../src/orchestration/headless/run-headless-task.js"
 import { readSessionMetadata } from "../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js"
-import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state/workspace-state.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"
 import { generationHolders, makeWorkflowDeps } from "./_headless-run-fixtures.js"

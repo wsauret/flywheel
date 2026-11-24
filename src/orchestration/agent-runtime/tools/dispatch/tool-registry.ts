@@ -1,115 +1,14 @@
 import type { ToolAction } from "../../../../infra/workflow-types.js";
-import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
 import { canonicalModuleIds, MODULE_IDS, moduleDisabledReason, type ModuleId } from "../../../../protocol/module-ids.js";
+import type { RegisteredTool, ToolDeclaration, ToolDeps, ToolExposureCategory, ToolFactoryResult, ToolPolicy, ToolRegistration } from "../../../module-seams.js";
 import type { FirstPartyModuleComposition } from "../../../modules.js";
 import type { RuntimeToolSurfaces, RunnerToolSurfaces } from "../../types.js";
-import type { ToolInteractionContract } from "../../request/prompt/model-interaction-profile.js";
-import type { KernelToolDeps } from "../kernel-tool-deps.js";
 import { createHandoffTool, handoffDefinition } from "../sessions/handoff.js";
 import { createListSessionsTool, LIST_SESSIONS_TOOL_DEFINITION } from "../sessions/list-sessions.js";
 import { createMessageSessionTool, messageSessionToolDefinition } from "../sessions/message-session.js";
 import { createProcessTool, processToolDefinition } from "../sessions/process.js";
 import { checkpointToolDefinition, createCheckpointTool, type CheckpointToolKind } from "../sessions/session-checkpoint.js";
-import type { AdvertisedTool, RuntimeTool, RuntimeToolInput, ShellCommand } from "../types.js";
-
-/** core: the normal coding surface, participates in explicit selection.
- *  ambient: runtime context, inspection, or settlement surfaces that an
- *  ordinary selected-tool allowlist does not remove.
- *  opt-in: requires explicit selection plus declared runtime dependencies. */
-type ToolExposureCategory = "core" | "ambient" | "opt-in";
-
-/** What every tool factory receives: the request's kernel facts and the
- *  runtimes of the enabled modules, read through typed handles. */
-interface ToolDeps {
-  readonly kernel: KernelToolDeps;
-  readonly modules: ModuleRuntimes;
-}
-
-/** A tool's final form once every registration is constructed: the tool it
- *  settles on given the planned set, or the reason it withdraws. */
-type RefinedTool =
-  | { readonly tool: RuntimeTool; readonly reason?: undefined }
-  | { readonly tool?: undefined; readonly reason: string };
-
-/** Builds a tool over the request's final eligible set, after every other
- *  registration and every module's code-only tools are planned, with the
- *  namespaces the modules declare before their tools arrive. It reports
- *  the eligible tools it cannot carry as named omissions. */
-export type DeferredToolFactory = (eligible: ReadonlyMap<string, RuntimeTool>, namespaces: ReadonlySet<string>) => {
-  readonly tool: RuntimeTool;
-  readonly omissions: readonly { readonly name: string; readonly reason: string }[];
-};
-
-export interface ToolFactoryResult {
-  readonly tool?: RuntimeTool;
-  /** The tool is omitted for this reason. */
-  readonly reason?: string;
-  /** The tool's per-agent surface is missing. A tree-hosted runner advertises
-   *  `tool` and refuses its call with `reason`; any other runner omits it with
-   *  `reason`. The definition names no surface, so its bytes are the same
-   *  whether the agent holds the surface (see `KernelToolDeps.treeHosted`). */
-  readonly unusable?: { readonly tool: AdvertisedTool; readonly reason: string };
-  /** Named sub-omissions a present tool reports, such as one input it cannot advertise. */
-  readonly omissions?: readonly { readonly name: string; readonly reason: string }[];
-  /** The modules whose part of the advertised tool, such as one input, this agent's calls are refused because the
-   *  agent's own selection turned them off (`ToolExposurePlan.turnedOff`). */
-  readonly turnedOff?: readonly ModuleId[];
-  /** The registration's tool is built last, over the final eligible set. Its
-   *  presence admits the modules' code-only tools, whose capability
-   *  authority it becomes. One request plans at most one. */
-  readonly deferred?: DeferredToolFactory;
-  /** Runs after every registration is constructed, with the planned set. */
-  readonly refine?: (planned: ReadonlyMap<string, RuntimeTool>) => RefinedTool;
-}
-
-/** What a tool is outside the engine. Settings, persona grants, the selected
- *  allowlist, clone inheritance, and the audit read the tool by its name, so
- *  one tool states this policy once, whatever registrations serve it. */
-interface ToolPolicy {
-  /** What the tool does, for policy: workflow `toolScoping` grants and
-   *  persona `excludeActions` read it. Clients never see it;
-   *  they render and group by the display action in the tool display
-   *  registry, which can differ on purpose. */
-  readonly action: ToolAction;
-  readonly category: ToolExposureCategory;
-  readonly cloneInheritance: "inherit" | "reconstruct";
-  readonly learningReviewExecutable: boolean;
-  readonly semanticBundle: "file-media" | null;
-  readonly personaBaseline: boolean;
-  readonly personaOrder?: number;
-  readonly registryOrder: number;
-  /** The trees that offer the tool in short form (ARCH-CONTEXT-038): every tree, or only an unattended tree, whose
-   *  agents rarely call it. `summary` is the one line that the short form carries. Absent: always in full form. */
-  readonly shortForm?: { readonly trees: "always" | "unattended"; readonly summary: string };
-}
-
-/** One executable form of a tool. Its id is the registration id that
- *  conversation history and the request audit record, so it never changes. */
-export interface ToolRegistration<Capability extends string = string> {
-  readonly capabilities: readonly Capability[];
-  /** Planned only when the serving model selects this presentation contract. */
-  readonly interactionContract?: ToolInteractionContract;
-  /** Provider-visible name when it differs from the registration id. */
-  readonly exposedName?: string;
-  /** A shell registration's command and the absolute directory it runs in,
-   *  so a rule judges a call, live or recorded, whatever input names this
-   *  registration gives them. The tool's own execution starts in the same
-   *  directory. Pure: it reads only the input and the execution directory.
-   *  Undefined when the input carries no command string. */
-  readonly shellCommand?: (input: Readonly<RuntimeToolInput>, executionCwd: string) => ShellCommand | undefined;
-  readonly create: (deps: ToolDeps) => ToolFactoryResult;
-}
-
-/** A tool as its owner declares it: its policy once, and the registrations
- *  the serving model's interaction profile selects among. */
-export interface ToolDeclaration<Capability extends string = string> extends ToolPolicy {
-  readonly registrations: { readonly [registrationId: string]: ToolRegistration<Capability> };
-}
-
-/** One registry entry: a registration with the name and policy of its tool. */
-export interface RegisteredTool<Capability extends string = ModuleId> extends ToolPolicy, ToolRegistration<Capability> {
-  readonly tool: string;
-}
+import type { RuntimeTool } from "../types.js";
 
 function sessionCheckpoint(kind: CheckpointToolKind, registryOrder: number): ToolDeclaration<ModuleId> {
   return {

@@ -4,10 +4,7 @@ import type { OutputChangeBatch } from "../../infra/output/output-block-delta.js
 import type { SessionNotice, SessionNoticeOperation } from "../../infra/session-notice.js"
 import type { ChatRunner } from "../chat/runner-types.js"
 import type { SessionKind } from "../session/metadata/types.js"
-import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
 import type { ActiveBackgroundCommandDescriptor } from "../agent-runtime/background-work/background-work.js"
-import type { AgentInputAnswers } from "../../protocol/question-protocol-types.js"
-import type { ControlInterruption, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
 
 
 /** Patch shape for store entries: callers always hand the store a plain block
@@ -230,36 +227,19 @@ export interface SessionStore extends SessionStoreReader {
   showStartupFailure(sessionId: string, message: string): boolean
 
   abort(sessionId: string): Promise<boolean>
-  /** The runtime's stop of one chat's runner (`ChatRunner.prepareForShutdown`). */
-  prepareForShutdown(sessionId: string, by: RuntimeInterruption): void
-  /** A planned replacement's cut of one session's running turn, by the
-   *  runtime. A running shell command is never cut: the cut first moves each
-   *  held foreground command to the background, and the stop hands every
-   *  running command to the successor. True when it interrupted a running
-   *  turn. */
-  interruptForReplacement(sessionId: string): Promise<boolean>
-  /** A planned replacement's move of the session's held foreground commands,
-   *  its children's included, to the background. Resolves once the
-   *  session's registries track each moved command or it has ended. */
-  transferForegroundForReplacement(sessionId: string): Promise<void>
-  /** The one Interrupt of a session's running turn or step, by a person or
-   *  by the parent agent of a workflow. Only a person interrupts a
-   *  conversation runner: the parent agent cuts a subagent through its live
-   *  run (`liveChildRun`), and a chat has no parent. */
-  interrupt(sessionId: string, by: ControlInterruption, address?: WorkflowDeliveryAddress): boolean
-  releaseForegroundBash(sessionId: string, toolUseId: string): boolean
-  terminateBackgroundWork(sessionId: string, toolUseId: string): void
+  /** The runner that controls the session now: the runner of an entry that
+   *  has one and that `remove` or `disposeAll` is not ending. Null otherwise,
+   *  so a control of a session that is ending reaches nothing. Every runner
+   *  control (interrupt, the planned replacement's cut and foreground move,
+   *  question settlement, compaction, the /learn review, background stops)
+   *  goes through it; a live workflow member is controlled through its live
+   *  session control instead. */
+  activeRunner(sessionId: string): ChatRunner | null
   remove(sessionId: string): Promise<void>
   /** Shared runtime fields, including activity and metrics. */
   updateEntry(sessionId: string, patch: SessionEntryBasePatch): void
   /** Chat-only fields; no-op unless the entry is a chat session. */
   updateChatEntry(sessionId: string, patch: ChatEntryPatch): void
-  answerQuestion(sessionId: string, toolUseId: string, answers: AgentInputAnswers): boolean
-  cancelQuestion(sessionId: string, toolUseId: string): boolean
-  compactConversation(sessionId: string): Promise<boolean>
-  /** Fire the combined learning review for an active chat session.
-   *  False when the session is absent, inactive, or hosts no review. */
-  learnFromSession(sessionId: string): boolean
   reorder(sessionId: string, beforeSessionId: string | null): boolean
   runningCount(): number
   /** Reads and clears the output deltas queued for this session since the

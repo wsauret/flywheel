@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { agentLive } from "../../../../src/orchestration/modules/workflows/protocol/compact-activity.js"
-import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
+import { createOutputSession } from "../../../../src/orchestration/session-store/output-session.js"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
 import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js"
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js"

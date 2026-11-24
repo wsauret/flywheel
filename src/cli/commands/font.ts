@@ -7,7 +7,7 @@ import {
   fontStatusSummary,
   getFontStatus,
   installBundledFont,
-} from "../../orchestration/font-installer.js";
+} from "../../tui/terminal/font-installer.js";
 import { updateDefinedSetting } from "../../orchestration/config/writer.js";
 
 const USAGE = `Usage: flywheel font <command>

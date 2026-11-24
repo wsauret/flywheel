@@ -53,7 +53,7 @@ export function deltas(patches: RuntimeUiPatch[], sessionId: string): OutputDelt
 /** The real write site (StructuredOutputBuilder/OutputSession) always sends
  *  `outputBlocks` (the full current view) alongside `outputChanges` (the
  *  minted batch); these helpers build both halves of that patch the way
- *  runner/output-session.ts's syncStore() does. */
+ *  session-store/output-session.ts's syncStore() does. */
 export function upsertChange(index: number, block: AnyBlock): OutputBlockChange {
   return { kind: "upsert", index, block }
 }

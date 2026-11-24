@@ -5,7 +5,7 @@ import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import type { ChatEntryPatch } from "../../../../src/orchestration/session-store/types.js"
 import { SessionEventAdapter } from "../../../../src/orchestration/session-store/event-adapter.js"
-import { createOutputSession, type OutputSession } from "../../../../src/orchestration/runner/output-session.js"
+import { createOutputSession, type OutputSession } from "../../../../src/orchestration/session-store/output-session.js"
 
 type Emit = ReturnType<typeof createEmit>
 

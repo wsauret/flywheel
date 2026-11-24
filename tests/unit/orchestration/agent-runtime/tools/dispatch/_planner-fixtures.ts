@@ -1,7 +1,7 @@
 import { composeModuleRuntimes } from "../../../../../../src/infra/module-runtime.js";
 import type { KernelToolDeps } from "../../../../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { planToolExposure, type ToolExposureInput } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
-import type { AskUserController } from "../../../../../../src/orchestration/runner/ask-user-controller.js";
+import type { AskUserController } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller.js";
 import type { SubagentsRuntime } from "../../../../../../src/orchestration/modules/subagents/execution/control/runtime-binding.js";
 import { publishSkillRevision, type SkillDefinition, type SkillRegistryRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { testDirectories } from "../../../../../helpers/directories.js";

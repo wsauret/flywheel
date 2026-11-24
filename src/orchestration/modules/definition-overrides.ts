@@ -3,7 +3,7 @@ import { definitionOverridesProtocol } from "../../protocol/modules/definition-o
 import type { DefinitionOverrideOperations } from "../../workflows/definitions/override-staleness.js"
 import { createDefinitionOverridesTool, DEFINITION_OVERRIDES_TOOL_DEFINITION, type DefinitionOverridesToolDeps } from "../agent-runtime/tools/definitions/definition-overrides.js"
 import { MESSAGE_SESSION_TOOL_NAME } from "../agent-runtime/tools/sessions/message-session.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
+import type { ToolDeclaration } from "../module-seams.js"
 import { moduleProtocol } from "../app-service/module-protocol-host.js"
 import type { FirstPartyModule } from "../modules.js"
 import { createDefinitionOverridesProtocol } from "./definition-overrides/protocol.js"

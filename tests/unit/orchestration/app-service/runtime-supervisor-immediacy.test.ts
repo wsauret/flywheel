@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
+import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
+import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js"
+import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js"
+import { registerLiveSessionControl } from "../../../../src/orchestration/session/control/live-session-control.js"
 import { createDeferred, createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorWithRunner, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { fakeSessionStore, workflowEntry } from "./_frontend-projection-fixtures.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
@@ -113,18 +118,78 @@ describe("RuntimeSupervisor preemptive immediacy and two-phase lifecycle", () =>
     expect(supervisor.releaseForegroundBash(sessionId, "toolu_bash")).toBe(false)
   })
 
-  test("bash detach reaches the session store for a session without a chat actor (workflow sessions)", () => {
-    const released: string[] = []
-    const wrappedStore: SessionStore = {
-      ...ctx.sessionStore,
-      releaseForegroundBash: (id, toolUseId) => { released.push(`${id}:${toolUseId}`); return true },
-    }
-    const supervisor = createRuntimeSupervisor(supervisorBaseDeps(ctx, wrappedStore, { createRunner: async (deps) => mockRunner(deps.sessionId) }))
+  test("bash detach and a planned replacement's foreground move reach a live workflow member, which has no chat actor", async () => {
+    const reader = ctx.runtime.runSync(EventReaderService)
+    const sessionId = "workflow-session"
+    ctx.sessionStore.openSessionRuntime({ sessionId, kind: "workflow-agent", workflowId: "workflow", conversationId: "agent-conversation" })
+    const controller = createForegroundBashHoldController(ids => ctx.sessionStore.updateEntry(sessionId, { activeForegroundBashToolCallIds: ids }))
+    const unregister = registerLiveSessionControl(reader, {
+      sessionId, state: async () => "running", deliver: async (_input, decide) => decide("running"), notify: async () => false,
+      member: {
+        workflowId: "workflow", modules: async () => NO_MODULE_RUNTIMES, backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
+        compact: async () => false, interrupt: () => false, terminateBackgroundWork: () => {},
+        releaseForegroundBash: id => controller.release(id), transferForegroundForReplacement: () => controller.transferForReplacement(),
+      },
+    })
+    const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => mockRunner(deps.sessionId) }), replacementHandoff: () => "handoff" })
+    try {
+      const hold = controller.register("toolu_bash")
+      expect(ctx.sessionStore.get(sessionId)?.activeForegroundBashToolCallIds).toEqual(["toolu_bash"])
+      expect(supervisor.releaseForegroundBash(sessionId, "toolu_bash")).toBe(true)
+      expect(ctx.sessionStore.get(sessionId)?.activeForegroundBashToolCallIds).toEqual([])
+      await expect(hold.released).resolves.toBe("user_detach")
+      expect(supervisor.releaseForegroundBash(sessionId, "toolu_bash")).toBe(false)
+      hold.cleanup()
 
-    // No actor exists for this session: workflow sessions never create one,
-    // so detach must route through the shared session store directly.
-    expect(supervisor.releaseForegroundBash("workflow-session", "toolu_bash")).toBe(true)
-    expect(released).toEqual(["workflow-session:toolu_bash"])
+      const held = controller.register("toolu_replaced")
+      const cut = supervisor.interruptForReplacement("handoff")
+      await expect(held.released).resolves.toBe("replacement")
+      expect(ctx.sessionStore.get(sessionId)?.activeForegroundBashToolCallIds).toEqual([])
+      held.cleanup()
+      await cut
+    } finally {
+      unregister()
+      controller.dispose()
+      await supervisor.disposeAll()
+    }
+  })
+
+  test("a compact reaches a workflow member that registers while the compact waits for auth admission", async () => {
+    const reader = ctx.runtime.runSync(EventReaderService)
+    const sessionId = "workflow-session"
+    ctx.sessionStore.openSessionRuntime({ sessionId, kind: "workflow-agent", workflowId: "workflow", conversationId: "agent-conversation" })
+    let compactCalls = 0
+    let unregister = () => {}
+    const base = supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => mockRunner(deps.sessionId) })
+    const capabilities = await base.runnerCapabilities()
+    const supervisor = createRuntimeSupervisor({
+      ...base,
+      runnerCapabilities: async () => ({
+        ...capabilities,
+        authAdmission: {
+          ...capabilities.authAdmission,
+          admit: async (id) => {
+            // Workflow startup registers the member after the supervisor's lookup found none.
+            unregister = registerLiveSessionControl(reader, {
+              sessionId, state: async () => "running", deliver: async (_input, decide) => decide("running"), notify: async () => false,
+              member: {
+                workflowId: "workflow", modules: async () => NO_MODULE_RUNTIMES, backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
+                compact: async () => { compactCalls += 1; return true }, interrupt: () => false, terminateBackgroundWork: () => {},
+                releaseForegroundBash: () => false, transferForegroundForReplacement: async () => {},
+              },
+            })
+            return capabilities.authAdmission.admit(id)
+          },
+        },
+      }),
+    })
+    try {
+      await expect(supervisor.compactChat(sessionId)).resolves.toBe(true)
+      expect(compactCalls).toBe(1)
+    } finally {
+      unregister()
+      await supervisor.disposeAll()
+    }
   })
 
   test("deleting during delayed startup cannot leave a listable half-active session", async () => {

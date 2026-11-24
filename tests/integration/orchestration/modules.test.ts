@@ -31,7 +31,7 @@ import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import type { SkillManageToolDeps } from "../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { WorkflowToolDeps } from "../../../src/orchestration/agent-runtime/tools/definitions/workflow-tool.js";
-import type { AskUserController } from "../../../src/orchestration/runner/ask-user-controller.js";
+import type { AskUserController } from "../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller.js";
 import { createModuleProjection } from "../../../src/orchestration/app-service/projections/module-projection.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
 import { createCommandCatalogProjection } from "../../../src/orchestration/app-service/definitions/commands/command-catalog-projection.js";

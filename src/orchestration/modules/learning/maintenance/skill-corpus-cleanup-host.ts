@@ -18,7 +18,7 @@ import { createSkillCorpusCleanupRequests, requestValidSkillCorpusCleanupRespons
 import { classifySkillCorpusCleanupWork } from "./skill-corpus-cleanup-work.js"
 import { createReviewUsageAccounting } from "../review/learning-review.js"
 import { runSkillCorpusCleanup, type SkillCorpusCleanupResult, type SkillCorpusCleanupWorkResult } from "./skill-corpus-cleanup.js"
-import { createInstalledDefinitionRegistry } from "../../../definition-catalog.js"
+import { createInstalledDefinitionRegistry } from "../../../app-service/definitions/definition-catalog.js"
 
 export interface SkillCorpusCleanupProjectHostInput {
   readonly directories: StartupDirectories

@@ -8,7 +8,7 @@ import { applySqliteDurabilityPragmas } from "../../../../infra/sqlite-durabilit
 import { createSqliteEventReadSurface } from "../../../../infra/sqlite-event-read-surface.js"
 import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
 import { loadQueueFromEvents } from "../../../../workflows/view/view-projection.js"
-import { checkedThrough, headPosition, recordChecked, recordMigration } from "../../../migrations/engine.js"
+import { checkedThrough, headPosition, recordChecked, recordMigration } from "../../../workspace-state/migrations/engine.js"
 import { recoverSessionMetadata } from "../../../session/metadata/session-metadata-projection.js"
 import { buildSessionMetadataAppend } from "../../../session/metadata/catalog/session-metadata-store.js"
 import { workflowAgentSessionTitle } from "../agent-title.js"

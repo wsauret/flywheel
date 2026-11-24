@@ -2,8 +2,8 @@ import { OutputProjector } from "../../../infra/output/projector/output-projecto
 import { RuntimeEventProjector } from "../../../infra/output/runtime-event-projector.js"
 import { resolveSessionDir } from "../../../infra/paths.js"
 import { mergeAbortSignals } from "../../../infra/abort.js"
-import type { ChatModuleHostInput } from "../../chat-module-host.js"
-import { createAgentGeneration } from "../../runner/host.js"
+import type { ChatModuleHostInput } from "../../chat/chat-module-host.js"
+import { createAgentGeneration } from "../../agent-runtime/runner/turn-host/host.js"
 import type { SideQuestionRun } from "./host.js"
 import { createSideQuestionHost } from "./host.js"
 

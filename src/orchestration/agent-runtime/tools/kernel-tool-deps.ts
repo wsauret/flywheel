@@ -8,7 +8,7 @@ import type { AgentDefinition } from "../../../infra/agent-definition.js";
 import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
 import type { SkillRegistryRevision, SkillDefinition } from "../../../workflows/skills/skill-schema.js";
-import type { AskUserController } from "../../runner/ask-user-controller.js";
+import type { AskUserController } from "./sessions/ask-user-controller.js";
 import type { HandoffToolSchema } from "../../workflow-host/attempt/handoff-tool-schema.js";
 import type { RecallPort } from "../../../protocol/conversation-recall.js"
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js";

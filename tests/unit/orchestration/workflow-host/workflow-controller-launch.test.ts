@@ -13,7 +13,7 @@ import { plannedCapabilities, planPromptRequest, type PromptAssembly } from "../
 import { capabilityAccessFor, type CapabilityAccess } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { loadConfig } from "../../../../src/orchestration/config/loader.js"
 import { composeFirstPartyModules, unattendedModuleIds } from "../../../../src/orchestration/modules.js"
-import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js"
+import { installedPersonaToolEntries } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js"
 import { createProjectDefinitionRegistry } from "../../../../src/workflows/definitions/definition-registry.js"
 import {
   cleanupProjectRoots,

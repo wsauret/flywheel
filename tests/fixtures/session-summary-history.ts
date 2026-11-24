@@ -4,7 +4,7 @@ import { join } from "node:path"
 import type { StoredFact } from "../../src/infra/event-store-types.js"
 import { configureSqliteEventStore } from "../../src/infra/sqlite-event-store-core.js"
 import { resolveEventStoreDbFile } from "../../src/infra/paths.js"
-import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state-retirement.js"
+import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state/workspace-state-retirement.js"
 
 export const SESSION_SUMMARY_FIXTURE_FACT_TYPES = [
   "budget.process.started",

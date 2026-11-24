@@ -2,13 +2,14 @@ import { afterEach, beforeEach, expect, mock, test } from "bun:test"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import { createChatTurnDurability } from "../../../../src/orchestration/chat/runner-completion.js"
-import { createAskUserController } from "../../../../src/orchestration/runner/ask-user-controller.js"
+import { createAskUserController } from "../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller.js"
 import { loadAgentInputProjection } from "../../../../src/orchestration/session/agent-input/agent-input-projection.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { removeOwnerPid } from "../../../../src/orchestration/session/pid-lock.js"
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
-import type { SessionStore, SessionEntry } from "../../../../src/orchestration/session-store/types.js"
+import type { SessionEntry } from "../../../../src/orchestration/session-store/types.js"
+import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { chatRunner } from "./_frontend-projection-fixtures.js"
 import { createDeferred, createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
@@ -104,8 +105,8 @@ test.each(workflowQuestionCases)(
       expect(terminal.map(fact => fact.type)).toEqual([action === "answer" ? "agent_input.answered" : "agent_input.cancelled"])
       expect(terminal[0]?.payload).toMatchObject(action === "answer" ? { interactionId: "ask-1", answers } : { interactionId: "ask-1" })
     }
-    const answerQuestion = mock<SessionStore["answerQuestion"]>(() => true)
-    const cancelQuestion = mock<SessionStore["cancelQuestion"]>(() => true)
+    const answerQuestion = mock<ChatRunner["answerQuestion"]>(() => {})
+    const cancelQuestion = mock<ChatRunner["cancelQuestion"]>(() => {})
     const resumeWorkflow = mock(async (id: string) => {
       assertPersisted()
       expect(id).toBe(workflowId)
@@ -114,14 +115,13 @@ test.each(workflowQuestionCases)(
     const entry: SessionEntry = {
       ...entryRuntimeDefaults(() => [], 0),
       kind: "workflow-agent", workflowId, operations: null, description: sessionId, conversationId: member.conversationId,
-      runner: state === "no-runner" ? null : chatRunner(sessionId),
+      runner: state === "no-runner" ? null : { ...chatRunner(sessionId), answerQuestion, cancelQuestion },
       runnerState: state === "idle" ? "idle" : "awaiting_user",
     }
     const supervisor = createRuntimeSupervisor(supervisorBaseDeps(ctx, {
       ...ctx.sessionStore,
       get: () => state === "absent" ? undefined : entry,
-      answerQuestion,
-      cancelQuestion,
+      activeRunner: () => state === "absent" ? null : entry.runner,
     }, { resumeWorkflow }))
     try {
       expect(await (action === "answer"

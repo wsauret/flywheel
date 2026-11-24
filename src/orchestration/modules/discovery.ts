@@ -1,5 +1,5 @@
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
+import type { ToolDeclaration } from "../module-seams.js"
 import { listDefinition } from "../agent-runtime/tools/search/list.js"
 import { searchDefinition } from "../agent-runtime/tools/search/search.js"
 import type { FirstPartyModule } from "../modules.js"

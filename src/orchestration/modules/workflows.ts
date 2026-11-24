@@ -38,7 +38,7 @@ import type { RuntimeTool } from "../agent-runtime/tools/types.js"
 import { ORCHESTRATION_REMINDER, orchestrationSection } from "./workflows/orchestration.js"
 import type { LaunchingSessionAuthority } from "../workflow-host/lifecycle/path-workflow.js"
 import type { DefinitionAvailabilitySnapshot } from "../app-service/definitions/definition-availability.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
+import type { ToolDeclaration } from "../module-seams.js"
 import { moduleDisabledReason } from "../../protocol/module-ids.js"
 import type { WorkflowToolDeps } from "../agent-runtime/tools/definitions/workflow-tool.js"
 import { createWorkflowTool, WORKFLOW_RUNTIME_INVOCATION_TOOL } from "../agent-runtime/tools/definitions/workflow.js"
@@ -314,7 +314,7 @@ export const workflowsModule = {
     { domain: "tools", id: "models", value: { kind: "tool", name: "models", declaration: models } },
     { domain: "promptFragments", id: "workflow-orchestration", value: { order: 2, render: (input) => orchestrates(input) ? orchestrationSection(input.capabilities) : undefined } },
     { domain: "turnReminders", id: "workflow-orchestration", value: { ...ORCHESTRATION_REMINDER, holds: orchestrates } },
-    { domain: "definitions", id: "workflows", value: { kind: "workflows" } },
+    { domain: "definitions", id: "workflows", value: { kind: "workflow" } },
     // The workflow-authoring method writes files that only the workflow tool runs (ARCH-STRUCTURE-031).
     { domain: "definitions", id: "workflows-bundle", value: { kind: "bundle", root: fileURLToPath(new URL("workflows/definitions", import.meta.url)) } },
     { domain: "settings", id: "workflows", value: { control: "workflow-mode", label: "Workflows", description: "Allow agents to launch workflows" } },

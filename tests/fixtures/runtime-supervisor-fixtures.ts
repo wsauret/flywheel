@@ -9,7 +9,7 @@ import { createRuntimeSupervisor } from "../../src/orchestration/app-service/sup
 import type { RuntimeRunnerCapabilities, RuntimeSupervisor, RuntimeSupervisorDeps } from "../../src/orchestration/app-service/supervisor/runtime-supervisor-types.js"
 import { createChatRunnerLoader } from "../../src/orchestration/app-service/supervisor/chat-runner-loader.js"
 import { createTranscriptProjectionCache } from "../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
-import { createSessionViewLoader } from "../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../src/orchestration/app-service/projections/session-view.js"
 import type { ChatRunnerDeps } from "../../src/orchestration/chat/runner.js"
 import type { ChatRunner } from "../../src/orchestration/chat/runner-types.js"
 import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js"

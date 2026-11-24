@@ -10,7 +10,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-facto
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import { childTask, createNotificationCapture, grantOf, makeCapabilityAccess, makeContext, makeDeps, makeMockRunnerFactory, refusedAdmission, settleDispatchedWork, TEST_RATIONALE } from "./_fixtures.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
-import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js";
+import { createOutputSession } from "../../../../../src/orchestration/session-store/output-session.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { isRecord, type UnknownRecord } from "../../../../../src/infra/record.js";
 import type { ResolvedRoles } from "../../../../../src/orchestration/config/roles.js";

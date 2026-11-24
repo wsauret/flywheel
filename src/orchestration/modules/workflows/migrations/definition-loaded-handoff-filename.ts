@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { DefinitionProvenanceSchema } from "../../../../workflows/provenance/definition-provenance.js"
-import { migrateFactVersions, type FactMigrationResult } from "../../../migrations/engine.js"
+import { migrateFactVersions, type FactMigrationResult } from "../../../workspace-state/migrations/engine.js"
 
 const DEFINITION_LOADED_HANDOFF_FILENAME_MIGRATION_ID = "definition-loaded-handoff-filename-v1"
 

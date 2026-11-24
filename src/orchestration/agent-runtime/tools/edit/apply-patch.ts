@@ -3,10 +3,10 @@ import type { LineRange } from "../files/file-read-ledger.js";
 import { type PatchPlan, planPreparedPatch } from "../../../../infra/file-edit/patch-plan.js";
 import { type PreparedOperation, type PreparedPatch, preparePatch } from "../../../../infra/file-edit/patch-parser.js";
 import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
-import type { AdmittedFileEdit, PlannedFileEdit } from "../../../file-edits/file-edit-operation.js";
+import type { AdmittedFileEdit, PlannedFileEdit } from "../file-edits/file-edit-operation.js";
 import { boundedMutationReport, publishToolFileEdits } from "./file-edit-tool-adapter.js";
 import { lineRangeOfByteSpans } from "../files/file-read-ledger.js";
-import { MAX_FILE_EDIT_BYTES, RetainedFileEditAuthority } from "../../../file-edits/retained-file-edit-host.js";
+import { MAX_FILE_EDIT_BYTES, RetainedFileEditAuthority } from "../file-edits/retained-file-edit-host.js";
 import { resolveToolPath, sessionPathInput } from "../files/tool-paths.js";
 import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../types.js";
 

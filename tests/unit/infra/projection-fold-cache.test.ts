@@ -10,7 +10,7 @@ import { asAsyncEventReadSurface, type AsyncEventReadSurface, type EventStoreApp
 import { attachProjectionFoldCache, openProjectionFoldCache, type FoldCacheSlot, type FoldSavePolicy } from "../../../src/infra/projection-fold-cache.js"
 import { heldProjection } from "../../../src/infra/projection-registry.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
-import { migrateFactVersions } from "../../../src/orchestration/migrations/engine.js"
+import { migrateFactVersions } from "../../../src/orchestration/workspace-state/migrations/engine.js"
 import { deleteRetiredFamilyChunk } from "../../../src/orchestration/session/persistence/storage/event-store-maintenance.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 

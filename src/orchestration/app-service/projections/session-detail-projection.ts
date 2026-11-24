@@ -2,7 +2,7 @@ import type { AsyncEventStateReadSurface } from "../../../infra/event-store-type
 import type { SessionManager } from "../../session/manager.js"
 import type { ReplayedSession } from "../../session/metadata/schemas.js"
 import type { SessionStore } from "../../session-store/types.js"
-import { type SessionView, toSessionView } from "../../session-store/view.js"
+import { type SessionView, toSessionView } from "./session-view.js"
 import { projectSessionView } from "./frontend-projection.js"
 import { readRecordedExecutionCwd } from "../../session/metadata/session-execution-directory.js"
 import type { RuntimeSessionDetailView, RuntimeSessionDetailResult } from "../../../protocol/session-detail-protocol-types.js"

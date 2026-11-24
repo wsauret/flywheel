@@ -3,7 +3,7 @@ import { installCustomProviders } from "../../helpers/custom-providers.js"
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js"
 import { SHIPPED_MODULES, composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../src/orchestration/modules.js"
 import { installedModules } from "../../../src/orchestration/module-catalog.js"
-import { createToolRegistry } from "../../../src/orchestration/tool-catalog.js"
+import { createToolRegistry } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js"
 import { EMPTY_MODULE_IDS, MODULE_IDS } from "../../../src/protocol/module-ids.js"
 
 const everyShipped = SHIPPED_MODULES.map((module) => module.id)

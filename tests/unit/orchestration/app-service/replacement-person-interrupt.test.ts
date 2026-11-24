@@ -26,7 +26,7 @@ import { prepareSessionFactAppend } from "../../../../src/orchestration/session/
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
 import { createSupervisorTestContext, mockRunner, mockWorkflowRunner, supervisorBaseDeps, testSessionAuthAdmission, resumeDispatch, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
@@ -291,7 +291,7 @@ describe("a person's interrupt of a session a successor owes its continuation", 
         runnerState: "idle",
         runner: mockRunner(chat.sessionId, { interruptPlannedCut: async () => "ended" }),
       }
-      const store: SessionStore = { ...ctx.sessionStore, get: (sessionId) => sessionId === chat.sessionId ? entry : undefined, interrupt: () => false }
+      const store: SessionStore = { ...ctx.sessionStore, get: (sessionId) => sessionId === chat.sessionId ? entry : undefined, activeRunner: () => null }
       const supervisor = createRuntimeSupervisor(supervisorBaseDeps(ctx, store))
 
       expect(await supervisor.interruptSession(chat.sessionId, "person")).toBe(true)
@@ -371,9 +371,9 @@ describe("a person's interrupt of a session a successor owes its continuation", 
         description: chat.sessionId,
         conversationId: chat.conversationId,
         runnerState: "streaming",
-        runner: mockRunner(chat.sessionId, { interruptPlannedCut: async () => "running" }),
+        runner: mockRunner(chat.sessionId, { interruptPlannedCut: async () => "running", interrupt: () => { interrupts.push(chat.sessionId); return true } }),
       }
-      const store: SessionStore = { ...ctx.sessionStore, get: (sessionId) => sessionId === chat.sessionId ? entry : undefined, interrupt: (sessionId) => { interrupts.push(sessionId); return true } }
+      const store: SessionStore = { ...ctx.sessionStore, get: (sessionId) => sessionId === chat.sessionId ? entry : undefined, activeRunner: (sessionId) => sessionId === chat.sessionId ? entry.runner : null }
       const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx, store), continuationLanes: lanes })
       // The successor has dispatched its resume, which holds the session's
       // lane past the limit.

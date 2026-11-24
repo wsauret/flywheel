@@ -20,7 +20,7 @@ import type { WebSearchProviderId } from "../web-search/types.js";
 import { createWebSearchProviderResolver, type FirstPartyModuleComposition, type FirstPartyModuleSnapshot } from "../../modules.js";
 import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "../request/request-config.js";
 import type { StreamingEditValidationService } from "../tools/edit/streaming-edit-validation.js";
-import { requestAdmissionFromCaptures } from "../../subscription-spend-consent/admission-capture.js";
+import { requestAdmissionFromCaptures } from "../../auth/subscription-spend-consent/admission-capture.js";
 import type { AuthConditionOwner } from "../../auth/auth-condition-owner.js";
 import type { UsageAuthorityGeneration } from "../request/usage/usage-settlement.js";
 import { accessProviderRegistry, type AccessProviderRegistry } from "../llm/routing/access-provider-registry.js";

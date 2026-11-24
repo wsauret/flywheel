@@ -16,7 +16,7 @@ import { createBackgroundWorkRegistry } from "../../../../../../src/orchestratio
 import { mcpPortsOver, mcpRuntimeOver } from "../../../../../helpers/mcp.js";
 import { codeModeRuntimeOver } from "../../../../../helpers/code-mode-worker.js";
 import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
-import type { AskUserController } from "../../../../../../src/orchestration/runner/ask-user-controller.js";
+import type { AskUserController } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller.js";
 import type { SkillManageToolDeps } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { WorkflowToolDeps } from "../../../../../../src/orchestration/agent-runtime/tools/definitions/workflow-tool.js";
 import { learningModule } from "../../../../../../src/orchestration/modules/learning.js";
@@ -26,7 +26,7 @@ import type { ModuleId } from "../../../../../../src/protocol/module-ids.js";
 import { createRecordingFileMutationStore, makeContext } from "../_fixtures.js";
 import { ALL_CAPABILITIES, askUserController, plan, skillRevision, subagentsRuntime, userDataRoot } from "./_planner-fixtures.js";
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../../src/orchestration/modules.js";
-import { createToolRegistry } from "../../../../../../src/orchestration/tool-catalog.js";
+import { createToolRegistry } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { DEVELOPMENT_MODULES } from "../../../../../../src/orchestration/development-modules.js";
 import { learningReviewToolNames } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import { createIosSimulatorTool } from "../../../../../../src/orchestration/modules/development/ios-simulator-tool.js";

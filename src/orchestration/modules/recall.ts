@@ -1,5 +1,5 @@
 import { createRecallTool, RECALL_TOOL_DEFINITION } from "../agent-runtime/tools/sessions/recall.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
+import type { ToolDeclaration } from "../module-seams.js"
 import type { FirstPartyModule } from "../modules.js"
 
 const recall = {

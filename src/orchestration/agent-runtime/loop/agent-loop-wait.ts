@@ -1,4 +1,5 @@
-import { isYieldPlaceholderToolCall } from "../tools/bash/policy/bash-command-policy.js";
+import { isYieldPlaceholderCommand } from "../tools/bash/policy/bash-command-policy.js";
+import { toolIdentity } from "../tools/dispatch/tool-catalog.js";
 import { DEFAULT_WAIT_SECONDS, formatWaitNoopNotification, isParkingWaitCall, processWaitSeconds } from "../tools/sessions/process.js";
 import type { ToolCall } from "../llm/types.js";
 import { agentLoopTransition, type AgentLoopState } from "./agent-loop-state.js";
@@ -68,6 +69,18 @@ export interface WaitToolPolicy {
   readonly isWaitCall: (call: ToolCall) => boolean;
   /** Returns whether the calls park the turn on live work. */
   readonly settleWaitCalls: (calls: readonly ToolCall[]) => boolean;
+}
+
+/** Whether a call is a yield placeholder (bash-command-policy.ts): a bash
+ *  call, live or recorded under a retired name, whose command only parks the
+ *  turn while background work is pending. A background launch is never a
+ *  placeholder, whatever its command: it starts work that the turn then owes
+ *  (ARCH-TOOLS-031), so the turn continues and the pending-work reminder
+ *  applies. */
+function isYieldPlaceholderToolCall(toolCall: ToolCall, hasPendingBackgroundWork: boolean): boolean {
+  if (!hasPendingBackgroundWork || toolIdentity(toolCall.name) !== "bash" || toolCall.input.background === true) return false;
+  const command = toolCall.input.command;
+  return typeof command === "string" && isYieldPlaceholderCommand(command);
 }
 
 export function createWaitToolPolicy(

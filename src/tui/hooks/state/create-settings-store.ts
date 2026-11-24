@@ -4,7 +4,7 @@ import { MODAL_SETTINGS_DEFAULTS, type ProfileBooleanSettingId } from "../../../
 import type { ModuleConfigBooleanSettingId, ModuleConfigNumberListControl, ModuleConfigSettingControl, ModuleProviderSetting } from "../../../protocol/module-protocol-types.js"
 import type { CompatibleRenderingMode, DiffColorMode, WebSearchProvider } from "../../../orchestration/config/schema/schema.js"
 import { WriteSyntaxThemeIdSchema, type WriteSyntaxThemeId } from "../../../protocol/write-syntax-theme.js"
-import type { getFontStatus, fontInstallSummary, installBundledFont } from "../../../orchestration/font-installer.js"
+import type { getFontStatus, fontInstallSummary, installBundledFont } from "../../terminal/font-installer.js"
 import type { RuntimeClient } from "../../../protocol/app-service-types.js"
 import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigStatusView, RuntimeConfigView } from "../../../protocol/runtime-config-protocol-types.js"
 import type { RuntimeConfigCache } from "./runtime/create-runtime-config-cache.js"

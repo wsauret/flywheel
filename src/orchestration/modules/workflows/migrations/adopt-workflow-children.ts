@@ -12,7 +12,7 @@ import { createSqliteEventInserter, type SqliteEventInserter } from "../../../..
 import { createSqliteEventReadSurface } from "../../../../infra/sqlite-event-read-surface.js"
 import { extractToolContentFact } from "../../../../infra/tool-content-extraction.js"
 import { workflowCallLaunched } from "../../../../infra/tools/workflow-call-source.js"
-import { checkedThrough, headPosition, recordChecked } from "../../../migrations/engine.js"
+import { checkedThrough, headPosition, recordChecked } from "../../../workspace-state/migrations/engine.js"
 import { recoverSessionMetadata } from "../../../session/metadata/session-metadata-projection.js"
 import { prepareSessionFactAppend } from "../../../session/persistence/session-fact-writer.js"
 import { generateSessionId } from "../../../../infra/session-id.js"

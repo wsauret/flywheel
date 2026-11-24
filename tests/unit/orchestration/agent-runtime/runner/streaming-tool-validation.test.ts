@@ -12,7 +12,7 @@ import type { ToolCall } from "../../../../../src/orchestration/agent-runtime/ll
 import { applyPatchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit/apply-patch.js";
 import { executePreparedTool, prepareToolCall, preparedToolAdmission } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
-import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js";
+import { createOutputSession } from "../../../../../src/orchestration/session-store/output-session.js";
 import { branchBlocks } from "../../../../helpers/branch-blocks.js";
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { createConversationTreeWriter } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-writer.js";

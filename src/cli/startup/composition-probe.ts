@@ -8,7 +8,7 @@ import { personaInstructions } from "../../workflows/agents/persona-instructions
 import { assembleSkillInvocation } from "../../workflows/skills/skill-invocation.js";
 import { assembleAgentPrompt } from "../../workflows/context-bundle/prompt-assembly.js";
 import { skillClosureIds } from "../../workflows/skills/skill-closure.js";
-import { createInstalledDefinitionRegistry } from "../../orchestration/definition-catalog.js";
+import { createInstalledDefinitionRegistry } from "../../orchestration/app-service/definitions/definition-catalog.js";
 import { loadWorkflowFile, renderWorkflowFileDiagnostic } from "../../workflows/vm/admission/workflow-file.js";
 import workflowContent from "./composition-probe.workflow.yaml" with { type: "text" };
 

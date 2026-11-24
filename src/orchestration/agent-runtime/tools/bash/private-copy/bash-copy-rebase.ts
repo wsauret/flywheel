@@ -18,8 +18,8 @@ import { join } from "node:path";
 import { ContainedPathError } from "../../../../../infra/descriptor-directory-contract.js";
 import { Log } from "../../../../../infra/log.js";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
-import { observeFileState, type ExpectedFileState } from "../../../../file-edits/file-state.js";
-import { RetainedFileEditAuthority } from "../../../../file-edits/retained-file-edit-host.js";
+import { observeFileState, type ExpectedFileState } from "../../file-edits/file-state.js";
+import { RetainedFileEditAuthority } from "../../file-edits/retained-file-edit-host.js";
 import type { CopyChange } from "./bash-private-copy-tree.js";
 
 const log = Log.create({ service: "agent-bash" });

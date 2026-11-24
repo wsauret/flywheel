@@ -20,7 +20,7 @@ import type { ProjectDefinitionRegistry } from "../../../../workflows/definition
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import type { RoleResolver } from "../../../config/roles.js";
 import type { FirstPartyModuleSnapshot } from "../../../modules.js";
-import type { AskUserController } from "../../../runner/ask-user-controller.js";
+import type { AskUserController } from "../../tools/sessions/ask-user-controller.js";
 import type { ProviderRequestAuditFact } from "../../../session/runtime-facts/provider-request-audit-facts.js";
 import type { RecallPort } from "../../../../protocol/conversation-recall.js"
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";

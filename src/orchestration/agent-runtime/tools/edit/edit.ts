@@ -4,7 +4,7 @@ import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js"
 import { coerceToolInput, describeInputRepair } from "../input/coerce-input.js";
 import { publishToolFileEdits } from "./file-edit-tool-adapter.js";
 import { lineRangeOfByteSpans } from "../files/file-read-ledger.js";
-import { RetainedFileEditAuthority } from "../../../file-edits/retained-file-edit-host.js";
+import { RetainedFileEditAuthority } from "../file-edits/retained-file-edit-host.js";
 import { resolveToolPath, sessionPathInput } from "../files/tool-paths.js";
 import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../types.js";
 import type { ToolInputRepair } from "../../llm/types.js";

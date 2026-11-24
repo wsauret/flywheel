@@ -6,7 +6,7 @@ import * as path from "node:path";
 import { applyPatchDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/edit/apply-patch.js";
 import { executePreparedTool, prepareToolCall, preparedToolAdmission } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
-import { MAX_FILE_EDIT_BYTES } from "../../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
+import { MAX_FILE_EDIT_BYTES } from "../../../../../../src/orchestration/agent-runtime/tools/file-edits/retained-file-edit-host.js";
 import { createRecordingFileMutationStore, makeContext } from "../_fixtures.js";
 
 describe("apply_patch tool", () => {

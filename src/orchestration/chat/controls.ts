@@ -6,7 +6,7 @@ import { isRuntimeInterruption, type ControlInterruption, type PlannedCutInterru
 import type { ConversationTreeWriterController } from "./tree-writer.js"
 import type { ChatCallbacks, ChatSessionState } from "./types.js"
 import type { ChatPorts } from "./host-ports.js"
-import type { OutputSession } from "../runner/output-session.js"
+import type { OutputSession } from "../session-store/output-session.js"
 import type { ChatSendResult } from "./runner-types.js"
 import { personMessageKey } from "../session/conversation/queued-user-inputs.js"
 import { recordPersonMessageReceipt } from "../session/conversation/person-message-ledger.js"

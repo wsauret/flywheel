@@ -11,7 +11,7 @@ import { bashExecution, mutationSpawnProbe, makeMockOps } from "../_bash-fixture
 import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext } from "../../_fixtures.js";
 import { bashMutationHarness } from "./_bash-mutations-harness.js";
 import { PersistenceWriteRefused } from "../../../../../../../src/infra/event-store-types.js";
-import { runAgentTurn } from "../../../../../../../src/orchestration/runner/agent-turn.js";
+import { runAgentTurn } from "../../../../../../../src/orchestration/agent-runtime/runner/turn-host/agent-turn.js";
 import { createBackgroundWorkRegistry } from "../../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 
 const createDirectory = temporaryDirectories();

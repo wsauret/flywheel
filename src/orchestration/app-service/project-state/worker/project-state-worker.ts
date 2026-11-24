@@ -9,7 +9,7 @@ import { durationMs } from "../../../../infra/operation-log.js"
 import { asAsyncEventReadSurface, CorruptEventRowError, InFlightSwapConflictError, pageReadQuery, type AsyncEventStateReadSurface, type EventStoreReadSurface, type EventStoreWriteItem, type FactQuery, type FoldEvidenceRequest, type GuardedAppendResult, type StoredFact } from "../../../../infra/event-store-types.js"
 import { EventReaderService, EventStoreLive, EventStoreWriterLaneService, EventStoreWriterService, LocalEventStoreService, type LocalEventStoreRuntime } from "../../../../infra/event-store-effect.js"
 import { isStorageFailure } from "../../../../infra/storage-failure.js"
-import { prepareWorkspaceState, type WorkspaceStatePreparation } from "../../../workspace-state.js"
+import { prepareWorkspaceState, type WorkspaceStatePreparation } from "../../../workspace-state/workspace-state.js"
 import type { SessionMetadataChange } from "../../../session/manager.js"
 import { sessionsWrittenBy, type ProjectStateSessionsService } from "../project-state-sessions.js"
 import { projectStateComposition } from "./project-state-recovery.js"
@@ -528,7 +528,7 @@ async function createWorkerProjectStateService(init: ProjectStateWorkerInit) {
       incrementalVacuumStep: async (pages) => (await import("../../../session/persistence/storage/event-store-maintenance.js")).incrementalVacuumStep(ownedPreparation.dbFile, pages),
       retireFinalizedCheckpointPage: async (plan) => ({
         kind: "checkpoint-maintenance",
-        ...(await import("../../../migrations/finalized-tool-result-checkpoints.js")).retireRecordedFinalizedToolResultCheckpointPage(ownedPreparation.dbFile, plan.afterRowid, plan),
+        ...(await import("../../../workspace-state/migrations/finalized-tool-result-checkpoints.js")).retireRecordedFinalizedToolResultCheckpointPage(ownedPreparation.dbFile, plan.afterRowid, plan),
       }),
       sessions: owners.sessions,
       onStored: store.onStored,

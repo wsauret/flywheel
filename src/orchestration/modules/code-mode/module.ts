@@ -1,4 +1,4 @@
-import type { ToolDeclaration } from "../../agent-runtime/tools/dispatch/tool-registry.js"
+import type { ToolDeclaration } from "../../module-seams.js"
 import type { FirstPartyModule } from "../../modules.js"
 import { codeModeRuntime, createCodeModeRuntime } from "./runtime.js"
 import { codeModeService, createCodeModeService } from "./service.js"

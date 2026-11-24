@@ -57,7 +57,7 @@ describe("provider model literal policy", () => {
 
   it("catches authority rules beside an annotated payload operation", async () => {
     const violations = await check({
-      "src/orchestration/custom-provider-modules.ts": [
+      "src/orchestration/config/custom-provider-modules.ts": [
         "const payload = modelId === 'o3' ? {} : {} // provider-model-literal-allow: payload -- wire payload compatibility",
         "const route = modelId.startsWith('claude-') ? 'anthropic' : 'openai'",
       ].join("\n"),

@@ -13,7 +13,7 @@ import { DEVELOPMENT_MODULES } from "../../src/orchestration/development-modules
 import { installedDefinitionBundles } from "../../src/orchestration/module-catalog.js";
 import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModule } from "../../src/orchestration/modules.js";
 import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../src/orchestration/app-service/definitions/definition-availability.js";
-import { installedPersonaToolEntries } from "../../src/orchestration/tool-catalog.js";
+import { installedPersonaToolEntries } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 let registry: ProjectDefinitionRegistry | undefined;
 let sourceRunRegistry: ProjectDefinitionRegistry | undefined;
 let fixtureRegistry: ProjectDefinitionRegistry | undefined;

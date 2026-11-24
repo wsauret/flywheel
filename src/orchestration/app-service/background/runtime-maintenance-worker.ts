@@ -18,7 +18,7 @@ import type { WorkerSelf } from "../project-state/worker/bun-worker-rpc.js"
 import { createProjectExecutionState } from "../project-state/project-execution-state.js"
 import type { ProjectStateClient } from "../project-state/project-state-client.js"
 import { connectProjectStateChannel } from "../project-state/project-state-channel.js"
-import { planFinalizedToolResultCheckpointPage } from "../../migrations/finalized-tool-result-checkpoints.js"
+import { planFinalizedToolResultCheckpointPage } from "../../workspace-state/migrations/finalized-tool-result-checkpoints.js"
 
 /* The jobs one maintenance Worker runs:
  *  - `startup`: the upkeep a project's open defers until its foreground is ready.

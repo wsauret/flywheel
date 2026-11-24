@@ -26,8 +26,8 @@ import { resolveEventStoreDbFile } from "../../src/infra/paths.js"
 import { windowsDirectoryIsOwnerOnly } from "../../src/infra/windows-private-directory-acl.js"
 import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js"
 import { createSessionManager } from "../../src/orchestration/session/manager.js"
-import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state-retirement.js"
-import { prepareWorkspaceState } from "../../src/orchestration/workspace-state.js"
+import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state/workspace-state-retirement.js"
+import { prepareWorkspaceState } from "../../src/orchestration/workspace-state/workspace-state.js"
 import { observeRetirementCheckpoints, type RetirementCheckpoint } from "../helpers/retirement-checkpoints.js"
 
 const THIS_FILE = fileURLToPath(import.meta.url)

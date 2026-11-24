@@ -17,7 +17,7 @@ import { SessionTranscriptProjection } from "../../../../src/orchestration/sessi
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
 import { createWorkflowHosts } from "../../../../src/orchestration/modules/workflows/host-collection.js"
 import { childSessionProjectionAttachment } from "../../../../src/orchestration/session-store/child-session-projection.js"
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import { mockRunner, supervisorBaseDeps } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 const createRuntimeSupervisor = createRuntimeSupervisorBase

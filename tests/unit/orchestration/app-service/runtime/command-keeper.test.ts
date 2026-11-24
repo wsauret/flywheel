@@ -16,7 +16,7 @@ import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../../sr
 import type { SessionMetadataChange } from "../../../../../src/orchestration/session/manager.js"
 import { FIXTURE_EXECUTION_CWD, temporaryDirectories } from "../../../../helpers/directories.js"
 import { fakeContainer, handedOverRow, handoverAuthority, type AdoptionAnswer } from "../../agent-runtime/_command-handover-fixtures.js"
-import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js"
+import { createOutputSession } from "../../../../../src/orchestration/session-store/output-session.js"
 import { readOutputSequence } from "../../../../../src/orchestration/app-service/projections/output/output-sequence.js"
 import { chatEntry } from "../_frontend-projection-fixtures.js"
 import { createKeptOutputProjection } from "../../../../../src/orchestration/app-service/projections/output/kept-output-projection.js"

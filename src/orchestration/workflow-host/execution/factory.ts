@@ -26,7 +26,7 @@ import { wireSessionSubscribers } from "../../session/persistence/create-session
 
 import type { SessionResources } from "../../session/persistence/session-resources-service.js"
 import { createWorkerCallback } from "./agent-callback.js"
-import { disabledToolReason } from "../../tool-catalog.js"
+import { disabledToolReason } from "../../agent-runtime/tools/dispatch/tool-catalog.js"
 import { readParentMessages } from "../attempt/request-addenda.js"
 import { readAddressedWorkflowMessages, retireAddressedWorkflowMessages } from "../../session/conversation/addressed-workflow-messages.js"
 import { buildArtifactContext } from "../attempt/artifact-context.js"

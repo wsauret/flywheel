@@ -10,7 +10,7 @@ import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-s
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../../agent-runtime/request/prompt/model-interaction-profile.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/request/model-runtime-capture.js";
 import type { AgentFactory, AgentRunTerminal } from "../../../agent-runtime/types.js";
-import { createAgentGeneration } from "../../../runner/host.js";
+import { createAgentGeneration } from "../../../agent-runtime/runner/turn-host/host.js";
 
 import { verifySkillSemanticAudit } from "../skills/skill-semantic-audit.js";
 import type { ServingAttempt } from "../../../agent-runtime/llm/types.js";

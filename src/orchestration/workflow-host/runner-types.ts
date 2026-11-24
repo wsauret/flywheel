@@ -1,6 +1,6 @@
 import type { WorkflowView } from "../../workflows/view/types.js"
 import type { WorkflowVmHostFailure } from "../../workflows/vm/host/host-types.js"
-import type { Runner } from "../runner/types.js"
+import type { Runner } from "../agent-runtime/runner/turn-host/types.js"
 import type { ModuleRuntimes } from "../../infra/module-runtime.js"
 import type { ControlInterruption, PlannedCutInterrupt, WorkflowInterruption } from "../session/conversation/turn-end-record.js"
 import type { ChildCut } from "../session/control/child-continuation.js"
@@ -59,7 +59,7 @@ export type WorkflowHandBack =
    *  `reason` names each module and how to turn it on. */
   | { readonly kind: "refused"; readonly reason: string }
 
-export interface WorkflowRunner extends Omit<Runner, "abort" | "interrupt" | "resume"> {
+export interface WorkflowRunner extends Runner {
   /** Wakes only reached cuts and releases their pending coverage. Missing address means the whole workflow. */
   resume(address?: WorkflowDeliveryAddress): Promise<boolean>
   /** A capacity wake of the agents of `conversationIds` while the run lives:

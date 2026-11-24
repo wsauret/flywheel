@@ -6,7 +6,7 @@ import { composeModuleRuntimes, moduleRuntimeHandle } from "../../../../../../sr
 import { createRuntimeSupervisor } from "../../../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import { EventReaderService, EventStoreWriterService } from "../../../../../../src/infra/event-store-effect.js"
 import { asAsyncEventReadSurface } from "../../../../../../src/infra/event-store-types.js"
-import { createSessionViewLoader } from "../../../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../../../src/orchestration/app-service/projections/session-view.js"
 import { createSessionManager } from "../../../../../../src/orchestration/session/manager.js"
 import type { RuntimeCommandInvocation } from "../../../../../../src/protocol/command-catalog-protocol-types.js"
 import { createCommandInvokeService, type CommandInvokeDeps } from "../../../../../../src/orchestration/app-service/definitions/commands/command-invoke-service.js"

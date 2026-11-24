@@ -23,8 +23,8 @@ import type { ReducerOutput, SelectionEntry } from "../../../../workflows/reduce
 import type { FieldMap } from "../../../../workflows/output-contract/grammar.js"
 import type { CommittedWorkflowControl } from "../../../../workflows/vm/facts/committed-control.js"
 import { coverageText, selectionText, roundTarget } from "../../../../protocol/client/workflow-progress.js"
-import { prepareWorkspaceState } from "../../../workspace-state.js"
-import { createInstalledDefinitionRegistry } from "../../../definition-catalog.js"
+import { prepareWorkspaceState } from "../../../workspace-state/workspace-state.js"
+import { createInstalledDefinitionRegistry } from "../../../app-service/definitions/definition-catalog.js"
 
 interface WorkflowVerifyDependencies {
   /** Revision the verified identity is composed from, so a report describes the

@@ -7,7 +7,7 @@ import { durableCatalogRowFromSession, mergeListMetadata, projectSessionCatalogR
 import { subagentRunOutcome, subagentSessionActions, subagentStoppedBy } from "../../session/control/child-session-run-evidence.js"
 import { chatSessionActions } from "../../session/control/chat-session-run-evidence.js"
 import type { SessionEntry, SessionStoreReader } from "../../session-store/types.js"
-import type { SessionView } from "../../session-store/view.js"
+import type { SessionView } from "./session-view.js"
 import { entryActivity } from "../../session-store/activity.js"
 import type {
   SessionCatalogRow,

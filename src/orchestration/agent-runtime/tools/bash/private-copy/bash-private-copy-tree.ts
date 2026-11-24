@@ -24,7 +24,7 @@
 import { createHash } from "node:crypto";
 import { constants, copyFileSync, cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, writeFileSync, type BigIntStats } from "node:fs";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
-import { fileFingerprint, observeFileState, sameObservedState, type ExpectedFileState } from "../../../../file-edits/file-state.js";
+import { fileFingerprint, observeFileState, sameObservedState, type ExpectedFileState } from "../../file-edits/file-state.js";
 import type { MutationGuardKind } from "./bash-mutation-guard.js";
 import { cloneEntry, entryKind, mirrorTree, PERMISSION_BITS, readListing, type CloneEntry, type EntryKind, type HeldListing, type MirrorPlan, type MirrorState, type MirrorTally } from "./bash-private-copy-mirror.js";
 import { PRIVATE_INDEX, writePrivateCopyRecord, type CopiedProject, type PrivateCopyRecordRead, type ReadCopy, type RecordedCopy } from "./bash-private-copy-record.js";

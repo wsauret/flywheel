@@ -12,7 +12,7 @@ import {
   type DefinitionIdentity,
 } from "../../../../workflows/vm/facts/definition-identity.js"
 import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/facts/session-facts.js"
-import { checkedThrough, headPosition, recordChecked, tableExists } from "../../../migrations/engine.js"
+import { checkedThrough, headPosition, recordChecked, tableExists } from "../../../workspace-state/migrations/engine.js"
 import { MIGRATED_FACT_TYPE, recordSkippedWorkflowMigrationCandidate } from "./workflow-identity-chain.js"
 
 const BUSY_TIMEOUT_MS = 5000

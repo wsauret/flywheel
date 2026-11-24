@@ -8,7 +8,7 @@ import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-id
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import { accountServeRecordPath, accountServeSocketPath, projectWebTokenPath } from "../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
-import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state/workspace-state.js"
 import { attachAccountProject, createIsolatedAccountRuntimeAttach, isolatedHubOrigin, joinIsolatedAccountService } from "./_account-service.js"
 import { removeWhenReleased } from "../../helpers/remove-when-released.js"
 import { socketTemporaryRoot } from "../../helpers/directories.js"

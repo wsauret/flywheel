@@ -9,7 +9,7 @@ import { detectCopyChanges, inspectPrivateCopyTopology, readPrivateProjectCopy, 
 import { copyProjectTree, scanCopyChanges } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-tree.js";
 import { readCopyRepositoryState } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-copy-repository-state.js";
 import { readRepositoryRefs, readReftableStack } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-copy-refs.js";
-import { observeFileState, sameObservedState } from "../../../../../../../src/orchestration/file-edits/file-state.js";
+import { observeFileState, sameObservedState } from "../../../../../../../src/orchestration/agent-runtime/tools/file-edits/file-state.js";
 import { temporaryDirectories } from "../../../../../../helpers/directories.js";
 import { createPrivateCopyJobs } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-jobs.js";
 import { readPrivateCopyRecord } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-record.js";

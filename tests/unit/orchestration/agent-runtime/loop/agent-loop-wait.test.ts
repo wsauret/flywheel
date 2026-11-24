@@ -66,3 +66,78 @@ describe("wait tool policy delivery", () => {
     expect(durations).toEqual([undefined, 600]);
   });
 });
+
+describe("yield placeholder calls", () => {
+  const bash = (command: string): ToolCall => ({ id: "tc", name: "bash", input: { command } });
+  // A yield placeholder is a wait call; no reply wait is open, so nothing else makes a bash call one.
+  const isYieldPlaceholderToolCall = (call: ToolCall, pending: boolean) => createWaitToolPolicy(() => pending, () => undefined).isWaitCall(call);
+
+  test("never drops anything without pending background work -- there is nothing to wake the loop", () => {
+    for (const command of ["true", ":", "true; true", "echo waiting", "sleep 1", `printf "standing by"`, "echo waiting; sleep 1", ":  # idle"]) {
+      expect(isYieldPlaceholderToolCall(bash(command), false)).toBe(false);
+    }
+  });
+
+  test("with pending background work, matches pure no-op commands that express wait/yield intent", () => {
+    for (const command of ["echo waiting", `echo "I'll wait for the subagent"`, "echo yielding turn", "echo waiting; sleep 1", `printf "standing by"`, "sleep 5 # waiting", ":  # idle"]) {
+      expect(isYieldPlaceholderToolCall(bash(command), true)).toBe(true);
+    }
+  });
+
+  test("with pending background work, matches bare true/colon/sleep ticks without any wait-intent text", () => {
+    for (const command of ["true", "true # tick", ":", "true; true", "true && :", "sleep 1", "sleep 0.5", "sleep 5s # tick", "sleep 1; sleep 2", "sleep 1 && true"]) {
+      expect(isYieldPlaceholderToolCall(bash(command), true)).toBe(true);
+    }
+  });
+
+  test("does not treat true with arguments or trailing real work as a tick", () => {
+    for (const command of ["true foo", "true && bun run build", "truecmd"]) {
+      expect(isYieldPlaceholderToolCall(bash(command), true)).toBe(false);
+    }
+  });
+
+  test("does not treat sleep with trailing real work as a tick", () => {
+    for (const command of ["sleep 1 && curl localhost:3000", "sleep 2; bun run test", "sleep"]) {
+      expect(isYieldPlaceholderToolCall(bash(command), true)).toBe(false);
+    }
+  });
+
+  test("leaves harmless or real commands alone even with pending background work", () => {
+    for (const command of ["echo hello world", "echo bg-test", "echo done", "bun run test"]) {
+      expect(isYieldPlaceholderToolCall(bash(command), true)).toBe(false);
+    }
+  });
+
+  test("applies to the bash tool, including a recorded exec call, and to no other tool", () => {
+    expect(isYieldPlaceholderToolCall({ id: "tc", name: "exec", input: { command: "echo waiting" } }, true)).toBe(true);
+    expect(isYieldPlaceholderToolCall({ id: "tc", name: "read", input: { command: "echo waiting" } }, true)).toBe(false);
+    expect(isYieldPlaceholderToolCall({ id: "tc", name: "bash", input: {} }, true)).toBe(false);
+  });
+
+  test("with pending background work, a leading no-op + wait intent is enough even with junk trailing", () => {
+    for (const command of ["echo waiting is not allowed; yielding", "echo standing by && some-junk", "sleep 1 # holding; foo"]) {
+      expect(isYieldPlaceholderToolCall(bash(command), true)).toBe(true);
+      // Without pending background work the trailing non-no-op must run.
+      expect(isYieldPlaceholderToolCall(bash(command), false)).toBe(false);
+    }
+  });
+
+  test("does not relax for a leading real command even with pending background work", () => {
+    // Leading segment is real work; never a yield regardless of background work.
+    expect(isYieldPlaceholderToolCall(bash("bun run build # waiting"), true)).toBe(false);
+    // No wait intent: a leading no-op alone is not a yield.
+    expect(isYieldPlaceholderToolCall(bash("echo hi; some-junk"), true)).toBe(false);
+  });
+
+  test("never treats a background launch as a yield: it starts the work that the turn then owes", () => {
+    for (const command of ["printf ok > /scratch/idle-background-1.marker; sleep 30", "echo waiting", "sleep 5", "true"]) {
+      expect(isYieldPlaceholderToolCall({ id: "tc", name: "bash", input: { command, background: true } }, true)).toBe(false);
+    }
+  });
+
+  test("reads wait intent only in the leading no-op, and a leading write is not a no-op", () => {
+    for (const command of ["printf ok > /scratch/idle.marker; bun run serve", "echo started >> pending.log", "sleep 1; cat pending.log"]) {
+      expect(isYieldPlaceholderToolCall(bash(command), true)).toBe(false);
+    }
+  });
+});

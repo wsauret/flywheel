@@ -1,5 +1,5 @@
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
+import type { ToolDeclaration } from "../module-seams.js"
 import { applyPatchDefinition } from "../agent-runtime/tools/edit/apply-patch.js"
 import { editDefinition } from "../agent-runtime/tools/edit/edit.js"
 import { readDefinition, wholeFileReadDefinition } from "../agent-runtime/tools/read/read.js"

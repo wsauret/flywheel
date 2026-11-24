@@ -14,7 +14,7 @@ import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-ty
 import { testDirectories } from "../../../../helpers/directories.js"
 import type { ConversationSessionEntry } from "../../../../../src/orchestration/session-store/types.js"
 import { CommandOutcomeSchema } from "../../../../../src/protocol/command-catalog-protocol-schemas.js"
-import type { ChatModuleHostContribution } from "../../../../../src/orchestration/chat-module-host.js"
+import type { ChatModuleHostContribution } from "../../../../../src/orchestration/chat/chat-module-host.js"
 import { composeModules } from "../../../../../src/infra/module-descriptor.js"
 import type { FirstPartyModule } from "../../../../../src/orchestration/modules.js"
 import { makeLifecycle } from "../../chat/lifecycle/_chat-runner-lifecycle-fixtures.js"

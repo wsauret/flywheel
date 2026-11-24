@@ -21,7 +21,7 @@ import { createAccountProjectRegistry } from "../../../src/orchestration/app-ser
 import { withDeadline } from "../../../src/infra/with-deadline.js"
 import { createProcessBackgroundClient } from "../../../src/orchestration/app-service/background/worker-background-client.js"
 import { prepareFileMutationOperation } from "../../../src/orchestration/session/file-mutations/file-mutation-fact-writers.js"
-import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state/workspace-state.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types.js"
 import { createSessionManager } from "../../../src/orchestration/session/manager.js"

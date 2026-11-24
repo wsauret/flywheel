@@ -22,8 +22,7 @@ import { commandHandoversForAsync } from "../../session/command-handover.js"
 import type { ControlInterruption, RuntimeInterruption } from "../../session/conversation/turn-end-record.js"
 import type { WorkflowDeliveryAddress } from "../../session/conversation/addressed-workflow-messages.js"
 import type { SuccessorRows } from "../executor/project-executor-protocol.js"
-import { turnInFlight } from "../../session-store/view.js"
-import { entryActivity } from "../../session-store/activity.js"
+import { entryActivity, turnInFlight } from "../../session-store/activity.js"
 import { claimComposerReturns } from "../../session/control/messaging/composer-returns.js"
 import { isActiveActivity } from "../../../protocol/app-service-types.js"
 import type { RetainedOperationAcceptance } from "../../module-seams.js"
@@ -301,7 +300,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
         const host = workflow()
         if (host) return host.interrupt(by, address)
         const run = childRun()
-        if (!run) return deps.sessionStore.interrupt(sessionId, by, address)
+        if (!run) return deps.sessionStore.activeRunner(sessionId)?.interrupt() ?? false
         return await run.interrupt(by)
       },
       owner: () => { const current = entry(); return workflow() ?? (current?.kind === "chat" ? current.runner ?? undefined : undefined) },
@@ -319,7 +318,8 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     // Preemptive and actor-free: the hold lives on the runner in the shared
     // session store, and workflow sessions have no per-session chat actor.
     return liveSessionControl(reader, sessionId)?.member?.releaseForegroundBash(toolUseId)
-      ?? deps.sessionStore.releaseForegroundBash(sessionId, toolUseId)
+      ?? deps.sessionStore.activeRunner(sessionId)?.releaseForegroundBash(toolUseId)
+      ?? false
   }
   /** A person's Stop of one background call of a chat. A call that
    *  launched a child stops through the child's durable binding, and the
@@ -417,7 +417,10 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
    *  them before any child's pause. */
   async function transferForegroundForReplacement(): Promise<void> {
     await Promise.all([
-      ...deps.sessionStore.allIds().map((sessionId) => deps.sessionStore.transferForegroundForReplacement(sessionId)),
+      ...deps.sessionStore.allIds().flatMap((sessionId) => [
+        deps.sessionStore.activeRunner(sessionId)?.transferForegroundForReplacement(),
+        liveSessionControl(reader, sessionId)?.member?.transferForegroundForReplacement(),
+      ]),
       ...deps.workflowHosts.allIds().map((id) => deps.workflowHosts.get(id)?.transferForegroundForReplacement()),
     ])
   }
@@ -473,7 +476,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       },
     })
     if (!turnRuns) return true
-    if (await deps.sessionStore.interruptForReplacement(sessionId)) return true
+    if (await deps.sessionStore.activeRunner(sessionId)?.interruptForReplacement()) return true
     if (operations.length === 0 && !held && mayRetire()) await retirePlannedSessionContinuation({ reader, writer: eventWriter, sessionId })
     return false
   }

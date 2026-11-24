@@ -6,7 +6,7 @@ import { applySqliteDurabilityPragmas } from "../../../../infra/sqlite-durabilit
 import { createSqliteEventReadSurface } from "../../../../infra/sqlite-event-read-surface.js"
 import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
 import type { EventStoreAppend } from "../../../../infra/event-store-types.js"
-import { checkedThrough, headPosition, recordChecked, recordMigration } from "../../../migrations/engine.js"
+import { checkedThrough, headPosition, recordChecked, recordMigration } from "../../../workspace-state/migrations/engine.js"
 import { recoverSessionMetadata } from "../../../session/metadata/session-metadata-projection.js"
 import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact, buildSessionCreatedFact, recoverWorkflowCreationRequest } from "../../../session/metadata/session-metadata-facts.js"
 import { buildSessionMetadataAppend } from "../../../session/metadata/catalog/session-metadata-store.js"

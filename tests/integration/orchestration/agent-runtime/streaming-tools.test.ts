@@ -16,7 +16,7 @@ import { emitAssistant, emitToolInputComplete, emitToolInputDelta, emitToolResul
 import type { ConversationMessage, LLMClient, ProviderStreamEvent, ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import type { RuntimeTool, ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js";
-import { createOutputSession, type OutputSession } from "../../../../src/orchestration/runner/output-session.js";
+import { createOutputSession, type OutputSession } from "../../../../src/orchestration/session-store/output-session.js";
 import { recoverFinalizedToolResultCheckpoints } from "../../../../src/orchestration/session/history/finalized-tool-result-checkpoint.js";
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js";
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js";

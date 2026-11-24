@@ -13,9 +13,9 @@ import { startModulePolicy } from "../../../config/policy/module-policy.js"
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import { restoreSkill } from "../skills/skill-store.js"
 import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js"
-import { prepareWorkspaceState } from "../../../workspace-state.js"
+import { prepareWorkspaceState } from "../../../workspace-state/workspace-state.js"
 import { moduleRequirementsForContribution } from "../../../module-requirements.js"
-import { createInstalledDefinitionRegistry } from "../../../definition-catalog.js"
+import { createInstalledDefinitionRegistry } from "../../../app-service/definitions/definition-catalog.js"
 
 /** Maintenance CLI over the managed skill library: `skills list` makes load
  * counts and dead skills visible, `skills why <name>` traces a package to the

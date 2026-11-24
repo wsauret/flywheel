@@ -6,7 +6,7 @@ import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.
 import type { AgentOptions, AgentRunResult, AgentRunTerminal } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
 import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
-import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js";
+import { createOutputSession } from "../../../../../src/orchestration/session-store/output-session.js";
 import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
 import type { CommandHandoverAuthority } from "../../../../../src/orchestration/agent-runtime/background-execution/command-handover.js";

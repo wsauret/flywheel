@@ -27,7 +27,7 @@ import { bunSocketClientLayer } from "../../../src/orchestration/app-service/acc
 import { socketRpcServerLayer } from "../../helpers/socket-rpc-server.js"
 import { runtimeHandlers } from "../../../src/orchestration/app-service/account/connections/runtime-protocol-handlers.js"
 import { createProcessBackgroundClient } from "../../../src/orchestration/app-service/background/worker-background-client.js"
-import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state/workspace-state.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types.js"
 import { createSessionManager } from "../../../src/orchestration/session/manager.js"

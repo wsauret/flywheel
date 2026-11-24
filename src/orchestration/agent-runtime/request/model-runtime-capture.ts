@@ -13,7 +13,7 @@ import type { AccessProviderRegistry } from "../llm/routing/access-provider-regi
 import type { AgentFactory } from "../types.js";
 import type { FirstPartyModuleComposition } from "../../modules.js";
 import type { RuntimeConfigRequestCapture } from "./request-config.js";
-import type { SubscriptionAdmissionCapture } from "../../subscription-spend-consent/admission-capture.js";
+import type { SubscriptionAdmissionCapture } from "../../auth/subscription-spend-consent/admission-capture.js";
 
 /** Builds a client of `model` whose provider resources `providerSessionLifetime` owns. An absent snapshot or
  *  configuration reads the runtime's current one. */

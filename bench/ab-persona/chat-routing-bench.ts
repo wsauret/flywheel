@@ -10,7 +10,7 @@ import { createRoutingRunStore, type RoutingAttemptRecord, type RoutingConfig, t
 import { parseVariant, type VariantSpec } from "../../src/orchestration/modules/development/benchmark/variant.js";
 import { createBackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { createInstalledDefinitionRegistry } from "../../src/orchestration/definition-catalog.js";
+import { createInstalledDefinitionRegistry } from "../../src/orchestration/app-service/definitions/definition-catalog.js";
 import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { unavailableBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 import type { UsageAuthorityGeneration } from "../../src/orchestration/agent-runtime/request/usage/usage-settlement.js";

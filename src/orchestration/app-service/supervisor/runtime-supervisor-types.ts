@@ -14,7 +14,7 @@ import type { AgentInputAnswer } from "../../../protocol/question-protocol-types
 import type { SessionManager } from "../../session/manager.js"
 import type { SessionKind } from "../../session/metadata/types.js"
 import type { SessionStore } from "../../session-store/types.js"
-import type { SessionViewLoader } from "../../session-store/view.js"
+import type { SessionViewLoader } from "../projections/session-view.js"
 import type { SessionRuntimeView, SessionTitlePatch } from "../../../protocol/app-service-types.js"
 import type { ModuleServices } from "../../../infra/module-service.js"
 import type { ProjectDefinitionRegistry } from "../../../workflows/definitions/definition-registry.js"

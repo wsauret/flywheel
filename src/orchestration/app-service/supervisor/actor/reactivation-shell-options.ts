@@ -1,5 +1,5 @@
 import type { AnyBlock } from "../../../../infra/output-blocks.js"
-import type { ChatSessionView } from "../../../session-store/view.js"
+import type { ChatSessionView } from "../../projections/session-view.js"
 import type { SessionRuntimeOptions } from "../../../session-store/types.js"
 
 /** Shell options for re-activating a durable chat. priorBlocks seeds the

@@ -4,7 +4,7 @@ import type { ProjectDirectories } from "../../../infra/directory-authorities.js
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
 import { loggedOperation } from "../../../infra/operation-log.js"
 import { Log } from "../../../infra/log.js"
-import { prepareWorkspaceState } from "../../workspace-state.js"
+import { prepareWorkspaceState } from "../../workspace-state/workspace-state.js"
 import { createSessionManager, type SessionManager } from "../../session/manager.js"
 import { createSessionStore } from "../../session-store/store.js"
 import type { SessionStore } from "../../session-store/types.js"

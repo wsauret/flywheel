@@ -14,7 +14,7 @@ import { installedAccessProviderIds } from "../../src/orchestration/credential-p
 import { createAgentJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { prepareWorkflowDeps, type WorkflowDeps } from "../../src/orchestration/workflow-host/deps.js";
 import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";
-import { createInstalledDefinitionRegistry } from "../../src/orchestration/definition-catalog.js";
+import { createInstalledDefinitionRegistry } from "../../src/orchestration/app-service/definitions/definition-catalog.js";
 import { createHeadlessProfileRuntime, resolveHeadlessAuthProfile } from "../../src/orchestration/headless/headless-profile-runtime.js";
 import { getSharedModelsClient } from "../../src/orchestration/config/models/llm-clients.js";
 import { createHeadlessUsageAuthorityOwner } from "../../src/orchestration/headless/headless-usage-authority.js";
@@ -27,9 +27,9 @@ import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runt
 import type { UsageAuthorityGeneration } from "../../src/orchestration/agent-runtime/request/usage/usage-settlement.js";
 import { createSubscriptionUsageService } from "../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { createSubscriptionUsageServicePool } from "../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
-import { createSubscriptionSpendConsentCaptureCache } from "../../src/orchestration/subscription-spend-consent/capture-cache.js";
-import { captureSubscriptionAdmission } from "../../src/orchestration/subscription-spend-consent/admission-capture.js";
-import type { SubscriptionSpendConsentCapture } from "../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
+import { createSubscriptionSpendConsentCaptureCache } from "../../src/orchestration/auth/subscription-spend-consent/capture-cache.js";
+import { captureSubscriptionAdmission } from "../../src/orchestration/auth/subscription-spend-consent/admission-capture.js";
+import type { SubscriptionSpendConsentCapture } from "../../src/orchestration/auth/subscription-spend-consent/subscription-spend-consent-service.js";
 import type { LauncherScope } from "../../src/infra/process-supervisor.js";
 import type { ShellRuntimeClient } from "../../src/orchestration/agent-runtime/tools/bash/execution/shell-runtime-types.js";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../src/infra/owned-command.js";

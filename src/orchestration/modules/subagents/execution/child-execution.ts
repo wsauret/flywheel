@@ -7,8 +7,8 @@ import type { Agent, AgentRunResult, OmitAgentOptions, RunnableAgentOptions } fr
 import { deriveChildRuntimeSurfaces } from "../../../agent-runtime/tools/dispatch/tool-registry.js";
 import { mergeAbortSignals } from "../../../../infra/abort.js";
 import type { RetryState } from "../../../agent-runtime/llm/retry-budget.js";
-import { createAgentGeneration } from "../../../runner/host.js";
-import { AgentTurnAborted } from "../../../runner/agent-turn-types.js";
+import { createAgentGeneration } from "../../../agent-runtime/runner/turn-host/host.js";
+import { AgentTurnAborted } from "../../../agent-runtime/runner/turn-host/agent-turn-types.js";
 import { createSubagentRunInputs } from "./run-inputs.js";
 import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work/background-work-types.js";
 import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";

@@ -7,7 +7,7 @@ import { settleUnreadMessages, wakeAfterSettlement } from "../../session/control
 import { liveSessionControl, type LiveSessionControl } from "../../session/control/live-session-control.js"
 import { messageDisposition } from "../../session/message-disposition.js"
 import type { WorkflowInjectionQueue } from "./injection-queue.js"
-import type { createBackgroundNotificationDelivery } from "../../runner/background-notification-delivery.js"
+import type { createBackgroundNotificationDelivery } from "./background-notification-delivery.js"
 
 /** Owns private member input claims through live delivery, recovery, and terminal unread returns. Aggregate direction never enters this owner. */
 export function createWorkflowMemberInputs(input: {

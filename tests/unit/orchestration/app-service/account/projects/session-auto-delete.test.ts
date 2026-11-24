@@ -12,7 +12,7 @@ import { createFrontendProjection } from "../../../../../../src/orchestration/ap
 import { createRuntimeUiBus } from "../../../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { fakeProjections } from "../../app-service-doubles.js"
 import { asAsyncEventReadSurface } from "../../../../../../src/infra/event-store-types.js"
-import { createSessionViewLoader } from "../../../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../../../src/orchestration/app-service/projections/session-view.js"
 
 type AutoDeletePorts = Parameters<typeof createSessionAutoDelete>[0]
 

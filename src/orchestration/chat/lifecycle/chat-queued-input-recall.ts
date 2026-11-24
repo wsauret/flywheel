@@ -1,7 +1,7 @@
 import type { ChatInput } from "../../../infra/chat-input.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import { Log } from "../../../infra/log.js"
-import type { OutputSession } from "../../runner/output-session.js"
+import type { OutputSession } from "../../session-store/output-session.js"
 import { recallQueuedInput, type HumanInputQueue } from "../../session/control/messaging/queued-input-recall.js"
 
 const log = Log.create({ service: "chat" })

@@ -308,7 +308,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
    *  for the person's Resume. */
   function stopForClose(): void {
     markClosing()
-    ctx.sessionStore.prepareForShutdown(sessionId, "close")
+    ctx.sessionStore.activeRunner(sessionId)?.prepareForShutdown("close")
   }
 
   /** What waits for the turn's rest: the chat's close when its tab closed,
@@ -349,7 +349,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     const entry = ctx.sessionStore.get(sessionId)
     const runner = entry?.kind === "chat" && entry.runner !== null
     markClosing()
-    ctx.sessionStore.prepareForShutdown(sessionId, "runtime")
+    ctx.sessionStore.activeRunner(sessionId)?.prepareForShutdown("runtime")
     await settleStartup()
     await endActor()
     log.info("session released", { sessionId, runner, durationMs: durationMs(start) })
@@ -650,11 +650,13 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     // display of a turn in flight, so nothing else would.
     const waiting = ctx.sessionStore.get(sessionId)
     waiting?.runner?.applyProjectionEvent(questionSettlementDisplay(command))
-    if (waiting?.runner && waiting.runnerState === "awaiting_user") {
-      const delivered = command.kind === "question.answer"
-        ? ctx.sessionStore.answerQuestion(sessionId, command.toolUseId, command.answers)
-        : ctx.sessionStore.cancelQuestion(sessionId, command.toolUseId)
-      if (delivered) return ready({ ok: true })
+    // Only a chat asks the person (PI-AGENT-024), so only a chat runner
+    // takes an answer.
+    const asker = waiting?.kind === "chat" && waiting.runnerState === "awaiting_user" ? ctx.sessionStore.activeRunner(sessionId) : null
+    if (asker) {
+      if (command.kind === "question.answer") asker.answerQuestion(command.toolUseId, command.answers)
+      else asker.cancelQuestion(command.toolUseId)
+      return ready({ ok: true })
     }
     try {
       const wake = await runActivation({ wake: true })
@@ -678,14 +680,14 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       log.info("learn refused", { sessionId, reason: admission.reason })
       return false
     }
-    return ctx.sessionStore.learnFromSession(sessionId)
+    return ctx.sessionStore.activeRunner(sessionId)?.learn?.() ?? false
   }
 
   /** The serialized body of one command, returning the un-serialized tail that
    *  resolves its outcome. The mailbox advances when this Promise settles, so a
    *  delegated command (`chat.compact`, `recall`) - which finishes
    *  its whole turn synchronously against the attached runner under
-   *  `SessionStore`'s `activeEntry` rule (no runner => false/null) - holds the
+   *  `SessionStore.activeRunner` (no runner => false/null) - holds the
    *  mailbox only for that turn. Cold send and question-recovery tails start the
    *  host after the mailbox advances, so attach can enter its own ordered phase.
    *  A lifecycle command waits for
@@ -718,13 +720,15 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       case "question.answer":
         return settleQuestion(command)
       case "background.terminate":
-        ctx.sessionStore.terminateBackgroundWork(sessionId, command.toolUseId)
+        ctx.sessionStore.activeRunner(sessionId)?.terminateBackgroundWork(command.toolUseId)
         return ready(true)
       case "question.cancel":
         return settleQuestion(command)
       case "chat.compact":
         await (await ctx.runnerCapabilities()).authAdmission.admit(sessionId)
-        return ready(await ctx.sessionStore.compactConversation(sessionId))
+        // A workflow member can register while admission waits, after the supervisor found none, so the target is
+        // resolved again here.
+        return ready(await (ctx.sessionStore.activeRunner(sessionId) ?? liveSessionControl(ctx.projectionReader, sessionId)?.member)?.compact() ?? false)
       case "chat.learn":
         return ready(await learnFromSession())
       case "recall-input": return ready(await liveSessionControl(ctx.projectionReader, sessionId)?.recallQueuedMessage?.() ?? null)
@@ -803,7 +807,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     dispatch,
     // The runtime's planned stop, which records a runtime interrupt through
     // the teardown abort rather than a person's.
-    prepareForShutdown(by) { ctx.sessionStore.prepareForShutdown(sessionId, by) },
+    prepareForShutdown(by) { ctx.sessionStore.activeRunner(sessionId)?.prepareForShutdown(by) },
     markClosing,
     settleStartup,
     awaitAcceptedWork,

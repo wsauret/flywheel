@@ -55,7 +55,7 @@ export async function generateUpgradeFixture(directory: string, sourceRoot: stri
   const { createRuntimeEvent }: typeof import("../../../src/infra/runtime-event-factory.js") = await load("src/infra/runtime-event-factory.ts")
   const { mapRuntimeEventToSessionRuntimeFacts }: typeof import("../../../src/infra/runtime-fact-mapper.js") = await load("src/infra/runtime-fact-mapper.ts")
   const { prepareSessionFactAppend }: typeof import("../../../src/orchestration/session/persistence/session-fact-writer.js") = await load("src/orchestration/session/session-fact-writer.ts")
-  const { WORKSPACE_STATE_EPOCH }: typeof import("../../../src/orchestration/workspace-state-retirement.js") = await load("src/orchestration/workspace-state-retirement.ts")
+  const { WORKSPACE_STATE_EPOCH }: typeof import("../../../src/orchestration/workspace-state/workspace-state-retirement.js") = await load("src/orchestration/workspace-state-retirement.ts")
   const { buildSessionAuthProfileSelectedFact }: typeof import("../../../src/orchestration/session/metadata/session-metadata-facts.js") = await load("src/orchestration/session/session-metadata-facts.ts")
   const { buildMutationFileEvidence, buildMutationEvidence }: typeof import("../../../src/infra/mutation-evidence.js") = await load("src/infra/mutation-evidence.ts")
   mkdirSync(directory, { recursive: true })

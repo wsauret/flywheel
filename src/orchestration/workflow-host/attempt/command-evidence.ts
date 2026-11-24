@@ -8,7 +8,7 @@ import { parseBashResultDetails } from "../../agent-runtime/tools/bash/bash.js";
 import { workflowRunReader } from "../../module-catalog.js";
 import { parseFileMutationFact } from "../../session/file-mutations/file-mutation-facts.js";
 import { recordedExecutionCwd } from "../../session/metadata/session-execution-directory.js";
-import { shellCommandOf } from "../../tool-catalog.js";
+import { shellCommandOf } from "../../agent-runtime/tools/dispatch/tool-catalog.js";
 import { loadToolExecutionTimelineFromEvents, TOOL_EXECUTION_FACT_TYPES } from "../../session/runtime-facts/tool-execution-projection.js";
 import { workflowMembershipReader } from "../../session/metadata/workflow-membership.js";
 

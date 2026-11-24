@@ -11,7 +11,7 @@ import { createMaintenanceQueue } from "../../../../../src/orchestration/app-ser
 import { serveProjectStateChannel } from "../../../../../src/orchestration/app-service/project-state/project-state-channel.js";
 import { servedProjectState } from "../_served-project-state-fixture.js";
 import { pruneRetiredFactFamilies, type StoreUsage } from "../../../../../src/orchestration/session/persistence/storage/event-store-maintenance.js";
-import { prepareWorkspaceState } from "../../../../../src/orchestration/workspace-state.js";
+import { prepareWorkspaceState } from "../../../../../src/orchestration/workspace-state/workspace-state.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { canonicalTestDirectory } from "../../../../helpers/directories.js";
 import { withEventStore } from "../../../../../src/infra/with-event-store.js";

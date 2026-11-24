@@ -6,10 +6,10 @@ import { createProjectStateClient } from "../../../../src/orchestration/app-serv
 import { decodeProjectStateRequest, encodeProjectStateResponseFrame, operationUnits, type ProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state/project-state-protocol.js"
 import { createProjectStateSessionsService } from "../../../../src/orchestration/app-service/project-state/project-state-sessions.js"
 import { createProjectStateService } from "../../../../src/orchestration/app-service/project-state/worker/project-state-worker.js"
-import { retireRecordedFinalizedToolResultCheckpointPage } from "../../../../src/orchestration/migrations/finalized-tool-result-checkpoints.js"
+import { retireRecordedFinalizedToolResultCheckpointPage } from "../../../../src/orchestration/workspace-state/migrations/finalized-tool-result-checkpoints.js"
 import { deleteRetiredFamilyChunk, deleteSupersededStep, dropRetiredEventStoreIndexes, incrementalVacuumStep } from "../../../../src/orchestration/session/persistence/storage/event-store-maintenance.js"
 import { createSessionManager, type SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
-import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state/workspace-state.js"
 
 export interface ServedProjectStateOptions {
   /** Lets the writer run maintenance steps on the store. It awaits

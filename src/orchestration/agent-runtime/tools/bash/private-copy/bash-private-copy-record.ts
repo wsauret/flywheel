@@ -17,7 +17,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import type { FileFingerprint } from "../../../../file-edits/file-state.js";
+import type { FileFingerprint } from "../../file-edits/file-state.js";
 import type { MutationGuardKind } from "./bash-mutation-guard.js";
 import type { MirroredFile } from "./bash-private-copy-mirror.js";
 import type { RepositoryState } from "./bash-copy-repository-state.js";

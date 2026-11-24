@@ -12,7 +12,7 @@ import {
 import { createRuntimeSummaryProjection, type RuntimeSummaryProjection } from "../../../../../src/orchestration/app-service/projections/catalog/runtime-summary-projection.js"
 import { projectSessionCatalogRow } from "../../../../../src/orchestration/session/control/session-catalog-row.js"
 import type { SessionEntry } from "../../../../../src/orchestration/session-store/types.js"
-import { toSessionView } from "../../../../../src/orchestration/session-store/view.js"
+import { toSessionView } from "../../../../../src/orchestration/app-service/projections/session-view.js"
 import {
   chatEntry,
   chatRunner,

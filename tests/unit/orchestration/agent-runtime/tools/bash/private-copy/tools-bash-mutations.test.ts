@@ -21,8 +21,8 @@ import { makeMockOwnedProcess, type MergeFileFake, type OwnedExit } from "../_ba
 import { bashMutationHarness, settled } from "./_bash-mutations-harness.js";
 import { conflictMarkersNotice, notAppliedNotice } from "../../../../../../../src/protocol/client/file-change-body.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../../src/infra/event-store-types.js";
-import { undoSessionChanges } from "../../../../../../../src/orchestration/file-edits/session-undo.js";
-import { RetainedFileEditAuthority } from "../../../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
+import { undoSessionChanges } from "../../../../../../../src/orchestration/app-service/projections/changes/session-undo.js";
+import { RetainedFileEditAuthority } from "../../../../../../../src/orchestration/agent-runtime/tools/file-edits/retained-file-edit-host.js";
 import { getSessionChangeReview } from "../../../../../../../src/orchestration/session/metadata/catalog/session-change-review.js";
 import { withStore } from "../../../../session/file-mutation-recovery-fixture.js";
 import { Log } from "../../../../../../../src/infra/log.js";

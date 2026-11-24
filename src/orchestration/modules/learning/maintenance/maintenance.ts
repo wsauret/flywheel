@@ -9,7 +9,7 @@ import { skillsConfigSection } from "../config.js"
 import { applySkillLifecycleTransitions, type SkillPruneReport } from "./skill-prune.js"
 import { refreshSkillLoadStatsSnapshot, skillActivitySource } from "../skills/skill-load-stats.js"
 import { runSkillCorpusCleanupForProject } from "./skill-corpus-cleanup-host.js"
-import { createInstalledDefinitionRegistry } from "../../../definition-catalog.js"
+import { createInstalledDefinitionRegistry } from "../../../app-service/definitions/definition-catalog.js"
 
 const log = Log.create({ service: "runtime-maintenance" })
 

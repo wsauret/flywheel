@@ -9,7 +9,7 @@ import { isRecord } from "../../../../infra/record.js"
 import { parseHistoricalWorkflowControlV2 } from "../../../../workflows/vm/facts/historical-codecs.js"
 import { DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID } from "../../../../workflows/vm/facts/definition-identity.js"
 import { normalizeLegacyIdentityMembers, MIGRATED_FACT_TYPE } from "./workflow-identity-chain.js"
-import { requirePlannedScope, tableExists } from "../../../migrations/engine.js"
+import { requirePlannedScope, tableExists } from "../../../workspace-state/migrations/engine.js"
 
 const MAX_CANDIDATES = 1000
 const BUSY_TIMEOUT_MS = 5000

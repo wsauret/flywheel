@@ -10,7 +10,7 @@ import {
 import type { IndexedTranscript } from "../../../session/conversation/transcript/branch-history-builder.js"
 import { createToolResultDisplayMetaCursorReader, type IndexedGroupChildren, type ToolDisplaySource, type ToolResultDisplayMetaCatchUp, type ToolResultDisplayMetaCursorReader, type ToolChildRenderContext } from "../../../session/conversation/transcript/tool-result-meta.js"
 import type { SessionEntry } from "../../../session-store/types.js"
-import { runsWorkflowClock } from "../../../session-store/view.js"
+import { runsWorkflowClock } from "../../../session-store/activity.js"
 import { createAgentInputCursorReader, type AgentInputCursorReader } from "../../../session/agent-input/agent-input-projection.js"
 import { isAgentInFlight, type AgentGroupBlock, type AnyBlock, type ToolEntry } from "../../../../infra/output-blocks.js"
 import { singleLine } from "../../../../infra/tools/detail-helpers.js"

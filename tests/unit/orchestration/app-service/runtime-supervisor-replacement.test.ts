@@ -15,7 +15,7 @@ import type { SessionEntry, SessionEntryBase, SessionStore } from "../../../../s
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { WorkflowRunner } from "../../../../src/orchestration/workflow-host/runner-types.js"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
-import { turnInFlight } from "../../../../src/orchestration/session-store/view.js"
+import { turnInFlight } from "../../../../src/orchestration/session-store/activity.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"
 import { WORKFLOW_LAUNCH_OPERATION_KIND } from "../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract.js"
 
@@ -66,7 +66,7 @@ function storeWith(ctx: SupervisorTestContext, entries: readonly (SessionEntry |
     ...ctx.sessionStore,
     allIds: () => [...byId.keys()],
     get: (sessionId) => byId.get(sessionId),
-    interruptForReplacement: async (sessionId) => await byId.get(sessionId)?.runner?.interruptForReplacement() ?? false,
+    activeRunner: (sessionId) => byId.get(sessionId)?.runner ?? null,
     disposeAll: async () => {},
   }
 }
@@ -354,16 +354,18 @@ describe("RuntimeSupervisor planned replacement", () => {
     let cutState: RunnerState = "streaming"
     let lateState: RunnerState = "idle"
     let transfer = Promise.withResolvers<void>()
-    const store: SessionStore = {
-      ...storeWith(ctx, [
-        { ...chat("streaming-chat", "idle", true, order), get runnerState() { return cutState } },
-        { ...workflow("running-workflow", "idle", false, order), get runnerState() { return cutState } },
-        { ...chat("late-chat", "idle", true, order), get runnerState() { return lateState } },
-      ]),
-      transferForegroundForReplacement: async (sessionId) => {
-        order.push(`transfer:${sessionId}`)
-        await transfer.promise
-      },
+    const store = storeWith(ctx, [
+      { ...chat("streaming-chat", "idle", true, order), get runnerState() { return cutState } },
+      { ...workflow("running-workflow", "idle", false, order), get runnerState() { return cutState } },
+      { ...chat("late-chat", "idle", true, order), get runnerState() { return lateState } },
+    ])
+    const recordedTransfer = (sessionId: string) => async () => {
+      order.push(`transfer:${sessionId}`)
+      await transfer.promise
+    }
+    for (const sessionId of store.allIds()) {
+      const runner = store.activeRunner(sessionId)
+      if (runner) runner.transferForegroundForReplacement = recordedTransfer(sessionId)
     }
     const workflowHost = ctx.workflowHosts.get("running-workflow")
     if (!workflowHost) throw new Error("Missing workflow host")

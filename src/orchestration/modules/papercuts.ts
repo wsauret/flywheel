@@ -1,5 +1,5 @@
 import { papercutDisposeDefinition, papercutLogDefinition } from "./papercuts/tools.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
+import type { ToolDeclaration } from "../module-seams.js"
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
 import { papercutsProtocol } from "../../protocol/modules/papercuts.js"
 import { moduleProtocol } from "../app-service/module-protocol-host.js"

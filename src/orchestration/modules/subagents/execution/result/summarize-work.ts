@@ -25,7 +25,7 @@ import { bridgeExternalPromise } from "../../../../agent-runtime/external-promis
 import { failureTerminal, type Agent, type OmitAgentOptions, type RunnableAgentOptions } from "../../../../agent-runtime/types.js";
 import type { SessionFactWriter } from "../../../../session/persistence/session-fact-writer.js";
 import type { AsyncEventStateReadSurface } from "../../../../../infra/event-store-types.js";
-import { createAgentGeneration } from "../../../../runner/host.js";
+import { createAgentGeneration } from "../../../../agent-runtime/runner/turn-host/host.js";
 import { tryParseJsonFromText } from "./json-extract.js";
 import {
   buildFallbackSummary,

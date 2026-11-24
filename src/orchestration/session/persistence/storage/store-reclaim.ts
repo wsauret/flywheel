@@ -5,7 +5,7 @@ import { openExistingContainedDirectory } from "../../../../infra/descriptor-dir
 import { FLYWHEEL_DIR_NAME } from "../../../../infra/directory-authorities.js"
 import { resolveEventStoreDbFile } from "../../../../infra/paths.js"
 import { formatStorageBytes, type StorageReclaimOutcome } from "../../../../protocol/store-reclaim.js"
-import { acquireProjectStateGeneration } from "../../../project-state-lease.js"
+import { acquireProjectStateGeneration } from "../../../workspace-state/project-state-lease.js"
 import { pruneRetiredFactFamilies, pruneSupersededFacts, readStoreUsage, vacuumEventStore, type StoreUsage } from "./event-store-maintenance.js"
 
 /** Free space kept beyond what a VACUUM writes, so the rebuild never fills

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { resolveSessionDir } from "../../../infra/paths.js"
 import type { StoredFact } from "../../../infra/event-store-types.js"
-import type { AgentHostContextOptions } from "../../runner/types.js"
+import type { AgentHostContextOptions } from "../../agent-runtime/runner/turn-host/types.js"
 import type { AgentOptions, RoleHold, RunnerToolSurfaces } from "../../agent-runtime/types.js"
 import type { ProviderSession } from "../../agent-runtime/request/provider-runtime-cache.js"
 import type { ResolvedRole } from "../../config/roles.js"

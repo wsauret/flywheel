@@ -11,7 +11,7 @@ import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agen
 import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types"
 import { chatEntry } from "../app-service/_frontend-projection-fixtures"
 import { createBackgroundNotificationDelivery } from "../../../../src/orchestration/app-service/supervisor/session-background-notifications"
-import { createBackgroundNotificationDelivery as createRunnerNotificationDelivery } from "../../../../src/orchestration/runner/background-notification-delivery"
+import { createBackgroundNotificationDelivery as createRunnerNotificationDelivery } from "../../../../src/orchestration/workflow-host/execution/background-notification-delivery"
 import { registerLiveSessionControl } from "../../../../src/orchestration/session/control/live-session-control"
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
 import { buildDurableSubagentCreated, buildSubagentCompleted, buildSubagentPaused, buildSubagentPrompted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"

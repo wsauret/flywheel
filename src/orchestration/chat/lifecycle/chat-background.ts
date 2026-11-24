@@ -3,9 +3,34 @@ import type { createEmit } from "../../../infra/event-bus.js"
 import type { RuntimeEvent } from "../../../infra/runtime-event-types.js"
 import { createBackgroundExecutionOwner } from "../../agent-runtime/background-execution/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../agent-runtime/background-work/background-work.js"
-import { createChatNotificationDelivery } from "../../runner/background-notification-delivery.js"
+import type { ConversationTreeWriterController } from "../tree-writer.js"
+import type { HeldBackgroundNotification } from "../../session/conversation/queued-background-notifications.js"
 import type { ChatSessionDeps } from "../types.js"
 import type { ChatTurnMailbox } from "../turn-mailbox.js"
+
+/** Holds a Chat completion before mailbox admission and acknowledges only its
+ * keyed commit. A closing Chat keeps the hold without taking more input. */
+function createChatNotificationDelivery(options: {
+  conversation: Pick<ConversationTreeWriterController, "holdBackgroundNotification" | "waitForBackgroundNotification">
+  admitsInput: () => boolean
+  submit: (notification: HeldBackgroundNotification) => Promise<boolean>
+}) {
+  let admission = Promise.resolve()
+  return {
+    enqueue(text: string, key?: string): Promise<void> {
+      let held: HeldBackgroundNotification | undefined
+      const admitted = admission.catch(() => {}).then(async () => {
+        held = await options.conversation.holdBackgroundNotification(text, key)
+        if (held && options.admitsInput() && !await options.submit(held)) throw new Error("Background notification was not admitted to Chat")
+      })
+      admission = admitted
+      return admitted.then(async () => {
+        if (held?.key !== undefined) await options.conversation.waitForBackgroundNotification(held.key)
+      })
+    },
+    settle: () => admission,
+  }
+}
 
 /** A chat's background work: subagent and workflow dispatches and
  *  backgrounded commands. It is session-scoped: it survives runner respawns

@@ -100,7 +100,7 @@ export async function fixture(
     incrementalVacuumStep: (pages) => incrementalVacuumStep(path, pages),
     retireFinalizedCheckpointPage: async (plan) => ({
       kind: "checkpoint-maintenance",
-      ...(await import("../../../../src/orchestration/migrations/finalized-tool-result-checkpoints")).retireRecordedFinalizedToolResultCheckpointPage(path, plan.afterRowid, plan),
+      ...(await import("../../../../src/orchestration/workspace-state/migrations/finalized-tool-result-checkpoints")).retireRecordedFinalizedToolResultCheckpointPage(path, plan.afterRowid, plan),
     }),
     sessions,
     notifySessionChange: (change) => { for (const listener of sessionListeners) listener(change) },

@@ -4,9 +4,9 @@ import type { Agent, AgentFactory, AgentRunTerminal, RuntimeToolSurfaces } from 
 import { failureTerminal } from "../../../agent-runtime/types.js";
 import { agentTasksFromComposition, type ModuleAgentTasks } from "../../../module-agent-tasks.js";
 import { composeFirstPartyModules } from "../../../modules.js";
-import type { ToolRegistration } from "../../../agent-runtime/tools/dispatch/tool-registry.js";
+import type { ToolRegistration } from "../../../module-seams.js";
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../modules.js";
-import { createAgentGeneration } from "../../../runner/host.js";
+import { createAgentGeneration } from "../../../agent-runtime/runner/turn-host/host.js";
 import { createBenchmarkAccounting } from "./accounting/accounting.js";
 import type { BenchmarkAccounting } from "./accounting/evidence.js";
 

@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import { mockRunner, supervisorBaseDeps, createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { historicalSessionCreatedFacts } from "../../../fixtures/tolerant-reprojection-fixtures.js"
 

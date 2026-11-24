@@ -42,10 +42,10 @@ import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runt
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
 import { composeRealmModuleSnapshot, type FirstPartyModule } from "../../../src/orchestration/modules.js";
 import { installedAccessProviderDefinitions, installedAccessProviderIds, installedCredentialProviderIds } from "../../../src/orchestration/credential-provider-modules.js";
-import { captureSubscriptionAdmission } from "../../../src/orchestration/subscription-spend-consent/admission-capture.js";
-import { createSubscriptionSpendConsentCaptureCache } from "../../../src/orchestration/subscription-spend-consent/capture-cache.js";
-import type { SubscriptionSpendConsentCapture } from "../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
-import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js";
+import { captureSubscriptionAdmission } from "../../../src/orchestration/auth/subscription-spend-consent/admission-capture.js";
+import { createSubscriptionSpendConsentCaptureCache } from "../../../src/orchestration/auth/subscription-spend-consent/capture-cache.js";
+import type { SubscriptionSpendConsentCapture } from "../../../src/orchestration/auth/subscription-spend-consent/subscription-spend-consent-service.js";
+import { installedPersonaToolEntries } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 import { unusedProviderModelWrites } from "../../helpers/provider-model-writes.js";
 import { diskAuthObservation } from "../../helpers/profile-auth-observation.js";

@@ -439,7 +439,7 @@ describe("project state read and write boundary", () => {
     } finally {
       childTree.dispose()
     }
-    const { planFinalizedToolResultCheckpointPage } = await import("../../../../../../src/orchestration/migrations/finalized-tool-result-checkpoints")
+    const { planFinalizedToolResultCheckpointPage } = await import("../../../../../../src/orchestration/workspace-state/migrations/finalized-tool-result-checkpoints")
     const plan = planFinalizedToolResultCheckpointPage(path, 0)
     expect(await client.upkeep.retireFinalizedCheckpointPage({ afterRowid: 0, ...plan })).toMatchObject({
       kind: "checkpoint-maintenance", retired: 1, examined: 1, complete: true,

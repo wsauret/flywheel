@@ -1,6 +1,6 @@
 import { isRecord } from "../../../../infra/record.js"
 import { parseWorkflowContextFact } from "../../../../workflows/context-bundle/context-facts.js"
-import { migrateFactVersions, type FactMigrationResult } from "../../../migrations/engine.js"
+import { migrateFactVersions, type FactMigrationResult } from "../../../workspace-state/migrations/engine.js"
 
 const CONTEXT_RECIPIENT_STEP_ID_MIGRATION_ID = "context-recipient-step-id-v1"
 const CURRENT_CONTEXT_ACCUMULATED_VERSION = 4

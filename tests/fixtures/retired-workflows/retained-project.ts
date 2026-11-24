@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js"
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js"
-import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js"
+import { installedPersonaToolEntries } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js"
 import { testAccountHome, testDirectories } from "../../helpers/directories.js"
 import { repoModules } from "../../helpers/project-definitions.js"
 

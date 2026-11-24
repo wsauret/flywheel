@@ -44,7 +44,7 @@ async function main(requestPath: string, resultPath: string, cancelPath: string)
       { structuredIdentity },
     ] = await Promise.all([
       import("./runtime.js"),
-      import("../../src/orchestration/definition-catalog.js"),
+      import("../../src/orchestration/app-service/definitions/definition-catalog.js"),
       import("../../src/infra/directory-authorities.js"),
       import("../../src/orchestration/modules/development/benchmark/persona/admission.js"),
       import("../../src/orchestration/modules/development/benchmark/persona/persona-run.js"),

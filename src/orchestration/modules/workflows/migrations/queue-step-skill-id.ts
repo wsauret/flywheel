@@ -1,5 +1,5 @@
 import { isRecord } from "../../../../infra/record.js"
-import { migrateFactVersions, type FactMigrationResult, type FactUpgrade } from "../../../migrations/engine.js"
+import { migrateFactVersions, type FactMigrationResult, type FactUpgrade } from "../../../workspace-state/migrations/engine.js"
 import { rebuildQueueFactWithoutSelfReview } from "./retired-self-review.js"
 
 interface UnknownRecord {

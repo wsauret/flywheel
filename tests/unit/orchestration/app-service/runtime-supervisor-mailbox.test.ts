@@ -10,7 +10,7 @@ import { createChatRunnerLoader } from "../../../../src/orchestration/app-servic
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import { createDeferred, createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorWithRunner, testSessionAuthAdmission, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 let ctx: SupervisorTestContext

@@ -8,7 +8,7 @@ export interface ProviderModelLiteralViolation {
   readonly detail: string;
 }
 
-const PROVIDER_SOURCE = /^(?:src\/infra\/llm\/|src\/orchestration\/(?:app-service\/|config\/|agent-runtime\/llm\/|custom-provider-modules\.ts|modules\/provider-[^/]+\/))/;
+const PROVIDER_SOURCE = /^(?:src\/infra\/llm\/|src\/orchestration\/(?:app-service\/|config\/|agent-runtime\/llm\/|modules\/provider-[^/]+\/))/;
 const EXCLUDED_FILES = new Set(["src/infra/llm/models/models-bundled.txt"]);
 const MODEL_NAMES = /^(?:model|modelId|wireModel|wireModelId|canonical|normalizedModel)$/i;
 const AUTHORITY_NAMES = /(?:prefix|allowlist|denylist|pattern)/i;

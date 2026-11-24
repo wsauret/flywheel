@@ -10,7 +10,7 @@ import { createRuntimeSupervisor } from "../../../../src/orchestration/app-servi
 import { createChatRunnerLoader } from "../../../../src/orchestration/app-service/supervisor/chat-runner-loader.js"
 import { createContinuationLanes } from "../../../../src/orchestration/session/control/planned-session-continuation.js"
 import { createDeferred, mockRunner, quietSupervisorCollaborators, testSessionAuthAdmission } from "../../../fixtures/runtime-supervisor-fixtures.js"
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testCapabilityModules } from "../../../helpers/request-tool-surface.js"
 import { fakeProjections } from "./app-service-doubles.js"

@@ -22,7 +22,7 @@ import { subagentChildSession } from "./subagents/execution/control/child-sessio
 import { buildSubagentCompleted, buildSubagentResumed } from "./subagents/history/subagent-run-fact-writers.js"
 import { loadSubagentRunsFromEvents, readSubagentRuns, SUBAGENT_RUN_FACT_TYPES } from "./subagents/history/subagent-run-projection.js"
 import { prepareSessionFactAppend } from "../session/persistence/session-fact-writer.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
+import type { ToolDeclaration } from "../module-seams.js"
 import type { RoleResolver } from "../config/roles.js"
 import type { ModuleId, FirstPartyModule } from "../modules.js"
 import { moduleProtocol, type ModuleProtocolRuntime, type ModuleProtocolServices } from "../app-service/module-protocol-host.js"
@@ -289,7 +289,7 @@ export const subagentsModule = {
         return tool && !tool.shortForm ? roster(kernel, capabilities) : undefined
       },
     } },
-    { domain: "definitions", id: "subagents", value: { kind: "subagents", roles: true, retainInstalled: true, disabledTypes: disabledTypesOf } },
+    { domain: "definitions", id: "subagents", value: { kind: "agent", roles: true, retainInstalled: true, disabledTypes: disabledTypesOf } },
     { domain: "config", id: subagentsConfigSection.key, value: subagentsConfigSection },
     { domain: "settings", id: "subagents", value: { control: "binary", label: "Subagents", description: "Allow agents to delegate focused work" } },
   ],

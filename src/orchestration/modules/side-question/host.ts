@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { Effect, Fiber } from "effect"
 import type { SideQuestionExchange, SideQuestionRequest, SideQuestionView } from "../../../protocol/modules/side-question.js"
-import type { ChatModuleHost } from "../../chat-module-host.js"
+import type { ChatModuleHost } from "../../chat/chat-module-host.js"
 import { moduleRuntimeHandle } from "../../../infra/module-runtime.js"
 import { Log } from "../../../infra/log.js"
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"

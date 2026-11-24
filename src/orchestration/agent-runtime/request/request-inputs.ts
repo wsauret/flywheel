@@ -23,7 +23,7 @@ import type { ProjectDefinitionRegistry } from "../../../workflows/definitions/d
 import type { AgentDefinition } from "../../../infra/agent-definition.js";
 import type { SkillDefinition } from "../../../workflows/skills/skill-schema.js";
 import type { FirstPartyModule, FirstPartyModuleComposition } from "../../modules.js";
-import { createToolRegistry } from "../../tool-catalog.js";
+import { createToolRegistry } from "../tools/dispatch/tool-catalog.js";
 import { disabledAgentTypes, installedModules } from "../../module-catalog.js";
 import { skillLoadedFact } from "../../../workflows/skills/skill-facts.js";
 import { selectedToolNames } from "../tools/dispatch/tool-dispatch.js";

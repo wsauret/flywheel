@@ -25,7 +25,7 @@ import { coerceToolCallInput, describeInputRepair, type CoercedToolCallInput } f
 import { formatToolInputProblems, validateToolInput } from "../input/validate-input.js";
 import { toolNamesForActions } from "./tool-exposure-planner.js";
 import type { DispatchedToolContext, RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolDispatchContext, ToolResult } from "../types.js";
-import { createToolRegistry, shellCommandOf } from "../../../tool-catalog.js";
+import { createToolRegistry, shellCommandOf } from "./tool-catalog.js";
 import { TOOL_RESULT_MAX_BYTES } from "../results/truncation.js";
 
 const log = Log.create({ service: "tool-dispatch" });

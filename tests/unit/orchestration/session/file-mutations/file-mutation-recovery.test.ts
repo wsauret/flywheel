@@ -15,7 +15,7 @@ import {
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { parseFileMutationOperationCell, snapshotToFileObjectProof } from "../../../../../src/orchestration/session/file-mutations/file-mutation-operation.js"
 import { mutationSnapshot } from "../file-mutation-proof-fixture.js"
-import { RetainedFileEditAuthority } from "../../../../../src/orchestration/file-edits/retained-file-edit-host.js"
+import { RetainedFileEditAuthority } from "../../../../../src/orchestration/agent-runtime/tools/file-edits/retained-file-edit-host.js"
 import {
   context,
   mutationFacts,

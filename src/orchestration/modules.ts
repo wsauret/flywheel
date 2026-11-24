@@ -4,13 +4,12 @@ import { remoteModule } from "./modules/remote/module.js"
 import type { RetiredServiceInstallation } from "./app-service/account/installation/account-service-platform.js"
 import { composeModules, type ModuleDescriptor, type ModuleComposition } from "../infra/module-descriptor.js"
 import type { ModuleRuntimeHandle, ModuleRuntimes } from "../infra/module-runtime.js"
-import type { ChatModuleHostContribution } from "./chat-module-host.js"
+import type { ChatModuleHostContribution } from "./chat/chat-module-host.js"
 import type { TerminalRemoteContribution } from "./terminal-remote.js"
 import type { ModuleServiceHandle, ModuleServices } from "../infra/module-service.js"
 import type { NotificationEpisodeInput } from "../infra/notification-episode.js"
 import { canonicalModuleIds, EMPTY_MODULE_IDS, MODULE_IDS, type ModuleId as WireModuleId } from "../protocol/module-ids.js"
 import type { ModuleProtocolRow, ModuleProviderSetting, ModuleSetting, ModuleSettingControl, WorkflowsMode } from "../protocol/module-protocol-types.js"
-import type { ToolDeclaration } from "./agent-runtime/tools/dispatch/tool-registry.js"
 import { credentialSlotClassifier } from "./auth/credential-slot-classifier.js"
 import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
 import type { RuntimeTool } from "./agent-runtime/tools/types.js"
@@ -33,7 +32,7 @@ import { installedDefinitionBundles, installedModules, publishShippedOtherModule
 import { CREDENTIAL_PROVIDER_MODULES } from "./credential-provider-modules.js"
 import type { AuthProviderStatus } from "../protocol/auth-status-protocol-types.js"
 import { moduleRequirementsForContribution } from "./module-requirements.js"
-import type { DefinitionReconciliationInput, ModuleChildSessionHistory, ModuleDefinitionReconciliation, ModuleMaintenance, ModuleMaintenanceInput, ManagedPackageWrites, MemoryContribution, ModuleChatObserver, ModuleChatObserverContext, ModuleRetainedOperationContribution, ModuleSessionHistory, ModuleSessionAdmission, ModuleSessionDeletion, ModuleChildSession, QuestionDecisionContribution, SessionHistoryRecoveryInput, SessionToolSummaryReader, SkillChildGrantContribution, SupersededFactInvalidationResult, WorkspaceMigration } from "./module-seams.js"
+import type { DefinitionContribution, DefinitionReconciliationInput, ToolDeclaration, ModuleChildSessionHistory, ModuleDefinitionReconciliation, ModuleMaintenance, ModuleMaintenanceInput, ManagedPackageWrites, MemoryContribution, ModuleChatObserver, ModuleChatObserverContext, ModuleRetainedOperationContribution, ModuleSessionHistory, ModuleSessionAdmission, ModuleSessionDeletion, ModuleChildSession, QuestionDecisionContribution, SessionHistoryRecoveryInput, SessionToolSummaryReader, SkillChildGrantContribution, SupersededFactInvalidationResult, WorkspaceMigration } from "./module-seams.js"
 import type { ModuleRetainedDiagnostics } from "./module-diagnostics.js"
 import type { ModuleAgentTasks } from "./module-agent-tasks.js"
 import type { DEVELOPMENT_MODULES } from "./development-modules.js"
@@ -49,7 +48,7 @@ import { fileToolsModule } from "./modules/file-tools.js"
 import { learningModule } from "./modules/learning.js"
 import { subscriptionUsageModule } from "./modules/subscription-usage/module.js"
 import { mcpModule } from "./modules/mcp/module.js"
-import { customProviderModules } from "./custom-provider-modules.js"
+import { customProviderModules } from "./config/custom-provider-modules.js"
 import { customProviderGeneration } from "../infra/llm/custom-provider-registry.js"
 import { recallModule } from "./modules/recall.js"
 import { papercutsModule } from "./modules/papercuts.js"
@@ -115,15 +114,6 @@ interface PromptRosterContribution {
   readonly definition: "skills" | "web"
   readonly visibility: "model-invocable"
 }
-
-type DefinitionContribution =
-  | { readonly kind: "skills"; readonly retainInstalled: true }
-  /** `disabledTypes` reads the agent types that a configuration turns off (ARCH-STRUCTURE-044). */
-  | { readonly kind: "subagents"; readonly roles: true; readonly retainInstalled: true; readonly disabledTypes: (config: { readonly [section: string]: unknown }) => readonly string[] }
-  | { readonly kind: "workflows" }
-  /** A module-owned definition root. The registry loads its skills and retains
-   *  its workflow directory for file brief resolution (ARCH-STRUCTURE-031). */
-  | { readonly kind: "bundle"; readonly root: string }
 
 /** A set of tools that exist only inside the code projection: a module builds
  *  them per request from `{ kernel, modules }`, the planner adds them to the
@@ -728,7 +718,7 @@ export function invalidateSupersededModuleFacts(dbPath: string, modules: readonl
 
 export function definitionModuleRequirements(modules: readonly FirstPartyModule[] = installedModules()) {
   const forKind = (kind: DefinitionContribution["kind"]): readonly ModuleId[] => canonicalModuleIds(modules.flatMap((module) => module.contributions.flatMap((entry) => entry.domain === "definitions" && entry.value.kind === kind ? moduleRequirementsForContribution("definitions", entry.id, modules) : [])))
-  return { skills: forKind("skills"), subagents: forKind("subagents"), workflows: forKind("workflows") }
+  return { skills: forKind("skill"), subagents: forKind("agent"), workflows: forKind("workflow") }
 }
 export function moduleIdForSettingControl(control: ModuleSettingControl["control"], modules: readonly FirstPartyModule[] = installedModules()): ModuleId {
   const owners = modules.filter((module) => module.contributions.some((entry) => entry.domain === "settings" && entry.value.control === control))

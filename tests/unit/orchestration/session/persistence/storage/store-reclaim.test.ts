@@ -3,7 +3,7 @@ import { Database } from "bun:sqlite"
 import { resolveEventStoreDbFile } from "../../../../../../src/infra/paths.js"
 import { readStoreUsage } from "../../../../../../src/orchestration/session/persistence/storage/event-store-maintenance.js"
 import { reclaimStoreExclusively, sqliteTemporaryDirectory, vacuumSpaceRefusal, vacuumSpaceShortfall } from "../../../../../../src/orchestration/session/persistence/storage/store-reclaim.js"
-import { prepareWorkspaceState } from "../../../../../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../../../../../src/orchestration/workspace-state/workspace-state.js"
 import { canonicalTestDirectory, temporaryDirectories, testDirectories } from "../../../../../helpers/directories.js"
 
 const temporary = temporaryDirectories()

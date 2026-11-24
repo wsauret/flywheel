@@ -10,7 +10,7 @@ import { parseFileMutationOperationHeader, readFileMutationOperation } from "../
 
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { testBaseTools, admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
-import { MAX_FILE_EDIT_BYTES } from "../../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
+import { MAX_FILE_EDIT_BYTES } from "../../../../../../src/orchestration/agent-runtime/tools/file-edits/retained-file-edit-host.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
 import { createRecordingFileMutationStore, makeContext } from "../_fixtures.js";
 import type { InFlightPayload } from "../../../../../../src/infra/event-store-types.js";

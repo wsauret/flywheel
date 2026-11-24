@@ -14,11 +14,11 @@ import { ChatSessionState, type ChatCallbacks, type ChatSessionDeps } from "./ty
 import { createChatRunnerLifecycle } from "./lifecycle/runner-lifecycle.js"
 import { TITLE_GENERATION_ROLE_ID } from "../config/roles.js"
 import { wireSessionSubscribers } from "../session/persistence/create-session-infra.js"
-import { createOutputSession } from "../runner/output-session.js"
+import { createOutputSession } from "../session-store/output-session.js"
 import { SessionEventAdapter } from "../session-store/event-adapter.js"
 import { deleteSessionArtifacts } from "../session/persistence/storage/session-artifacts.js"
 import { generateSessionTitle, type SessionTitleGeneration } from "../session/metadata/session-title.js"
-import { createAskUserController } from "../runner/ask-user-controller.js"
+import { createAskUserController } from "../agent-runtime/tools/sessions/ask-user-controller.js"
 import { voidUnclaimedDecisions } from "../session/agent-input/agent-input-decision.js"
 import { readChatTurnEnd } from "../session/control/chat-session-run-evidence.js"
 

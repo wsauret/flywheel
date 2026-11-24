@@ -8,7 +8,8 @@ import { composeModuleRuntimes, moduleRuntimeHandle, NO_MODULE_RUNTIMES } from "
 import { composeModules } from "../../../../../../src/infra/module-descriptor.js";
 import type { ModuleRuntimeServices } from "../../../../../../src/orchestration/agent-runtime/request/module-services/module-runtime-services.js";
 import { planToolExposure } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
-import { toolRegistryFromComposition, type ToolDeclaration } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
+import { toolRegistryFromComposition } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
+import type { ToolDeclaration } from "../../../../../../src/orchestration/module-seams.js";
 import type { RuntimeTool } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { SHIPPED_MODULES, type FirstPartyModule, type FirstPartyModuleComposition } from "../../../../../../src/orchestration/modules.js";
 import { testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";

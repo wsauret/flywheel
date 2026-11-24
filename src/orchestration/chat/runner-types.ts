@@ -1,7 +1,7 @@
 import type { AnyBlock } from "../../infra/output-blocks.js"
 import type { CapabilityCheck } from "../../infra/capability-text.js"
 import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
-import type { Runner } from "../runner/types.js"
+import type { Runner } from "../agent-runtime/runner/turn-host/types.js"
 import type { AgentInputAnswers } from "../../protocol/question-protocol-types.js"
 import type { ModuleRuntimes } from "../../infra/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
@@ -18,6 +18,17 @@ import type { ChatTurnEnding } from "./runner-completion.js"
 export type ChatSendResult = "accepted" | "recorded" | "ended"
 
 export interface ChatRunner extends Runner {
+  abort(): void
+  /** Cuts the running turn and any running tool call and hands the turn to
+   *  the person: the one resumable cut. False when nothing runs. */
+  interrupt(): boolean
+  /** Continues the interrupted turn or step from where it stopped, with no
+   *  new message; false when nothing is interrupted or the runner ended.
+   *  `announce` is false after a planned replacement's unseen cut, so the
+   *  continuation shows no Resumed row either. */
+  resume(options: { readonly announce: boolean }): boolean
+  /** Fire the combined learning review immediately (the /learn command). */
+  learn?(): boolean
   /** Session resources available from attachment until awaited disposal. */
   readonly chatModuleHosts: ModuleRuntimes
   onModuleRuntimesChange?(listener: (modules: ModuleRuntimes) => void): () => void

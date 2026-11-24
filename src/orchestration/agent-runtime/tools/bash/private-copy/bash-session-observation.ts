@@ -2,7 +2,7 @@ import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import type { MutationFileEvidence } from "../../../../../infra/mutation-evidence.js";
 import { SCRATCH_MUTATIONS_DIR, SESSIONS_DIR } from "../../../../../infra/paths.js";
-import { fileFingerprint, sameObservedState, type FileFingerprint } from "../../../../file-edits/file-state.js";
+import { fileFingerprint, sameObservedState, type FileFingerprint } from "../../file-edits/file-state.js";
 import { cloneEntry, mirrorTree, RACY_WINDOW_NS, type MirrorPlan, type MirrorState, type MirrorTally } from "./bash-private-copy-mirror.js";
 import { removedDirectories, type RemovedDirectory } from "./bash-private-copy-tree.js";
 import { BACKGROUND_COMMAND_FILE_PREFIX } from "../bash-script.js";

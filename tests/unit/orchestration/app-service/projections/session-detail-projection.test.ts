@@ -22,7 +22,7 @@ import { SessionCatalogRowSchema } from "../../../../../src/protocol/session-cat
 import type { RuntimeSessionDetailResult } from "../../../../../src/protocol/session-detail-protocol-types.js"
 import { WORKFLOW_LAUNCH_OPERATION_KIND, type WorkflowLaunchOperation } from "../../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract.js"
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js"
-import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js"
+import { createOutputSession } from "../../../../../src/orchestration/session-store/output-session.js"
 import { branchBlocks } from "../../../../helpers/branch-blocks.js"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../../session/_session-manager-fixtures.js"

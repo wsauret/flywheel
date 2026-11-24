@@ -6,7 +6,7 @@ import { DEVELOPMENT_MODULES } from "../../../../../src/orchestration/developmen
 import { developmentModule } from "../../../../../src/orchestration/modules/development/module.js";
 import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/request/module-services/module-runtime-services.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot, installedCliNouns, moduleProtocolRows, moduleSelectionFromConfig, RETIRED_MODULE_ID_SPELLINGS, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
-import { createToolRegistry, installedPersonaToolEntries } from "../../../../../src/orchestration/tool-catalog.js";
+import { createToolRegistry, installedPersonaToolEntries } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { composeModuleServices, NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js";
 import { moduleRequirementsForContribution } from "../../../../../src/orchestration/module-requirements.js";
 import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";

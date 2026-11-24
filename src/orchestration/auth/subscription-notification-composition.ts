@@ -2,7 +2,7 @@ import { errorMessage } from "../../infra/error-message.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
 import type { FrontendEvent } from "../../protocol/app-service-types.js"
 import type { RuntimeOwnership } from "../app-service/runtime/runtime-ownership.js"
-import { createSubscriptionSpendConsentNotificationMaterializer, materializeSubscriptionSpendConsentAuthChange } from "../subscription-spend-consent/notification-materializer.js"
+import { createSubscriptionSpendConsentNotificationMaterializer, materializeSubscriptionSpendConsentAuthChange } from "./subscription-spend-consent/notification-materializer.js"
 import type { AuthRuntime } from "../app-service/auth/auth-runtime.js"
 
 /** The notifications subscription usage raises: threshold crossings as

@@ -16,7 +16,7 @@ import { createChatRunnerLoader } from "../../../../../../src/orchestration/app-
 import { createContinuationLanes } from "../../../../../../src/orchestration/session/control/planned-session-continuation.js"
 import { durableBranchHasUserMessage } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { mockRunner, quietSupervisorCollaborators, testSessionAuthAdmission } from "../../../../../fixtures/runtime-supervisor-fixtures.js"
-import { createSessionViewLoader } from "../../../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../../../src/orchestration/app-service/projections/session-view.js"
 import { repoDefinitions } from "../../../../../helpers/project-definitions.js"
 import { testCapabilityModules } from "../../../../../helpers/request-tool-surface.js"
 import { servedProjectState } from "../../_served-project-state-fixture.js"

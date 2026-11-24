@@ -14,7 +14,6 @@ import type { AskUserToolDeps } from "./agent-runtime/tools/sessions/ask-user.js
 import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
 import type { ExternalSkillChildGrant } from "./agent-runtime/tools/definitions/skill.js"
 import type { SessionFactWriter } from "./session/persistence/session-fact-writer.js"
-import type { CapabilityAccess, RuntimeToolExecution } from "./agent-runtime/tools/types.js"
 import type { ChatInput } from "../infra/chat-input.js"
 import type { RecallInput, RecallResult } from "../protocol/conversation-recall.js"
 import type { ReplayedSession, RoleSettings } from "./session/metadata/schemas.js"
@@ -36,6 +35,9 @@ import type { ChildExecutionResources } from "./session/control/children/child-e
 import type { WorkflowRunCut, WorkflowRunReader, WorkflowRunWriter } from "./workflow-host/run-record.js"
 import type { WorkflowPublication, WorkflowLaunchBinding } from "./session/control/children/child-session-publication.js"
 import type { WorkflowSessionFact } from "../workflows/vm/facts/session-facts.js"
+import type { ToolAction } from "../infra/workflow-types.js"
+import type { ToolInteractionContract } from "./agent-runtime/request/prompt/model-interaction-profile.js"
+import type { AdvertisedTool, CapabilityAccess, RuntimeTool, RuntimeToolExecution, RuntimeToolInput, ShellCommand } from "./agent-runtime/tools/types.js"
 
 /** Installed run reads stay available when new workflow admission is disabled. */
 /** Where workflows sit in the session tree, for an owner that walks
@@ -712,3 +714,113 @@ export interface ModuleRetainedOperationContribution {
 export interface ModuleSessionAdmission {
   affectedSessions(fact: StoredFact): readonly string[]
 }
+
+/** core: the normal coding surface, participates in explicit selection.
+ *  ambient: runtime context, inspection, or settlement surfaces that an
+ *  ordinary selected-tool allowlist does not remove.
+ *  opt-in: requires explicit selection plus declared runtime dependencies. */
+export type ToolExposureCategory = "core" | "ambient" | "opt-in"
+
+/** What every tool factory receives: the request's kernel facts and the
+ *  runtimes of the enabled modules, read through typed handles. */
+export interface ToolDeps {
+  readonly kernel: KernelToolDeps
+  readonly modules: ModuleRuntimes
+}
+
+/** A tool's final form once every registration is constructed: the tool it
+ *  settles on given the planned set, or the reason it withdraws. */
+type RefinedTool =
+  | { readonly tool: RuntimeTool; readonly reason?: undefined }
+  | { readonly tool?: undefined; readonly reason: string }
+
+/** Builds a tool over the request's final eligible set, after every other
+ *  registration and every module's code-only tools are planned, with the
+ *  namespaces the modules declare before their tools arrive. It reports
+ *  the eligible tools it cannot carry as named omissions. */
+export type DeferredToolFactory = (eligible: ReadonlyMap<string, RuntimeTool>, namespaces: ReadonlySet<string>) => {
+  readonly tool: RuntimeTool
+  readonly omissions: readonly { readonly name: string; readonly reason: string }[]
+}
+
+export interface ToolFactoryResult {
+  readonly tool?: RuntimeTool
+  /** The tool is omitted for this reason. */
+  readonly reason?: string
+  /** The tool's per-agent surface is missing. A tree-hosted runner advertises
+   *  `tool` and refuses its call with `reason`; any other runner omits it with
+   *  `reason`. The definition names no surface, so its bytes are the same
+   *  whether the agent holds the surface (see `KernelToolDeps.treeHosted`). */
+  readonly unusable?: { readonly tool: AdvertisedTool; readonly reason: string }
+  /** Named sub-omissions a present tool reports, such as one input it cannot advertise. */
+  readonly omissions?: readonly { readonly name: string; readonly reason: string }[]
+  /** The modules whose part of the advertised tool, such as one input, this agent's calls are refused because the
+   *  agent's own selection turned them off (`ToolExposurePlan.turnedOff`). */
+  readonly turnedOff?: readonly ModuleId[]
+  /** The registration's tool is built last, over the final eligible set. Its
+   *  presence admits the modules' code-only tools, whose capability
+   *  authority it becomes. One request plans at most one. */
+  readonly deferred?: DeferredToolFactory
+  /** Runs after every registration is constructed, with the planned set. */
+  readonly refine?: (planned: ReadonlyMap<string, RuntimeTool>) => RefinedTool
+}
+
+/** What a tool is outside the engine. Settings, persona grants, the selected
+ *  allowlist, clone inheritance, and the audit read the tool by its name, so
+ *  one tool states this policy once, whatever registrations serve it. */
+export interface ToolPolicy {
+  /** What the tool does, for policy: workflow `toolScoping` grants and
+   *  persona `excludeActions` read it. Clients never see it
+   *  they render and group by the display action in the tool display
+   *  registry, which can differ on purpose. */
+  readonly action: ToolAction
+  readonly category: ToolExposureCategory
+  readonly cloneInheritance: "inherit" | "reconstruct"
+  readonly learningReviewExecutable: boolean
+  readonly semanticBundle: "file-media" | null
+  readonly personaBaseline: boolean
+  readonly personaOrder?: number
+  readonly registryOrder: number
+  /** The trees that offer the tool in short form (ARCH-CONTEXT-038): every tree, or only an unattended tree, whose
+   *  agents rarely call it. `summary` is the one line that the short form carries. Absent: always in full form. */
+  readonly shortForm?: { readonly trees: "always" | "unattended"; readonly summary: string }
+}
+
+/** One executable form of a tool. Its id is the registration id that
+ *  conversation history and the request audit record, so it never changes. */
+export interface ToolRegistration<Capability extends string = string> {
+  readonly capabilities: readonly Capability[]
+  /** Planned only when the serving model selects this presentation contract. */
+  readonly interactionContract?: ToolInteractionContract
+  /** Provider-visible name when it differs from the registration id. */
+  readonly exposedName?: string
+  /** A shell registration's command and the absolute directory it runs in,
+   *  so a rule judges a call, live or recorded, whatever input names this
+   *  registration gives them. The tool's own execution starts in the same
+   *  directory. Pure: it reads only the input and the execution directory.
+   *  Undefined when the input carries no command string. */
+  readonly shellCommand?: (input: Readonly<RuntimeToolInput>, executionCwd: string) => ShellCommand | undefined
+  readonly create: (deps: ToolDeps) => ToolFactoryResult
+}
+
+/** A tool as its owner declares it: its policy once, and the registrations
+ *  the serving model's interaction profile selects among. */
+export interface ToolDeclaration<Capability extends string = string> extends ToolPolicy {
+  readonly registrations: { readonly [registrationId: string]: ToolRegistration<Capability> }
+}
+
+/** One registry entry: a registration with the name and policy of its tool. */
+export interface RegisteredTool<Capability extends string = ModuleId> extends ToolPolicy, ToolRegistration<Capability> {
+  readonly tool: string
+}
+
+/** What a module contributes to the definition registry. `kind` names the kind of
+ *  definition it serves, in the definition provenance vocabulary (`DefinitionKind`). */
+export type DefinitionContribution =
+  | { readonly kind: "skill"; readonly retainInstalled: true }
+  /** `disabledTypes` reads the agent types that a configuration turns off (ARCH-STRUCTURE-044). */
+  | { readonly kind: "agent"; readonly roles: true; readonly retainInstalled: true; readonly disabledTypes: (config: { readonly [section: string]: unknown }) => readonly string[] }
+  | { readonly kind: "workflow" }
+  /** A module-owned definition root. The registry loads its skills and retains
+   *  its workflow directory for file brief resolution (ARCH-STRUCTURE-031). */
+  | { readonly kind: "bundle"; readonly root: string }

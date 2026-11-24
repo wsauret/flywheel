@@ -14,7 +14,7 @@ import {
   type ForegroundBashHoldController,
 } from "../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
 import type { UsageAuthorityGeneration } from "../../../src/orchestration/agent-runtime/request/usage/usage-settlement.js";
-import { createInstalledDefinitionRegistry } from "../../../src/orchestration/definition-catalog.js";
+import { createInstalledDefinitionRegistry } from "../../../src/orchestration/app-service/definitions/definition-catalog.js";
 import { refusingLauncher } from "../../helpers/launcher-fake.js";
 import { makeWorkflowDeps } from "../orchestration/headless/_headless-run-fixtures.js";
 import type { ComposedModuleServices } from "../../../src/orchestration/app-service/module-service-host.js";

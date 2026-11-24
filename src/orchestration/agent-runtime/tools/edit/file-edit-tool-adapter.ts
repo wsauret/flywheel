@@ -5,7 +5,7 @@ import { buildMutationEvidence, type MutationEvidenceEntry } from "../../../../i
 import { formatFileSamples, summarizeFileSamples } from "../../../../infra/not-applied-files.js"
 import { truncateUtf8Prefix } from "../../../../infra/output/truncate-output.js"
 import { readSessionContentRange, type StageSessionContentNodes } from "../../../../infra/session-content.js"
-import { FileEditRefusal, publishFileEdits, type FileEditOperationOptions, type FileEditPublication, type FileEditPublicationOutcome, type PlannedFileEdit } from "../../../file-edits/file-edit-operation.js"
+import { FileEditRefusal, publishFileEdits, type FileEditOperationOptions, type FileEditPublication, type FileEditPublicationOutcome, type PlannedFileEdit } from "../file-edits/file-edit-operation.js"
 import { settleFileMutationArtifact } from "./file-mutation-artifact.js"
 import type { FileReadStaleness, LineRange } from "../files/file-read-ledger.js"
 import { resolveToolPath } from "../files/tool-paths.js"

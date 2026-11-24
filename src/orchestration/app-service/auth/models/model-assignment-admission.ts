@@ -30,7 +30,7 @@ import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCan
 import type { ProviderAvailabilityOwner, RequestAdmission } from "../../../agent-runtime/llm/routing/provider-availability-types.js"
 import { getSharedProviderAvailability } from "../../../agent-runtime/llm/routing/shared-provider-availability.js"
 import { candidateReadiness } from "../../../agent-runtime/llm/routing/failover-client.js"
-import { requestAdmissionFromCaptures } from "../../../subscription-spend-consent/admission-capture.js"
+import { requestAdmissionFromCaptures } from "../../../auth/subscription-spend-consent/admission-capture.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/log.js"
 import type { CapacityServingCheck, CapacityWaitLedger } from "../../../session/control/capacity-wait.js"

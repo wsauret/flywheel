@@ -286,12 +286,7 @@ export function fakeSessionStore(entries: Map<string, SessionEntry>): FakeSessio
     has: (sessionId) => entries.has(sessionId),
     isRunning: (sessionId) => entries.has(sessionId),
     abort: async () => false,
-    prepareForShutdown: () => {},
-    interruptForReplacement: async () => false,
-    interrupt: () => false,
-    releaseForegroundBash: () => false,
-    transferForegroundForReplacement: async () => {},
-    terminateBackgroundWork: () => {},
+    activeRunner: () => null,
     remove: async (sessionId) => {
       entries.delete(sessionId)
       revisions.delete(sessionId)
@@ -313,10 +308,6 @@ export function fakeSessionStore(entries: Map<string, SessionEntry>): FakeSessio
       bump(sessionId)
       emitChange()
     },
-    answerQuestion: () => false,
-    cancelQuestion: () => false,
-    compactConversation: async () => false,
-    learnFromSession: () => false,
     runningCount: () => entries.size,
     allIds: () => [...entries.keys()],
     revision: (sessionId) => revisions.get(sessionId) ?? 0,

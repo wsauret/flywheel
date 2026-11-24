@@ -17,7 +17,7 @@ import type { ToolAction } from "../../infra/workflow-types.js";
 import type { BriefScope } from "../config/models/role-selection.js";
 import type { RoleResolver } from "../config/roles.js";
 import type { RoleSettingEntry } from "../session/metadata/schemas.js";
-import type { AskUserController } from "../runner/ask-user-controller.js";
+import type { AskUserController } from "./tools/sessions/ask-user-controller.js";
 import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/attempt/handoff-tool-schema.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
 import type { ProviderRequestAuditFact } from "../session/runtime-facts/provider-request-audit-facts.js";

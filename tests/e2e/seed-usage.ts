@@ -9,7 +9,7 @@ import type { SubscriptionUsageReport, SubscriptionUsageSpendSource } from "../.
 import { authDir } from "../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js"
 import { createSessionManager } from "../../src/orchestration/session/manager.js"
-import { prepareWorkspaceState } from "../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../src/orchestration/workspace-state/workspace-state.js"
 
 function requireUserDataRoot(value: string | undefined): string {
   if (!value) throw new Error("usage: seed-usage.ts <user-data-root>")

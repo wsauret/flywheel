@@ -29,7 +29,7 @@ import {
 import { continueWorkflowReplay, type WorkflowReplayDeps } from "../../../../../src/workflows/vm/host/replay.js"
 import type { WorkflowEvent } from "../../../../../src/workflows/vm/facts/events.js"
 import { foldWorkflowControl } from "../../../../../src/workflows/vm/recovery/fact-fold.js"
-import { atCapabilityMarkers, atCapabilityTextBase, beforeExplorerModelClaim, beforeLeanPersonaText, beforeLexiconCut, beforeToolSteeringCut, beforeUatScratchpadRule } from "../../../orchestration/migrations/_persona-budget.js"
+import { atCapabilityMarkers, atCapabilityTextBase, beforeExplorerModelClaim, beforeLeanPersonaText, beforeLexiconCut, beforeToolSteeringCut, beforeUatScratchpadRule } from "../../../orchestration/workspace-state/migrations/_persona-budget.js"
 import { recoverWorkflowControl } from "../../../../../src/workflows/vm/recovery/recovery.js"
 import {
   buildWorkflowControlInitializedFact,

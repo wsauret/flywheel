@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs"
 import { join } from "node:path"
 import type { StartupDirectories } from "../../src/infra/directory-authorities.js"
 import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js"
-import { prepareWorkspaceState } from "../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../src/orchestration/workspace-state/workspace-state.js"
 
 export const tolerantWorkspaceSessions = {
   legacyV1: "legacy-v1",

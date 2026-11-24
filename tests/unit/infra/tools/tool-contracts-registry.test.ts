@@ -4,9 +4,9 @@ import { normalizeSkillId } from "../../../../src/infra/skill-id.js";
 import { testBaseTools, testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
 import { bashExecution } from "../../orchestration/agent-runtime/tools/bash/_bash-fixtures.js";
-import type { ToolRegistration } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
+import type { ToolRegistration } from "../../../../src/orchestration/module-seams.js";
 
-import { createToolRegistry } from "../../../../src/orchestration/tool-catalog.js";
+import { createToolRegistry } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { SHIPPED_MODULES } from "../../../../src/orchestration/modules.js";
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
 const toolRegistrations = Object.fromEntries(createToolRegistry());

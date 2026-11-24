@@ -6,7 +6,7 @@ import { createRuntimeSupervisor } from "../../../../src/orchestration/app-servi
 import { attachedRunnerDelivery } from "../../../../src/orchestration/app-service/supervisor/session-background-notifications.js"
 import type { RuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor-types.js"
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer.js"
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import type { SessionManager } from "../../../../src/orchestration/session/manager.js"
 import { bindRetainedOperations, bindSessionStops } from "../../../../src/orchestration/session/control/module-session-operations.js"

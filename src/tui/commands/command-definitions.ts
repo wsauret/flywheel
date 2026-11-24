@@ -1,5 +1,5 @@
 import { errorMessage } from "../../infra/error-message.js"
-import { fontInstallSummary, fontStatusSummary, getFontStatus, installBundledFont } from "../../orchestration/font-installer.js"
+import { fontInstallSummary, fontStatusSummary, getFontStatus, installBundledFont } from "../terminal/font-installer.js"
 import { ownedCommandRunner } from "../../infra/owned-command.js"
 import { createAsyncReporter } from "../hooks/wiring/report-async.js"
 import { mutateRuntimeConfig } from "../hooks/state/create-settings-store.js"

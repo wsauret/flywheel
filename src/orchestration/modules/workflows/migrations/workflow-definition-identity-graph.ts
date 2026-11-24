@@ -13,7 +13,7 @@ import {
 } from "../../../../workflows/vm/facts/definition-identity.js"
 import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/facts/session-facts.js"
 import { MIGRATED_FACT_TYPE } from "./workflow-identity-chain.js"
-import { tableExists } from "../../../migrations/engine.js"
+import { tableExists } from "../../../workspace-state/migrations/engine.js"
 
 const BUSY_TIMEOUT_MS = 5000
 

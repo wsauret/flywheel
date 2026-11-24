@@ -1,5 +1,5 @@
 import { moduleRuntimeHandle } from "../../infra/module-runtime.js";
-import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js";
+import type { ToolDeclaration } from "../module-seams.js";
 import { createWebTool, WEB_TOOL_DEFINITION } from "../agent-runtime/tools/web.js";
 import type { RuntimeToolSurfaces } from "../agent-runtime/types.js";
 import { webSearchRemedy } from "../agent-runtime/web-search/select.js";

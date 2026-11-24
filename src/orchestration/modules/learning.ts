@@ -14,7 +14,7 @@ import type { MutationEvidence } from "../../infra/mutation-evidence.js";
 import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js";
 import { createMemoryTool, type MemoryToolDeps } from "./learning/tools/memory.js";
 import { createSkillManageTool, type SkillManageToolDeps } from "./learning/tools/skill-manage.js";
-import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js";
+import type { ToolDeclaration } from "../module-seams.js";
 import type { FirstPartyModule } from "../modules.js";
 import type { CliCommandContext, CliNounContribution, CliVerb } from "../cli-contribution.js";
 

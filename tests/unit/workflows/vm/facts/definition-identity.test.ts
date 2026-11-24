@@ -46,7 +46,7 @@ import {
   withoutRetiredToolSteering,
 } from "../../../../../src/workflows/vm/facts/persona-identity-proofs.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
-import { beforeBudgetCut, beforeLexiconCut, beforePromptSwitchCut, beforeScenarioBudgetCut, beforeToolSteeringCut, personasAtCapabilityTextBase } from "../../../orchestration/migrations/_persona-budget.js"
+import { beforeBudgetCut, beforeLexiconCut, beforePromptSwitchCut, beforeScenarioBudgetCut, beforeToolSteeringCut, personasAtCapabilityTextBase } from "../../../orchestration/workspace-state/migrations/_persona-budget.js"
 import { retiredStepIdentity, withoutRetiredStepScopes } from "../../../../../src/workflows/vm/facts/retired-step-identity.js"
 import { parseWorkflowSessionFact } from "../../../../../src/workflows/vm/facts/session-facts.js"
 import { StepGrammarWorkflowSchema, type StepGrammarWorkflow } from "../../../../../src/workflows/schema/retired-step-grammar/schema.js"

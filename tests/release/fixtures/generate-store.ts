@@ -35,7 +35,7 @@ import { refreshSkillLoadStatsSnapshot } from "../../../src/orchestration/module
 import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/metadata/catalog/session-summary-index.js"
 import { createSessionFactWriter, prepareSessionFactAppend, type SessionFact } from "../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { SessionSchema } from "../../../src/orchestration/session/metadata/schemas.js"
-import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state/workspace-state.js"
 import { historicalWorkflowPublicationFacts } from "./historical-workflow-publication.js"
 
 /** How much history the fixture writes. Every boundary in the writers is a

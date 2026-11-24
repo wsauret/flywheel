@@ -18,7 +18,7 @@ import { personaInstructions } from "../../../../src/workflows/agents/persona-in
 import { loadStandalonePersonaRegistry } from "../../../../src/workflows/agents/registry.js";
 import { grantedSubagentTypes, personaToolNames } from "../../../../src/workflows/agents/subagent-reachability.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
-import { createToolRegistry } from "../../../../src/orchestration/tool-catalog.js";
+import { createToolRegistry } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { composeFirstPartyModules, SHIPPED_MODULES, type ModuleId } from "../../../../src/orchestration/modules.js";
 import { renderSkillClosure } from "../../../../src/workflows/skills/skill-render.js";
 import { isReadOnlyPersona, toolGrantRules } from "../../../../src/orchestration/agent-runtime/request/prompt/persona-tool-rules.js";

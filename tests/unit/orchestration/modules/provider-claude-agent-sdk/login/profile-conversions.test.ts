@@ -14,8 +14,8 @@ import { credentialSlotClassifier } from "../../../../../../src/orchestration/au
 import { composeFirstPartyModules, type FirstPartyModule } from "../../../../../../src/orchestration/modules.js";
 import { createClaudeAgentSdkModule } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import { createSubscriptionUsageService } from "../../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
-import { createSubscriptionSpendConsentService } from "../../../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
-import { createSubscriptionSpendConsentNotificationMaterializer } from "../../../../../../src/orchestration/subscription-spend-consent/notification-materializer.js";
+import { createSubscriptionSpendConsentService } from "../../../../../../src/orchestration/auth/subscription-spend-consent/subscription-spend-consent-service.js";
+import { createSubscriptionSpendConsentNotificationMaterializer } from "../../../../../../src/orchestration/auth/subscription-spend-consent/notification-materializer.js";
 import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../../../src/infra/notification-episode.js";
 import { refusingLauncher } from "../../../../../helpers/launcher-fake.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";

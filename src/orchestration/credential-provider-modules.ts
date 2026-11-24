@@ -5,7 +5,7 @@ import { customProviderGeneration, customProviderIds } from "../infra/llm/custom
 import type { SubscriptionUsageReader } from "../infra/llm/usage/subscription-usage.js"
 import type { AuthProviderStatus } from "../protocol/auth-status-protocol-types.js"
 import { credentialSlotClassifier } from "./auth/credential-slot-classifier.js"
-import { customProviderModules } from "./custom-provider-modules.js"
+import { customProviderModules } from "./config/custom-provider-modules.js"
 import { installedCredentialProviderModules, publishShippedCredentialProviders } from "./module-catalog.js"
 import type { FirstPartyModule, FirstPartyModuleComposition } from "./modules.js"
 import { anthropicApiModule } from "./modules/provider-anthropic-api/module.js"

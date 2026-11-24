@@ -23,7 +23,7 @@ async function openExistingTree(options: Parameters<typeof tryOpenConversationTr
   if (!tree) throw new Error(`expected conversation tree ${options.conversationId}`)
   return tree
 }
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import { mockRunner, supervisorBaseDeps, createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 const createRuntimeSupervisor = createRuntimeSupervisorBase

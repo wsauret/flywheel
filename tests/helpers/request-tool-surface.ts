@@ -7,7 +7,7 @@ import { NO_CAPABILITY_ACCESS, type RuntimeTool } from "../../src/orchestration/
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js";
 import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema/schema.js";
 import { captureRuntimeConfigRequest, type CaptureRuntimeConfig } from "../../src/orchestration/agent-runtime/request/request-config.js";
-import { createToolRegistry } from "../../src/orchestration/tool-catalog.js";
+import { createToolRegistry } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { definitionAvailabilityOf } from "../../src/orchestration/app-service/definitions/definition-availability.js";
 import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/definitions/definition-registry.js";

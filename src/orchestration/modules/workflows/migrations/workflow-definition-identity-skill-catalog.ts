@@ -13,7 +13,7 @@ import {
   recordSkippedWorkflowMigrationCandidate,
   type AdoptionCandidate,
 } from "./workflow-identity-chain.js"
-import { migrationRecorded, recordMigration, requirePlannedScope, tableExists } from "../../../migrations/engine.js"
+import { migrationRecorded, recordMigration, requirePlannedScope, tableExists } from "../../../workspace-state/migrations/engine.js"
 
 interface UnknownRecord {
   [key: string]: unknown
