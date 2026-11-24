@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test"
 import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
-import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
+import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
-import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
+import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { chatEntry, fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
 import { durableRow, managerWithSessions } from "./_frontend-projection-fixtures.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js";

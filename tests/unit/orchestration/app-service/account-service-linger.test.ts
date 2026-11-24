@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { createAccountServiceInstallation } from "../../../../src/orchestration/app-service/account-service-installation.js"
+import { createAccountServiceInstallation } from "../../../../src/orchestration/app-service/account/installation/account-service-installation.js"
 import { fixture, missing, ok, unanswered, type Response } from "./_account-service-fixtures.js"
 
 /** logind's answer about the account: its name and whether its user manager

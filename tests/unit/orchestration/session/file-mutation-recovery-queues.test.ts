@@ -4,8 +4,8 @@ import { join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { withMutationQueueKeys } from "../../../../src/infra/file-mutation-queue.js"
 import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-edits/retained-file-edit-host.js"
-import { stageFileMutationOperation, snapshotToFileObjectProof } from "../../../../src/orchestration/session/file-mutation-operation.js"
-import { loadSessionPendingFileMutations, reconcilePendingFileMutations } from "../../../../src/orchestration/session/file-mutation-recovery.js"
+import { stageFileMutationOperation, snapshotToFileObjectProof } from "../../../../src/orchestration/session/file-mutations/file-mutation-operation.js"
+import { loadSessionPendingFileMutations, reconcilePendingFileMutations } from "../../../../src/orchestration/session/file-mutations/file-mutation-recovery.js"
 import { createDeferred } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import {
   mutationFacts,

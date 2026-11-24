@@ -1,9 +1,9 @@
 import { DebugLog } from "../../../../infra/debug-log.js";
 import { LlmStreamError } from "../../../agent-runtime/llm/errors.js";
-import type { ProviderTransportHiddenRequest } from "../../../session/provider-request-audit-types.js";
+import type { ProviderTransportHiddenRequest } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import { CLAUDE_AGENT_SDK_LABEL } from "../names.js";
-import { serviceRequests, wireFailure, type WireFailure } from "../service-requests.js";
-import { silentDebugOutputFailure, type DebugLine, type EngineDrift, type SilentVersions } from "../stderr-signals.js";
+import { serviceRequests, wireFailure, type WireFailure } from "../engine/service-requests.js";
+import { silentDebugOutputFailure, type DebugLine, type EngineDrift, type SilentVersions } from "../engine/stderr-signals.js";
 
 /** How long a hosted agent's failed step waits for the record of its request to complete. stderr and the gate's
  *  socket are separate pipes, so the record can complete moments after the step ended. */

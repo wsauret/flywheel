@@ -6,7 +6,7 @@ import { ToolActionSchema } from "../../../src/infra/workflow-types.js";
 import { describeDefinitionRefusal, loadPathWorkflow } from "../../../src/orchestration/workflow-host/lifecycle/path-workflow.js";
 import { latestReducer } from "../../../src/workflows/reducers/registry.js";
 import { compileOutput } from "../../../src/workflows/output-contract/compile.js";
-import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js";
+import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-resolution.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
 import { stagedWorkflowContent } from "../../helpers/workflow-files.js";

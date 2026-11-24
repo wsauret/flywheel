@@ -10,7 +10,7 @@ import type { ExperimentFact, ExperimentInitializedFact } from "../../../../../.
 import { createExperimentProjection, type ExperimentSnapshot } from "../../../../../../src/orchestration/modules/experiments/state/projection.js"
 import * as resultAnalysis from "../../../../../../src/orchestration/modules/experiments/state/result-analysis.js"
 import { createExperimentsRuntime } from "../../../../../../src/orchestration/modules/experiments/runtime.js"
-import { createSessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js"
+import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js"
 import { moduleRuntimeServices } from "../../../../../helpers/module-runtime-services.js"
 

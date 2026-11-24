@@ -6,8 +6,8 @@ import * as path from "node:path";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/session-metadata-store";
-import { SessionSchema } from "../../../../src/orchestration/session/schemas";
+import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/metadata/catalog/session-metadata-store";
+import { SessionSchema } from "../../../../src/orchestration/session/metadata/schemas";
 import { cleanupTmpRoot, makeTmpDir, minimalSession } from "./_session-persistence-fixtures";
 
 const ownedStores: LocalSqliteEventStore[] = [];

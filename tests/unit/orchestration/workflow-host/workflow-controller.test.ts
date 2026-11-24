@@ -6,7 +6,7 @@ import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog"
 import { workflowParentBinding } from "../../../helpers/workflow-parent"
-import { parseWorkflowSessionFact, workflowRootControl } from "../../../../src/workflows/vm/session-facts"
+import { parseWorkflowSessionFact, workflowRootControl } from "../../../../src/workflows/vm/facts/session-facts"
 import {
   cleanupProjectRoots,
   createDeps,
@@ -22,7 +22,7 @@ import {
 import { readWorkflowQueuedUserInputs } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
 import { readHeldAddressedMessages } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
 import { WorkflowPreflightError } from "../../../../src/orchestration/workflow-host/runner-types"
-import { registerLiveWorkflowControl } from "../../../../src/orchestration/session/live-session-control"
+import { registerLiveWorkflowControl } from "../../../../src/orchestration/session/control/live-session-control"
 import type { ChatInput } from "../../../../src/infra/chat-input"
 import { Database } from "bun:sqlite"
 import { legacyWorkflowFixture } from "../../../helpers/workflow-agent-legacy-fixtures.js"

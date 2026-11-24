@@ -9,7 +9,7 @@ import { RESTART_NO_STARTER_REASON, RESTART_TASK_SCHEDULER_REASON, restartLaunch
 import { serveLaneFor } from "../../../../src/infra/cli-subprocess.js"
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
 import { accountServeRecordPath, accountServeSocketPath } from "../../../../src/infra/paths.js"
-import { ServeLifetime } from "../../../../src/orchestration/app-service/serve-lifetime.js"
+import { ServeLifetime } from "../../../../src/orchestration/app-service/account/serve-lifetime.js"
 import { IDLE_SERVE, unusedLauncher } from "./_serve-fixtures.js"
 import { socketTemporaryRoot } from "../../../helpers/directories.js"
 

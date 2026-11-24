@@ -1,11 +1,11 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";
-import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import type { HeadlessBenchmarkInput } from "../../src/orchestration/modules/development/benchmark/headless-execution.js";
-import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
+import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import type { HeadlessBenchmarkInput } from "../../src/orchestration/modules/development/benchmark/execution/headless-execution.js";
+import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/execution/headless-execution-contract.js";
 import { errorMessage } from "../../src/infra/error-message.js";
-import { readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { benchmarkInfrastructureIdentity, requireStrictBenchmarkSettlement } from "./benchmark-infrastructure.js";
 import { campaignArtifactReference } from "./campaign-artifacts.js";
 import { campaignHeadlessOutcome, type CampaignSettlement } from "./campaign-execution.js";

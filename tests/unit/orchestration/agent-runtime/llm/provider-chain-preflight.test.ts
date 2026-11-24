@@ -3,7 +3,7 @@ import { testEligibility, testProviderSessionLifetime } from "../../../../helper
 import { Redacted } from "effect";
 import type { AuthContext, CapturedSubscriptionCredential, ProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
-import { candidateProviderId, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan } from "../../../../../src/infra/llm/access-provider.js";
+import { candidateProviderId, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan } from "../../../../../src/infra/llm/access/access-provider.js";
 import { authDir } from "../../../../../src/infra/paths.js";
 import { createAdmittedClient } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";

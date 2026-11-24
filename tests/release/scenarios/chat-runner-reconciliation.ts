@@ -10,7 +10,7 @@ import {
   RECONCILIATION_PARENT_NAME,
 } from "../fixtures/generate-store.js"
 import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath } from "../../../src/infra/paths.js"
-import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/socket-runtime-client.js"
+import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"
 import { encodeAccountAttach } from "../../../src/protocol/account-attach.js"
 import type { RuntimeClient } from "../../../src/protocol/app-service-types.js"
 import { readDebugLogRecords, type DebugLogRecord } from "../lib/debug-log-reader.js"

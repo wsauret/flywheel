@@ -1,8 +1,8 @@
 import { parseProjectionFact } from "../../../../infra/event-projection.js"
 import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/event-store-types.js"
-import { parseFileMutationFact } from "../../file-mutation-facts.js"
-import { readProviderRequestAuditFact } from "../../provider-request-audit-facts.js"
-import { providerRequestIdentityFromPayload } from "../../provider-request-audit-types.js"
+import { parseFileMutationFact } from "../../file-mutations/file-mutation-facts.js"
+import { readProviderRequestAuditFact } from "../../runtime-facts/provider-request-audit-facts.js"
+import { providerRequestIdentityFromPayload } from "../../runtime-facts/provider-request-audit-types.js"
 import { turnEndEntryId, type TurnEnd } from "../turn-end-record.js"
 
 /** Facts a turn leaves behind that outlive the turn itself. Tool inputs,

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
-import { createOutputProjection } from "../../../../src/orchestration/app-service/output-projection.js"
+import { createOutputProjection } from "../../../../src/orchestration/app-service/projections/output/output-projection.js"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import type { StoredFact } from "../../../../src/infra/event-store-types.js"

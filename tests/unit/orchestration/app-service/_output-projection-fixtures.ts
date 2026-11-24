@@ -8,8 +8,8 @@ import { isVisibleMessageBlock, type AnyBlock } from "../../../../src/infra/outp
 import { NO_CHANGED_TOOLS, type OutputBlockChange, type OutputChangeBatch } from "../../../../src/infra/output/output-block-delta.js"
 import type { SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import { chatEntry, fakeSessionStore } from "./app-service-doubles.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
-import { createShippedOutput } from "../../../../src/orchestration/app-service/shipped-output.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
+import { createShippedOutput } from "../../../../src/orchestration/app-service/projections/output/shipped-output.js"
 import type { OutputDelta } from "../../../../src/protocol/output-protocol-types.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Redacted } from "effect";
-import type { AccessProviderCandidateAttribution } from "../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderCandidateAttribution } from "../../../../../src/infra/llm/access/access-provider.js";
 import type { CatalogJsonValue } from "../../../../../src/infra/catalog-model-offering.js";
 import { createOpenRouterAffordability } from "../../../../../src/orchestration/modules/provider-openrouter/affordability.js";
 import { streamAssistantTurn } from "../../../../../src/orchestration/agent-runtime/assistant-turn-stream.js";

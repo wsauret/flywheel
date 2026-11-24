@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSy
 import { tmpdir } from "node:os"
 import { basename, join, resolve } from "node:path"
 
-import { launchdPlist, registrationFingerprint } from "../../../src/orchestration/app-service/account-service-registration.js"
+import { launchdPlist, registrationFingerprint } from "../../../src/orchestration/app-service/account/installation/account-service-registration.js"
 import type { LaunchdReloadJobConfig } from "./_launchd-reload-job.js"
 
 /** The real launchd re-registration and Process initiation Off sequences,

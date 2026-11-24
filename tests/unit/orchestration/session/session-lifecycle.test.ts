@@ -11,7 +11,7 @@ import {
   type SessionManagerDeps,
 } from "../../../../src/orchestration/session/manager";
 import { readStoredSession } from "./_session-metadata-test-helpers";
-import { isValidTransition } from "../../../../src/orchestration/session/types";
+import { isValidTransition } from "../../../../src/orchestration/session/metadata/types";
 import { finalizeTestSessionDeletion } from "./_session-manager-fixtures";
 
 const TMP_ROOT = path.join(os.tmpdir(), `flywheel-lifecycle-integ-${process.pid}-${Date.now()}`);

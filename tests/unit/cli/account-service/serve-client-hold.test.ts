@@ -5,7 +5,7 @@ import * as path from "node:path"
 
 import { runServe } from "../../../../src/cli/account-service/serve.js"
 import { SERVE_EXIT } from "../../../../src/cli/account-service/serve-contract.js"
-import { ServeLifetime } from "../../../../src/orchestration/app-service/serve-lifetime.js"
+import { ServeLifetime } from "../../../../src/orchestration/app-service/account/serve-lifetime.js"
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
 import { serveLaneFor } from "../../../../src/infra/cli-subprocess.js"
 import { accountServeSocketPath, accountServeTokenPath } from "../../../../src/infra/paths.js"

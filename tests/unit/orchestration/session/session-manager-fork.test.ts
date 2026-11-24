@@ -5,11 +5,11 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, typ
 import { createSessionManager, SessionForkRefusal } from "../../../../src/orchestration/session/manager"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
-import { parseSessionForkFact } from "../../../../src/orchestration/session/session-fork-facts"
-import { readBudgetSummaryFromReader } from "../../../../src/orchestration/session/budget-summary"
-import { createConversationCheckpointOwner, readConversationCheckpoint } from "../../../../src/orchestration/session/conversation-checkpoint"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
-import { conversationPromptBaselines, promptContextOpening, readConversationPromptBaseline } from "../../../../src/orchestration/session/conversation-prompt-baseline"
+import { parseSessionForkFact } from "../../../../src/orchestration/session/metadata/session-fork-facts"
+import { readBudgetSummaryFromReader } from "../../../../src/orchestration/session/metadata/catalog/budget-summary"
+import { createConversationCheckpointOwner, readConversationCheckpoint } from "../../../../src/orchestration/session/conversation-records/conversation-checkpoint"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
+import { conversationPromptBaselines, promptContextOpening, readConversationPromptBaseline } from "../../../../src/orchestration/session/conversation-records/conversation-prompt-baseline"
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
 
 function message(id: string, parentId: string | null, kind: "user" | "assistant", content: string) {

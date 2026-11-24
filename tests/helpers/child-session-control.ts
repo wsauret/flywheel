@@ -1,5 +1,5 @@
-import type { ChildSessionControl } from "../../src/orchestration/session/child-session-control"
-import type { SessionMessaging } from "../../src/orchestration/session/session-messaging"
+import type { ChildSessionControl } from "../../src/orchestration/session/control/messaging/child-session-control"
+import type { SessionMessaging } from "../../src/orchestration/session/control/messaging/session-messaging"
 
 /** A test authority with no child to restore. Unspecified reads and controls
  *  throw, so a test that reaches one fails with its name. */

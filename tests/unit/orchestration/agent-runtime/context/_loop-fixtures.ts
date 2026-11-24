@@ -2,12 +2,12 @@ import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, t
 import type { ToolPromptFields } from "../../../../helpers/prompt-capabilities.js";
 import { fixedRequestToolSurface, RequestToolMap, testBaseTools, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
-import type { ConversationCheckpoint } from "../../../../../src/orchestration/session/conversation-checkpoint-facts.js";
+import type { ConversationCheckpoint } from "../../../../../src/orchestration/session/persistence/conversation-checkpoint-facts.js";
 import { createAgentLoopCompactionState } from "../../../../../src/orchestration/agent-runtime/agent-loop-compaction-state.js";
 import { createActiveRequestContext } from "../../../../../src/orchestration/agent-runtime/active-request-context.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { createCheckpointTool } from "../../../../../src/orchestration/agent-runtime/tools/session-checkpoint.js";
-import { emptyConversationCheckpoint, type ConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
+import { emptyConversationCheckpoint, type ConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-records/conversation-checkpoint.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createRequestToolSurface, type RequestToolSurfaceOwner } from "../../../../../src/orchestration/agent-runtime/request-tool-surface.js";

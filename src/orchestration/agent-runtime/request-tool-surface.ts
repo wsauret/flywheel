@@ -29,7 +29,7 @@ import type { ExecutionAdmission } from "./tools/tool-dispatch.js";
 import type { AdmittedModelRequest, ModelClient, ModelRequestRoute, ServingAttempt, StreamOptions, ToolPresentation } from "./llm/types.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { FirstPartyModuleComposition } from "../modules.js";
-import { hashToolInputFormat } from "../session/provider-request-audit-hash.js";
+import { hashToolInputFormat } from "../session/diagnostics/provider-request-audit-hash.js";
 import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "./request-config.js";
 import type { ModelRuntimeCapture, ProviderConnectionCapture } from "./model-runtime-capture.js";
 import { tokenCountingPolicy, type TokenCountingPolicyIdentity } from "./compaction/token-counter.js";
@@ -38,7 +38,7 @@ import { renderSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-
 import { accessProviderRegistry, type AccessProviderRegistry } from "./llm/access-provider-registry.js";
 import { resolveModelInteractionProfile } from "./model-interaction-profile.js";
 type ProviderToolDef = StreamOptions["tools"][number];
-type AuditToolDef = import("../session/provider-request-audit-types.js").ProviderRequestAuditTool;
+type AuditToolDef = import("../session/runtime-facts/provider-request-audit-types.js").ProviderRequestAuditTool;
 
 /** The provider definitions of `tools`. When every definition equals the one at its place in `held` by identity, it
  *  returns `held`, so the projections and token counts that the run holds for those bytes stay valid. */
@@ -139,7 +139,7 @@ export interface RequestProviderRuntime {
   readonly admittedRequest?: AdmittedModelRequest;
   readonly interactionProfile: ModelInteractionProfile;
   /** Effective request role, when request-time role refresh selected one. */
-  readonly role?: { readonly model: string; readonly effort?: string; readonly providerOptions?: import("../../infra/llm/provider-options.js").ProviderRequestOptions };
+  readonly role?: { readonly model: string; readonly effort?: string; readonly providerOptions?: import("../../infra/llm/access/provider-options.js").ProviderRequestOptions };
   readonly selectionKey?: string;
   readonly selectionGeneration?: WeakKey;
   readonly selectionEligibility?: ProviderConnectionCapture["eligibility"];
@@ -177,7 +177,7 @@ interface RequestToolSurface extends RequestCapture {
   readonly turnedOff: ToolExposurePlan["turnedOff"];
   /** Resolves old unstamped calls only when their recorded model profile selects
    *  exactly one registration for the recorded provider-visible name. */
-  historicalRegistrationId(name: string, model: string | undefined, provider: import("../../infra/llm/model-family.js").ModelFamily | undefined): string | undefined;
+  historicalRegistrationId(name: string, model: string | undefined, provider: import("../../infra/llm/models/model-family.js").ModelFamily | undefined): string | undefined;
   /** Capability admission fixed with the advertised tool surface. */
   readonly executionAdmission: ExecutionAdmission;
   /** Provider planning, factories, and billing derived from this exact request composition. */

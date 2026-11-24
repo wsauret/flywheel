@@ -4,7 +4,7 @@ import { TreeBlockProjection, type ToolBlockReader, type TreeBlockProjectionOpti
 import type { IndexedGroupChildren } from "./tool-result-meta.js"
 import type { ToolResultDisplayMeta } from "./tool-result-display-meta.js"
 import type { ToolHistorySummary } from "../../../module-seams.js"
-import type { ToolExecutionEntry } from "../../tool-execution-types.js"
+import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js"
 import { blockEntryKeys, blockIdentity } from "../../../../protocol/block-identity.js"
 
 export interface BranchHistory {

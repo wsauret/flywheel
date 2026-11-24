@@ -8,7 +8,7 @@ import type { ConversationMessage } from "../../../../../src/orchestration/agent
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
 import { sideQuestionModule } from "../../../../../src/orchestration/modules/side-question/module.js"
-import type { CommandHost } from "../../../../../src/orchestration/app-service/command-host.js"
+import type { CommandHost } from "../../../../../src/orchestration/app-service/definitions/commands/command-host.js"
 import { createSessionFactWriter, emptyEventReader } from "../../chat/_chat-session-agent-runtime-fixtures.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { testDirectories } from "../../../../helpers/directories.js"

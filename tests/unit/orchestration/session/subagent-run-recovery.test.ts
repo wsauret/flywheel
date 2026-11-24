@@ -7,7 +7,7 @@ import { asAsyncEventWriter, asAsyncEventReadSurface, type LocalSqliteEventStore
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { buildSessionContext } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context"
 import { createConversationTree, readReconciledBranch } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
-import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
+import { prepareSessionFactAppend } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 import { buildDurableSubagentCreated } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import { recoverStaleSubagentRuns } from "../../../../src/orchestration/modules/subagents/history/subagent-run-recovery"
 import { loadSubagentRunsFromEvents } from "../../../../src/orchestration/modules/subagents/history/subagent-run-projection"

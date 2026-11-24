@@ -8,11 +8,11 @@ import { capabilityAccessFor, type ToolResult } from "../../../../../../src/orch
 import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
 import { createLearningReview } from "../../../../../../src/orchestration/modules/learning/review/learning-review.js";
 import { verifySkillSemanticAudit } from "../../../../../../src/orchestration/modules/learning/skills/skill-semantic-audit.js";
-import { BUNDLED_SKILL_DIR } from "../../../../../../src/workflows/skill-source-inventory.js";
-import { renderSkillClosure } from "../../../../../../src/workflows/skill-render.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
-import { publishSkillRevision, SKILL_FILE, type SkillRegistryRevision } from "../../../../../../src/workflows/skill-schema.js";
-import type { SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
+import { BUNDLED_SKILL_DIR } from "../../../../../../src/workflows/skills/skill-source-inventory.js";
+import { renderSkillClosure } from "../../../../../../src/workflows/skills/skill-render.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
+import { publishSkillRevision, SKILL_FILE, type SkillRegistryRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
+import type { SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import type { AgentRunResult } from "../../../../../../src/orchestration/agent-runtime/types.js";
 import { makeContext, testGrant } from "../../../agent-runtime/tools/_fixtures.js";
 import { sessionContentFixture } from "../../../../../helpers/session-content.js";

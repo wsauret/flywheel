@@ -1,10 +1,10 @@
 import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/event-store-types.js"
-import type { ActiveInterval, ActivityOpening, WorkflowControlActivity } from "../../../../workflows/vm/control-activity.js"
-import { readWorkflowControlActivity } from "../../../../workflows/vm/recovery-fold.js"
+import type { ActiveInterval, ActivityOpening, WorkflowControlActivity } from "../../../../workflows/vm/recovery/control-activity.js"
+import { readWorkflowControlActivity } from "../../../../workflows/vm/recovery/recovery-fold.js"
 import { readEpisodeEvidenceEnd } from "../../../session-store/duration.js"
 import { readWorkflowMemberEvidence } from "../../../workflow-host/member-totals.js"
-import { workflowMembershipReader } from "../../../session/workflow-membership.js"
-import { reduceSessionDurationEvent } from "../../../session/session-duration-projection.js"
+import { workflowMembershipReader } from "../../../session/metadata/workflow-membership.js"
+import { reduceSessionDurationEvent } from "../../../session/runtime-facts/session-duration-projection.js"
 import { createWorkflowRunReader } from "./run-record.js"
 
 /** What a run's residual history adds, read once: the active time that its

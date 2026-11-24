@@ -1,4 +1,4 @@
-import type { HeadlessBenchmarkInput } from "../../src/orchestration/modules/development/benchmark/headless-execution.js";
+import type { HeadlessBenchmarkInput } from "../../src/orchestration/modules/development/benchmark/execution/headless-execution.js";
 
 type QuestionPolicy = NonNullable<HeadlessBenchmarkInput["answerQuestion"]>;
 /** A question the subject asks as an ACP form, as the adapter decodes it. */

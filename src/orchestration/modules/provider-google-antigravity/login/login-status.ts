@@ -1,6 +1,6 @@
 import { holdsPinnedAntigravityBytes, QUALIFIED_ANTIGRAVITY_VERSION, type AntigravityPinnedBytes } from "../../../../infra/antigravity-engine-pin.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import type { ExternalLoginProblem, ExternalLoginQuestion, LoginWaitAnswer } from "../../../../infra/llm/access-provider.js"
+import type { ExternalLoginProblem, ExternalLoginQuestion, LoginWaitAnswer } from "../../../../infra/llm/access/access-provider.js"
 import { Log } from "../../../../infra/log.js"
 import { RouteUnavailableError } from "../../../agent-runtime/llm/errors.js"
 import { classifyProviderFailure } from "../../../agent-runtime/llm/provider-failure.js"

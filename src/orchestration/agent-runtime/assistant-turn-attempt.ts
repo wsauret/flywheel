@@ -3,14 +3,14 @@
 import { DebugLog } from "../../infra/debug-log.js";
 import { errorDetail, errorMessage } from "../../infra/error-message.js";
 import { mergeAbortSignals } from "../../infra/abort.js";
-import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
-import type { MeasuredUsageEntry, UsageEntry } from "../../infra/llm/usage-entry.js";
+import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
+import type { MeasuredUsageEntry, UsageEntry } from "../../infra/llm/usage/usage-entry.js";
 import { Log } from "../../infra/log.js";
-import type { ReasoningEffort } from "../../infra/llm/models.js";
+import type { ReasoningEffort } from "../../infra/llm/models/models.js";
 import { durationMs } from "../../infra/operation-log.js";
 import { probeLoopUnit } from "../../infra/event-loop-lag.js";
-import { summarizeProviderError, type ProviderErrorDiagnostic } from "../../infra/llm/provider-error-diagnostic.js";
-import { classifyApiError } from "../../infra/llm/provider-error-copy.js";
+import { summarizeProviderError, type ProviderErrorDiagnostic } from "../../infra/llm/errors/provider-error-diagnostic.js";
+import { classifyApiError } from "../../infra/llm/errors/provider-error-copy.js";
 import { type AgentRuntimeError, ApiError, fromStreamError, ProviderAuditSettlementError, StreamStalled } from "./llm/runtime-errors.js";
 import { ProviderAttemptFailure, type ProviderFailure } from "./llm/provider-failure.js";
 import {
@@ -31,7 +31,7 @@ import { modelFamilyApi } from "./llm/messages.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-tiers.js";
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
-import type { PromptHistoryLowering, PromptStaleMasking, ProviderRequestIdentity } from "../session/provider-request-audit-types.js";
+import type { PromptHistoryLowering, PromptStaleMasking, ProviderRequestIdentity } from "../session/runtime-facts/provider-request-audit-types.js";
 import { applyHistoryLowering, imageLimitCut, planHistoryLowering, type ProviderHistoryTarget } from "./llm/provider-history.js";
 import type { PreparedRequestAttempt } from "./request-tool-surface.js";
 import { type AssistantTurnResult, handleStreamEvent, settledTextOf, type TurnOutcome } from "./assistant-turn-result.js";
@@ -81,7 +81,7 @@ export interface AssistantAttemptInput {
    *  on `prompt.assembled` so reconstruction can replay the mask. */
   staleMasking: PromptStaleMasking | undefined;
   /** Historical tool contracts lowered for this request. */
-  toolHistoryProjection?: import("../session/provider-request-audit-types.js").PromptToolHistoryProjection;
+  toolHistoryProjection?: import("../session/runtime-facts/provider-request-audit-types.js").PromptToolHistoryProjection;
   turn: number;
   /** The image-limit cut that the request's owner last recorded at INFO (`recordImageLimitCut`). Absent for a
    *  request whose owner keeps no record, such as compaction: its bounded requests record at DEBUG only. */

@@ -4,7 +4,7 @@ import {
   createAccountHubHandler,
   startAccountHub,
   type AccountHubProject,
-} from "../../../../src/orchestration/app-service/web-serving/hub"
+} from "../../../../src/orchestration/app-service/account/web-serving/hub"
 import { brandTileSvg } from "../../../../src/protocol/client/brand"
 
 const request = (headers: HeadersInit = {}, path = "/") => new Request(`http://127.0.0.1:41000${path}`, { headers })

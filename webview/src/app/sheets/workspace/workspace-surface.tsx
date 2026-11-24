@@ -1,6 +1,6 @@
 import { onCleanup, onMount, Show, type JSX } from "solid-js"
-import { scrollEdges } from "../../scroll-edges.js"
-import { Icon, ICONS } from "../../icons.js"
+import { scrollEdges } from "../../controls/scroll-edges.js"
+import { Icon, ICONS } from "../../controls/icons.js"
 import { Sheet } from "../sheet.js"
 import "../../../styles/workspace-panel.css"
 

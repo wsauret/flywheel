@@ -1,4 +1,4 @@
-import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
+import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
 import type { AdmittedModelRequest, AdmittedModelRequestRun, ModelClient, ModelRequestCapture } from "./llm/types.js";
 import type { TurnUsageTracker } from "./turn-usage-tracker.js";
 

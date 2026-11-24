@@ -10,7 +10,7 @@ import { createWorkflowToolCore, type PublishedWorkflowLaunch } from "../../../.
 import type { WorkflowLaunchRefusal } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
 import { modelWorkflowLaunchOrigin, workflowLaunchTargets } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
-import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile.js"
+import { createSessionAuthAdmission } from "../../../../src/orchestration/session/metadata/session-auth-profile.js"
 import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-host/auth-owner.js"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import { testDirectories } from "../../../helpers/directories.js"

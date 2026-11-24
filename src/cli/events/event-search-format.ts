@@ -1,6 +1,6 @@
 import { asRecord } from "../../infra/record.js"
 import { rowTimestamp, type EventSearchRow, type MergedEventTypeSummary } from "../../infra/event-search.js"
-import type { ProviderRequestPromptReconstruction } from "../../orchestration/session/provider-request-audit-reconstruction.js"
+import type { ProviderRequestPromptReconstruction } from "../../orchestration/session/diagnostics/provider-request-audit-reconstruction.js"
 
 interface Payload {
   [key: string]: unknown

@@ -20,7 +20,7 @@ import { grantedSubagentTypes, personaToolNames } from "../../../../src/workflow
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
 import { createToolRegistry } from "../../../../src/orchestration/tool-catalog.js";
 import { composeFirstPartyModules, SHIPPED_MODULES, type ModuleId } from "../../../../src/orchestration/modules.js";
-import { renderSkillClosure } from "../../../../src/workflows/skill-render.js";
+import { renderSkillClosure } from "../../../../src/workflows/skills/skill-render.js";
 import { isReadOnlyPersona, toolGrantRules } from "../../../../src/orchestration/agent-runtime/persona-tool-rules.js";
 import { toolNotice } from "../../../../src/orchestration/agent-runtime/tool-notice.js";
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js";

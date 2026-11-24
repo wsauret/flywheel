@@ -1,8 +1,8 @@
 import { dirname, join } from "node:path";
 import { ownedCommandRunner } from "../../src/infra/owned-command.js";
-import { decodeNativePersonaRequest, nativePersonaPath, nativePersonaStartupFailure, writeNativePersonaResult, NATIVE_STARTUP_TIMEOUT_MS, NATIVE_SETTLEMENT_GRACE_MS, NATIVE_CANDIDATE_TIMEOUT_MS } from "../../src/orchestration/modules/development/benchmark/native-persona-codec.js";
+import { decodeNativePersonaRequest, nativePersonaPath, nativePersonaStartupFailure, writeNativePersonaResult, NATIVE_STARTUP_TIMEOUT_MS, NATIVE_SETTLEMENT_GRACE_MS, NATIVE_CANDIDATE_TIMEOUT_MS } from "../../src/orchestration/modules/development/benchmark/persona/native-persona-codec.js";
 import { cellIsolation, inheritedCellEnvironment } from "../chat-ab/isolation.js";
-import { unavailableBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/evidence.js";
+import { unavailableBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 
 /** The trusted launcher owns only OS confinement and the worker process, never the matrix or grading. */
 async function main(requestPath: string, resultPath: string, cancelPath: string, resultsRoot: string): Promise<void> {

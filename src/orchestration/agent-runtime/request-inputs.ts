@@ -7,11 +7,11 @@
  */
 
 import { Effect, Scope } from "effect";
-import { resolveConversationResources } from "../session/conversation-resources.js";
+import { resolveConversationResources } from "../session/conversation-records/conversation-resources.js";
 import { ownedCommandRunner } from "../../infra/owned-command.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../infra/agent-assets/system-prompt.js";
 import { canonicalize } from "../../infra/canonical-name.js";
-import { REASONING_EFFORTS, type ReasoningEffort } from "../../infra/llm/models.js";
+import { REASONING_EFFORTS, type ReasoningEffort } from "../../infra/llm/models/models.js";
 import { composeModuleRuntimes, type ModuleRuntimes } from "../../infra/module-runtime.js";
 import type { AgentLoopOptions } from "./agent-loop-types.js";
 import type { ConversationMessage, ModelClient, ProviderSessionLifetime, ServingAttempt } from "./llm/types.js";
@@ -19,13 +19,13 @@ import { stableSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-
 import { promptKindForPurpose } from "./agent-purpose.js";
 import type { CaptureModelRuntime, LLMClientFactory } from "./model-runtime-capture.js";
 import type { RuntimeConfigRequestCapture } from "./request-config.js";
-import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js";
+import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
-import type { SkillDefinition } from "../../workflows/skill-schema.js";
+import type { SkillDefinition } from "../../workflows/skills/skill-schema.js";
 import type { FirstPartyModule, FirstPartyModuleComposition } from "../modules.js";
 import { createToolRegistry } from "../tool-catalog.js";
 import { disabledAgentTypes, installedModules } from "../module-catalog.js";
-import { skillLoadedFact } from "../../workflows/skill-facts.js";
+import { skillLoadedFact } from "../../workflows/skills/skill-facts.js";
 import { selectedToolNames } from "./tools/tool-dispatch.js";
 import { callerToolGrant, planToolExposure, type ToolGrant } from "./tools/tool-exposure-planner.js";
 import { deriveChildRuntimeSurfaces, learningReviewToolNames, toolRegistryFromComposition } from "./tools/tool-registry.js";
@@ -41,7 +41,7 @@ import { createChildSlotRegistry } from "./child-slot-registry.js";
 import { loadAgentInstructions } from "./project-instructions.js";
 import { buildSystemPromptParts, type BuildSystemPromptOptions, type SystemPromptPart } from "./system-prompt.js";
 import { createPromptBaseline } from "./prompt-baseline.js";
-import { conversationPromptBaselines } from "../session/conversation-prompt-baseline.js";
+import { conversationPromptBaselines } from "../session/conversation-records/conversation-prompt-baseline.js";
 import { runningDisplayBuildId } from "../app-service/runtime-executable.js";
 import { readModuleMemory, requestSystemPromptOptions } from "./request-system-prompt.js";
 import { isPersonTurn, turnReminders, type TurnReminderState } from "./turn-reminders.js";
@@ -56,11 +56,11 @@ import { ModelUnavailable } from "./llm/runtime-errors.js";
 import { AllCandidatesExhaustedError } from "./llm/errors.js";
 import { SAFE_RECHECK_MS } from "./llm/provider-availability.js";
 import { isModelTierReference } from "../../protocol/model-tier-reference.js";
-import { conversationRolePicks, rolePickSettingKey } from "../session/conversation-role-pick.js";
-import type { RolePickSetting } from "../session/conversation-role-pick-facts.js";
+import { conversationRolePicks, rolePickSettingKey } from "../session/conversation-records/conversation-role-pick.js";
+import type { RolePickSetting } from "../session/persistence/conversation-role-pick-facts.js";
 import { commitToolNotice, toolNotice } from "./tool-notice.js";
 import { createCapabilityNarrowing, narrowingStatements, recordingNarrowings } from "./capability-narrowing.js";
-import { agentTypesTurnedOffSince } from "../app-service/definition-availability.js";
+import { agentTypesTurnedOffSince } from "../app-service/definitions/definition-availability.js";
 import { holdSharedTree, treeLogin, type SharedTree, type SharedTreeCapture } from "./shared-tree.js";
 
 /** What builds the inputs of a run's requests: the same for a send and for a pre-start. */

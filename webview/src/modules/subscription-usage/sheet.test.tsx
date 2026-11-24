@@ -3,7 +3,7 @@ import { test } from "node:test"
 
 import type { UsageAccountsResult, UsageMutationResult, UsageSpendResult } from "../../../../src/protocol/modules/subscription-usage.js"
 import { usageAccounts, usageSpend } from "../../../../tests/unit/tui/usage-fixtures.js"
-import { buildMemoryHostFixture } from "../../app/budget-render-test-loader.js"
+import { buildMemoryHostFixture } from "../../test-support/budget-render-test-loader.js"
 
 const fixture: Promise<typeof import("./usage-render-fixture.js")> = buildMemoryHostFixture(new URL("usage-render-fixture.tsx", import.meta.url))
 const time = new Date(usageAccounts.asOf).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })

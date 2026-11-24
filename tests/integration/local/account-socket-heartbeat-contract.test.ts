@@ -8,7 +8,7 @@ import type { RuntimeLivenessPolicy } from "../../../src/protocol/runtime-livene
 import { createRuntimeConnection } from "../../../src/protocol/client/connection.js"
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import { accountServeSocketPath } from "../../../src/infra/paths.js"
-import { readOrCreateAccountAttachToken } from "../../../src/orchestration/app-service/account-attach-token.js"
+import { readOrCreateAccountAttachToken } from "../../../src/orchestration/app-service/account/account-attach-token.js"
 import { nodeSocketLayer } from "../../../vscode/src/runtime/connection/node-socket.js"
 import { createIsolatedAccountRuntimeAttach } from "./_account-service.js"
 import { stopProjectRuntime } from "./_project-runtime.js"

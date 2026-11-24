@@ -14,7 +14,7 @@ import type { Agent, AgentFactory, AgentOptions, AgentRunResult } from "../../..
 import { createWorkerCallback } from "../../../../src/orchestration/workflow-host/execution/agent-callback"
 import { publishWorkerAttempt } from "./_workflow-host-fixtures"
 import { makeWorkflowDeps, noConversationRecall } from "./_workflow-controller-fixtures"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages"
 import { interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"

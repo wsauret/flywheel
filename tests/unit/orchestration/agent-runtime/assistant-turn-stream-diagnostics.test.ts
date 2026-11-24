@@ -6,8 +6,8 @@ import { LlmStreamError } from "../../../../src/orchestration/agent-runtime/llm/
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import type { ProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit";
-import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts";
-import { recordProviderResponse } from "../../../../src/orchestration/session/provider-request-audit-recorder";
+import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-facts";
+import { recordProviderResponse } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-recorder";
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { ownHistoryTarget } from "./_model-client.js";
 

@@ -2,12 +2,12 @@
 
 import { StyledText, type ScrollBoxRenderable, type TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
-import { useModalDimensions } from "@tui/components/use-modal-dimensions"
+import { useModalDimensions } from "@tui/components/modal/use-modal-dimensions"
 import { createEffect, createMemo, Index, onCleanup, Show } from "solid-js"
 import { experimentViewDomain } from "../../../protocol/modules/experiments.js"
-import { modalCopyLimit } from "../../components/modal-copy.js"
-import { ModalFooter } from "../../components/modal-footer.js"
-import { ModalFrame } from "../../components/modal-frame.js"
+import { modalCopyLimit } from "../../components/modal/modal-copy.js"
+import { ModalFooter } from "../../components/modal/modal-footer.js"
+import { ModalFrame } from "../../components/modal/modal-frame.js"
 import type { TuiSurfaceProps } from "../../tui-module.js"
 import { renderDashboardLines } from "./dashboard-lines.js"
 

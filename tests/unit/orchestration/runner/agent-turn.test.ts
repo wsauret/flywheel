@@ -8,8 +8,8 @@ import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-
 import { PersistenceWriteRefused } from "../../../../src/infra/event-store-types.js"
 import { applySessionNoticeOperation, type SessionNotice, type SessionNoticeOperation } from "../../../../src/infra/session-notice.js"
 import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
-import { subscribeSessionRuntimeFacts } from "../../../../src/orchestration/session/create-session-infra.js"
-import type { SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { subscribeSessionRuntimeFacts } from "../../../../src/orchestration/session/persistence/create-session-infra.js"
+import type { SessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 
 type MockRunnerContext = Agent & { sendCalled: Array<string | AgentLoopWakeInput> }

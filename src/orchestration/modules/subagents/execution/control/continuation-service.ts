@@ -3,7 +3,7 @@ import { errorMessage } from "../../../../../infra/error-message.js"
 import type { ModuleProcessServices } from "../../../../app-service/module-service-host.js"
 import { readSubagentRuns } from "../../history/subagent-run-projection.js"
 import type { SubagentResult } from "../dispatch/control-actions.js"
-import { parentHost } from "../../../../session/live-session-control.js"
+import { parentHost } from "../../../../session/control/live-session-control.js"
 import { subagentsRuntime } from "./runtime-binding.js"
 
 export interface SubagentContinuationService {

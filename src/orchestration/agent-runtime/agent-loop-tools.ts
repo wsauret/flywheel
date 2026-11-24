@@ -44,7 +44,7 @@ import { MutationEvidenceSchema } from "../../infra/mutation-evidence-schema.js"
 import { asRecord } from "../../infra/record.js";
 import {
   checkpointFinalizedToolResult,
-} from "../session/finalized-tool-result-checkpoint.js";
+} from "../session/history/finalized-tool-result-checkpoint.js";
 
 const log = Log.create({ service: "agent-loop" });
 

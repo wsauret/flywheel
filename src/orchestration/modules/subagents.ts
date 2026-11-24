@@ -12,7 +12,7 @@ import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-serv
 import type { KernelToolDeps, ServingModel } from "../agent-runtime/tools/kernel-tool-deps.js"
 import { createSubagentTool, createSubagentResume, subagentToolDefinition, subagentToolWith } from "./subagents/tool.js"
 import type { SubagentDispatchDeps } from "./subagents/execution/dispatch/dispatch-deps.js"
-import { deliverSessionInput } from "../session/session-input-delivery.js"
+import { deliverSessionInput } from "../session/control/messaging/session-input-delivery.js"
 import { createSubagentContinuationService, subagentContinuationService } from "./subagents/execution/control/continuation-service.js"
 import { subagentsRuntime, type SubagentsRuntime } from "./subagents/execution/control/runtime-binding.js"
 // oxlint-disable-next-line import/no-cycle -- the descriptor constructs its own child-session authority.
@@ -21,13 +21,13 @@ import { settleDeletedSubagent } from "./subagents/execution/control/direct-chil
 import { subagentChildSession } from "./subagents/execution/control/child-session.js"
 import { buildSubagentCompleted, buildSubagentResumed } from "./subagents/history/subagent-run-fact-writers.js"
 import { loadSubagentRunsFromEvents, readSubagentRuns, SUBAGENT_RUN_FACT_TYPES } from "./subagents/history/subagent-run-projection.js"
-import { prepareSessionFactAppend } from "../session/session-fact-writer.js"
+import { prepareSessionFactAppend } from "../session/persistence/session-fact-writer.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
 import type { RoleResolver } from "../config/roles.js"
 import type { ModuleId, FirstPartyModule } from "../modules.js"
 import { moduleProtocol, type ModuleProtocolRuntime, type ModuleProtocolServices } from "../app-service/module-protocol-host.js"
 import { subagentsProtocol } from "../../protocol/modules/subagents.js"
-import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
+import type { DefinitionAvailabilitySnapshot } from "../app-service/definitions/definition-availability.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { CapabilityCheck } from "../../infra/capability-text.js"
 import { disabledTypesOf, subagentsConfigSection } from "./subagents/config.js"
@@ -171,7 +171,7 @@ function createSubagentsRuntime(services: ModuleRuntimeServices): SubagentsRunti
     resume: async (childSessionId, admission) => {
       // Only a running host's runtime is reachable for a Resume, and a capability plan registers with no host.
       if (!services.servingModel) throw new Error("A capability plan has no serving model to resume a child on.")
-      const { definitionAvailabilityOf } = await import("../app-service/definition-availability.js")
+      const { definitionAvailabilityOf } = await import("../app-service/definitions/definition-availability.js")
       const availability = definitionAvailabilityOf(services.definitions.captureRevision(), services.moduleSelection().enabledModuleIds, disabledTypesOf(services.captureRuntimeConfig().moduleSections))
       return createSubagentResume({ ...toolDeps(services.servingModel, availability), ...admission })(childSessionId, {
         executionCwd: services.executionCwd, projectRoot: services.projectRoot,

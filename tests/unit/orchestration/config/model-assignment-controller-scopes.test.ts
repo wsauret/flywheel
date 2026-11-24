@@ -10,7 +10,7 @@ import { installedConfigSchema, type FlywheelConfig } from "../../../../src/orch
 import { parseSchema } from "../../../helpers/schema-assertions.js"
 import { roleSlot, type AgentPersonaRoles } from "../../../../src/orchestration/config/models/role-selection.js"
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
-import { createRoleAssignmentReader } from "../../../../src/orchestration/app-service/role-assignment-projection.js"
+import { createRoleAssignmentReader } from "../../../../src/orchestration/app-service/auth/models/role-assignment-projection.js"
 import type { AgentPersonas } from "../../../../src/orchestration/workflow-host/frontend-attempts.js"
 import { sessionServingSelection } from "../../../../src/protocol/role-protocol-types.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
@@ -19,7 +19,7 @@ import { testAuthContext } from "../../../helpers/auth-context.js"
 import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
-import type { RoleAssignmentSnapshot } from "../../../../src/orchestration/session/schemas.js"
+import type { RoleAssignmentSnapshot } from "../../../../src/orchestration/session/metadata/schemas.js"
 
 const models = ["gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna", "claude-opus-5.5"]
 const metadata = makeModelsClient(Object.fromEntries(models.map((model) => [model, modelInfo(model.startsWith("claude") ? "anthropic" : "openai", model, "fixture", 2, 8, "2026-10-01")])))

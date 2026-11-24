@@ -14,7 +14,7 @@ import type {
   OutputWindowSnapshot,
 } from "../../../../src/protocol/transcript-protocol-types.js"
 import { outputCursor, type OutputDelta, type OutputView } from "../../../../src/protocol/output-protocol-types.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 
 export function deferred<T>() {
   let resolve!: (value: T) => void

@@ -5,7 +5,7 @@ import { Effect } from "effect";
 import { createNestedToolDispatchBatch, createNestedToolFactPublisher, type NestedToolFactPublisher } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import type { DispatchedToolContext, RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import type { EventPayload, StoredFact } from "../../../../../src/infra/event-store-types.js";
 import { RequestToolMap, requestAdmission } from "../../../../helpers/request-tool-surface.js";
 import { SLOW_UNIT_BUDGET_MS } from "../../../../../src/infra/event-loop-lag.js";

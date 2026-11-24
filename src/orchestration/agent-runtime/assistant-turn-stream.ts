@@ -1,4 +1,4 @@
-import { summarizeProviderError } from "../../infra/llm/provider-error-diagnostic.js";
+import { summarizeProviderError } from "../../infra/llm/errors/provider-error-diagnostic.js";
 import { attemptRequest, createAssistantAttempt, type AssistantAttemptInput } from "./assistant-turn-attempt.js";
 import type { AssistantTurnResult } from "./assistant-turn-result.js";
 import { isFailoverFailure } from "./llm/provider-failure.js";

@@ -16,10 +16,10 @@
 import OpenAI from "openai";
 import type { ChatCompletionCreateParamsStreaming, ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions.js";
 import type { CompletionUsage } from "openai/resources/completions.js";
-import type { AccessProviderCandidate, AccessProviderId } from "../../../infra/llm/access-provider.js";
-import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
+import type { AccessProviderCandidate, AccessProviderId } from "../../../infra/llm/access/access-provider.js";
+import { computeUsagePrice } from "../../../infra/llm/models/llm-helpers.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
-import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";
+import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models/models.js";
 import { Log } from "../../../infra/log.js";
 import { asRecord } from "../../../infra/record.js";
 import { classifyQuotaError, ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";

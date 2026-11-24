@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { Effect, Exit, Scope } from "effect"
-import { providerModelInfo } from "../../../../src/infra/llm/provider-model-info.js"
+import { providerModelInfo } from "../../../../src/infra/llm/catalog/provider-model-info.js"
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
@@ -25,7 +25,7 @@ import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.
 import { forwardDiagnostics, payloads } from "../modules/provider-claude-agent-sdk/_bridge-harness.js"
 import { asModelClient } from "./_model-client.js"
 import { fakeAvailability } from "./llm/_provider-chain-harness.js"
-import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/metadata/session-title.js"
 
 /*
  * The guard of the one shared engine agent host of a chat tree. Every Claude call of one tree, other than the

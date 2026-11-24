@@ -15,8 +15,8 @@ import type { ConversationMessage } from "../../../../../src/orchestration/agent
 import { publishWorkerAttempt } from "../_workflow-host-fixtures"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
-import { checkpointFinalizedToolResult, FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/finalized-tool-result-checkpoint"
-import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer"
+import { checkpointFinalizedToolResult, FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/history/finalized-tool-result-checkpoint"
+import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer"
 import {
   QUEUED_USER_INPUT_IN_FLIGHT_KIND, decodeQueuedUserInput, decodeQueuedUserInputCell,
   holdQueuedUserInput, queuedInputPayload, queuedUserInputPut, readWorkflowQueuedUserInputs,
@@ -25,13 +25,13 @@ import { composeFirstPartyModules } from "../../../../../src/orchestration/modul
 import { createWorkerCallback } from "../../../../../src/orchestration/workflow-host/execution/agent-callback"
 import { consumeWorkflowRecoveryInputs } from "../../../../../src/orchestration/workflow-host/execution/recovery-input"
 import { createWorkflowAgentInputs } from "../../../../../src/orchestration/workflow-host/execution/agent-inputs"
-import { publishSkillRevision } from "../../../../../src/workflows/skill-schema"
+import { publishSkillRevision } from "../../../../../src/workflows/skills/skill-schema"
 import type { AttemptRow } from "../../../../../src/workflows/view/types"
 import { initializedWorkflowFacts } from "../../../../helpers/workflow-root-fixtures"
 import { ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, holdAddressedWorkflowMessage } from "../../../../../src/orchestration/session/conversation/addressed-workflow-messages"
 import { queueFactsForState } from "../../../../../src/workflows/view/view-diff"
-import { flattenWorkflowView } from "../../../../../src/workflows/vm/view-flatten"
-import { buildWorkflowControlInitializedFact, workflowAggregateId } from "../../../../../src/workflows/vm/session-facts"
+import { flattenWorkflowView } from "../../../../../src/workflows/vm/view/view-flatten"
+import { buildWorkflowControlInitializedFact, workflowAggregateId } from "../../../../../src/workflows/vm/facts/session-facts"
 import { fourLaneControl, wideBindings } from "../../../workflows/vm/_tree-fixtures"
 import { makeWorkflowDeps, noConversationRecall } from "../_workflow-controller-fixtures"
 import { definition } from "../../../workflows/vm/host-test-support"

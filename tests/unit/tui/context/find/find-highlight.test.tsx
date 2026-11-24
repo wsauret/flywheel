@@ -8,7 +8,7 @@ import { createFindHighlight, findColors, FindBlockScope, FindHighlightProvider,
 import { THEMES, ThemeProvider } from "@tui/context/theme.js"
 import { contrastRatio, TEXT_MINIMUM_CONTRAST } from "@tui/context/theme/color-contrast.js"
 import { resolveTheme } from "@tui/context/theme/resolve.js"
-import { MarkdownBody } from "@tui/output-blocks/markdown/markdown-body.js"
+import { MarkdownBody } from "@tui/transcript/output-blocks/markdown/markdown-body.js"
 
 const CURRENT = { fg: RGBA.fromHex("#000000"), bg: RGBA.fromHex("#ff6600") }
 const OTHER = { fg: RGBA.fromHex("#111111"), bg: RGBA.fromHex("#ffcc00") }

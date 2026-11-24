@@ -1,4 +1,4 @@
-import { mountSemanticComponent, type SemanticPublication } from "../../app/semantic-rows-fixture.js"
+import { mountSemanticComponent, type SemanticPublication } from "../../test-support/semantic-rows-fixture.js"
 import type { FakeConnectionScript } from "../../client/runtime-connection-fixture.js"
 import { UsageSheet } from "./sheet.js"
 import { StatsSheet } from "./stats-sheet.js"

@@ -1,7 +1,7 @@
 import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
 import type { StoredFact } from "../../../../src/infra/event-store-types.js"
 import type { SessionManager, SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
-import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
+import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 import type { SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
@@ -9,7 +9,7 @@ import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js"
 import type { WorkflowRunner } from "../../../../src/orchestration/workflow-host/runner-types.js"
 import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta.js"
 import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
-import { projectSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-row.js"
+import { projectSessionCatalogRow } from "../../../../src/orchestration/session/control/session-catalog-row.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 
 /** A listed session's row; the fixtures here never project a child. */

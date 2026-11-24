@@ -6,7 +6,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 import { contextEvent, recordRuntimeEvent } from "./_budget-store-fixtures"
 import { createSessionViewLoader, toSessionView } from "../../../../src/orchestration/session-store/view"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"

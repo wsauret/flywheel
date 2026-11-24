@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { parentPort, workerData } from "node:worker_threads"
 import { Redacted } from "effect"
 
-import { readOrCreateAccountAttachToken } from "../../../../../src/orchestration/app-service/account-attach-token.js"
+import { readOrCreateAccountAttachToken } from "../../../../../src/orchestration/app-service/account/account-attach-token.js"
 import { accountServeTokenPath } from "../../../../../src/infra/paths.js"
 
 /** One participant of a token race, on its own thread. It goes through the

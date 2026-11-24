@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { createProjectStorage } from "../../../../../src/orchestration/app-service/project-storage.js"
+import { createProjectStorage } from "../../../../../src/orchestration/app-service/account/projects/project-storage.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import type { AccountModuleFaults, AccountProjectModuleServices } from "../../../../../src/orchestration/app-service/module-service-host.js"

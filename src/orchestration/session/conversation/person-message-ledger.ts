@@ -5,7 +5,7 @@ import { workflowContextRecordsAddendum } from "../../../workflows/context-bundl
 import { ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND } from "./addressed-workflow-messages.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, RETAINED_INPUT_GAP_IN_FLIGHT_KIND } from "./queued-user-inputs.js"
 import { conversationHoldsEntries } from "./session-message-entries.js"
-import { owningChat } from "../session-metadata-projection.js"
+import { owningChat } from "../metadata/session-metadata-projection.js"
 import { returnedInputNoticeId } from "../../../protocol/composer-returns.js"
 
 /** Where the ledger already holds a person's message: an entry of the
@@ -51,7 +51,7 @@ export async function workflowPersonMessage(reader: AsyncEventStateReadSurface, 
  *  the message before it retires the cell: a chat or child commit records
  *  the entry and retires the cell in one transaction, and a workflow commit
  *  records the addendum first and retires the addressed cell in a later
- *  write (`src/workflows/vm/host-commit-controller.ts`). So a copy that finds
+ *  write (`src/workflows/vm/host/host-commit-controller.ts`). So a copy that finds
  *  no record found the cell before its retirement, the guarded write
  *  refused, and the answer is `cell`. When it finds a record, the cell this
  *  write put is a second one and goes again.

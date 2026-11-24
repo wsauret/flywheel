@@ -7,7 +7,7 @@ import { workflowsModule } from "../../../../../src/orchestration/modules/workfl
 import { readFileSync, realpathSync } from "node:fs"
 import { join } from "node:path"
 import { ToolActionSchema } from "../../../../../src/infra/workflow-types.js"
-import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../../../../src/orchestration/app-service/definition-availability.js"
+import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../../../../src/orchestration/app-service/definitions/definition-availability.js"
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js"
 import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/module-runtime-services.js"

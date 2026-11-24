@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:
 import { registerTestChildRun } from "../../../helpers/live-child-run"
 import { DebugLog } from "../../../../src/infra/debug-log.js"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
-import { createRuntimeSupervisor as createRuntimeSupervisorBase } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
+import { createRuntimeSupervisor as createRuntimeSupervisorBase } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"

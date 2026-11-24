@@ -6,9 +6,9 @@ import { withMutationQueueKeys } from "../../../../src/infra/file-mutation-queue
 import { publishFileEdits } from "../../../../src/orchestration/file-edits/file-edit-operation.js"
 import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-edits/retained-file-edit-host.js"
 import { undoSessionChanges } from "../../../../src/orchestration/file-edits/session-undo.js"
-import { getSessionChangeReview } from "../../../../src/orchestration/session/session-change-review.js"
-import { loadSessionPendingFileMutations, reconcilePendingFileMutations } from "../../../../src/orchestration/session/file-mutation-recovery.js"
-import { parseFileMutationOperationHeader } from "../../../../src/orchestration/session/file-mutation-operation.js"
+import { getSessionChangeReview } from "../../../../src/orchestration/session/metadata/catalog/session-change-review.js"
+import { loadSessionPendingFileMutations, reconcilePendingFileMutations } from "../../../../src/orchestration/session/file-mutations/file-mutation-recovery.js"
+import { parseFileMutationOperationHeader } from "../../../../src/orchestration/session/file-mutations/file-mutation-operation.js"
 import { withStore, prepareLegacy, prepareBatch } from "../session/file-mutation-recovery-fixture.js"
 import { createDeferred } from "../../../fixtures/runtime-supervisor-fixtures.js"
 

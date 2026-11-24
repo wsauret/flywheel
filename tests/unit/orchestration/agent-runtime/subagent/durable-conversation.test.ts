@@ -12,14 +12,14 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/a
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js"
 import { createSubagentSessionAuthority } from "../../../../../src/orchestration/modules/subagents/execution/session-authority.js"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager.js"
-import { liveChildRun } from "../../../../../src/orchestration/session/live-session-control.js"
+import { liveChildRun } from "../../../../../src/orchestration/session/control/live-session-control.js"
 import { readConversationBackgroundNotifications } from "../../../../../src/orchestration/session/conversation/queued-background-notifications.js"
 import { readConversationQueuedUserInputs } from "../../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { readSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"
 import type { ChildSessionConversation } from "../../../../../src/orchestration/module-seams.js"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js"
-import { createConversationRecall } from "../../../../../src/orchestration/session/conversation-recall.js"
+import { createConversationRecall } from "../../../../../src/orchestration/session/conversation-records/conversation-recall.js"
 import { childTask, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js"
 
 const roots: string[] = []

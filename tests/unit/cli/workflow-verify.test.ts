@@ -9,12 +9,12 @@ import * as path from "node:path"
 import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
 import { WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state-retirement.js"
 import { manifestPath } from "../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js"
-import { ownedSkillStoreDirs } from "../../../src/workflows/skills.js"
+import { ownedSkillStoreDirs } from "../../../src/workflows/skills/skills.js"
 import { SqliteVmDriver } from "../workflows/vm/_sqlite-vm-driver.js"
 import { DRY_FILES, DRY_LOOP, dryAnswer, dryRound, dryWorkflow, FINDINGS_FILES, findingsAnswer, findingsWorkflow, MAP_GROUP, PLAN, SURVEY_GROUP, TAIL, attemptOf, completePlan, items, mapSkills, mapWorkflow, runPrepared, stage, surveyAnswer, surveyWorkflow } from "../workflows/vm/_map-fixtures.js"
 import { startNext, wideControl } from "../workflows/vm/_tree-fixtures.js"
-import { verifyRecoveredWorkflow } from "../../../src/workflows/vm/verify.js"
-import { buildWorkflowControlCommittedFact } from "../../../src/workflows/vm/session-facts.js"
+import { verifyRecoveredWorkflow } from "../../../src/workflows/vm/compile/verify.js"
+import { buildWorkflowControlCommittedFact } from "../../../src/workflows/vm/facts/session-facts.js"
 
 /** One prepared project whose installed definitions every file verification reads. */
 const filesRoot = fileTemporaryDirectory("flywheel-workflow-verify-files-")

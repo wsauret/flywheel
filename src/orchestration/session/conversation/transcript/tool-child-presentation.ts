@@ -8,7 +8,7 @@ import { sanitizeExternalText } from "../../../../infra/control-characters.js"
 import { toFileUri } from "../../../../infra/paths.js"
 import { declaredMutationField, getToolDisplay, resolveToolRowPresentation, targetSessionField } from "../../../../infra/tools/tool-display-registry.js"
 import type { ToolResultDisplayMeta } from "./tool-result-display-meta.js"
-import type { ToolExecutionEntry } from "../../tool-execution-types.js"
+import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js"
 import { createProvisionalDiffInput } from "../../../../infra/output/streaming/provisional-diff-input.js"
 
 const LEGACY_RESULT_TRUNCATION_MARKER = "[Historical result content truncated]"

@@ -43,12 +43,12 @@ import type { AsyncEventReadSurface } from "../../../../infra/event-store-types.
 import { createEventProjection, parseProjectionFact } from "../../../../infra/event-projection.js";
 import { heldProjection } from "../../../../infra/projection-registry.js";
 import { Log } from "../../../../infra/log.js";
-import type { MemoryWrittenFact } from "../../../../workflows/memory/memory-facts.js";
-import type { SkillOperationTransitionedFact, SkillWrittenFact } from "../../../../workflows/skill-facts.js";
+import type { MemoryWrittenFact } from "../../../../workflows/learning/memory/memory-facts.js";
+import type { SkillOperationTransitionedFact, SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
 import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
 import { ensurePrivateDirectoryUnder, ensurePrivateRootDirectory, PRIVATE_FILE_MODE } from "../../../../infra/private-path.js";
 import { readFileUnder, requireContainedDirectory } from "../../../../infra/write-file-under.js";
-import { parseSessionFact } from "../../../session/session-fact-registry.js";
+import { parseSessionFact } from "../../../session/persistence/session-fact-registry.js";
 import { packageDigestAt } from "./skill-package-planning.js";
 import { isTerminalState, readOperationManifest } from "./skill-operation-manifest.js";
 

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Log } from "../../../../src/infra/log.js";
 import { loadStandalonePersonaRegistry } from "../../../../src/workflows/agents/registry.js";
-import { personaIdentitySha256 } from "../../../../src/workflows/vm/definition-identity.js";
+import { personaIdentitySha256 } from "../../../../src/workflows/vm/facts/definition-identity.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
 
 const SKILL_REVISION = repoDefinitions().skills();

@@ -23,7 +23,7 @@ import { conflictMarkersNotice, notAppliedNotice } from "../../../../../src/prot
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
 import { undoSessionChanges } from "../../../../../src/orchestration/file-edits/session-undo.js";
 import { RetainedFileEditAuthority } from "../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
-import { getSessionChangeReview } from "../../../../../src/orchestration/session/session-change-review.js";
+import { getSessionChangeReview } from "../../../../../src/orchestration/session/metadata/catalog/session-change-review.js";
 import { withStore } from "../../session/file-mutation-recovery-fixture.js";
 import { Log } from "../../../../../src/infra/log.js";
 import { DebugLog } from "../../../../../src/infra/debug-log.js";

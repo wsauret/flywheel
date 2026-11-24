@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test"
 
 import { createRegistrationFollower, rememberAnsweredLoginHome, serveResidency } from "../../../../src/cli/account-service/serve-retirement.js"
 import { Log } from "../../../../src/infra/log.js"
-import { ServeLifetime } from "../../../../src/orchestration/app-service/serve-lifetime.js"
+import { ServeLifetime } from "../../../../src/orchestration/app-service/account/serve-lifetime.js"
 
 /** Whether an account service stays up while nothing holds it, and how a
  *  client-started service in the login home follows its registration. */

@@ -25,7 +25,7 @@ import type { RoleHold } from "../../../../src/orchestration/agent-runtime/types
 import { capabilityAccessHolding } from "./tools/_fixtures.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js"
 
 const tempDir = temporaryDirectories()

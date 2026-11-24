@@ -6,7 +6,7 @@ import { agentAssetMarkerFindings, knownCapabilityTerm } from "../../../scripts/
 import { bundledAgentAsset, type AgentAssetName } from "../../../src/infra/agent-assets/system-prompt.js";
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
 import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js";
-import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 
 const root = mkdtempSync(join(tmpdir(), "flywheel-bundled-skills-test-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));

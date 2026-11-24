@@ -1,8 +1,8 @@
-import type { UsageHourlySpend, UsageLedgerGroup, UsageQuotaAccounting as AuthorityQuotaAccounting, UsageRangeEntries } from "../../../infra/llm/usage-authority.js"
-import { availableSubscriptionUsageResetCredits } from "../../../infra/llm/subscription-usage.js"
-import type { SubscriptionUsageHistoryEntry } from "../../../infra/llm/subscription-usage-store-codec.js"
+import type { UsageHourlySpend, UsageLedgerGroup, UsageQuotaAccounting as AuthorityQuotaAccounting, UsageRangeEntries } from "../../../infra/llm/usage/usage-authority.js"
+import { availableSubscriptionUsageResetCredits } from "../../../infra/llm/usage/subscription-usage.js"
+import type { SubscriptionUsageHistoryEntry } from "../../../infra/llm/usage/subscription-usage-store-codec.js"
 import { subscriptionSpendAccountCorrelationId } from "../../../protocol/subscription-spend-consent-protocol-types.js"
-import type { SubscriptionUsageMetric, SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js"
+import type { SubscriptionUsageMetric, SubscriptionUsageSpendSource } from "../../../infra/llm/usage/subscription-usage.js"
 import type { UsageAccountSource, UsageAccountsResult, UsageHistoryResult, UsageHistorySource, UsageModelSummary, UsageProtocolMetadata, UsageQuotaAccounting, UsageSpendPoint, UsageSpendResult, UsageSpendSource, UsageSubscriptionObservation, UsageTokens } from "../../../protocol/modules/subscription-usage.js"
 
 interface CurrentUsageAccountBase {
@@ -20,7 +20,7 @@ interface CurrentUsageObservation {
   readonly readerGeneration: number
   readonly metrics: readonly SubscriptionUsageMetric[]
   readonly spendSources: readonly SubscriptionUsageSpendSource[]
-  readonly resetCredits?: import("../../../infra/llm/subscription-usage.js").SubscriptionUsageResetCredits
+  readonly resetCredits?: import("../../../infra/llm/usage/subscription-usage.js").SubscriptionUsageResetCredits
   readonly crossedThresholds: readonly { readonly metricName: string; readonly threshold: number }[]
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models/models.js";
 import { clampReasoningEffort } from "../../../../../src/orchestration/agent-runtime/llm/model-compat.js";
 import { buildOpenAIParams } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";

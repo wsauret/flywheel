@@ -7,7 +7,7 @@ import { redactSecrets } from "../../../infra/redact-secrets.js"
 import { BUG_REPORT_MAX_BYTES, BugReportReceiptSchema, BugReportSchema, NOT_RELEASE_REPORT_STATUS, sanitizeBugReportInput, type BugReportInput, type BugReportResult } from "../../../protocol/modules/bug-reports.js"
 import { runningDisplayBuildId } from "../../app-service/runtime-executable.js"
 import type { ModuleServiceInstance } from "../../app-service/module-service-host.js"
-import type { RuntimeFaultReporter } from "../../app-service/runtime-fault-reporting.js"
+import type { RuntimeFaultReporter } from "../../app-service/executor/runtime-fault-reporting.js"
 import { collectReportDiagnostics } from "./diagnostics.js"
 
 export interface BugReportsService extends ModuleServiceInstance {

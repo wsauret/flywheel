@@ -32,9 +32,9 @@ import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime
 import { parseConversationTreeFact } from "../../../src/orchestration/session/conversation/conversation-facts.js"
 import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { refreshSkillLoadStatsSnapshot } from "../../../src/orchestration/modules/learning/skills/skill-load-stats.js"
-import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/session-summary-index.js"
-import { createSessionFactWriter, prepareSessionFactAppend, type SessionFact } from "../../../src/orchestration/session/session-fact-writer.js"
-import { SessionSchema } from "../../../src/orchestration/session/schemas.js"
+import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/metadata/catalog/session-summary-index.js"
+import { createSessionFactWriter, prepareSessionFactAppend, type SessionFact } from "../../../src/orchestration/session/persistence/session-fact-writer.js"
+import { SessionSchema } from "../../../src/orchestration/session/metadata/schemas.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
 import { historicalWorkflowPublicationFacts } from "./historical-workflow-publication.js"
 

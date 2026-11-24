@@ -1,11 +1,11 @@
 import type { Scope } from "effect";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderCatalogProvenance, AccessProviderId, AccessProviderModelEligibility } from "../../../infra/llm/access-provider.js";
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
-import type { CacheRetentionPolicy, ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
+import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderCatalogProvenance, AccessProviderId, AccessProviderModelEligibility } from "../../../infra/llm/access/access-provider.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
+import type { CacheRetentionPolicy, ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
 import type { CompletedStopReason, LlmApi, LlmStopReason, LlmToolOutputPart } from "./messages.js";
 import type { ToolOutcome } from "../../../infra/tool-outcome.js";
-import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";
+import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models/models.js";
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
 import type { ContentRepair } from "../../../infra/llm/content-repair.js";
 export type { CompletedStopReason, LlmStopReason } from "./messages.js";
@@ -13,10 +13,10 @@ import type { StreamAttemptStartEvent } from "./stream-attempt.js";
 import type { FailoverFailure, ProviderFailure } from "./provider-failure.js";
 import type { RequestAdmission } from "./provider-availability-types.js";
 import type { ClaudeTokenizerIdentity } from "../../../infra/model-id.js";
-import type { ProviderIdentity } from "../../../infra/llm/auth-error.js";
+import type { ProviderIdentity } from "../../../infra/llm/errors/auth-error.js";
 import type { MessageProducer } from "../../../infra/chat-input.js";
 import type { SystemPromptTiers } from "./system-prompt-tiers.js";
-import type { ProviderTransportContext } from "../../session/provider-request-audit-types.js";
+import type { ProviderTransportContext } from "../../session/runtime-facts/provider-request-audit-types.js";
 import type { SharedTree } from "../shared-tree.js";
 import type { ProviderHistoryTarget } from "./provider-history.js";
 
@@ -84,7 +84,7 @@ interface StreamRetryEvent {
   readonly maxAttempts: number;
   readonly reason: string;
   readonly delayMs: number;
-  readonly error: import("../../../infra/llm/provider-error-diagnostic.js").ProviderErrorDiagnostic;
+  readonly error: import("../../../infra/llm/errors/provider-error-diagnostic.js").ProviderErrorDiagnostic;
   readonly thinkingStall?: {
     readonly blockKey?: string;
     readonly elapsedMs: number;
@@ -672,7 +672,7 @@ export interface ServingAttempt {
   requestEntries?(request: StreamOptions): readonly SystemOriginMessage[];
 
   /** Prices token counts from the immutable models.dev rate card cached for this adapter. */
-  priceFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h?: number; reasoning: number; promptTokens?: number }): import("../../../infra/llm/llm-helpers.js").UsagePriceResult;
+  priceFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h?: number; reasoning: number; promptTokens?: number }): import("../../../infra/llm/models/llm-helpers.js").UsagePriceResult;
 }
 
 /** Exact outbound revision evaluated before adapter construction and consumed unchanged by execution. */

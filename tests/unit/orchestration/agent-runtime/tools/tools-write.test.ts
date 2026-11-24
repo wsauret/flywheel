@@ -6,7 +6,7 @@ import * as path from "node:path";
 import { Schema } from "effect";
 import { readMutationEvidenceFiles } from "../../../../../src/infra/mutation-evidence.js";
 import { MutationEvidenceSchema } from "../../../../../src/infra/mutation-evidence-schema.js";
-import { parseFileMutationOperationHeader, readFileMutationOperation } from "../../../../../src/orchestration/session/file-mutation-operation.js";
+import { parseFileMutationOperationHeader, readFileMutationOperation } from "../../../../../src/orchestration/session/file-mutations/file-mutation-operation.js";
 
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { testBaseTools, admitEveryTool } from "../../../../helpers/request-tool-surface.js";

@@ -1,8 +1,8 @@
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
-import type { SubscriptionUsageOutcome, SubscriptionUsageReader, SubscriptionUsageReaderContext } from "../../../infra/llm/subscription-usage.js";
+import type { SubscriptionUsageOutcome, SubscriptionUsageReader, SubscriptionUsageReaderContext } from "../../../infra/llm/usage/subscription-usage.js";
 import { processUsageReadings, usageMetrics, usageReplyWindows, usageStatus, type UsageWindows } from "./account-usage.js";
 import { cliLaunch, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
-import { cliLogin } from "./cli-login.js";
+import { cliLogin } from "./login/cli-login.js";
 
 /** The account's plan windows and when a source stated them, with no windows for a login that has none, or the
  *  outcome of a read that failed. */
@@ -31,7 +31,7 @@ async function askCliIn(launcher: LauncherScope | undefined, context: Subscripti
   if (launch.kind !== "ready") return { kind: "fetch-failure" };
   try {
     // The Agent SDK loads only when a usage check asks a CLI, so a process that never does keeps it out of its start.
-    const readUsage = seams.readUsage ?? (await import("./query-launcher.js")).readCliUsage;
+    const readUsage = seams.readUsage ?? (await import("./engine/query-launcher.js")).readCliUsage;
     const usage = await readUsage(launch.config, context.signal);
     if (!usage.loggedIn) return { kind: "expired-auth" };
     const login = { configDir: launch.config.configDir, accountId: context.account.instanceId };

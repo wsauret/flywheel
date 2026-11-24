@@ -28,11 +28,11 @@ PI-INTERACTION-062, PI-INTERACTION-098 states the behavior a person observes, AR
    8. On iOS, hold a prepended page until the scroll is still.
    9. Remember disclosure state by stable identity.
    10. Connection state never decides whether a surface exists.
-3. Write one identity test for each UI that updates live, before you fix or add the component. Use the memory host in `webview/src/app/render-ownership-host-fixture.ts`. It runs the real Solid components through `solid-js/universal`, without a browser, and lets a test compare node identity.
-   1. Add a mount function to `webview/src/app/render-ownership-fixture.ts`. Create the component inside `createRoot`, feed its props from a signal, and return `dispose`, a setter that publishes a new value, and readers for the nodes you check. Export it from `webview/src/app/render-ownership-loader-fixture.ts` if you use that fixture. A module surface keeps its mount function in its module home, such as `mountWorkflowActivity` in `webview/src/modules/workflows/activity-fixture.tsx` or the workflow screens in `webview/src/modules/workflows/stability-fixture.tsx`.
+3. Write one identity test for each UI that updates live, before you fix or add the component. Use the memory host in `webview/src/test-support/render-ownership-host-fixture.ts`. It runs the real Solid components through `solid-js/universal`, without a browser, and lets a test compare node identity.
+   1. Add a mount function to a fixture beside the surface it mounts. Create the component inside `createRoot`, feed its props from a signal, and return `dispose`, a setter that publishes a new value, and readers for the nodes you check. For the transcript, use `webview/src/app/transcript/render-ownership-fixture.ts` and export the function from `webview/src/app/transcript/render-ownership-loader-fixture.ts`. A module surface keeps its mount function in its module home, such as `mountWorkflowActivity` in `webview/src/modules/workflows/activity-fixture.tsx` or the workflow screens in `webview/src/modules/workflows/stability-fixture.tsx`. A check that spans several surfaces goes in `webview/src/test-support/`, such as `stability.test.ts` and `budget-render-fixture.tsx`.
    2. Mount, keep a reference to each node that must stay, publish an update that the real runtime sends, and assert that the same node is still there.
    3. Assert the visible change too, so that the test fails when the update did not apply.
-   4. For a scroll owner, drive the viewport that the fixture returns: set `scrollTop`, call its `onScroll`, `dispatch` touch events, and call `frame()` to run the pending animation frame. `webview/src/app/transcript-window-ownership.test.ts` shows each step.
+   4. For a scroll owner, drive the viewport that the fixture returns: set `scrollTop`, call its `onScroll`, `dispatch` touch events, and call `frame()` to run the pending animation frame. `webview/src/app/transcript/transcript-window-ownership.test.ts` shows each step.
 
    ```ts
    test("a queued row keeps its node when its agent starts", () => {
@@ -47,7 +47,7 @@ PI-INTERACTION-062, PI-INTERACTION-098 states the behavior a person observes, AR
    })
    ```
 
-   Run one file with `bun run test ./webview/src/app/render-continuity.test.ts`.
+   Run one file with `bun run test ./webview/src/app/transcript/render-continuity.test.ts`.
 4. Check a grid track change in a browser. The memory DOM cannot lay out, so measure the column edges before and after the live change.
 
 ## Debugging a flicker

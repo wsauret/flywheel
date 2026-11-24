@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { Schema } from "effect";
 import { RESEARCH_SNAPSHOT } from "../src/orchestration/modules/development/benchmark/catalog.js";
-import { EMPTY_TREE } from "../src/orchestration/modules/development/benchmark/task-schema.js";
+import { EMPTY_TREE } from "../src/orchestration/modules/development/benchmark/tasks/task-schema.js";
 
 // ARCH-DIRECTORIES-019: a runnable benchmark fixture depends only on content in
 // the public repository. Every commit of this repository that the harness

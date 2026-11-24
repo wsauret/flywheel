@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
 
-import { createAccountProjectRegistry } from "../../../../../../src/orchestration/app-service/account-project-registry.js"
+import { createAccountProjectRegistry } from "../../../../../../src/orchestration/app-service/account/account-project-registry.js"
 import { runMachines } from "../../../../../../src/orchestration/modules/remote/cli/machines.js"
 import { createRemoteAccess, type RemoteAccess } from "../../../../../../src/orchestration/modules/remote/remote-access.js"
 import { openTerminalDeviceStore } from "../../../../../../src/orchestration/modules/remote/terminal/terminal-device-store.js"

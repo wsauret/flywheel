@@ -10,12 +10,12 @@ import { createSkillManageTool } from "../../../../../../src/orchestration/modul
 import type { ToolResult, DispatchedToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { ConversationTree } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree.js";
 import { createConversationTree } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
-import { loadAgentInputProjection } from "../../../../../../src/orchestration/session/agent-input-projection.js";
-import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
+import { loadAgentInputProjection } from "../../../../../../src/orchestration/session/agent-input/agent-input-projection.js";
+import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { reconcileLearning } from "../../../../../../src/orchestration/modules/learning/review/reconciliation.js";
 import type { SkillWriteOrigin } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
+import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
 import { operationIdentity, readOperationManifest } from "../../../../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
 import { makeContext } from "../../../agent-runtime/tools/_fixtures.js";
 

@@ -20,18 +20,18 @@ import { ENGINE_INSTRUCTIONS } from "../../../../helpers/hosted-engine-text.js";
 import type { AnthropicOperations } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import type { ModelRefusal } from "../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
 import { QuotaCoordinationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { makeBridge } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge.js";
-import type { AdmittedWindow } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge-requests.js";
-import type { BridgeConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge-state.js";
-import type { ExtraUsage, ExtraUsageStop } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/extra-usage-guard.js";
+import { makeBridge } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge.js";
+import type { AdmittedWindow } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-requests.js";
+import type { BridgeConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-state.js";
+import type { ExtraUsage, ExtraUsageStop } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge/extra-usage-guard.js";
 import type { UsageWindows } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/account-usage.js";
 import type { BridgeRequest } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
-import type { InPlaceGate } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/in-place-check.js";
+import type { InPlaceGate } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/in-place-check.js";
 import type { RequestOutcome } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
-import { stopQuery, type CliFrame, type LaunchedQuery, type QueryLaunch } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
-import { silentVersions } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
-import type { TranscriptFiles } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/transcript.js";
-import type { ProviderTransportContext } from "../../../../../src/orchestration/session/provider-request-audit-types.js";
+import { stopQuery, type CliFrame, type LaunchedQuery, type QueryLaunch } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
+import { silentVersions } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.js";
+import type { TranscriptFiles } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/transcript.js";
+import type { ProviderTransportContext } from "../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js";
 import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 /** The envelope fields that the CLI stamps on every message. The bridge reads none of them. */

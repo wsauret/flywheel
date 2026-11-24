@@ -9,7 +9,7 @@ import {
   committedUsageEvent,
   unlimitedLimits,
 } from "./_budget-store-fixtures";
-import type { BudgetLimits } from "../../../../src/workflows/budget";
+import type { BudgetLimits } from "../../../../src/workflows/run/budget";
 
 afterEach(() => {
   cleanupTmpRoot();

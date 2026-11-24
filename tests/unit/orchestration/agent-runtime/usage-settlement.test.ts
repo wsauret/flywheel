@@ -2,16 +2,16 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type InFlightPayload } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { createUsageAuthority, UsageEntryConflictError } from "../../../../src/infra/llm/usage-authority.js"
-import type { MeasuredUsageEntry, UsageEntry } from "../../../../src/infra/llm/usage-entry.js"
+import { createUsageAuthority, UsageEntryConflictError } from "../../../../src/infra/llm/usage/usage-authority.js"
+import type { MeasuredUsageEntry, UsageEntry } from "../../../../src/infra/llm/usage/usage-entry.js"
 import { Log } from "../../../../src/infra/log.js"
 import {
   createSessionUsageSettlement,
   recoverSessionUsageSettlements,
   type UsageSettlementDraft,
 } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
-import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/provider-request-audit-projection.js"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
+import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-projection.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()

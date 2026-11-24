@@ -1,7 +1,7 @@
 import { resolveAuthContext } from "../../../infra/auth/auth-context.js";
 import { installedCredentialProviderIds } from "../../credential-provider-modules.js";
 import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js";
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import { resolveEnabledProviderModelCatalog } from "./model-assignment-providers.js";
 import type {
   EffortOptionRow,
@@ -24,7 +24,7 @@ import {
 import { saveModelAssignment } from "./model-selection.js";
 import { isBriefSlot, roleSlot, slotLabel, type AgentPersonaRoles } from "./role-selection.js";
 import { parentRoleId } from "../roles.js";
-import type { RoleSettingEntry as RoleAssignmentEntry, RoleSettings, RoleAssignments, RoleAssignmentSnapshot } from "../../session/schemas.js";
+import type { RoleSettingEntry as RoleAssignmentEntry, RoleSettings, RoleAssignments, RoleAssignmentSnapshot } from "../../session/metadata/schemas.js";
 import { ensureSessionRoleSnapshot, captureRoleAssignments, withInheritedRoles } from "./session-role-resolver.js";
 import { briefRoleId, isProfileModelRole, parseBriefRoleId } from "../../../protocol/brief-role-id.js";
 import { Schema } from "effect";

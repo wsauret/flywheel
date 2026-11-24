@@ -15,22 +15,22 @@ import { buildSubagentCompleted, buildSubagentPaused, buildSubagentResumed } fro
 import { readSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection";
 import { settleDeletedSubagent, stopSubagentSession } from "../../../../../src/orchestration/modules/subagents/execution/control/direct-child-control";
 import { createSessionManager, type SessionManager } from "../../../../../src/orchestration/session/manager";
-import { liveChildRun } from "../../../../../src/orchestration/session/live-session-control";
-import { prepareSessionFactAppend } from "../../../../../src/orchestration/session/session-fact-writer";
+import { liveChildRun } from "../../../../../src/orchestration/session/control/live-session-control";
+import { prepareSessionFactAppend } from "../../../../../src/orchestration/session/persistence/session-fact-writer";
 import { holdQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-background-notifications";
 import { holdQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-user-inputs";
 import { registerTestChildRun } from "../../../../helpers/live-child-run";
 import type { AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types";
 import type { AgentLoopInput } from "../../../../../src/infra/agent-loop-events";
 import type { SessionInputProducer } from "../../../../../src/infra/chat-input";
-import { reconcileChildSessionCompletions } from "../../../../../src/orchestration/session/child-session-reconciliation";
-import { deliverSessionInput } from "../../../../../src/orchestration/session/session-input-delivery";
-import { createSessionMessaging } from "../../../../../src/orchestration/session/session-messaging";
+import { reconcileChildSessionCompletions } from "../../../../../src/orchestration/session/control/children/child-session-reconciliation";
+import { deliverSessionInput } from "../../../../../src/orchestration/session/control/messaging/session-input-delivery";
+import { createSessionMessaging } from "../../../../../src/orchestration/session/control/messaging/session-messaging";
 import { makeContext, TEST_RATIONALE } from "../../agent-runtime/subagent/_fixtures";
 import { assistantToolUseMessage } from "../../session/_save-point-fixtures";
 import { createUnstartedChild, subagentChildHarnesses, type SubagentChildHarness } from "./_subagent-child-fixtures";
 import { finalizeTestSessionDeletion } from "../../session/_session-manager-fixtures";
-import { executeChildSessionDeletionPlan } from "../../../../../src/orchestration/session/child-session-deletion";
+import { executeChildSessionDeletionPlan } from "../../../../../src/orchestration/session/control/children/child-session-deletion";
 import { unusedChildSessionControl } from "../../../../helpers/child-session-control.js";
 import { processSettled } from "../../../../helpers/process-settled.js";
 

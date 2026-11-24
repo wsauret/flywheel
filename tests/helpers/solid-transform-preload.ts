@@ -1,6 +1,6 @@
 import { dirname, join } from "node:path"
 import { plugin, type OnLoadArgs, type OnLoadCallback, type PluginBuilder } from "bun"
-import { keepingStackTraceSettings } from "../../src/tui/solid-transform-stack-trace.js"
+import { keepingStackTraceSettings } from "../../src/tui/shell/solid-transform-stack-trace.js"
 import { cachedSolidTransform, compilerIdentity, installedPackage } from "./solid-transform-cache.js"
 
 // Registers the OpenTUI Solid JSX transform, as `@opentui/solid/preload` does,

@@ -69,7 +69,7 @@ import { tarExecutable } from "./readiness-package-smoke.js";
 import { downloadReleaseAsset, latestReleaseTag } from "./release-repo.js";
 import { RELEASE_HARNESS_ENVIRONMENT, stopHarnessProcesses, type TaggedProcess } from "../tests/helpers/real-process-fixture.js";
 import { readRevisionDriver } from "../tests/release/lib/revision-driver.js";
-import { SERVICE_NAMES } from "../src/orchestration/app-service/account-service-registration.js";
+import { SERVICE_NAMES } from "../src/orchestration/app-service/account/installation/account-service-registration.js";
 
 /** Selects comparison families and validates an explicitly supplied pinned driver. */
 export function comparisonPlan(manifestPath?: string) {

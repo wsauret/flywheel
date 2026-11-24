@@ -1,6 +1,6 @@
 import type { ProjectDirectories } from "../../src/infra/directory-authorities.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../src/infra/event-store-types.js"
-import { projectStateComposition } from "../../src/orchestration/app-service/project-state-recovery.js"
+import { projectStateComposition } from "../../src/orchestration/app-service/project-state/worker/project-state-recovery.js"
 
 type ProjectState = ReturnType<typeof openProjectState>
 type ProjectRecoveryScope = Parameters<ProjectState["claim"]>[0]

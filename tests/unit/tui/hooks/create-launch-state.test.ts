@@ -3,11 +3,11 @@ import { createRoot, createSignal } from "solid-js"
 
 import type { UnsentChatSubmission } from "../../../../src/protocol/client/chat-submissions.js"
 import type { LaunchState } from "../../../../src/infra/launch-state.js"
-import { leaveTerminal, setRendererHandoff } from "../../../../src/tui/exit.js"
-import { createDraftCache } from "../../../../src/tui/components/create-draft-cache.js"
+import { leaveTerminal, setRendererHandoff } from "../../../../src/tui/terminal/exit.js"
+import { createDraftCache } from "../../../../src/tui/components/composer/create-draft-cache.js"
 import { createLaunchState } from "../../../../src/tui/hooks/create-launch-state.js"
 import type { TabInfo } from "../../../../src/tui/hooks/create-tabs.js"
-import type { TranscriptLayoutSlot } from "../../../../src/tui/output-window/output-window-scroll.js"
+import type { TranscriptLayoutSlot } from "../../../../src/tui/transcript/output-window/output-window-scroll.js"
 import { catalogRow } from "../../../helpers/session-catalog.js"
 
 function tab(id: string, kind: "session" | "pending" = "session"): TabInfo {

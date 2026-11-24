@@ -8,13 +8,13 @@ import { WORKFLOW_FILE_MAX_BYTES } from "../../../src/infra/workflow-yaml.js"
 import { readPathWorkflow } from "../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import { JOIN_EXPANSION_CAP_BYTES } from "../../../src/workflows/context-bundle/context.js"
 import { envelopeKeys } from "../../../src/workflows/output-contract/grammar.js"
-import { workflowCompletionContent } from "../../../src/workflows/workflow-completion.js"
+import { workflowCompletionContent } from "../../../src/workflows/run/workflow-completion.js"
 import { REGISTERED_REDUCERS } from "../../../src/workflows/reducers/registry.js"
-import { decodeWorkflowFile } from "../../../src/workflows/workflow-file.js"
+import { decodeWorkflowFile } from "../../../src/workflows/vm/admission/workflow-file.js"
 import {
   MAX_ATTEMPTS_CEILING, WorkflowDefinitionSchema, agentRecords,
   type AgentRecordKeys, type PhaseOrRepeatByKind, type PhaseOrRepeatKind, type RepeatLoop,
-} from "../../../src/workflows/workflow-schema.js"
+} from "../../../src/workflows/schema/workflow-schema.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { repoDefinitions } from "../../helpers/project-definitions.js"
 import { stagedWorkflowContent } from "../../helpers/workflow-files.js"

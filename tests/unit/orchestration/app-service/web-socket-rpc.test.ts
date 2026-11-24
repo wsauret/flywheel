@@ -3,7 +3,7 @@ import { Effect, ManagedRuntime, Stream } from "effect"
 import { NetAddress } from "effect/net"
 import { Socket, SocketServer } from "effect/socket"
 
-import { webSocketServerLayer } from "../../../../src/orchestration/app-service/web-socket-server"
+import { webSocketServerLayer } from "../../../../src/orchestration/app-service/account/connections/web-socket-server"
 
 /** A port nothing else on this machine is listening on, found by letting the
  *  OS hand one out and releasing it. */

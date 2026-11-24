@@ -17,7 +17,7 @@ const REVISION_CAPTURE_ALLOWLIST = new Set([
   "src/orchestration/headless/run-headless-task.ts",
   "src/orchestration/modules/workflows/migrations/workflow-identity-chain.ts",
   "src/orchestration/workflow-host/lifecycle/controller.ts",
-  "src/orchestration/app-service/definition-availability.ts",
+  "src/orchestration/app-service/definitions/definition-availability.ts",
   // Each request's tool plan reads the published revision once, so its skill
   // catalog and its capability checks come from one revision.
   "src/orchestration/agent-runtime/request-inputs.ts",
@@ -30,7 +30,7 @@ const REVISION_CAPTURE_ALLOWLIST = new Set([
   // each reads the published revision once to resolve the definition
   // availability that its child's tools and text render against.
   "src/orchestration/modules/subagents.ts",
-  "src/orchestration/modules/development/benchmark/persona-run.ts",
+  "src/orchestration/modules/development/benchmark/persona/persona-run.ts",
 ])
 
 function sourceFiles(root: string): string[] {

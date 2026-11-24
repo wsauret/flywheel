@@ -1,4 +1,4 @@
-import { SESSION_KEY, sessionOf } from "../src/app/screen-stack.js"
+import { SESSION_KEY, sessionOf } from "../src/app/screens/screen-stack.js"
 
 /** The page's address names the session in view: `/session/<id>`, or the
  *  root when nothing in particular is. A bookmark, a link from another

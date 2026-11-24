@@ -26,9 +26,9 @@ import { migrateWorkflowDefinitionIdentityRetiredBlocked } from "./workflows/mig
 import { migrateWorkflowDefinitionIdentityPersonaShell } from "./workflows/migrations/workflow-definition-identity-persona-shell.js"
 import { HANDOFF_REVISION_MIGRATIONS, migrateHandoffRevisions } from "./workflows/migrations/workflow-definition-identity-handoff-revisions.js"
 import { dropLegacyWorkflowPruneEvidence } from "./workflows/migrations/workflow-prune-evidence.js"
-import { DefinitionProvenanceFactSchemas } from "../../workflows/definition-provenance-facts.js"
+import { DefinitionProvenanceFactSchemas } from "../../workflows/provenance/definition-provenance-facts.js"
 import { HandoffFactSchemas } from "../../workflows/output-contract/facts.js"
-import { isWorkflowExecutionFact } from "../../workflows/workflow-completion.js"
+import { isWorkflowExecutionFact } from "../../workflows/run/workflow-completion.js"
 import { fileURLToPath } from "node:url"
 import { Log } from "../../infra/log.js"
 import { moduleRuntimeHandle, type ModuleRuntimes } from "../../infra/module-runtime.js"
@@ -37,7 +37,7 @@ import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-serv
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
 import { ORCHESTRATION_REMINDER, orchestrationSection } from "./workflows/orchestration.js"
 import type { LaunchingSessionAuthority } from "../workflow-host/lifecycle/path-workflow.js"
-import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
+import type { DefinitionAvailabilitySnapshot } from "../app-service/definitions/definition-availability.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
 import { moduleDisabledReason } from "../../protocol/module-ids.js"
 import type { WorkflowToolDeps } from "../agent-runtime/tools/workflow-tool.js"
@@ -51,7 +51,7 @@ import { workflowLaunchRetainedOperation } from "./workflows/launch-operation.js
 import { workflowWorkControl, workflowWorkState } from "./workflows/child-session.js"
 import { parseProjectionFact } from "../../infra/event-projection.js"
 import { parseSessionRuntimeFact } from "../../infra/runtime-fact-parser.js"
-import { WorkflowRunFactSchemas, type WorkflowRunFact } from "../../workflows/run-facts.js"
+import { WorkflowRunFactSchemas, type WorkflowRunFact } from "../../workflows/run/run-facts.js"
 import { createWorkflowPlacements, createWorkflowRunReader, createWorkflowSettingsReader } from "./workflows/runs/run-record.js"
 import { createWorkflowRunWriter, workflowRegistration, startedWorkflowAttempt, workflowAdoption, workflowAccounting, workflowDeletion, workflowSettlement, workflowCutAppend, workflowIsDeleted } from "./workflows/run-facts.js"
 import { settleWorkflowDeletion } from "./workflows/deletion.js"
@@ -264,8 +264,8 @@ export const workflowsModule = {
     settle: async (input) => {
       if (input.session.kind !== "workflow") throw new Error("Workflow deletion requires workflow metadata")
       const [{ recordChildWorkflowStop }, { reconcileChildSessionCompletions }] = await Promise.all([
-        import("../session/child-workflow-result.js"),
-        import("../session/child-session-reconciliation.js"),
+        import("../session/control/children/child-workflow-result.js"),
+        import("../session/control/children/child-session-reconciliation.js"),
       ])
       const binding = input.session.launchedFrom
       // Deletion stops the child as a person's Stop does, unless its call

@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { watchConfigFile } from "../../../src/orchestration/config/config-file.js";
 import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
-import { createModuleProjection } from "../../../src/orchestration/app-service/module-projection.js";
+import { createModuleProjection } from "../../../src/orchestration/app-service/projections/module-projection.js";
 import { persistentProcessPolicy } from "../../../src/orchestration/config/policy/persistent-process-policy.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
 import type { RuntimeModulesView } from "../../../src/protocol/module-protocol-types.js";

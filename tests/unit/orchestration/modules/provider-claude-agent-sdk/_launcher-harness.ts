@@ -2,7 +2,7 @@
 import type { AccountInfo, ModelInfo, Query, SDKControlInitializeResponse, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { join } from "node:path";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
-import type { StopFiles } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import type { StopFiles } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 
 export const noLaunch: LauncherScope = {
   spawnOwned: () => Promise.reject(new Error("no launch in a unit test")),

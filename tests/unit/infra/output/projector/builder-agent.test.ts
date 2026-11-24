@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../../../../../src/infra/output/projector/structured-output-builder";
 import type { AnyBlock, AgentGroupBlock } from "../../../../../src/infra/output-blocks";
 import { OutputProjector } from "../../../../../src/infra/output/projector/output-projector";
-import { projectFrontendOutputBlock } from "../../../../../src/orchestration/app-service/frontend-output-blocks";
+import { projectFrontendOutputBlock } from "../../../../../src/orchestration/app-service/projections/output/frontend-output-blocks";
 
 function agentGroup(block: AnyBlock | undefined): AgentGroupBlock {
   if (block === undefined) throw new Error("Expected agentGroup block, got none");

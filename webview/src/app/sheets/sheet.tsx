@@ -1,8 +1,8 @@
 import { createEffect, createMemo, on, Show, type JSX } from "solid-js"
 
-import { trapFocus } from "../focus-trap.js"
-import { scrollEdges } from "../scroll-edges.js"
-import { Icon, ICONS } from "../icons.js"
+import { trapFocus } from "../dialogs/focus-trap.js"
+import { scrollEdges } from "../controls/scroll-edges.js"
+import { Icon, ICONS } from "../controls/icons.js"
 import type { ModuleRow, ModuleRowAction } from "../../../../src/protocol/protocol-module.js"
 import "../../styles/sheets.css"
 

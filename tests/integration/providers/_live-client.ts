@@ -15,7 +15,7 @@
  * prints it, so a run shows whether a subscription or an API key paid.
  */
 import { LIVE_AUTH_PROFILE_UNSET, liveAuthProfile } from "../../../scripts/claude-engine-release.js";
-import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../../../src/orchestration/app-service/eligibility-preparation.js";
+import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../../../src/orchestration/app-service/auth/models/eligibility-preparation.js";
 import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-store.js";
 import { normalizeAuthProfile } from "../../../src/infra/auth/auth-profile-normalization.js";
 import { resolveAuthContext } from "../../../src/infra/auth/auth-context.js";
@@ -31,8 +31,8 @@ import type { ModelClient, ProviderSessionLifetime, ServingAttempt } from "../..
 import { randomUUID } from "node:crypto";
 import { Effect, Exit, Scope } from "effect";
 import { captureRuntimeConfigRequest } from "../../../src/orchestration/agent-runtime/request-config.js";
-import { createProviderModelPreferenceService } from "../../../src/orchestration/app-service/provider-model-preference-service.js";
-import { providerModelPreferencePersistence } from "../../../src/orchestration/app-service/provider-model-preference-persistence.js";
+import { createProviderModelPreferenceService } from "../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js";
+import { providerModelPreferencePersistence } from "../../../src/orchestration/app-service/auth/models/provider-model-preference-persistence.js";
 import { createSubscriptionUsageService } from "../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { createSubscriptionUsageServicePool } from "../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
 import { credentialSlotClassifier } from "../../../src/orchestration/auth/credential-slot-classifier.js";
@@ -46,7 +46,7 @@ import { captureSubscriptionAdmission } from "../../../src/orchestration/subscri
 import { createSubscriptionSpendConsentCaptureCache } from "../../../src/orchestration/subscription-spend-consent/capture-cache.js";
 import type { SubscriptionSpendConsentCapture } from "../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
 import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js";
-import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 import { unusedProviderModelWrites } from "../../helpers/provider-model-writes.js";
 import { diskAuthObservation } from "../../helpers/profile-auth-observation.js";
 

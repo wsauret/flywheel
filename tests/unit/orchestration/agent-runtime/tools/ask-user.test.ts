@@ -10,7 +10,7 @@ import type { DispatchedToolContext } from "../../../../../src/orchestration/age
 import type { AgentInputAnswer } from "../../../../../src/protocol/question-protocol-types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
-import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
+import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { asRecord, isRecord } from "../../../../../src/infra/record.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";

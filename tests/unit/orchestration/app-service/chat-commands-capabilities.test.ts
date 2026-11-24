@@ -4,8 +4,8 @@ import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types
 import { moduleDescriptor } from "../../../../src/orchestration/config/module-descriptor.js"
 import type { CapabilityAdmission, CapabilityRequest } from "../../../../src/orchestration/config/policy/module-policy.js"
 import { composeRealmModuleSnapshot, type ModuleId } from "../../../../src/orchestration/modules.js"
-import { createCommandInvokeService } from "../../../../src/orchestration/app-service/command-invoke-service.js"
-import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
+import { createCommandInvokeService } from "../../../../src/orchestration/app-service/definitions/commands/command-invoke-service.js"
+import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 

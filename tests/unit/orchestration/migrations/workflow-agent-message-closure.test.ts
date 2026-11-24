@@ -5,13 +5,13 @@ import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-s
 import { convertWorkflowAgentSessions } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
-import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
+import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership.js"
 import { readUnreadMessages, readWorkflowQueuedUserInputs, dropQueuedUserInput } from "../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { readConversationSnapshotSync } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 import { historicalWorkflowPublicationFacts } from "../../../release/fixtures/historical-workflow-publication.js"
-import { recoverSessionMessageProducer, sessionMessageSourcesSync } from "../../../../src/orchestration/session/session-message-sources.js"
+import { recoverSessionMessageProducer, sessionMessageSourcesSync } from "../../../../src/orchestration/session/metadata/session-message-sources.js"
 import type { EventStoreReadSurface } from "../../../../src/infra/event-store-types.js"
-import { parseWorkflowSessionFact, workflowRootControl } from "../../../../src/workflows/vm/session-facts.js"
+import { parseWorkflowSessionFact, workflowRootControl } from "../../../../src/workflows/vm/facts/session-facts.js"
 
 const temporary = temporaryDirectories()
 

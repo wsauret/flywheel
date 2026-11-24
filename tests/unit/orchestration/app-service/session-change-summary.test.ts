@@ -11,17 +11,17 @@ import { changesCursor, type SessionFileChangeCounts } from "../../../../src/pro
 import { runtimeDeliveryPolicy } from "../../../../src/protocol/runtime-delivery-policy.js"
 import { runtimeCallPolicies } from "../../../../src/protocol/runtime-client-deadlines.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
-import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
-import { runtimeHandlers } from "../../../../src/orchestration/app-service/runtime-protocol-handlers.js"
-import { createOutputWatches } from "../../../../src/orchestration/app-service/output-watches.js"
-import { createProcessBackgroundClient } from "../../../../src/orchestration/app-service/worker-background-client.js"
+import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
+import { runtimeHandlers } from "../../../../src/orchestration/app-service/account/connections/runtime-protocol-handlers.js"
+import { createOutputWatches } from "../../../../src/orchestration/app-service/account/projects/output-watches.js"
+import { createProcessBackgroundClient } from "../../../../src/orchestration/app-service/background/worker-background-client.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 import { canonicalTestDirectory } from "../../../helpers/directories.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
-import { createRuntimeBackgroundLane } from "../../../../src/orchestration/app-service/runtime-background-lane.js"
+import { createRuntimeBackgroundLane } from "../../../../src/orchestration/app-service/background/runtime-background-lane.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
 import { mutation } from "../session/_session-change-fixtures.js"
 
@@ -114,7 +114,7 @@ test("the Worker summary requires real durable metadata and counts a durable New
   mkdirSync(join(home, "log"))
   const prepared = prepareWorkspaceState(directories)
   const store = createSqliteEventStore(resolveEventStoreDbFile(root))
-  const owner = createProcessBackgroundClient({ workerUrl: new URL("../../../../src/orchestration/app-service/worker-entry.ts", import.meta.url).href, logBase: join(home, "log") })
+  const owner = createProcessBackgroundClient({ workerUrl: new URL("../../../../src/orchestration/app-service/background/worker-entry.ts", import.meta.url).href, logBase: join(home, "log") })
   const background = owner.acquire(root)
   try {
     const manager = createSessionManager({ projectRoot: root, executionCwd: root, store })

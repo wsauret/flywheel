@@ -3,13 +3,13 @@ import { createEffect, createSignal } from "solid-js"
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
-import { createSettingsTree } from "../../../../src/tui/hooks/settings-tree.js"
+import { createSettingsTree } from "../../../../src/tui/hooks/overlays/modals/settings/settings-tree.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
-import { configValues } from "./_settings-modal-fixtures.js"
+import { configValues } from "./settings/_settings-modal-fixtures.js"
 
 const { RENAMED_THEME_IDS, ThemeProvider, useTheme } = await import("../../../../src/tui/context/theme.js")
 const configDispatch = mock(async () => ({ kind: "committed", revision: 2 } as const))
-const { useThemeModal } = await import("../../../../src/tui/hooks/use-theme-modal.js")
+const { useThemeModal } = await import("../../../../src/tui/hooks/overlays/modals/use-theme-modal.js")
 type ThemeModal = ReturnType<typeof useThemeModal>
 
 async function mountedThemeModal(run: (harness: {

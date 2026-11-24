@@ -4,38 +4,38 @@ import type { AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWrite
 import type { ModuleRuntimes } from "../infra/module-runtime.js"
 import type { RetainedOperationHosts } from "../infra/retained-operation-hosts.js"
 import type { ModuleServices } from "../infra/module-service.js"
-import type { ChildCut } from "./session/child-continuation.js"
+import type { ChildCut } from "./session/control/child-continuation.js"
 import type { ChildRunStatus } from "../protocol/app-service-types.js"
 import type { AgentFailureDisplay, AgentGroupBlock, PausedBy, WorkflowCard } from "../infra/output-blocks.js"
-import type { SkillRegistryRevision } from "../workflows/skill-schema.js"
+import type { SkillRegistryRevision } from "../workflows/skills/skill-schema.js"
 import type { AgentLifecycleCallbacks, ChildConversation } from "./agent-runtime/types.js"
 import type { ToolCallEventData } from "../infra/runtime-event-payload-types.js"
 import type { AskUserToolDeps } from "./agent-runtime/tools/ask-user.js"
 import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
 import type { ExternalSkillChildGrant } from "./agent-runtime/tools/skill.js"
-import type { SessionFactWriter } from "./session/session-fact-writer.js"
+import type { SessionFactWriter } from "./session/persistence/session-fact-writer.js"
 import type { CapabilityAccess, RuntimeToolExecution } from "./agent-runtime/tools/types.js"
 import type { ChatInput } from "../infra/chat-input.js"
 import type { RecallInput, RecallResult } from "../protocol/conversation-recall.js"
-import type { ReplayedSession, RoleSettings } from "./session/schemas.js"
+import type { ReplayedSession, RoleSettings } from "./session/metadata/schemas.js"
 import type { SessionManager } from "./session/manager.js"
-import type { LiveChildControl } from "./session/live-session-control.js"
+import type { LiveChildControl } from "./session/control/live-session-control.js"
 import type { SessionListState } from "./session/message-disposition.js"
-import type { UnreadSettlement } from "./session/session-input-delivery.js"
+import type { UnreadSettlement } from "./session/control/messaging/session-input-delivery.js"
 import type { HeldBackgroundNotification } from "./session/conversation/queued-background-notifications.js"
 import type { ModuleId } from "../protocol/module-ids.js"
 import type { RuntimeEvent } from "../infra/runtime-event-types.js"
 import type { FlywheelEvent } from "../infra/events.js"
 import type { RecordedRuntimeInvocation } from "../infra/runtime-fact-types.js"
-import type { MetricsWriter } from "./session/create-session-infra.js"
+import type { MetricsWriter } from "./session/persistence/create-session-infra.js"
 import type { ActiveBackgroundCommandDescriptor, BackgroundWorkTracking } from "./agent-runtime/background-work.js"
 import type { RoleResolver } from "./config/roles.js"
 import type { ConversationMessage } from "./agent-runtime/llm/types.js"
 import type { WorkflowDeliveryAddress } from "./session/conversation/addressed-workflow-messages.js"
-import type { ChildExecutionResources } from "./session/child-execution-resources.js"
+import type { ChildExecutionResources } from "./session/control/children/child-execution-resources.js"
 import type { WorkflowRunCut, WorkflowRunReader, WorkflowRunWriter } from "./workflow-host/run-record.js"
-import type { WorkflowPublication, WorkflowLaunchBinding } from "./session/child-session-publication.js"
-import type { WorkflowSessionFact } from "../workflows/vm/session-facts.js"
+import type { WorkflowPublication, WorkflowLaunchBinding } from "./session/control/children/child-session-publication.js"
+import type { WorkflowSessionFact } from "../workflows/vm/facts/session-facts.js"
 
 /** Installed run reads stay available when new workflow admission is disabled. */
 /** Where workflows sit in the session tree, for an owner that walks
@@ -56,10 +56,10 @@ export interface ModuleWorkflowRuns {
     readonly projectRoot: string
     readonly controller: import("./workflow-host/lifecycle/controller.js").WorkflowController
     readonly auth: import("./workflow-host/auth-owner.js").WorkflowAuthOwner
-    readonly authStatus: Pick<import("./app-service/auth-status-projection.js").AuthStatusProjection, "view">
-    readonly supervisor: Pick<import("./app-service/runtime-supervisor-types.js").RuntimeSupervisor, "interruptSession">
+    readonly authStatus: Pick<import("./app-service/auth/auth-status-projection.js").AuthStatusProjection, "view">
+    readonly supervisor: Pick<import("./app-service/supervisor/runtime-supervisor-types.js").RuntimeSupervisor, "interruptSession">
     readonly deletion: Pick<SessionManager, "admitDeletion" | "finalizeDeletionTarget">
-    readonly bus: import("./app-service/runtime-ui-bus.js").RuntimeUiBus
+    readonly bus: import("./app-service/projections/runtime-ui-bus.js").RuntimeUiBus
     readonly hosts: Pick<import("./workflow-host/host-collection.js").WorkflowHosts, "isRunning" | "onChange" | "abort">
   }): ModuleServices
   cut(workflowId: string, cut: WorkflowRunCut | null): EventStoreAppend

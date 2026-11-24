@@ -1,7 +1,7 @@
 import { failureTerminal, type AgentRunTerminal, type RoleHold } from "../agent-runtime/types.js"
 import { blockedFailureRecord, describeAgentFailure } from "../agent-runtime/failure-message.js"
 import { createEmit, EventBus } from "../../infra/event-bus.js"
-import type { ProviderRequestAuditFact } from "../session/provider-request-audit-facts.js"
+import type { ProviderRequestAuditFact } from "../session/runtime-facts/provider-request-audit-facts.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import type { StartupDirectories } from "../../infra/directory-authorities.js"
@@ -14,20 +14,20 @@ import { acquireConversationSearchIndex } from "../../infra/conversation-fts.js"
 import { installedConversationDeletionFacts } from "../module-catalog.js"
 import type { AuthProfileManager } from "../auth/auth-profile-manager.js"
 import { prepareWorkflowDeps } from "../workflow-host/deps.js"
-import { createSessionFactWriter, type SessionFactWriter } from "../session/session-fact-writer.js"
-import { reconcileWorkspacePendingFileMutations } from "../session/file-mutation-recovery.js"
+import { createSessionFactWriter, type SessionFactWriter } from "../session/persistence/session-fact-writer.js"
+import { reconcileWorkspacePendingFileMutations } from "../session/file-mutations/file-mutation-recovery.js"
 import { createConversationTreeWriterController } from "../chat/tree-writer.js"
-import { createConversationRecall } from "../session/conversation-recall.js"
+import { createConversationRecall } from "../session/conversation-records/conversation-recall.js"
 import { ChatTurnMailbox } from "../chat/turn-mailbox.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
 import { getSharedModelsClient } from "../config/models/llm-clients.js"
-import type { ModelsClient } from "../../infra/llm/models.js"
+import type { ModelsClient } from "../../infra/llm/models/models.js"
 import { createBackgroundExecutionOwner } from "../agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../agent-runtime/background-work.js"
 import { emitToolExecutionOutput } from "../agent-runtime/emit.js"
 import { createForegroundBashHoldController } from "../agent-runtime/foreground-bash-hold.js"
 import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
-import { subscribeSessionRuntimeFacts } from "../session/create-session-infra.js"
+import { subscribeSessionRuntimeFacts } from "../session/persistence/create-session-infra.js"
 import { createTaskProgressWriter, HEADLESS_PROGRESS_EVENT_TYPES } from "./task-progress.js"
 import { createAgentGeneration } from "../runner/host.js"
 import { AgentTurnAborted } from "../runner/agent-turn-types.js"
@@ -41,7 +41,7 @@ import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
 import { shellWriteGuardObserver } from "../config/policy/shell-write-guard-policy.js"
 import { createHeadlessProfileRuntime, resolveHeadlessAuth } from "./headless-profile-runtime.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
-import { personaRoleIds } from "../../workflows/definition-registry.js"
+import { personaRoleIds } from "../../workflows/definitions/definition-registry.js"
 export interface RunHeadlessTaskOptions {
   directories: StartupDirectories
   launcher: LauncherScope
@@ -241,7 +241,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
         }
       }
       const manager = createManager(oneShotConfig)
-        const initialRoles: import("../session/schemas.js").RoleSettings = options.model !== undefined || options.effort !== undefined
+        const initialRoles: import("../session/metadata/schemas.js").RoleSettings = options.model !== undefined || options.effort !== undefined
           ? { chat: { ...(options.model === undefined ? {} : { model: options.model }), ...(options.effort === undefined ? {} : { effort: options.effort }) } }
           : {}
         const activeSessionId = await manager.createChat({ name: "headless task", initialRoles, authProfileId: capturedProfileId })

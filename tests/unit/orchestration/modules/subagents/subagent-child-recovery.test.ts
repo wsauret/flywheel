@@ -10,7 +10,7 @@ import { buildDurableSubagentCreated, buildSubagentPrompted, buildSubagentResume
 import { loadSubagentRunsFromEvents, SUBAGENT_RUN_FACT_TYPES } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager"
 import { removeOwnerPid } from "../../../../../src/orchestration/session/pid-lock"
-import { prepareSessionFactAppend } from "../../../../../src/orchestration/session/session-fact-writer"
+import { prepareSessionFactAppend } from "../../../../../src/orchestration/session/persistence/session-fact-writer"
 import { testDirectories } from "../../../../helpers/directories"
 
 const roots: string[] = []

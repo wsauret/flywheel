@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import type { FactRecorder } from "../../../../infra/fact-recorder.js";
 import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
-import { skillWrittenFact, type SkillWrittenFact } from "../../../../workflows/skill-facts.js";
+import { skillWrittenFact, type SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
 import { discardPendingAudit, openPendingAudit, settlePendingAudit, type AuditWriter, type PendingAudit } from "./learning-journal.js";
 import { publishGlobalSkillMutation } from "./global-skill-mutation.js";
 import { packageDigestAt } from "./skill-package-planning.js";

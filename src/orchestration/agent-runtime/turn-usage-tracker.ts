@@ -1,4 +1,4 @@
-import type { UsageEntry } from "../../infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../infra/llm/usage/usage-entry.js";
 import { createRuntimeEvent } from "../../infra/runtime-event-factory.js";
 import type { RuntimeEvent } from "../../infra/runtime-event-types.js";
 

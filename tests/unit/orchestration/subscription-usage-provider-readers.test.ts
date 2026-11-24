@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { SubscriptionUsageReaderContext } from "../../../src/infra/llm/subscription-usage.js";
+import type { SubscriptionUsageReaderContext } from "../../../src/infra/llm/usage/subscription-usage.js";
 import { createCopilotUsageReader } from "../../../src/orchestration/modules/provider-github-copilot/quota-meter.js";
 import { Redacted } from "effect";
 import type { StoredTokens } from "../../../src/infra/auth/openai/openai-auth-types.js";
@@ -8,7 +8,7 @@ import { createDeepSeekUsageReader as createRawDeepSeekUsageReader } from "../..
 import { createOpenCodeGoUsageReader as createRawOpenCodeGoUsageReader } from "../../../src/orchestration/modules/provider-opencode-go/usage-reader.js";
 import { createSuperGrokUsageReader as createRawSuperGrokUsageReader } from "../../../src/orchestration/modules/provider-supergrok/usage-reader.js";
 import { OPENCODE_GO_V1_BASE } from "../../../src/orchestration/modules/provider-opencode-go/wire.js";
-import { isFreePlan } from "../../../src/infra/llm/free-plan-accounts.js";
+import { isFreePlan } from "../../../src/infra/llm/access/free-plan-accounts.js";
 import { testProviderSelection } from "../../helpers/provider-authority.js";
 
 

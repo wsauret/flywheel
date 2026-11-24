@@ -6,10 +6,10 @@ import type { EventStoreReadSurface, StoredFact } from "../../src/infra/event-st
 import { SESSION_RUNTIME_FACT_DEFINITIONS, TOOL_CONTENT_REFERENCE_FACT_DEFINITIONS } from "../../src/infra/runtime-fact-types.js"
 import { createSqliteEventReadSurface } from "../../src/infra/sqlite-event-read-surface.js"
 import { MAX_CONTENT_FILTER_RETRIES } from "../../src/orchestration/agent-runtime/agent-loop-content-filter.js"
-import { usageEntriesFromFacts } from "../../src/orchestration/session/durable-usage.js"
-import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/provider-request-audit-projection.js"
-import { reconstructProviderRequestPrompt } from "../../src/orchestration/session/provider-request-audit-reconstruction.js"
-import { ProviderRequestOutcomeSchema, type ProviderRequestAuditEntry, type ProviderRequestOutcome } from "../../src/orchestration/session/provider-request-audit-types.js"
+import { usageEntriesFromFacts } from "../../src/orchestration/session/runtime-facts/durable-usage.js"
+import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/diagnostics/provider-request-audit-projection.js"
+import { reconstructProviderRequestPrompt } from "../../src/orchestration/session/diagnostics/provider-request-audit-reconstruction.js"
+import { ProviderRequestOutcomeSchema, type ProviderRequestAuditEntry, type ProviderRequestOutcome } from "../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 // Prompt reconstruction reads the installed module catalog to label the hidden
 // entries that each module wrote, such as the Claude engine's reminders. As in
 // a release, loading the module registry publishes the shipped catalog.

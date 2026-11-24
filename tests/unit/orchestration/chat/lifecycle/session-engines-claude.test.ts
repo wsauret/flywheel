@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js"
+import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js"
 import { createSessionEngines } from "../../../../../src/orchestration/chat/lifecycle/session-engines.js"
 import type { ResolvedRole, ResolvedRoles } from "../../../../../src/orchestration/config/roles.js"
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"
@@ -17,7 +17,7 @@ import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../hel
 import { asModelClient } from "../../agent-runtime/_model-client.js"
 import { makeOptions, type AgentOptionsOverride } from "../../agent-runtime/_runner-options.js"
 import { fakeAvailability } from "../../agent-runtime/llm/_provider-chain-harness.js"
-import { SESSION_TITLE_PURPOSE } from "../../../../../src/orchestration/session/session-title.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../../src/orchestration/session/metadata/session-title.js"
 
 /*
  * A shown session's engine demand through the production wiring: the session's planning, request preparation, the

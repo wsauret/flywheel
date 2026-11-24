@@ -22,8 +22,8 @@ import {
 import {
   checkpointFinalizedToolResult,
   recoverFinalizedToolResultCheckpoints,
-} from "../../../../src/orchestration/session/finalized-tool-result-checkpoint";
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer";
+} from "../../../../src/orchestration/session/history/finalized-tool-result-checkpoint";
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer";
 import { chatTurnEndOf, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record";
 
 // An interrupted turn is reported from the facts its actions already wrote, not

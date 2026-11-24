@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { importBuiltModule } from "../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../test-support/solid-transform.js"
-import { loadSemanticRowsFixture } from "../../app/semantic-rows-loader-fixture.js"
+import { loadSemanticRowsFixture } from "../../test-support/semantic-rows-loader-fixture.js"
 import { projectNotificationsDomain, type ProjectNotificationEpisode } from "../../../../src/protocol/modules/project-notifications.js"
 
 const build = await Bun.build({

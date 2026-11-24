@@ -1,5 +1,5 @@
 import { expect, test, setSystemTime } from "bun:test"
-import { liveChildRun } from "../../../../../src/orchestration/session/live-session-control.js"
+import { liveChildRun } from "../../../../../src/orchestration/session/control/live-session-control.js"
 import type { AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { makeContext, TEST_RATIONALE } from "../../agent-runtime/subagent/_fixtures.js"
 import { subagentChildHarnesses, createRoot, waitForSettled, continuationService, heldRunner } from "./_subagent-child-fixtures.js"

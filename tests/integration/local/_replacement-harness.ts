@@ -19,7 +19,7 @@ import { ROLE_MODEL_DEFAULTS } from "../../../src/orchestration/config/models/ro
 import { attachAccountProject, joinIsolatedAccountService, startIsolatedAccountService, stopIsolatedAccountService } from "./_account-service.js"
 import { EXECUTABLE_ROLES } from "../../../src/infra/executable-roles.js"
 import { windowsProcessApi } from "../../../src/infra/windows-process-api.js"
-import { decodeProjectExecutorInitialization } from "../../../src/orchestration/app-service/project-executor-protocol.js"
+import { decodeProjectExecutorInitialization } from "../../../src/orchestration/app-service/executor/project-executor-protocol.js"
 import { descendantProcesses } from "../../helpers/real-process-fixture.js"
 import { MODEL, startReplacementProvider, TASKS, type ReplacementProvider, type TaskKey } from "./_replacement-provider.js"
 

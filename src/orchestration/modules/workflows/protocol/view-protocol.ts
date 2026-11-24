@@ -9,9 +9,9 @@ import { frontendAttempts, readWorkflowRunRecords } from "../../../workflow-host
 import type { FrontendWorkflowView } from "../../../../protocol/workflow-view-protocol-types.js"
 import { workflowViewCursor } from "../../../../protocol/modules/workflows.js"
 import type { RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
-import { workflowMembershipReader } from "../../../session/workflow-membership.js"
+import { workflowMembershipReader } from "../../../session/metadata/workflow-membership.js"
 import { workflowRunReader } from "../../../module-catalog.js"
-import { readAttemptStarts } from "../../../../workflows/vm/attempt-conversations.js"
+import { readAttemptStarts } from "../../../../workflows/vm/host/attempt-conversations.js"
 
 export interface WorkflowViewProtocolProjection {
   snapshot(workflowId: string): Promise<FrontendWorkflowView | null>

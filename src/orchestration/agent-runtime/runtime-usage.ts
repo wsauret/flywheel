@@ -1,11 +1,11 @@
-import type { UsageEntry } from "../../infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../infra/llm/usage/usage-entry.js";
 import type { RuntimeConversation } from "./runtime-conversation.js";
 import { createTurnUsageTracker, type TurnUsageTracker } from "./turn-usage-tracker.js";
 import type { AgentDurableFacts, AgentOptions } from "./types.js";
 import { createProcessUsageSettlement, createSessionUsageSettlement, recoverSessionUsageSettlements, type UsageSettlement } from "./usage-settlement.js";
 import type { DurableOwner } from "../../infra/durable-owner.js";
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js";
-import type { SessionFactWriter } from "../session/session-fact-writer.js";
+import type { SessionFactWriter } from "../session/persistence/session-fact-writer.js";
 
 type RuntimeUsageOptions = Pick<AgentOptions, "onEvent" | "usageObserver" | "usageProfile"> & AgentDurableFacts;
 type RuntimeUsageConversation = Pick<RuntimeConversation, "requestAccounting" | "sessionId" | "aggregateId" | "artifactScopeId">;

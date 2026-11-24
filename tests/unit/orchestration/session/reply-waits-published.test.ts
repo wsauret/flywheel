@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { onReplyWaitsChanged, readReplyWaitViews } from "../../../../src/orchestration/session/reply-waits"
+import { onReplyWaitsChanged, readReplyWaitViews } from "../../../../src/orchestration/session/control/messaging/reply-waits"
 import { replyWaitNoticeKey } from "../../../../src/orchestration/session/conversation/reply-wait-cells"
 import { settle, project, deleteSession, live, message, conversationOf, cleanupReplyWaitTest, childWorkflow } from "./_reply-wait-fixtures"
 

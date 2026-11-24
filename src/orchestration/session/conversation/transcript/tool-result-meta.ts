@@ -13,9 +13,9 @@ import { getToolDisplay, isHiddenFromTranscript } from "../../../../infra/tools/
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
 import { createOrderedLane } from "../../../../infra/ordered-lane.js"
 import { createMicrotaskBatch } from "../../../../infra/microtask-batch.js"
-import { parseSessionRuntimeFact, parseStoredSessionRuntimeFact, type SessionRuntimeFact, type ToolContentReferenceFact } from "../../session-runtime-event-types.js"
-import { loadToolExecutionTimelineFromEvents, TOOL_EXECUTION_FACT_TYPES } from "../../tool-execution-projection.js"
-import type { ToolExecutionEntry } from "../../tool-execution-types.js"
+import { parseSessionRuntimeFact, parseStoredSessionRuntimeFact, type SessionRuntimeFact, type ToolContentReferenceFact } from "../../runtime-facts/session-runtime-event-types.js"
+import { loadToolExecutionTimelineFromEvents, TOOL_EXECUTION_FACT_TYPES } from "../../runtime-facts/tool-execution-projection.js"
+import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js"
 import { projectHistoricalContainerChild, projectHistoricalExecuteChild } from "./tool-child-presentation.js"
 import type { ToolResultDisplayMeta } from "./tool-result-display-meta.js"
 

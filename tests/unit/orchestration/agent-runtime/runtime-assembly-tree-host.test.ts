@@ -13,7 +13,7 @@ import type { ConversationEntry } from "../../../../src/orchestration/session/co
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { unusedSessionMessaging } from "../../../helpers/child-session-control.js"
 import { assembledRuntime, CALL_NO_TOOLS, providerRuntime } from "./_runtime-assembly-harness.js"
-import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/metadata/session-title.js"
 
 describe("side calls of a chat tree", () => {
   const sideCalls: readonly AgentOptions["purpose"][] = [

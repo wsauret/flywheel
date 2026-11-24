@@ -2,11 +2,11 @@ import { describe, expect, spyOn, test } from "bun:test"
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import * as asyncFs from "node:fs/promises"
 import { dirname, join } from "node:path"
-import { authorizeHubMutation, createHubMutationCredential, isServedOrigin } from "../../../../src/orchestration/app-service/web-serving/origin-check"
+import { authorizeHubMutation, createHubMutationCredential, isServedOrigin } from "../../../../src/orchestration/app-service/account/web-serving/origin-check"
 import {
   authorizeToken,
   loadOrCreateToken,
-} from "../../../../src/orchestration/app-service/web-serving/token-auth"
+} from "../../../../src/orchestration/app-service/account/web-serving/token-auth"
 import { temporaryDirectories } from "../../../helpers/directories"
 
 const served = "http://127.0.0.1:43110"

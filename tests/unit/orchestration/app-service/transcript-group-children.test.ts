@@ -11,14 +11,14 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js"
-import { hydrateDerivedOutputGroupChildren, paginateOutputGroupChildren } from "../../../../src/orchestration/app-service/transcript-queries.js"
+import { hydrateDerivedOutputGroupChildren, paginateOutputGroupChildren } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import {
   createFilteredSubagentStream,
   createSubagentStats,
 } from "../../../../src/orchestration/modules/subagents/execution/result/stream-filter.js"
-import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types.js"
+import type { SessionRuntimeFact } from "../../../../src/orchestration/session/runtime-facts/session-runtime-event-types.js"
 import { createToolResultDisplayMetaCursorReader } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta.js"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js"
 
 function child(id: string): Extract<AnyBlock, { kind: "tool" }> {
@@ -402,9 +402,9 @@ describe("agent-update child of an agent group across settlement", () => {
     openStores.push(store)
     appendChildMemoryCall(store)
     appendChildMemoryResult(store, "ok")
-    const { createMutationEvidenceRecovery } = await import("../../../../src/orchestration/session/mutation-evidence-recovery.js")
+    const { createMutationEvidenceRecovery } = await import("../../../../src/orchestration/session/history/mutation-evidence-recovery.js")
     const { readMutationEvidenceFiles } = await import("../../../../src/infra/mutation-evidence.js")
-    const { completePatch, resolveRetainedPatch } = await import("../../../../src/orchestration/session/session-change-sources.js")
+    const { completePatch, resolveRetainedPatch } = await import("../../../../src/orchestration/session/metadata/catalog/session-change-sources.js")
     const reader = createMutationEvidenceRecovery(asAsyncEventReadSurface(store), asAsyncEventWriter(store)).reader
     const children = (await createToolResultDisplayMetaCursorReader(reader, SESSION_ID).replay()).children(PARENT_TOOL_USE_ID, {
       executionCwd: CWD, idSuffix: "", presentation: "container", settledCount: 1,

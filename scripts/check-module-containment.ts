@@ -159,7 +159,7 @@ const DOMAIN_READERS: readonly string[] = ["src/protocol/modules.ts", "src/proto
 const FACT_READERS: readonly string[] = [
   "src/infra/fact-retention-registry.ts",
   "src/cli/events/event-search-format.ts",
-  "src/orchestration/session/event-store-maintenance.ts",
+  "src/orchestration/session/persistence/storage/event-store-maintenance.ts",
 ];
 
 const MODULE_SYSTEM_FILE = /(^|-)modules?(-|\.|$)/;

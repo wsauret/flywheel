@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
-import type { LiveChildControl } from "../../../../../src/orchestration/session/live-session-control.js";
-import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
+import type { LiveChildControl } from "../../../../../src/orchestration/session/control/live-session-control.js";
+import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import type { AgentOptions, AgentRunResult, AgentRunTerminal } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
@@ -14,7 +14,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, PersistenceWriteRefused, t
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { allCommandHandoversAsync, COMMAND_HANDOVER_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/command-handover.js";
-import { registerCapacityWaits } from "../../../../../src/orchestration/session/capacity-wait.js";
+import { registerCapacityWaits } from "../../../../../src/orchestration/session/control/capacity-wait.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { fakeContainer, handedOverRow, handoverAuthority } from "../_command-handover-fixtures.js";
 import { makeMockOps } from "../tools/_bash-fixtures.js";

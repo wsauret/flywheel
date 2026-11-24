@@ -4,7 +4,7 @@ import type { AsyncEventWriter, EventStoreReadSurface } from "../../infra/event-
 import type { EventStoreWriterLane } from "../../infra/event-store-writer-lane-types.js"
 import type { ModuleServices } from "../../infra/module-service.js"
 import type { StartupDirectories } from "../../infra/directory-authorities.js"
-import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js"
+import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js"
 import type { WorkflowDeps } from "../workflow-host/deps.js"
 import type { FlywheelConfig } from "../config/schema/schema.js"
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../config/runtime-config-owner.js"
@@ -22,8 +22,8 @@ import type { CaptureSubscriptionAdmission } from "../agent-runtime/model-runtim
 import type { SubscriptionUsageProfile } from "../auth/provider-observations/subscription-usage-service.js"
 import { createHeadlessSubscriptionAdmission } from "./headless-profile-runtime.js"
 import { createInstalledDefinitionRegistry } from "../definition-catalog.js"
-import { createMutationEvidenceRecovery } from "../session/mutation-evidence-recovery.js"
-import { createRuntimeModuleComposer } from "../app-service/runtime-module-composition.js"
+import { createMutationEvidenceRecovery } from "../session/history/mutation-evidence-recovery.js"
+import { createRuntimeModuleComposer } from "../app-service/executor/execution/runtime-module-composition.js"
 
 export interface HeadlessBootstrapContext {
   readonly capabilityPolicy: ModulePolicyStartup

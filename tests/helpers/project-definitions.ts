@@ -1,18 +1,18 @@
-import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../src/workflows/definition-registry.js";
-import type { WorkflowDefinition } from "../../src/workflows/workflow-schema.js";
-import { publishSkillRevision, type SkillRegistryRevision } from "../../src/workflows/skill-schema.js";
+import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../src/workflows/definitions/definition-registry.js";
+import type { WorkflowDefinition } from "../../src/workflows/schema/workflow-schema.js";
+import { publishSkillRevision, type SkillRegistryRevision } from "../../src/workflows/skills/skill-schema.js";
 import { cpSync, mkdtempSync, readFileSync } from "node:fs";
 import { dirname, basename, join } from "node:path";
-import { decodeWorkflowFile } from "../../src/workflows/workflow-file.js";
-import { withLoadedContent } from "../../src/workflows/loader.js";
-import { definitionAssets } from "../../src/workflows/definition-assets.js";
+import { decodeWorkflowFile } from "../../src/workflows/vm/admission/workflow-file.js";
+import { withLoadedContent } from "../../src/workflows/definitions/loader.js";
+import { definitionAssets } from "../../src/workflows/definitions/definition-assets.js";
 import { testAccountHome, testDirectories } from "./directories.js";
 import type { AgentDefinition } from "../../src/infra/agent-definition.js";
 
 import { DEVELOPMENT_MODULES } from "../../src/orchestration/development-modules.js";
 import { installedDefinitionBundles } from "../../src/orchestration/module-catalog.js";
 import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModule } from "../../src/orchestration/modules.js";
-import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../src/orchestration/app-service/definition-availability.js";
+import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../src/orchestration/app-service/definitions/definition-availability.js";
 import { installedPersonaToolEntries } from "../../src/orchestration/tool-catalog.js";
 let registry: ProjectDefinitionRegistry | undefined;
 let sourceRunRegistry: ProjectDefinitionRegistry | undefined;

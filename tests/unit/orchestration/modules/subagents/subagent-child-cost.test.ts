@@ -6,7 +6,7 @@ import { emitContextUpdate } from "../../../../../src/orchestration/agent-runtim
 import { assembleRuntimeForTurn } from "../../../../../src/orchestration/agent-runtime/runtime-assembly.js"
 import { resolveRuntimeConversation } from "../../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import type { AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"
-import { createBudgetProjection } from "../../../../../src/orchestration/session/budget-projection.js"
+import { createBudgetProjection } from "../../../../../src/orchestration/session/runtime-facts/budget-projection.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js"
 import { asModelClient } from "../../agent-runtime/_model-client.js"

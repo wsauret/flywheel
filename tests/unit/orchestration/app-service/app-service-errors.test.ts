@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { createFlywheelAppService, type FlywheelAppServiceDeps } from "../../../../src/orchestration/app-service/app-service.js"
-import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
+import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { chatEntry, fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
 
 describe("FlywheelAppService errors-as-values at the command boundary", () => {

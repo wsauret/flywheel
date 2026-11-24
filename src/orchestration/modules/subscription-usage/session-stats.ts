@@ -5,12 +5,12 @@ import { heldProjection } from "../../../infra/projection-registry.js"
 import { yieldToNextTask } from "../../../infra/task-scheduling.js"
 import type { GenerationStatistics } from "../../../protocol/generation-statistics.js"
 import { sumUsageTokens, type UsageModelSummary, type UsageSessionStats, type UsageStatsSummary, type UsageToolStats, type UsageTokens } from "../../../protocol/modules/subscription-usage.js"
-import { BUDGET_FACT_TYPES, initialBudgetProjectionState, reduceBudgetEvent } from "../../session/budget-projection.js"
-import { heldSessionLineage, sessionSubtree, type SessionLineage } from "../../session/session-subtree.js"
-import { parseSessionRuntimeFact } from "../../session/session-runtime-event-types.js"
+import { BUDGET_FACT_TYPES, initialBudgetProjectionState, reduceBudgetEvent } from "../../session/runtime-facts/budget-projection.js"
+import { heldSessionLineage, sessionSubtree, type SessionLineage } from "../../session/metadata/catalog/session-subtree.js"
+import { parseSessionRuntimeFact } from "../../session/runtime-facts/session-runtime-event-types.js"
 import { currentUsageMeasurement } from "../../../infra/runtime-fact-types.js"
-import { recordToolCallOutcome, TOOL_EXECUTION_FACT_TYPES, type ToolCallOutcome } from "../../session/tool-execution-projection.js"
-import { GENERATION_EVIDENCE_FACT_TYPES, generationStatistics, initialGenerationEvidence, mergeGenerationStatistics, reduceGenerationEvidence, type GenerationEvidence } from "../../session/session-generation-statistics.js"
+import { recordToolCallOutcome, TOOL_EXECUTION_FACT_TYPES, type ToolCallOutcome } from "../../session/runtime-facts/tool-execution-projection.js"
+import { GENERATION_EVIDENCE_FACT_TYPES, generationStatistics, initialGenerationEvidence, mergeGenerationStatistics, reduceGenerationEvidence, type GenerationEvidence } from "../../session/metadata/catalog/session-generation-statistics.js"
 
 const zeroTokens = (): UsageTokens => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, total: 0 })
 const zeroSummary = (): UsageStatsSummary => ({ attempts: 0, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true, tokens: zeroTokens(), estimatedBilledUsd: 0, includedValueUsd: 0, priceUnavailable: false })

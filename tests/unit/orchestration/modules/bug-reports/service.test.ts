@@ -10,7 +10,7 @@ import { bugReportsModule } from "../../../../../src/orchestration/modules/bug-r
 import { bugReportsService, createBugReportsService } from "../../../../../src/orchestration/modules/bug-reports/service.js"
 import { BugReportSchema, type BugReportInput } from "../../../../../src/protocol/modules/bug-reports.js"
 import { composeAccountModuleProtocolRuntimes } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
-import { createRuntimeFaultReporting } from "../../../../../src/orchestration/app-service/runtime-fault-reporting.js"
+import { createRuntimeFaultReporting } from "../../../../../src/orchestration/app-service/executor/runtime-fault-reporting.js"
 import type { RuntimeExecutorState } from "../../../../../src/protocol/app-service-types.js"
 
 const temporary = temporaryDirectories()

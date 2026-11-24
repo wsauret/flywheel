@@ -10,10 +10,10 @@ import type { CliCommandContext } from "../../../cli-contribution.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { lingerNotice } from "../../../../protocol/client/process-initiation-copy.js"
 import { qrCodeRows } from "../../../../infra/qr-code.js"
-import { accountServicePlatform, createAccountServiceInstallation } from "../../../app-service/account-service-installation.js"
-import type { AccountServiceInstallation } from "../../../app-service/account-service-platform.js"
+import { accountServicePlatform, createAccountServiceInstallation } from "../../../app-service/account/installation/account-service-installation.js"
+import type { AccountServiceInstallation } from "../../../app-service/account/installation/account-service-platform.js"
 import { ownedCommandRunner } from "../../../../infra/owned-command.js"
-import { createAccountProjectRegistry } from "../../../app-service/account-project-registry.js"
+import { createAccountProjectRegistry } from "../../../app-service/account/account-project-registry.js"
 import { retiredServiceInstallation } from "../account-relay-service.js"
 
 interface RemoteCliIo {

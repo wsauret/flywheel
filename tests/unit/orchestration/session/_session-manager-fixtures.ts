@@ -7,23 +7,23 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type LocalSqliteEventStore, type EventStoreReadSurface } from "../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import type { SessionManager, SessionManagerDeps } from "../../../../src/orchestration/session/manager";
-import type { RoleSettings, Session } from "../../../../src/orchestration/session/schemas";
-import type { WorkflowLaunchBinding } from "../../../../src/orchestration/session/child-session-publication.js";
+import type { RoleSettings, Session } from "../../../../src/orchestration/session/metadata/schemas";
+import type { WorkflowLaunchBinding } from "../../../../src/orchestration/session/control/children/child-session-publication.js";
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js";
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff";
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts";
-import { compileWorkflowControl } from "../../../../src/workflows/vm/compile";
-import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten";
-import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts";
+import { compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile";
+import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flatten";
+import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts";
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { buildDurableSubagentCreated, buildSubagentPrompted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js";
-import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js";
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
-import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js";
-import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js";
+import { prepareSessionFactAppend } from "../../../../src/orchestration/session/persistence/session-fact-writer.js";
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js";
+import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership.js";
+import { composeWorkflowCompanions } from "../../../../src/workflows/vm/control/companions.js";
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js";
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
+import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js";
 
 /** Commits one control transition with the companion facts the runtime publishes. */
 export async function advanceTestWorkflow(manager: SessionManager, store: EventStoreReadSurface, workflowId: string, event: Parameters<typeof transitionDecodedWorkflow>[1]): Promise<void> {

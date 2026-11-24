@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { Redacted, Schema } from "effect";
 
-import { createAuthLoginService } from "../../../../src/orchestration/app-service/auth-login-service.js";
+import { createAuthLoginService } from "../../../../src/orchestration/app-service/auth/login/auth-login-service.js";
 import { FrontendMutationSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
 import type { AuthProviderStatus } from "../../../../src/protocol/auth-status-protocol-types.js";
 import { defaultModuleState } from "../../../../src/orchestration/config/module-descriptor.js";

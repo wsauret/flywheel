@@ -15,7 +15,7 @@ import { asModelClient } from "./_model-client.js";
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { RequestToolMap, testBaseTools } from "../../../helpers/request-tool-surface.js";
 import { withSessionNotes } from "./context/_loop-fixtures.js";
-import { emptyConversationCheckpoint } from "../../../../src/orchestration/session/conversation-checkpoint.js";
+import { emptyConversationCheckpoint } from "../../../../src/orchestration/session/conversation-records/conversation-checkpoint.js";
 
 /** A loop that runs `client` over `tools` and appends each recorded message to `history`. */
 function loopOptions(client: ModelClient, tools: AgentLoopOptions["tools"], history: ConversationMessage[]): AgentLoopOptions {

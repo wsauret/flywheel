@@ -7,7 +7,7 @@ import { planPromptRequest, plannedCapabilities, promptParts, type PlannedReques
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import type { CapabilityCheck } from "../../../../src/infra/capability-text.js";
 import { composeModuleRuntimes } from "../../../../src/infra/module-runtime.js";
-import { createDefinitionAvailability, type DefinitionAvailabilitySnapshot } from "../../../../src/orchestration/app-service/definition-availability.js";
+import { createDefinitionAvailability, type DefinitionAvailabilitySnapshot } from "../../../../src/orchestration/app-service/definitions/definition-availability.js";
 import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtime/capability-checks.js";
 import { createCapabilityNarrowing } from "../../../../src/orchestration/agent-runtime/capability-narrowing.js";
 import { createAgentLoopInputWaiter } from "../../../../src/orchestration/agent-runtime/agent-loop-input-consumer.js";
@@ -30,10 +30,10 @@ import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-
 import type { ModuleId } from "../../../../src/protocol/module-ids.js";
 import { personaInstructions } from "../../../../src/workflows/agents/persona-instructions.js";
 import { grantedSubagentTypes, personaToolNames } from "../../../../src/workflows/agents/subagent-reachability.js";
-import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../../../../src/workflows/definitions/definition-registry.js";
 import { compileOutput } from "../../../../src/workflows/output-contract/compile.js";
-import { offeredSkillResources, readSkillResource } from "../../../../src/workflows/skill-context.js";
-import { renderSkillContext, renderSkillResourceWindow } from "../../../../src/workflows/skill-render.js";
+import { offeredSkillResources, readSkillResource } from "../../../../src/workflows/skills/skill-context.js";
+import { renderSkillContext, renderSkillResourceWindow } from "../../../../src/workflows/skills/skill-render.js";
 import { makeContext } from "./tools/_fixtures.js";
 import { resetOpening } from "./context/_loop-fixtures.js";
 

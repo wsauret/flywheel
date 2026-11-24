@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js"
-import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile.js"
+import { createSessionAuthAdmission } from "../../../../src/orchestration/session/metadata/session-auth-profile.js"
 
 const roots: string[] = []
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })

@@ -14,18 +14,18 @@ import { publishTestWorkflow, startTestWorkflowMember } from "../session/_sessio
 import { acceptanceWorkflow, SqliteVmDriver } from "../../workflows/vm/_sqlite-vm-driver.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 import { createWorkflowsProtocol } from "../../../../src/orchestration/modules/workflows/protocol/protocol.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { composeModuleServices } from "../../../../src/infra/module-service.js"
 import type { WorkflowDetail } from "../../../../src/protocol/modules/workflows.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { Log } from "../../../../src/infra/log.js"
 import { publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures.js"
 import { recordRuntimeEvent } from "../session/_budget-store-fixtures.js"
-import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
+import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
-import { authorizePlannedSessionContinuation, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, retirePlannedSessionContinuation } from "../../../../src/orchestration/session/planned-session-continuation.js"
+import { authorizePlannedSessionContinuation, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, retirePlannedSessionContinuation } from "../../../../src/orchestration/session/control/planned-session-continuation.js"
 
 const tmp = temporaryDirectories()
 function loaded(view: FrontendWorkflowView | null): LoadedWorkflowView {

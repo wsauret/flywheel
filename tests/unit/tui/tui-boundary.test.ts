@@ -13,7 +13,7 @@ const FORBIDDEN = [
 
 describe("TUI runtime boundary", () => {
   test("render root does not import runtime authorities", async () => {
-    for (const file of ["src/tui/app.tsx", "src/tui/shell.tsx", "src/tui/hooks/shell-state.ts", "src/tui/hooks/create-modals.tsx"]) {
+    for (const file of ["src/tui/shell/app.tsx", "src/tui/shell/shell.tsx", "src/tui/hooks/state/shell-state.ts", "src/tui/hooks/overlays/create-modals.tsx"]) {
       const source = await Bun.file(file).text()
       for (const forbidden of FORBIDDEN) expect(source).not.toContain(forbidden)
     }

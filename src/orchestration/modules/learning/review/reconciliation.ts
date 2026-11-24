@@ -17,16 +17,16 @@ import { createEventProjection, parseProjectionFact } from "../../../../infra/ev
 import { heldProjection } from "../../../../infra/projection-registry.js";
 import { requireContainedDirectory } from "../../../../infra/write-file-under.js";
 import { Log } from "../../../../infra/log.js";
-import type { SkillRecommendationRecordedFact } from "../../../../workflows/skill-facts.js";
-import { ownedSkillStoreDirs } from "../../../../workflows/skills.js";
+import type { SkillRecommendationRecordedFact } from "../../../../workflows/skills/skill-facts.js";
+import { ownedSkillStoreDirs } from "../../../../workflows/skills/skills.js";
 import { escapeXml, formatRuntimeNotification } from "../../../agent-runtime/runtime-notifications.js";
 import { createConversationTreeProjection, currentContextIdentities } from "../../../session/conversation/conversation-projection.js";
 import type { ContextContentIdentities } from "../../../session/conversation/conversation-context-identities.js";
 import { reconcilePendingAudits } from "../skills/learning-journal.js";
 import { createMemoryStoreConfig, memoryStorePath } from "../memory-store.js";
 import type { CapabilityAccess } from "../../../agent-runtime/tools/types.js";
-import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
-import { parseSessionFact } from "../../../session/session-fact-registry.js";
+import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
+import { parseSessionFact } from "../../../session/persistence/session-fact-registry.js";
 
 const log = Log.create({ service: "learning-reconciliation" });
 

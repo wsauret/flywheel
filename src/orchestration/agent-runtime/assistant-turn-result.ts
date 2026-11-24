@@ -9,7 +9,7 @@ import { Log } from "../../infra/log.js";
 import { toolUseBlock } from "./agent-state.js";
 import type { AgentRuntimeError, ContextOverflow, OutputOverflow } from "./llm/runtime-errors.js";
 import { assertNever } from "../../infra/assert-never.js";
-import type { ProviderTransportContext } from "../session/provider-request-audit-types.js";
+import type { ProviderTransportContext } from "../session/runtime-facts/provider-request-audit-types.js";
 import type {
   AssistantMetadata,
   CompletedStopReason,

@@ -12,7 +12,7 @@ import { openContainedDirectory, openExistingContainedDirectory } from "../../sr
 import { authDir, requireAuthProfileName } from "../../src/infra/paths.js"
 import { resolveInstalledBinary } from "./installed-binary.js"
 import { attachApp, INSTALLED_LAUNCH_EXCLUDED_ENV, killTmuxSession, launchApp, PanePollError, startSessionReaper, type PollOutcome, type TmuxApp } from "./tmux-driver.js"
-import { writeClaudeLoginReferences } from "../../src/orchestration/modules/provider-claude-agent-sdk/cli-login.js"
+import { writeClaudeLoginReferences } from "../../src/orchestration/modules/provider-claude-agent-sdk/login/cli-login.js"
 
 const READY_MARKER = "for fresh chat"
 const READY_TIMEOUT_MS = 45_000

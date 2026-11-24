@@ -11,8 +11,8 @@ import {
   reconcileGlobalSkillOperations,
   type ConsentClaims,
 } from "../../src/orchestration/modules/learning/skills/global-skill-mutation.js";
-import { agentInputConsumedFact } from "../../src/orchestration/session/agent-input-facts.js";
-import { createSessionFactWriter, type SessionFactWriter } from "../../src/orchestration/session/session-fact-writer.js";
+import { agentInputConsumedFact } from "../../src/orchestration/session/agent-input/agent-input-facts.js";
+import { createSessionFactWriter, type SessionFactWriter } from "../../src/orchestration/session/persistence/session-fact-writer.js";
 import {
   operationIdentity,
   advanceOperationManifest,
@@ -25,12 +25,12 @@ import {
   type OperationState,
 } from "../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
 import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin } from "../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { publishSkillRevision } from "../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../src/workflows/skills.js";
+import { publishSkillRevision } from "../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../src/workflows/skills/skills.js";
 import type { ProjectDirectories } from "../../src/infra/directory-authorities.js";
 import { planSkillMutation, planLockPaths, storeRootDirs } from "../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import { resultOfPlan } from "../../src/orchestration/modules/learning/skills/skill-store.js";
-import { claimAnsweredDecision } from "../../src/orchestration/session/agent-input-decision.js";
+import { claimAnsweredDecision } from "../../src/orchestration/session/agent-input/agent-input-decision.js";
 import { withPackageLocks } from "../../src/infra/package-directory-lock.js";
 import { forgetOperation, runOperation } from "../../src/orchestration/modules/learning/skills/global-skill-mutation-protocol.js";
 import { reconcilePendingAudits, settlePendingAudit } from "../../src/orchestration/modules/learning/skills/learning-journal.js";

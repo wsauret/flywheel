@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../../../../src/workflows/definitions/definition-registry.js";
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
 import { bashModule } from "../../../../src/orchestration/modules/bash/module.js";
 import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
@@ -9,7 +9,7 @@ import {
   skillPackageManifestIdentity,
   publishSkillRevision,
   type BundledSkillPackage,
-} from "../../../../src/workflows/skill-schema.js";
+} from "../../../../src/workflows/skills/skill-schema.js";
 import { testDirectories, fileTemporaryDirectory } from "../../../helpers/directories.js";
 
 const TMP = fileTemporaryDirectory("flywheel-skill-corpus-boundary-test-");

@@ -1,7 +1,7 @@
 import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/event-store-types.js"
 import { isRecord } from "../../infra/record.js"
-import { parseWorkflowSessionFact, workflowAggregateId, type WorkflowRecoveryDegradationReason, type WorkflowSessionFact } from "../vm/session-facts.js"
-import { WORKFLOW_ROOT_FACT_TYPES, workflowFamilyBoundary } from "../workflow-root.js"
+import { parseWorkflowSessionFact, workflowAggregateId, type WorkflowRecoveryDegradationReason, type WorkflowSessionFact } from "../vm/facts/session-facts.js"
+import { WORKFLOW_ROOT_FACT_TYPES, workflowFamilyBoundary } from "../run/workflow-root.js"
 import { parseWorkflowContextFact, WORKFLOW_CONTEXT_FACT_TYPES, type WorkflowContextFact } from "./context-facts.js"
 
 type Seed = Extract<WorkflowContextFact, { type: "context.input.seeded" }>

@@ -3,7 +3,7 @@ import { renderToString } from "solid-js/web"
 import { notificationAction, type ProjectNotificationEpisode } from "../../../../src/protocol/modules/project-notifications.js"
 import { ClientContext, type ClientContextValue } from "../../app/client-context.js"
 import { fakeClient, fakeClientActions, fakeViewState } from "../../app/client-context-fixture.js"
-import { ToolbarBadges } from "../../app/toolbar-badges.js"
+import { ToolbarBadges } from "../../app/toolbar/toolbar-badges.js"
 import { projectNotificationsWeb } from "./index.js"
 import { NotificationsSheet, openNotificationTarget } from "./sheet.js"
 

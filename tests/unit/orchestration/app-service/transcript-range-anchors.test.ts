@@ -1,5 +1,5 @@
 import { expect, it } from "bun:test"
-import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/transcript-queries.js"
+import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import type { OutputRangeRequest } from "../../../../src/protocol/transcript-protocol-types.js"

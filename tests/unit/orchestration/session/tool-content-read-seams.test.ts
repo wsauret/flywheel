@@ -13,7 +13,7 @@ import {
   loadToolExecutionTimelineFromEvents,
   TOOL_EXECUTION_FACT_TYPES,
   toolExecutionTimelineFromProjection,
-} from "../../../../src/orchestration/session/tool-execution-projection"
+} from "../../../../src/orchestration/session/runtime-facts/tool-execution-projection"
 
 const SESSION_ID = "session-1"
 const AGGREGATE = `session:${SESSION_ID}`

@@ -22,7 +22,7 @@ import { currentAccumulatedActiveMs, recordSessionDuration } from "./duration.js
 import { turnInFlight } from "./view.js"
 import type { ControlInterruption, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
 import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
-import { liveSessionControl } from "../session/live-session-control.js"
+import { liveSessionControl } from "../session/control/live-session-control.js"
 
 /** The identity of a chat's one startup failure notice. */
 const STARTUP_FAILURE_BLOCK_ID = "startup-failure"

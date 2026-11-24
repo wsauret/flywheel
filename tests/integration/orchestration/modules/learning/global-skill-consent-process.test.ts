@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 
 import type { SkillMutation } from "../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { SKILL_FILE } from "../../../../../src/workflows/skill-schema.js";
+import { SKILL_FILE } from "../../../../../src/workflows/skills/skill-schema.js";
 import { createGlobalSkillHarness, type GlobalSkillHarness } from "../../../../helpers/global-skill-operations.js";
 
 const REPO = join(import.meta.dir, "..", "..", "..", "..", "..");
@@ -58,11 +58,11 @@ function installGlobalSkill(body: string): void {
 const WORKER = `
 import ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/modules.js")).href)};
 import { createSqliteEventStore } from ${JSON.stringify(pathToFileURL(join(REPO, "src/infra/sqlite-event-store.js")).href)};
-import { createSessionFactWriter } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/session/session-fact-writer.js")).href)};
+import { createSessionFactWriter } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/session/persistence/session-fact-writer.js")).href)};
 import { commitGlobalSkillMutation } from ${JSON.stringify(pathToFileURL(join(REPO, "tests/helpers/global-skill-operations.js")).href)};
 import { writeFileSync } from "node:fs";
-import { publishSkillRevision } from ${JSON.stringify(pathToFileURL(join(REPO, "src/workflows/skill-schema.js")).href)};
-import { loadSkillDefinitions, ownedSkillStoreDirs } from ${JSON.stringify(pathToFileURL(join(REPO, "src/workflows/skills.js")).href)};
+import { publishSkillRevision } from ${JSON.stringify(pathToFileURL(join(REPO, "src/workflows/skills/skill-schema.js")).href)};
+import { loadSkillDefinitions, ownedSkillStoreDirs } from ${JSON.stringify(pathToFileURL(join(REPO, "src/workflows/skills/skills.js")).href)};
 
 const registry = () => {
   const dirs = ownedSkillStoreDirs(${JSON.stringify(DIRS)});

@@ -4,7 +4,7 @@ import { temporaryDirectories } from "../../helpers/directories.js";
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types.js";
 import { collectSkillLoadStats, refreshSkillLoadStatsSnapshot } from "../../../src/orchestration/modules/learning/skills/skill-load-stats.js";
-import { createSessionFactWriter } from "../../../src/orchestration/session/session-fact-writer.js";
+import { createSessionFactWriter } from "../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { createLearningReview, reviewReplay } from "../../../src/orchestration/modules/learning/review/learning-review.js";
 import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js";
 import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";

@@ -1,7 +1,7 @@
 import { Effect, Scope } from "effect";
 import type { Claim, ProviderDemand } from "../../../agent-runtime/llm/types.js";
-import { onceClaim, reportEngineEnd } from "../engine-demand.js";
-import { registerLiveBridge } from "../live-bridges.js";
+import { onceClaim, reportEngineEnd } from "../engine/engine-demand.js";
+import { registerLiveBridge } from "../engine/live-bridges.js";
 import type { HostLease } from "./host-registry.js";
 
 /** The claims on one host of a session: the one lease that they share, and the claims that hold it. */

@@ -1,8 +1,8 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { OwnedBenchmarkRuntime } from "../../bench/shared/runtime.js";
-import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/admission.js";
-import type { BenchmarkRuntime } from "../../src/orchestration/modules/development/benchmark/persona-run.js";
+import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/persona/admission.js";
+import type { BenchmarkRuntime } from "../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js";
 import { createBackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js";
