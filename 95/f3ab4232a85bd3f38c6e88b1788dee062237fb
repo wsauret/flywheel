@@ -1,0 +1,1032 @@
+bench/chat-ab/workflow-authorship-family.ts
+  h_4b47e9e4a8b456 4
+bench/chat-ab/workflow-authorship-metrics.ts
+  h_4b47e9e4a8b456 7-13
+bench/linux-runtime-verification/smoke.ts
+  h_4b47e9e4a8b456 16
+bench/shared/runtime.ts
+  h_4b47e9e4a8b456 39
+docs/architecture.md
+  h_4b47e9e4a8b456 166,179-181,462-467,480,501,550,577
+scripts/aggregate-read-allowlist.ts
+  h_4b47e9e4a8b456 43,61,63-67
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 42,45
+scripts/build-claude-plugin.ts
+  h_4b47e9e4a8b456 39-43
+scripts/build-manifest.ts
+  h_4b47e9e4a8b456 4,15-16,117
+scripts/capability-terms.ts
+  h_4b47e9e4a8b456 13
+scripts/check-bundled-skills.ts
+  h_4b47e9e4a8b456 29-34
+scripts/check-diagnostics-registry.ts
+  h_4b47e9e4a8b456 277,282
+scripts/check-terminology.ts
+  h_4b47e9e4a8b456 67,127,133,135-137,142,400,403,413
+scripts/dump-prompt.ts
+  h_4b47e9e4a8b456 24-25,27
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 46
+src/cli/startup/composition-probe.ts
+  h_4b47e9e4a8b456 6,8,10,12
+src/orchestration/agent-runtime/capability-checks.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/agent-runtime/factory.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/agent-runtime/module-runtime-services.ts
+  h_4b47e9e4a8b456 19-20
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 22,24,28
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 2-4
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/agent-runtime/review-types.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/runner.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/agent-runtime/tools/definition-overrides.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/tools/kernel-tool-deps.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/agent-runtime/tools/skill.ts
+  h_4b47e9e4a8b456 3-6
+src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
+  h_4b47e9e4a8b456 19
+src/orchestration/agent-runtime/tools/workflow-tool.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 47
+src/orchestration/app-service/background-index-publisher.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/app-service/command-catalog-projection.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/app-service/definition-availability.ts
+  h_4b47e9e4a8b456 36,38-40
+src/orchestration/app-service/definition-root-watcher.ts
+  h_4b47e9e4a8b456 6-7
+src/orchestration/app-service/model-assignment-service.ts
+  h_4b47e9e4a8b456 23
+src/orchestration/app-service/module-protocol-host.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 43,45
+src/orchestration/app-service/project-state-sessions.ts
+  h_4b47e9e4a8b456 10-11
+src/orchestration/app-service/role-protocol-projection.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/app-service/runtime-summary-projection.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/app-service/skill-method.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/chat/runner.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/chat/types.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/config/models/workflow-agent-models.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/config/retired-config-names.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/config/schema/setting-definitions.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/definition-catalog.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/definition-health.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/definition-overrides/override-service.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/headless/headless-bootstrap.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 44
+src/orchestration/module-catalog.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/module-seams.ts
+  h_4b47e9e4a8b456 10,38
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 31
+src/orchestration/modules/development/definitions/skills/skill-prompt-audit/SKILL.md
+  h_4b47e9e4a8b456 19-20
+src/orchestration/modules/experiments/finalize-child-run.ts
+  h_4b47e9e4a8b456 5-6
+src/orchestration/modules/experiments/runtime.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/learning.ts
+  h_4b47e9e4a8b456 2-4
+src/orchestration/modules/learning/cli/skills.ts
+  h_4b47e9e4a8b456 6,15,280
+src/orchestration/modules/learning/definition-reconciliation.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/modules/learning/maintenance/skill-corpus-cleanup-classifier.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/learning/maintenance/skill-corpus-cleanup-state.ts
+  h_4b47e9e4a8b456 5-6
+src/orchestration/modules/learning/maintenance/skill-corpus-cleanup.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/learning/maintenance/skill-maintenance-host.ts
+  h_4b47e9e4a8b456 31
+src/orchestration/modules/learning/maintenance/skill-maintenance-survey.ts
+  h_4b47e9e4a8b456 27,29
+src/orchestration/modules/learning/maintenance/skill-maintenance-unit.ts
+  h_4b47e9e4a8b456 27
+src/orchestration/modules/learning/maintenance/skill-maintenance.ts
+  h_4b47e9e4a8b456 25-26
+src/orchestration/modules/learning/maintenance/skill-prune.ts
+  h_4b47e9e4a8b456 17-19
+src/orchestration/modules/learning/migrations/memory-written.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/modules/learning/migrations/skill-scope.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/learning/review/learning-review-prompts.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/learning/review/learning-review-runner.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/modules/learning/review/learning-review.ts
+  h_4b47e9e4a8b456 23
+src/orchestration/modules/learning/review/reconciliation.ts
+  h_4b47e9e4a8b456 20-21
+src/orchestration/modules/learning/skills/global-skill-mutation-protocol.ts
+  h_4b47e9e4a8b456 39
+src/orchestration/modules/learning/skills/global-skill-mutation.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/learning/skills/learned-skill-eligibility.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/modules/learning/skills/learning-journal.ts
+  h_4b47e9e4a8b456 46-47
+src/orchestration/modules/learning/skills/skill-body-budget.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/learning/skills/skill-load-stats.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/modules/learning/skills/skill-mutation-plan.ts
+  h_4b47e9e4a8b456 26-28,42,112
+src/orchestration/modules/learning/skills/skill-mutation-publisher.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/learning/skills/skill-operation-manifest.ts
+  h_4b47e9e4a8b456 30,32
+src/orchestration/modules/learning/skills/skill-package-planning.ts
+  h_4b47e9e4a8b456 5-6
+src/orchestration/modules/learning/skills/skill-semantic-audit.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/learning/skills/skill-store-types.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/modules/learning/skills/skill-store.ts
+  h_4b47e9e4a8b456 82
+src/orchestration/modules/learning/tools/memory.ts
+  h_4b47e9e4a8b456 10-11
+src/orchestration/modules/learning/tools/skill-manage.ts
+  h_4b47e9e4a8b456 15-17
+src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/modules/subagents/execution/tool.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/workflows.ts
+  h_4b47e9e4a8b456 29,31,54
+src/orchestration/modules/workflows/agent-title.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/workflows/cli/verify.ts
+  h_4b47e9e4a8b456 5-11,17-18,24
+src/orchestration/modules/workflows/history/tool-summary.ts
+  h_4b47e9e4a8b456 12,22
+src/orchestration/modules/workflows/launch-operation.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/workflows/migrations/adopt-workflow-children.ts
+  h_4b47e9e4a8b456 38-41,44
+src/orchestration/modules/workflows/migrations/definition-loaded-handoff-filename.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/workflows/migrations/legacy-step-catalog-filesystem.ts
+  h_4b47e9e4a8b456 34
+src/orchestration/modules/workflows/migrations/legacy-step-catalog.ts
+  h_4b47e9e4a8b456 29
+src/orchestration/modules/workflows/migrations/loop-body-rows.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/workflows/migrations/retired-child-ask-user.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/workflows/migrations/workflow-agent-generation-plan.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/workflows/migrations/workflow-agent-sessions.ts
+  h_4b47e9e4a8b456 13
+src/orchestration/modules/workflows/migrations/workflow-definition-identity-graph.ts
+  h_4b47e9e4a8b456 8,13-14
+src/orchestration/modules/workflows/migrations/workflow-definition-identity-handoff-revisions.ts
+  h_4b47e9e4a8b456 6,13-14
+src/orchestration/modules/workflows/migrations/workflow-definition-identity-persona-shell.ts
+  h_4b47e9e4a8b456 6,10-11
+src/orchestration/modules/workflows/migrations/workflow-definition-identity-retired-blocked.ts
+  h_4b47e9e4a8b456 6,11-12
+src/orchestration/modules/workflows/migrations/workflow-definition-identity-retired-child-ask-user.ts
+  h_4b47e9e4a8b456 7-8,13-14
+src/orchestration/modules/workflows/migrations/workflow-definition-identity-retired-self-review.ts
+  h_4b47e9e4a8b456 7-8,13-14
+src/orchestration/modules/workflows/migrations/workflow-definition-identity-skill-catalog.ts
+  h_4b47e9e4a8b456 8-9
+src/orchestration/modules/workflows/migrations/workflow-definition-identity.ts
+  h_4b47e9e4a8b456 9-10
+src/orchestration/modules/workflows/migrations/workflow-identity-chain.ts
+  h_4b47e9e4a8b456 11
+src/orchestration/modules/workflows/protocol/detail.ts
+  h_4b47e9e4a8b456 2-4
+src/orchestration/modules/workflows/protocol/live-protocol.ts
+  h_4b47e9e4a8b456 8,14
+src/orchestration/modules/workflows/protocol/view-protocol.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/modules/workflows/run-facts.ts
+  h_4b47e9e4a8b456 2,7
+src/orchestration/modules/workflows/runs/duration.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/modules/workflows/runs/run-record.ts
+  h_4b47e9e4a8b456 8,10,12-14
+src/orchestration/session/budget-store-types.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/session/budget-store.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/session/chat-session-run-evidence.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/session/child-session-deletion.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/session/child-session-publication.ts
+  h_4b47e9e4a8b456 7-8
+src/orchestration/session/child-session-reconciliation.ts
+  h_4b47e9e4a8b456 21
+src/orchestration/session/child-workflow-candidate.ts
+  h_4b47e9e4a8b456 3,5
+src/orchestration/session/child-workflow-result.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/session/conversation/addressed-workflow-messages.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/session/conversation/person-message-ledger.ts
+  h_4b47e9e4a8b456 54
+src/orchestration/session/manager.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/session/planned-session-continuation.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/session/session-input-delivery.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/session/session-resources-service.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/session/workflow-publication.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/workflow-host/attempt/agent-persona.ts
+  h_4b47e9e4a8b456 2,6
+src/orchestration/workflow-host/attempt/historical-worker-task.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/workflow-host/attempt/worker-outcome.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/workflow-host/deps.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/workflow-host/execution/agent-callback.ts
+  h_4b47e9e4a8b456 14,16,18-19,53
+src/orchestration/workflow-host/execution/agent-inputs.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/workflow-host/execution/factory.ts
+  h_4b47e9e4a8b456 2,11,13-15,19,40
+src/orchestration/workflow-host/execution/runner.ts
+  h_4b47e9e4a8b456 6,9,12
+src/orchestration/workflow-host/frontend-attempts.ts
+  h_4b47e9e4a8b456 7,11-12
+src/orchestration/workflow-host/host-collection.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/workflow-host/lifecycle/controller.ts
+  h_4b47e9e4a8b456 15,46-48
+src/orchestration/workflow-host/lifecycle/definition-lineage.ts
+  h_4b47e9e4a8b456 1-4,6-8
+src/orchestration/workflow-host/lifecycle/definition-source.ts
+  h_4b47e9e4a8b456 9-10
+src/orchestration/workflow-host/lifecycle/launch-lifecycle.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/workflow-host/lifecycle/launch-origin.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/workflow-host/lifecycle/launch-pipeline.ts
+  h_4b47e9e4a8b456 25,37-38
+src/orchestration/workflow-host/lifecycle/path-workflow.ts
+  h_4b47e9e4a8b456 27-30,32-37,45,47
+src/orchestration/workflow-host/lifecycle/publish.ts
+  h_4b47e9e4a8b456 2-3,6-8,14-17,22,27,31
+src/orchestration/workflow-host/lifecycle/workflow-admission.ts
+  h_4b47e9e4a8b456 17,19,21-22,24
+src/orchestration/workflow-host/recovery-commit.ts
+  h_4b47e9e4a8b456 3-4,9-10,12,17
+src/orchestration/workflow-host/run-record.ts
+  h_4b47e9e4a8b456 2-3,25,28
+src/orchestration/workflow-host/runner-types.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/workflow-host/started-agent-states.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/workflow-host/workflow-addressing.ts
+  h_4b47e9e4a8b456 10-11
+src/workflows/agents/persona-instructions.ts
+  h_4b47e9e4a8b456 3-4
+src/workflows/agents/persona-sources.ts
+  h_4b47e9e4a8b456 6
+src/workflows/agents/registry.ts
+  h_4b47e9e4a8b456 11-12
+src/workflows/context-bundle/attempt-artifacts.ts
+  h_4b47e9e4a8b456 1,3
+src/workflows/context-bundle/context-facts.ts
+  h_4b47e9e4a8b456 3
+src/workflows/context-bundle/context-projection.ts
+  h_4b47e9e4a8b456 5-7
+src/workflows/context-bundle/context-recovery.ts
+  h_4b47e9e4a8b456 3-4
+src/workflows/context-bundle/context.ts
+  h_4b47e9e4a8b456 5-6,9
+src/workflows/context-bundle/error-classifier.ts
+  h_4b47e9e4a8b456 5
+src/workflows/context-bundle/prompt-assembly.ts
+  h_4b47e9e4a8b456 3-5
+src/workflows/definitions/agent-resolution.ts
+  h_4b47e9e4a8b456 1,3-4
+src/workflows/definitions/authored-repairs.ts
+  h_4b47e9e4a8b456 33
+src/workflows/definitions/brief.ts
+  h_4b47e9e4a8b456 2-3,5,7-9,11,28
+src/workflows/definitions/bundled-defaults.ts
+  h_4b47e9e4a8b456 7-8,10-11
+src/workflows/definitions/definition-assets.ts
+  h_4b47e9e4a8b456 4,22
+src/workflows/definitions/definition-provenance-fact-writers.ts
+  h_4b47e9e4a8b456 3-10,18-21
+src/workflows/definitions/definition-registry.ts
+  h_4b47e9e4a8b456 3-5,7,9-20,141
+src/workflows/definitions/installer.ts
+  h_4b47e9e4a8b456 12
+src/workflows/definitions/loader.ts
+  h_4b47e9e4a8b456 2-4,8,10
+src/workflows/definitions/reassessment-contract.ts
+  h_4b47e9e4a8b456 1-3
+src/workflows/definitions/retired-bindings.ts
+  h_4b47e9e4a8b456 19-25
+src/workflows/learning/improvements/improvement-facts.ts
+  h_4b47e9e4a8b456 2
+src/workflows/learning/memory/memory-facts.ts
+  h_4b47e9e4a8b456 2-3
+src/workflows/output-contract/compile.ts
+  h_4b47e9e4a8b456 4
+src/workflows/provenance/definition-loaded-v8.ts
+  h_4b47e9e4a8b456 2-4,6-7
+src/workflows/provenance/definition-provenance-facts.ts
+  h_4b47e9e4a8b456 2,4,6,8-10,12
+src/workflows/provenance/definition-provenance.ts
+  h_4b47e9e4a8b456 2
+src/workflows/reducers/coverage.ts
+  h_4b47e9e4a8b456 6
+src/workflows/run/budget.ts
+  h_4b47e9e4a8b456 1
+src/workflows/run/definition-provenance-projection.ts
+  h_4b47e9e4a8b456 1-3,11-12
+src/workflows/run/run-facts.ts
+  h_4b47e9e4a8b456 2-3
+src/workflows/run/session-fact-source.ts
+  h_4b47e9e4a8b456 1-2,4
+src/workflows/run/workflow-completion.ts
+  h_4b47e9e4a8b456 1-21
+src/workflows/run/workflow-root.ts
+  h_4b47e9e4a8b456 1-3
+src/workflows/schema/attempt-row.ts
+  h_4b47e9e4a8b456 2
+src/workflows/schema/retired-handoff-contracts.ts
+  h_4b47e9e4a8b456 14
+src/workflows/schema/retired-step-grammar/convert.ts
+  h_4b47e9e4a8b456 15
+src/workflows/schema/retired-step-grammar/schema.ts
+  h_4b47e9e4a8b456 9-10,12-13
+src/workflows/schema/workflow-schema.ts
+  h_4b47e9e4a8b456 2-4,6-7,10
+src/workflows/skills/skill-closure.ts
+  h_4b47e9e4a8b456 1
+src/workflows/skills/skill-context.ts
+  h_4b47e9e4a8b456 3-5
+src/workflows/skills/skill-facts.ts
+  h_4b47e9e4a8b456 2-3
+src/workflows/skills/skill-health.ts
+  h_4b47e9e4a8b456 21-23
+src/workflows/skills/skill-invocation.ts
+  h_4b47e9e4a8b456 1-2
+src/workflows/skills/skill-references.ts
+  h_4b47e9e4a8b456 3-4
+src/workflows/skills/skill-render.ts
+  h_4b47e9e4a8b456 5-6
+src/workflows/skills/skill-schema.ts
+  h_4b47e9e4a8b456 3-5
+src/workflows/skills/skill-source-inventory.ts
+  h_4b47e9e4a8b456 10
+src/workflows/skills/skills.ts
+  h_4b47e9e4a8b456 2-9,20
+src/workflows/view/launch-recovery.ts
+  h_4b47e9e4a8b456 2
+src/workflows/view/schemas.ts
+  h_4b47e9e4a8b456 3,6
+src/workflows/view/view-facts.ts
+  h_4b47e9e4a8b456 3
+src/workflows/view/view-history-tree.ts
+  h_4b47e9e4a8b456 5-11
+src/workflows/view/view-projection.ts
+  h_4b47e9e4a8b456 10-12
+src/workflows/view/view-store.ts
+  h_4b47e9e4a8b456 5,8-9
+src/workflows/vm/admission/definition-validation.ts
+  h_4b47e9e4a8b456 1-11,26
+src/workflows/vm/admission/workflow-file.ts
+  h_4b47e9e4a8b456 3-5,7-11,29-30
+src/workflows/vm/compile/compile-sources.ts
+  h_4b47e9e4a8b456 1-6,23-24
+src/workflows/vm/compile/compile.ts
+  h_4b47e9e4a8b456 2-5,28-29,31-33,45-47
+src/workflows/vm/compile/verify.ts
+  h_4b47e9e4a8b456 1-2,4-13
+src/workflows/vm/control/commands.ts
+  h_4b47e9e4a8b456 2-3,5
+src/workflows/vm/control/companions.ts
+  h_4b47e9e4a8b456 1-7,9-12,14-15
+src/workflows/vm/control/control-types.ts
+  h_4b47e9e4a8b456 2-3
+src/workflows/vm/control/machine.ts
+  h_4b47e9e4a8b456 1,11-14,16-17
+src/workflows/vm/control/proposal-composition.ts
+  h_4b47e9e4a8b456 2
+src/workflows/vm/control/transition.ts
+  h_4b47e9e4a8b456 8,30,35,37,39
+src/workflows/vm/facts/committed-control.ts
+  h_4b47e9e4a8b456 2,4
+src/workflows/vm/facts/definition-identity.ts
+  h_4b47e9e4a8b456 2-12
+src/workflows/vm/facts/events.ts
+  h_4b47e9e4a8b456 9-10
+src/workflows/vm/facts/historical-codecs.ts
+  h_4b47e9e4a8b456 2,5-6
+src/workflows/vm/facts/historical-identity-codecs.ts
+  h_4b47e9e4a8b456 2
+src/workflows/vm/facts/historical-normalization.ts
+  h_4b47e9e4a8b456 3,8-10
+src/workflows/vm/facts/persona-identity-proofs.ts
+  h_4b47e9e4a8b456 1-3
+src/workflows/vm/facts/retired-built-in-definitions.ts
+  h_4b47e9e4a8b456 9-10
+src/workflows/vm/facts/retired-output-contracts.ts
+  h_4b47e9e4a8b456 9-11
+src/workflows/vm/facts/retired-step-identity.ts
+  h_4b47e9e4a8b456 17-22,33
+src/workflows/vm/facts/session-facts.ts
+  h_4b47e9e4a8b456 2-11,19,54,63
+src/workflows/vm/facts/skill-identity-proofs.ts
+  h_4b47e9e4a8b456 1-2
+src/workflows/vm/graph/frontier.ts
+  h_4b47e9e4a8b456 2
+src/workflows/vm/graph/graph-changes.ts
+  h_4b47e9e4a8b456 1
+src/workflows/vm/graph/graph-types.ts
+  h_4b47e9e4a8b456 2-4
+src/workflows/vm/graph/list-expansion.ts
+  h_4b47e9e4a8b456 1-5
+src/workflows/vm/graph/node-outputs.ts
+  h_4b47e9e4a8b456 1-6
+src/workflows/vm/graph/structural-admission.ts
+  h_4b47e9e4a8b456 3-4,8
+src/workflows/vm/host/agent-outcome.ts
+  h_4b47e9e4a8b456 1
+src/workflows/vm/host/attempt-conversations.ts
+  h_4b47e9e4a8b456 1-6
+src/workflows/vm/host/attempt-runner.ts
+  h_4b47e9e4a8b456 1-5,7-24,29-30
+src/workflows/vm/host/commit-host.ts
+  h_4b47e9e4a8b456 3-4,12-19,21,23-24
+src/workflows/vm/host/host-commit-controller.ts
+  h_4b47e9e4a8b456 1-8,10-11
+src/workflows/vm/host/host-failures.ts
+  h_4b47e9e4a8b456 1-3,5-6
+src/workflows/vm/host/host-lifecycle.ts
+  h_4b47e9e4a8b456 1
+src/workflows/vm/host/host-publication.ts
+  h_4b47e9e4a8b456 1-5,7,9
+src/workflows/vm/host/host-types.ts
+  h_4b47e9e4a8b456 2-8,10
+src/workflows/vm/host/host.ts
+  h_4b47e9e4a8b456 2-8,11-14,27,29,35-36
+src/workflows/vm/host/replay.ts
+  h_4b47e9e4a8b456 1-7,32-33,47-49,56-58
+src/workflows/vm/recovery/bootstrap-validation.ts
+  h_4b47e9e4a8b456 1-5,7-8
+src/workflows/vm/recovery/control-activity.ts
+  h_4b47e9e4a8b456 1-4,6
+src/workflows/vm/recovery/control-status.ts
+  h_4b47e9e4a8b456 1-2
+src/workflows/vm/recovery/fact-fold.ts
+  h_4b47e9e4a8b456 2-5,12-13,24-30
+src/workflows/vm/recovery/recovery-fold.ts
+  h_4b47e9e4a8b456 2-10,12,16
+src/workflows/vm/recovery/recovery.ts
+  h_4b47e9e4a8b456 1-2,4-7
+src/workflows/vm/transitions/attempt-continuation.ts
+  h_4b47e9e4a8b456 1-4
+src/workflows/vm/transitions/attempt-transitions.ts
+  h_4b47e9e4a8b456 3-10,13-14
+src/workflows/vm/transitions/fact-drafts.ts
+  h_4b47e9e4a8b456 2-7
+src/workflows/vm/transitions/follow-up-history.ts
+  h_4b47e9e4a8b456 2-3
+src/workflows/vm/transitions/list-transitions.ts
+  h_4b47e9e4a8b456 1-11,26,28,30
+src/workflows/vm/transitions/reassessment.ts
+  h_4b47e9e4a8b456 1-9
+src/workflows/vm/transitions/repeat-transitions.ts
+  h_4b47e9e4a8b456 1-8
+src/workflows/vm/transitions/resume-transitions.ts
+  h_4b47e9e4a8b456 1-3,5,7-8,10
+src/workflows/vm/view/view-flatten.ts
+  h_4b47e9e4a8b456 1-4
+src/workflows/vm/view/view-tree.ts
+  h_4b47e9e4a8b456 1-11
+tests/fixtures/retired-workflows/retained-project.ts
+  h_4b47e9e4a8b456 3
+tests/fixtures/search-benchmark-queries.json
+  h_4b47e9e4a8b456 23
+tests/fixtures/tolerant-reprojection-fixtures.ts
+  h_4b47e9e4a8b456 8
+tests/helpers/attempt-brief.ts
+  h_4b47e9e4a8b456 2
+tests/helpers/control-before-phases.ts
+  h_4b47e9e4a8b456 1-2
+tests/helpers/global-skill-operations.ts
+  h_4b47e9e4a8b456 28-29
+tests/helpers/project-definitions.ts
+  h_4b47e9e4a8b456 1-3,6-8
+tests/helpers/request-tool-surface.ts
+  h_4b47e9e4a8b456 13,15
+tests/helpers/retired-fixture-briefs.ts
+  h_4b47e9e4a8b456 5-9
+tests/helpers/skill-fixtures.ts
+  h_4b47e9e4a8b456 2,5-9
+tests/helpers/workflow-files.ts
+  h_4b47e9e4a8b456 5-11
+tests/helpers/workflow-root-fixtures.ts
+  h_4b47e9e4a8b456 2-3,6-7
+tests/integration/local/skill-operation-manifest-boundaries.test.ts
+  h_4b47e9e4a8b456 16
+tests/integration/orchestration/modules.test.ts
+  h_4b47e9e4a8b456 45,47
+tests/integration/orchestration/modules/learning/definition-reconciliation.test.ts
+  h_4b47e9e4a8b456 7-9
+tests/integration/orchestration/modules/learning/global-skill-consent-process.test.ts
+  h_4b47e9e4a8b456 17,64-65
+tests/integration/orchestration/retired-step-grammar.test.ts
+  h_4b47e9e4a8b456 5,8-10
+tests/integration/orchestration/workflow-authoring-examples.test.ts
+  h_4b47e9e4a8b456 14,17-22,32
+tests/integration/providers/_live-client.ts
+  h_4b47e9e4a8b456 49
+tests/release/fixtures/workflow-agent-previous-shape.ts
+  h_4b47e9e4a8b456 53
+tests/unit/bench/chat-ab-claude-code-test1.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/bench/chat-routing-cli.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/bench/chat-routing-run.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/bench/harbor-answer-key-workflow.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/bench/workflow-authorship-fixtures.test.ts
+  h_4b47e9e4a8b456 7-10
+tests/unit/cli/skills-cli.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/cli/workflow-verify.test.ts
+  h_4b47e9e4a8b456 12,16-17
+tests/unit/infra/projection-fold-cache-families.test.ts
+  h_4b47e9e4a8b456 16
+tests/unit/orchestration/agent-runtime/agent-loader.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 33,35-36
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/agent-runtime/persona-tool-grants.test.ts
+  h_4b47e9e4a8b456 23
+tests/unit/orchestration/agent-runtime/runtime-assembly-development-tools.test.ts
+  h_4b47e9e4a8b456 28
+tests/unit/orchestration/agent-runtime/subagent/tool.test.ts
+  h_4b47e9e4a8b456 7-9
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/agent-runtime/tools/_planner-fixtures.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/agent-runtime/tools/definition-overrides-tool.test.ts
+  h_4b47e9e4a8b456 13-14
+tests/unit/orchestration/agent-runtime/tools/durable-writes-follow-project-root.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/orchestration/agent-runtime/tools/skill.test.ts
+  h_4b47e9e4a8b456 11-13
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/agent-runtime/tools/tools-dispatch.test.ts
+  h_4b47e9e4a8b456 17-18
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 16-17
+tests/unit/orchestration/app-service/_background-index-fixtures.ts
+  h_4b47e9e4a8b456 24-25,29
+tests/unit/orchestration/app-service/background-index.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/app-service/command-invoke-service.test.ts
+  h_4b47e9e4a8b456 20
+tests/unit/orchestration/app-service/definition-availability.test.ts
+  h_4b47e9e4a8b456 10-12
+tests/unit/orchestration/app-service/project-state-commit-window.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/app-service/runtime-session-contract.test.ts
+  h_4b47e9e4a8b456 22-23
+tests/unit/orchestration/app-service/session-detail-publisher.test.ts
+  h_4b47e9e4a8b456 23,25,30-31,33-34
+tests/unit/orchestration/app-service/session-detail-workflow-controls.test.ts
+  h_4b47e9e4a8b456 11,17-18,22-23
+tests/unit/orchestration/migrations/_legacy-workflow-aggregate.ts
+  h_4b47e9e4a8b456 12-13,15-17,19-25,27
+tests/unit/orchestration/migrations/_pre-cutover-control.ts
+  h_4b47e9e4a8b456 13-20,33
+tests/unit/orchestration/migrations/_pre-phase-control.ts
+  h_4b47e9e4a8b456 12-15
+tests/unit/orchestration/migrations/_pre-rename-workflow-aggregate.ts
+  h_4b47e9e4a8b456 17-22
+tests/unit/orchestration/migrations/_workflow-adoption.ts
+  h_4b47e9e4a8b456 23-24
+tests/unit/orchestration/migrations/adopt-workflow-children-input.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/migrations/adopt-workflow-children.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/migrations/definition-loaded-handoff-filename-migration.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/migrations/handoff-revision-identity-migration.test.ts
+  h_4b47e9e4a8b456 5-7
+tests/unit/orchestration/migrations/legacy-step-catalog-migration.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/orchestration/migrations/loop-body-rows-migration.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/migrations/persona-shell-identity-migration.test.ts
+  h_4b47e9e4a8b456 7-11,13
+tests/unit/orchestration/migrations/pre-rename-workflow-history.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/orchestration/migrations/retired-blocked-identity-migration.test.ts
+  h_4b47e9e4a8b456 11-15,17
+tests/unit/orchestration/migrations/retired-child-ask-user-migration.test.ts
+  h_4b47e9e4a8b456 11-12,14-16
+tests/unit/orchestration/migrations/retired-self-review-migration.test.ts
+  h_4b47e9e4a8b456 8-9,11-13
+tests/unit/orchestration/migrations/step-content-workflow-history.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/orchestration/migrations/step-row-content-id-migration.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/migrations/workflow-agent-message-closure.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/migrations/workflow-agent-sessions.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/migrations/workflow-definition-identity-migration.test.ts
+  h_4b47e9e4a8b456 10-13,21,23-24,27-28
+tests/unit/orchestration/migrations/workflow-definition-identity-skill-catalog.test.ts
+  h_4b47e9e4a8b456 13-15,18,39
+tests/unit/orchestration/modules/development/module.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/modules/experiments/experiment-skills.test.ts
+  h_4b47e9e4a8b456 9-13
+tests/unit/orchestration/modules/experiments/finalize-grant-exposure.test.ts
+  h_4b47e9e4a8b456 11-14
+tests/unit/orchestration/modules/learning/maintenance/skill-corpus-cleanup-campaign.test.ts
+  h_4b47e9e4a8b456 14-15
+tests/unit/orchestration/modules/learning/maintenance/skill-corpus-cleanup-classifier.test.ts
+  h_4b47e9e4a8b456 11-12
+tests/unit/orchestration/modules/learning/maintenance/skill-corpus-cleanup-state.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/modules/learning/maintenance/skill-corpus-cleanup.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/modules/learning/maintenance/skill-maintenance.test.ts
+  h_4b47e9e4a8b456 10-11
+tests/unit/orchestration/modules/learning/maintenance/skill-prune.test.ts
+  h_4b47e9e4a8b456 7-9
+tests/unit/orchestration/modules/learning/review/learning-review-runner.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/modules/learning/review/learning-review-semantic-audit.test.ts
+  h_4b47e9e4a8b456 11-14
+tests/unit/orchestration/modules/learning/review/skill-global-recommendation.test.ts
+  h_4b47e9e4a8b456 17-18
+tests/unit/orchestration/modules/learning/skills/global-skill-consent-recovery.test.ts
+  h_4b47e9e4a8b456 31,33
+tests/unit/orchestration/modules/learning/skills/global-skill-consent.test.ts
+  h_4b47e9e4a8b456 16-17
+tests/unit/orchestration/modules/learning/skills/global-skill-promotion-recovery.test.ts
+  h_4b47e9e4a8b456 26
+tests/unit/orchestration/modules/learning/skills/global-skill-promotion.test.ts
+  h_4b47e9e4a8b456 13-15
+tests/unit/orchestration/modules/learning/skills/learning-journal.test.ts
+  h_4b47e9e4a8b456 17-18,20
+tests/unit/orchestration/modules/learning/skills/skill-operation-manifest.test.ts
+  h_4b47e9e4a8b456 26
+tests/unit/orchestration/modules/learning/skills/skill-semantic-audit.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/modules/learning/skills/skill-store.test.ts
+  h_4b47e9e4a8b456 8,10
+tests/unit/orchestration/modules/learning/tools/skill-manage-tool.test.ts
+  h_4b47e9e4a8b456 16-18
+tests/unit/orchestration/modules/subagents/subagent-process-control.test.ts
+  h_4b47e9e4a8b456 22-23
+tests/unit/orchestration/modules/workflows/protocol-controls.test.ts
+  h_4b47e9e4a8b456 4,6
+tests/unit/orchestration/modules/workflows/protocol/live-protocol.test.ts
+  h_4b47e9e4a8b456 8,16-17
+tests/unit/orchestration/modules/workflows/tool-summary.test.ts
+  h_4b47e9e4a8b456 20,23,25
+tests/unit/orchestration/session/_budget-store-fixtures.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/session/_child-session-reconciliation-fixtures.ts
+  h_4b47e9e4a8b456 12-14
+tests/unit/orchestration/session/_session-manager-fixtures.ts
+  h_4b47e9e4a8b456 15-17,21-22,24,26
+tests/unit/orchestration/session/budget-store-limits.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/session/budget-store-persistence.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/session/chat-session-run-evidence.test.ts
+  h_4b47e9e4a8b456 8,10
+tests/unit/orchestration/session/chat-workflow-completion-recovery.test.ts
+  h_4b47e9e4a8b456 27
+tests/unit/orchestration/session/child-reconciliation-work-count.test.ts
+  h_4b47e9e4a8b456 16-18
+tests/unit/orchestration/session/child-session-reconciliation.test.ts
+  h_4b47e9e4a8b456 13,16
+tests/unit/orchestration/session/child-workflow-stop.test.ts
+  h_4b47e9e4a8b456 19
+tests/unit/orchestration/session/effect-session-resources.test.ts
+  h_4b47e9e4a8b456 30
+tests/unit/orchestration/session/manager-delete-transaction.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/session/schemas.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/session/session-manager-relationships.test.ts
+  h_4b47e9e4a8b456 9,21-22
+tests/unit/orchestration/session/session-messaging.test.ts
+  h_4b47e9e4a8b456 15,25-26
+tests/unit/orchestration/session/transcript-projection-child-index.test.ts
+  h_4b47e9e4a8b456 28-30
+tests/unit/orchestration/session/workflow-session-publication.test.ts
+  h_4b47e9e4a8b456 13,20
+tests/unit/orchestration/workflow-host/_worker-step-fixtures.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/workflow-host/_workflow-controller-fixtures.ts
+  h_4b47e9e4a8b456 26
+tests/unit/orchestration/workflow-host/_workflow-host-fixtures.ts
+  h_4b47e9e4a8b456 5-10,12,17-19
+tests/unit/orchestration/workflow-host/attempt/agent-persona.test.ts
+  h_4b47e9e4a8b456 5,8
+tests/unit/orchestration/workflow-host/attempt/artifact-context.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/workflow-host/attempt/historical-worker-task.test.ts
+  h_4b47e9e4a8b456 24,26-27
+tests/unit/orchestration/workflow-host/execution/recovery-input.test.ts
+  h_4b47e9e4a8b456 28,33-34
+tests/unit/orchestration/workflow-host/follow-up-runner-promotion.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/workflow-host/lifecycle/path-workflow.test.ts
+  h_4b47e9e4a8b456 12-13,15-19
+tests/unit/orchestration/workflow-host/lifecycle/workflow-admission.test.ts
+  h_4b47e9e4a8b456 12-13,16
+tests/unit/orchestration/workflow-host/path-workflow-map-lists.test.ts
+  h_4b47e9e4a8b456 3-8
+tests/unit/orchestration/workflow-host/step-input-interruptions.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/orchestration/workflow-host/worker-callback.test.ts
+  h_4b47e9e4a8b456 22
+tests/unit/orchestration/workflow-host/worker-opening-turn.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/workflow-host/workflow-agent-interruption.test.ts
+  h_4b47e9e4a8b456 27,37,40
+tests/unit/orchestration/workflow-host/workflow-agent-models.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/workflow-host/workflow-controller-interrupt.test.ts
+  h_4b47e9e4a8b456 27
+tests/unit/orchestration/workflow-host/workflow-controller-launch.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/orchestration/workflow-host/workflow-controller-path-launch.test.ts
+  h_4b47e9e4a8b456 9-10,31
+tests/unit/orchestration/workflow-host/workflow-controller.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/workflow-host/workflow-definition-lineage.test.ts
+  h_4b47e9e4a8b456 2,4
+tests/unit/orchestration/workflow-host/workflow-interruption.test.ts
+  h_4b47e9e4a8b456 30
+tests/unit/orchestration/workflow-host/workflow-launch-required-skills.test.ts
+  h_4b47e9e4a8b456 6,8-9
+tests/unit/orchestration/workflow-host/workflow-progress-atomic-publish.test.ts
+  h_4b47e9e4a8b456 11-12
+tests/unit/orchestration/workflow-host/workflow-publish-guardrails.test.ts
+  h_4b47e9e4a8b456 7,9
+tests/unit/orchestration/workflow-host/workflow-runner.test.ts
+  h_4b47e9e4a8b456 17,21
+tests/unit/orchestration/workspace-state.test.ts
+  h_4b47e9e4a8b456 25-26,29-30
+tests/unit/protocol/client/workflow-agent.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/protocol/client/workflow-drift-copy.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/scripts/check-bundled-skills.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/workflows/_bundled-skills.ts
+  h_4b47e9e4a8b456 3-7
+tests/unit/workflows/built-in-skill-capability-branches.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/workflows/built-in-skills.test.ts
+  h_4b47e9e4a8b456 8,10,13-15
+tests/unit/workflows/definitions/artifact-contracts.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/workflows/definitions/definition-assets.test.ts
+  h_4b47e9e4a8b456 11-14,79
+tests/unit/workflows/definitions/definition-loader.test.ts
+  h_4b47e9e4a8b456 4,6-8
+tests/unit/workflows/definitions/definition-provenance-store.test.ts
+  h_4b47e9e4a8b456 7,10-12,14-16,19
+tests/unit/workflows/definitions/installer.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/workflows/definitions/manifest-loader.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/workflows/definitions/project-definition-registry.test.ts
+  h_4b47e9e4a8b456 2,6-10
+tests/unit/workflows/definitions/retired-bindings.test.ts
+  h_4b47e9e4a8b456 4-16,22
+tests/unit/workflows/definitions/skill-corpus-boundary.test.ts
+  h_4b47e9e4a8b456 4,12
+tests/unit/workflows/definitions/skill-loader-roots.test.ts
+  h_4b47e9e4a8b456 6-8
+tests/unit/workflows/definitions/skill-loader.test.ts
+  h_4b47e9e4a8b456 7-10
+tests/unit/workflows/queue/pipeline-audit.test.ts
+  h_4b47e9e4a8b456 9-10,12,14
+tests/unit/workflows/queue/queue-fact-source.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/workflows/queue/queue-projection.test.ts
+  h_4b47e9e4a8b456 16-18,20-22,26-27,31-32
+tests/unit/workflows/queue/queue-store.test.ts
+  h_4b47e9e4a8b456 16,20,22
+tests/unit/workflows/register-summaries.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/workflows/run/budget.test.ts
+  h_4b47e9e4a8b456 2-5
+tests/unit/workflows/run/workflow-completion.test.ts
+  h_4b47e9e4a8b456 2-17
+tests/unit/workflows/schema/phase-references.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/workflows/schema/retired-step-grammar.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/workflows/skills/skill-composition.test.ts
+  h_4b47e9e4a8b456 4-20
+tests/unit/workflows/skills/skill-context-win32.test.ts
+  h_4b47e9e4a8b456 5-9
+tests/unit/workflows/skills/skill-context.test.ts
+  h_4b47e9e4a8b456 5-11
+tests/unit/workflows/skills/skill-facts.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/workflows/skills/skill-health.test.ts
+  h_4b47e9e4a8b456 4-7
+tests/unit/workflows/skills/skill-invocation.test.ts
+  h_4b47e9e4a8b456 2-6
+tests/unit/workflows/skills/skill-references.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/workflows/vm/_machine-semantics-fixtures.ts
+  h_4b47e9e4a8b456 2-4,8
+tests/unit/workflows/vm/_map-fixtures.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/workflows/vm/_sqlite-vm-driver.ts
+  h_4b47e9e4a8b456 9-12,21-22,25-31,33-34,36-42,47-48,116
+tests/unit/workflows/vm/_tree-fixtures.ts
+  h_4b47e9e4a8b456 2-9,14
+tests/unit/workflows/vm/_workflow-control-fixtures.ts
+  h_4b47e9e4a8b456 2-3,5-7
+tests/unit/workflows/vm/admission/definition-validation.test.ts
+  h_4b47e9e4a8b456 3-9
+tests/unit/workflows/vm/attempt-runner-test-support.ts
+  h_4b47e9e4a8b456 5-6,11-12,15
+tests/unit/workflows/vm/blocked-recovery.test.ts
+  h_4b47e9e4a8b456 7-10,14-15
+tests/unit/workflows/vm/commit-protocol.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/workflows/vm/compile/compile-votes.test.ts
+  h_4b47e9e4a8b456 2-6
+tests/unit/workflows/vm/compile/compile.test.ts
+  h_4b47e9e4a8b456 3-13
+tests/unit/workflows/vm/compile/verifier-authored.test.ts
+  h_4b47e9e4a8b456 2-11
+tests/unit/workflows/vm/compile/verifier-defects.test.ts
+  h_4b47e9e4a8b456 2-8
+tests/unit/workflows/vm/concurrent-attempts.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/workflows/vm/continuation-domain.test.ts
+  h_4b47e9e4a8b456 2-6,8-10,13
+tests/unit/workflows/vm/control/companions.test.ts
+  h_4b47e9e4a8b456 2-8
+tests/unit/workflows/vm/drift.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/workflows/vm/facts/definition-identity.test.ts
+  h_4b47e9e4a8b456 3-4,38-39,47-56
+tests/unit/workflows/vm/facts/retired-built-in-definitions.test.ts
+  h_4b47e9e4a8b456 6-12,35
+tests/unit/workflows/vm/follow-up-input.test.ts
+  h_4b47e9e4a8b456 4-8
+tests/unit/workflows/vm/golden/_canonical-scenarios.ts
+  h_4b47e9e4a8b456 1-3
+tests/unit/workflows/vm/golden/_golden-harness.ts
+  h_4b47e9e4a8b456 7-12
+tests/unit/workflows/vm/graph-model.test.ts
+  h_4b47e9e4a8b456 3,7-11
+tests/unit/workflows/vm/graph/completion-order.test.ts
+  h_4b47e9e4a8b456 2-6
+tests/unit/workflows/vm/graph/frontier.test.ts
+  h_4b47e9e4a8b456 6-8
+tests/unit/workflows/vm/group-expansion.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/workflows/vm/historical-map-roots.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/workflows/vm/historical-replay.test.ts
+  h_4b47e9e4a8b456 14-18,23-25,328
+tests/unit/workflows/vm/host-attempt-conversations.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/workflows/vm/host-conflict.test.ts
+  h_4b47e9e4a8b456 4-6,9-11
+tests/unit/workflows/vm/host-follow-up-resume.test.ts
+  h_4b47e9e4a8b456 3-4,6,11
+tests/unit/workflows/vm/host-interruption.test.ts
+  h_4b47e9e4a8b456 13-15
+tests/unit/workflows/vm/host-test-support.ts
+  h_4b47e9e4a8b456 7,10-22
+tests/unit/workflows/vm/host/attempt-runner-prompt-parity.test.ts
+  h_4b47e9e4a8b456 2-10
+tests/unit/workflows/vm/host/attempt-runner.test.ts
+  h_4b47e9e4a8b456 2-5,10-12,22-23
+tests/unit/workflows/vm/host/commit-host.test.ts
+  h_4b47e9e4a8b456 3-23
+tests/unit/workflows/vm/host/host-lifecycle.test.ts
+  h_4b47e9e4a8b456 9-14
+tests/unit/workflows/vm/host/host.test.ts
+  h_4b47e9e4a8b456 2-21,30-31
+tests/unit/workflows/vm/host/replay.test.ts
+  h_4b47e9e4a8b456 3-9,28-33,39-45
+tests/unit/workflows/vm/launch-atomicity.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/workflows/vm/loop-until-dry.test.ts
+  h_4b47e9e4a8b456 3-7,9-11
+tests/unit/workflows/vm/machine-lifecycle.test.ts
+  h_4b47e9e4a8b456 2-3,8-10
+tests/unit/workflows/vm/machine-recovery.test.ts
+  h_4b47e9e4a8b456 6-9,13
+tests/unit/workflows/vm/machine-semantics.test.ts
+  h_4b47e9e4a8b456 2-4,8
+tests/unit/workflows/vm/new-proposal-types.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/workflows/vm/phase-containers.test.ts
+  h_4b47e9e4a8b456 3-10,12,16
+tests/unit/workflows/vm/pipeline-ordering.test.ts
+  h_4b47e9e4a8b456 7-11,13,20,22-23
+tests/unit/workflows/vm/production-cutover.test.ts
+  h_4b47e9e4a8b456 6-8
+tests/unit/workflows/vm/queue-flatten.test.ts
+  h_4b47e9e4a8b456 2-5,11-14
+tests/unit/workflows/vm/reassessment-contract.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/workflows/vm/recovery-atomicity.test.ts
+  h_4b47e9e4a8b456 12-13,22-25,27,29
+tests/unit/workflows/vm/recovery/bootstrap-validation.test.ts
+  h_4b47e9e4a8b456 2-14
+tests/unit/workflows/vm/recovery/control-status.test.ts
+  h_4b47e9e4a8b456 3-12
+tests/unit/workflows/vm/recovery/fact-fold.test.ts
+  h_4b47e9e4a8b456 2-7,12-21
+tests/unit/workflows/vm/recovery/recovery-fold.test.ts
+  h_4b47e9e4a8b456 2-20
+tests/unit/workflows/vm/recovery/recovery.test.ts
+  h_4b47e9e4a8b456 3-19
+tests/unit/workflows/vm/rehydration.test.ts
+  h_4b47e9e4a8b456 2-3,7-8,10-11
+tests/unit/workflows/vm/resume-drift.test.ts
+  h_4b47e9e4a8b456 3-6,10
+tests/unit/workflows/vm/selecting-joins.test.ts
+  h_4b47e9e4a8b456 2,5-13
+tests/unit/workflows/vm/session-fact-types.test.ts
+  h_4b47e9e4a8b456 2-3,5-8
+tests/unit/workflows/vm/skill-revision-pinning.test.ts
+  h_4b47e9e4a8b456 4-5,7-8
+tests/unit/workflows/vm/step-failure.test.ts
+  h_4b47e9e4a8b456 2-3,6-12,15
+tests/unit/workflows/vm/transition-invariants.test.ts
+  h_4b47e9e4a8b456 2,6
+tests/unit/workflows/workflow-authoring-skill.test.ts
+  h_4b47e9e4a8b456 11,13,17
+tests/unit/workflows/workflow-prompt-hygiene.test.ts
+  h_4b47e9e4a8b456 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "95f3ab4232a85bd3f38c6e88b1788dee062237fb",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
