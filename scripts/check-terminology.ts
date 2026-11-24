@@ -385,10 +385,6 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
     ]],
     [/\bstepBoundary\b/, "divider", [PROTOCOL_VERSION_NOTES]],
     [/\bleafId\b/, "agentNodeId or nodeId", [
-      // The web client reads the agent of a browser history entry that a
-      // build before 2026-10-16 wrote under `leafId`, and its test feeds one.
-      "webview/src/client/workflow-agent.ts",
-      "webview/src/client/workflow-agent.test.ts",
       // The conversation tree names the newest entry of a branch its leaf (ARCH-SESSIONS-047).
       "src/orchestration/session/",
       // Request startup selects the conversation tree's recorded masking epoch.

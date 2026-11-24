@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { editorClientReplacement } from "./client-replacement.js"
-import { createInputReload } from "../src/client/input-reload.js"
+import { createInputReload } from "../src/client/input/input-reload.js"
 import type { CapabilityRequest } from "../../src/protocol/client/editor-host.js"
 
 test("an older host keeps the mounted input, receives no unsupported capability, and shows the upgrade remedy", async () => {

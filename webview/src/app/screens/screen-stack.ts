@@ -1,6 +1,6 @@
 import { batch, createEffect, createSignal, on, onCleanup, type Accessor } from "solid-js"
 import type { ModuleRowAction } from "../../../../src/protocol/protocol-module.js"
-import type { SessionLink } from "../../client/session-navigation.js"
+import type { SessionLink } from "../../client/session/navigation/session-navigation.js"
 
 import { scrollerKeepsTouch, swipeAbandoned, swipeCommits, swipeDirectionOf, swipeProgress, swipeRecognized, type ScrollerState, type SwipeDirection } from "./screen-swipe.js"
 

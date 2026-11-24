@@ -7,7 +7,7 @@ import type { RuntimeConnection } from "../../../src/protocol/client/connection.
 import type { RuntimeConfigMutationResult } from "../../../src/protocol/runtime-config-protocol-types.js"
 import type { HostCapabilities } from "../host.js"
 import { createClientActions } from "./actions.js"
-import { fakeConnection } from "./session-connection-fixture.js"
+import { fakeConnection } from "../test-support/session-connection-fixture.js"
 import { fakeRuntimeSession } from "../app/client-context-fixture.js"
 import type { PanelModuleSetting, PanelSettings } from "./session-settings.js"
 import { applyInlineSetting, parseProviderSetting, validCompactionThreshold } from "./settings-actions.js"

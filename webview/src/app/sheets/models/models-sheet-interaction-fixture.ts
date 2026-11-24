@@ -3,7 +3,7 @@ import type { FrontendEvent } from "../../../../../src/protocol/app-service-type
 import type { EffortOptionRow, ModelOptionRow, ModelSelectionSlot } from "../../../../../src/protocol/model-assignment-protocol-types.js"
 
 import { fakeClient, fakePanelSettings, fakeSessionSummary, fakeViewState } from "../../client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"
 import type { InlineSettingAction } from "../../../client/settings-actions.js"
 import { createElement, insert, nodes, textContent } from "../../../test-support/render-ownership-host-fixture.js"
 import { ModelsSheet } from "./models-sheet.js"

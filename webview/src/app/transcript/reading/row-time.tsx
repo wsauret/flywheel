@@ -2,7 +2,7 @@ import { createContext, createEffect, createMemo, createSelector, createSignal, 
 import { createStore, reconcile } from "solid-js/store"
 
 import { formatElapsed } from "../../../../../src/protocol/client/format.js"
-import { formatClockParts } from "../../../client/format-time.js"
+import { formatClockParts } from "../../../client/format/format-time.js"
 import { copyFrom } from "../../controls/copy.js"
 import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
 import type { StatusView } from "../../../../../src/protocol/status-protocol-types.js"

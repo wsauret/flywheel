@@ -3,7 +3,7 @@ import type { FrontendMutation, RuntimeHealth, RuntimeQuery } from "../../../../
 import type { BugReportResult } from "../../../../src/protocol/modules/bug-reports.js"
 import { ClientContext } from "../../app/client-context.js"
 import { fakeClient, fakeClientHost, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 import { RuntimeFaultNotice } from "../../app/toolbar/composer-status.js"
 import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { bugReportsWeb } from "./index.js"

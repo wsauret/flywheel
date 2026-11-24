@@ -4,7 +4,7 @@ import type { ProviderModelRow } from "../../../src/protocol/provider-model-pref
 import { loadSemanticRows } from "./semantic-rows-loader-fixture.js"
 import { loadStabilityFixture } from "../modules/workflows/stability-fixture-loader.js"
 import { fakePanelSettings } from "../app/client-context-fixture.js"
-import { authView } from "../client/session-connection-fixture.js"
+import { authView } from "./session-connection-fixture.js"
 import { EMPTY_REMOTE_VIEW } from "../../../src/protocol/modules/remote.js"
 
 const fixture = await loadStabilityFixture()
