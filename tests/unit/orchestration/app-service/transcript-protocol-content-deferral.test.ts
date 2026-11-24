@@ -8,7 +8,7 @@ import type { MutationDiff } from "../../../../src/infra/mutation-diff.js"
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
-import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/mutation-evidence-recovery.js"
+import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/history/mutation-evidence-recovery.js"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 

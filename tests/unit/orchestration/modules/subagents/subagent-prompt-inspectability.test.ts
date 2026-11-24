@@ -13,19 +13,19 @@ import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runti
 import { asModelClient, ownHistoryTarget } from "../../agent-runtime/_model-client.js";
 import { ContextLengthExceededError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { loadProviderRequestAuditFromEvents } from "../../../../../src/orchestration/session/provider-request-audit-projection.js";
-import { reconstructProviderRequestPrompt } from "../../../../../src/orchestration/session/provider-request-audit-reconstruction.js";
-import { reconcileChildSessionCompletions } from "../../../../../src/orchestration/session/child-session-reconciliation.js";
+import { loadProviderRequestAuditFromEvents } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-projection.js";
+import { reconstructProviderRequestPrompt } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-reconstruction.js";
+import { reconcileChildSessionCompletions } from "../../../../../src/orchestration/session/control/children/child-session-reconciliation.js";
 import { loadSubagentRunsFromEvents } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { capabilityAccessHolding } from "../../agent-runtime/tools/_fixtures.js";
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { continuationService, createRoot, createUnstartedChild, heldRunner, subagentChildHarnesses } from "./_subagent-child-fixtures.js";
 import { makeContext, TEST_RATIONALE } from "../../agent-runtime/subagent/_fixtures.js";
-import { liveChildRun } from "../../../../../src/orchestration/session/live-session-control.js";
-import { createConversationCheckpointOwner, readRecordedInheritedIntent } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
-import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
-import { createProjectStateSessionManager, createProjectStateSessionsService } from "../../../../../src/orchestration/app-service/project-state-sessions.js";
+import { liveChildRun } from "../../../../../src/orchestration/session/control/live-session-control.js";
+import { createConversationCheckpointOwner, readRecordedInheritedIntent } from "../../../../../src/orchestration/session/conversation-records/conversation-checkpoint.js";
+import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
+import { createProjectStateSessionManager, createProjectStateSessionsService } from "../../../../../src/orchestration/app-service/project-state/project-state-sessions.js";
 
 // What a dispatched subagent leaves behind must describe what actually
 // happened: the launch fact states the task instructions it was given, and the

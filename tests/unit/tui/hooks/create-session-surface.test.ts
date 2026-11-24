@@ -6,7 +6,7 @@ import { sessionDetailCursor, type RuntimeSessionDetailView } from "../../../../
 import { statusCursor, type StatusView } from "../../../../src/protocol/status-protocol-types.js"
 import { sessionCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { offeredSessionControls, workflowStateLabel } from "../../../../src/protocol/client/session-controls.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createBudgetCache } from "../../../../src/tui/hooks/create-budget-cache.js"
 import { sessionHeaderParts } from "../../../../src/tui/hooks/create-header-display.js"
 import { createSessionCatalog } from "../../../../src/tui/hooks/create-session-catalog.js"

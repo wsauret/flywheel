@@ -1,5 +1,5 @@
 import { commandSyntax, rootHelp } from "../src/cli/root-help.js";
-import { builtInCommandDeclarations, builtInCommandDescriptor } from "../src/orchestration/app-service/kernel-commands.js";
+import { builtInCommandDeclarations, builtInCommandDescriptor } from "../src/orchestration/app-service/definitions/commands/kernel-commands.js";
 import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModule } from "../src/orchestration/modules.js";
 import { buildCommandDefinitions } from "../src/tui/commands/command-definitions.js";
 import type { CommandSpec } from "../src/tui/commands/command-types.js";

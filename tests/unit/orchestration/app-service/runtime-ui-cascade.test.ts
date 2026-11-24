@@ -9,7 +9,7 @@ import type {
 } from "../../../../src/protocol/app-service-types.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { outputCursor, type OutputDelta, type OutputView } from "../../../../src/protocol/output-protocol-types.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
 import { createSessionCatalog } from "../../../../src/tui/hooks/create-session-catalog.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"

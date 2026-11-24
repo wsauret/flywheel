@@ -7,8 +7,8 @@ import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-conte
 import type { CapabilityGrant } from "../../../../../src/orchestration/config/policy/module-policy.js";
 import type { ModuleId } from "../../../../../src/orchestration/modules.js";
 import type { InFlightWrite, StoredFact } from "../../../../../src/infra/event-store-types.js";
-import { parseFileMutationFact, type FileMutationFact } from "../../../../../src/orchestration/session/file-mutation-facts.js";
-import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
+import { parseFileMutationFact, type FileMutationFact } from "../../../../../src/orchestration/session/file-mutations/file-mutation-facts.js";
+import type { SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { createExperimentOperation, findExperimentInterruption } from "../../../../../src/orchestration/modules/experiments/operation-owner.js";
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js";
 import { moduleDisabledReason } from "../../../../../src/protocol/module-ids"

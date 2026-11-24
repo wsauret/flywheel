@@ -1,20 +1,20 @@
 import { canonicalDirectory } from "../../infra/directory-authorities.js"
 import { workflowRunOwner } from "../module-catalog.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreAppend, type EventStoreReadSurface, type LocalEventWrites, type GuardedAppendResult, type GuardedEventStoreAppend } from "../../infra/event-store-types.js"
-import { createWorkflowPublication, type WorkflowAdoption, type WorkflowCommitPublication } from "./workflow-publication.js"
+import { createWorkflowPublication, type WorkflowAdoption, type WorkflowCommitPublication } from "./publication/workflow-publication.js"
 import { Log } from "../../infra/log.js"
 import { recordBackgroundFailure } from "../../infra/operation-log.js"
 import { ensureSessionDir } from "../../infra/paths.js"
 import { startupTrace } from "../../infra/startup-trace.js"
 import { buildQueueDeletedFact } from "../../workflows/view/view-facts.js"
 import { workflowAggregateId } from "../../workflows/vm/session-facts.js"
-import { deleteSessionArtifacts, deleteWorkflowArtifacts } from "./session-artifacts.js"
-import { settleUnreadMessages, type ReturnedNotice } from "./session-input-delivery.js"
-import { buildSessionChildUnlinkedFact } from "./session-metadata-facts.js"
-import { buildSessionMetadataAppend, createSessionMetadataStore, type SessionLabelSource } from "./session-metadata-store.js"
-import type { DurableSessionCatalog } from "./session-catalog-types.js"
-import { buildDurableSessionMetadataCatalog } from "./session-catalog-read.js"
-import type { SessionMetadataReader, RoleSettingEntry as RoleAssignmentEntry, RoleSettings as RoleAssignments, RoleAssignmentSnapshot, Session } from "./schemas.js"
+import { deleteSessionArtifacts, deleteWorkflowArtifacts } from "./persistence/storage/session-artifacts.js"
+import { settleUnreadMessages, type ReturnedNotice } from "./control/messaging/session-input-delivery.js"
+import { buildSessionChildUnlinkedFact } from "./metadata/session-metadata-facts.js"
+import { buildSessionMetadataAppend, createSessionMetadataStore, type SessionLabelSource } from "./metadata/catalog/session-metadata-store.js"
+import type { DurableSessionCatalog } from "./metadata/catalog/session-catalog-types.js"
+import { buildDurableSessionMetadataCatalog } from "./metadata/catalog/session-catalog-read.js"
+import type { SessionMetadataReader, RoleSettingEntry as RoleAssignmentEntry, RoleSettings as RoleAssignments, RoleAssignmentSnapshot, Session } from "./metadata/schemas.js"
 import { isSessionOwnerGone, writeOwnerPid } from "./pid-lock.js"
 import { createConversationTree } from "./conversation/tree/conversation-tree-handle.js"
 import { ConversationTreeStorage } from "./conversation/tree/conversation-tree-storage.js"
@@ -22,25 +22,25 @@ import { forkConversationTree } from "./conversation/tree/conversation-tree-fork
 import { reconstructRawSessionMessages, validateRawForkBranchWork } from "./conversation/tree/conversation-tree-context.js"
 import { runInTaskSlices } from "../../infra/task-scheduling.js"
 import type { ConversationMessage } from "../agent-runtime/llm/types.js"
-import { prepareChatBranchPublication } from "./session-chat-branch-publication.js"
-import { readConversationCheckpoint } from "./conversation-checkpoint.js"
-import { readConversationPromptBaseline } from "./conversation-prompt-baseline.js"
-import { buildSessionForkedFact } from "./session-fork-facts.js"
-import { contextUtilizationFromProjection, createBudgetProjection } from "./budget-projection.js"
-import { createSessionLifecyclePublication } from "./session-lifecycle-publication.js"
-import { listActiveSessionCandidateIds } from "./session-metadata-projection.js"
-import type { SessionLifecycleState } from "./types.js"
+import { prepareChatBranchPublication } from "./publication/session-chat-branch-publication.js"
+import { readConversationCheckpoint } from "./conversation-records/conversation-checkpoint.js"
+import { readConversationPromptBaseline } from "./conversation-records/conversation-prompt-baseline.js"
+import { buildSessionForkedFact } from "./metadata/session-fork-facts.js"
+import { contextUtilizationFromProjection, createBudgetProjection } from "./runtime-facts/budget-projection.js"
+import { createSessionLifecyclePublication } from "./publication/session-lifecycle-publication.js"
+import { listActiveSessionCandidateIds } from "./metadata/session-metadata-projection.js"
+import type { SessionLifecycleState } from "./metadata/types.js"
 import {
   createChildSessionDeletionState,
   type ChildSessionDeletionPlan,
   type ChildSessionDeletionTarget,
-} from "./child-session-deletion.js"
+} from "./control/children/child-session-deletion.js"
 import {
   createChildSessionPublication,
   prepareChildSessionPublication,
   type SubagentSessionPublication,
   type WorkflowPublication,
-} from "./child-session-publication.js"
+} from "./control/children/child-session-publication.js"
 
 const log = Log.create({ service: "session.manager" })
 const PARENT_PUBLICATION_ATTEMPTS = 3

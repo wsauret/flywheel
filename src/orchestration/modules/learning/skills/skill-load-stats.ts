@@ -10,8 +10,8 @@ import { createOrderedLane, type OrderedLane } from "../../../../infra/ordered-l
 import { createEventProjection, parseProjectionFact } from "../../../../infra/event-projection.js";
 import { heldProjection } from "../../../../infra/projection-registry.js";
 import { skillLoadsSnapshottedFact, type SkillLoadedFact, type SkillLoadsSnapshottedFact, type SkillWrittenFact } from "../../../../workflows/skill-facts.js";
-import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
-import { parseSessionFact } from "../../../session/session-fact-registry.js";
+import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
+import { parseSessionFact } from "../../../session/persistence/session-fact-registry.js";
 
 export interface SkillLoadStats {
   loads: number;

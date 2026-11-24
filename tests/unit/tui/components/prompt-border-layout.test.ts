@@ -7,7 +7,7 @@ import { computeComposerBorderLayout } from "../../../../src/tui/components/comp
 import { statusLineParts } from "../../../../src/tui/components/spinner-status-animation.js"
 import type { SpinnerStatus } from "../../../../src/tui/components/spinner-status-model.js"
 import { noticeSpinnerStatus } from "../../../../src/tui/components/spinner-status-notice.js"
-import { capacityWaitNotice } from "../../../../src/orchestration/session/capacity-wait.js"
+import { capacityWaitNotice } from "../../../../src/orchestration/session/control/capacity-wait.js"
 import type { SessionNotice } from "../../../../src/infra/session-notice.js"
 import type { KeyHintSpec } from "../../../../src/tui/components/key-hint-row-state.js"
 import { offeredSessionControls } from "../../../../src/protocol/client/session-controls.js"

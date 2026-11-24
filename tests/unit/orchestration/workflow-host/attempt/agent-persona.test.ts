@@ -8,7 +8,7 @@ import { prepareSubagentTools } from "../../../../../src/orchestration/modules/s
 import { resolveWorkflowAgents } from "../../../../../src/workflows/agent-resolution.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { composeFirstPartyModules, type ModuleId } from "../../../../../src/orchestration/modules.js"
-import { definitionAvailabilityOf } from "../../../../../src/orchestration/app-service/definition-availability.js"
+import { definitionAvailabilityOf } from "../../../../../src/orchestration/app-service/definitions/definition-availability.js"
 import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/capability-checks.js"
 import { makeContext, makeDeps } from "../../agent-runtime/subagent/_fixtures.js"
 import { loadedWorkflow } from "../../../../helpers/workflow-files.js"

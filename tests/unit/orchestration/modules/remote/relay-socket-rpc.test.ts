@@ -5,7 +5,7 @@ import { layerMsgPack } from "../../../../../src/protocol/rpc-msgpack.js"
 import { Socket } from "effect/socket"
 
 import { relaySocketServerLayer } from "../../../../../src/orchestration/modules/remote/relay-socket-server.js"
-import { runtimeProtocolSocketServer } from "../../../../../src/orchestration/app-service/runtime-protocol-socket-server.js"
+import { runtimeProtocolSocketServer } from "../../../../../src/orchestration/app-service/account/connections/runtime-protocol-socket-server.js"
 import { socketProtocolLayer } from "../../../../../src/protocol/client/socket-protocol.js"
 import { sealedSocket, type SealedIdentity } from "../../../../../src/protocol/modules/remote/sealed-socket.js"
 import { asKeyPair, ownedBytes } from "../../../../../src/protocol/modules/remote/relay-protocol.js"

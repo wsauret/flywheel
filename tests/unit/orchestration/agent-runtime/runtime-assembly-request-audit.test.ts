@@ -6,7 +6,7 @@ import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import type { AgentOptionsOverride } from "./_runner-options.js"
-import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts.js"
+import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-facts.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { asModelClient } from "./_model-client.js"

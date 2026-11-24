@@ -12,10 +12,10 @@ import { Log } from "../../../../src/infra/log.js"
 import { accountServeDir, accountServeRecordPath, accountServeSocketPath } from "../../../../src/infra/paths.js"
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
 import * as sourceSnapshot from "../../../../src/infra/source-snapshot.js"
-import { readOrCreateAccountAttachToken } from "../../../../src/orchestration/app-service/account-attach-token.js"
+import { readOrCreateAccountAttachToken } from "../../../../src/orchestration/app-service/account/account-attach-token.js"
 import { installedBuildId } from "../../../../src/orchestration/app-service/runtime-executable.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
-import { ServeLifetime } from "../../../../src/orchestration/app-service/serve-lifetime.js"
+import { ServeLifetime } from "../../../../src/orchestration/app-service/account/serve-lifetime.js"
 import { IDLE_SERVE, shortAccountHomes, unusedLauncher } from "./_serve-fixtures.js"
 
 // A serve run in this test process runs through Bun, so it serves the dev lane.

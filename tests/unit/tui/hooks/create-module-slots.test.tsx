@@ -9,7 +9,7 @@ import { createSurfaceOpener } from "../../../../src/protocol/client/surface-pre
 import { experimentViewDomain } from "../../../../src/protocol/modules/experiments.js"
 import { sideQuestionProtocol } from "../../../../src/protocol/modules/side-question.js"
 import { createSideQuestionSurface } from "../../../../src/tui/modules/side-question/surface.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createModalScrollController } from "../../../../src/tui/components/modal-scroll-controller.js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 import { ThemeProvider } from "../../../../src/tui/context/theme.js"

@@ -5,10 +5,10 @@ import { Log } from "../../../infra/log.js"
 import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
 import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
 import { workflowRecoveryBasis } from "../../../workflows/vm/recovery.js"
-import { readToolExecution } from "../../session/tool-execution-projection.js"
+import { readToolExecution } from "../../session/runtime-facts/tool-execution-projection.js"
 import { turnEndEntryId } from "../../session/conversation/turn-end-record.js"
 import { workflowRunReader } from "../../module-catalog.js"
-import { retirePlannedSessionContinuation } from "../../session/planned-session-continuation.js"
+import { retirePlannedSessionContinuation } from "../../session/control/planned-session-continuation.js"
 import { WORKFLOW_LAUNCH_OPERATION_KIND, workflowLaunchHost, type WorkflowLaunchOperation } from "../../workflow-host/lifecycle/launch-operation-contract.js"
 import type {
   HeldRetainedOperation,

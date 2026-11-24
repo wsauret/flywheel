@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { createProjectControlClient } from "../../../../src/orchestration/app-service/project-control-client.js"
-import { ProjectExecutionChannelDetached } from "../../../../src/orchestration/app-service/project-execution-channel.js"
+import { createProjectControlClient } from "../../../../src/orchestration/app-service/account/projects/project-control-client.js"
+import { ProjectExecutionChannelDetached } from "../../../../src/orchestration/app-service/executor/project-execution-channel.js"
 import { fixture, privateExecutor } from "./_project-control-client-fixture.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 

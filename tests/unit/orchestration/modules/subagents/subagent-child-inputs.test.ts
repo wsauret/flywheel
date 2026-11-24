@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test"
 import { subagentChildHarnesses, heldRunner, createRoot } from "./_subagent-child-fixtures.js"
 import { makeContext, TEST_RATIONALE } from "../../agent-runtime/subagent/_fixtures.js"
-import { deliverSessionInput } from "../../../../../src/orchestration/session/session-input-delivery.js"
+import { deliverSessionInput } from "../../../../../src/orchestration/session/control/messaging/session-input-delivery.js"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { publishTestSubagent } from "../../session/_session-manager-fixtures.js"
 import { recoverStaleSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-recovery.js"
 import { removeOwnerPid } from "../../../../../src/orchestration/session/pid-lock.js"
 import { readSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
-import { liveSessionControl } from "../../../../../src/orchestration/session/live-session-control.js"
+import { liveSessionControl } from "../../../../../src/orchestration/session/control/live-session-control.js"
 import { processSettled } from "../../../../helpers/process-settled.js"
 
 /** The durable in-flight kind that holds composer input returned to a parent. */

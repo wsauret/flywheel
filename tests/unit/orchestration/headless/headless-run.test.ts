@@ -18,7 +18,7 @@ import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-prof
 import * as headlessDeadline from "../../../../src/orchestration/headless/headless-deadline.js"
 import type { HeadlessDeadlineController } from "../../../../src/orchestration/headless/headless-deadline.js"
 import { runHeadlessTask } from "../../../../src/orchestration/headless/run-headless-task.js"
-import { readSessionMetadata } from "../../../../src/orchestration/session/session-metadata-store.js"
+import { readSessionMetadata } from "../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"

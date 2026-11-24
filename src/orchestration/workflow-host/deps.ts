@@ -26,7 +26,7 @@ import { installedCredentialProviderIds } from "../credential-provider-modules.j
 import type { ModuleServices } from "../../infra/module-service.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { CommandHandoverAuthority } from "../agent-runtime/command-handover.js"
-import type { ChildSessionControl } from "../session/child-session-control.js"
+import type { ChildSessionControl } from "../session/control/messaging/child-session-control.js"
 import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js"
 import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js"
 import type { GitAiAttributionService } from "../agent-runtime/git-ai-attribution-service.js"

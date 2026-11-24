@@ -24,9 +24,9 @@ import { buildWorkflowControlRecoveredFact } from "../../../../src/workflows/vm/
 import { Database } from "bun:sqlite"
 import { readEpisodeEvidenceEnd } from "../../../../src/orchestration/session-store/duration.js"
 import { readWorkflowMemberEvidence } from "../../../../src/orchestration/workflow-host/member-totals.js"
-import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
+import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
-import { authorizePlannedSessionContinuation, retirePlannedSessionContinuation } from "../../../../src/orchestration/session/planned-session-continuation.js"
+import { authorizePlannedSessionContinuation, retirePlannedSessionContinuation } from "../../../../src/orchestration/session/control/planned-session-continuation.js"
 
 const tmp = temporaryDirectories()
 function register(store: LocalSqliteEventStore) {

@@ -8,7 +8,7 @@ import type { UsageAccountsResult, UsageHistoryRange, UsageHistoryResult, UsageM
 import { subscriptionSpendAccountCorrelationId } from "../../../protocol/subscription-spend-consent-protocol-types.js"
 import { projectUsageAccounts, projectUsageHistory, projectUsageSpend, type CurrentUsageAccount, type CurrentUsageObservationSet, type MeteredUsageSource, type UsageHistoryObservation } from "./usage-projection.js"
 import { historyAccount } from "./usage-history.js"
-import type { RuntimeConfigProjection } from "../../app-service/runtime-config-projection.js"
+import type { RuntimeConfigProjection } from "../../app-service/projections/runtime-config-projection.js"
 
 export interface UnifiedUsageDeps {
   readonly subscriptionUsage?: {

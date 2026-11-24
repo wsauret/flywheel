@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test"
 
-import type { AccountService, ProjectSlot } from "../../../../src/orchestration/app-service/account-service.js"
-import { startAccountWebAddresses, type ProjectBrowserState } from "../../../../src/orchestration/app-service/account-web-addresses.js"
-import type { ControlUiAssetState } from "../../../../src/orchestration/app-service/web-serving/control-ui-assets.js"
-import type { AccountHubOptions, AccountHubProject } from "../../../../src/orchestration/app-service/web-serving/hub.js"
+import type { AccountService, ProjectSlot } from "../../../../src/orchestration/app-service/account/account-service.js"
+import { startAccountWebAddresses, type ProjectBrowserState } from "../../../../src/orchestration/app-service/account/account-web-addresses.js"
+import type { ControlUiAssetState } from "../../../../src/orchestration/app-service/account/web-serving/control-ui-assets.js"
+import type { AccountHubOptions, AccountHubProject } from "../../../../src/orchestration/app-service/account/web-serving/hub.js"
 import { ServeStartupFailure } from "../../../../src/protocol/serve-handshake.js"
 
 const record = { id: "opaque-a", projectRoot: "/work/alpha", label: "alpha", lastAttachedAt: 1 }

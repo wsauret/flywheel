@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { createRuntimeBackgroundProjectMap, createRuntimeBackgroundProjectOperations } from "../../../../src/orchestration/app-service/runtime-background-projects.js"
+import { createRuntimeBackgroundProjectMap, createRuntimeBackgroundProjectOperations } from "../../../../src/orchestration/app-service/background/runtime-background-projects.js"
 
 describe("runtime background Worker lifecycle", () => {
   test("isolates sibling projects and can release and reopen one", async () => {

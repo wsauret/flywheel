@@ -6,7 +6,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { hashContent } from "../../../../src/workflows/definition-hash.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { buildWorkflowCompilationFacts } from "../../../../src/workflows/definition-provenance-fact-writers.js"
 import { buildDefinitionDriftRejectedFact, parseDefinitionProvenanceFact } from "../../../../src/workflows/definition-provenance-facts.js"
 import { readRunDefinitionLineage } from "../../../../src/workflows/definition-provenance-projection.js"

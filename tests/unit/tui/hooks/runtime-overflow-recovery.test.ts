@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { createRoot } from "solid-js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { cursorKey, type RuntimeCursorIdentity, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { createOrderedPatchReceiver } from "../../../../src/tui/hooks/create-ordered-patch-receiver.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"

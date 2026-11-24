@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import type { CatalogModelOffering } from "../../../../src/infra/catalog-model-offering.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
-import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js";
+import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { TEST_CATALOG_LIMITS } from "../../../helpers/model-catalog-fixtures.js";
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";

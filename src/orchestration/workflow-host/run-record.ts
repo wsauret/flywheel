@@ -1,7 +1,7 @@
 import type { StoredFact } from "../../infra/event-store-types.js"
 import type { DefinitionLineageView } from "../../workflows/definition-provenance-projection.js"
 import type { WorkflowCapabilityBoundary, WorkflowLaunchBindingSchema, WorkflowRunSettingsSchema } from "../../workflows/run-facts.js"
-import { strongestInterrupt } from "../session/child-continuation.js"
+import { strongestInterrupt } from "../session/control/child-continuation.js"
 
 /** Who holds a workflow run's whole-run cut, and when it was made. */
 export type WorkflowRunCut = { readonly by: "person" | "agent" | "runtime" | "replacement"; readonly timestamp: number }

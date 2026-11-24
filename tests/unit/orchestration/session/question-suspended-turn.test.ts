@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types";
-import { reconcileAgentInput } from "../../../../src/orchestration/session/agent-input-reconciliation";
+import { reconcileAgentInput } from "../../../../src/orchestration/session/history/agent-input-reconciliation";
 import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
 import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import { chatTurnEndOf } from "../../../../src/orchestration/session/conversation/turn-end-record";
 import {
   checkpointFinalizedToolResult,
   recoverFinalizedToolResultCheckpoints,
-} from "../../../../src/orchestration/session/finalized-tool-result-checkpoint";
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer";
+} from "../../../../src/orchestration/session/history/finalized-tool-result-checkpoint";
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer";
 import {
   attachingProcess,
   createSavePointContext,

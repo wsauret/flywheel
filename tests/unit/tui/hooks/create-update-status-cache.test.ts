@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
 import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/protocol/app-service-types.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { updatesCursor, type UpdateAutoInstall, type UpdateStatusView } from "../../../../src/protocol/update-protocol-types.js"
 import { createUpdateStatusCache } from "../../../../src/tui/hooks/create-update-status-cache.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"

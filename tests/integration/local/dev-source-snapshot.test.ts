@@ -45,7 +45,7 @@ const LANE = "dev"
 const MODEL = "gpt-5"
 const STEP_MS = 60_000
 /** A module that only a project executor loads. */
-const EXECUTOR_MODULE = path.join(COPY, "src", "orchestration", "app-service", "project-executor-main.ts")
+const EXECUTOR_MODULE = path.join(COPY, "src", "orchestration", "app-service", "executor", "execution", "project-executor-main.ts")
 /** The module that the CLI entry of a snapshot imports first. */
 const CLI_MODULE = path.join(COPY, "src", "cli", "index.ts")
 

@@ -8,7 +8,7 @@ import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-i
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import { lowerProviderHistory } from "../../../../../src/orchestration/agent-runtime/llm/provider-history.js"
 import type { ContentBlock, ConversationMessage, LLMClient, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { ProviderTransportContext } from "../../../../../src/orchestration/session/provider-request-audit-types.js"
+import type { ProviderTransportContext } from "../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 import { createAntigravityClient } from "../../../../../src/orchestration/modules/provider-google-antigravity/client.js"
 import type { EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-process.js"
 import { createEngineRegistry, type EnginePlace, type EngineRegistry } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-registry.js"

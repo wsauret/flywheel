@@ -21,7 +21,7 @@ import { unavailableBenchmarkAccounting, type BenchmarkAccounting } from "./evid
 import { invokeBenchmarkAgent } from "./invocation.js";
 import { agentCapabilityCheck } from "../../../agent-runtime/capability-checks.js";
 import { availableToolNames } from "../../../agent-runtime/persona-tool-rules.js";
-import { definitionAvailabilityOf } from "../../../app-service/definition-availability.js";
+import { definitionAvailabilityOf } from "../../../app-service/definitions/definition-availability.js";
 import { disabledAgentTypes } from "../../../module-catalog.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/model-runtime-capture.js";
 import { resolveSessionRoles } from "../../../config/models/session-role-resolver.js";

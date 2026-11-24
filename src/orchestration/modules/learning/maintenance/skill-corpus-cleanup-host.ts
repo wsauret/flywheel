@@ -10,7 +10,7 @@ import { installedAccessProviderIds } from "../../../credential-provider-modules
 import { createRuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import { startModulePolicy } from "../../../config/policy/module-policy.js"
 import { moduleRequirementsForContribution } from "../../../module-requirements.js"
-import { createSessionFactWriter } from "../../../session/session-fact-writer.js"
+import { createSessionFactWriter } from "../../../session/persistence/session-fact-writer.js"
 import { resolveHeadlessAuthProfile, withHeadlessProfileRuntime } from "../../../headless/headless-profile-runtime.js"
 import { createLearningReviewExecution } from "../review/learning-review-runner.js"
 import { createSkillCorpusCleanupState } from "./skill-corpus-cleanup-state.js"

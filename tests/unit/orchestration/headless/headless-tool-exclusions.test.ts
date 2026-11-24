@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createRuntimeModuleComposer } from "../../../../src/orchestration/app-service/runtime-module-composition.js";
+import { createRuntimeModuleComposer } from "../../../../src/orchestration/app-service/executor/execution/runtime-module-composition.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js";

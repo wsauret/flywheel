@@ -1,9 +1,9 @@
 import type { CapabilityCheck } from "../../../infra/capability-text.js"
 import { parseProjectionFact } from "../../../infra/event-projection.js"
 import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
-import { readConversationCheckpoint, renderConversationCheckpoint } from "../../session/conversation-checkpoint.js"
+import { readConversationCheckpoint, renderConversationCheckpoint } from "../../session/conversation-records/conversation-checkpoint.js"
 import { parseConversationTreeFact } from "../../session/conversation/conversation-facts.js"
-import { workflowMembershipReader } from "../../session/workflow-membership.js"
+import { workflowMembershipReader } from "../../session/metadata/workflow-membership.js"
 
 /** The conversations of `since` that recorded a complete assistant message,
  *  which is a model response that a provider served, strictly after the

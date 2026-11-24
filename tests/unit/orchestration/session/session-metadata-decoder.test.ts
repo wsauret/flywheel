@@ -4,7 +4,7 @@ import { resolve } from "node:path"
 /** Directory authorities are canonical for the running platform: a POSIX
  *  literal resolves onto the current drive on Windows and is not canonical. */
 const WORKSPACE = resolve("/workspace")
-import { decodeSessionMetadataFactForReplay, parseSessionMetadataFact, type SessionMetadataFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
+import { decodeSessionMetadataFactForReplay, parseSessionMetadataFact, type SessionMetadataFact } from "../../../../src/orchestration/session/metadata/session-metadata-facts.js"
 
 const now = "2026-01-01T00:00:00.000Z"
 const facts: readonly SessionMetadataFact[] = [

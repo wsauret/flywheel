@@ -11,7 +11,7 @@ import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js"
 import { captureRuntimeConfigRequest } from "../../src/orchestration/agent-runtime/request-config.js"
 import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema/schema.js"
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js"
-import { definitionAvailabilityOf } from "../../src/orchestration/app-service/definition-availability.js"
+import { definitionAvailabilityOf } from "../../src/orchestration/app-service/definitions/definition-availability.js"
 import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orchestration/agent-runtime/capability-checks.js"
 import { publishSkillRevision } from "../../src/workflows/skill-schema.js"
 

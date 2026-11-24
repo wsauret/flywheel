@@ -65,12 +65,12 @@ describe("a runtime composition root's capability startup", () => {
 describe("startup chains carry no capability copy", () => {
   const owners = {
     "runtime launch options": "src/cli/account-service/runtime-launch.ts",
-    "runtime server options": "src/orchestration/app-service/account-service-runtime.ts",
-    "runtime composition": "src/orchestration/app-service/project-execution-runtime.ts",
+    "runtime server options": "src/orchestration/app-service/account/account-service-runtime.ts",
+    "runtime composition": "src/orchestration/app-service/executor/execution/project-execution-runtime.ts",
     "TUI app props": "src/tui/app.tsx",
     "TUI shell props": "src/tui/shell.tsx",
     "Settings store": "src/tui/hooks/create-settings-store.ts",
-    "runtime supervisor": "src/orchestration/app-service/runtime-supervisor.ts",
+    "runtime supervisor": "src/orchestration/app-service/supervisor/runtime-supervisor.ts",
   };
 
   for (const [owner, file] of Object.entries(owners)) {
@@ -86,7 +86,7 @@ describe("startup chains carry no capability copy", () => {
    *  startup value threaded through them. */
   const capabilityFreeOwners = {
     "runtime launch options": "src/cli/account-service/runtime-launch.ts",
-    "runtime server options": "src/orchestration/app-service/account-service-runtime.ts",
+    "runtime server options": "src/orchestration/app-service/account/account-service-runtime.ts",
     "TUI app props": "src/tui/app.tsx",
     "TUI shell props": "src/tui/shell.tsx",
     "Settings store": "src/tui/hooks/create-settings-store.ts",

@@ -6,9 +6,9 @@ import * as fs from "node:fs"
 import type { ServeLane } from "../../infra/cli-subprocess.js"
 import { errnoCode, errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
-import type { ReplacementTrigger } from "../../orchestration/app-service/replacement-owner.js"
+import type { ReplacementTrigger } from "../../orchestration/app-service/account/replacement-owner.js"
 import type { InstalledBuild } from "../../orchestration/app-service/runtime-executable.js"
-import type { ServiceRegistrationRefresh } from "../../orchestration/app-service/service-registration-refresh.js"
+import type { ServiceRegistrationRefresh } from "../../orchestration/app-service/account/installation/service-registration-refresh.js"
 
 const log = Log.create({ service: "serve" })
 

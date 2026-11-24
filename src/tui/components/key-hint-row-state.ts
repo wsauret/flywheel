@@ -1,4 +1,4 @@
-import type { SessionLifecycleState } from "../../orchestration/session/types.js"
+import type { SessionLifecycleState } from "../../orchestration/session/metadata/types.js"
 import type { AgentState } from "../hooks/shell-state.js"
 
 export interface KeyHintSpec {

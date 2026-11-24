@@ -4,7 +4,7 @@ import { SESSION_RELATIONS } from "../../../infra/chat-input-schema.js"
 import { chatInputContent, normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike, type ChatInvocation, type SessionMessageEnvelope, type UserInputProducer } from "../../../infra/chat-input.js"
 import { Log } from "../../../infra/log.js"
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
-import { recoverSessionMessageProducer, sessionMessageSources, type SessionMessageSources } from "../session-message-sources.js"
+import { recoverSessionMessageProducer, sessionMessageSources, type SessionMessageSources } from "../metadata/session-message-sources.js"
 
 /** The in-flight kind a queued-but-not-yet-durable user input is held under.
  *

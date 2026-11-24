@@ -5,7 +5,7 @@ import {
   type SessionLifecycleState,
   isValidTransition,
   isResumable,
-} from "../../../../src/orchestration/session/types";
+} from "../../../../src/orchestration/session/metadata/types";
 
 describe("SessionLifecycleStateSchema", () => {
   const allStates: readonly SessionLifecycleState[] = ["active", "inactive"];

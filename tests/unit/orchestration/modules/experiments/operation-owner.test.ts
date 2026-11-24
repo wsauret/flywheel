@@ -9,7 +9,7 @@ import {
   findExperimentInterruption,
   type ExperimentOperation,
 } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
-import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js"
+import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()

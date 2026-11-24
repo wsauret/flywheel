@@ -16,7 +16,7 @@ import { toGoogleGenerativeAiRequest } from "../../../../../src/orchestration/ag
 import { ContextLengthExceededError, LlmStreamError, RouteUnavailableError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { lowerProviderHistory } from "../../../../../src/orchestration/agent-runtime/llm/provider-history.js"
 import type { ContentBlock, ConversationMessage, LLMClient, ProviderStreamEvent, ToolDef, ToolOutputOwners } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { ProviderTransportContext } from "../../../../../src/orchestration/session/provider-request-audit-types.js"
+import type { ProviderTransportContext } from "../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 import { PRIMER_TEXT } from "../../../../../src/orchestration/modules/provider-google-antigravity/request/bridge.js"
 import { createAntigravityClient } from "../../../../../src/orchestration/modules/provider-google-antigravity/client.js"
 import type { EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-process.js"

@@ -5,7 +5,7 @@ import type { AnyBlock, QuestionBlock } from "../../../../src/infra/output-block
 import type { FrontendEvent, SessionCatalogRow } from "../../../../src/protocol/app-service-types"
 import type { StatusView } from "../../../../src/protocol/status-protocol-types"
 import { outputCursor } from "../../../../src/protocol/output-protocol-types"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer"
 import { sessionCursor } from "../../../../src/protocol/runtime-ui-protocol-types"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"

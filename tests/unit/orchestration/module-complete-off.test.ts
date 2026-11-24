@@ -7,7 +7,7 @@ import { NO_MODULE_SERVICES } from "../../../src/infra/module-service.js";
 import { capabilityAccessFor, type RuntimeTool } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
 import type { KernelToolDeps } from "../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
-import { parseSessionFact } from "../../../src/orchestration/session/session-fact-registry.js";
+import { parseSessionFact } from "../../../src/orchestration/session/persistence/session-fact-registry.js";
 import { parseExperimentFact, type ExperimentFact } from "../../../src/orchestration/modules/experiments/state/facts.js";
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/tool-registry.js";
 import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";

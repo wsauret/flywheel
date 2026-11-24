@@ -31,7 +31,7 @@ import { modelFamilyApi } from "./llm/messages.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-tiers.js";
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
-import type { PromptHistoryLowering, PromptStaleMasking, ProviderRequestIdentity } from "../session/provider-request-audit-types.js";
+import type { PromptHistoryLowering, PromptStaleMasking, ProviderRequestIdentity } from "../session/runtime-facts/provider-request-audit-types.js";
 import { applyHistoryLowering, imageLimitCut, planHistoryLowering, type ProviderHistoryTarget } from "./llm/provider-history.js";
 import type { PreparedRequestAttempt } from "./request-tool-surface.js";
 import { type AssistantTurnResult, handleStreamEvent, settledTextOf, type TurnOutcome } from "./assistant-turn-result.js";
@@ -81,7 +81,7 @@ export interface AssistantAttemptInput {
    *  on `prompt.assembled` so reconstruction can replay the mask. */
   staleMasking: PromptStaleMasking | undefined;
   /** Historical tool contracts lowered for this request. */
-  toolHistoryProjection?: import("../session/provider-request-audit-types.js").PromptToolHistoryProjection;
+  toolHistoryProjection?: import("../session/runtime-facts/provider-request-audit-types.js").PromptToolHistoryProjection;
   turn: number;
   /** The image-limit cut that the request's owner last recorded at INFO (`recordImageLimitCut`). Absent for a
    *  request whose owner keeps no record, such as compaction: its bounded requests record at DEBUG only. */

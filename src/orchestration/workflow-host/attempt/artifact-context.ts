@@ -11,13 +11,13 @@ import { envelope } from "../../../workflows/output-contract/envelope.js";
 import { resolveToolPath } from "../../agent-runtime/tools/tool-paths.js";
 import { readConversationToolUseIds } from "../../session/conversation/session-message-entries.js";
 import type { SessionManager } from "../../session/manager.js";
-import { readLaunchedChildren, type LaunchedChild } from "../../session/module-session-operations.js";
-import { sessionDisplayName } from "../../session/schemas.js";
-import type { RetainedPatch } from "../../session/session-change-sources.js";
-import { getSessionChangeReview, type SessionChangeReview } from "../../session/session-change-review.js";
-import type { Change } from "../../session/session-file-changes.js";
-import { readSessionMetadata } from "../../session/session-metadata-store.js";
-import { workflowMembershipReader } from "../../session/workflow-membership.js";
+import { readLaunchedChildren, type LaunchedChild } from "../../session/control/module-session-operations.js";
+import { sessionDisplayName } from "../../session/metadata/schemas.js";
+import type { RetainedPatch } from "../../session/metadata/catalog/session-change-sources.js";
+import { getSessionChangeReview, type SessionChangeReview } from "../../session/metadata/catalog/session-change-review.js";
+import type { Change } from "../../session/metadata/catalog/session-file-changes.js";
+import { readSessionMetadata } from "../../session/metadata/catalog/session-metadata-store.js";
+import { workflowMembershipReader } from "../../session/metadata/workflow-membership.js";
 
 const log = Log.create({ service: "artifact-context" });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, setSystemTime } from "bun:test"
 import { createRoot } from "solid-js"
 import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/protocol/app-service-types.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { statusCursor, type StatusView } from "../../../../src/protocol/status-protocol-types.js"
 import { createStatusCache } from "../../../../src/tui/hooks/create-status-cache.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"

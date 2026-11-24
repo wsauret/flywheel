@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { pack } from "msgpackr"
-import { connectProjectExecutionChannel, serveProjectExecutionChannel } from "../../../../src/orchestration/app-service/project-execution-channel.js"
+import { connectProjectExecutionChannel, serveProjectExecutionChannel } from "../../../../src/orchestration/app-service/executor/project-execution-channel.js"
 import { deferred, endpointPair, manualClock, markerEvent, markerPosition, requestFrame, runtimeHarness } from "./project-execution-channel-fixtures.js"
 
 /** How many calls a client sends before it queues the rest, read from a

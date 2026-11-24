@@ -17,9 +17,9 @@ import { createConversationTreeWriter, type ConversationTreeWriter } from "../se
 import { createConversationTreeProjection, type ConversationTreeProjectionState } from "../session/conversation/conversation-projection.js"
 import { createConversationMessageEntry, type ContextOpening, type ConversationTree } from "../session/conversation/tree/conversation-tree.js"
 import type { FinalizedCheckpointSwap, RecordCompaction } from "../agent-runtime/agent-loop-types.js"
-import { recoverFinalizedToolResultCheckpoints } from "../session/finalized-tool-result-checkpoint.js"
+import { recoverFinalizedToolResultCheckpoints } from "../session/history/finalized-tool-result-checkpoint.js"
 import type { HeldRetainedOperation } from "../module-seams.js"
-import { noteBackgroundNotificationHeld } from "../session/reply-waits.js"
+import { noteBackgroundNotificationHeld } from "../session/control/messaging/reply-waits.js"
 
 interface ConversationTreeWriterDeps {
   conversationId: string

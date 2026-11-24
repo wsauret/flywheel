@@ -7,8 +7,8 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore
 import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js";
 import { createSkillManageTool } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { DispatchedToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { loadAgentInputProjection } from "../../../../../../src/orchestration/session/agent-input-projection.js";
-import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
+import { loadAgentInputProjection } from "../../../../../../src/orchestration/session/agent-input/agent-input-projection.js";
+import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import type { SkillWriteOrigin } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
 import type { SkillDefinition } from "../../../../../../src/workflows/skill-schema.js";
 import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skill-schema.js";

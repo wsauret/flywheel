@@ -9,7 +9,7 @@ import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/proto
 import { moduleDomainReader } from "../../../../src/protocol/client/module-domain.js"
 import type { FrontendExperimentRun, FrontendExperimentView } from "../../../../src/protocol/modules/experiments.js"
 import { sessionDomainCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { modalCopyLimit } from "../../../../src/tui/components/modal-copy.js"
 import { createModalScrollController } from "../../../../src/tui/components/modal-scroll-controller.js"
 import { SPINNER_FRAMES } from "../../../../src/tui/components/use-spinner-frame.js"

@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { declaredFactRetentionTypes, declaredRetiredFactTypes, factOwner, factRetention, type FactOwner, type FactRetention } from "../src/infra/fact-retention-registry.js";
 import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js";
 import { SHIPPED_MODULES, type FirstPartyModule } from "../src/orchestration/modules.js";
-import { RETIRED_FACT_TYPES } from "../src/orchestration/session/event-store-maintenance.js";
+import { RETIRED_FACT_TYPES } from "../src/orchestration/session/persistence/storage/event-store-maintenance.js";
 import { isUnderAny, moduleFactHomes } from "./module-homes.js";
 
 // Every durable fact family must declare its retention policy and its owner
@@ -98,7 +98,7 @@ export function findFactRetentionViolations(repoRoot: string, registry: FactRete
   const prunable = new Set(registry.prunable);
   for (const type of registry.retiredTypes()) {
     if (!prunable.has(type)) {
-      failures.push(`"${type}" is declared retired but is missing from RETIRED_FACT_TYPES (src/orchestration/session/event-store-maintenance.ts)`);
+      failures.push(`"${type}" is declared retired but is missing from RETIRED_FACT_TYPES (src/orchestration/session/persistence/storage/event-store-maintenance.ts)`);
     }
   }
   for (const type of registry.prunable) {

@@ -9,8 +9,8 @@ import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../..
 import { InvariantViolation } from "../../../../src/infra/invariant";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { contentEvidence } from "../../../../src/infra/content-evidence";
-import { countToolCall, createToolExecutionProjection as createAsyncToolExecutionProjection, initialToolCallCount, TOOL_EXECUTION_FACT_TYPES } from "../../../../src/orchestration/session/tool-execution-projection";
-import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types";
+import { countToolCall, createToolExecutionProjection as createAsyncToolExecutionProjection, initialToolCallCount, TOOL_EXECUTION_FACT_TYPES } from "../../../../src/orchestration/session/runtime-facts/tool-execution-projection";
+import type { SessionRuntimeFact } from "../../../../src/orchestration/session/runtime-facts/session-runtime-event-types";
 
 const TMP_ROOT = path.join(os.tmpdir(), `flywheel-tool-execution-identity-projection-test-${process.pid}-${Date.now()}`);
 const createToolExecutionProjection = (store: LocalSqliteEventStore, sessionId: string) =>

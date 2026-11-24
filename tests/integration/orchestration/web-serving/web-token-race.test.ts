@@ -7,7 +7,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-const MODULE = join(import.meta.dir, "..", "..", "..", "..", "src", "orchestration", "app-service", "web-serving", "token-auth.ts")
+const MODULE = join(import.meta.dir, "..", "..", "..", "..", "src", "orchestration", "app-service", "account", "web-serving", "token-auth.ts")
 const created: string[] = []
 afterEach(() => { for (const dir of created.splice(0)) rmSync(dir, { recursive: true, force: true }) })
 

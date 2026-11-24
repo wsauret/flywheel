@@ -4,7 +4,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
-import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile.js"
+import { createSessionAuthAdmission } from "../../../../src/orchestration/session/metadata/session-auth-profile.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { createAgentRuntime } from "../../../../src/orchestration/agent-runtime/factory.js"
 import { describeAgentFailure } from "../../../../src/orchestration/agent-runtime/failure-message.js"

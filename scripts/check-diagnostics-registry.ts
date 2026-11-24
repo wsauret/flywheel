@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { isRegisteredDiagnostic, registeredDiagnosticTypes } from "../src/infra/diagnostics-registry.js";
-import { PROVIDER_REQUEST_DIAGNOSTIC_TYPES } from "../src/orchestration/session/provider-request-audit-facts.js";
+import { PROVIDER_REQUEST_DIAGNOSTIC_TYPES } from "../src/orchestration/session/runtime-facts/provider-request-audit-facts.js";
 
 // Every record family that reaches the JSONL diagnostics sink must declare its
 // tier in src/infra/diagnostics-registry.ts. Without this gate a new family is
@@ -28,7 +28,7 @@ const LOG_LEVEL_TYPES = ["log.debug", "log.info", "log.warn", "log.error"];
 
 const PRODUCERS: readonly Producer[] = [
   {
-    file: "src/orchestration/app-service/session-auto-delete.ts",
+    file: "src/orchestration/app-service/account/projects/session-auto-delete.ts",
     what: "automatic session deletion decisions and pass outcomes",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -43,12 +43,12 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/app-service/project-state-worker.ts",
+    file: "src/orchestration/app-service/project-state/worker/project-state-worker.ts",
     what: "state Worker operation queue and service timing",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/session/capacity-wait.ts",
+    file: "src/orchestration/session/control/capacity-wait.ts",
     what: "capacity wait authority changes: armed, re-armed, fired, withdrawn",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -114,37 +114,37 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/app-service/account-service.ts",
+    file: "src/orchestration/app-service/account/account-service.ts",
     what: "account project lifecycle",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/app-service/processor-governor.ts",
+    file: "src/orchestration/app-service/executor/processor-governor.ts",
     what: "processor admission holds, releases, and failed holds",
     pattern: /"(runtime\.processor_admission\.[a-z_]+)"/g,
   },
   {
-    file: "src/orchestration/app-service/worker-background-client.ts",
+    file: "src/orchestration/app-service/background/worker-background-client.ts",
     what: "background Worker allocation",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/app-service/runtime-maintenance-owner.ts",
+    file: "src/orchestration/app-service/background/runtime-maintenance-owner.ts",
     what: "maintenance Worker allocation",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/app-service/definition-root-watcher.ts",
+    file: "src/orchestration/app-service/definitions/definition-root-watcher.ts",
     what: "published definition revisions",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/app-service/runtime-protocol-handlers.ts",
+    file: "src/orchestration/app-service/account/connections/runtime-protocol-handlers.ts",
     what: "client lane attach timing",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/app-service/socket-runtime-client.ts",
+    file: "src/orchestration/app-service/account/connections/socket-runtime-client.ts",
     what: "client socket target and event lane admission",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -154,12 +154,12 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/session/session-summary-index.ts",
+    file: "src/orchestration/session/metadata/catalog/session-summary-index.ts",
     what: "session summary replay page",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/session/session-messaging.ts",
+    file: "src/orchestration/session/control/messaging/session-messaging.ts",
     what: "duplicate session message refusal",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -304,7 +304,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/app-service/session-runtime-actor.ts",
+    file: "src/orchestration/app-service/supervisor/actor/session-runtime-actor.ts",
     what: "refused question settlements",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },

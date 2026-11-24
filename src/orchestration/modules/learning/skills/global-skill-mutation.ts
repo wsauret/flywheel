@@ -8,7 +8,7 @@ import { projectSkillStoreDir, skillStoreRoots } from "../../../../workflows/ski
 import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
 import { reconcilePendingAudits, settlePendingAudit, type AuditWriter, type PendingAudit } from "./learning-journal.js";
 import { forgetOperation, forgetProposal, runOperation } from "./global-skill-mutation-protocol.js";
-import { loadAgentInputProjection, type AgentInputEntry } from "../../../session/agent-input-projection.js";
+import { loadAgentInputProjection, type AgentInputEntry } from "../../../session/agent-input/agent-input-projection.js";
 import { planLockPaths, storeRootDirs } from "./skill-mutation-plan.js";
 import {
   activeOperationIds, advanceOperationManifest, isTerminalState, operationIdentity,

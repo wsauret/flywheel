@@ -3,7 +3,7 @@ import { mkdirSync, watch as watchDirectory } from "node:fs";
 import { Redacted, Schema } from "effect";
 import { accountAuthDir, accountSecretFile } from "../../../infra/paths.js";
 import { readLockedJsonStore, mutateLockedJsonStore, type LockedJsonStoreOptions } from "../../../infra/auth/store/locked-json-store.js";
-import type { AccountProjectRegistry } from "../../app-service/account-project-registry.js";
+import type { AccountProjectRegistry } from "../../app-service/account/account-project-registry.js";
 import type { RemotePushSubscription } from "../../../protocol/modules/remote.js";
 
 /** The account's remote-access facts: which relay it pairs against, the one

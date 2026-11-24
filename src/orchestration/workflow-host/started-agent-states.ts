@@ -3,11 +3,11 @@ import { Log } from "../../infra/log.js"
 import { recordBackgroundFailure } from "../../infra/operation-log.js"
 import type { WorkflowAgentLive } from "../../protocol/workflow-view-protocol-types.js"
 import type { StartedAgent } from "../../workflows/vm/host-commit-controller.js"
-import { readChatTurnEndEvidence, readStartedWorkflowAgents, workflowAgentTurnEnd, type WorkflowAgentTurnEnd } from "../session/chat-session-run-evidence.js"
+import { readChatTurnEndEvidence, readStartedWorkflowAgents, workflowAgentTurnEnd, type WorkflowAgentTurnEnd } from "../session/control/chat-session-run-evidence.js"
 import { entryLink } from "../session/conversation/conversation-entry-admission.js"
 import { holdsForPerson } from "../session/conversation/turn-end-record.js"
 import { admitTreeFact, CHAT_TREE_FACT_TYPES, newConversationTopology, type ConversationTopology, type ConversationTreeProjectionState } from "../session/conversation/conversation-projection.js"
-import { onReplyWaitsChanged } from "../session/reply-waits.js"
+import { onReplyWaitsChanged } from "../session/control/messaging/reply-waits.js"
 
 /** The durable live state of one started workflow agent: when an interrupt
  *  parked it, and the operations its conversation holds. Both derive only

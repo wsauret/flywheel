@@ -38,7 +38,7 @@ import { installedDefinitionBundles, installModuleCatalog } from "../src/orchest
 import { composeFirstPartyModules, SHIPPED_OTHER_MODULES } from "../src/orchestration/modules.js";
 import { installedPersonaToolEntries } from "../src/orchestration/tool-catalog.js";
 import { UNATTENDED_CHAT_TERM } from "../src/orchestration/agent-runtime/system-prompt.js";
-import { agentTypeOf } from "../src/orchestration/app-service/definition-availability.js";
+import { agentTypeOf } from "../src/orchestration/app-service/definitions/definition-availability.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
 
 interface CheckDirectories {

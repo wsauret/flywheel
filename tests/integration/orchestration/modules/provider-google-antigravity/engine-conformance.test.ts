@@ -16,7 +16,7 @@ import { executePreparedTool, prepareToolCall } from "../../../../../src/orchest
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { PRIMER_TEXT } from "../../../../../src/orchestration/modules/provider-google-antigravity/request/bridge.js"
 import { CONTINUATION_PROMPT } from "../../../../../src/orchestration/modules/provider-google-antigravity/request/request-plan.js"
-import type { ProviderTransportAddition } from "../../../../../src/orchestration/session/provider-request-audit-types.js"
+import type { ProviderTransportAddition } from "../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { makeContext } from "../../../../unit/orchestration/agent-runtime/tools/_fixtures.js"
 import { engineCall, openClientRig, result, send, user, type Sent } from "./_client.js"

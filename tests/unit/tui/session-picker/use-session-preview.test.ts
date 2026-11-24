@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
 import type { HydratedOutputRange, RuntimeTranscriptWindow, OutputRangeRequest } from "../../../../src/protocol/transcript-protocol-types.js"
 import type { SessionPreviewAppService, SessionPreviewReader } from "../../../../src/tui/session-picker/use-session-preview.js"
-import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/transcript-queries.js"
+import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 

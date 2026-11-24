@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { watchDefinitionRoots, type DefinitionRootWatch } from "../../../../../src/orchestration/app-service/definition-root-watcher.js";
+import { watchDefinitionRoots, type DefinitionRootWatch } from "../../../../../src/orchestration/app-service/definitions/definition-root-watcher.js";
 import { reconcileDefinitionRoots } from "../../../../../src/orchestration/modules/learning/definition-reconciliation.js";
 import type { ModulePolicy } from "../../../../../src/orchestration/config/policy/module-policy.js";
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../../../src/workflows/definition-registry.js";

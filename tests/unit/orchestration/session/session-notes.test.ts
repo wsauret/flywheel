@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveConversationResources } from "../../../../src/orchestration/session/conversation-resources.js";
-import { deleteSessionArtifacts, deleteWorkflowArtifacts } from "../../../../src/orchestration/session/session-artifacts.js";
+import { resolveConversationResources } from "../../../../src/orchestration/session/conversation-records/conversation-resources.js";
+import { deleteSessionArtifacts, deleteWorkflowArtifacts } from "../../../../src/orchestration/session/persistence/storage/session-artifacts.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 
 describe("session notes", () => {

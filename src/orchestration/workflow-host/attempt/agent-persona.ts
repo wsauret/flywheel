@@ -1,4 +1,4 @@
-import type { DefinitionAvailabilitySnapshot } from "../../app-service/definition-availability.js"
+import type { DefinitionAvailabilitySnapshot } from "../../app-service/definitions/definition-availability.js"
 import type { ResolvedAgent } from "../../../workflows/agent-resolution.js"
 import { personaInstructions } from "../../../workflows/agents/persona-instructions.js"
 import { grantedSubagentTypes, personaToolNames, workflowAgentSubagents } from "../../../workflows/agents/subagent-reachability.js"

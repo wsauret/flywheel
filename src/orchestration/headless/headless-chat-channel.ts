@@ -8,7 +8,7 @@ import type { ChatSettlementOutcome, ChatSettlementResult } from "../../protocol
 import { lostWithLane } from "../../protocol/client/connection-failures.js"
 import { createOpenSessionKeeper, type OpenSessionKeeper } from "../../protocol/client/open-session-keeper.js"
 import { RUNTIME_LIVENESS_POLICY } from "../../protocol/runtime-liveness.js"
-import { runtimeEventDelivery } from "../app-service/runtime-event-delivery.js"
+import { runtimeEventDelivery } from "../app-service/account/connections/runtime-event-delivery.js"
 import type { AgentToolInput } from "../agent-runtime/types.js"
 
 const log = Log.create({ service: "headless-chat" })

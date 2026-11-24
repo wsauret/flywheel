@@ -12,11 +12,11 @@ import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runt
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { LlmToolOutputPart } from "../../../../src/infra/llm/tool-output-part-schema"
 import { ToolContentReferencePartSchema } from "../../../../src/infra/tool-content"
-import { subscribeSessionRuntimeFacts } from "../../../../src/orchestration/session/create-session-infra"
+import { subscribeSessionRuntimeFacts } from "../../../../src/orchestration/session/persistence/create-session-infra"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { parseConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 
 const SESSION_ID = "session-1"
 const CONVERSATION_ID = "conv-1"

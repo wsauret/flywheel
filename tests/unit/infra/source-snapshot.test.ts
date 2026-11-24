@@ -728,7 +728,7 @@ describe("the paths a module takes relative to itself", () => {
 
   test("are read in each form a module names them by", () => {
     // The reader must find the forms it guards, or the guard passes vacuously.
-    const probe = join(REPOSITORY, "src", "orchestration", "app-service", "project-executor-client.ts")
+    const probe = join(REPOSITORY, "src", "orchestration", "app-service", "executor", "project-executor-client.ts")
     expect(moduleRelativePaths(probe).map(({ path }) => relative(REPOSITORY, path).split(/[\\/]/).join("/"))).toContain("scripts/project-executor.ts")
     const tokenizer = join(REPOSITORY, "src", "infra", "local-tokenizer.ts")
     expect(moduleRelativePaths(tokenizer).map(({ path }) => relative(REPOSITORY, path).split(/[\\/]/).join("/"))).toContain("crates/tokenizer/flywheel-tokenizer.wasm.zst")

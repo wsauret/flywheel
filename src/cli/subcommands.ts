@@ -17,7 +17,7 @@
 
 import type { StartupDirectories } from "../infra/directory-authorities.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
-import type { ProjectStateStandby } from "../orchestration/app-service/project-state-standby.js"
+import type { ProjectStateStandby } from "../orchestration/app-service/project-state/project-state-standby.js"
 import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/modules.js"
 import type { CliVerbSummary, CommandProcessResources } from "../orchestration/cli-contribution.js"
 import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/account-attach.js"
@@ -137,7 +137,7 @@ export const SUBCOMMANDS: KernelNouns = {
       let stateStandby: ProjectStateStandby | undefined
       if (startsService(args)) {
         const { runtimeWorkerUrl } = await import("./account-service/runtime-launch.js")
-        const { startProjectStateStandby } = await import("../orchestration/app-service/project-state-standby.js")
+        const { startProjectStateStandby } = await import("../orchestration/app-service/project-state/project-state-standby.js")
         stateStandby = startProjectStateStandby(runtimeWorkerUrl())
       }
       try {

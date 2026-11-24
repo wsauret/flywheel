@@ -9,7 +9,7 @@ import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js
 import { acquireConversationSearchIndex, CONVERSATION_FTS_TABLE } from "../../../src/infra/conversation-fts.js"
 import { countConversationRecall as count, searchConversationRecall as search, type RecallSearchQuery } from "../../../src/infra/conversation-recall-search.js"
 import { DebugLog, type DebugLogRecordInput } from "../../../src/infra/debug-log.js"
-import { buildFtsMatch } from "../../../src/orchestration/session/conversation-recall.js"
+import { buildFtsMatch } from "../../../src/orchestration/session/conversation-records/conversation-recall.js"
 
 const CONVERSATION_ID = "conv-1"
 const AGGREGATE = `conversation:${CONVERSATION_ID}`

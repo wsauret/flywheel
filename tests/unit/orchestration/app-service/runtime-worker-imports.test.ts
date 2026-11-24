@@ -29,7 +29,7 @@ describe("runtime server imports", () => {
   })
 
   test("server entry modules do not import TUI/OpenTUI/JSX surfaces directly", async () => {
-    for (const file of ["src/orchestration/app-service/account-service-runtime.ts", "src/orchestration/app-service/project-execution-runtime.ts"]) {
+    for (const file of ["src/orchestration/app-service/account/account-service-runtime.ts", "src/orchestration/app-service/executor/execution/project-execution-runtime.ts"]) {
       const source = await Bun.file(file).text()
       expect(source).not.toContain("@opentui")
       expect(source).not.toContain("/tui/")
@@ -39,8 +39,8 @@ describe("runtime server imports", () => {
 
   test("first-class runtime isolation uses Workers, with dedicated owned and persistent subprocess boundaries", async () => {
     for (const file of [
-      "src/orchestration/app-service/account-service-runtime.ts",
-      "src/orchestration/app-service/runtime-background-lane.ts",
+      "src/orchestration/app-service/account/account-service-runtime.ts",
+      "src/orchestration/app-service/background/runtime-background-lane.ts",
     ]) {
       const source = await Bun.file(file).text()
       expect(source).not.toContain("Bun.spawn")

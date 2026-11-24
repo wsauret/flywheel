@@ -1,5 +1,5 @@
 import type { CommandOutcome } from "../../../protocol/command-catalog-protocol-types.js"
-import type { CommandMethod, CommandPrompt } from "../../app-service/command-host.js"
+import type { CommandMethod, CommandPrompt } from "../../app-service/definitions/commands/command-host.js"
 import type { ExperimentSnapshot } from "./state/projection.js"
 import { parseExperimentCharter } from "./charter.js"
 

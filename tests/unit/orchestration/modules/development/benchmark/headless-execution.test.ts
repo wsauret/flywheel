@@ -17,7 +17,7 @@ import * as sourceTreatment from "../../../../../../bench/chat-ab/source-treatme
 import { resolveCampaignSubject, type CampaignInvocationCapture } from "../../../../../../bench/chat-ab/campaign-subject.js";
 import { chatLedger, type ChatCampaign } from "../../../../../../bench/chat-ab/chat-store.js";
 import { campaignHeadlessOutcome } from "../../../../../../bench/chat-ab/campaign-execution.js";
-import type { ConversationDedup } from "../../../../../../src/orchestration/session/provider-request-audit-recorder.js";
+import type { ConversationDedup } from "../../../../../../src/orchestration/session/diagnostics/provider-request-audit-recorder.js";
 import { providerRequestFacts } from "../../../session/_provider-request-audit-fixtures.js";
 
 const temporary = temporaryDirectories();

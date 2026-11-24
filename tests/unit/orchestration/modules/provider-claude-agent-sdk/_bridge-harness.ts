@@ -31,7 +31,7 @@ import type { RequestOutcome } from "../../../../../src/orchestration/modules/pr
 import { stopQuery, type CliFrame, type LaunchedQuery, type QueryLaunch } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { silentVersions } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
 import type { TranscriptFiles } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/transcript.js";
-import type { ProviderTransportContext } from "../../../../../src/orchestration/session/provider-request-audit-types.js";
+import type { ProviderTransportContext } from "../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js";
 import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 /** The envelope fields that the CLI stamps on every message. The bridge reads none of them. */

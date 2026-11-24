@@ -1,6 +1,6 @@
-import { createSessionDetailProjection, type SessionDetailProjection } from "../../src/orchestration/app-service/session-detail-projection.js"
-import { createTranscriptProjectionCache } from "../../src/orchestration/app-service/transcript-projection-cache.js"
-import type { RuntimeSummaryProjection } from "../../src/orchestration/app-service/runtime-summary-projection.js"
+import { createSessionDetailProjection, type SessionDetailProjection } from "../../src/orchestration/app-service/projections/session-detail-projection.js"
+import { createTranscriptProjectionCache } from "../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
+import type { RuntimeSummaryProjection } from "../../src/orchestration/app-service/projections/catalog/runtime-summary-projection.js"
 
 type ProjectionDeps = Parameters<typeof createSessionDetailProjection>[0]
 type Collaborators = "transcriptCache" | "summaries" | "shipped" | "processorHolds"

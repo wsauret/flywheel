@@ -7,7 +7,7 @@ import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
 import { runAgentLoop } from "./agent-loop.js";
 import { createAgentRunTally, type AgentRunTally } from "./agent-loop-state.js";
-import type { BreadcrumbMaintenance } from "../session/session-artifacts.js";
+import type { BreadcrumbMaintenance } from "../session/persistence/storage/session-artifacts.js";
 import { AgentAborted, type AgentRuntimeError, isAgentRuntimeError } from "./llm/runtime-errors.js";
 import { toFailureReason } from "./errors.js";
 import { PersistenceWriteRefused } from "../../infra/event-store-types.js";

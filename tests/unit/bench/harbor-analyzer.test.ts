@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import type { ProviderRequestAuditFact } from "../../../src/orchestration/session/provider-request-audit-facts.js";
+import type { ProviderRequestAuditFact } from "../../../src/orchestration/session/runtime-facts/provider-request-audit-facts.js";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { analyzeToolOutcomes, TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION } from "../../../bench/harbor/analyze-tool-outcomes.js";

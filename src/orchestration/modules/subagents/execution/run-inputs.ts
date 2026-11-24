@@ -1,7 +1,7 @@
 import type { TurnParkState } from "../../../../infra/agent-loop-events.js";
 import type { ChatInput } from "../../../../infra/chat-input.js";
 import { createHeldCellClaims, type QueuedUserInputCell } from "../../../session/conversation/queued-user-inputs.js";
-import type { LiveSessionControl } from "../../../session/live-session-control.js";
+import type { LiveSessionControl } from "../../../session/control/live-session-control.js";
 import { heldAtWakeLimit, type DeliveryOutcome } from "../../../session/message-disposition.js";
 import { WorkflowInjectionQueue } from "../../../workflow-host/execution/injection-queue.js";
 

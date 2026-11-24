@@ -48,7 +48,7 @@ import type { SkillOperationTransitionedFact, SkillWrittenFact } from "../../../
 import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
 import { ensurePrivateDirectoryUnder, ensurePrivateRootDirectory, PRIVATE_FILE_MODE } from "../../../../infra/private-path.js";
 import { readFileUnder, requireContainedDirectory } from "../../../../infra/write-file-under.js";
-import { parseSessionFact } from "../../../session/session-fact-registry.js";
+import { parseSessionFact } from "../../../session/persistence/session-fact-registry.js";
 import { packageDigestAt } from "./skill-package-planning.js";
 import { isTerminalState, readOperationManifest } from "./skill-operation-manifest.js";
 

@@ -1,4 +1,4 @@
-import type { ProjectServiceState } from "../../src/orchestration/app-service/project-control-client.js"
+import type { ProjectServiceState } from "../../src/orchestration/app-service/account/projects/project-control-client.js"
 import type { RuntimeRestartReadiness, RuntimeServiceState } from "../../src/protocol/app-service-types.js"
 
 /** What the account service reports about itself, as a project reaches it,

@@ -193,7 +193,7 @@ async function runTUI(directories: StartupDirectories, launcher: CliLauncher, te
   const { startTUI } = await import("../tui/launcher.js");
   startupTrace("tui launcher imported")
   const { exitTUI, registerPreExitCleanup } = await import("../tui/exit.js");
-  const { RUNTIME_SHUTDOWN_HARD_EXIT_MS } = await import("../orchestration/app-service/runtime-shutdown.js")
+  const { RUNTIME_SHUTDOWN_HARD_EXIT_MS } = await import("../orchestration/app-service/runtime/runtime-shutdown.js")
   // Parent death without a signal (SIGKILLed shell, crashed terminal emulator)
   // attempts the same graceful path as SIGHUP; the watchdog Worker's hard-exit
   // clock is armed independently, so a wedged main thread still dies bounded.

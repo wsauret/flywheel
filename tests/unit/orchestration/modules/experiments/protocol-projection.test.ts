@@ -3,7 +3,7 @@ import { experimentsRuntime } from "../../../../../src/orchestration/modules/exp
 import { describe, expect, it } from "bun:test"
 import { asAsyncEventReadSurface, type EventReader, type StoredFact } from "../../../../../src/infra/event-store-types.js"
 import { createExperimentsProtocol, experimentsBackgroundReaders } from "../../../../../src/orchestration/modules/experiments/protocol.js"
-import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createExperimentOperation, type ExperimentOperation } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import type { ChatRunner } from "../../../../../src/orchestration/chat/runner-types.js"
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js"

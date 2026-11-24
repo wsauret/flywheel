@@ -3,8 +3,8 @@ import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js
 import { prepareLocalTokenizer } from "../../infra/local-tokenizer.js";
 import { createStaleToolResultMasker, maskStaleForTurn, type StaleMaskSeed, type TurnStaleMasking } from "./compaction/stale-tool-result-masker.js";
 import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../infra/event-store-types.js";
-import { readProviderRequestAuditFact } from "../session/provider-request-audit-facts.js";
-import { providerRequestIdentityFromPayload } from "../session/provider-request-audit-types.js";
+import { readProviderRequestAuditFact } from "../session/runtime-facts/provider-request-audit-facts.js";
+import { providerRequestIdentityFromPayload } from "../session/runtime-facts/provider-request-audit-types.js";
 import type { AgentLoopPersistence } from "./agent-loop-types.js";
 import {
   createTokenEstimationCache,

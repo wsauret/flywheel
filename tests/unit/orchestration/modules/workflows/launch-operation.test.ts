@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types";
 import { Log } from "../../../../../src/infra/log";
 import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../../src/infra/retained-operation-hosts";
-import { createLazyWorkflowController } from "../../../../../src/orchestration/app-service/lazy-workflow-controller";
+import { createLazyWorkflowController } from "../../../../../src/orchestration/app-service/executor/execution/lazy-workflow-controller";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work";
 import { workflowLaunchRetainedOperation } from "../../../../../src/orchestration/modules/workflows/launch-operation";
 import type { ConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree";

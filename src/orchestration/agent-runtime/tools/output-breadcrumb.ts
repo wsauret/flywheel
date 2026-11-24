@@ -13,14 +13,14 @@
  *
  * Breadcrumbs are swept by age, project-wide, so callers do not track files
  * individually and a resumed session can still read one written by an earlier
- * runner (see `session/session-artifacts.ts`).
+ * runner (see `session/persistence/storage/session-artifacts.ts`).
  */
 
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
 import { redactSecretsWork } from "../../../infra/redact-secrets.js";
 import { runInTaskSlices } from "../../../infra/task-scheduling.js";
-import { writeArtifactBreadcrumb } from "../../session/session-artifacts.js";
+import { writeArtifactBreadcrumb } from "../../session/persistence/storage/session-artifacts.js";
 
 const log = Log.create({ service: "agent-output-breadcrumb" });
 

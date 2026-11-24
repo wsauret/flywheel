@@ -11,7 +11,7 @@ import { attachProjectionFoldCache, openProjectionFoldCache, type FoldCacheSlot,
 import { heldProjection } from "../../../src/infra/projection-registry.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import { migrateFactVersions } from "../../../src/orchestration/migrations/engine.js"
-import { deleteRetiredFamilyChunk } from "../../../src/orchestration/session/event-store-maintenance.js"
+import { deleteRetiredFamilyChunk } from "../../../src/orchestration/session/persistence/storage/event-store-maintenance.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 
 const directory = temporaryDirectories()

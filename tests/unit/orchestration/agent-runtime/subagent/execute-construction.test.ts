@@ -23,7 +23,7 @@ import { resolveRuntimeConversation } from "../../../../../src/orchestration/age
 import type { RunnableAgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { subagentsRuntime } from "../../../../../src/orchestration/modules/subagents/execution/control/runtime-binding.js";
-import { definitionAvailabilityOf } from "../../../../../src/orchestration/app-service/definition-availability.js";
+import { definitionAvailabilityOf } from "../../../../../src/orchestration/app-service/definitions/definition-availability.js";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
 import { asModelClient } from "../_model-client.js";
 import { makeOptions } from "../_runner-options.js";

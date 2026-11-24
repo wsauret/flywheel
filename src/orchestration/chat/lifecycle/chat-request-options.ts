@@ -5,7 +5,7 @@ import type { AgentHostContextOptions } from "../../runner/types.js"
 import type { AgentOptions, RoleHold, RunnerToolSurfaces } from "../../agent-runtime/types.js"
 import type { ProviderSession } from "../../agent-runtime/provider-runtime-cache.js"
 import type { ResolvedRole } from "../../config/roles.js"
-import { SESSION_TITLE_PURPOSE } from "../../session/session-title.js"
+import { SESSION_TITLE_PURPOSE } from "../../session/metadata/session-title.js"
 import type { ChatSessionDeps } from "../types.js"
 
 interface ChatRequestOptionsInput {

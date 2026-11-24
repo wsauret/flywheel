@@ -7,7 +7,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager.js"
-import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
+import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 
 import { useSessionModal } from "../../../../src/tui/hooks/use-session-modal.js"
 import { createSignals } from "../hooks/_session-modal-fixtures.js"

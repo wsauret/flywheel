@@ -1,7 +1,7 @@
 import type { AuthProfileManager, AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import { Log } from "../../infra/log.js"
-import { MissingAuthProfileError, resolveSessionAuthProfile as resolveSelection } from "../session/session-auth-profile.js"
-import { resolveSessionAuthProfile } from "../app-service/auth-profile-scope.js"
+import { MissingAuthProfileError, resolveSessionAuthProfile as resolveSelection } from "../session/metadata/session-auth-profile.js"
+import { resolveSessionAuthProfile } from "../app-service/auth/auth-profile-scope.js"
 import type { WorkflowRunReader, WorkflowRunRecord, WorkflowRunWriter } from "./run-record.js"
 
 const log = Log.create({ service: "workflow-auth" })

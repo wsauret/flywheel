@@ -3,7 +3,7 @@ import { existsSync } from "node:fs"
 import { admitPrivateDatabaseFiles } from "../../infra/private-path.js"
 import { parseStoredSessionRuntimeFact } from "../../infra/runtime-fact-parser.js"
 import { parseConversationTreeFact } from "../session/conversation/conversation-facts.js"
-import { decodeRecoverableCheckpoint, FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND, finalizedToolResultRecoveryNeeds } from "../session/finalized-tool-result-checkpoint.js"
+import { decodeRecoverableCheckpoint, FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND, finalizedToolResultRecoveryNeeds } from "../session/history/finalized-tool-result-checkpoint.js"
 import { checkedThrough, recordChecked, recordMigration, tableExists } from "./engine.js"
 
 const MIGRATION_ID = "recorded-finalized-tool-result-checkpoints-2026-10-17"

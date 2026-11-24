@@ -4,7 +4,7 @@ import { offeredSkillResources, readSkillResource, type SkillResourceWindow } fr
 import { renderSkillResourceWindow } from "../../../workflows/skill-render.js";
 import { assembleSkillInvocation, skillInvocationRefusal } from "../../../workflows/skill-invocation.js";
 import type { SkillDefinition, SkillRegistryRevision } from "../../../workflows/skill-schema.js";
-import type { DefinitionAvailabilitySnapshot } from "../../app-service/definition-availability.js";
+import type { DefinitionAvailabilitySnapshot } from "../../app-service/definitions/definition-availability.js";
 import type { AdvertisedTool, RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
 import { formatToolInputProblems, validateToolInput } from "./validate-input.js";
 import { withPackageRead } from "../../../infra/package-directory-lock.js";

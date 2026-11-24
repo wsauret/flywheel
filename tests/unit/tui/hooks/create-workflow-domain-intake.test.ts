@@ -4,7 +4,7 @@ import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/proto
 import { MODULE_DOMAIN_BINDINGS } from "../../../../src/protocol/client/module-domain.js"
 import { workflowViewCursor } from "../../../../src/protocol/modules/workflows.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createWorkflowDomainIntake } from "../../../../src/tui/hooks/create-workflow-domain-intake.js"
 import type { FrontendWorkflowView, LoadedWorkflowView } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"

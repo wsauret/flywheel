@@ -145,8 +145,8 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   "src/infra/runtime-fact-types.ts",
   "src/cli/events/event-search-format.ts",
   "src/orchestration/agent-runtime/usage-settlement.ts",
-  "src/orchestration/session/provider-request-audit-facts.ts",
-  "src/orchestration/session/provider-request-audit-projection.ts",
+  "src/orchestration/session/runtime-facts/provider-request-audit-facts.ts",
+  "src/orchestration/session/diagnostics/provider-request-audit-projection.ts",
   PROTOCOL_VERSION_NOTES,
 ];
 

@@ -19,7 +19,7 @@ import { createProvisionalDiffInput } from "../../../../infra/output/streaming/p
 import { mutationEvidenceSummaryDisplayPaths, provisionalDiffDisplayPaths } from "../../../../infra/output/display-paths.js";
 import { resetFailedFileChange } from "../../../../infra/output/projector/file-change-settlement.js";
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
-import type { AgentInputEntry } from "../../agent-input-projection.js";
+import type { AgentInputEntry } from "../../agent-input/agent-input-projection.js";
 import { formatAgentInputAnswers } from "../../../../protocol/question-protocol-types.js";
 import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, RESUMED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../../infra/output/run-labels.js";
 import { isContextResetRecord, isHistoricalCompletionEntry, isVisibleTurnEnd, turnEndOfEntry } from "../turn-end-record.js";
@@ -28,7 +28,7 @@ import { rawToolUseId } from "../../../../protocol/block-identity.js";
 import { sessionMessageRecoveryNotice } from "../../../../infra/chat-input.js";
 import { CONTINUATION_MESSAGES } from "../../../agent-runtime/continuation-messages.js";
 import { assignSubagentCards, childCall, ownsSubagentCard, ownSubagentCard, type SubagentCardAssignment } from "./subagent-card-ownership.js";
-import type { ToolExecutionEntry } from "../../tool-execution-types.js";
+import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js";
 
 type PersistedContent = Extract<MessageEntry["message"], { kind: "user" }>["content"];
 type ToolUsePart = Extract<Exclude<PersistedContent, string>[number], { type: "tool_use" }>;

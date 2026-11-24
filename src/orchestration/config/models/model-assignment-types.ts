@@ -11,7 +11,7 @@ import type { ConfigValidity } from "../writer.js";
 import type { FlywheelConfig } from "../schema/schema.js";
 import type { ModelOptionProvider, ModelSelectionSlot } from "../../../protocol/model-assignment-protocol-types.js";
 import type { CatalogDataUse } from "../../../infra/model-id.js";
-import type { RoleAssignmentSnapshot } from "../../session/schemas.js";
+import type { RoleAssignmentSnapshot } from "../../session/metadata/schemas.js";
 import type { AgentPersonaRoles } from "./role-selection.js";
 
 /** Exact provider route selected once for one canonical picker model query. */

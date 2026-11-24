@@ -9,7 +9,7 @@ import { asRecord } from "../../../../infra/record.js";
 import { classifyAnthropicError } from "../../../agent-runtime/llm/anthropic-adapter-helpers.js";
 import { LlmStreamError, ModelAccessRefusedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../agent-runtime/llm/errors.js";
 import { STREAM_TTFT_TIMEOUT_MS } from "../../../agent-runtime/llm/stream-liveness.js";
-import type { ProviderTransportHiddenRequest } from "../../../session/provider-request-audit-types.js";
+import type { ProviderTransportHiddenRequest } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import type { UsageWindows } from "../account-usage.js";
 import { usageReports, type ExtraUsage, type ExtraUsageStop, type GuardStop } from "../extra-usage-guard.js";
 import { EngineCannotStartError } from "../login-observations.js";

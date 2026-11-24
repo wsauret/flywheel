@@ -1,4 +1,4 @@
-import type { ProviderTransportAddition, ProviderTransportContext, ProviderTransportHiddenRequest } from "../../../session/provider-request-audit-types.js"
+import type { ProviderTransportAddition, ProviderTransportContext, ProviderTransportHiddenRequest } from "../../../session/runtime-facts/provider-request-audit-types.js"
 import type { SyntheticPrompt } from "./session-view.js"
 
 /** The name under which the audit shows what the engine added. It names the transport, never the product. */

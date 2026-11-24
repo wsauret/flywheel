@@ -2,13 +2,13 @@ import { expect, it } from "bun:test"
 import { mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { canonicalPathWithMissingTail } from "../../../src/infra/canonical-path"
-import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account-project-registry"
+import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account/account-project-registry"
 import { temporaryDirectories } from "../../helpers/directories"
 
 const temporary = temporaryDirectories()
 
 async function mutateRegistryInChild(userDataRoot: string, projectRoot: string, action: "record" | "forget"): Promise<void> {
-  const moduleUrl = new URL("../../../src/orchestration/app-service/account-project-registry.ts", import.meta.url).href
+  const moduleUrl = new URL("../../../src/orchestration/app-service/account/account-project-registry.ts", import.meta.url).href
   const operation = action === "record"
     ? `await registry.record({ projectRoot: ${JSON.stringify(projectRoot)}, label: "Child" })`
     : `await registry.forget(${JSON.stringify(projectRoot)})`

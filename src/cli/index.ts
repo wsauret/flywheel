@@ -8,7 +8,7 @@ const internalRoles = {
     await runMutationGitMain()
   },
   [EXECUTABLE_ROLES.projectExecutor]: async () => {
-    const { runProjectExecutorMain } = await import("../orchestration/app-service/project-executor-main.js")
+    const { runProjectExecutorMain } = await import("../orchestration/app-service/executor/execution/project-executor-main.js")
     await runProjectExecutorMain()
   },
   [EXECUTABLE_ROLES.guardian]: async () => {

@@ -1,17 +1,17 @@
 import { describe, expect, test } from "bun:test"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
-import { createOutputProjection } from "../../../../src/orchestration/app-service/output-projection.js"
+import { createOutputProjection } from "../../../../src/orchestration/app-service/projections/output/output-projection.js"
 import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import { applyOutputDelta, buildBlockIndex, type MutableOutputView } from "../../../../src/protocol/client/transcript-delta.js"
-import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
+import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/projections/output/frontend-output-blocks.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import type { FrontendOutputBlock, FrontendToolStreamingText } from "../../../../src/protocol/app-service-types.js"
 import type { HydratedOutputRange } from "../../../../src/protocol/transcript-protocol-types.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import { chatEntry } from "./app-service-doubles.js"
-import type { CommandKeeper } from "../../../../src/orchestration/app-service/command-keeper.js"
+import type { CommandKeeper } from "../../../../src/orchestration/app-service/runtime/command-keeper.js"
 import { appendChange, batch, deltas, fakeOutputStore, insertChange, outputProjectionRuntime, sink, textBlock, upsertChange } from "./_output-projection-fixtures.js"
 import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
@@ -41,7 +41,7 @@ async function clientRead(s: ReturnType<typeof sink>, read: () => Promise<Hydrat
 }
 
 /** The output cursor ships each change as the smallest change from the copy
- *  the session's clients last received (`app-service/shipped-output.ts`). */
+ *  the session's clients last received (`app-service/projections/output/shipped-output.ts`). */
 describe("output projection shipped copies", () => {
   test("a client applying every published delta holds the store's blocks and streaming text", async () => {
     const answer = textBlock("answer")

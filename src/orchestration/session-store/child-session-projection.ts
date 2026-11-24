@@ -6,7 +6,7 @@ import { SessionEventAdapter } from "./event-adapter.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
 import { createOutputSession } from "../runner/output-session.js"
 import type { SessionStore } from "./types.js"
-import { readSessionDurationFromReader } from "../session/session-duration-projection.js"
+import { readSessionDurationFromReader } from "../session/runtime-facts/session-duration-projection.js"
 
 /** Attaches a projection, not a runner. Its events reach only its adapter, synchronously in emit order, and none is persisted. */
 export function childSessionProjectionAttachment(store: Pick<SessionStore, "openSessionRuntime" | "updateChatEntry" | "remove">): AttachChildSessionProjection {

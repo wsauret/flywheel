@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import { createProjectRuntime } from "../../../../src/orchestration/app-service/project-runtime.js"
-import type { ReplacementBlocker } from "../../../../src/orchestration/app-service/replacement-blockers.js"
+import { createProjectRuntime } from "../../../../src/orchestration/app-service/account/projects/project-runtime.js"
+import type { ReplacementBlocker } from "../../../../src/orchestration/app-service/executor/replacement-blockers.js"
 
 const tick = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

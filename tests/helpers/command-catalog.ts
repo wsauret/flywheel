@@ -1,4 +1,4 @@
-import { builtInCommandDeclarations, builtInCommandDescriptor } from "../../src/orchestration/app-service/kernel-commands.js"
+import { builtInCommandDeclarations, builtInCommandDescriptor } from "../../src/orchestration/app-service/definitions/commands/kernel-commands.js"
 import { composeFirstPartyModules, type FirstPartyModuleComposition } from "../../src/orchestration/modules.js"
 import type { BuiltInCommandDescriptor } from "../../src/protocol/command-catalog-protocol-types.js"
 import { commandSpecs } from "../../src/tui/commands/command-catalog.js"

@@ -55,12 +55,12 @@ const APPROVED_SPAWNER_SITES = [
   { role: "streaming-edit-validation", file: "src/orchestration/agent-runtime/tools/streaming-edit-validation.ts", owner: "createStreamingEditValidationService", factory: "createBoundedWorkerSpawner" },
   { role: "bash-private-copy", file: "src/orchestration/agent-runtime/tools/bash-private-copy-jobs.ts", owner: "createPrivateCopyJobs", factory: "createBoundedWorkerSpawner" },
   { role: "models-document", file: "src/infra/llm/models-document-job.ts", owner: "runModelsDocumentJob", factory: "createBoundedWorkerSpawner" },
-  { role: "transcript-find", file: "src/orchestration/app-service/transcript-find.ts", owner: "countOnWorker", factory: "createBoundedWorkerSpawner" },
+  { role: "transcript-find", file: "src/orchestration/app-service/projections/output/transcript-find.ts", owner: "countOnWorker", factory: "createBoundedWorkerSpawner" },
   { role: "code-mode-invocation", file: "src/orchestration/modules/code-mode/worker-pool.ts", owner: "spawnInvocationWorker", factory: "createBoundedWorkerSpawner" },
-  { role: "runtime-maintenance", file: "src/orchestration/app-service/runtime-maintenance-owner.ts", owner: "runMaintenanceWorkerJob", factory: "createBoundedWorkerSpawner" },
-  { role: "runtime-background", file: "src/orchestration/app-service/worker-background-client.ts", owner: "createProcessBackgroundClient", factory: "createBoundedWorkerSpawner" },
-  { role: "project-state", file: "src/orchestration/app-service/project-state-worker-spawner.ts", owner: "spawnProjectStateWorker", factory: "createBoundedWorkerSpawner" },
-  { role: "project-state-standby", file: "src/orchestration/app-service/project-state-standby.ts", owner: "startProjectStateStandby", factory: "createBoundedWorkerSpawner" },
+  { role: "runtime-maintenance", file: "src/orchestration/app-service/background/runtime-maintenance-owner.ts", owner: "runMaintenanceWorkerJob", factory: "createBoundedWorkerSpawner" },
+  { role: "runtime-background", file: "src/orchestration/app-service/background/worker-background-client.ts", owner: "createProcessBackgroundClient", factory: "createBoundedWorkerSpawner" },
+  { role: "project-state", file: "src/orchestration/app-service/project-state/project-state-worker-spawner.ts", owner: "spawnProjectStateWorker", factory: "createBoundedWorkerSpawner" },
+  { role: "project-state-standby", file: "src/orchestration/app-service/project-state/project-state-standby.ts", owner: "startProjectStateStandby", factory: "createBoundedWorkerSpawner" },
   { role: "update-installer", file: "src/orchestration/update/update-worker-installer.ts", owner: "runUpdateWorkerJob", factory: "createBoundedWorkerSpawner" },
 ] satisfies readonly ApprovedSpawnerSite[]
 const APPROVED_WORKER_CONSTRUCTOR_SITES = [
@@ -173,8 +173,8 @@ function workerConstructorKey(file: string, owner: string | undefined, construct
 
 function messageChannelMaximum(file: string, owner: string | undefined, constructor: string): number | undefined {
   if (constructor !== "MessageChannel") return undefined
-  if (file === "src/orchestration/app-service/runtime-maintenance-owner.ts" && owner === "runMaintenanceWorkerJob") return 2
-  if (file === "src/orchestration/app-service/project-state-worker-spawner.ts" && owner === "spawnProjectStateWorker") return 2
+  if (file === "src/orchestration/app-service/background/runtime-maintenance-owner.ts" && owner === "runMaintenanceWorkerJob") return 2
+  if (file === "src/orchestration/app-service/project-state/project-state-worker-spawner.ts" && owner === "spawnProjectStateWorker") return 2
   if (file === "src/orchestration/update/update-worker-installer.ts" && owner === "runUpdateWorkerJob") return 1
   return undefined
 }

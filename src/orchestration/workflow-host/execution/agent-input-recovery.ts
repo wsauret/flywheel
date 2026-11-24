@@ -1,8 +1,8 @@
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
-import { loadAgentInputProjection } from "../../session/agent-input-projection.js"
-import { reconcileAgentInput } from "../../session/agent-input-reconciliation.js"
-import { createSessionFactWriter } from "../../session/session-fact-writer.js"
+import { loadAgentInputProjection } from "../../session/agent-input/agent-input-projection.js"
+import { reconcileAgentInput } from "../../session/history/agent-input-reconciliation.js"
+import { createSessionFactWriter } from "../../session/persistence/session-fact-writer.js"
 
 const log = Log.create({ service: "workflow-agent-input-recovery" })
 

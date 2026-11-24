@@ -6,8 +6,8 @@ import { createReadQueue } from "../../../../infra/read-queue.js"
 import { firstTimestamp, loadSubagentRunsFromEvents, SUBAGENT_RUN_FACT_TYPES } from "./subagent-run-projection.js"
 import { parseSubagentRunFact, type SubagentRunFact } from "../facts.js"
 import type { SubagentRunEntry } from "./subagent-run-types.js"
-import { decodeSessionMetadataFactForReplay } from "../../../session/session-metadata-facts.js"
-import { parseStoredSessionRuntimeFact } from "../../../session/session-runtime-event-types.js"
+import { decodeSessionMetadataFactForReplay } from "../../../session/metadata/session-metadata-facts.js"
+import { parseStoredSessionRuntimeFact } from "../../../session/runtime-facts/session-runtime-event-types.js"
 
 const log = Log.create({ service: "subagent-parent-runs" })
 const RUN_FACT_TYPES: ReadonlySet<string> = new Set(SUBAGENT_RUN_FACT_TYPES)

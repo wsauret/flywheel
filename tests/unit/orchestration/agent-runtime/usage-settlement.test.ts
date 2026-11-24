@@ -10,8 +10,8 @@ import {
   recoverSessionUsageSettlements,
   type UsageSettlementDraft,
 } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
-import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/provider-request-audit-projection.js"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
+import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-projection.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()

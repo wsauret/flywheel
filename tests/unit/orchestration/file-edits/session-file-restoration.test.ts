@@ -5,8 +5,8 @@ import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types
 import { publishFileEdits } from "../../../../src/orchestration/file-edits/file-edit-operation.js"
 import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-edits/retained-file-edit-host.js"
 import { reconstructOriginal } from "../../../../src/orchestration/file-edits/session-file-restoration.js"
-import { getSessionChangeReview } from "../../../../src/orchestration/session/session-change-review.js"
-import { completePatch, readChangeFact, resolveRetainedPatch } from "../../../../src/orchestration/session/session-change-sources.js"
+import { getSessionChangeReview } from "../../../../src/orchestration/session/metadata/catalog/session-change-review.js"
+import { completePatch, readChangeFact, resolveRetainedPatch } from "../../../../src/orchestration/session/metadata/catalog/session-change-sources.js"
 import { withStore } from "../session/file-mutation-recovery-fixture.js"
 
 type Fixture = Parameters<Parameters<typeof withStore>[0]>[0]

@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, mock, spyOn } from "bun:test"
 import { DebugLog } from "../../../../src/infra/debug-log"
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
-import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definition-availability.js"
+import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definitions/definition-availability.js"
 import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { repoModules } from "../../../helpers/project-definitions.js"

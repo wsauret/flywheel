@@ -30,7 +30,7 @@ import { resolveSessionRoles } from "../../../../../src/orchestration/config/mod
 import { asModelClient } from "../_model-client.js";
 import { testCapabilityModules, testEligibility, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
-import { SESSION_TITLE_PURPOSE } from "../../../../../src/orchestration/session/session-title.js";
+import { SESSION_TITLE_PURPOSE } from "../../../../../src/orchestration/session/metadata/session-title.js";
 
 const temporaryDirectory = temporaryDirectories();
 

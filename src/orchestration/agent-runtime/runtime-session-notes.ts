@@ -1,8 +1,8 @@
 import { canUseCheckpoint, renderSessionNotesGuidance } from "../../infra/agent-assets/session-notes.js";
 import type { DurableOwner } from "../../infra/durable-owner.js";
-import { createConversationCheckpointOwner } from "../session/conversation-checkpoint.js";
-import { importLegacyCheckpointNotes } from "../session/checkpoint-note-conversion.js";
-import type { ConversationResources } from "../session/conversation-resources.js";
+import { createConversationCheckpointOwner } from "../session/conversation-records/conversation-checkpoint.js";
+import { importLegacyCheckpointNotes } from "../session/conversation-records/checkpoint-note-conversion.js";
+import type { ConversationResources } from "../session/conversation-records/conversation-resources.js";
 import type { AgentOptions, HeadlessPrompt } from "./types.js";
 import type { AgentLoopOptions } from "./agent-loop-types.js";
 import type { RequestToolSurfaceOwner } from "./request-tool-surface.js";

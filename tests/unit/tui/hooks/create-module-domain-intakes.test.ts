@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
 import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/protocol/app-service-types.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { workspaceDomainCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { createModuleDomainIntakes } from "../../../../src/tui/hooks/create-module-domain-intakes.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"

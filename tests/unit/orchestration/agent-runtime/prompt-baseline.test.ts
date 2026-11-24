@@ -5,8 +5,8 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { createPromptBaseline, type PromptBaselineStore } from "../../../../src/orchestration/agent-runtime/prompt-baseline.js"
 import type { SystemPromptPart } from "../../../../src/orchestration/agent-runtime/system-prompt.js"
-import { conversationPromptBaselines } from "../../../../src/orchestration/session/conversation-prompt-baseline.js"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { conversationPromptBaselines } from "../../../../src/orchestration/session/conversation-records/conversation-prompt-baseline.js"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 
 interface Inputs {

@@ -15,7 +15,7 @@ import { chain, fakeClient, served, subscriptionCandidate, textStream, throwingS
 import { apiKey } from "../../../../src/infra/auth/auth-context.js"
 import { resolveHeadlessAuth } from "../../../../src/orchestration/headless/headless-profile-runtime.js"
 import { fixture, PROVIDERS, privateStage } from "./_auth-snapshot-fixtures.js"
-import { resolveSessionAuthProfile } from "../../../../src/orchestration/session/session-auth-profile.js"
+import { resolveSessionAuthProfile } from "../../../../src/orchestration/session/metadata/session-auth-profile.js"
 
 const VERTEX_LINEAGE = crypto.randomUUID()
 

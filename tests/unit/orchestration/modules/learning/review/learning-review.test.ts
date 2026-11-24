@@ -13,7 +13,7 @@ import {
 } from "../../../../../../src/orchestration/modules/learning/review/learning-review.js";
 import { capabilityAccessFor } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentRunResult, AgentRunTerminal } from "../../../../../../src/orchestration/agent-runtime/types.js";
-import type { SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
 import { Log } from "../../../../../../src/infra/log.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";

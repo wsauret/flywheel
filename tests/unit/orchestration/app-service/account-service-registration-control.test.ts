@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import { reloadLaunchdRegistration } from "../../../../src/orchestration/app-service/account-service-installation.js"
-import { registrationFingerprint, type RegistrationReloadRecord, SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
+import { reloadLaunchdRegistration } from "../../../../src/orchestration/app-service/account/installation/account-service-installation.js"
+import { registrationFingerprint, type RegistrationReloadRecord, SERVICE_NAMES } from "../../../../src/orchestration/app-service/account/installation/account-service-registration.js"
 import { ok, unanswered, eio, launchdAbsent, plistPath, unitPath, service, print, helperPrint, printDisabled, printedDisabled, bootstrap, removeHelper, submitHelper, OLD_PLIST, OLD_UNIT, UNIT_BEFORE_OOM_POLICY, printedJob, fixture, currentPlist, currentUnit, daemonReload, type Response } from "./_account-service-fixtures.js"
 
 describe("launchd re-registration", () => {

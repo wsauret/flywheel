@@ -4,9 +4,9 @@ import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.
 import { frontendAttempts } from "../../workflow-host/frontend-attempts.js"
 import { workflowAddressText } from "../../workflow-host/workflow-addressing.js"
 import { workflowLaunchHost, type WorkflowLaunchHost } from "../../workflow-host/lifecycle/launch-operation-contract.js"
-import { readChildCall, readChildStop } from "../../session/chat-session-run-evidence.js"
-import { liveWorkflowControl } from "../../session/live-session-control.js"
-import { workflowMembershipReader } from "../../session/workflow-membership.js"
+import { readChildCall, readChildStop } from "../../session/control/chat-session-run-evidence.js"
+import { liveWorkflowControl } from "../../session/control/live-session-control.js"
+import { workflowMembershipReader } from "../../session/metadata/workflow-membership.js"
 
 function launchHost({ hosts }: WorkflowWorkTarget): WorkflowLaunchHost {
   const host = hosts.get(workflowLaunchHost)

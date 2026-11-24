@@ -11,7 +11,7 @@ import { ConversationTree } from "../../../../src/orchestration/session/conversa
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection"
 import { ContextContentIdentities } from "../../../../src/orchestration/session/conversation/conversation-context-identities"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests"
-import { createProjectExecutionState } from "../../../../src/orchestration/app-service/project-execution-state"
+import { createProjectExecutionState } from "../../../../src/orchestration/app-service/project-state/project-execution-state"
 import { closeFixtures, fixture } from "../app-service/_project-state-worker-fixture"
 
 let baseDir: string

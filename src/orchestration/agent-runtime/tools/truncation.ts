@@ -13,7 +13,7 @@
  * Either way the saved file lives under
  * `.flywheel/agent-outputs/<artifactScopeId>/<toolName>_<ts>_<id>.txt`, and a
  * single recovery notice is appended to the returned text. Aged-out
- * breadcrumbs are swept project-wide by `session/session-artifacts.ts`; a
+ * breadcrumbs are swept project-wide by `session/persistence/storage/session-artifacts.ts`; a
  * resumed session's durable transcript can still instruct the model to read a
  * breadcrumb written before the runner that created it exited.
  */

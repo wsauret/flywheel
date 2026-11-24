@@ -11,7 +11,7 @@ import type { LLMClientFactory } from "../../../../src/orchestration/agent-runti
 import type { RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import { asModelClient } from "./_model-client.js"
 import { makeOptions } from "./_runner-options.js"
-import { definitionAvailabilityOf } from "../../../../src/orchestration/app-service/definition-availability.js"
+import { definitionAvailabilityOf } from "../../../../src/orchestration/app-service/definitions/definition-availability.js"
 import { composeFirstPartyModules, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { codeModeServices } from "../../../helpers/code-mode-worker.js"

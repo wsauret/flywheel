@@ -28,7 +28,7 @@ import { createUpdateWorkerInstaller } from "../../../../src/orchestration/updat
 import { activatePlacedBuild, placeBuild } from "../../../helpers/placed-build.js";
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-update-worker-"));
-const WORKER_URL = new URL("../../../../src/orchestration/app-service/worker-entry.ts", import.meta.url).href;
+const WORKER_URL = new URL("../../../../src/orchestration/app-service/background/worker-entry.ts", import.meta.url).href;
 const ASSET = "flywheel-darwin-arm64.tar.gz";
 /** An archive one byte longer than every fixture release states. The transfer
  *  refuses it at once as the publisher's answer. A missing file would read as a

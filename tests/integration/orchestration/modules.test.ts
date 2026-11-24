@@ -32,11 +32,11 @@ import { toolRegistryFromComposition } from "../../../src/orchestration/agent-ru
 import type { SkillManageToolDeps } from "../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { WorkflowToolDeps } from "../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
 import type { AskUserController } from "../../../src/orchestration/runner/ask-user-controller.js";
-import { createModuleProjection } from "../../../src/orchestration/app-service/module-projection.js";
+import { createModuleProjection } from "../../../src/orchestration/app-service/projections/module-projection.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
-import { createCommandCatalogProjection } from "../../../src/orchestration/app-service/command-catalog-projection.js";
-import { createDefinitionAvailability } from "../../../src/orchestration/app-service/definition-availability.js";
-import { watchDefinitionRoots } from "../../../src/orchestration/app-service/definition-root-watcher.js";
+import { createCommandCatalogProjection } from "../../../src/orchestration/app-service/definitions/commands/command-catalog-projection.js";
+import { createDefinitionAvailability } from "../../../src/orchestration/app-service/definitions/definition-availability.js";
+import { watchDefinitionRoots } from "../../../src/orchestration/app-service/definitions/definition-root-watcher.js";
 import type { RuntimeUiPatchInput } from "../../../src/protocol/runtime-ui-protocol-types.js";
 import type { RuntimeModulesView } from "../../../src/protocol/module-protocol-types.js";
 import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";

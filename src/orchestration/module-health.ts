@@ -1,4 +1,4 @@
-import type { CommandHost } from "./app-service/command-host.js"
+import type { CommandHost } from "./app-service/definitions/commands/command-host.js"
 
 /** One section of the `/doctor` report: what a module checks about its own setup, such as an external program it
  *  runs or the library it reads. The kernel `/doctor` command runs the check of every enabled module in

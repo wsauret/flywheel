@@ -1,5 +1,5 @@
 import { SESSION_RELATIONS } from "../../../infra/chat-input-schema.js";
-import type { SessionListing, SessionMessaging } from "../../session/session-messaging.js";
+import type { SessionListing, SessionMessaging } from "../../session/control/messaging/session-messaging.js";
 import type { AdvertisedTool, RuntimeTool, ToolResult } from "./types.js";
 
 export const LIST_SESSIONS_TOOL_NAME = "list_sessions";

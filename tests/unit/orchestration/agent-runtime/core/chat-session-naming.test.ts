@@ -18,7 +18,7 @@ import {
   forkSessionTitles,
   generateSessionTitle,
   type SessionTitles,
-} from "../../../../../src/orchestration/session/session-title.js"
+} from "../../../../../src/orchestration/session/metadata/session-title.js"
 import { makeCaptureClient } from "../context/_loop-fixtures.js"
 import { testAuth as auth, titleRoots } from "../../../../fixtures/session-title-fixtures.js"
 

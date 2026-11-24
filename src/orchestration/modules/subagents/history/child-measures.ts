@@ -3,9 +3,9 @@ import type { AsyncEventReadSurface, CorruptEventRowError, StoredFact } from "..
 import { InvariantViolation } from "../../../../infra/invariant.js"
 import { emptyPrefixView, prefixAppend, prefixGet, type PrefixView } from "../../../../infra/prefix-view.js"
 import { heldProjection, pinHeldProjection } from "../../../../infra/projection-registry.js"
-import { fromCorruptRow, type CorruptRowSchema } from "../../../app-service/project-state-errors.js"
-import { BUDGET_FACT_TYPES, initialBudgetProjectionState, reduceBudgetEvent, type BudgetProjectionState } from "../../../session/budget-projection.js"
-import { countToolCall, initialToolCallCount, TOOL_EXECUTION_FACT_TYPES, type ToolCallCount } from "../../../session/tool-execution-projection.js"
+import { fromCorruptRow, type CorruptRowSchema } from "../../../app-service/project-state/project-state-errors.js"
+import { BUDGET_FACT_TYPES, initialBudgetProjectionState, reduceBudgetEvent, type BudgetProjectionState } from "../../../session/runtime-facts/budget-projection.js"
+import { countToolCall, initialToolCallCount, TOOL_EXECUTION_FACT_TYPES, type ToolCallCount } from "../../../session/runtime-facts/tool-execution-projection.js"
 
 /** What a child session's history measures before one point: the calls that
  *  no other call dispatched, and the tokens that its usage facts record. A

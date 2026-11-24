@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
 import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/protocol/app-service-types.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { capabilitiesCursor, type RuntimeModuleSnapshotResult, type RuntimeModulesView } from "../../../../src/protocol/module-protocol-types.js"
 import { createModuleCache } from "../../../../src/tui/hooks/create-module-cache.js"
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js"

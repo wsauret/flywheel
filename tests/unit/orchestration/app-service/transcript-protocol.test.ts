@@ -8,7 +8,7 @@ import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache.js"
+import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
 import { HydratedOutputBlockBodySchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
@@ -22,7 +22,7 @@ async function openExistingTree(options: Parameters<typeof tryOpenConversationTr
   if (!tree) throw new Error(`expected conversation tree ${options.conversationId}`)
   return tree
 }
-import { hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody } from "../../../../src/orchestration/app-service/transcript-queries.js"
+import { hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import type { HydratedOutputGroupChildren, HydratedOutputGroupChildrenBatch } from "../../../../src/protocol/transcript-protocol-types.js"
 import { workflowControlInitializedEvent } from "../../workflows/vm/_workflow-control-fixtures.js"

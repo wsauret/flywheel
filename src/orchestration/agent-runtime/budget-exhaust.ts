@@ -39,7 +39,7 @@ import type { PreparedRequestAttempt } from "./request-tool-surface.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
 import { streamAssistantTurn } from "./assistant-turn-stream.js";
-import type { PromptStaleMasking, PromptToolHistoryProjection } from "../session/provider-request-audit-types.js";
+import type { PromptStaleMasking, PromptToolHistoryProjection } from "../session/runtime-facts/provider-request-audit-types.js";
 import { prepareLocalTokenizer } from "../../infra/local-tokenizer.js";
 import type { createHandoffTracker } from "./agent-loop-handoff.js";
 import { repairToolName } from "./tools/tool-dispatch.js";
