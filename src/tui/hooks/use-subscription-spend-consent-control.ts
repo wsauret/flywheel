@@ -5,7 +5,7 @@ import { subscriptionSpendConsentEnvelopeIds, type SubscriptionSpendConsentMutat
 import type { ModalHandle } from "../components/modal-stack.js"
 import { SUBSCRIPTION_SPEND_CONSENT_COPY } from "../components/modal-copy.js"
 import { createSubscriptionSpendConsentInput } from "./use-subscription-spend-consent-modal.js"
-import { CONSENT_ACTION_CURSOR, type AvailableConsentView, type ConsentSurface, type SubscriptionSpendConsentControlState } from "../modals/subscription-spend-consent-types.js"
+import { CONSENT_ACTION_CURSOR, type AvailableConsentView, type ConsentSurface, type SubscriptionSpendConsentControlState } from "../modals/auth/subscription-spend-consent-types.js"
 
 type ConsentMode = AvailableConsentView["accounts"][number]["modes"][number]
 

@@ -6,7 +6,7 @@ import {
   getToolContentPreview,
   nextToolEntryToggleState,
 } from "../../../../src/tui/output-blocks/tool-entry-helpers.js"
-import { renderToolEntry } from "./_tool-entry-render.js"
+import { renderToolEntry } from "./tools/_tool-entry-render.js"
 
 const CWD = "/workspace"
 

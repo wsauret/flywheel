@@ -18,11 +18,11 @@ import { activeTimeMs } from "../../../protocol/client/session-time.js"
 import { useTheme } from "@tui/context/theme.js"
 import { useTickPool } from "@tui/context/tick-pool-context.js"
 import { useHoverHighlight } from "@tui/components/use-hover-highlight.js"
-import { workflowFullCardRows, type WorkflowCardAction, type WorkflowCardRow, type WorkflowFullCardRows } from "@tui/output-blocks/workflow-card.js"
+import { workflowFullCardRows, type WorkflowCardAction, type WorkflowCardRow, type WorkflowFullCardRows } from "@tui/output-blocks/agents/workflow-card.js"
 import { hitsDrawnContent } from "@tui/content-hit.js"
 
 const NO_ROWS: WorkflowFullCardRows = { rows: [], bar: undefined }
-import { bindStyledTextContent } from "@tui/context/reactive-text.js"
+import { bindStyledTextContent } from "@tui/context/find/reactive-text.js"
 import { displayWidth, shareWidth, truncateToWidth } from "@tui/text.js"
 import { Button } from "@tui/components/button.js"
 import { ModalFrame, MODAL_FRAME_CLOSE_WIDTH, MODAL_FRAME_HORIZONTAL_INSET, modalFrameBackWidth, sessionViewerBodyHeight, sessionViewerWidth } from "@tui/components/modal-frame.js"

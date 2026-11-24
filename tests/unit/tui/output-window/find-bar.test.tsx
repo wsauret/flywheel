@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { describe, expect, it } from "bun:test"
 import { testRender } from "@opentui/solid"
-import { RowWidthProvider } from "@tui/context/row-width.js"
+import { RowWidthProvider } from "@tui/context/transcript/row-width.js"
 import { ThemeProvider } from "@tui/context/theme.js"
 import { FindBar } from "@tui/output-window/find-bar.js"
 import { createFindBar, type FindBar as FindBarModel } from "@tui/output-window/create-find-bar.js"

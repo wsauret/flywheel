@@ -4,7 +4,7 @@ import { createSignal, onCleanup } from "solid-js"
 // One width measurement per tool list, passed down to every ToolRow. The
 // element measurement is the authority, but it only lands after the list's
 // first layout - one frame after mount. The optional seed (the shared row
-// width minus the caller's declared chrome; see context/row-width.ts)
+// width minus the caller's declared chrome; see context/transcript/row-width.ts)
 // covers that mount frame so rows wrap into their final shape on first
 // layout: no blank-then-rewrap transient for the scroll pipeline to
 // mis-record as a height. If the declared chrome ever drifts from the JSX,

@@ -6,7 +6,7 @@ import type { ChildSessionViewerProps } from "./child-session-viewer.js"
 import type { ViewerContext } from "./components/modal-stack.js"
 import type { ModuleDomainIntakes } from "./hooks/create-module-domain-intakes.js"
 import type { ShellSignals } from "./hooks/shell-state.js"
-import type { AgentGroupBlockProps } from "./output-blocks/agent-group-block.js"
+import type { AgentGroupBlockProps } from "./output-blocks/agents/agent-group-block.js"
 import type { ChildPlaces } from "./create-child-viewer-opener.js"
 import type { BackgroundWorkTarget } from "../protocol/background-index-protocol-types.js"
 /** The shell lends modules its ordinary child-body and navigation capabilities. */

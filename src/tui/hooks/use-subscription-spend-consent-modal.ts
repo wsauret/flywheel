@@ -1,5 +1,5 @@
 import type { Accessor } from "solid-js"
-import { CONSENT_ACTION_CURSOR, type SubscriptionSpendConsentControlState } from "../modals/subscription-spend-consent-types.js"
+import { CONSENT_ACTION_CURSOR, type SubscriptionSpendConsentControlState } from "../modals/auth/subscription-spend-consent-types.js"
 
 interface SubscriptionSpendConsentInputDeps {
   readonly state: Accessor<SubscriptionSpendConsentControlState>

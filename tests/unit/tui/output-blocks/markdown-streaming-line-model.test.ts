@@ -5,7 +5,7 @@ import { createComponent } from "solid-js/web"
 import { plainOf } from "../../../../src/tui/output-blocks/markdown/format-token.js"
 import type { MarkdownStyles, StyleSpec } from "../../../../src/tui/output-blocks/markdown/markdown-styles.js"
 import { renderToLineModel, TEXT_SEGMENT_LINES, type MarkdownSegment } from "../../../../src/tui/output-blocks/markdown/line-model.js"
-import { TextBlock } from "../../../../src/tui/output-blocks/text-block.js"
+import { TextBlock } from "../../../../src/tui/output-blocks/messages/text-block.js"
 import { ThemeProvider } from "../../../../src/tui/context/theme.js"
 
 const style: StyleSpec = { attr: 0 }

@@ -1,6 +1,6 @@
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY, type ControlledTextEditor, type TextEditorPresentation } from "../keymap/text-entry.js"
 import type { ListModalKeyEvent } from "../components/modal-list-keys.js"
-import type { AuthView } from "../modals/auth-modal-options.js"
+import type { AuthView } from "../modals/auth/auth-modal-options.js"
 
 interface AuthModalInputDeps {
   view: () => AuthView

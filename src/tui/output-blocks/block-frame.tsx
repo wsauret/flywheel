@@ -12,7 +12,7 @@ const BLOCK_DOT = "\u2022"
 /** Marker gutter width: the dot glyph (1 col) plus one column of spacing. Every
  * block aligns its content to this single value, so the indent is defined once.
  * Exported so blocks that wrap their own content can derive their available
- * columns from the shared row width (see context/row-width.ts). */
+ * columns from the shared row width (see context/transcript/row-width.ts). */
 export const BLOCK_GUTTER_WIDTH = 2
 
 interface BlockFrameProps {

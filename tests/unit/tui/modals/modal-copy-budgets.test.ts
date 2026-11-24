@@ -17,9 +17,9 @@ import {
   settingsGroupDescription,
   SUBSCRIPTION_SPEND_CONSENT_COPY,
 } from "../../../../src/tui/components/modal-copy.js"
-import { modalHelpRows } from "../../../../src/tui/modals/model-modal-chrome.js"
-import type { ModelModalState, ModelModalView } from "../../../../src/tui/modals/model-modal-types.js"
-import { scopeContextLine } from "../../../../src/tui/modals/model-modal-scope.js"
+import { modalHelpRows } from "../../../../src/tui/modals/model/model-modal-chrome.js"
+import type { ModelModalState, ModelModalView } from "../../../../src/tui/modals/model/model-modal-types.js"
+import { scopeContextLine } from "../../../../src/tui/modals/model/model-modal-scope.js"
 
 type ModalName = keyof typeof MODAL_FRAME_WIDTHS
 type AuthoredCopy = readonly [modal: ModalName, text: string, frameWidth?: number]

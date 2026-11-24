@@ -2,7 +2,7 @@ import type { RuntimeAuthLoginQuestion, RuntimeAuthView } from "../../protocol/a
 import { Redacted } from "effect"
 import { errorMessage } from "../../infra/error-message.js"
 import type { AuthModalDeps } from "./auth-modal-types.js"
-import type { AuthView } from "../modals/auth-modal-options.js"
+import type { AuthView } from "../modals/auth/auth-modal-options.js"
 
 interface LoginQuestionDeps {
   auth: AuthModalDeps["auth"]

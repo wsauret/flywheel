@@ -20,7 +20,7 @@ import { TOOL_PREVIEW_LINE_LIMIT } from "../../../src/infra/output-blocks.js"
 import { ManualClock } from "@opentui/core/testing"
 import { buildMutationDiff } from "../../../src/infra/mutation-diff.js"
 import { getToolDisplay, resolveToolRowPresentation } from "../../../src/infra/tools/tool-display-registry.js"
-import { createBlockDisclosureChannel } from "../../../src/tui/context/block-disclosure.js"
+import { createBlockDisclosureChannel } from "../../../src/tui/context/transcript/block-disclosure.js"
 import { mutationEvidenceFixture } from "./output-blocks/_mutation-evidence-fixture.js"
 import { makeView, renderScheduledFrame, renderWindow as renderScheduledWindow, snapshot, transcriptOf } from "./_output-window-transcript.js"
 

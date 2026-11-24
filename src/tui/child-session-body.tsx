@@ -20,7 +20,7 @@ import { createSpinnerStatus, spinnerAnimates } from "./components/create-spinne
 import { Button } from "./components/button.js"
 import { ComposerBody, ComposerFrame, composerBodyGeometry } from "./components/composer-frame.js"
 import { createPromptBorderChunks } from "./components/composer-border-labels.js"
-import { InitialMessageProvider } from "./output-blocks/user-message-block.js"
+import { InitialMessageProvider } from "./output-blocks/messages/user-message-block.js"
 import type { UserMessageBlock } from "../infra/output-blocks.js"
 import type { ChatInputLike } from "../infra/chat-input.js"
 import { useWrappedLineCount } from "./text.js"

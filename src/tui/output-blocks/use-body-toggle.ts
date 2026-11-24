@@ -1,6 +1,6 @@
 import type { MouseEvent, Renderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
-import { usePreserveScroll } from "@tui/context/scroll-preserve.js"
+import { usePreserveScroll } from "@tui/context/transcript/scroll-preserve.js"
 import { hitsArea, hitsDrawnContent } from "@tui/content-hit.js"
 import { hasSelectedCells } from "@tui/selection.js"
 import { useHoverHighlight, type HoverHandlers, type HoverHighlightHook } from "../components/use-hover-highlight.js"

@@ -167,7 +167,7 @@ export interface TranscriptLayoutSlot {
    *  right at first paint. */
   pendingRows?: number
   /** Measured full-width row columns; seeds block wrap widths on remount so
-   *  first layouts wrap the final shape (see context/row-width.ts). */
+   *  first layouts wrap the final shape (see context/transcript/row-width.ts). */
   rowWidth?: number
   /** The place a predecessor terminal held in this session (ARCH-DISTRIBUTION-031): a
    *  block's absolute index and the rows scrolled into it. The scroll

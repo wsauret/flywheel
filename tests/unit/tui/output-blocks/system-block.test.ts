@@ -20,7 +20,7 @@ async function renderSystemBlock(block: SystemBlockType, opts?: RenderSystemBloc
     import("../../../../src/tui/output-blocks/system-block.js"),
     import("../../../../src/tui/context/theme.js"),
     import("../../../../src/tui/context/mutation-evidence.js"),
-    import("../../../../src/tui/context/block-disclosure.js"),
+    import("../../../../src/tui/context/transcript/block-disclosure.js"),
   ])
 
   return testRender(

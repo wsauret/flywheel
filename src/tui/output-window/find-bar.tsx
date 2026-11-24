@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { MouseEvent } from "@opentui/core"
-import { useRowWidth } from "@tui/context/row-width.js"
+import { useRowWidth } from "@tui/context/transcript/row-width.js"
 import { useTheme } from "@tui/context/theme"
 import type { FindBar as FindBarModel } from "./create-find-bar.js"
 import { useHoverHighlight } from "../components/use-hover-highlight.js"

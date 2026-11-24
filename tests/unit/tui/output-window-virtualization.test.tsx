@@ -8,7 +8,7 @@ import type { FrontendOutputBlock } from "../../../src/protocol/app-service-type
 import { DEFAULT_ESTIMATE } from "../../../src/tui/transcript-store/output-height-estimates.js"
 import { createTranscriptWindowProjector } from "../../../src/tui/output-window/output-window-projection.js"
 import { makeView, mutationTranscriptFixture, renderScheduledFrame, renderWindow, snapshot, textBlock, transcriptOf, windowOf } from "./_output-window-transcript.js"
-import { createBlockDisclosureChannel } from "../../../src/tui/context/block-disclosure.js"
+import { createBlockDisclosureChannel } from "../../../src/tui/context/transcript/block-disclosure.js"
 import { mutationEvidenceFixture } from "./output-blocks/_mutation-evidence-fixture.js"
 import { scrollFrameHook } from "../../helpers/scroll-frame-hook.js"
 import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"

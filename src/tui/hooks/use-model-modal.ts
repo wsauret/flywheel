@@ -14,13 +14,13 @@ import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.
 import { observeModelCatalog } from "./observe-model-catalog.js"
 import { defaultRoleSlots, sameSlot, roleSlot } from "../../orchestration/config/role-selection.js"
 import { isProfileModelRole } from "../../protocol/brief-role-id.js"
-import { buildModelModalItems, isSelectableItem } from "../modals/model-modal-helpers.js"
-import type { ModelAssignmentItem, ModelModalState, ModelModalView } from "../modals/model-modal-types.js"
+import { buildModelModalItems, isSelectableItem } from "../modals/model/model-modal-helpers.js"
+import type { ModelAssignmentItem, ModelModalState, ModelModalView } from "../modals/model/model-modal-types.js"
 import { createModalDisclosureState, modalDisclosureAction } from "../components/modal-disclosure.js"
 import { createListModalKeys } from "../components/modal-list-keys.js"
 import type { ModalContext, ModalHandle } from "../components/modal-stack.js"
 import type { ShellServices } from "./shell-state.js"
-import { scopeSaveToast, type ModelModalScope } from "../modals/model-modal-scope.js"
+import { scopeSaveToast, type ModelModalScope } from "../modals/model/model-modal-scope.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY } from "../keymap/text-entry.js"
 
 interface ModelModalDeps {
