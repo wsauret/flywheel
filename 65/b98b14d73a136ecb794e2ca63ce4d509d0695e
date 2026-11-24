@@ -1,0 +1,18 @@
+src/orchestration/app-service/projections/waiting-sessions-projection.ts
+  h_4b47e9e4a8b456 5,66
+src/orchestration/session/agent-input/agent-input-projection.ts
+  h_4b47e9e4a8b456 204,209-214
+webview/src/client/session-live-patches.test.ts
+  h_4b47e9e4a8b456 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "65b98b14d73a136ecb794e2ca63ce4d509d0695e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
