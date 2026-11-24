@@ -11,8 +11,8 @@ import { createSkillCorpusCleanupState } from "../../../../../../src/orchestrati
 import { eligibleLearnedSkill, eligibleLearnedSkills } from "../../../../../../src/orchestration/modules/learning/skills/learned-skill-eligibility.js";
 import { withPackageLocks } from "../../../../../../src/infra/package-directory-lock.js";
 import type { SkillMutationPublication } from "../../../../../../src/orchestration/modules/learning/skills/skill-mutation-publisher.js";
-import { publishSkillRevision, SKILL_FILE, type SkillRegistryRevision } from "../../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions } from "../../../../../../src/workflows/skills.js";
+import { publishSkillRevision, SKILL_FILE, type SkillRegistryRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions } from "../../../../../../src/workflows/skills/skills.js";
 
 const TMP = join(tmpdir(), `flywheel-skill-corpus-cleanup-${randomUUID()}`);
 const PROJECT_SKILLS = join(TMP, ".flywheel", "skills");

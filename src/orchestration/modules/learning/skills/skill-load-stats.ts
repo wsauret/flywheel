@@ -9,7 +9,7 @@ import type { LearningScope } from "../../../../infra/learning-scope.js";
 import { createOrderedLane, type OrderedLane } from "../../../../infra/ordered-lane.js";
 import { createEventProjection, parseProjectionFact } from "../../../../infra/event-projection.js";
 import { heldProjection } from "../../../../infra/projection-registry.js";
-import { skillLoadsSnapshottedFact, type SkillLoadedFact, type SkillLoadsSnapshottedFact, type SkillWrittenFact } from "../../../../workflows/skill-facts.js";
+import { skillLoadsSnapshottedFact, type SkillLoadedFact, type SkillLoadsSnapshottedFact, type SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 import { parseSessionFact } from "../../../session/persistence/session-fact-registry.js";
 

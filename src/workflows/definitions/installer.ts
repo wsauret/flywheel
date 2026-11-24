@@ -9,7 +9,7 @@ import { configurationReferenceFile } from "../../infra/paths.js"
 import { writeFileAtomic } from "../../infra/atomic-write.js"
 import { Log } from "../../infra/log.js"
 import { isProcessAlive } from "../../infra/process-liveness.js"
-import { workflowAssets } from "../asset-manifest.js"
+import { workflowAssets } from "../provenance/asset-manifest.js"
 import type { BundledDefaultCatalog } from "./bundled-defaults.js"
 
 const log = Log.create({ service: "definitions-installer" })

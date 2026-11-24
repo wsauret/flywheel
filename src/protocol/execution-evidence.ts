@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { migrateUncoveredUsageEntry, UncoveredUsageEntrySchema, UsageEntrySchema } from "../infra/llm/usage-entry.js";
+import { migrateUncoveredUsageEntry, UncoveredUsageEntrySchema, UsageEntrySchema } from "../infra/llm/usage/usage-entry.js";
 import { AccessProviderCandidateSchema } from "./auth-status-protocol-schemas.js";
 
 const RequestEvidenceSchema = Schema.Struct({

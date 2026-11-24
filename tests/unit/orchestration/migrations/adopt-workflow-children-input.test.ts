@@ -15,7 +15,7 @@ import { readConversationSnapshotSync } from "../../../../src/orchestration/sess
 import { queuedUserInputPut, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { chatTurnEndOf, endsAtTurnEnd, historicalCompletionEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { recoverSessionMetadata } from "../../../../src/orchestration/session/metadata/session-metadata-projection.js"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import { recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures.js"

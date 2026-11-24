@@ -4,16 +4,16 @@ import { workflowCard, workflowCardChoice, workflowCardCut, workflowCardHeaderPa
 import { workflowCardControls, workflowHoldsFailedAgent, workflowResumeTitle } from "../../../../src/protocol/client/session-controls.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
 import { workflowAgentOpenTarget } from "../../../../src/protocol/client/workflow-agent.js"
-import type { BlockProps } from "../../app/blocks.js"
-import { WORKFLOW_TEXT_GLYPH } from "../../app/icons.js"
-import { RowTime } from "../../app/row-time.js"
+import type { BlockProps } from "../../app/transcript/blocks/blocks.js"
+import { WORKFLOW_TEXT_GLYPH } from "../../app/controls/icons.js"
+import { RowTime } from "../../app/transcript/reading/row-time.js"
 import { actionKey, controlActionKey } from "../../client/action-key.js"
 import { WORKFLOW_CONTROLS, WorkflowCard } from "./card.js"
 import { useWorkflows } from "./context.js"
 import type { WorkflowReading } from "./inspection.js"
 import { workflowSurfaceReads } from "../../../../src/protocol/client/workflow-surface.js"
 import { agentGroupInFlight } from "../../../../src/protocol/client/agent-group-summary.js"
-import { CARD_ACTION_COPY, CardActionHeader, type CardAction } from "../../app/card-action-header.js"
+import { CARD_ACTION_COPY, CardActionHeader, type CardAction } from "../../app/transcript/blocks/agents/card-action-header.js"
 
 /** Workflow cards read passive run cursors, never a session detail or transcript. */
 export function WorkflowActivity(props: BlockProps) {

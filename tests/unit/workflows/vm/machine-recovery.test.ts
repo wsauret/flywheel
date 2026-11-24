@@ -3,14 +3,14 @@ import {
   initializeWorkflow,
   replayDecodedWorkflow,
   transitionDecodedWorkflow,
-} from "../../../../src/workflows/vm/transition.js";
-import { compileWorkflowControl, launchGuardrailLimits } from "../../../../src/workflows/vm/compile.js";
-import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js";
-import type { DecodedWorkflowEvent, WorkflowProposalEncoding } from "../../../../src/workflows/vm/events.js";
+} from "../../../../src/workflows/vm/control/transition.js";
+import { compileWorkflowControl, launchGuardrailLimits } from "../../../../src/workflows/vm/compile/compile.js";
+import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/control/commands.js";
+import type { DecodedWorkflowEvent, WorkflowProposalEncoding } from "../../../../src/workflows/vm/facts/events.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/client/workflow-progress.js";
 import { frontendView } from "./_tree-fixtures.js";
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../../helpers/project-definitions.js";
 import { acknowledge, runningControl, startPreparedAttempt, success } from "./_machine-semantics-fixtures.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";

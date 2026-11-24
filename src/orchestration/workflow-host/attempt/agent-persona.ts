@@ -1,9 +1,9 @@
 import type { DefinitionAvailabilitySnapshot } from "../../app-service/definitions/definition-availability.js"
-import type { ResolvedAgent } from "../../../workflows/agent-resolution.js"
+import type { ResolvedAgent } from "../../../workflows/definitions/agent-resolution.js"
 import { personaInstructions } from "../../../workflows/agents/persona-instructions.js"
 import { grantedSubagentTypes, personaToolNames, workflowAgentSubagents } from "../../../workflows/agents/subagent-reachability.js"
 import type { CapabilityCheck } from "../../../infra/capability-text.js"
-import type { SkillRegistryRevision } from "../../../workflows/skill-schema.js"
+import type { SkillRegistryRevision } from "../../../workflows/skills/skill-schema.js"
 import { availableToolNames, gitDisciplineRule, isReadOnlyPersona } from "../../agent-runtime/persona-tool-rules.js"
 import type { FirstPartyModuleComposition } from "../../modules.js"
 

@@ -1,5 +1,5 @@
 import type { AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend } from "../../../infra/event-store-types.js"
-import { parseWorkflowSessionFact } from "../../../workflows/vm/session-facts.js"
+import { parseWorkflowSessionFact } from "../../../workflows/vm/facts/session-facts.js"
 import { workflowRunOwner } from "../../module-catalog.js"
 import { workflowMembershipReader, type WorkflowMember } from "../metadata/workflow-membership.js"
 import type { ReplayedSession, RoleSettings, Session } from "../metadata/schemas.js"

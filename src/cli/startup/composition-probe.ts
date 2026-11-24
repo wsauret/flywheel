@@ -3,13 +3,13 @@ import "../../orchestration/modules.js";
 import type { StartupDirectories } from "../../infra/directory-authorities.js";
 import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { isDevelopmentBuild } from "../../infra/development-mode.js";
-import { resolveWorkflowAgents } from "../../workflows/agent-resolution.js";
+import { resolveWorkflowAgents } from "../../workflows/definitions/agent-resolution.js";
 import { personaInstructions } from "../../workflows/agents/persona-instructions.js";
-import { assembleSkillInvocation } from "../../workflows/skill-invocation.js";
+import { assembleSkillInvocation } from "../../workflows/skills/skill-invocation.js";
 import { assembleAgentPrompt } from "../../workflows/context-bundle/prompt-assembly.js";
-import { skillClosureIds } from "../../workflows/skill-closure.js";
+import { skillClosureIds } from "../../workflows/skills/skill-closure.js";
 import { createInstalledDefinitionRegistry } from "../../orchestration/definition-catalog.js";
-import { loadWorkflowFile, renderWorkflowFileDiagnostic } from "../../workflows/workflow-file.js";
+import { loadWorkflowFile, renderWorkflowFileDiagnostic } from "../../workflows/vm/admission/workflow-file.js";
 import workflowContent from "./composition-probe.workflow.yaml" with { type: "text" };
 
 function required<T>(value: T | undefined, label: string): T {

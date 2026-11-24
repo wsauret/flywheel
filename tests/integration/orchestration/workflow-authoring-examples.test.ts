@@ -11,15 +11,15 @@ import {
 } from "../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import type { WorkflowInputValue } from "../../../src/workflows/output-contract/compile.js"
 import type { AccumulatedContext } from "../../../src/workflows/context-bundle/context.js"
-import { createAttemptExecutor, type AttemptExecutorDeps } from "../../../src/workflows/vm/attempt-runner.js"
+import { createAttemptExecutor, type AttemptExecutorDeps } from "../../../src/workflows/vm/host/attempt-runner.js"
 import { runDefinition } from "../../../src/orchestration/workflow-host/lifecycle/definition-source.js"
 import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js"
-import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js"
-import { authoredGuardrailLimits, compileWorkflowControl } from "../../../src/workflows/vm/compile.js"
-import { SAMPLED_LAUNCH, sampleItems } from "../../../src/workflows/vm/list-expansion.js"
-import type { ListNode } from "../../../src/workflows/vm/graph-types.js"
-import { worstCaseAttempts } from "../../../src/workflows/vm/structural-admission.js"
-import type { WorkflowVmHostDeps } from "../../../src/workflows/vm/host-types.js"
+import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-resolution.js"
+import { authoredGuardrailLimits, compileWorkflowControl } from "../../../src/workflows/vm/compile/compile.js"
+import { SAMPLED_LAUNCH, sampleItems } from "../../../src/workflows/vm/graph/list-expansion.js"
+import type { ListNode } from "../../../src/workflows/vm/graph/graph-types.js"
+import { worstCaseAttempts } from "../../../src/workflows/vm/graph/structural-admission.js"
+import type { WorkflowVmHostDeps } from "../../../src/workflows/vm/host/host-types.js"
 import { FieldMapSchema, type Field, type FieldMap } from "../../../src/workflows/output-contract/grammar.js"
 import {
   MAX_ATTEMPTS_CEILING,
@@ -29,7 +29,7 @@ import {
   namedAgents,
   streams,
   type WorkflowDefinition,
-} from "../../../src/workflows/workflow-schema.js"
+} from "../../../src/workflows/schema/workflow-schema.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { repoDefinitions } from "../../helpers/project-definitions.js"
 import { stagedWorkflowContent } from "../../helpers/workflow-files.js"

@@ -19,8 +19,8 @@ import { captureProviderConnection, type AuthContext } from "../../../../../src/
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
-import type { BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/admission.js";
-import { createPersonaStore as createRunStore } from "../../../../../src/orchestration/modules/development/benchmark/persona-store.js";
+import type { BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/persona/admission.js";
+import { createPersonaStore as createRunStore } from "../../../../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import type { RuntimeTool, DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testProviderEligibility } from "../../../../helpers/provider-authority.js";

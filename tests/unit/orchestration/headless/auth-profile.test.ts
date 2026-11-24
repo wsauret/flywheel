@@ -15,7 +15,7 @@ import { testDirectories } from "../../../helpers/directories.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { testProviderEligibility } from "../../../helpers/provider-authority.js"
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"
-import type { AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js"
+import type { AccessProviderCandidate } from "../../../../src/infra/llm/access/access-provider.js"
 
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 const PROVIDERS = accessProviderRegistry(composeFirstPartyModules()).selection.definitions

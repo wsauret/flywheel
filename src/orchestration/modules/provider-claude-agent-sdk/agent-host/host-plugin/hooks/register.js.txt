@@ -1,5 +1,5 @@
 // The agent host gate: an engine plugin that every shared agent host loads through the SDK's `plugins` option
-// (host-gate.ts). It is the step gate's hook (step-gate-plugin/hooks/register.js.txt) with the host's admission added.
+// (host-gate.ts). It is the step gate's hook (engine/step-gate-plugin/hooks/register.js.txt) with the host's admission added.
 // The host's main thread is a dispatcher whose turns Flywheel starts with a nonce; its hosted agents send a model
 // request only while Flywheel holds an open request for that agent. A failure anywhere before a request refuses the
 // step, so the gate fails closed. Every event name is a string literal, because the CLI skips a module whose

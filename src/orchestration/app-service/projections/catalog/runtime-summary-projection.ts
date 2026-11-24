@@ -9,7 +9,7 @@ import { GENERATION_FACT_TYPE, sessionSummaryFactTypes } from "../../../session/
 import { isLaunchedDescendantKind } from "../../../session/metadata/catalog/session-summary-index-sql.js"
 import { readySummaryView, type RuntimeSummarySource, type RuntimeSummaryView } from "./runtime-summary-read.js"
 import type { WorkflowPlacements } from "../../../module-seams.js"
-import { workflowAggregateId } from "../../../../workflows/vm/session-facts.js"
+import { workflowAggregateId } from "../../../../workflows/vm/facts/session-facts.js"
 
 /** The catalog error families a summary read states. Each complete summary
  *  replaces them for its session; metadata and workflow errors stay with the

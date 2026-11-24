@@ -7,7 +7,7 @@ import type { AgentRunResult } from "../../../../../src/orchestration/agent-runt
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime"
 import { registerCapacityWaits } from "../../../../../src/orchestration/session/control/capacity-wait"
 import { authorizePlannedSessionContinuation, capacityContinuations } from "../../../../../src/orchestration/session/control/planned-session-continuation"
-import { exhaustedProvidersCopy, type CapacityHold } from "../../../../../src/infra/llm/provider-error-copy"
+import { exhaustedProvidersCopy, type CapacityHold } from "../../../../../src/infra/llm/errors/provider-error-copy"
 import { createChatInvocationCompletion } from "../../../../../src/orchestration/chat/runner-completion"
 import { temporaryDirectories } from "../../../../helpers/directories"
 import { flushMicrotasks, makeLifecycle, useStore } from "./_chat-runner-lifecycle-fixtures"

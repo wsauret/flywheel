@@ -5,7 +5,7 @@
  *  with no edit in `src/cli/`, the auth actions, or the config projection. */
 
 import { describe, expect, it } from "bun:test"
-import { apiKeyRejectionReason, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js"
+import { apiKeyRejectionReason, type AccessProviderDefinition } from "../../../../src/infra/llm/access/access-provider.js"
 import { AUTH_OPERATIONS, runAuth, type AuthCommandDependencies } from "../../../../src/cli/commands/auth.js"
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 import type { AccessProviderFactory } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"

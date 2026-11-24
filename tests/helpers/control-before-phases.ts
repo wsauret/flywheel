@@ -1,5 +1,5 @@
-import type { CommittedWorkflowControl } from "../../src/workflows/vm/committed-control.js"
-import type { FollowUpV10 } from "../../src/workflows/vm/graph-types.js"
+import type { CommittedWorkflowControl } from "../../src/workflows/vm/facts/committed-control.js"
+import type { FollowUpV10 } from "../../src/workflows/vm/graph/graph-types.js"
 
 /** A control of agents as a root from before phases records it: `step`
  *  nodes with `then`, retry as `maxIterations` and `detectStuck`, `forItem`

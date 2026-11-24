@@ -28,9 +28,9 @@ import {
   type OperationManifest,
   type OperationState,
 } from "../../../../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
-import { skillOperationTransitionedFact } from "../../../../../../src/workflows/skill-facts.js";
+import { skillOperationTransitionedFact } from "../../../../../../src/workflows/skills/skill-facts.js";
 import type { SkillMutation } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { SKILL_FILE, SKILL_LIMITS } from "../../../../../../src/workflows/skill-schema.js";
+import { SKILL_FILE, SKILL_LIMITS } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { createGlobalSkillHarness, readGlobalMutationProposal, type GlobalSkillHarness } from "../../../../../helpers/global-skill-operations.js";
 
 // A manifest names its directories canonically, and recovery compares them

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Effect, Exit, Scope } from "effect";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { AgentLoopWakeInput } from "../../infra/agent-loop-events.js";
-import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js";
+import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
 import { runAgentLoop } from "./agent-loop.js";

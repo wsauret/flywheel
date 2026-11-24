@@ -50,7 +50,7 @@ export async function generateUpgradeFixture(directory: string, sourceRoot: stri
   await load("src/orchestration/modules.ts")
   const { createSqliteEventStore }: typeof import("../../../src/infra/sqlite-event-store.js") = await load("src/infra/sqlite-event-store.ts")
   const { historicalWorkflowPublicationFacts: publication }: { historicalWorkflowPublicationFacts: typeof historicalWorkflowPublicationFacts } = await load("tests/release/fixtures/historical-workflow-publication.ts")
-  const { parseWorkflowSessionFact }: typeof import("../../../src/workflows/vm/session-facts.js") = await load("src/workflows/vm/session-facts.ts")
+  const { parseWorkflowSessionFact }: typeof import("../../../src/workflows/vm/facts/session-facts.js") = await load("src/workflows/vm/session-facts.ts")
   const { parseConversationTreeFact }: typeof import("../../../src/orchestration/session/conversation/conversation-facts.js") = await load("src/orchestration/session/conversation/conversation-facts.ts")
   const { createRuntimeEvent }: typeof import("../../../src/infra/runtime-event-factory.js") = await load("src/infra/runtime-event-factory.ts")
   const { mapRuntimeEventToSessionRuntimeFacts }: typeof import("../../../src/infra/runtime-fact-mapper.js") = await load("src/infra/runtime-fact-mapper.ts")

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ReasoningEffort } from "../../../../infra/llm/models.js";
+import type { ReasoningEffort } from "../../../../infra/llm/models/models.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js";
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
 import { renderMessage } from "./history-text.js";

@@ -7,10 +7,10 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { migrateWorkflowDefinitionIdentityContext } from "../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity.js"
 import { migrateWorkflowDefinitionIdentityGraph } from "../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity-graph.js"
 
-import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js"
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
-import { retiredStepIdentity, retiredStepView } from "../../../../src/workflows/vm/retired-step-identity.js"
-import type { StepGrammarWorkflow } from "../../../../src/workflows/retired-step-grammar/schema.js"
+import { createProjectDefinitionRegistry } from "../../../../src/workflows/definitions/definition-registry.js"
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js"
+import { retiredStepIdentity, retiredStepView } from "../../../../src/workflows/vm/facts/retired-step-identity.js"
+import type { StepGrammarWorkflow } from "../../../../src/workflows/schema/retired-step-grammar/schema.js"
 import { prePhaseControl } from "./_pre-phase-control.js"
 import {
   DefinitionIdentitySchema,
@@ -18,14 +18,14 @@ import {
   isLegacyDefinitionIdentity,
   type DefinitionIdentity,
   type LegacyDefinitionIdentity,
-} from "../../../../src/workflows/vm/definition-identity.js"
+} from "../../../../src/workflows/vm/facts/definition-identity.js"
 import { LEGACY_HANDOFF_CONTRACTS, legacyCaptureOf, legacyIdentityOf } from "./_pre-cutover-control.js"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { workflowAggregateId } from "../../../../src/workflows/vm/session-facts.js"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
+import { workflowAggregateId } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { Schema } from "effect"
-import { hashDefinition } from "../../../../src/workflows/definition-hash.js"
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import { hashDefinition } from "../../../../src/workflows/provenance/definition-hash.js"
+import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js"
 import { retiredFixtureWorkflow } from "../../../helpers/retired-fixture-briefs.js"
 
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js"

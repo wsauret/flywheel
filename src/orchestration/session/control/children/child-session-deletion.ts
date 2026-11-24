@@ -5,7 +5,7 @@ import { wakeAfterSettlement, type ReturnedNotice } from "../messaging/session-i
 import type { ReplayedSession } from "../../metadata/schemas.js"
 import { workflowRunOwner, workflowRunReader } from "../../../module-catalog.js"
 import { workflowMembershipReader } from "../../metadata/workflow-membership.js"
-import { readWorkflowActivity } from "../../../../workflows/vm/control-status.js"
+import { readWorkflowActivity } from "../../../../workflows/vm/recovery/control-status.js"
 
 // Retained v1 cells keep their original key until the sessions migration consumes this decoder.
 export const CHILD_SESSION_DELETION_IN_FLIGHT_KIND = "session.subagent_recursive_deletion"

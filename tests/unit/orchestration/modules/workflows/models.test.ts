@@ -17,7 +17,7 @@ import { settleTurn } from "../../../../../src/orchestration/agent-runtime/agent
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import type { StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { join } from "node:path";
-import { normalizeModelScores } from "../../../../../src/infra/llm/model-scores-document.js";
+import { normalizeModelScores } from "../../../../../src/infra/llm/models/model-scores-document.js";
 import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
 import { capabilityAccessHolding } from "../../agent-runtime/tools/_fixtures.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";

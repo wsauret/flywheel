@@ -4,7 +4,7 @@ import type { FrontendOutputBlock } from "../../src/protocol/app-service-types.j
 import type { ClientViewState } from "./client/view-state.js"
 import type { ClientActions } from "./client/actions.js"
 import type { RuntimeSession } from "./client/session.js"
-import type { BlockProps } from "./app/blocks.js"
+import type { BlockProps } from "./app/transcript/blocks/blocks.js"
 import type { ClientCommand } from "../../src/protocol/client/host-contract.js"
 import type { BackgroundWorkTarget } from "../../src/protocol/background-index-protocol-types.js"
 

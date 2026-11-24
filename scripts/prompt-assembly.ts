@@ -36,14 +36,14 @@ import type { FirstPartyModuleComposition } from "../src/orchestration/modules.j
 import { disabledAgentTypes } from "../src/orchestration/module-catalog.js";
 import { createCodeModeRuntime } from "../src/orchestration/modules/code-mode/runtime.js";
 import { createCodeModeService } from "../src/orchestration/modules/code-mode/service.js";
-import type { BenchmarkAdmissionDeps } from "../src/orchestration/modules/development/benchmark/admission.js";
+import type { BenchmarkAdmissionDeps } from "../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { createIosSimulatorTool } from "../src/orchestration/modules/development/ios-simulator-tool.js";
 import { createMcpRuntime } from "../src/orchestration/modules/mcp/runtime.js";
 import type { DefinitionOverrideOperations } from "../src/workflows/definitions/override-staleness.js";
 import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
 import type { WorkflowsMode } from "../src/protocol/module-protocol-types.js";
 import { workflowLaunchTargets } from "../src/orchestration/workflow-host/lifecycle/launch-origin.js";
-import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definition-registry.js";
+import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definitions/definition-registry.js";
 import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/control/messaging/session-messaging.js";
 
 /** What every request of one assembly shares: its roots, its definitions, its configuration, and the module

@@ -1,7 +1,7 @@
 import type { AuthContext, ProviderConnection } from "../../infra/auth/auth-context.js";
-import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../infra/llm/access/access-provider.js";
 import type { RequestAdmission } from "./llm/provider-availability-types.js";
-import type { ModelsClient } from "../../infra/llm/models.js";
+import type { ModelsClient } from "../../infra/llm/models/models.js";
 import { getSharedModelsClient } from "../config/models/llm-clients.js";
 import { captureAccountConnection, createAdmittedClient, createClient, type AdmittedClientOptions, type CreateClientOptions, type EffectiveProviderConnection } from "./llm/client-factory.js";
 import { LiveAgent } from "./runner.js";
@@ -13,7 +13,7 @@ import type { LauncherScope } from "../../infra/process-supervisor.js";
 import type { CommandHandoverAuthority } from "./command-handover.js";
 import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
-import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js";
+import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js";
 import { createBreadcrumbMaintenance } from "../session/persistence/storage/session-artifacts.js";
 import { createWebSearch } from "./web-search/select.js";
 import type { WebSearchProviderId } from "./web-search/types.js";

@@ -9,7 +9,7 @@ import { buildSessionChildLinkedFact, buildSessionCreatedFact } from "../../../.
 import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js";
 import { buildArtifactContext, type ArtifactContextDeps } from "../../../../../src/orchestration/workflow-host/attempt/artifact-context.js";
 import type { ArtifactWriter } from "../../../../../src/workflows/context-bundle/attempt-artifacts.js";
-import { createAttemptExecutor } from "../../../../../src/workflows/vm/attempt-runner.js";
+import { createAttemptExecutor } from "../../../../../src/workflows/vm/host/attempt-runner.js";
 import { createContextAccumulator } from "../../../../../src/workflows/context-bundle/context.js";
 import { deps } from "../../../workflows/vm/attempt-runner-test-support.js";
 import { createMemoryStore, initialFacts, quietHostDeps, testHost } from "../../../workflows/vm/host-test-support.js";

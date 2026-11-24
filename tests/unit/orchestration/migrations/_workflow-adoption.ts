@@ -20,8 +20,8 @@ import { createConversationMessageEntry } from "../../../../src/orchestration/se
 import { buildSessionChildLinkedFact, buildSessionCreatedFact } from "../../../../src/orchestration/session/metadata/session-metadata-facts.js"
 import { recoverSessionMetadata } from "../../../../src/orchestration/session/metadata/session-metadata-projection.js"
 import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js"
 import { createMemoryStore, initialFacts, recordHistoricalFollowUp, testHost } from "../../workflows/vm/host-test-support.js"
 import type { ReplayedSession } from "../../../../src/orchestration/session/metadata/schemas.js"
 

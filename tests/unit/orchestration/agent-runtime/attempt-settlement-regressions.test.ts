@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
-import { candidateProviderId, type AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js";
-import { computeUsagePrice } from "../../../../src/infra/llm/llm-helpers.js";
+import { candidateProviderId, type AccessProviderCandidate } from "../../../../src/infra/llm/access/access-provider.js";
+import { computeUsagePrice } from "../../../../src/infra/llm/models/llm-helpers.js";
 import { ANTHROPIC_CACHE_RATES } from "../../../../src/orchestration/agent-runtime/llm/provider-description.js";
-import type { ModelCost } from "../../../../src/infra/llm/models.js";
-import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/llm/usage-entry.js";
+import type { ModelCost } from "../../../../src/infra/llm/models/models.js";
+import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/llm/usage/usage-entry.js";
 import { AssistantDraftProjector } from "../../../../src/infra/output/assistant-draft-projector.js";
 import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
 import { createAssistantAttempt, type AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/assistant-turn-attempt.js";

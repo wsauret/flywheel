@@ -8,8 +8,8 @@ import {
   SKILL_CORPUS_CLEANUP_CONTRACT,
   type SkillCorpusCleanupCandidate,
 } from "../../../../../../src/orchestration/modules/learning/maintenance/skill-corpus-cleanup-classifier.js";
-import { createProjectDefinitionRegistry } from "../../../../../../src/workflows/definition-registry.js";
-import { publishSkillRevision, type BundledSkillPackage } from "../../../../../../src/workflows/skill-schema.js";
+import { createProjectDefinitionRegistry } from "../../../../../../src/workflows/definitions/definition-registry.js";
+import { publishSkillRevision, type BundledSkillPackage } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 
 function prepared(id: string, body = `${id} procedure.`) {

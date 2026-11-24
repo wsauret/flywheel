@@ -1,7 +1,7 @@
-import type { CatalogSourceRow, CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js";
+import type { CatalogSourceRow, CatalogWireIdentity } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import type { CatalogJsonValue } from "../../../infra/catalog-model-offering.js";
-import { MAX_MODEL_OUTPUT_TOKENS, type ProviderReasoningEffort } from "../../../infra/llm/models.js";
-import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
+import { MAX_MODEL_OUTPUT_TOKENS, type ProviderReasoningEffort } from "../../../infra/llm/models/models.js";
+import { providerModelInfo } from "../../../infra/llm/catalog/provider-model-info.js";
 import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/model-id.js";
 
 export interface OpenRouterModelPricing {

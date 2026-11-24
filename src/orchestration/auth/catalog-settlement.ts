@@ -5,7 +5,7 @@ import type { AuthCatalogSettlement } from "./auth-actions.js"
 import { resolveProviderModelCatalog } from "../config/models/model-assignment-providers.js"
 import { type FirstPartyModuleSnapshot, webAuthProviderDefinitions } from "../modules.js"
 import { installedCredentialProviderIds } from "../credential-provider-modules.js"
-import type { AccessProviderDefinition } from "../../infra/llm/access-provider.js"
+import type { AccessProviderDefinition } from "../../infra/llm/access/access-provider.js"
 
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { credentialSlotClassifier } from "./credential-slot-classifier.js"

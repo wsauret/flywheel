@@ -10,14 +10,14 @@ import { cleanupTmpRoot, makeDepsWithStore, racingPublicationWriter } from "./_s
 import { temporaryDirectories } from "../../../helpers/directories";
 import { briefEntryId, isBriefEntry } from "../../../../src/orchestration/session/conversation/tree/brief-entry";
 import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership";
-import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery";
+import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery/recovery";
 import { commitWorkflowEvent, publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures";
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog";
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store";
 import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts";
 import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent";
 import { readWorkflowLiveView } from "../../../../src/orchestration/modules/workflows/protocol/live-protocol";
-import { readAttemptStarts } from "../../../../src/workflows/vm/attempt-conversations";
+import { readAttemptStarts } from "../../../../src/workflows/vm/host/attempt-conversations";
 
 const tempDir = temporaryDirectories();
 

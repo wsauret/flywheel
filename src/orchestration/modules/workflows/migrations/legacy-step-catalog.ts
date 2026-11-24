@@ -26,7 +26,7 @@ import { parseFrontmatter } from "../../../../infra/frontmatter.js";
 import { isQualifiedSkillId } from "../../../../infra/skill-id.js";
 import { ContainedPathError } from "../../../../infra/descriptor-directory-contract.js";
 import { readFileUnder, requireContainedDirectory } from "../../../../infra/write-file-under.js";
-import { SKILL_FILE } from "../../../../workflows/skill-schema.js";
+import { SKILL_FILE } from "../../../../workflows/skills/skill-schema.js";
 
 interface UnknownRecord {
   [key: string]: unknown;

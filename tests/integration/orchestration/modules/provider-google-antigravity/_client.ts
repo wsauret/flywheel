@@ -4,7 +4,7 @@
  * names its tree and login and the registry decides which engine process serves it.
  */
 import { Effect, Exit, Scope } from "effect"
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js"
+import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js"
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import { lowerProviderHistory } from "../../../../../src/orchestration/agent-runtime/llm/provider-history.js"
 import type { ContentBlock, ConversationMessage, LLMClient, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js"

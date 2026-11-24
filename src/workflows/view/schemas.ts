@@ -1,9 +1,9 @@
 import { Schema, SchemaTransformation } from "effect";
 import { CanonicalToolScopingSchema } from "../../infra/workflow-types.js";
-import { ArtifactIdsSchema } from "../artifact-contracts.js";
+import { ArtifactIdsSchema } from "../schema/artifact-contracts.js";
 import type { WorkflowTree, WorkflowTreeNode } from "../../protocol/workflow-view-protocol-types.js";
 import type { AttemptRow, StepThen } from "./types.js";
-import { AttemptRowSchema, AttemptStatusSchema, BriefPersonaSlotSchema } from "../attempt-row.js";
+import { AttemptRowSchema, AttemptStatusSchema, BriefPersonaSlotSchema } from "../schema/attempt-row.js";
 
 const OptionalStringValueSchema = Schema.UndefinedOr(Schema.String);
 const HistoricalToolScopingSchema = Schema.Struct({

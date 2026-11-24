@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import type { SubscriptionUsageOutcome, SubscriptionUsageReport } from "../../../../../src/infra/llm/subscription-usage.js"
+import type { SubscriptionUsageOutcome, SubscriptionUsageReport } from "../../../../../src/infra/llm/usage/subscription-usage.js"
 import { createSubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { createProfileFixture, definition, registry, report, writeAccounts } from "./_service-fixtures.js"
 

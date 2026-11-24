@@ -19,8 +19,8 @@ import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../.
 import { contentEvidence } from "../../../../src/infra/content-evidence.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 describe("runtime session protocol contract", () => {

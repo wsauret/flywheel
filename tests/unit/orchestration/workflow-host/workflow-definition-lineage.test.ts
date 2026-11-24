@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import { hashContent } from "../../../../src/workflows/definition-hash.js"
+import { hashContent } from "../../../../src/workflows/provenance/definition-hash.js"
 import { buildWorkflowDefinitionLineageFacts } from "../../../../src/orchestration/workflow-host/lifecycle/definition-lineage.js"
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testDependencyWorkflow, withTestExternalSkills } from "../../../helpers/skill-fixtures.js"
 

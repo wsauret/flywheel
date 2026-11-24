@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 
 import { restoreSessionAddress, takeSessionAddress } from "./session-address.js"
-import type { HistoryEntryState } from "../src/app/screen-stack.js"
+import type { HistoryEntryState } from "../src/app/screens/screen-stack.js"
 
 function page(hash: string) {
   const replaced: { readonly state: unknown; readonly url: string | URL | null | undefined }[] = []

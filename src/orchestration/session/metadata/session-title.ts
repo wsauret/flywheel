@@ -1,7 +1,7 @@
 import { Effect, Fiber } from "effect"
 import type { AuthContext } from "../../../infra/auth/auth-context.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js"
+import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js"
 import { Log } from "../../../infra/log.js"
 import { messageInput } from "../../../infra/agent-loop-events.js"
 import type { Agent, AgentFactory, AgentPurpose } from "../../agent-runtime/types.js"

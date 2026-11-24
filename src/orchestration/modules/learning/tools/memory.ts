@@ -7,8 +7,8 @@
 
 import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
-import { memoryWrittenFact } from "../../../../workflows/memory/memory-fact-writers.js";
-import type { MemoryWrittenFact } from "../../../../workflows/memory/memory-facts.js";
+import { memoryWrittenFact } from "../../../../workflows/learning/memory/memory-fact-writers.js";
+import type { MemoryWrittenFact } from "../../../../workflows/learning/memory/memory-facts.js";
 import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
 import type { CapabilityCheck } from "../../../../infra/capability-text.js";
 import { Log } from "../../../../infra/log.js";

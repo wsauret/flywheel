@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models/models.js";
 import { buildOpenAIParams } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { toOpenAIResponsesRequestInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";

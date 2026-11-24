@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/session-facts.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
+import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/facts/session-facts.js";
 import {
   replayDecodedWorkflow,
   transitionDecodedWorkflow,
-} from "../../../../src/workflows/vm/transition.js";
+} from "../../../../src/workflows/vm/control/transition.js";
 
 import { acknowledge, ownership, runningControl, startPreparedAttempt, success } from "./_machine-semantics-fixtures.js";
 

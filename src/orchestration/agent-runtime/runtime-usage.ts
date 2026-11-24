@@ -1,4 +1,4 @@
-import type { UsageEntry } from "../../infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../infra/llm/usage/usage-entry.js";
 import type { RuntimeConversation } from "./runtime-conversation.js";
 import { createTurnUsageTracker, type TurnUsageTracker } from "./turn-usage-tracker.js";
 import type { AgentDurableFacts, AgentOptions } from "./types.js";

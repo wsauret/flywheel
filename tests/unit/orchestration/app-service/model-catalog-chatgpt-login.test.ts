@@ -5,11 +5,11 @@ import { captureSubscriptionCredentials, resolveAuthContext } from "../../../../
 import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
 import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/store/auth-store.js";
 import { isCredentialCollection } from "../../../../src/infra/auth/store/auth-store-types.js";
-import { accessProviderCandidateKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
-import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
-import type { ModelInfo, ModelsClient } from "../../../../src/infra/llm/models.js";
-import { admitModelsDocument } from "../../../../src/infra/llm/models-document.js";
-import bundledModelsText from "../../../../src/infra/llm/models-bundled.txt";
+import { accessProviderCandidateKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access/access-provider.js";
+import { createModelListingClient } from "../../../../src/infra/llm/access/model-listing.js";
+import type { ModelInfo, ModelsClient } from "../../../../src/infra/llm/models/models.js";
+import { admitModelsDocument } from "../../../../src/infra/llm/models/models-document.js";
+import bundledModelsText from "../../../../src/infra/llm/models/models-bundled.txt";
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js";
 import { captureAccountConnection } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { providerLoginFlow } from "../../../../src/orchestration/auth/auth-actions.js";

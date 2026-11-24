@@ -8,8 +8,8 @@ import type { ToolAction } from "../../infra/workflow-types.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { parseFrontmatter } from "../../infra/frontmatter.js";
 import { Log } from "../../infra/log.js";
-import type { SkillRegistryRevision } from "../skill-schema.js";
-import { agents as manifestAgents } from "../asset-manifest.js";
+import type { SkillRegistryRevision } from "../skills/skill-schema.js";
+import { agents as manifestAgents } from "../provenance/asset-manifest.js";
 import { createPersonaDefinitionSchema } from "./persona-schema.js";
 import { resolveDefinitionCandidates, shouldLogDefinitionMasking, type DefinitionCandidate, type DefinitionResolution } from "../../infra/definition-resolution.js";
 

@@ -10,7 +10,7 @@ import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
 import { testDirectories } from "../../helpers/directories.js"
 import { manifestPath } from "../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js"
-import { ownedSkillStoreDirs } from "../../../src/workflows/skills.js"
+import { ownedSkillStoreDirs } from "../../../src/workflows/skills/skills.js"
 
 const telemetry = await import("../../../src/orchestration/modules/learning/skills/skill-load-stats.js")
 const collectSkillLoadStats = telemetry.collectSkillLoadStats

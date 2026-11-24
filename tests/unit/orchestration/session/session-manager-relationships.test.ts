@@ -6,7 +6,7 @@ import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/inf
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createSessionManager, ParentPublicationContendedError } from "../../../../src/orchestration/session/manager";
-import { buildWorkflowPausedFact } from "../../../../src/workflows/vm/fact-drafts";
+import { buildWorkflowPausedFact } from "../../../../src/workflows/vm/transitions/fact-drafts";
 import { readStoredSession } from "./_session-metadata-test-helpers";
 import { adoptTestWorkflow, cleanupTmpRoot, makeDeps, makeDepsWithStore, makeTmpDir, publishTestWorkflow, racingPublicationWriter } from "./_session-manager-fixtures";
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js";
@@ -18,8 +18,8 @@ import { decodeSessionMetadataFactForReplay } from "../../../../src/orchestratio
 import { Schema } from "effect";
 import { SessionSchema } from "../../../../src/orchestration/session/metadata/schemas";
 import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership";
-import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition";
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition";
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold";
 
 function appendParentTelemetry(store: LocalSqliteEventStore, parentId: string, accumulatedActiveMs: number): void {
   store.append({

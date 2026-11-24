@@ -11,7 +11,7 @@ import { workflowRunOwner, workflowRunReader } from "../../../module-catalog.js"
 import type { RuntimeOwnership } from "../../runtime/runtime-ownership.js"
 import type { ProviderConnectionCapture } from "../../../agent-runtime/model-runtime-capture.js"
 import { installedChildSessionHistory } from "../../../session/control/module-session-operations.js"
-import type { ProjectDefinitionRegistry } from "../../../../workflows/definition-registry.js"
+import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js"
 import type { RuntimeUiBus } from "../../projections/runtime-ui-bus.js"
 
 const log = Log.create({ service: "role-protocol-projection" })

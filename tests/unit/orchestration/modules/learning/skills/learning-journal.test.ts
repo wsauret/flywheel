@@ -14,10 +14,10 @@ import {
   type PendingAudit,
 } from "../../../../../../src/orchestration/modules/learning/skills/learning-journal.js";
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
-import { memoryWrittenFact } from "../../../../../../src/workflows/memory/memory-fact-writers.js";
-import { skillWrittenFact } from "../../../../../../src/workflows/skill-facts.js";
+import { memoryWrittenFact } from "../../../../../../src/workflows/learning/memory/memory-fact-writers.js";
+import { skillWrittenFact } from "../../../../../../src/workflows/skills/skill-facts.js";
 import { packageDigestAt } from "../../../../../../src/orchestration/modules/learning/skills/skill-package-planning.js";
-import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skill-schema.js";
+import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { planSkillMutation } from "../../../../../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import { runOperation } from "../../../../../../src/orchestration/modules/learning/skills/global-skill-mutation-protocol.js";
 import { operationIdentity, writeOperationManifest } from "../../../../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";

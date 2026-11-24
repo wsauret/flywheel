@@ -2,7 +2,7 @@ import type { SubscriptionSpendConsentStatus, SubscriptionSpendEnvelope } from "
 import { createSubscriptionSpendEnvelope } from "../../infra/auth/subscription/subscription-spend-consent.js";
 import { SubscriptionSpendConsentCorruptError, SubscriptionSpendConsentStaleError, type SubscriptionSpendConsentStore } from "../../infra/auth/subscription/subscription-spend-consent-store.js";
 import { createSubscriptionAccountIdentity, type SubscriptionAccountIdentity } from "../../infra/auth/subscription/subscription-account-identity.js";
-import type { SubscriptionUsageSpendSource } from "../../infra/llm/subscription-usage.js";
+import type { SubscriptionUsageSpendSource } from "../../infra/llm/usage/subscription-usage.js";
 import type { SubscriptionUsageService } from "../auth/provider-observations/subscription-usage-service.js";
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE, subscriptionSpendAccountCorrelationId, type SubscriptionSpendConsentMutation, type SubscriptionSpendConsentMutationResult, type SubscriptionSpendConsentView } from "../../protocol/subscription-spend-consent-protocol-types.js";
 

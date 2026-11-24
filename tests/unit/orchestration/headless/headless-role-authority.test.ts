@@ -13,7 +13,7 @@ import { repoDefinitions } from "../../../helpers/project-definitions.js";
 import { testCapabilityModules } from "../../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js";
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
-import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
+import type { ModelFamily } from "../../../../src/infra/llm/models/model-family.js";
 import { roleCapture } from "../../../helpers/role-capture.js";
 import type { RoleSettingEntry } from "../../../../src/orchestration/session/metadata/schemas.js";
 import { planEveryCapability } from "../../../helpers/attempt-brief.js";

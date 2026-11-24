@@ -40,9 +40,9 @@ import { prepareDefinitionReconciliation, shippedDefinitionBundles, type FirstPa
 import { createRuntimeModuleComposer } from "./runtime-module-composition.js"
 import { installedAccessProviderIds } from "../../../credential-provider-modules.js";
 import type { WorkflowsMode } from "../../../../protocol/module-protocol-types.js"
-import { definitionRoots, type ProjectDefinitionRegistry } from "../../../../workflows/definition-registry.js";
+import { definitionRoots, type ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import { watchDefinitionRoots } from "../../definitions/definition-root-watcher.js"
-import { skillStoreRoots } from "../../../../workflows/skills.js"
+import { skillStoreRoots } from "../../../../workflows/skills/skills.js"
 import { createInstalledDefinitionRegistry } from "../../../definition-catalog.js"
 
 import { createModuleProjection } from "../../projections/module-projection.js"

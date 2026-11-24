@@ -24,9 +24,9 @@
  *  should be merged, and offering one invites it to be used as if it were. */
 
 import type { ProjectDirectories } from "../../../../infra/directory-authorities.js";
-import type { SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
+import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { eligibleLearnedSkills } from "../skills/learned-skill-eligibility.js";
-import type { SkillFinding } from "../../../../workflows/skill-health.js";
+import type { SkillFinding } from "../../../../workflows/skills/skill-health.js";
 
 export const SKILL_MAINTENANCE_SURVEY_CONTRACT = `You are surveying a library of learned skills to decide what maintenance it needs.
 

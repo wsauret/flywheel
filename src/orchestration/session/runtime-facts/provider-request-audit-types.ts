@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto"
-import type { AccessProviderCandidate, AccessProviderCatalogProvenance } from "../../../infra/llm/access-provider.js"
+import type { AccessProviderCandidate, AccessProviderCatalogProvenance } from "../../../infra/llm/access/access-provider.js"
 import { Schema } from "effect"
-import { ProviderErrorDiagnosticSchema, type ProviderErrorDiagnostic } from "../../../infra/llm/provider-error-diagnostic.js"
-import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js"
+import { ProviderErrorDiagnosticSchema, type ProviderErrorDiagnostic } from "../../../infra/llm/errors/provider-error-diagnostic.js"
+import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js"
 import type { ModelInteractionProfileId } from "../../agent-runtime/model-interaction-profile.js"
 
 /** Profile ids that only recorded requests hold: builds before 2026-10-30 served gpt-6-luna through them. */

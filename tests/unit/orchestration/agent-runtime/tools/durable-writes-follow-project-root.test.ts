@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { createMemoryTool } from "../../../../../src/orchestration/modules/learning/tools/memory.js";
 import { createSkillManageTool } from "../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../src/workflows/skills.js";
+import { publishSkillRevision } from "../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../src/workflows/skills/skills.js";
 import { fileTemporaryDirectory } from "../../../../helpers/directories.js";
 import { createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
 

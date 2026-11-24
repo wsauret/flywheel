@@ -31,8 +31,8 @@ import { claudeLoginEngines } from "../../../src/orchestration/modules/mcp/servi
 import { createClaudeAgentSdkModule } from "../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import type { ClaudeAgentSdkSeams } from "../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { CLAUDE_AGENT_SDK_LOGIN_COMMAND, CLAUDE_AGENT_SDK_MODULE_ID, CLAUDE_AGENT_SDK_PROVIDER_ID, REFRESH_LOCK_BOUND_MS, refreshLockPath } from "../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
-import { createQueryLauncher, type EngineLaunch } from "../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
-import type { StepAsk } from "../../../src/orchestration/modules/provider-claude-agent-sdk/step-gate.js";
+import { createQueryLauncher, type EngineLaunch } from "../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
+import type { StepAsk } from "../../../src/orchestration/modules/provider-claude-agent-sdk/engine/step-gate.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { captureDiagnostics, ownInPlaceGate, removeEngineProbes, until } from "../orchestration/modules/provider-claude-agent-sdk/_claude-sdk-client.js";
 import { LIVE_AUTH_PROFILE, liveDirectories, withLiveClient, type LiveRoute } from "./_live-client.js";

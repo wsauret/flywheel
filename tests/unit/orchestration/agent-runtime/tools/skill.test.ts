@@ -8,9 +8,9 @@ import { interceptBashCommand } from "../../../../../src/orchestration/agent-run
 import { applyPlannedMutation } from "../../../../../src/orchestration/modules/learning/skills/skill-store.js";
 import { planSkillMutation } from "../../../../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import { makeContext } from "./_fixtures.js";
-import type { SkillDefinition, SkillRegistryRevision } from "../../../../../src/workflows/skill-schema.js";
-import { publishSkillRevision, SKILL_FILE } from "../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions } from "../../../../../src/workflows/skills.js";
+import type { SkillDefinition, SkillRegistryRevision } from "../../../../../src/workflows/skills/skill-schema.js";
+import { publishSkillRevision, SKILL_FILE } from "../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions } from "../../../../../src/workflows/skills/skills.js";
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { fileTemporaryDirectory, temporaryDirectories } from "../../../../helpers/directories.js";

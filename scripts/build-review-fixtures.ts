@@ -6,7 +6,7 @@ import { homedir, hostname, tmpdir, userInfo } from "node:os";
 import { basename, dirname, join, posix, resolve } from "node:path";
 import { Schema } from "effect";
 import { exposurePatterns, exposures, publishedDiffLines, type PrivateIdentity } from "./review-fixture-publication.js";
-import { harnessLintFile, loadHarnessLint, type HarnessLint } from "../src/orchestration/modules/development/benchmark/harness-names.js";
+import { harnessLintFile, loadHarnessLint, type HarnessLint } from "../src/orchestration/modules/development/benchmark/records/harness-names.js";
 
 // Builds reviewer benchmark fixtures from real reviews recorded in a Flywheel
 // store. For each code review since the repository's first commit it rebuilds

@@ -11,7 +11,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { Effect, Redacted } from "effect";
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
+import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
 import type { ToolOutcome } from "../../../../../src/infra/tool-outcome.js";
 import { toolResultMessages } from "../../../../../src/orchestration/agent-runtime/agent-state.js";
 import { formatSubagentNotificationBatch } from "../../../../../src/orchestration/agent-runtime/background-work-notifications.js";
@@ -27,7 +27,7 @@ import { formatWaitNoopNotification } from "../../../../../src/orchestration/age
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
-import { createQueryLauncher, type LaunchedQuery } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import { createQueryLauncher, type LaunchedQuery } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
 import { handoffNudge } from "../../../../../src/workflows/shared/handoff-observer.js";
 import { compileOutput } from "../../../../../src/workflows/output-contract/compile.js";

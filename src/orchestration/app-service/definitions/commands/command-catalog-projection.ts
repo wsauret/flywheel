@@ -1,5 +1,5 @@
 import type { DefinitionRootWatch } from "../definition-root-watcher.js"
-import type { ProjectDefinitionRegistry } from "../../../../workflows/definition-registry.js"
+import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js"
 import type { FirstPartyModuleSnapshot } from "../../../modules.js"
 import { commandCatalogCursor, type RuntimeCommandCatalog } from "../../../../protocol/command-catalog-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"

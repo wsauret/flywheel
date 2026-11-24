@@ -11,7 +11,7 @@ import { resolveConversationResources } from "../session/conversation-records/co
 import { ownedCommandRunner } from "../../infra/owned-command.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../infra/agent-assets/system-prompt.js";
 import { canonicalize } from "../../infra/canonical-name.js";
-import { REASONING_EFFORTS, type ReasoningEffort } from "../../infra/llm/models.js";
+import { REASONING_EFFORTS, type ReasoningEffort } from "../../infra/llm/models/models.js";
 import { composeModuleRuntimes, type ModuleRuntimes } from "../../infra/module-runtime.js";
 import type { AgentLoopOptions } from "./agent-loop-types.js";
 import type { ConversationMessage, ModelClient, ProviderSessionLifetime, ServingAttempt } from "./llm/types.js";
@@ -19,13 +19,13 @@ import { stableSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-
 import { promptKindForPurpose } from "./agent-purpose.js";
 import type { CaptureModelRuntime, LLMClientFactory } from "./model-runtime-capture.js";
 import type { RuntimeConfigRequestCapture } from "./request-config.js";
-import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js";
+import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
-import type { SkillDefinition } from "../../workflows/skill-schema.js";
+import type { SkillDefinition } from "../../workflows/skills/skill-schema.js";
 import type { FirstPartyModule, FirstPartyModuleComposition } from "../modules.js";
 import { createToolRegistry } from "../tool-catalog.js";
 import { disabledAgentTypes, installedModules } from "../module-catalog.js";
-import { skillLoadedFact } from "../../workflows/skill-facts.js";
+import { skillLoadedFact } from "../../workflows/skills/skill-facts.js";
 import { selectedToolNames } from "./tools/tool-dispatch.js";
 import { callerToolGrant, planToolExposure, type ToolGrant } from "./tools/tool-exposure-planner.js";
 import { deriveChildRuntimeSurfaces, learningReviewToolNames, toolRegistryFromComposition } from "./tools/tool-registry.js";

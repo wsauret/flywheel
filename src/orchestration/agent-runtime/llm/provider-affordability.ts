@@ -1,4 +1,4 @@
-import type { AccessProviderCandidateAttribution } from "../../../infra/llm/access-provider.js";
+import type { AccessProviderCandidateAttribution } from "../../../infra/llm/access/access-provider.js";
 import type { RequestAdmission } from "./provider-availability-types.js";
 import type { PreparedServingRequest } from "./types.js";
 import type { ProviderConnection } from "../../../infra/auth/auth-context.js";

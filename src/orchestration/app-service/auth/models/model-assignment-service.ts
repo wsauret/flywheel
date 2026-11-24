@@ -20,7 +20,7 @@ import type { DefinitionAvailabilityOwner } from "../../definitions/definition-a
 import { isProfileModelRole } from "../../../../protocol/brief-role-id.js"
 import type { SessionManager } from "../../../session/manager.js"
 import type { SessionStore } from "../../../session-store/types.js"
-import { personaRoleIds } from "../../../../workflows/definition-registry.js"
+import { personaRoleIds } from "../../../../workflows/definitions/definition-registry.js"
 import type { PersonaRegistryRevision } from "../../../../workflows/agents/registry.js"
 import type { ConfigValidity } from "../../../config/writer.js"
 import type {

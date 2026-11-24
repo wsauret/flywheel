@@ -2,7 +2,7 @@ import { canonicalModuleIds } from "../../../../protocol/module-ids.js";
 import { prepareSessionFactAppend } from "../../../session/persistence/session-fact-writer.js";
 import { buildDurableSubagentCreated, buildSubagentPrompted } from "../history/subagent-run-fact-writers.js";
 import { scopedAgentRegistry } from "./dispatch/dispatch-configuration.js";
-import { DEFAULT_BUDGET, toBudgetLimits } from "../../../../workflows/budget.js";
+import { DEFAULT_BUDGET, toBudgetLimits } from "../../../../workflows/run/budget.js";
 import { resumeSubagentSession, type ContinuationTarget, type SubagentContext, type SubagentInput, type SubagentResult } from "./dispatch/control-actions.js";
 import { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch/dispatch-preparation.js";
 import type { SubagentDispatchDeps } from "./dispatch/dispatch-deps.js";

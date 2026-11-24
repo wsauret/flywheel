@@ -84,7 +84,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /defineRuntimeEvent\(\{\s*type:\s*"([^"]+)"[^\n]*\bdebug:\s*\w/g,
   },
   {
-    file: "src/infra/llm/model-catalog-resolution.ts",
+    file: "src/infra/llm/catalog/model-catalog-resolution.ts",
     what: "dynamic model catalog collision evidence",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -174,7 +174,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/observed-engine.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/engine/observed-engine.ts",
     what: "Claude engine launches, chat and host",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -199,17 +199,17 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/bridge.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge.ts",
     what: "Claude Agent SDK bridge query lifecycle",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/transcript.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/engine/transcript.ts",
     what: "Claude engine artifacts that a sweep reclaimed",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/bridge-reservation.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-reservation.ts",
     what: "Claude Agent SDK engine reservations and their ends",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -219,37 +219,37 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/cli-login.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/login/cli-login.ts",
     what: "duplicate Claude login locations retired by a login again",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.ts",
     what: "Claude Agent SDK model listing CLI stops",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/in-place-check.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/query/in-place-check.ts",
     what: "Claude Agent SDK in-place rotation checks",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.ts",
     what: "Claude Agent SDK silent CLI debug output",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/service-requests.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/engine/service-requests.ts",
     what: "Claude Agent SDK service requests in the engine debug output",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/extra-usage-guard.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/bridge/extra-usage-guard.ts",
     what: "Claude Agent SDK usage reports",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-claude-agent-sdk/step-gate.ts",
+    file: "src/orchestration/modules/provider-claude-agent-sdk/engine/step-gate.ts",
     what: "Claude Agent SDK step gate requests that the gate cannot read",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -274,12 +274,12 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/workflows/vm/host-commit-controller.ts",
+    file: "src/workflows/vm/host/host-commit-controller.ts",
     what: "workflow request addendum commits",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/workflows/vm/host.ts",
+    file: "src/workflows/vm/host/host.ts",
     what: "workflow attempt admission batches",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -294,7 +294,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/llm/model-listing.ts",
+    file: "src/infra/llm/access/model-listing.ts",
     what: "saved model refusals",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },

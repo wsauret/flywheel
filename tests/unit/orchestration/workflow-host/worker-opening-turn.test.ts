@@ -12,7 +12,7 @@ import { toolRegistryFromComposition } from "../../../../src/orchestration/agent
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import type { createWorkerCallback } from "../../../../src/orchestration/workflow-host/execution/agent-callback"
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution"
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution"
 import { planEveryCapability } from "../../../helpers/attempt-brief"
 import { temporaryDirectories } from "../../../helpers/directories"
 import { repoDefinitions } from "../../../helpers/project-definitions"

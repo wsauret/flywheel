@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SubscriptionSpendConsentStatus } from "../infra/auth/subscription/subscription-spend-consent.js";
-import type { SubscriptionUsageSpendSource } from "../infra/llm/subscription-usage.js";
+import type { SubscriptionUsageSpendSource } from "../infra/llm/usage/subscription-usage.js";
 import type { RuntimePosition } from "./runtime-ui-protocol-types.js";
 
 export const SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE = "Flywheel could not read this profile's paid-use settings. Paid use is off until it can." as const;

@@ -6,7 +6,7 @@ import { useModalDimensions } from "@tui/components/use-modal-dimensions"
 import { displayWidth, truncateToWidth } from "@tui/text"
 import { BOLD } from "@tui/text-attributes"
 import { createEffect, createMemo, For, type JSX, on, onCleanup, Show } from "solid-js"
-import type { SubscriptionUsageMetric } from "../../../infra/llm/subscription-usage.js"
+import type { SubscriptionUsageMetric } from "../../../infra/llm/usage/subscription-usage.js"
 import { USAGE_HISTORY_RANGES, type UsageAccountSource, type UsageAccountsResult, type UsageHistoryRange, type UsageHistoryResult, type UsageModelSummary, type UsageSpendResult, type UsageSpendSource, type UsageSubscriptionObservation, historySeries, prepaidBalances, spendSeries, type HistorySeries, isDetailWindow, sumUsageCoverage, sumUsageTokens, usageCoverageText, USAGE_COMMAND_NAME, type UsageReadFailure, type UsageStatusLine, usageStatusLine } from "../../../protocol/modules/subscription-usage.js"
 
 import { progressBar } from "../../components/progress-bar.js"

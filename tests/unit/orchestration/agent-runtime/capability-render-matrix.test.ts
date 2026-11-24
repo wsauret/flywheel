@@ -30,10 +30,10 @@ import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-
 import type { ModuleId } from "../../../../src/protocol/module-ids.js";
 import { personaInstructions } from "../../../../src/workflows/agents/persona-instructions.js";
 import { grantedSubagentTypes, personaToolNames } from "../../../../src/workflows/agents/subagent-reachability.js";
-import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../../../../src/workflows/definitions/definition-registry.js";
 import { compileOutput } from "../../../../src/workflows/output-contract/compile.js";
-import { offeredSkillResources, readSkillResource } from "../../../../src/workflows/skill-context.js";
-import { renderSkillContext, renderSkillResourceWindow } from "../../../../src/workflows/skill-render.js";
+import { offeredSkillResources, readSkillResource } from "../../../../src/workflows/skills/skill-context.js";
+import { renderSkillContext, renderSkillResourceWindow } from "../../../../src/workflows/skills/skill-render.js";
 import { makeContext } from "./tools/_fixtures.js";
 import { resetOpening } from "./context/_loop-fixtures.js";
 

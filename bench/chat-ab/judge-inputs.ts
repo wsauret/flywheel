@@ -5,8 +5,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { detectModelFamily } from "../../src/infra/llm/model-family.js";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { detectModelFamily } from "../../src/infra/llm/models/model-family.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { codedRolePreference } from "../../src/orchestration/config/models/role-model-defaults.js";
 import type { CampaignConfig, RunRecord } from "./store.js";
 

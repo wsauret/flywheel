@@ -1,7 +1,7 @@
 import { credentialProviderDisplayName, getAuthStatusWithDiagnostics, rejectedCustomProviderStatusId } from "../../auth/auth-actions.js"
 import type { AuthProfileResolution } from "../../auth/auth-profile-manager.js"
 import { customProviderRejections } from "../../../infra/llm/custom-provider-registry.js"
-import type { AccessProviderCandidate } from "../../../infra/llm/access-provider.js"
+import type { AccessProviderCandidate } from "../../../infra/llm/access/access-provider.js"
 import type { ProviderModelEligibilityState, ProviderModelInventoryCandidate } from "./models/provider-model-preference-service.js"
 import type { AuthFileAttention, AuthOperationNotice, AuthProviderStatus, RuntimeAuthStatusScope, RuntimeAuthView } from "../../../protocol/auth-status-protocol-types.js"
 import { webAuthProviderDefinitions, type FirstPartyModuleComposition, type FirstPartyModuleSnapshot } from "../../modules.js"

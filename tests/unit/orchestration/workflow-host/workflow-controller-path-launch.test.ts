@@ -6,8 +6,8 @@ import { resolveWorkflowAgentRole } from "../../../../src/orchestration/config/m
 import { resolveSessionRoles } from "../../../../src/orchestration/config/models/session-role-resolver.js"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import { modelWorkflowLaunchOrigin, workflowLaunchTargets, type WorkflowLaunchTarget } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
-import { canonicalWorkflowRecord } from "../../../../src/workflows/definition-records.js"
-import { readRunDefinitionLineage } from "../../../../src/workflows/definition-provenance-projection.js"
+import { canonicalWorkflowRecord } from "../../../../src/workflows/schema/definition-records.js"
+import { readRunDefinitionLineage } from "../../../../src/workflows/run/definition-provenance-projection.js"
 import { fixtureDefinitions } from "../../../helpers/project-definitions.js"
 import { cleanupProjectRoots, seedLaunchApproval, until, makeWorkflowDeps } from "./_workflow-controller-fixtures.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
@@ -28,7 +28,7 @@ flow:
 import { createLazyWorkflowController } from "../../../../src/orchestration/app-service/executor/execution/lazy-workflow-controller.js"
 import { createWorkflowToolCore } from "../../../../src/orchestration/agent-runtime/tools/workflow-tool.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
-import { agentRecords } from "../../../../src/workflows/workflow-schema.js"
+import { agentRecords } from "../../../../src/workflows/schema/workflow-schema.js"
 
 const SKILL_POINTER = "Load the `workflow-authoring` skill if you have not, fix the file, and launch it again."
 

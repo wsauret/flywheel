@@ -28,7 +28,7 @@ import { moduleRequirementsForContribution } from "../../../module-requirements.
 import { createSessionFactWriter } from "../../../session/persistence/session-fact-writer.js"
 import { resolveHeadlessAuthProfile, withHeadlessProfileRuntime } from "../../../headless/headless-profile-runtime.js"
 import { createLearningReviewExecution } from "../review/learning-review-runner.js"
-import { inspectSkillLibrary } from "../../../../workflows/skill-health.js"
+import { inspectSkillLibrary } from "../../../../workflows/skills/skill-health.js"
 import { eligibleLearnedSkills } from "../skills/learned-skill-eligibility.js"
 import { runSkillMaintenance, skillUnitPackages, type SkillMaintenanceResult } from "./skill-maintenance.js"
 import { SKILL_MAINTENANCE_UNIT_CONTRACT } from "./skill-maintenance-unit.js"

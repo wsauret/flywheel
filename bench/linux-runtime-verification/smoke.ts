@@ -13,7 +13,7 @@ import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema/schema.js
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js"
 import { definitionAvailabilityOf } from "../../src/orchestration/app-service/definitions/definition-availability.js"
 import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orchestration/agent-runtime/capability-checks.js"
-import { publishSkillRevision } from "../../src/workflows/skill-schema.js"
+import { publishSkillRevision } from "../../src/workflows/skills/skill-schema.js"
 
 const workspace = "/tmp/flywheel-linux-runtime-verification"
 const scratchDir = join(workspace, "scratch")

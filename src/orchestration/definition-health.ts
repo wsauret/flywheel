@@ -1,6 +1,6 @@
 import type { ProjectDirectories } from "../infra/directory-authorities.js"
 import { Log } from "../infra/log.js"
-import { inspectSkillLibrary } from "../workflows/skill-health.js"
+import { inspectSkillLibrary } from "../workflows/skills/skill-health.js"
 import { createInstalledDefinitionRegistry } from "./definition-catalog.js"
 import type { ModuleHealthReport } from "./module-health.js"
 

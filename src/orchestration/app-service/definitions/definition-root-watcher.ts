@@ -3,8 +3,8 @@ import { DebugLog } from "../../../infra/debug-log.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
 import { createBackgroundLane } from "../../../infra/ordered-lane.js";
-import type { DefinitionReload } from "../../../workflows/definition-registry.js";
-import type { SkillStoreRoot } from "../../../workflows/skills.js";
+import type { DefinitionReload } from "../../../workflows/definitions/definition-registry.js";
+import type { SkillStoreRoot } from "../../../workflows/skills/skills.js";
 
 const log = Log.create({ service: "definition-root-watcher" });
 

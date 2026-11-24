@@ -51,7 +51,7 @@ export async function workflowPersonMessage(reader: AsyncEventStateReadSurface, 
  *  the message before it retires the cell: a chat or child commit records
  *  the entry and retires the cell in one transaction, and a workflow commit
  *  records the addendum first and retires the addressed cell in a later
- *  write (`src/workflows/vm/host-commit-controller.ts`). So a copy that finds
+ *  write (`src/workflows/vm/host/host-commit-controller.ts`). So a copy that finds
  *  no record found the cell before its retirement, the guarded write
  *  refused, and the answer is `cell`. When it finds a record, the cell this
  *  write put is a second one and goes again.

@@ -12,7 +12,7 @@ import { describe, expect, it } from "bun:test";
 import { ChatGptAdapterApiError } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter-error.js";
 import { mapChatGptAdapterEvents } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/sse.js";
 import { createProviderAvailability, observeChatGptQuotaFrame } from "../../../../../../src/orchestration/agent-runtime/llm/provider-availability.js";
-import type { AccessProviderCandidate } from "../../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderCandidate } from "../../../../../../src/infra/llm/access/access-provider.js";
 
 interface UnknownRecord {
   [key: string]: unknown;

@@ -6,7 +6,7 @@ import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.
 import { parseConversationTreeFact, type ConversationTreeFact } from "../conversation/conversation-facts.js"
 import { chatTurnEndEvidenceOf, isPlannedCut, isProducedInput, isResumableTurnEnd, isSkippedByWalk, pendingTurnEndEntry, restoredWaitReadsOlder, turnEndOfEntry, waitsAtRuntimeInterrupt, waitsForPerson, type ChatTurnEnd, type TurnEnd, type TurnEndEntry } from "../conversation/turn-end-record.js"
 import { isWorkflowResumeCandidate } from "../metadata/resumable.js"
-import { startedAgents, type StartedAgent } from "../../../workflows/vm/host-commit-controller.js"
+import { startedAgents, type StartedAgent } from "../../../workflows/vm/host/host-commit-controller.js"
 import { holdsInterruptedGuess, readToolExecution } from "../runtime-facts/tool-execution-projection.js"
 import type { ToolExecutionEntry } from "../runtime-facts/tool-execution-types.js"
 import type { SessionLifecycleState } from "../metadata/types.js"
