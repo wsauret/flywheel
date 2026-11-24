@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test"
 import { fileURLToPath } from "node:url"
 import { runWithResilience } from "../../../src/orchestration/agent-runtime/agent-resilience.js"
-import { workerOutcome } from "../../../src/orchestration/workflow-host/worker-outcome.js"
+import { workerOutcome } from "../../../src/orchestration/workflow-host/attempt/worker-outcome.js"
 import type { AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js"
 import type { ConnectionState } from "../../../src/infra/output-blocks.js"
 import { exhaustedProvidersCopy } from "../../../src/infra/llm/provider-error-copy.js"

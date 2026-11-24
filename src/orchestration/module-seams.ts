@@ -54,7 +54,7 @@ export interface ModuleWorkflowRuns {
   protocolServices(input: {
     readonly modules: ModuleServices
     readonly projectRoot: string
-    readonly controller: import("./workflow-host/controller.js").WorkflowController
+    readonly controller: import("./workflow-host/lifecycle/controller.js").WorkflowController
     readonly auth: import("./workflow-host/auth-owner.js").WorkflowAuthOwner
     readonly authStatus: Pick<import("./app-service/auth-status-projection.js").AuthStatusProjection, "view">
     readonly supervisor: Pick<import("./app-service/runtime-supervisor-types.js").RuntimeSupervisor, "interruptSession">

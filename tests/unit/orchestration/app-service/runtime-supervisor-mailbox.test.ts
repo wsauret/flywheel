@@ -7,7 +7,7 @@ import { createRuntimeSupervisor } from "../../../../src/orchestration/app-servi
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"
 import { createChatRunnerLoader } from "../../../../src/orchestration/app-service/chat-runner-loader.js"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"

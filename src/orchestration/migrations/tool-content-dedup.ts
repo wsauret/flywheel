@@ -8,7 +8,7 @@ import { createToolContentTable, factRowsChanged } from "../../infra/sqlite-even
 import { extractToolContentFact } from "../../infra/tool-content-extraction.js"
 import { TOOL_CONTENT_INLINE_MAX_BYTES, type ToolContentRow } from "../../infra/tool-content.js"
 import { parseConversationTreeFact } from "../session/conversation/conversation-facts.js"
-import { extractTreeFactContent } from "../session/conversation/conversation-tree-content-extraction.js"
+import { extractTreeFactContent } from "../session/conversation/tree/conversation-tree-content-extraction.js"
 import { migrationRecorded, recordMigration, requirePlannedScope, tableExists } from "./engine.js"
 
 const BUSY_TIMEOUT_MS = 5000

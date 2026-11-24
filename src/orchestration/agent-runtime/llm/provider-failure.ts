@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { AuthStoreMutationError } from "../../../infra/auth/auth-store-mutations.js";
-import type { AuthStoreCondition } from "../../../infra/auth/auth-store.js";
+import { AuthStoreMutationError } from "../../../infra/auth/store/auth-store-mutations.js";
+import type { AuthStoreCondition } from "../../../infra/auth/store/auth-store.js";
 import { isAbortError } from "../../../infra/abort.js";
 import type { ProviderRecovery } from "../../../infra/llm/provider-error-copy.js";
 import { ChatGptAdapterApiError } from "./chatgpt-adapter-error.js";

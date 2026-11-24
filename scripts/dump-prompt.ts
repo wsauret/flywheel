@@ -8,7 +8,7 @@
  *
  *   Add --sizes to print a per-layer size table (chars + estimated tokens)
  *   instead of the raw prompt text, e.g.:
- *   bun run scripts/dump-prompt.ts worker src/cli/composition-probe.workflow.yaml fix --sizes
+ *   bun run scripts/dump-prompt.ts worker src/cli/startup/composition-probe.workflow.yaml fix --sizes
  *
  *
  * The request comes from the shared assembly (scripts/prompt-assembly.ts),
@@ -28,7 +28,7 @@ import type { SkillRegistryRevision } from "../src/workflows/skill-schema.js";
 import { assembleAgentPrompt } from "../src/workflows/context-bundle/prompt-assembly.js";
 import type { AttemptRow } from "../src/workflows/view/types.js";
 import { loadStandalonePersonaRegistry } from "../src/workflows/agents/registry.js";
-import { handoffToolSchemaFromOutput } from "../src/orchestration/workflow-host/handoff-tool-schema.js";
+import { handoffToolSchemaFromOutput } from "../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
 import { loadAgentInstructions } from "../src/orchestration/agent-runtime/project-instructions.js";
 import { buildSubagentTask, SUBAGENT_HANDOFF_SCHEMA } from "../src/orchestration/modules/subagents/execution/prompts.js";
 import type { SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
@@ -244,7 +244,7 @@ async function buildWorkerPrompt(workflowFile: string, definitionId: string): Pr
 let result: PromptResult;
 switch (mode) {
   case "subagent": result = await buildSubagentPrompt(args[1] ?? "implementer"); break;
-  case "worker": result = await buildWorkerPrompt(args[1] ?? join(repoRoot, "src", "cli", "composition-probe.workflow.yaml"), args[2] ?? "fix"); break;
+  case "worker": result = await buildWorkerPrompt(args[1] ?? join(repoRoot, "src", "cli", "startup", "composition-probe.workflow.yaml"), args[2] ?? "fix"); break;
   case "chat": result = await buildChatPrompt(); break;
   default: console.error(`Unknown mode: "${mode}". Use: subagent, worker, or chat`); process.exit(1);
 }

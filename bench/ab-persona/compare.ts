@@ -22,7 +22,7 @@ import {
   type CrossComparisonV2Store,
 } from "../../src/orchestration/modules/development/benchmark/comparison-v2-store.js";
 import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/admission.js";
-import { codedRolePreference } from "../../src/orchestration/config/role-model-defaults.js";
+import { codedRolePreference } from "../../src/orchestration/config/models/role-model-defaults.js";
 import { formatAccountingObservation } from "../../src/orchestration/modules/development/benchmark/report-accounting.js";
 
 /** The judge runs on the benchmark judge's coded OpenAI preference, whatever the role's order. */

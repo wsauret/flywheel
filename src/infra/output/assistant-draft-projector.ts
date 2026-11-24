@@ -3,7 +3,7 @@ import { isProgressUpdate } from "../llm/anthropic-narration.js"
 import { redactSecrets } from "../redact-secrets.js"
 import { assistantContentRuns, reasoningSummaryText } from "./assistant-content-runs.js"
 import type { OutputProjectionEvent, SettledAssistantContent } from "./output-projection-events.js"
-import type { OutputProjector } from "./output-projector.js"
+import type { OutputProjector } from "./projector/output-projector.js"
 
 /** Reconciles the streamed drafts of one response with its recorded
  *  message. A draft's text is the text its row holds in the projector; this

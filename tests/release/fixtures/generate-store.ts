@@ -30,7 +30,7 @@ import type { ConversationMessage } from "../../../src/orchestration/agent-runti
 import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-fact-mapper.js"
 import { parseConversationTreeFact } from "../../../src/orchestration/session/conversation/conversation-facts.js"
-import { createConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { refreshSkillLoadStatsSnapshot } from "../../../src/orchestration/modules/learning/skills/skill-load-stats.js"
 import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/session-summary-index.js"
 import { createSessionFactWriter, prepareSessionFactAppend, type SessionFact } from "../../../src/orchestration/session/session-fact-writer.js"

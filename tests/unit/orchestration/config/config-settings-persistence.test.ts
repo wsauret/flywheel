@@ -8,7 +8,7 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
 import { ConfigWriteError, migrateLegacyModelSpellings, migrateModelAssignments, patchProfileBoolean, patchProfileProviderSetting, seedConfigDefaults, setAuthProjectProfile, updateDefinedSetting } from "../../../../src/orchestration/config/writer.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
-import { MIN_PROACTIVE_COMPACTION_THRESHOLD, profileBooleanSettingDefinition } from "../../../../src/orchestration/config/setting-definitions.js";
+import { MIN_PROACTIVE_COMPACTION_THRESHOLD, profileBooleanSettingDefinition } from "../../../../src/orchestration/config/schema/setting-definitions.js";
 
 async function withConfig(source: string, run: (path: string, dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "flywheel-settings-"));

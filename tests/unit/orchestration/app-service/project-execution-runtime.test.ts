@@ -14,7 +14,7 @@ import type { RuntimeChatKernel } from "../../../../src/orchestration/app-servic
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import { createChatRunnerLoader } from "../../../../src/orchestration/app-service/chat-runner-loader.js"
 import { createContinuationLanes } from "../../../../src/orchestration/session/planned-session-continuation.js"
-import { durableBranchHasUserMessage } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { durableBranchHasUserMessage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { mockRunner, quietSupervisorCollaborators, testSessionAuthAdmission } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"

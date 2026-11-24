@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { MAX_STREAMING_TOOL_INPUT_BYTES, TopLevelJsonStringDecoder } from "../../../../src/infra/output/partial-json.js";
-import { StreamingToolTextStore } from "../../../../src/infra/output/streaming-tool-text.js";
+import { MAX_STREAMING_TOOL_INPUT_BYTES, TopLevelJsonStringDecoder } from "../../../../src/infra/output/streaming/partial-json.js";
+import { StreamingToolTextStore } from "../../../../src/infra/output/streaming/streaming-tool-text.js";
 
 describe("TopLevelJsonStringDecoder", () => {
   test("exposes completed declared booleans and whole-object completion", () => {

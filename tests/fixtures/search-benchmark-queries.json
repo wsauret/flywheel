@@ -14,7 +14,7 @@
     { "query": "createDebouncedWriter", "path": "src", "glob": "*.ts", "targetFile": "src/infra/debounced-writer.ts" },
     { "query": "raceAbort", "path": "src", "glob": "*.ts", "targetFile": "src/workflows/queue/abort.ts" },
     { "query": "getToolDisplay", "path": "src", "glob": "*.ts", "targetFile": "src/infra/tools/tool-display-registry.ts" },
-    { "query": "class OutputProjector", "path": "src", "glob": "*.ts", "targetFile": "src/infra/output/output-projector.ts" },
+    { "query": "class OutputProjector", "path": "src", "glob": "*.ts", "targetFile": "src/infra/output/projector/output-projector.ts" },
     { "query": "checkNumericRange", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/numeric-input.ts" },
     { "query": "generateFileMap", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/structural-map.ts" },
     { "query": "createSessionManager", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/session/manager.ts" },

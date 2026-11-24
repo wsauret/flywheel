@@ -6,7 +6,7 @@ import { WorkflowMembershipSchema } from "../../infra/session-workflow-membershi
 import { RoleSettingEntrySchema as RoleAssignmentEntrySchema, RoleSettingsSchema as RoleAssignmentsSchema } from "../../infra/role-settings.js"
 import { SessionLifecycleStateSchema } from "../session/types.js"
 import { PersistedAgentMessageSchema } from "../session/conversation/conversation-entry-schemas.js"
-import { persistedToConversationMessage } from "../session/conversation/conversation-tree-context.js"
+import { persistedToConversationMessage } from "../session/conversation/tree/conversation-tree-context.js"
 import { WorkflowSessionFactSchema } from "../../workflows/vm/session-facts.js"
 import { WorkflowCapabilityBoundarySchema } from "../../workflows/run-facts.js"
 import type { ChildSessionDeletionTarget } from "../session/child-session-deletion.js"

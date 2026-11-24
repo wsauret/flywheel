@@ -79,20 +79,6 @@ export function sessionChangeFolderLabel(row: Extract<SessionChangesRow, { kind:
   return `${sessionChangePathLabel(row.path, root)}/ (${row.files} file${row.files === 1 ? "" : "s"})`
 }
 
-/** Match a host's relative target against canonical list paths on either platform. */
-export function sessionChangeNamesPath(target: string, executionCwd: string, entryPath: string): boolean {
-  const normalize = (path: string): string => {
-    const segments: string[] = []
-    for (const segment of path.split(/[\\/]+/)) {
-      if (segment === "" || segment === ".") continue
-      if (segment === "..") segments.pop()
-      else segments.push(segment)
-    }
-    return segments.join("/")
-  }
-  return normalize(/^(?:[\\/]|[A-Za-z]:)/.test(target) ? target : `${executionCwd}/${target}`) === normalize(entryPath)
-}
-
 /** The one line shown under a header whose diff is not rendered. */
 export function sessionChangeDiffStatusLine(diff: ChangesDiffState | undefined): string {
   if (diff === undefined || diff.status === "loading") return "Loading..."

@@ -3,8 +3,8 @@ import type { QuestionEntry } from "../../../infra/output-blocks.js";
 import type { AskUserController, AskUserResult } from "../../runner/ask-user-controller.js";
 import type { AgentInputDecision } from "../../session/agent-input-facts.js";
 import type { AgentInputAnswers } from "../../../protocol/question-protocol-types.js";
-import type { ResolveWorkflowLaunchTarget } from "../../workflow-host/launch-origin.js";
-import { workflowLaunchDecision, workflowRefusalText } from "../../workflow-host/launch-origin.js";
+import type { ResolveWorkflowLaunchTarget } from "../../workflow-host/lifecycle/launch-origin.js";
+import { workflowLaunchDecision, workflowRefusalText } from "../../workflow-host/lifecycle/launch-origin.js";
 import { workflowSource } from "../../../infra/tools/workflow-call-source.js";
 import type { AdvertisedTool, RuntimeTool, ToolContext, ToolResult } from "./types.js";
 

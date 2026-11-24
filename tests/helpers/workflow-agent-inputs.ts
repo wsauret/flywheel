@@ -1,6 +1,6 @@
 import type { AsyncEventStateReadSurface } from "../../src/infra/event-store-types"
-import type { WorkflowInjectionQueue } from "../../src/orchestration/workflow-host/injection-queue"
-import { createWorkflowAgentInputs, type WorkflowAgentInputs } from "../../src/orchestration/workflow-host/agent-inputs"
+import type { WorkflowInjectionQueue } from "../../src/orchestration/workflow-host/execution/injection-queue"
+import { createWorkflowAgentInputs, type WorkflowAgentInputs } from "../../src/orchestration/workflow-host/execution/agent-inputs"
 
 /** The workflow's one consumer of accepted messages, as the workflow runner
  *  composes it, and the input queue of each step that opened its input, by

@@ -12,7 +12,7 @@ import { parseExperimentFact, type ExperimentFact } from "../../../src/orchestra
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/tool-registry.js";
 import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";
-import type { ModulePolicy } from "../../../src/orchestration/config/module-policy.js";
+import type { ModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
 import type { ModuleState } from "../../../src/orchestration/config/module-descriptor.js";
 import { capabilityAccessHolding } from "./agent-runtime/tools/_fixtures.js";
 import type { AuthContext } from "../../../src/infra/auth/auth-context.js";

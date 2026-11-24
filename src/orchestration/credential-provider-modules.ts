@@ -1,4 +1,4 @@
-import type { CredentialSlotClassifier } from "../infra/auth/auth-store-types.js"
+import type { CredentialSlotClassifier } from "../infra/auth/store/auth-store-types.js"
 import type { WebProviderDefinition } from "../infra/auth/web-providers.js"
 import { createAccessProviderSelection, type AccessProviderDefinition, type AccessProviderSelection } from "../infra/llm/access-provider.js"
 import { customProviderGeneration, customProviderIds } from "../infra/llm/custom-provider-registry.js"

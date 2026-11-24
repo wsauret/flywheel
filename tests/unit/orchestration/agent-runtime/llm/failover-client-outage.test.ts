@@ -6,7 +6,7 @@ import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/
 import { describeAgentFailure } from "../../../../../src/orchestration/agent-runtime/failure-message.js";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability.js";
-import { workerOutcome } from "../../../../../src/orchestration/workflow-host/worker-outcome.js";
+import { workerOutcome } from "../../../../../src/orchestration/workflow-host/attempt/worker-outcome.js";
 import { WorkerFailedError, classifyError } from "../../../../../src/workflows/context-bundle/error-classifier.js";
 import {
   chain,

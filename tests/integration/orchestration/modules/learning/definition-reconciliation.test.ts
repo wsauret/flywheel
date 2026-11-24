@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { watchDefinitionRoots, type DefinitionRootWatch } from "../../../../../src/orchestration/app-service/definition-root-watcher.js";
 import { reconcileDefinitionRoots } from "../../../../../src/orchestration/modules/learning/definition-reconciliation.js";
-import type { ModulePolicy } from "../../../../../src/orchestration/config/module-policy.js";
+import type { ModulePolicy } from "../../../../../src/orchestration/config/policy/module-policy.js";
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../../../src/workflows/definition-registry.js";
 import type { SkillRegistryRevision } from "../../../../../src/workflows/skill-schema.js";
 import type { SkillStoreRoot } from "../../../../../src/workflows/skills.js";

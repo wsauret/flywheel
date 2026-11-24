@@ -6,7 +6,7 @@ import { createWorkflowLiveProtocolProjection } from "../../../../../../src/orch
 import { createWorkflowRunWriter } from "../../../../../../src/orchestration/modules/workflows/run-facts.js"
 import { createStartedAgentStates, type StartedAgentStates } from "../../../../../../src/orchestration/workflow-host/started-agent-states.js"
 import type { StartedAgent } from "../../../../../../src/workflows/vm/host-commit-controller.js"
-import { tryOpenConversationTree } from "../../../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { workflowMembershipReader } from "../../../../../../src/orchestration/session/workflow-membership.js"
 import type { SessionEntry } from "../../../../../../src/orchestration/session-store/types.js"

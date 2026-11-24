@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { SubscriptionUsageReaderContext } from "../../../src/infra/llm/subscription-usage.js";
 import { createCopilotUsageReader } from "../../../src/orchestration/modules/provider-github-copilot/quota-meter.js";
 import { Redacted } from "effect";
-import type { StoredTokens } from "../../../src/infra/auth/openai-auth-types.js";
+import type { StoredTokens } from "../../../src/infra/auth/openai/openai-auth-types.js";
 import { createChatGPTResetConsumer, createChatGPTUsageReader as createRawChatGPTUsageReader } from "../../../src/orchestration/modules/provider-chatgpt/usage-reader.js";
 import { createDeepSeekUsageReader as createRawDeepSeekUsageReader } from "../../../src/orchestration/modules/provider-deepseek/usage-reader.js";
 import { createOpenCodeGoUsageReader as createRawOpenCodeGoUsageReader } from "../../../src/orchestration/modules/provider-opencode-go/usage-reader.js";

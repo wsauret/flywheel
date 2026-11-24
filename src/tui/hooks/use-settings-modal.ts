@@ -10,7 +10,7 @@ import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.
 import type { RuntimeAuthProfileDeletionPreview } from "../../protocol/auth-profile-selection-protocol-types.js"
 import type { GitAiAttributionStatus } from "../../protocol/git-ai-attribution-protocol-types.js"
 import type { SettingsOperations, SettingsStore } from "./create-settings-store.js"
-import { MIN_PROACTIVE_COMPACTION_THRESHOLD, presentedSettingRow, SIMPLE_SETTING_DEFINITIONS } from "../../orchestration/config/setting-definitions.js"
+import { MIN_PROACTIVE_COMPACTION_THRESHOLD, presentedSettingRow, SIMPLE_SETTING_DEFINITIONS } from "../../orchestration/config/schema/setting-definitions.js"
 import { renderSettingEntries, SETTING_SECTIONS, settingCatalogRow, settingGroupHead, type SettingRenderers, type SettingRowId } from "../../protocol/setting-catalog.js"
 import type { ModalContext } from "../components/modal-stack.js"
 import { createSettingsModalController } from "./settings-modal-controller.js"

@@ -2,7 +2,7 @@ import type { AuthContext, ProviderConnection } from "../../infra/auth/auth-cont
 import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../infra/llm/access-provider.js";
 import type { RequestAdmission } from "./llm/provider-availability-types.js";
 import type { ModelsClient } from "../../infra/llm/models.js";
-import { getSharedModelsClient } from "../config/llm-clients.js";
+import { getSharedModelsClient } from "../config/models/llm-clients.js";
 import { captureAccountConnection, createAdmittedClient, createClient, type AdmittedClientOptions, type CreateClientOptions, type EffectiveProviderConnection } from "./llm/client-factory.js";
 import { LiveAgent } from "./runner.js";
 import { planCapabilitiesOfRun, prepareRunRequest, type CapabilityPlanner, type RequestPreparer } from "./request-preparation.js";

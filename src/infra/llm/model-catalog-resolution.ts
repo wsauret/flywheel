@@ -6,7 +6,7 @@ import type { ModelInfo } from "./models.js";
 import { capContextWindow, enrichProviderModelInfo, providerModelInfo } from "./provider-model-info.js";
 import type { CatalogJsonValue, CatalogModelOffering, OfferingTransport } from "../catalog-model-offering.js";
 import { isCatalogJsonValue, normalizeCatalogMetadata, requireCatalogLimits, validateCanonicalRows, type CatalogCanonicalRow, type CatalogLimits, type NormalizedCatalog } from "../model-catalog-rows.js";
-import type { GroupedOffering, GroupedOfferingIndex } from "../auth/provider-model-preference-store.js";
+import type { GroupedOffering, GroupedOfferingIndex } from "../auth/provider-models/provider-model-preference-store.js";
 
 /** Maps every provider spelling in grouped catalog rows to its canonical model identity. A spelling that is itself a
  *  model never counts as a free route. */

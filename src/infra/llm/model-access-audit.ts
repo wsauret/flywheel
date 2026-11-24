@@ -1,5 +1,5 @@
 /** The access audit of one audited account: which models.dev rows wait for a probe, the probe pass, and the catalog that its results admit. */
-import { readSavedProviderModels, recordProviderModelAccess, writeProviderModelCandidates, type CatalogProfile, type SavedProviderModels } from "../auth/provider-model-catalog-store.js";
+import { readSavedProviderModels, recordProviderModelAccess, writeProviderModelCandidates, type CatalogProfile, type SavedProviderModels } from "../auth/provider-models/provider-model-catalog-store.js";
 import type { AccessProviderAccessOutcome, AccessProviderAccessProbeInput, AccessProviderCatalogFetchInput } from "./access-provider.js";
 import { enrichCatalogRows, resolveModelCatalog, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
 import type { CatalogCanonicalRow, CatalogLimits } from "../model-catalog-rows.js";

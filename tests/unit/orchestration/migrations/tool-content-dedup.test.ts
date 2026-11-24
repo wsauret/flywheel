@@ -11,7 +11,7 @@ import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../..
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { dedupToolContent } from "../../../../src/orchestration/migrations/tool-content-dedup"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection"
-import { readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/tool-result-meta"
+import { readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta"
 import {
   createToolExecutionProjection as createAsyncToolExecutionProjection,
   toolExecutionTimelineFromProjection,

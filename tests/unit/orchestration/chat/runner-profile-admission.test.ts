@@ -8,7 +8,7 @@ import { createSessionAuthAdmission } from "../../../../src/orchestration/sessio
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { createAgentRuntime } from "../../../../src/orchestration/agent-runtime/factory.js"
 import { describeAgentFailure } from "../../../../src/orchestration/agent-runtime/failure-message.js"
-import { providerModelEligibilityDecision } from "../../../../src/orchestration/config/provider-model-eligibility.js"
+import { providerModelEligibilityDecision } from "../../../../src/orchestration/config/models/provider-model-eligibility.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { fixtureDefinitions } from "../../../helpers/project-definitions.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"

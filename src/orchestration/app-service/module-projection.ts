@@ -9,11 +9,11 @@
  *  write leaves the runtime and every client exactly as they were. */
 
 import type { ConfigFileLocation } from "../config/config-file.js"
-import type { ModulePolicy } from "../config/module-policy.js"
+import type { ModulePolicy } from "../config/policy/module-policy.js"
 import type { RuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import { ConfigStaleWriteError, type ConfigWriteResult } from "../config/writer.js"
-import { applyModulePreset, updateModuleMember, updatePersistentProcessPermission, updateWorkflowsMode } from "../config/module-selection-writer.js"
-import { persistentProcessPolicy, type PersistentProcessPolicy } from "../config/persistent-process-policy.js"
+import { applyModulePreset, updateModuleMember, updatePersistentProcessPermission, updateWorkflowsMode } from "../config/policy/module-selection-writer.js"
+import { persistentProcessPolicy, type PersistentProcessPolicy } from "../config/policy/persistent-process-policy.js"
 import { composeRealmModuleSnapshot, moduleProtocolRows } from "../modules.js"
 import {
   capabilitiesCursor,

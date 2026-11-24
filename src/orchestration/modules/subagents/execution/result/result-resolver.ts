@@ -21,7 +21,7 @@ import type { SubagentToolCallRecord } from "./work-log.js";
 import { boundHandoff, boundText, type ResultBudget } from "./result-budget.js";
 import type { RunEnd } from "./run-end.js";
 import { describeOutputIssues } from "../../../../../workflows/output-contract/accept.js";
-import type { DeliveredHandoff } from "../../../../workflow-host/handoff-tool-schema.js";
+import type { DeliveredHandoff } from "../../../../workflow-host/attempt/handoff-tool-schema.js";
 
 interface CapturedHandoff {
   [key: string]: unknown;

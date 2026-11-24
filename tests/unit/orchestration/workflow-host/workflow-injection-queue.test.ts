@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/injection-queue";
+import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/execution/injection-queue";
 
 describe("WorkflowInjectionQueue", () => {
   test("admitted handoff blocks every queued and later input kind while preserving unread human input for settlement", async () => {

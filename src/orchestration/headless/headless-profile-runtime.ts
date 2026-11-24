@@ -15,7 +15,7 @@ import type { CaptureSubscriptionAdmission } from "../agent-runtime/model-runtim
 import { AuthProfileManager, type AuthProfileManagerOptions, type AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
 import { installedAccessProviderDefinitions, installedCredentialProviderIds } from "../credential-provider-modules.js"
-import { loadAuthStoreWithDiagnostics } from "../../infra/auth/auth-store.js"
+import { loadAuthStoreWithDiagnostics } from "../../infra/auth/store/auth-store.js"
 import { prepareWorkflowDeps, type PrepareWorkflowDepsInput, type WorkflowDeps } from "../workflow-host/deps.js"
 import type { CaptureRuntimeConfig } from "../agent-runtime/request-config.js"
 
@@ -24,7 +24,7 @@ import { normalizeAuthProfile } from "../../infra/auth/auth-profile-normalizatio
 import { credentialSlotClassifier } from "../auth/credential-slot-classifier.js"
 import { createHeadlessUsageAuthorityOwner } from "./headless-usage-authority.js"
 import { connectionEligibilitySources } from "./snapshot-eligibility.js"
-import { getSharedModelsClient } from "../config/llm-clients.js"
+import { getSharedModelsClient } from "../config/models/llm-clients.js"
 import { captureSubscriptionAdmission } from "../subscription-spend-consent/admission-capture.js"
 import { createSubscriptionSpendConsentCaptureCache } from "../subscription-spend-consent/capture-cache.js"
 import type { SubscriptionSpendConsentCapture } from "../subscription-spend-consent/subscription-spend-consent-service.js"

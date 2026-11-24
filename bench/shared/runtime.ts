@@ -8,15 +8,15 @@ import {
 import { captureRuntimeConfigRequest } from "../../src/orchestration/agent-runtime/request-config.js";
 import { createRuntimeConfigOwner } from "../../src/orchestration/config/runtime-config-owner.js";
 import { AuthProfileManager } from "../../src/orchestration/auth/auth-profile-manager.js";
-import { startModulePolicy } from "../../src/orchestration/config/module-policy.js";
+import { startModulePolicy } from "../../src/orchestration/config/policy/module-policy.js";
 import { composeRealmModuleSnapshot, type ModuleId } from "../../src/orchestration/modules.js";
 import { installedAccessProviderIds } from "../../src/orchestration/credential-provider-modules.js";
 import { createAgentJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/judge.js";
 import { prepareWorkflowDeps, type WorkflowDeps } from "../../src/orchestration/workflow-host/deps.js";
-import { createCliLauncher } from "../../src/cli/runtime-launch.js";
+import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";
 import { createInstalledDefinitionRegistry } from "../../src/orchestration/definition-catalog.js";
 import { createHeadlessProfileRuntime, resolveHeadlessAuthProfile } from "../../src/orchestration/headless/headless-profile-runtime.js";
-import { getSharedModelsClient } from "../../src/orchestration/config/llm-clients.js";
+import { getSharedModelsClient } from "../../src/orchestration/config/models/llm-clients.js";
 import { createHeadlessUsageAuthorityOwner } from "../../src/orchestration/headless/headless-usage-authority.js";
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution-owner.js";
 import {

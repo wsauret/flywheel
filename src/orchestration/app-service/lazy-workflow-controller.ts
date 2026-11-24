@@ -1,4 +1,4 @@
-import type { WorkflowController } from "../workflow-host/controller.js"
+import type { WorkflowController } from "../workflow-host/lifecycle/controller.js"
 
 interface LazyWorkflowControllerDeps {
   readonly create: () => Promise<WorkflowController>

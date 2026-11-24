@@ -10,14 +10,14 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js"
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js"
 import { hydrateDerivedOutputGroupChildren, paginateOutputGroupChildren } from "../../../../src/orchestration/app-service/transcript-queries.js"
 import {
   createFilteredSubagentStream,
   createSubagentStats,
 } from "../../../../src/orchestration/modules/subagents/execution/result/stream-filter.js"
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types.js"
-import { createToolResultDisplayMetaCursorReader } from "../../../../src/orchestration/session/conversation/tool-result-meta.js"
+import { createToolResultDisplayMetaCursorReader } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js"
 

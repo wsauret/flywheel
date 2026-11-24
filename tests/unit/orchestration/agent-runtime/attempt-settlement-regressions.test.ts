@@ -5,7 +5,7 @@ import { ANTHROPIC_CACHE_RATES } from "../../../../src/orchestration/agent-runti
 import type { ModelCost } from "../../../../src/infra/llm/models.js";
 import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/llm/usage-entry.js";
 import { AssistantDraftProjector } from "../../../../src/infra/output/assistant-draft-projector.js";
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
 import { createAssistantAttempt, type AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/assistant-turn-attempt.js";
 import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream.js";
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js";

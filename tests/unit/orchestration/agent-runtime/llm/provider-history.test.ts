@@ -12,7 +12,7 @@ import { AGENT_APPENDIX, AGENT_IDENTITY, conversationTierEntry } from "../../../
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
-import { createConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
+import { createConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 import { Redacted } from "effect";

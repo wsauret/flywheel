@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
 import { Redacted } from "effect";
 import { isRecord } from "../../../infra/record.js";
-import type { StoredTokens } from "../../../infra/auth/openai-auth-types.js";
+import type { StoredTokens } from "../../../infra/auth/openai/openai-auth-types.js";
 import { XAI_OAUTH_CLIENT_ID, XAI_TOKEN_URL } from "./auth-types.js";
 import { oauthExpiryFromLifetimeSeconds } from "../../../infra/auth/oauth-expiry.js";
 

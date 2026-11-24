@@ -31,7 +31,7 @@ import { testCapabilityModules, testRuntimeConfigCapture } from "../helpers/requ
 import { authProviders } from "../helpers/auth-context.js"
 import type { ConversationMessage } from "../../src/orchestration/agent-runtime/llm/types.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../src/infra/event-store-types.js"
-import { tryOpenConversationTree } from "../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { unusedChildSessionControl } from "../helpers/child-session-control.js"
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js"
 import { planEveryCapability } from "../helpers/attempt-brief.js"

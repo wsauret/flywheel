@@ -1,7 +1,7 @@
 import { Redacted } from "effect";
 import { oauthCredentialDto, type CapturedSubscriptionCredential, type RuntimeOAuthCredential } from "../../../infra/auth/auth-context.js";
-import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutations.js";
-import type { Credential } from "../../../infra/auth/auth-store-types.js";
+import { replaceCredentialInstance } from "../../../infra/auth/store/auth-store-mutations.js";
+import type { Credential } from "../../../infra/auth/store/auth-store-types.js";
 import type { AccessProviderCatalogFetchInput, AccessProviderCatalogFetchResult } from "../../../infra/llm/access-provider.js";
 import { classifyFetchFailure, fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";

@@ -11,7 +11,7 @@ import { executePreparedTool, prepareToolCall } from "../../../../../src/orchest
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { RuntimeTool, ToolDispatchContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "./_fixtures.js";
-import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
+import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
 import { compileOutput } from "../../../../../src/workflows/output-contract/compile.js";
 import { decodeOutputObject, type OutputObject } from "../../../../../src/workflows/output-contract/grammar.js";
 import implementationPlanContract from "../../../../../src/workflows/workflows/contracts/implementation-plan.json" with { type: "json" };

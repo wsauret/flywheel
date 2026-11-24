@@ -1,5 +1,5 @@
 import { detectModelFamily } from "../../infra/llm/model-family.js"
-import { slotDescription, slotLabel } from "../../orchestration/config/role-selection.js"
+import { slotDescription, slotLabel } from "../../orchestration/config/models/role-selection.js"
 import type { ModelAssignmentItem, ModelModalState } from "./model-modal-types.js"
 import { MODAL_BACK_HINT } from "../components/modal-copy.js"
 import { modalDisclosureAction, modalDisclosureHelp } from "../components/modal-disclosure.js"

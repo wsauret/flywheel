@@ -8,7 +8,7 @@ import type { OwnedProcess, OwnedProcessExit } from "../../../../../../src/infra
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js";
 import { acpQuestionForm } from "../../../../../../src/protocol/acp.js";
 import type { PendingQuestionView } from "../../../../../../src/protocol/question-protocol-types.js";
-import { workflowLaunchDecision } from "../../../../../../src/orchestration/workflow-host/launch-origin.js";
+import { workflowLaunchDecision } from "../../../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js";
 import type { RuntimeSessionModelPlanResult } from "../../../../../../src/protocol/model-assignment-protocol-types.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { executeHeadlessBenchmark } from "../../../../../../src/orchestration/modules/development/benchmark/headless-execution.js";

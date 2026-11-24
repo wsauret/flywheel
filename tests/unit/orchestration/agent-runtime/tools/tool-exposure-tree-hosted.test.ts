@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { HandoffToolSchema } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
+import type { HandoffToolSchema } from "../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
 import type { ConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testSkill } from "../../../../helpers/skill-fixtures.js";

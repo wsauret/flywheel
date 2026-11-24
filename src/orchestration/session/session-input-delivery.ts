@@ -8,7 +8,7 @@ import type { WorkflowRunRecord } from "../workflow-host/run-record.js"
 import { childCallOf, readPendingTurnEnd, workflowInteractionRefusal, workflowStopRefusal } from "./chat-session-run-evidence.js"
 import { workflowRunReader, workflowRunOwner } from "../module-catalog.js"
 import { readChildSessionRunEvidence, type ChildSessionRunEvidence } from "./child-session-run-evidence.js"
-import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "./conversation/tree/conversation-tree-handle.js"
 import { heldBackgroundNotification, heldBackgroundNotificationPut, type HeldNotificationDestination } from "./conversation/queued-background-notifications.js"
 import { ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, addressedWorkflowMessagePayload, holdAddressedWorkflowMessage, readUnreadSessionMessages, retireAddressedWorkflowMessages, WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "./conversation/addressed-workflow-messages.js"
 import {

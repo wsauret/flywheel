@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import type { CapabilityAdmission, CapabilityRequest } from "../../../../../../src/orchestration/config/module-policy.js";
+import type { CapabilityAdmission, CapabilityRequest } from "../../../../../../src/orchestration/config/policy/module-policy.js";
 import { asAsyncEventReadSurface, type StoredFact } from "../../../../../../src/infra/event-store-types.js";
 import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { reconcileLearning } from "../../../../../../src/orchestration/modules/learning/review/reconciliation.js";
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js";
 import { countStateRequests, factsRead } from "../../../../../helpers/state-requests.js";
 import { chatEntriesFacts } from "../../../../../../src/orchestration/session/conversation/conversation-facts.js";
-import { createConversationMessageEntry } from "../../../../../../src/orchestration/session/conversation/conversation-tree.js";
+import { createConversationMessageEntry } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree.js";
 import type { ConversationEntry } from "../../../../../../src/orchestration/session/conversation/conversation-entry-types.js";
 
 const SESSION = "sess-1";

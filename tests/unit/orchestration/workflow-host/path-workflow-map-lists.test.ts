@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { describeDefinitionRefusal, loadPathWorkflow } from "../../../../src/orchestration/workflow-host/path-workflow.js"
+import { describeDefinitionRefusal, loadPathWorkflow } from "../../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import { canonicalWorkflowRecord } from "../../../../src/workflows/definition-records.js"
 import { definitionAssets } from "../../../../src/workflows/definition-assets.js"
 import { withLoadedContent } from "../../../../src/workflows/loader.js"

@@ -15,8 +15,8 @@ import { createAgentGeneration } from "../../../runner/host.js";
 import { verifySkillSemanticAudit } from "../skills/skill-semantic-audit.js";
 import type { ServingAttempt } from "../../../agent-runtime/llm/types.js";
 import { ModelUnavailable } from "../../../agent-runtime/llm/runtime-errors.js";
-import { resolveCapturedRole } from "../../../config/role-resolution.js";
-import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
+import { resolveCapturedRole } from "../../../config/models/role-resolution.js";
+import { resolveSessionRoles } from "../../../config/models/session-role-resolver.js";
 import { LEARNING_REVIEW_ROLE_ID, type RoleResolver, type ResolvedRole } from "../../../config/roles.js";
 
 const log = Log.create({ service: "learning-review-runner" });

@@ -3,13 +3,13 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
-import { listModelAssignments, resetRoleAssignmentsToDetectedDefaults } from "../../../../src/orchestration/config/model-assignments.js";
+import { listModelAssignments, resetRoleAssignmentsToDetectedDefaults } from "../../../../src/orchestration/config/models/model-assignments.js";
 import { fakeModelsClient, tierAvailableModels } from "../../../helpers/model-tier-fixtures.js";
 import { USER_DATA_ROOT } from "./_config-models-fixtures.js";
-import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js";
+import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "flywheel-model-assignment-reset-"));
   try {

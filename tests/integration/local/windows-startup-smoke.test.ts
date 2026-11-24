@@ -7,7 +7,7 @@ import type { StartupDirectories } from "../../../src/infra/directory-authoritie
 import { globalConfigFile } from "../../../src/infra/paths.js"
 import { isProcessAlive } from "../../../src/infra/process-liveness.js"
 import { seedConfigDefaults } from "../../../src/orchestration/config/writer.js"
-import { migrateCapabilityModules } from "../../../src/orchestration/config/module-selection-writer.js"
+import { migrateCapabilityModules } from "../../../src/orchestration/config/policy/module-selection-writer.js"
 import { readDefinitionOverrideBaselines } from "../../../src/workflows/definitions/override-baselines.js"
 
 import { withProjectRuntime as withRuntime } from "./_project-runtime.js"

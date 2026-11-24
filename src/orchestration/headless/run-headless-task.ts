@@ -20,7 +20,7 @@ import { createConversationTreeWriterController } from "../chat/tree-writer.js"
 import { createConversationRecall } from "../session/conversation-recall.js"
 import { ChatTurnMailbox } from "../chat/turn-mailbox.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
-import { getSharedModelsClient } from "../config/llm-clients.js"
+import { getSharedModelsClient } from "../config/models/llm-clients.js"
 import type { ModelsClient } from "../../infra/llm/models.js"
 import { createBackgroundExecutionOwner } from "../agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../agent-runtime/background-work.js"
@@ -38,7 +38,7 @@ import { createHeadlessDeadline, type HeadlessDeadlineExpired } from "./headless
 import { createHeadlessUsageAuthorityOwner, type HeadlessUsageAuthorityOwner } from "./headless-usage-authority.js"
 
 import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
-import { shellWriteGuardObserver } from "../config/shell-write-guard-policy.js"
+import { shellWriteGuardObserver } from "../config/policy/shell-write-guard-policy.js"
 import { createHeadlessProfileRuntime, resolveHeadlessAuth } from "./headless-profile-runtime.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { personaRoleIds } from "../../workflows/definition-registry.js"
@@ -249,7 +249,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
         const session = await manager.read(activeSessionId)
         if (!session || session.kind !== "chat") throw new Error(`headless task session ${activeSessionId} missing after creation`)
         if (!session.roleAssignments) throw new Error(`headless task session ${activeSessionId} has no role snapshot`)
-        const { createSessionRoleResolver } = await import("../config/session-role-resolver.js")
+        const { createSessionRoleResolver } = await import("../config/models/session-role-resolver.js")
         const resolveSessionRoles = createSessionRoleResolver({ reader: eventState, projectRoot, sessionId: activeSessionId, userDataRoot, capture: wfDeps.captureProviderConnection, requiredRoleIds: effectivePersonaRoleIds })
         const conversationId = session.conversationId
         const sessionEventWriter = createSessionFactWriter({

@@ -51,7 +51,7 @@ import { createRuntimeRequestAudit, type RuntimeConversation } from "./runtime-c
 import { withTurnRequestScope } from "./turn-request-model-client.js";
 import { modelRequestRoute } from "./active-request-context.js";
 import { assembleInitialRequestContextWithSessionNotes, createRuntimeSessionNotes, importLegacyRuntimeSessionNotes } from "./runtime-session-notes.js";
-import { resolveCapturedRole } from "../config/role-resolution.js";
+import { resolveCapturedRole } from "../config/models/role-resolution.js";
 import { ModelUnavailable } from "./llm/runtime-errors.js";
 import { AllCandidatesExhaustedError } from "./llm/errors.js";
 import { SAFE_RECHECK_MS } from "./llm/provider-availability.js";

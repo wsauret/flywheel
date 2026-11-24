@@ -6,7 +6,7 @@ import {
   mutateLockedJsonStore,
   readLockedJsonStore,
   type LockedJsonStoreOptions,
-} from "../../../../infra/auth/locked-json-store.js";
+} from "../../../../infra/auth/store/locked-json-store.js";
 import { accountSecretFile } from "../../../../infra/paths.js";
 
 const DiskTokensSchema = Schema.Struct({

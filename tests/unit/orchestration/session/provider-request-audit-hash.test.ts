@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { hashAgentPrompt, hashToolSurface } from "../../../../src/orchestration/session/provider-request-audit-hash"
-import { createConversationMessageEntries } from "../../../../src/orchestration/session/conversation/conversation-tree"
-import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context"
+import { createConversationMessageEntries } from "../../../../src/orchestration/session/conversation/tree/conversation-tree"
+import { buildSessionContext } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context"
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types"
 
 function tool(input_schema: { [key: string]: unknown }) {

@@ -1,5 +1,5 @@
 import { ToolActionSchema } from "../../src/infra/workflow-types.js";
-import type { LaunchingSessionAuthority } from "../../src/orchestration/workflow-host/path-workflow.js";
+import type { LaunchingSessionAuthority } from "../../src/orchestration/workflow-host/lifecycle/path-workflow.js";
 
 /** The authority of a launching session that planned every tool and may
  *  dispatch every listed persona. A test that does not judge authority

@@ -1,5 +1,5 @@
 import type { ConversationTreeWriterController } from "../chat/tree-writer.js"
-import type { WorkflowInjectionQueue } from "../workflow-host/injection-queue.js"
+import type { WorkflowInjectionQueue } from "../workflow-host/execution/injection-queue.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
 
 /** Holds a Chat completion before mailbox admission and acknowledges only its

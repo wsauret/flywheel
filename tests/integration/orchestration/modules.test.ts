@@ -39,9 +39,9 @@ import { createDefinitionAvailability } from "../../../src/orchestration/app-ser
 import { watchDefinitionRoots } from "../../../src/orchestration/app-service/definition-root-watcher.js";
 import type { RuntimeUiPatchInput } from "../../../src/protocol/runtime-ui-protocol-types.js";
 import type { RuntimeModulesView } from "../../../src/protocol/module-protocol-types.js";
-import { startModulePolicy } from "../../../src/orchestration/config/module-policy.js";
+import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
 import { decodeModuleState } from "../../../src/orchestration/config/module-descriptor.js";
-import { admitWorkflowOperation } from "../../../src/orchestration/workflow-host/workflow-admission.js";
+import { admitWorkflowOperation } from "../../../src/orchestration/workflow-host/lifecycle/workflow-admission.js";
 import { loadWorkflowFile } from "../../../src/workflows/workflow-file.js";
 import { moduleRequirementsForContribution } from "../../../src/orchestration/module-requirements.js";
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
@@ -542,7 +542,7 @@ describe("one runtime's optional capability surfaces", () => {
     const script = join(harness.skillRoot, "..", "capability-worker.ts");
     writeFileSync(script, `
 import { existsSync } from "node:fs";
-import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/module-selection-writer.js")).href)};
+import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/policy/module-selection-writer.js")).href)};
 
 const feature = process.argv[2];
 while (!existsSync(${JSON.stringify(barrier)})) await Bun.sleep(1);
@@ -585,7 +585,7 @@ if (!result.ok) {
     writeFileSync(script, `
 import { existsSync } from "node:fs";
 import { ConfigStaleWriteError } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/writer.js")).href)};
-import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/module-selection-writer.js")).href)};
+import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/policy/module-selection-writer.js")).href)};
 
 while (!existsSync(${JSON.stringify(barrier)})) await Bun.sleep(1);
 const result = await updateModuleMember("learning", true, false, { configPath: ${JSON.stringify(harness.configPath)} });

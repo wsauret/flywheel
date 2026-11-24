@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { createReplacementOwner, type ReplacementState, type ReplacementTrigger } from "../../../../src/orchestration/app-service/replacement-owner.js"
+import { createReplacementOwner, type ReplacementTrigger } from "../../../../src/orchestration/app-service/replacement-owner.js"
 import { createMutationAdmission } from "../../../../src/orchestration/app-service/mutation-admission.js"
-import { createReplacementReport, type ReplacementBlocker } from "../../../../src/orchestration/app-service/replacement-blockers.js"
+import { createReplacementReport, type ReplacementBlocker, type ReplacementState } from "../../../../src/orchestration/app-service/replacement-blockers.js"
 
 const A: ReplacementBlocker = { projectRoot: "/a", projectLabel: "a", reason: "recovery" }
 const B: ReplacementBlocker = { projectRoot: "/b", projectLabel: "b", reason: "call" }

@@ -284,7 +284,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/workflow-host/path-workflow.ts",
+    file: "src/orchestration/workflow-host/lifecycle/path-workflow.ts",
     what: "workflow files saved from launch content",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },

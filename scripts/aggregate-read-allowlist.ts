@@ -22,7 +22,7 @@ function migration(file: string, scope: string, rule: AggregateReadRule = FULL):
 
 export const AGGREGATE_READ_ALLOWLIST: readonly AggregateReadAllowance[] = [
   // Person commands and CLI invocations.
-  { file: "src/cli/event-search.ts", scope: "reconstructPromptForRequest", rule: FULL, reason: "one `flywheel events` CLI invocation reconstructs one request's prompt" },
+  { file: "src/cli/events/event-search.ts", scope: "reconstructPromptForRequest", rule: FULL, reason: "one `flywheel events` CLI invocation reconstructs one request's prompt" },
   { file: "src/orchestration/modules/development/cli/cache-report.ts", scope: "run", rule: FULL, reason: "one development `cache-report` CLI invocation" },
   { file: "src/orchestration/modules/development/cli/efficiency.ts", scope: "run", rule: FULL, reason: "one development `efficiency` CLI invocation" },
   { file: "src/orchestration/modules/workflows/cli/verify.ts", scope: "readWorkflowRunFacts", rule: FULL, reason: "one `flywheel workflows verify` CLI invocation" },
@@ -31,13 +31,13 @@ export const AGGREGATE_READ_ALLOWLIST: readonly AggregateReadAllowance[] = [
   { file: "src/orchestration/modules/learning/skills/skill-load-stats.ts", scope: "collectSkillLoadRecords", rule: FULL, reason: "one `flywheel skills why` CLI invocation" },
   { file: "src/orchestration/modules/learning/skills/skill-load-stats.ts", scope: "collectSkillWriteRecords", rule: FULL, reason: "one `flywheel skills why` CLI invocation" },
   { file: "src/orchestration/modules/papercuts/disposition-writer.ts", scope: "dispose", rule: FULL, reason: "one papercut_dispose tool call" },
-  { file: "src/orchestration/session/conversation/tool-result-meta.ts", scope: "readToolResultDisplayMeta", rule: FULL, reason: "scripts/regenerate-output-seam-corpus.ts:407 decorationFailureOutcomes reads one corpus case per regeneration; no production caller" },
-  { file: "src/orchestration/workflow-host/controller.ts", scope: "terminalControl", rule: FULL, reason: "controller.ts:295,463 checks control per explicit Resume or send command; a send to a stopped host also checks again through Resume" },
+  { file: "src/orchestration/session/conversation/transcript/tool-result-meta.ts", scope: "readToolResultDisplayMeta", rule: FULL, reason: "scripts/regenerate-output-seam-corpus.ts:407 decorationFailureOutcomes reads one corpus case per regeneration; no production caller" },
+  { file: "src/orchestration/workflow-host/lifecycle/controller.ts", scope: "terminalControl", rule: FULL, reason: "controller.ts:295,463 checks control per explicit Resume or send command; a send to a stopped host also checks again through Resume" },
   { file: "src/orchestration/session/workflow-publication.ts", scope: "adopt", rule: LOOP, reason: "one session.adopt-workflow command, once per old and new parent and per linked member" },
   { file: "src/orchestration/session/agent-input-decision.ts", scope: "voidUnclaimedDecisions", rule: LOOP, reason: "once when a person message supersedes a paused turn, per unclaimed decision" },
 
   // Startup, recovery, and replacement.
-  { file: "src/orchestration/session/conversation/tool-result-meta.ts", scope: "replay", rule: FULL, reason: "seeds a session's tool sources once, the first time a transcript names it; later replays advance the shared cursor" },
+  { file: "src/orchestration/session/conversation/transcript/tool-result-meta.ts", scope: "replay", rule: FULL, reason: "seeds a session's tool sources once, the first time a transcript names it; later replays advance the shared cursor" },
   { file: "src/orchestration/session/child-session-reconciliation.ts", scope: "prepareLifecycleAppends", rule: LOOP, reason: "one sequence probe per child whose newest run this sweep settles and whose parent call or notification still needs a write: publishSubagentCompletions returns before it for a group with nothing to write, so a sweep that delivers nothing probes no child. The lifecycle append guard needs the child's whole aggregate sequence, which the type-filtered run owner does not see" },
   { file: "src/workflows/view/view-store.ts", scope: "readWorkflowStatees", rule: LOOP, reason: "seeds each workflow's queue status once, the first time a reader names it; later reads advance the shared cursor" },
   { file: "src/orchestration/workflow-host/recovery-commit.ts", scope: "assessRecoveryEvidence", rule: FULL, reason: "once per assessment identity of a degraded, paused workflow: the recovery fold keeps the identity until a fact other than a valid settings update reaches the aggregate (vm/recovery-fold.ts:213), and an executable run never reads it" },

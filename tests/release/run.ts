@@ -233,7 +233,7 @@ function medianMetrics(runs: readonly MetricValues[]): MetricValues {
 }
 
 /** Both variants bind an ephemeral hub so neither collides with the operator's
- *  own `flywheel serve` on 41000 (src/cli/serve.ts releaseHarnessRuntimeOptions).
+ *  own `flywheel serve` on 41000 (src/cli/account-service/serve.ts releaseHarnessRuntimeOptions).
  *  Every published baseline the gate can fetch honors this contract. Every
  *  scenario launches with this environment, so each process a scenario
  *  starts carries the release harness marker that the gate's sweeps match. */

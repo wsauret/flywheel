@@ -4,9 +4,9 @@ import { getToolDisplay } from "../../infra/tools/tool-display-registry.js"
 import { compactGroupChild, projectFrontendOutputBlocks } from "./frontend-output-blocks.js"
 import { frontendOutputBlockBytes } from "../../protocol/frontend-output-block-metrics.js"
 import { minOutputRangeRecords, projectRecordsWithinRangeBudget, trimOutputRangeFromTail } from "./output-range-budget.js"
-import { threadHistoryRangeIndices, type BranchHistoryRecord } from "../session/conversation/branch-history-pagination.js"
-import type { IndexedBlockReader } from "../session/conversation/branch-history-builder.js"
-import type { IndexedGroupChildren } from "../session/conversation/tool-result-meta.js"
+import { threadHistoryRangeIndices, type BranchHistoryRecord } from "../session/conversation/transcript/branch-history-pagination.js"
+import type { IndexedBlockReader } from "../session/conversation/transcript/branch-history-builder.js"
+import type { IndexedGroupChildren } from "../session/conversation/transcript/tool-result-meta.js"
 import type {
   HydratedOutputGroupChildren,
   HydratedOutputGroupChildrenBatch,

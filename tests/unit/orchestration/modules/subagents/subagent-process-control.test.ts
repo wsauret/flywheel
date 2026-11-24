@@ -7,7 +7,7 @@ import { createChildSessionControl } from "../../../../../src/orchestration/sess
 import { liveChildRun, registerLiveWorkflowControl } from "../../../../../src/orchestration/session/live-session-control.js"
 import { createContinuationLanes } from "../../../../../src/orchestration/session/planned-session-continuation.js"
 import { createSessionMessaging } from "../../../../../src/orchestration/session/session-messaging.js"
-import { workflowLaunchHost, type WorkflowLaunchHost } from "../../../../../src/orchestration/workflow-host/launch-operation-contract.js"
+import { workflowLaunchHost, type WorkflowLaunchHost } from "../../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract.js"
 import { interruptLiveChild } from "../../../../helpers/live-child-run.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { workflowParentBinding } from "../../../../helpers/workflow-parent.js"

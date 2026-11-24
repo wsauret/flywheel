@@ -7,7 +7,7 @@ import type { KernelToolDeps } from "../../../../../src/orchestration/agent-runt
 import { callerToolGrant, planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { testBaseTools, testCapabilityModules, testRuntimeConfigCapture, plannedRequest, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
-import type { HandoffToolSchema } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
+import type { HandoffToolSchema } from "../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { testSkill } from "../../../../helpers/skill-fixtures.js";

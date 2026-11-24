@@ -9,7 +9,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { contextEvent, recordRuntimeEvent } from "./_budget-store-fixtures"
 import { createSessionViewLoader, toSessionView } from "../../../../src/orchestration/session-store/view"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import type { SessionEntry } from "../../../../src/orchestration/session-store/types"
 import { createStoredSession } from "./_session-metadata-test-helpers"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store"

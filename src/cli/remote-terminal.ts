@@ -11,8 +11,8 @@ import type { ReleaseInstall } from "../protocol/client/runtime-fault-copy.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../protocol/runtime-liveness.js"
 import type { ReleaseInstallState } from "../tui/terminal-attach.js"
 import { promptFromReadline } from "./readline-prompt.js"
-import type { TerminalRuntime } from "./runtime-launch.js"
-import type { TerminalHandoff, TerminalSuccessor } from "./terminal-handoff.js"
+import type { TerminalRuntime } from "./account-service/runtime-launch.js"
+import type { TerminalHandoff, TerminalSuccessor } from "./account-service/terminal-handoff.js"
 
 /** The terminal's reach to a project on another machine (PI-REMOTE-016),
  *  loaded only by a launch that offers or opens one, so a local launch reads
@@ -56,7 +56,7 @@ async function tracedPrompt(question: string): Promise<string> {
  *  and answers the program the terminal becomes to run it, or why no install
  *  reached it. */
 export async function installTerminalRelease(account: AccountDirectories, launcher: LauncherContext, version: string): Promise<TerminalSuccessor | string> {
-  const [{ installRelease, releaseInstallRefusal }, { runtimeCommand }] = await Promise.all([import("./update.js"), import("../orchestration/app-service/runtime-executable.js")])
+  const [{ installRelease, releaseInstallRefusal }, { runtimeCommand }] = await Promise.all([import("./commands/update.js"), import("../orchestration/app-service/runtime-executable.js")])
   const result = await installRelease(account, launcher, version)
   if (result.kind !== "installed") return releaseInstallRefusal(result, version)
   return { command: runtimeCommand(account), env: {} }

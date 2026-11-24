@@ -20,8 +20,8 @@ import { createOutputSession, type OutputSession } from "../../../../src/orchest
 import { recoverFinalizedToolResultCheckpoints } from "../../../../src/orchestration/session/finalized-tool-result-checkpoint.js";
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js";
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
-import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer.js";
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
+import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer.js";
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { branchBlocks } from "../../../helpers/branch-blocks.js";
 import {
   createEagerToolVisibilityProvider,

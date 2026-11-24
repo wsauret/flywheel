@@ -7,8 +7,8 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
-import { forkConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-fork"
-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage"
+import { forkConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-fork"
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage"
 
 const SOURCE_ID = "source-conversation"
 const DESTINATION_ID = "destination-conversation"

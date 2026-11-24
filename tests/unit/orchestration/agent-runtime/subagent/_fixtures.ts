@@ -8,13 +8,13 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/a
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
 import type { AgentFailureReason, AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
-import { resolveSessionRoles } from "../../../../../src/orchestration/config/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../../../src/orchestration/config/models/session-role-resolver.js";
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
 import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/child-slot-registry.js";
 import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { capabilityAccessFor, type CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest } from "../../../../../src/orchestration/config/module-policy.js";
+import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest } from "../../../../../src/orchestration/config/policy/module-policy.js";
 import type { ModuleId } from "../../../../../src/orchestration/modules.js";
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
