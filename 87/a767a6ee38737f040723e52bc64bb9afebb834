@@ -1,0 +1,14 @@
+tests/unit/infra/auth/auth-lock.test.ts
+  h_4b47e9e4a8b456 11,58-92,139-142,148-151,188-189,192-193,204-205,207-211,214,229-244,262-265,267,427-430,434,441-443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "87a767a6ee38737f040723e52bc64bb9afebb834",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
