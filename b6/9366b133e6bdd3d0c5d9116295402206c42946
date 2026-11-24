@@ -1,0 +1,14 @@
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b69366b133e6bdd3d0c5d9116295402206c42946",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
