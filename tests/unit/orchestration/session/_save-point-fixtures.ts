@@ -2,8 +2,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
 import { createSessionManager } from "../../../../src/orchestration/session/manager";

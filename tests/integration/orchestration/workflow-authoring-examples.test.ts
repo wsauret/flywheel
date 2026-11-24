@@ -13,7 +13,7 @@ import type { WorkflowInputValue } from "../../../src/workflows/output-contract/
 import type { AccumulatedContext } from "../../../src/workflows/context-bundle/context.js"
 import { createAttemptExecutor, type AttemptExecutorDeps } from "../../../src/workflows/vm/host/attempt-runner.js"
 import { runDefinition } from "../../../src/orchestration/workflow-host/lifecycle/definition-source.js"
-import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../src/infra/store/event-store-types.js"
 import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-resolution.js"
 import { authoredGuardrailLimits, compileWorkflowControl } from "../../../src/workflows/vm/compile/compile.js"
 import { SAMPLED_LAUNCH, sampleItems } from "../../../src/workflows/vm/graph/list-expansion.js"

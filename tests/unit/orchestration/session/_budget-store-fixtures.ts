@@ -2,18 +2,18 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js";
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { createSessionBudgetStore } from "../../../../src/orchestration/session/runtime-facts/budget-store.js";
 import { readBudgetSummaryFromReader } from "../../../../src/orchestration/session/metadata/catalog/budget-summary.js";
 import type { BudgetLimits } from "../../../../src/workflows/run/budget";
 import type { EmitFn } from "../../../../src/infra/event-bus";
-import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
+import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
 import type { SessionBudgetStore } from "../../../../src/orchestration/session/runtime-facts/budget-store-types.js";
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js";
-import type { StoredFact } from "../../../../src/infra/event-store-types.js";
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-facts/runtime-fact-mapper.js";
+import type { StoredFact } from "../../../../src/infra/store/event-store-types.js";
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/runtime-facts/session-runtime-event-types.js";
 
 /** No-op emitter for tests that exercise budget APIs but ignore emissions. */

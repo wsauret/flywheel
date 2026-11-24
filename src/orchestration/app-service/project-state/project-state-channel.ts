@@ -1,8 +1,8 @@
-import type { InternalProcessEndpoint } from "../../../infra/internal-process-channel.js"
+import type { InternalProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { ReattachableProcessEndpoint } from "../../../infra/reattachable-process-endpoint.js"
-import type { StoredFact } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
+import type { ReattachableProcessEndpoint } from "../../../infra/process/channels/reattachable-process-endpoint.js"
+import type { StoredFact } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { SessionMetadataChange } from "../../session/manager.js"
 import { createProjectStateClient, type ProjectStateClient, type ProjectStateClientTransport } from "./project-state-client.js"
 import {

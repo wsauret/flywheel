@@ -1,5 +1,5 @@
-import type { StoredFact } from "../../../../infra/event-store-types.js"
-import { Log } from "../../../../infra/log.js"
+import type { StoredFact } from "../../../../infra/store/event-store-types.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
 import { changesCursor } from "../../../../protocol/session-changes-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"

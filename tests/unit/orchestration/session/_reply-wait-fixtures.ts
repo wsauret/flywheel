@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
 import type { ChatInput } from "../../../../src/infra/chat-input"
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
 import { createMessageSessionTool } from "../../../../src/orchestration/agent-runtime/tools/sessions/message-session"

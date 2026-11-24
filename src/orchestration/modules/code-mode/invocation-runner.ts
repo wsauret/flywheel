@@ -1,7 +1,7 @@
 import { Cause, Effect, Exit, Schema } from "effect"
 import type { Result } from "../../../infra/code-mode/codemode.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { probeLoopUnit } from "../../../infra/event-loop-lag.js"
+import { probeLoopUnit } from "../../../infra/diagnostics/event-loop-lag.js"
 import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js"
 import { redactSecretEntries, redactSecrets } from "../../../infra/redact-secrets.js"
 import type { NestedToolDispatchBatch } from "../../agent-runtime/tools/dispatch/nested-tool-dispatch.js"

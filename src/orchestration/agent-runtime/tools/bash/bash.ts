@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { MutationDiffSchema } from "../../../../infra/mutation-diff.js";
 import { MutationEvidenceSchema } from "../../../../infra/mutation-evidence-schema.js";
 import { NotAppliedFilesSchema } from "../../../../infra/not-applied-files.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { processLoginShellPath } from "../../../../infra/login-shell-path.js";
 import { SCRATCH_MUTATIONS_DIR } from "../../../../infra/paths.js";
 import { interceptBashCommand, type BashPolicyOptions, type ResolvedShellCommands } from "./policy/bash-command-policy.js";

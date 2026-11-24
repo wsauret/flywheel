@@ -1,7 +1,7 @@
 import { unlink } from "node:fs/promises"
 
 import type { GateAnswer, GateQuery } from "../../../../infra/antigravity-gate-hook.js"
-import { connectInternalProcessChannel, listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../../infra/internal-process-channel.js"
+import { connectInternalProcessChannel, listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../../infra/process/channels/internal-process-channel.js"
 import { RouteUnavailableError } from "../../../agent-runtime/llm/errors.js"
 
 /** The one hold of the gate for one engine session: one admitted model step

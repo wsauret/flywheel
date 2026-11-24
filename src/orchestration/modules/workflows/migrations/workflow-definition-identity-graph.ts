@@ -3,7 +3,7 @@ import * as fs from "node:fs"
 import { Effect, Schema } from "effect"
 import type { ProjectDirectories } from "../../../../infra/directory-authorities.js"
 import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
-import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
+import { createSqliteEventInserter } from "../../../../infra/store/sqlite-event-store-core.js"
 import { isRecord } from "../../../../infra/record.js"
 import { hashDefinition } from "../../../../workflows/provenance/definition-hash.js"
 import {

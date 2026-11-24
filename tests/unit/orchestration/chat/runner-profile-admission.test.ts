@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { join } from "node:path"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"

@@ -1,4 +1,4 @@
-import { Log } from "../../src/infra/log.js";
+import { Log } from "../../src/infra/diagnostics/log.js";
 
 /** Runs `body` with the log at DEBUG, so the debug-tier diagnostic families
  *  reach a destination that discards them, then restores the default level. */

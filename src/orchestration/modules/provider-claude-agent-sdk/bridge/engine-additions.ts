@@ -1,4 +1,4 @@
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import type { BlockOrigins } from "../../../agent-runtime/llm/conversions/anthropic-messages.js";
 import type { TransportContextFrame } from "../../../agent-runtime/llm/types.js";
 import type { ProviderTransportAddition, ProviderTransportContext, ProviderTransportHiddenRequest } from "../../../session/runtime-facts/provider-request-audit-types.js";

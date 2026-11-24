@@ -1,6 +1,6 @@
 import { parentPort, workerData } from "node:worker_threads"
 import type { ProjectDirectories } from "../../../../src/infra/directory-authorities.js"
-import { LockRefusal } from "../../../../src/infra/ownership-file-lock.js"
+import { LockRefusal } from "../../../../src/infra/locks/ownership-file-lock.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 
 /** A second thread that prepares the same workspace, so a test can race two

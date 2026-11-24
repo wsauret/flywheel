@@ -1,4 +1,4 @@
-import { CorruptEventRowError, type EventStoreReadSurface, type StoredFact } from "../../../../infra/event-store-types.js"
+import { CorruptEventRowError, type EventStoreReadSurface, type StoredFact } from "../../../../infra/store/event-store-types.js"
 import { generateSessionId } from "../../../../infra/session-id.js"
 import { committedWorkflowEvent, workflowRootControl } from "../../../../workflows/control-facts/family.js"
 import { parseWorkflowSessionFact } from "../../../../workflows/vm/facts/session-facts.js"

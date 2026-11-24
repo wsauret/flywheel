@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
 import { createSessionToolSummaryReader } from "../../../modules.js"
 import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../../module-seams.js"
 import {
@@ -23,9 +23,16 @@ import { readSessionDurationFromReader } from "../../../session/runtime-facts/se
 import { assignSubagentCards, ownSubagentCard, type SubagentCardAssignment } from "../../../session/conversation/transcript/subagent-card-ownership.js"
 import { releaseConversationTreeProjection } from "../../../session/conversation/conversation-projection.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
-import { messageSessionLabel, messageSessionTypeLabel } from "../../../../protocol/client/message-sender.js"
+import { WORKFLOW_GLYPH } from "../../../../protocol/client/glyphs.js"
+import { messageSessionLabel } from "../../../../protocol/client/message-sender.js"
+
+/** Formats a proven session type for a message row. Workflow types carry the shared workflow marker. */
+function messageSessionTypeLabel(type: string, workflow = false): string {
+  const label = type.charAt(0).toUpperCase() + type.slice(1)
+  return workflow ? `${WORKFLOW_GLYPH} ${label}` : label
+}
 
 const MAX_ENTRIES = 8
 const IDLE_TTL_MS = 20 * 60 * 1000

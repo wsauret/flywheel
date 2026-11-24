@@ -1,11 +1,11 @@
 import { join } from "node:path";
 import { sharedAgentsDir } from "../../infra/paths.js";
 import type { ProjectDirectories } from "../../infra/directory-authorities.js";
-import { contentEvidence } from "../../infra/content-evidence.js";
+import { contentEvidence } from "../../infra/runtime-facts/content-evidence.js";
 import type { LearningScope } from "../../infra/learning-scope.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { parseFrontmatter } from "../../infra/frontmatter.js";
-import { Log } from "../../infra/log.js";
+import { parseFrontmatter } from "../../infra/yaml/frontmatter.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { requireQualifiedSkillId } from "../../infra/skill-id.js";
 import type { SkillDirectoryEntries, ResolvedStepRoot, SkillPackage } from "./skill-context.js";
 import {

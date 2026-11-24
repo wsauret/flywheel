@@ -9,12 +9,12 @@ import { selectRunDirectories, shouldSelectStartupInteractively } from "../../..
 import { createHeadlessOutputObserver } from "../../../../src/orchestration/headless/headless-output.js"
 import type { AccountRuntimeAttach } from "../../../../src/cli/account-service/runtime-attach.js"
 import type { StartupDirectories } from "../../../../src/infra/directory-authorities.js"
-import { writeLaunchState, type LaunchState } from "../../../../src/infra/launch-state.js"
+import { writeLaunchState, type LaunchState } from "../../../../src/infra/distribution/launch-state.js"
 import { LAUNCH_STATE_ENV, REMOTE_HANDOFF_ENV } from "../../../../src/cli/account-service/terminal-handoff.js"
 import { AccountHomeRefusal } from "../../../../src/infra/directory-authorities.js"
 import type { RemoteAttach, TerminalRemoteRequest } from "../../../../src/orchestration/terminal-remote.js"
-import { Log } from "../../../../src/infra/log.js"
-import { DebugLog } from "../../../../src/infra/debug-log.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
+import { DebugLog } from "../../../../src/infra/diagnostics/debug-log.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
 const DIRECTORIES: StartupDirectories = {

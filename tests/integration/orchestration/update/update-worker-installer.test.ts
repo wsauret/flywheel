@@ -15,7 +15,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, spyOn, test } from "
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { DebugLog, listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../../src/infra/debug-log.js";
+import { DebugLog, listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../../src/infra/diagnostics/debug-log.js";
 import { updateAuthorityDbFile, versionsDir } from "../../../../src/infra/paths.js";
 import type { GuardianControl, GuardianGeneration } from "../../../../src/infra/process-supervisor.js";
 import * as retention from "../../../../src/infra/update/build-retention.js";

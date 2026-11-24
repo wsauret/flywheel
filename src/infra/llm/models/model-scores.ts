@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { Schema } from "effect";
 import { writeFileAtomic } from "../../atomic-write.js";
 import type { JsonValue } from "../../auth/bounded-json.js";
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import { readBoundedModelsResponse, type ReasoningEffort } from "./models.js";
 import { benchmarkSlug, normalizeModelScores, parseScoreSnapshot, type ModelScoreSnapshot } from "./model-scores-document.js";
 

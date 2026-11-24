@@ -5,8 +5,8 @@ import { OutputToolProjector } from "../../../../src/infra/output/projector/outp
 import { StructuredOutputBuilder } from "../../../../src/infra/output/projector/structured-output-builder";
 import { blockIdentity } from "../../../../src/protocol/block-identity";
 import { applyOutputDelta, buildBlockIndex } from "../../../../src/protocol/client/transcript-delta";
-import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory";
-import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
+import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory";
+import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
 import type { AgentGroupBlock, AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks";
 import {
   makeAssistantEvent,

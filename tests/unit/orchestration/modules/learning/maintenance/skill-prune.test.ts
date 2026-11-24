@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, lstatSync, mkdirSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../../../src/infra/store/event-store-types.js";
 import { applySkillLifecycleTransitions } from "../../../../../../src/orchestration/modules/learning/maintenance/skill-prune.js";
 import { skillActivitySource } from "../../../../../../src/orchestration/modules/learning/skills/skill-load-stats.js";
 import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";

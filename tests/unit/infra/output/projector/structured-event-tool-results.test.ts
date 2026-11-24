@@ -9,7 +9,7 @@ import type { PlacedTool } from "../../../../../src/infra/output/projector/outpu
 import { StructuredOutputBuilder } from "../../../../../src/infra/output/projector/structured-output-builder.js";
 import { formatToolInputProblems } from "../../../../../src/orchestration/agent-runtime/tools/input/validate-input.js";
 import { decodeRuntimeUiPatch, encodeRuntimeUiPatch } from "../../../../helpers/runtime-ui-patch.js";
-import type { ToolOutcome } from "../../../../../src/infra/tool-outcome.js";
+import type { ToolOutcome } from "../../../../../src/infra/runtime-facts/tool-outcome.js";
 
 function textContent(text: string): LlmToolOutputPart[] {
   return [{ type: "text", text }];

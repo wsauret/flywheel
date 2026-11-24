@@ -10,7 +10,7 @@ import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 
 import { runOwnedCommand } from "../../../src/infra/owned-command.js"
-import { launchFailed } from "../../../src/infra/owned-subprocess.js"
+import { launchFailed } from "../../../src/infra/supervision/launch/owned-subprocess.js"
 import { createLauncherScope, type LauncherScope } from "../../../src/infra/process-supervisor.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { createRealProcessFixture, unguardedSpawnOwned } from "../../helpers/real-process-fixture.js"

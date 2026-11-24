@@ -5,8 +5,8 @@ import { emitTurnAssistant } from "../../../../../src/orchestration/agent-runtim
 import { OutputProjector } from "../../../../../src/infra/output/projector/output-projector.js";
 import { RuntimeEventProjector } from "../../../../../src/infra/output/runtime-event-projector.js";
 import { createTurnUsageTracker } from "../../../../../src/orchestration/agent-runtime/request/usage/turn-usage-tracker.js";
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../src/infra/runtime-fact-mapper.js";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../src/infra/runtime-facts/runtime-fact-mapper.js";
+import type { RuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-types.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js";
 import { branchBlocks } from "../../../../helpers/branch-blocks.js";

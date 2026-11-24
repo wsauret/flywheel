@@ -1,7 +1,7 @@
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { NotificationEpisodeInput } from "../../../../infra/notification-episode.js"
-import { coalesceRepeats } from "../../../../infra/repeat-coalescer.js"
+import { coalesceRepeats } from "../../../../infra/diagnostics/repeat-coalescer.js"
 
 const log = Log.create({ service: "notify" })
 const FAILURE_WINDOW_MS = 30_000

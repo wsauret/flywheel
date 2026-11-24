@@ -1,4 +1,4 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../infra/event-store-types.js";
+import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js";
 import { workflowAggregateId } from "./run-facts.js";
 
 /** Workflow budget limits. Flywheel checks them before each attempt starts

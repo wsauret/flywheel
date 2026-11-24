@@ -12,11 +12,11 @@
 
 import { dirname } from "node:path";
 import type { ProjectDirectories } from "../../../../infra/directory-authorities.js";
-import type { AsyncEventReadSurface } from "../../../../infra/event-store-types.js";
-import { createEventProjection, parseProjectionFact } from "../../../../infra/event-projection.js";
-import { heldProjection } from "../../../../infra/projection-registry.js";
+import type { AsyncEventReadSurface } from "../../../../infra/store/event-store-types.js";
+import { createEventProjection, parseProjectionFact } from "../../../../infra/projection/event-projection.js";
+import { heldProjection } from "../../../../infra/projection/projection-registry.js";
 import { requireContainedDirectory } from "../../../../infra/write-file-under.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { SkillRecommendationRecordedFact } from "../../../../workflows/skills/skill-facts.js";
 import { ownedSkillStoreDirs } from "../../../../workflows/skills/skills.js";
 import { escapeXml, formatRuntimeNotification } from "../../../agent-runtime/background-work/runtime-notifications.js";

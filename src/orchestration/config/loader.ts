@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { Result, Schema } from "effect";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { configurationReferenceFile } from "../../infra/paths.js";
 import { installedModules } from "../module-catalog.js";
 import { installedConfigSections } from "./schema/config-section.js";

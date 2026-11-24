@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite"
-import { createSqliteEventReadSurface } from "../../../infra/sqlite-event-read-surface.js"
-import { createSqliteEventInserter } from "../../../infra/sqlite-event-store-core.js"
+import { createSqliteEventReadSurface } from "../../../infra/store/sqlite-event-read-surface.js"
+import { createSqliteEventInserter } from "../../../infra/store/sqlite-event-store-core.js"
 import type { ReplayedSession } from "../metadata/schemas.js"
 import { orchestrationReplyWaitClosures, REPLY_WAIT_IN_FLIGHT_KIND, replyWaitSource } from "../conversation/reply-wait-cells.js"
 import { readConversationSnapshotSync } from "../conversation/conversation-projection.js"

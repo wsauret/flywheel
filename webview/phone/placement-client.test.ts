@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 
 import type { ClientCommand } from "../../src/protocol/client/host-contract.js"
 import { mountPerPlacement } from "./placement-client.js"
-import { decodeInputReloadCheckpoint } from "../src/client/input-reload-checkpoint.js"
+import { decodeInputReloadCheckpoint } from "../src/client/input/input-reload-checkpoint.js"
 import type { NotificationAddress } from "../../src/protocol/modules/remote/notification-address.js"
 
 test("input checkpoints belong to the selected runtime and placement, not the phone page or bundle", () => {

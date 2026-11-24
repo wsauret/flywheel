@@ -57,9 +57,9 @@ describe("runtime server imports", () => {
     // Detachment is an ownership decision. Only the owned-process backends and
     // the dedicated persistent-process boundary may request it.
     expect(detachedOwners.toSorted()).toEqual([
-      "src/infra/owned-subprocess-backend.ts",
-      "src/infra/persistent-subprocess.ts",
       "src/infra/process-supervisor.ts",
+      "src/infra/supervision/launch/owned-subprocess-backend.ts",
+      "src/infra/supervision/persistent/persistent-subprocess.ts",
     ])
   })
 })

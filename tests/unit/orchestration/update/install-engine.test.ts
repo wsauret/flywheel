@@ -10,8 +10,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { DebugLogRecordInput } from "../../../../src/infra/debug-log.js";
-import { Log } from "../../../../src/infra/log.js";
+import type { DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log.js";
+import { Log } from "../../../../src/infra/diagnostics/log.js";
 import type { OwnedCommandOptions, OwnedCommandResult } from "../../../../src/infra/owned-command.js";
 import { versionsDir } from "../../../../src/infra/paths.js";
 import { computeBuildId } from "../../../../src/infra/update/build-identity.js";

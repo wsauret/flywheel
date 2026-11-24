@@ -7,7 +7,7 @@ import { createStoredSession } from "./_session-metadata-test-helpers";
 import { cleanupTmpRoot, makeDeps, makeDepsWithStore, makeTmpDir, minimalSession, publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures";
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog";
 import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/metadata/catalog/session-metadata-store";
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types";
 
 afterEach(() => {
   cleanupTmpRoot();

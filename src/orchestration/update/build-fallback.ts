@@ -40,7 +40,7 @@
 
 import type { SourceSnapshotLocation } from "../../infra/cli-subprocess.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import type { BuildRef } from "../../infra/update/build-identity.js";
 import { ownBuild } from "../../infra/update/live-builds.js";
 import { provedBuild, recordBuildProved } from "../../infra/update/service-start-record.js";
@@ -124,8 +124,8 @@ function installedLane(userDataRoot: string, build: BuildRef): FallbackLane {
 function devLane(snapshot: SourceSnapshotLocation): FallbackLane {
   return {
     build: snapshot.digest,
-    prove: async () => (await import("../../infra/source-snapshot.js")).recordSnapshotProved(snapshot),
-    returnToProved: async (reason) => (await import("../../infra/source-snapshot.js")).refuseSourceSnapshot(snapshot, reason),
+    prove: async () => (await import("../../infra/distribution/source-snapshot.js")).recordSnapshotProved(snapshot),
+    returnToProved: async (reason) => (await import("../../infra/distribution/source-snapshot.js")).refuseSourceSnapshot(snapshot, reason),
   };
 }
 

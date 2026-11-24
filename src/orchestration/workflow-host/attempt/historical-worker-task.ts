@@ -1,4 +1,4 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
 import { isRecord } from "../../../infra/record.js"
 import { contextlessRecoveryRoot } from "../../../workflows/context-bundle/context-recovery.js"
 import { workflowAggregateId } from "../../../workflows/run/run-facts.js"

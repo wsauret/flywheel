@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs"
 
-import { launchPersistentSubprocess } from "../../src/infra/persistent-subprocess.js"
-import { unixProcessIdentity, windowsProcessIdentity } from "../../src/infra/process-container.js"
+import { launchPersistentSubprocess } from "../../src/infra/supervision/persistent/persistent-subprocess.js"
+import { unixProcessIdentity, windowsProcessIdentity } from "../../src/infra/process/container/process-container.js"
 
 const [mode, directory, owner] = process.argv.slice(2)
 if (!mode || !directory || !owner) throw new Error("persistent-process-target requires a mode, a fixture directory, and the owner's pid")

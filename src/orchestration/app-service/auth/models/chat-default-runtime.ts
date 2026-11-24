@@ -1,4 +1,4 @@
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { RuntimeChatDefault } from "../../../../protocol/app-service-types.js"
 import type { RuntimeGlobalDefaultRolesResult } from "../../../../protocol/model-assignment-protocol-types.js"
 import { workspaceDomainCursor } from "../../../../protocol/runtime-ui-protocol-types.js"

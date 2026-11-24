@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { skillDefinitions as bundledSkillDefinitions, moduleSkillDefinitions } from "../provenance/asset-manifest.js";
 import { formerStepSkillWarnings } from "./retired-bindings.js";
 import type { DefinitionResolution } from "../../infra/definition-resolution.js";

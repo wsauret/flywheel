@@ -3,7 +3,7 @@ import { describe, test } from "node:test"
 import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import { foldTranscript } from "../../../../src/protocol/client/transcript-model.js"
-import { presentWebTranscript, rowIdentity, type TranscriptViewRow } from "../../client/tool-runs.js"
+import { presentWebTranscript, rowIdentity, type TranscriptViewRow } from "../../client/session/residents/tool-runs.js"
 import { createBlockLanding, followTranscriptLayout, publishPaneHeight } from "./transcript-scroll.js"
 import { mountToolGroup } from "./render-ownership-loader-fixture.js"
 

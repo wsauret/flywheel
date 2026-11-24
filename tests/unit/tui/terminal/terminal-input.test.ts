@@ -1,6 +1,6 @@
 import { afterEach, expect, it, spyOn } from "bun:test"
 import { PassThrough } from "node:stream"
-import { Log } from "../../../../src/infra/log.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
 import { watchTerminalInput } from "../../../../src/tui/terminal/terminal-input.js"
 
 const log = Log.create({ service: "terminal-input" })

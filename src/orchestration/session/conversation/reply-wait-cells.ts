@@ -1,6 +1,6 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightRecord, InFlightWrite } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightRecord, InFlightWrite } from "../../../infra/store/event-store-types.js"
 import { heldBackgroundNotificationPut } from "./queued-background-notifications.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
 
 /** The in-flight kind of one open reply wait. The waiter holds it in its own

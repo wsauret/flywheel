@@ -1,4 +1,4 @@
-import { contentEvidence } from "../../../infra/content-evidence.js";
+import { contentEvidence } from "../../../infra/runtime-facts/content-evidence.js";
 import { requireReducer, runReducer } from "../../reducers/registry.js";
 import type { WorkflowTreeJoin } from "../../../protocol/workflow-view-protocol-types.js";
 import type { EarlierRound, HandoffReference, ReducerInput, ReducerInputSlot, ReducerOutput, SourceOutput } from "../../reducers/reducer.js";

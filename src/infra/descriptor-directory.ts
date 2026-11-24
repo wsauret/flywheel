@@ -2,14 +2,14 @@
  *  process platform. What a held directory can do is `ContainedDirectory` in
  *  `descriptor-directory-contract.ts`. */
 
-import { posixContainedDirectoryBackend } from "./descriptor-directory-posix.js";
-import { win32ContainedDirectoryBackend } from "./descriptor-directory-win32.js";
+import { posixContainedDirectoryBackend } from "./descriptor-directory/descriptor-directory-posix.js";
+import { win32ContainedDirectoryBackend } from "./descriptor-directory/descriptor-directory-win32.js";
 import {
   ContainedPathError,
   type ContainedDirectory,
   type ContainedDirectoryBackend,
   type ContainedDirectoryOptions,
-} from "./descriptor-directory-contract.js";
+} from "./descriptor-directory/descriptor-directory-contract.js";
 
 let backendOverride: ContainedDirectoryBackend | undefined;
 

@@ -10,7 +10,7 @@ import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.j
 import { sideQuestionModule } from "../../../../../src/orchestration/modules/side-question/module.js"
 import type { CommandHost } from "../../../../../src/orchestration/app-service/definitions/commands/command-host.js"
 import { createSessionFactWriter, emptyEventReader } from "../../chat/_chat-session-agent-runtime-fixtures.js"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
 import { testDirectories } from "../../../../helpers/directories.js"
 import type { ConversationSessionEntry } from "../../../../../src/orchestration/session-store/types.js"
 import { CommandOutcomeSchema } from "../../../../../src/protocol/command-catalog-protocol-schemas.js"

@@ -1,7 +1,7 @@
 import type { BaseRenderable, MouseEvent, ScrollBoxRenderable } from "@opentui/core"
 import { type Accessor, batch, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js"
 import type { HeightIndex } from "./create-height-index.js"
-import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
+import type { TranscriptSnapshot, TranscriptViewportPaging } from "../transcript-store/output-transcript-cache-types.js"
 import { blockIdentity } from "../../../protocol/block-identity.js"
 import { createOutputWindowScrollTelemetry } from "./output-window-scroll-diagnostics.js"
 import { createScrollFightMonitor } from "./output-window-scroll-anomalies.js"
@@ -64,15 +64,10 @@ export interface OutputScrollControllerDeps {
   readonly projection: Accessor<TranscriptWindowProjection>
   readonly showThinking: Accessor<boolean>
   readonly onNearEdge?: (direction: EdgeDirection) => void
-  readonly hydrateAnchor: () => Promise<void>
+  /** The shown transcript, which the viewport follows, reads from the tail,
+   *  seeds row estimates from, and evicts far pages of. */
+  readonly transcript: TranscriptViewportPaging
   readonly updateSelection: (current: ScrollBoxRenderable, x: number, y: number) => void
-  /** Drain per-block row-estimate point updates from the incremental delta
-   *  path; seeded into the height index instead of re-reading a whole-window
-   *  estimate array per flush. */
-  readonly takeEstimateUpdates?: () => readonly (readonly [number, number])[]
-  /** Drop resident blocks before the given absolute index (far-page eviction);
-   *  invoked only when the viewport-protected range clears them. */
-  readonly evictBefore?: (blockIndex: number) => void
   /** Rows of scrollbox content rendered ABOVE the transcript rows (the session
    *  intro when the window reaches the head). Scroll offsets are leading + index
    *  rows; anchor math subtracts it and re-pins add it back. */
@@ -89,8 +84,6 @@ export interface OutputScrollControllerDeps {
   /** The session's cross-remount layout memory (height index + scroll state).
    *  Owned by the shell's layout cache; the controller adopts and mutates it. */
   readonly slot: TranscriptLayoutSlot
-  readonly visibleMessageCount: Accessor<number>
-  readonly jumpToLatest: () => Promise<void>
   /** How the terminal reports the wheel; the host terminal's when absent. */
   readonly wheel?: WheelProfile
   /** The clock that times wheel reports; `performance.now` when absent. */
@@ -198,7 +191,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
   const [follow, setFollow] = state.follow
   /** The only writer of the follow mode. */
   function transition(event: TranscriptFollowEvent): void {
-    setFollow(nextTranscriptFollow(untrack(follow), event, untrack(deps.visibleMessageCount)))
+    setFollow(nextTranscriptFollow(untrack(follow), event, untrack(deps.transcript.visibleMessageCount)))
   }
   const returnToLatestBaseline = createMemo(() => followBaseline(follow()))
   const restoringNow = (): boolean => {
@@ -405,7 +398,9 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
         recordKnownBlockHeights(index, snap, zeroHeightBlockIndices)
         return
       }
-      const updates = deps.takeEstimateUpdates?.() ?? []
+      // The delta path's point updates, seeded instead of re-reading a
+      // whole-window estimate array per flush.
+      const updates = deps.transcript.takeEstimateUpdates()
       if (updates.length > 0) index.seedEstimatedBatch(updates)
       recordZeroHeightBlocks(index, zeroHeightBlockIndices)
     })
@@ -595,7 +590,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     // ABOVE the window (underfill implies hasBefore) and an afterBlock anchor
     // read can never extend upward - re-firing it would fetch the same range
     // every frame. Page older through the same lane as edge approach.
-    if (deficit > 0 && snap.blocks.length === 0) { void deps.hydrateAnchor(); return }
+    if (deficit > 0 && snap.blocks.length === 0) { void deps.transcript.jumpToLatest(); return }
     if (deficit > 0) deps.onNearEdge?.("older")
     else if (edge) deps.onNearEdge?.(edge)
 
@@ -607,10 +602,10 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     // always protected.
     const start = snap.window.startBlockIndex
     const end = snap.window.endBlockIndex
-    if (deps.evictBefore && start !== null && end !== null && end - start + 1 > RESIDENT_BLOCK_BUDGET) {
+    if (start !== null && end !== null && end - start + 1 > RESIDENT_BLOCK_BUDGET) {
       const viewportTopBlock = index.rowOffsetToBlockIndex(Math.max(0, e.scrollTop - leading))
       const cut = Math.min(viewportTopBlock - EVICT_PROTECTED_BLOCKS, end)
-      if (cut - start >= EVICT_MIN_BLOCKS) deps.evictBefore(cut)
+      if (cut - start >= EVICT_MIN_BLOCKS) deps.transcript.evictBefore(cut)
     }
   }
 
@@ -763,7 +758,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
 
   function returnToLatest(): void {
     transition({ kind: "returnToLatest" })
-    void deps.jumpToLatest()
+    void deps.transcript.jumpToLatest()
   }
 
   function toBlock(blockIndex: number, focus?: () => number | undefined): void {

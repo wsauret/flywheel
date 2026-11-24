@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { dbFile, sourceFor, removeIndexDirectories } from "./_summary-index-fixtures.js"
-import { CorruptEventRowError, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { CorruptEventRowError, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
 import type { MutationFileEvidence } from "../../../../src/infra/mutation-evidence.js"
 import type { DiffStatSummary } from "../../../../src/orchestration/session/metadata/catalog/diff-stat-summary.js"
 import { acquireSessionSummaryIndex } from "../../../../src/orchestration/session/metadata/catalog/session-summary-index.js"

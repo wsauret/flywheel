@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { Effect, Scope } from "effect"
-import { Log } from "../../../../../src/infra/log.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
 import { createSessionEngines } from "../../../../../src/orchestration/chat/lifecycle/session-engines.js"
 import type { ResolvedRole, ResolvedRoles } from "../../../../../src/orchestration/config/roles.js"
 import type { AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js"

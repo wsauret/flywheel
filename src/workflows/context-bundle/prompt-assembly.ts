@@ -1,5 +1,5 @@
 import type { CapabilityCheck } from "../../infra/capability-text.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import type { ResolvedAgent } from "../definitions/agent-resolution.js";
 import type { SkillRegistryRevision } from "../skills/skill-schema.js";
 import { renderSkillClosure } from "../skills/skill-render.js";

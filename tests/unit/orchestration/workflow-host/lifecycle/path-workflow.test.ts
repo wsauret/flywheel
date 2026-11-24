@@ -11,7 +11,7 @@ import {
 } from "../../../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import { hashDefinition } from "../../../../../src/workflows/provenance/definition-hash.js"
 import { canonicalWorkflowRecord } from "../../../../../src/workflows/schema/definition-records.js"
-import { WORKFLOW_FILE_MAX_BYTES } from "../../../../../src/infra/workflow-yaml.js"
+import { WORKFLOW_FILE_MAX_BYTES } from "../../../../../src/infra/yaml/workflow-yaml.js"
 import { resolveWorkflowAgents } from "../../../../../src/workflows/definitions/agent-resolution.js"
 import { decodeWorkflowFile, loadWorkflowFile } from "../../../../../src/workflows/vm/admission/workflow-file.js"
 import { compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js"

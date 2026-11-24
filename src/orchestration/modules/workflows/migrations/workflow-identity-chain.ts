@@ -2,7 +2,7 @@
 
 import { Database } from "bun:sqlite"
 import { Schema } from "effect"
-import { DebugLog } from "../../../../infra/debug-log.js"
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
 import { isRecord } from "../../../../infra/record.js"
 import {
   DefinitionIdentitySchema,

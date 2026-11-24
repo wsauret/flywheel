@@ -1,4 +1,4 @@
-import type { EventStoreAppend } from "../../../../src/infra/event-store-types.js"
+import type { EventStoreAppend } from "../../../../src/infra/store/event-store-types.js"
 import type { ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js"
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"

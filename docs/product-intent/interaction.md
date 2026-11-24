@@ -166,6 +166,10 @@ Each file offers Undo, which asks for confirmation and then restores the file to
 
 While a chat waits on a question, the question and its choices appear at the prompt in the command menu's frame, and leave once answered or skipped. On every client, Escape skips the question, and an answer or skip that no longer applies says why. The transcript then records an Ask User entry with one row per question, titled by its header and showing the answer, and marks a skipped question cancelled. A pending question survives a closed session or a stopped Flywheel, and reopening the session shows it at the prompt again, where an answer continues the turn.
 
+## PI-INTERACTION-185: A waiting question holds its chat
+
+While a chat waits on a question, nothing else reaches the agent. Notices from background work, messages from other sessions, and messages that the person sends wait behind the question, and the transcript shows them after the answer in the order they arrived. An answer or a skip always reaches the agent and continues the chat, whether the chat is open, closed, or was restarted, and the chat then shows as working. An answer to a question that an earlier release left behind later entries continues the chat too.
+
 ## PI-INTERACTION-085: Ask User entries read in full in the transcript
 
 Ask User context appears immediately before its question entry as a normal assistant transcript message, with the assistant dot and full Markdown rendering. It is not tool content or question-dock copy. On the web client, saved question titles and answers wrap within the transcript width so their full text stays visible.
@@ -528,7 +532,7 @@ On the web client, every tap or click shows a response at once on any connection
 
 ## PI-INTERACTION-050: Sessions send each other messages
 
-An agent in a chat, a subagent, or a workflow can message another session or a workflow in the same project, and it names which of the two it addresses. A message reaches a working session after its current action and starts a turn in an idle session that a client shows. A chat that no client shows and an interrupted or unexpectedly stopped session hold the message without starting work and tell the sender at once. A person's message continues interrupted work, and a parent's message continues its child unless a person made the latest interrupt.
+An agent in a chat, a subagent, or a workflow can message another session or a workflow in the same project, and it names which it addresses. A message reaches a working session after its current action and starts a turn in an idle session that a client shows. A chat that no client shows, a chat waiting on a question, and an interrupted or unexpectedly stopped session hold the message without starting work and tell the sender at once. A person's message continues interrupted work, and a parent's message continues its child unless a person made the latest interrupt.
 
 ## PI-INTERACTION-131: Senders find and address their message targets
 

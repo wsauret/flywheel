@@ -1,6 +1,6 @@
 /**
  * Parser for the FLYWHEEL_BOOT_TRACE stderr stream: `[boot +NNNms] <label>`
- * lines written by src/infra/startup-trace.ts. The elapsed value is measured
+ * lines written by src/infra/diagnostics/startup-trace.ts. The elapsed value is measured
  * by the binary itself from its own module load, so it is immune to launch
  * and tmux overhead on the driver side.
  */

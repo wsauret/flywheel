@@ -1,4 +1,4 @@
-import type { AsyncEventWriter } from "../../../infra/event-store-types.js"
+import type { AsyncEventWriter } from "../../../infra/store/event-store-types.js"
 import { buildDefinitionDriftRejectedFact } from "../../provenance/definition-provenance-facts.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../definitions/agent-resolution.js"
 import type { ProjectDefinitionRegistryRevision } from "../../definitions/definition-registry.js"

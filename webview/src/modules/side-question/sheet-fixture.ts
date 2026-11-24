@@ -1,7 +1,7 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
 import type { SideQuestionView, SideQuestionResult } from "../../../../src/protocol/modules/side-question.js"
 import { fakeClient, fakeClientActions, fakeClientHost, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { SideQuestionSheet } from "./sheet.js"
 

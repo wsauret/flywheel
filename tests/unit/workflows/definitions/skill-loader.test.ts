@@ -9,8 +9,8 @@ import { renderSkillContext } from "../../../../src/workflows/skills/skill-rende
 import { publishSkillRevision, SKILL_LIMITS, type SkillSource } from "../../../../src/workflows/skills/skill-schema.js";
 import { loadSkillDefinitions, skillStoreRoots } from "../../../../src/workflows/skills/skills.js";
 import { testDirectories } from "../../../helpers/directories.js";
-import type { DebugLogRecordInput } from "../../../../src/infra/debug-log.js";
-import { Log } from "../../../../src/infra/log.js";
+import type { DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log.js";
+import { Log } from "../../../../src/infra/diagnostics/log.js";
 
 const TMP = mkdtempSync(join(tmpdir(), "flywheel-skill-loader-test-"));
 const USER_ROOT = join(TMP, "flywheel-skills");

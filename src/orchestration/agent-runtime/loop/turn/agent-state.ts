@@ -6,7 +6,7 @@
 
 import type { ContentBlock, ConversationMessage, ToolCall } from "../../llm/types.js";
 import type { LlmToolOutputPart } from "../../llm/messages.js";
-import { toolOutcomeToProviderIsError, type ToolOutcome } from "../../../../infra/tool-outcome.js";
+import { toolOutcomeToProviderIsError, type ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js";
 
 export interface ToolResultEntry {
   toolUseId: string;

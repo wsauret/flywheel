@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from "bun:test"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager.js"
 import { createSessionRoleResolver, ensureSessionRoleSnapshot, resolveSessionRoles } from "../../../../../src/orchestration/config/models/session-role-resolver.js"

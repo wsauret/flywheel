@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js";
+import { createRuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-factory.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
 import {
   PersonaTaskFailure,

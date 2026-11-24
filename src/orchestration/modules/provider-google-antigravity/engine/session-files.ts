@@ -3,8 +3,8 @@ import { join } from "node:path"
 import { antigravityHomeLayout } from "../../../../infra/antigravity-engine.js"
 import { writeFileAtomic } from "../../../../infra/atomic-write.js"
 import { errnoCode } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
-import { decodeHolderFields, processHolders, type ProcessHolder } from "../../../../infra/process-holder.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
+import { decodeHolderFields, processHolders, type ProcessHolder } from "../../../../infra/process/process-holder.js"
 
 // Each engine session leaves files in the login's home: its conversation database, its brain folder (transcripts,
 // scratch), and its annotations (agy 1.5.14). They belong to the engine process that opened the session (plan P15),
@@ -32,6 +32,11 @@ function recordsFolder(loginDir: string): string {
 /** The transcript in which agy records each step of the session `sessionId`, one JSON line per step. */
 export function sessionTranscriptPath(loginDir: string, sessionId: string): string {
   return join(sessionFolders(loginDir).brain, sessionId, ".system_generated", "logs", "transcript_full.jsonl")
+}
+
+/** The conversation database in which agy records the model requests of the session `sessionId`. */
+export function sessionConversationPath(loginDir: string, sessionId: string): string {
+  return join(sessionFolders(loginDir).conversations, `${sessionId}.db`)
 }
 
 /** The owner's record of one engine process: the engine sessions it opened, and how many `session/new` requests it

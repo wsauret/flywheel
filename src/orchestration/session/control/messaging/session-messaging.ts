@@ -1,6 +1,6 @@
 import type { SessionInputProducer } from "../../../../infra/chat-input.js"
-import { DebugLog } from "../../../../infra/debug-log.js"
-import { coalesceRepeats } from "../../../../infra/repeat-coalescer.js"
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
+import { coalesceRepeats } from "../../../../infra/diagnostics/repeat-coalescer.js"
 import type { SessionRelation } from "../../../../infra/chat-input-schema.js"
 import { queuedUserInputKey } from "../../conversation/queued-user-inputs.js"
 import { liveSessionControls, liveWorkflowControls } from "../live-session-control.js"

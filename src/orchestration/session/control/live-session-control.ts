@@ -1,6 +1,6 @@
 import type { WorkflowDeliveryAddress } from "../conversation/addressed-workflow-messages.js"
 import type { ChatInput, ChatInputLike } from "../../../infra/chat-input.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
 import type { HeldBackgroundNotification } from "../conversation/queued-background-notifications.js"
 import type { TurnInterruption } from "../conversation/turn-end-record.js"
 import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/module-runtime.js"

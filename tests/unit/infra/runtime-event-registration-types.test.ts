@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { RuntimeEventProjectorDecisions } from "../../../src/infra/output/runtime-event-projector.js";
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-fact-mapper.js";
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-facts/runtime-fact-mapper.js";
 
 type SyntheticRuntimeEventType = "model.assistant_message.recorded" | "tool.result.recorded";
 

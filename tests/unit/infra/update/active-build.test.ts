@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
 import { versionsDir } from "../../../../src/infra/paths.js";
 import { ActivationError, activeBuildDir, openActiveBuild, publishActivation } from "../../../../src/infra/update/active-build.js";

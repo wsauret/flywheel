@@ -1,4 +1,4 @@
-import { CorruptEventRowError, type EventStoreReadSurface } from "../../../infra/event-store-types.js"
+import { CorruptEventRowError, type EventStoreReadSurface } from "../../../infra/store/event-store-types.js"
 import { parseWorkflowSessionFact } from "../facts/session-facts.js"
 import { workflowRowsFromV9 } from "../../view/schemas.js"
 import type { WorkflowView } from "../../view/types.js"

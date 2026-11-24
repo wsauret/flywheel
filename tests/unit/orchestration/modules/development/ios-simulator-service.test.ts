@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { FileSink } from "bun"
-import type { OwnedProcess, OwnedProcessExit } from "../../../../../src/infra/owned-subprocess.js"
+import type { OwnedProcess, OwnedProcessExit } from "../../../../../src/infra/supervision/launch/owned-subprocess.js"
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js"
 import type { McpCallResult } from "../../../../../src/orchestration/agent-runtime/mcp/mcp-result.js"
 import { createDevelopmentIosSimulatorService } from "../../../../../src/orchestration/modules/development/ios-simulator-service.js"

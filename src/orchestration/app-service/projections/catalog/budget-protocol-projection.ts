@@ -4,7 +4,7 @@ import { createSessionViewProjection } from "./session-view-projection.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
 import type { RuntimeSummaryProjection } from "./runtime-summary-projection.js"
 import { budgetViewFromRuntimeSummary } from "./runtime-summary-read.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
 
 export interface BudgetProtocolProjection {

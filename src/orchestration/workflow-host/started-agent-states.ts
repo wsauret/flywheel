@@ -1,5 +1,5 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/event-store-types.js"
-import { Log } from "../../infra/log.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/store/event-store-types.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { recordBackgroundFailure } from "../../infra/operation-log.js"
 import type { WorkflowAgentLive } from "../../protocol/workflow-view-protocol-types.js"
 import type { StartedAgent } from "../../workflows/vm/host/host-commit-controller.js"

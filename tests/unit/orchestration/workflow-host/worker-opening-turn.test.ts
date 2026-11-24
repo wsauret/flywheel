@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test"
 import { Effect, Exit, Scope } from "effect"
-import { asAsyncEventWriter } from "../../../../src/infra/event-store-types"
+import { asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
 import type { CapabilityCheck } from "../../../../src/infra/capability-text"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types"
 import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/request/model-runtime-capture"

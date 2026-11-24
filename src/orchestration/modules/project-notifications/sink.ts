@@ -1,4 +1,4 @@
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
 import type { ProjectNotificationJournal } from "./journal.js"
 

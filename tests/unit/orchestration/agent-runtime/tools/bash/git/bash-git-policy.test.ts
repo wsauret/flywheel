@@ -4,7 +4,7 @@ import { classifyGitArgv } from "../../../../../../../src/orchestration/agent-ru
 import { runMutationGitMain } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/git/bash-git-main.js";
 import { splitGitAlias } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/git/bash-git-alias.js";
 import { join } from "node:path";
-import type { runInheritedCommand } from "../../../../../../../src/infra/inherited-command.js";
+import type { runInheritedCommand } from "../../../../../../../src/infra/supervision/commands/inherited-command.js";
 
 const MESSAGE = "Git repository writes are not allowed in a mutating command. Rerun this git command as a separate call without mutates.";
 

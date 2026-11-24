@@ -16,7 +16,7 @@ import { randomBytes } from "node:crypto";
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
 import { Schema } from "effect";
-import type { ContainedDirectory } from "../descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../descriptor-directory/descriptor-directory-contract.js";
 import { openExistingContainedDirectory } from "../descriptor-directory.js";
 import { errorMessage } from "../error-message.js";
 import { CURRENT_BUILD_LINK, versionsDir } from "../paths.js";

@@ -1,10 +1,10 @@
 import { Schema, SchemaTransformation } from "effect"
-import { parseProjectionFact } from "../../../infra/event-projection.js"
+import { parseProjectionFact } from "../../../infra/projection/event-projection.js"
 import { defineFact } from "../../../infra/event-registry.js"
-import type { StoredFact } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
+import type { StoredFact } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { isRecord } from "../../../infra/record.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 import {
   ProviderRequestErrorSchema,
   ProviderRequestIdentitySchema,

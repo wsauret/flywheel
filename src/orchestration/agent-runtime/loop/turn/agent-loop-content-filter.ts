@@ -3,7 +3,7 @@
 // so the loop retries with a nudge instead of silently parking. Consecutive
 // retries are capped; on give-up the user gets a visible notice rather than a
 // silent turn end.
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { LlmStopReason } from "../../llm/types.js";
 
 const log = Log.create({ service: "agent-loop" });

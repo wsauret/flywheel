@@ -16,7 +16,7 @@ import {
 } from "../../output-blocks.js";
 import { formatAgentFailureDisplay } from "../output-formatter.js";
 import { randomUUID } from "node:crypto";
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import { EMPTY_OUTPUT_CHANGE_BATCH, NO_CHANGED_TOOLS, type OutputBlockChange, type OutputChangeBatch } from "../output-block-delta.js";
 import { StreamingToolTextStore } from "../streaming/streaming-tool-text.js";
 import { appendKeyedDelta } from "./structured-output-grouping.js";

@@ -1,4 +1,4 @@
-import type { ContentBlock } from "../runtime-content-blocks.js"
+import type { ContentBlock } from "../runtime-facts/runtime-content-blocks.js"
 import { isProgressUpdate } from "../llm/anthropic-narration.js"
 import { redactSecrets } from "../redact-secrets.js"
 import { assistantContentRuns, reasoningSummaryText } from "./assistant-content-runs.js"

@@ -1,7 +1,7 @@
 import type { PreparedFile, PreparedPackage } from "../../../agent-runtime/request/module-services/review-types.js";
 import { Buffer } from "node:buffer";
 import { containsSecret } from "../../../../infra/redact-secrets.js";
-import { parseFrontmatter } from "../../../../infra/frontmatter.js";
+import { parseFrontmatter } from "../../../../infra/yaml/frontmatter.js";
 import { bindPackageDir, readManifestPackage, readSkillPackage, readSkillPackageFiles } from "../../../../workflows/skills/skill-context.js";
 import { normalizeSkillFrontmatter, SKILL_FILE, SKILL_LIMITS } from "../../../../workflows/skills/skill-schema.js";
 

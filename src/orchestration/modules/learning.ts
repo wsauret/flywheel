@@ -8,7 +8,7 @@ import { memoryConfigSection, skillsConfigSection } from "./learning/config.js";
 import { migrateMemoryWrittenFacts } from "./learning/migrations/memory-written.js";
 import { migrateSkillFactReach } from "./learning/migrations/skill-scope.js";
 import type { LearningScope } from "../../infra/learning-scope.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { moduleRuntimeHandle } from "../../infra/module-runtime.js";
 import type { MutationEvidence } from "../../infra/mutation-evidence.js";
 import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js";

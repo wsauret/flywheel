@@ -8,9 +8,9 @@
 import { createHash } from "node:crypto";
 import { Schema } from "effect";
 import { durableOwnerAggregate, type DurableOwner } from "../../../infra/durable-owner.js";
-import { createEventProjection, parseProjectionFact } from "../../../infra/event-projection.js";
-import type { AsyncEventReadSurface } from "../../../infra/event-store-types.js";
-import { heldProjection } from "../../../infra/projection-registry.js";
+import { createEventProjection, parseProjectionFact } from "../../../infra/projection/event-projection.js";
+import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js";
+import { heldProjection } from "../../../infra/projection/projection-registry.js";
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js";
 import type { SessionFactWriter } from "../persistence/session-fact-writer.js";
 import { ConversationPromptFixedFactSchema, type ConversationPromptFixedFact } from "../persistence/conversation-prompt-baseline-facts.js";

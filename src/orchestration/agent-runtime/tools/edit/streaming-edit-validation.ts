@@ -1,7 +1,7 @@
-import { createBoundedWorkerSpawner } from "../../../../infra/bounded-worker-spawner.js"
+import { createBoundedWorkerSpawner } from "../../../../infra/process/workers/bounded-worker-spawner.js"
 import { embeddedEntrySpecifier, runsThroughBun } from "../../../../infra/cli-subprocess.js"
 import { MAX_STREAMING_TOOL_INPUT_BYTES } from "../../../../infra/output/streaming/partial-json.js"
-import { terminateWorker } from "../../../../infra/worker-termination.js"
+import { terminateWorker } from "../../../../infra/process/workers/worker-termination.js"
 import type {
   StreamingEditValidationAdviceEvent,
   StreamingEditValidationAppend,

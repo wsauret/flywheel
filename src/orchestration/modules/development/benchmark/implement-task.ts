@@ -2,7 +2,7 @@ import { Result, Schema } from "effect";
 import { cp, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix, relative } from "node:path";
-import type { ContainedDirectory } from "../../../../infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../../infra/descriptor-directory/descriptor-directory-contract.js";
 import { openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import { containsSecret } from "../../../../infra/redact-secrets.js";

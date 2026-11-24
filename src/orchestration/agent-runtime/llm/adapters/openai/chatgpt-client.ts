@@ -5,7 +5,7 @@ import type { OAuthPersistencePolicy } from "../../../../../infra/auth/auth-cont
 import { CHATGPT_BACKEND_API_BASE, type OpenAIAuth } from "../../../../../infra/auth/openai/openai-auth-types.js";
 import { extractAccountIdFromJwt } from "../../../../../infra/auth/openai/openai-jwt.js";
 import type { AccessProviderCandidate } from "../../../../../infra/llm/access/access-provider.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import { parseChatGptAdapterErrorResponse } from "../../chatgpt-adapter-error.js";
 import { createChatGPTTokenAccessor, dumpFailedChatGptRequest, logRejectedChatGptRequest, type ChatGPTTokenAccessor } from "./openai-chatgpt.js";
 import type { ProviderAvailability } from "../../routing/provider-availability-types.js";

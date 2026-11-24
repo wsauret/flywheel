@@ -1,6 +1,6 @@
 import type { TurnParkState } from "../../../infra/agent-loop-events.js"
 import type { ChatInput } from "../../../infra/chat-input.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
 import type { ConversationTreeWriterController } from "../../chat/tree-writer.js"
 import type { HeldBackgroundNotification } from "../../session/conversation/queued-background-notifications.js"
 import { heldAtWakeLimit, type DeliveryOutcome } from "../../session/message-disposition.js"

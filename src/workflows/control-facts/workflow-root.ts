@@ -1,5 +1,5 @@
-import { parseProjectionFact } from "../../infra/event-projection.js"
-import { CorruptEventRowError, type StoredFact } from "../../infra/event-store-types.js"
+import { parseProjectionFact } from "../../infra/projection/event-projection.js"
+import { CorruptEventRowError, type StoredFact } from "../../infra/store/event-store-types.js"
 import { parseWorkflowControlFact } from "./family.js"
 
 export const WORKFLOW_ROOT_FACT_TYPES = ["workflow.control.initialized", "workflow.control.recovered"] as const

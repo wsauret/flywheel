@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import type { createEventProjection } from "../../../infra/event-projection.js"
-import type { AsyncEventStateReadSurface, StoredFact, CorruptEventRowError } from "../../../infra/event-store-types.js"
+import type { createEventProjection } from "../../../infra/projection/event-projection.js"
+import type { AsyncEventStateReadSurface, StoredFact, CorruptEventRowError } from "../../../infra/store/event-store-types.js"
 import { InvariantViolation } from "../../../infra/invariant.js"
 import type { WorkflowTree } from "../../../protocol/workflow-view-protocol-types.js"
 import { workflowAggregateId } from "../../run/run-facts.js"

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types.js";
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js";
 import { createWorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";

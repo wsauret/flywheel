@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Cause, Clock, Effect, Exit, Queue, type Scope } from "effect";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import { asRecord } from "../../../../infra/record.js";
 import { createReplayAcks } from "./in-place.js";
 import type { CliFrame, LaunchedQuery, QueryLaunch, QueryLauncherConfig } from "../engine/query-launcher.js";

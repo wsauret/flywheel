@@ -33,7 +33,7 @@ function fakeEngine(options: EngineLaunchOptions, closes: string[], busy: Promis
   const unused = () => Promise.reject(new Error("the test engine serves no session"))
   return {
     processId: crypto.randomUUID(), loginDir: options.loginDir, toolNames: new Set(options.tools.map((tool) => tool.name)), served: false, ended: ended.promise,
-    openSession: unused, releaseSession: () => {}, prompt: unused, cancel: unused, configure: unused, idle: () => false, whenIdle: () => busy,
+    openSession: unused, releaseSession: () => {}, prompt: unused, cancel: unused, conversationRows: () => { throw new Error("the test engine serves no session") }, configure: unused, idle: () => false, whenIdle: () => busy,
     close: async (reason) => {
       closes.push(reason)
       ended.resolve({ reason, served: false })

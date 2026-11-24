@@ -20,7 +20,7 @@ import type { AccessProviderCandidate, AccessProviderId } from "../../../../../i
 import { computeUsagePrice } from "../../../../../infra/llm/models/llm-helpers.js";
 import { providerRequestHeaders } from "../../../../../infra/llm/provider-request-identity.js";
 import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import { asRecord } from "../../../../../infra/record.js";
 import { classifyQuotaError, ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "../../errors.js";
 import type { CompletedStopReason } from "../../messages.js";

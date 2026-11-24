@@ -1,8 +1,8 @@
 import { describe, expect, it, spyOn } from "bun:test"
 
 import type { TurnParkState } from "../../../../../src/infra/agent-loop-events"
-import { DebugLog } from "../../../../../src/infra/debug-log"
-import { asAsyncEventWriter } from "../../../../../src/infra/event-store-types"
+import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log"
+import { asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types"
 import type { AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types"
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime"
 import { registerCapacityWaits } from "../../../../../src/orchestration/session/control/capacity-wait"

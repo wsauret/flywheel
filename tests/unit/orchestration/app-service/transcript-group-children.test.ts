@@ -6,10 +6,10 @@ import * as os from "node:os"
 import * as path from "node:path"
 import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js"
 import { getToolDisplay } from "../../../../src/infra/tools/tool-display-registry.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js"
 import { hydrateDerivedOutputGroupChildren, paginateOutputGroupChildren } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import {
@@ -19,7 +19,7 @@ import {
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/runtime-facts/session-runtime-event-types.js"
 import { createToolResultDisplayMetaCursorReader } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js"
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-facts/runtime-fact-mapper.js"
 
 function child(id: string): Extract<AnyBlock, { kind: "tool" }> {
   return { kind: "tool", id, name: "read", presentation: { name: "Read", detail: `${id}.ts` }, status: "completed", timestamp: 1 }

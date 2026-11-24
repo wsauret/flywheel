@@ -10,7 +10,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { enginePath } from "../../../src/infra/claude-engine.js";
-import { parseFrontmatter } from "../../../src/infra/frontmatter.js";
+import { parseFrontmatter } from "../../../src/infra/yaml/frontmatter.js";
 import { buildClaudePlugin, writePluginDirectory } from "../../../scripts/build-claude-plugin.js";
 import { CLAUDE_MARKETPLACE_FILE, claudeMarketplace } from "../../../scripts/release-contract.js";
 import { zipArchive } from "../../../scripts/zip-archive.js";

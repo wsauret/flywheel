@@ -19,7 +19,7 @@
 
 import { Schema } from "effect";
 import { persistedSettingDefinition } from "../config/schema/setting-definitions.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { findConfigFile } from "../../infra/paths.js";
 import { applyEnvOverrides } from "../config/env.js";
 import { loadConfig } from "../config/loader.js";

@@ -6,7 +6,7 @@ import type { StoredTokens } from "../../../../../infra/auth/openai/openai-auth-
 import { extractAccountIdFromJwt } from "../../../../../infra/auth/openai/openai-jwt.js";
 import { errorDetail, errorMessage } from "../../../../../infra/error-message.js";
 import { durationMs } from "../../../../../infra/operation-log.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import { redactSecrets } from "../../../../../infra/redact-secrets.js";
 import { LOG_DIR } from "../../../../../infra/paths.js";
 import { applyWindowsPrivateDirectoryAcl, windowsDirectoryIsOwnerOnly } from "../../../../../infra/windows-private-directory-acl.js";

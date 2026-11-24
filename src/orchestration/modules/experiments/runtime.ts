@@ -1,6 +1,6 @@
 import { join } from "node:path"
 import { mkdir } from "node:fs/promises"
-import type { InFlightWrite } from "../../../infra/event-store-types.js"
+import type { InFlightWrite } from "../../../infra/store/event-store-types.js"
 import { moduleRuntimeHandle } from "../../../infra/module-runtime.js"
 import { resolveSessionDir, sessionScratchDir } from "../../../infra/paths.js"
 import type { SkillRegistryRevision } from "../../../workflows/skills/skill-schema.js"

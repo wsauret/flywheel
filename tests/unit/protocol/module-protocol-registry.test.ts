@@ -34,7 +34,7 @@ import {
   type ProtocolQueryResult,
 } from "../../../src/protocol/protocol-module.js"
 import { composeModuleProtocolRuntimes, type ModuleBackgroundReaders, type ModuleProtocolRoutes, type ModuleProtocolRuntime } from "../../../src/orchestration/app-service/module-protocol-host.js"
-import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../src/infra/store/event-store-types.js"
 import { inMemoryEventReader } from "../../helpers/in-memory-event-reader.js"
 import { repoDefinitions } from "../../helpers/project-definitions.js"
 import { fakeManager, fakeSessionStore } from "../orchestration/app-service/app-service-doubles.js"

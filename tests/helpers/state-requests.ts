@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, FactQuery } from "../../src/infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, FactQuery } from "../../src/infra/store/event-store-types.js"
 
 /** One durable request a reader made: the surface method, the aggregate or
  *  query it named, and how many facts it returned once it settled. */

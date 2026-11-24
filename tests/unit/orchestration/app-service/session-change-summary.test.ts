@@ -17,7 +17,7 @@ import { runtimeHandlers } from "../../../../src/orchestration/app-service/accou
 import { createOutputWatches } from "../../../../src/orchestration/app-service/account/projects/output-watches.js"
 import { createProcessBackgroundClient } from "../../../../src/orchestration/app-service/background/worker-background-client.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 import { canonicalTestDirectory } from "../../../helpers/directories.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"

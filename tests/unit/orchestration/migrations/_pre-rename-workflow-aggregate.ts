@@ -10,9 +10,9 @@
  *  and the pass leaves those ids exactly as recorded. */
 
 import { Schema } from "effect"
-import type { EventPayload } from "../../../../src/infra/event-store-types.js"
+import type { EventPayload } from "../../../../src/infra/store/event-store-types.js"
 import { isRecord } from "../../../../src/infra/record.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js"
 import { DefinitionIdentitySchema, type LegacyDefinitionIdentity } from "../../../../src/workflows/control-facts/definition-identity.js"

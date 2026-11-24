@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { readdirSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
-import { ownedProcessBackend } from "../../../src/infra/owned-subprocess-backend.js"
+import { ownedProcessBackend } from "../../../src/infra/supervision/launch/owned-subprocess-backend.js"
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js"
 import { containerHolds, createRealProcessFixture, FORCED_END, processAlive, suspendProcess, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 import { payloadThatExits, payloadThatRunsForever } from "../../helpers/payload.js"

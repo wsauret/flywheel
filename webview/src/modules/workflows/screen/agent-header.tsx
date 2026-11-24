@@ -5,7 +5,7 @@ import { workflowOutline } from "../../../../../src/protocol/client/workflow-out
 import { workflowRunName } from "../../../../../src/protocol/client/workflow-card.js"
 import { workflowAgentAddress } from "../../../../../src/protocol/client/workflow-addresses.js"
 import type { WebModuleClientHost } from "../../../web-module-client.js"
-import { summaryOf } from "../../../client/view-state.js"
+import { summaryOf } from "../../../client/session/view-state.js"
 import { createSessionReading } from "../../../app/transcript/blocks/agents/session-reading.js"
 import { sessionServingLabel } from "../../../../../src/protocol/role-protocol-types.js"
 import { WORKFLOW_TEXT_GLYPH } from "../../../app/controls/icons.js"

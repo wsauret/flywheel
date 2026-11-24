@@ -11,10 +11,10 @@ import { loadQueueSnapshotFromReader } from "../../../../../src/workflows/vm/rec
 import { WorkflowSessionFactSchema } from "../../../../../src/workflows/vm/facts/session-facts.js"
 import { terminalWorkflowFacts } from "../../session/_child-session-reconciliation-fixtures.js"
 import { createProjectStateCommitWindow } from "../../../../../src/orchestration/app-service/project-state/project-state-commit-window.js"
-import { createEventProjection } from "../../../../../src/infra/event-projection.js"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventStoreAppend, type FactQuery, type StoredFact } from "../../../../../src/infra/event-store-types.js"
-import { storedToolContentReferences } from "../../../../../src/infra/tool-content-hydration.js"
+import { createEventProjection } from "../../../../../src/infra/projection/event-projection.js"
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventStoreAppend, type FactQuery, type StoredFact } from "../../../../../src/infra/store/event-store-types.js"
+import { storedToolContentReferences } from "../../../../../src/infra/store/tool-content-hydration.js"
 import { ConversationTreeStorage } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-storage.js"
 
 afterEach(closeFixtures)

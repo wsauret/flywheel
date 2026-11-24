@@ -9,8 +9,8 @@ import { runtimeQueryResultSchema, RuntimeUiPatchPayloadSchema } from "../../../
 import { createRuntimeUiPatchSequencer } from "../../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../../../src/protocol/runtime-ui-protocol-types.js"
 import type { SessionEntry } from "../../../../../../src/orchestration/session-store/types.js"
-import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../../../src/infra/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../../../src/infra/store/event-store-types.js"
 
 import { fakeSessionStore } from "../../app-service-doubles.js"
 import { entry } from "../../_status-projection-fixtures.js"

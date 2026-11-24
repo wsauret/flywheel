@@ -8,9 +8,9 @@
  * The pool also owns the one private copy Worker that its copies' jobs run on.
  */
 
-import { mayHaveSurvivingDescendant } from "../../../../../infra/container-mark.js";
-import { Log } from "../../../../../infra/log.js";
-import { bunContainerProbe, processStart, type ContainerProbe } from "../../../../../infra/process-container.js";
+import { mayHaveSurvivingDescendant } from "../../../../../infra/process/container/container-mark.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
+import { bunContainerProbe, processStart, type ContainerProbe } from "../../../../../infra/process/container/process-container.js";
 import type { RepositoryState } from "./bash-copy-repository-state.js";
 import { discardPrivateCopy } from "./bash-private-copy-home.js";
 import { createPrivateCopyJobs, type PrivateCopyJobs, type SpawnWorker } from "./bash-private-copy-jobs.js";

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, spyOn } from "bun:test";
-import { DebugLog } from "../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../src/infra/diagnostics/debug-log.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
 import type { WorkflowVmHostDeps } from "../../../../src/workflows/vm/host/host-types.js";
 import { attemptOf, items, mapSkills, mapWorkflow, PLAN, stage, TAIL, withMaxParallel } from "./_map-fixtures.js";

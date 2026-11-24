@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, spyOn } from "bun:test";
-import { DebugLog } from "../../../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../../../src/infra/diagnostics/debug-log.js";
 import { Redacted } from "effect";
 import type { OpenAIAuth } from "../../../../../../../src/infra/auth/openai/openai-auth-types.js";
 import type { LLMClient, StreamEvent } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";

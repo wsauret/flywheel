@@ -1,4 +1,4 @@
-import type { SessionSummary } from "../../client/view-state.js"
+import type { SessionSummary } from "../../client/session/view-state.js"
 
 /** One drawn row of the session list. */
 export interface SessionRow {

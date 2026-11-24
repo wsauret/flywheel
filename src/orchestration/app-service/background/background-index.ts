@@ -15,11 +15,11 @@
  * same reads, so an advanced tree holds the rows that a fresh build reads.
  */
 
-import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { loggedOperation } from "../../../infra/operation-log.js"
 import { containSessionReads } from "../../../infra/session-read-containment.js"
-import type { BackgroundCommandRecord } from "../../../infra/runtime-fact-types.js"
+import type { BackgroundCommandRecord } from "../../../infra/runtime-facts/runtime-fact-types.js"
 import type { BackgroundWorkProgress, BackgroundWorkRow, BackgroundWorkStatus } from "../../../protocol/background-index-protocol-types.js"
 import type { StoppedBy } from "../../../protocol/app-service-types.js"
 import type { ActiveBackgroundCommandView, ReplyWaitView } from "../../../protocol/status-protocol-types.js"

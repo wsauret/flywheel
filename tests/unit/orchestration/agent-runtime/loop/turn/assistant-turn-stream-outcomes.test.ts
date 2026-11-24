@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { APIUserAbortError } from "openai";
 import { EventBus, createEmit } from "../../../../../../src/infra/event-bus.js";
-import { Log } from "../../../../../../src/infra/log.js";
+import { Log } from "../../../../../../src/infra/diagnostics/log.js";
 
 import { createAssistantAttempt } from "../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-attempt.js";
 import type { AssistantTurnResult } from "../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js";

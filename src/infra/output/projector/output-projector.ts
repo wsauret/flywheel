@@ -1,4 +1,4 @@
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import type { AnyBlock, StreamPhase, ToolStreamingText, UserMessageBlock } from "../../output-blocks.js";
 import type { OutputChangeBatch } from "../output-block-delta.js";
 import type { OutputProjectionEvent, SettledAssistantContent } from "../output-projection-events.js";

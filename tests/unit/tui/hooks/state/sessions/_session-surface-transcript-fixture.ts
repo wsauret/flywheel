@@ -14,7 +14,6 @@ export function transcriptCache() {
       visibleMessageCount: () => 0,
       jumpToLatest: async () => {},
       freshness: () => undefined,
-      hydrateAnchor: async () => {},
       loadAround: async () => {},
       takeEstimateUpdates: () => [],
       evictBefore: () => {},

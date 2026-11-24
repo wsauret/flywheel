@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import type { Redacted } from "effect";
 import { processEngineHost } from "../../../../infra/claude-engine.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { osAccount } from "../../../../infra/os-account.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
 import { createOrderedLane } from "../../../../infra/ordered-lane.js";

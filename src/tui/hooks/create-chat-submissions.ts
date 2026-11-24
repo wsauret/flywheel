@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js"
 import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
-import { DebugLog } from "../../infra/debug-log.js"
+import { DebugLog } from "../../infra/diagnostics/debug-log.js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
 import { createChatSubmissions, type ChatSubmissionContext, type ChatSubmissionResult, type LocalChatSubmission, type LocalRecall, type UnsentChatSubmission } from "../../protocol/client/chat-submissions.js"

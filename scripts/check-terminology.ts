@@ -142,7 +142,7 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   "src/workflows/definitions/agent-resolution.ts",
   "src/workflows/context-bundle/context.ts",
   // The event search formatter and the decode-only schema of the older usage fact.
-  "src/infra/runtime-fact-types.ts",
+  "src/infra/runtime-facts/runtime-fact-types.ts",
   "src/cli/events/event-search-format.ts",
   "src/orchestration/agent-runtime/request/usage/usage-settlement.ts",
   "src/orchestration/session/runtime-facts/provider-request-audit-facts.ts",
@@ -385,10 +385,6 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
     ]],
     [/\bstepBoundary\b/, "divider", [PROTOCOL_VERSION_NOTES]],
     [/\bleafId\b/, "agentNodeId or nodeId", [
-      // The web client reads the agent of a browser history entry that a
-      // build before 2026-10-16 wrote under `leafId`, and its test feeds one.
-      "webview/src/client/workflow-agent.ts",
-      "webview/src/client/workflow-agent.test.ts",
       // The conversation tree names the newest entry of a branch its leaf (ARCH-SESSIONS-047).
       "src/orchestration/session/",
       // Request startup selects the conversation tree's recorded masking epoch.

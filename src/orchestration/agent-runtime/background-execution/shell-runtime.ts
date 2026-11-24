@@ -1,5 +1,5 @@
 import { mergeAbortSignals } from "../../../infra/abort.js";
-import type { OwnedProcess } from "../../../infra/owned-subprocess.js";
+import type { OwnedProcess } from "../../../infra/supervision/launch/owned-subprocess.js";
 import type { CommandHandoverRow } from "../../session/command-handover.js";
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
 import { adoptHandedOverCommands, handedOverCommandInput, handOverCommands, type CommandHandoverScope } from "./command-handover.js";

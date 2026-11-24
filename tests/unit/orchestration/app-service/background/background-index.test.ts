@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types"
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work"
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer"

@@ -2,12 +2,12 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { afterEach, describe, expect, test } from "bun:test"
-import { DebugLog, scanDebugLogFiles } from "../../../../src/infra/debug-log.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventWriter } from "../../../../src/infra/event-store-types"
+import { DebugLog, scanDebugLogFiles } from "../../../../src/infra/diagnostics/debug-log.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
+import { asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
-import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane"
+import { createEventStoreWriterLane } from "../../../../src/infra/store/event-store-writer-lane"
 import {
   type ConversationDedup,
   recordProviderRequest,

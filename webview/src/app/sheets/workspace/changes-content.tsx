@@ -4,7 +4,7 @@ import { sessionChangeNamesPath, type ChangesUndoState, type SessionChangesContr
 import { pathInside, sessionChangeFolderLabel, sessionChangeDiffStatusLine, sessionChangePathLabel, sessionChangesRows, sessionChangeWritersLabel, undoResultLine, type SessionChangesRow } from "../../../../../src/protocol/client/session-changes-copy.js"
 import type { SessionChangeFile, SessionChangesResult } from "../../../../../src/protocol/session-changes-protocol-types.js"
 import type { ChangesReviewTarget } from "../../../../../src/protocol/client/host-contract.js"
-import { changesLabel } from "../../../client/changes-label.js"
+import { changesLabel } from "../../../client/format/changes-label.js"
 import { FileDiff } from "../../transcript/blocks/text/file-diff.js"
 import { Icon, ICONS } from "../../controls/icons.js"
 import { preserveReaderAnchor, survivingReaderAnchor } from "../../transcript/transcript-scroll.js"

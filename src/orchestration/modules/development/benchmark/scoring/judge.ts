@@ -1,4 +1,4 @@
-import type { RuntimeEvent } from "../../../../../infra/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../../infra/runtime-facts/runtime-event-types.js";
 import { failureTerminal, type AgentFactory, type AgentRunTerminal, type RuntimeToolSurfaces } from "../../../../agent-runtime/types.js";
 import { createBenchmarkAccounting } from "../accounting/accounting.js";
 import { invokeBenchmarkAgent } from "../execution/invocation.js";

@@ -3,9 +3,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
-import { Log } from "../../../../../../../src/infra/log.js";
+import { Log } from "../../../../../../../src/infra/diagnostics/log.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../../../src/infra/owned-command.js";
-import type { ContainerProbe } from "../../../../../../../src/infra/process-container.js";
+import type { ContainerProbe } from "../../../../../../../src/infra/process/container/process-container.js";
 import { createPrivateCopyJobs } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-jobs.js";
 import { createPrivateCopyPool, type LaunchStamp, type PrivateCopyPool } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-pool.js";
 import { detectCopyChanges, readPrivateProjectCopy, takePrivateProjectCopy } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy.js";

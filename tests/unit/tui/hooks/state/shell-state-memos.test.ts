@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import { createSessionStore } from "../../../../../src/orchestration/session-store/store"
-import { EventReaderService } from "../../../../../src/infra/event-store-effect.js"
+import { EventReaderService } from "../../../../../src/infra/store/event-store-effect.js"
 import type { SessionManager, SessionMetadataChange } from "../../../../../src/orchestration/session/manager"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer"
 import type { ChildSessionRow, SessionCatalogRow } from "../../../../../src/protocol/app-service-types"

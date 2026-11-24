@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { maxEventLoopLagBetween } from "../../../../infra/event-loop-lag.js";
+import { maxEventLoopLagBetween } from "../../../../infra/diagnostics/event-loop-lag.js";
 import { beginOutboundRequest, endOutboundRequest } from "../../../../infra/inflight-requests.js";
 import type { StreamTelemetrySink } from "../types.js";
 

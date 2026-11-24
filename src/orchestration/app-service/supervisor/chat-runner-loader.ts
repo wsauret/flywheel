@@ -1,5 +1,5 @@
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { ChatRunnerDeps } from "../../chat/runner.js"
 import type { ChatRunner } from "../../chat/runner-types.js"
 

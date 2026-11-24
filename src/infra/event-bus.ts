@@ -1,14 +1,14 @@
 import { Effect, Exit, PubSub, Scope, Stream } from "effect";
 import { awaitWithAbortSignal } from "./abort.js";
 import { errorMessage } from "./error-message.js";
-import { probeLoopUnit } from "./event-loop-lag.js";
+import { probeLoopUnit } from "./diagnostics/event-loop-lag.js";
 import type {
   FlywheelEvent,
   FlywheelEventData,
   FlywheelEventFor,
   FlywheelEventType,
 } from "./events.js";
-import { Log } from "./log.js";
+import { Log } from "./diagnostics/log.js";
 
 type TypedListener<T extends FlywheelEventType> = (event: FlywheelEventFor<T>) => void;
 export type Unsubscribe = () => void;

@@ -36,7 +36,7 @@ describe("fact retention schema requirements", () => {
   test("still requires a schema for a non-retired declaration", () => {
     withSource(undefined, (root) => {
       expect(findFactRetentionViolations(root, registry({ policy: "history", prunable: [] })).failures).toEqual([
-        'stale declaration: "cache.retired" is classified in src/infra/fact-retention-registry.ts but no defineFact/defineRuntimeFact schema defines it',
+        'stale declaration: "cache.retired" is classified in src/infra/store/fact-retention-registry.ts but no defineFact/defineRuntimeFact schema defines it',
       ])
     })
   })

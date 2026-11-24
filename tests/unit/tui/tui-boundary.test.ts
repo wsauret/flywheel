@@ -3,8 +3,8 @@ import { describe, expect, test } from "bun:test"
 const FORBIDDEN = [
   "orchestration/session-store",
   "orchestration/session/manager",
-  "infra/event-store-effect",
-  "infra/event-store-types",
+  "infra/store/event-store-effect",
+  "infra/store/event-store-types",
   "createFlywheelAppService",
   "createRuntimeSupervisor",
   "createWorkflowController",

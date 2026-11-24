@@ -57,7 +57,7 @@ function installGlobalSkill(body: string): void {
 
 const WORKER = `
 import ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/modules.js")).href)};
-import { createSqliteEventStore } from ${JSON.stringify(pathToFileURL(join(REPO, "src/infra/sqlite-event-store.js")).href)};
+import { createSqliteEventStore } from ${JSON.stringify(pathToFileURL(join(REPO, "src/infra/store/sqlite-event-store.js")).href)};
 import { createSessionFactWriter } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/session/persistence/session-fact-writer.js")).href)};
 import { commitGlobalSkillMutation } from ${JSON.stringify(pathToFileURL(join(REPO, "tests/helpers/global-skill-operations.js")).href)};
 import { writeFileSync } from "node:fs";

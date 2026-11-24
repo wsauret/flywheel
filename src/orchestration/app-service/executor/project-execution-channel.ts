@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto"
 import { Schema } from "effect"
 import { pack, unpack } from "msgpackr"
 import { errorMessage } from "../../../infra/error-message.js"
-import { trackLoopSpan } from "../../../infra/event-loop-lag.js"
-import type { InternalProcessEndpoint } from "../../../infra/internal-process-channel.js"
-import { Log } from "../../../infra/log.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
-import type { ReattachableProcessEndpoint } from "../../../infra/reattachable-process-endpoint.js"
+import { trackLoopSpan } from "../../../infra/diagnostics/event-loop-lag.js"
+import type { InternalProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
+import type { ReattachableProcessEndpoint } from "../../../infra/process/channels/reattachable-process-endpoint.js"
 import type {
   FrontendEvent,
   FrontendMutation,

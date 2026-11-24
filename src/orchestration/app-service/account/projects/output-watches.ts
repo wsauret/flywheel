@@ -1,4 +1,4 @@
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { SessionHolder } from "./session-holds.js"
 
 const log = Log.create({ service: "output-watches" })

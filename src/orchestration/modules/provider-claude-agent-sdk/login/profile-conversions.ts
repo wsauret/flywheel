@@ -8,7 +8,7 @@ import { AUTH_STORE_FILE, CredentialInstanceSchema, isCredentialCollection, type
 import { transferProviderModelPreferences } from "../../../../infra/auth/provider-models/provider-model-preference-store.js";
 import { transferSubscriptionSpendDecisions } from "../../../../infra/auth/subscription/subscription-spend-consent-store.js";
 import { errorMessage } from "../../../../infra/error-message.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { NotificationOccurrence } from "../../../../infra/notification-episode.js";
 import { isRecord, type UnknownRecord } from "../../../../infra/record.js";
 import { CLAUDE_AGENT_SDK_LABEL, CLAUDE_AGENT_SDK_PROVIDER_ID, LOGIN_PROGRAM_LABEL } from "../names.js";

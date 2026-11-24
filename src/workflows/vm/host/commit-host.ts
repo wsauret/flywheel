@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util"
 import { Schema } from "effect"
-import { parseProjectionFact } from "../../../infra/event-projection.js"
+import { parseProjectionFact } from "../../../infra/projection/event-projection.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import {
   CorruptEventRowError,
@@ -9,7 +9,7 @@ import {
   type GuardedAppendResult,
   type GuardedEventStoreAppend,
   type StoredFact,
-} from "../../../infra/event-store-types.js"
+} from "../../../infra/store/event-store-types.js"
 import type { ProjectDefinitionRegistryRevision } from "../../definitions/definition-registry.js"
 import type { WorkflowDefinition } from "../../schema/workflow-schema.js"
 import type { WorkflowMutation, WorkflowTransitionResult } from "../control/commands.js"

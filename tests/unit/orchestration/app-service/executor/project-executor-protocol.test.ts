@@ -12,7 +12,7 @@ import {
   encodeProjectExecutorInitialization,
   projectExecutorChannelLimits,
 } from "../../../../../src/orchestration/app-service/executor/project-executor-protocol.js"
-import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "../../../../../src/infra/internal-process-channel.js"
+import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "../../../../../src/infra/process/channels/internal-process-channel.js"
 
 test("executor channels carry a whole bounded state page as one message and lifecycle has no run stub", () => {
   expect(projectExecutorChannelLimits("state")).toEqual({ maxFrameBytes: 1024 * 1024, maxMessageBytes: 64 * 1024 * 1024, maxQueuedBytes: 8 * 1024 * 1024 })

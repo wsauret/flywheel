@@ -6,7 +6,7 @@ import { isRuntimeListening } from "../../../src/cli/account-service/runtime-att
 import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-identity-record.js"
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath, resolveEventStoreDbFile } from "../../../src/infra/paths.js"
-import { openReadonlyEventReader } from "../../../src/infra/sqlite-event-store.js"
+import { openReadonlyEventReader } from "../../../src/infra/store/sqlite-event-store.js"
 import { loadSubagentRunsFromEvents, SUBAGENT_RUN_FACT_TYPES } from "../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND } from "../../../src/orchestration/session/command-handover.js"
 import { PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND } from "../../../src/orchestration/session/control/planned-session-continuation.js"

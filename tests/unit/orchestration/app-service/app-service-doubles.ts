@@ -11,7 +11,7 @@ import type { RuntimeChatDefault } from "../../../../src/protocol/app-service-ty
 import type { ProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
 import type { AdmittedModelAssignmentService } from "../../../../src/orchestration/app-service/auth/models/model-assignment-admission.js"
 import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
 import { createMemoryStore } from "../../workflows/vm/host-test-support.js"
@@ -20,7 +20,7 @@ import { workflowProtocolServices } from "../../../../src/orchestration/modules/
 import { composeModuleProtocolRuntimes } from "../../../../src/orchestration/app-service/module-protocol-host.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
-import type { RuntimeEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import type { RuntimeEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection.js"
 
 const configView = {

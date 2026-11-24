@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync }
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted } from "effect";
-import { Log } from "../../../../../../../src/infra/log.js";
+import { Log } from "../../../../../../../src/infra/diagnostics/log.js";
 import * as windowsAcl from "../../../../../../../src/infra/windows-private-directory-acl.js";
 import { createChatGPTClient } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/chatgpt-client.js";
 import { dumpFailedChatGptRequest } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-chatgpt.js";

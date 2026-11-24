@@ -24,7 +24,7 @@ import { buildWorkflowControlInitializedFact } from "../../../../../src/workflow
 import { recordChildWorkflowStop } from "../../../../../src/orchestration/session/control/children/child-workflow-result.js"
 import { workflowRunReader } from "../../../../../src/orchestration/module-catalog.js"
 import { seedModelWorkflowCall } from "../../workflow-host/_workflow-progress-fixtures.js"
-import { contentEvidence } from "../../../../../src/infra/content-evidence.js"
+import { contentEvidence } from "../../../../../src/infra/runtime-facts/content-evidence.js"
 import { buildSubagentCompleted } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { prepareSessionFactAppend } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-background-notifications.js"

@@ -1,6 +1,6 @@
 import type { CapabilityCheck } from "../../../infra/capability-text.js"
-import { parseProjectionFact } from "../../../infra/event-projection.js"
-import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import { parseProjectionFact } from "../../../infra/projection/event-projection.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
 import { readConversationCheckpoint, renderConversationCheckpoint } from "../../session/conversation-records/conversation-checkpoint.js"
 import { parseConversationTreeFact } from "../../session/conversation/conversation-facts.js"
 import { workflowMembershipReader } from "../../session/metadata/workflow-membership.js"

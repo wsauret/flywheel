@@ -3,8 +3,8 @@ import { offeringTransport, validateCanonicalRows } from "../../model-catalog-ro
 import type { ProviderModelAccessOutcome, ProviderModelAccessOutcomes } from "../auth-context.js";
 import type { AuthProfileAccess } from "../store/auth-profile-store.js";
 import { type AccessProviderAccountIdentity, type AccountLineage, accessProviderAccountKey } from "../provider-account.js";
-import { ContainedFileTooLargeError } from "../../descriptor-directory-contract.js";
-import { Log } from "../../log.js";
+import { ContainedFileTooLargeError } from "../../descriptor-directory/descriptor-directory-contract.js";
+import { Log } from "../../diagnostics/log.js";
 
 const log = Log.create({ service: "provider-model-catalog-store" });
 const FILE_NAME = "provider-model-catalogs.json";

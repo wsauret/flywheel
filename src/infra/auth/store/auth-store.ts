@@ -1,5 +1,5 @@
 import { Result, Schema } from "effect";
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import { apiKeyHint } from "./api-key-hint.js";
 import { accountSecretFile } from "../../paths.js";
 import { isRecord } from "../../record.js";

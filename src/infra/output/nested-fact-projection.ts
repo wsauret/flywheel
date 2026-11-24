@@ -1,6 +1,6 @@
-import { parseProjectionFact } from "../event-projection.js"
-import type { StoredFact } from "../event-store-types.js"
-import { parseSessionRuntimeFact } from "../runtime-fact-parser.js"
+import { parseProjectionFact } from "../projection/event-projection.js"
+import type { StoredFact } from "../store/event-store-types.js"
+import { parseSessionRuntimeFact } from "../runtime-facts/runtime-fact-parser.js"
 import type { OutputProjectionEvent } from "./output-projection-events.js"
 
 /** Strictly decodes one durable runtime fact and maps nested tool facts to live output events. */

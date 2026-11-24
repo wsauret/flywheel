@@ -3,9 +3,9 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { InvariantViolation } from "../../../../src/infra/invariant"
-import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import type { LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
 import { analyzeStreamGaps } from "../../../../src/orchestration/session/diagnostics/provider-stream-gaps"
 
 let tmpDir: string

@@ -2,8 +2,8 @@
 
 import { lstatSync, readdirSync, watch as watchDirectory } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { acquireLockIn, releaseLockIn } from "../../ownership-file-lock.js";
-import type { ContainedDirectory } from "../../descriptor-directory-contract.js";
+import { acquireLockIn, releaseLockIn } from "../../locks/ownership-file-lock.js";
+import type { ContainedDirectory } from "../../descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "../../descriptor-directory.js";
 import { lockedJsonRevision } from "./locked-json-store.js";
 import { AUTH_STORE_FILE } from "./auth-store-types.js";

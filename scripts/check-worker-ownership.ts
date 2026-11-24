@@ -1,7 +1,7 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import type { Node, Tree } from "web-tree-sitter"
-import { WORKER_GENERATION_BUDGETS } from "../src/infra/bounded-worker-spawner.js"
+import { WORKER_GENERATION_BUDGETS } from "../src/infra/process/workers/bounded-worker-spawner.js"
 import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js"
 
 type ConstructorKind = "Worker" | "MessageChannel"
@@ -40,7 +40,7 @@ interface InspectionSymbols {
   readonly spawnerNamespaces: Set<string>
 }
 
-const WORKER_AUTHORITY = "src/infra/bounded-worker-spawner.ts"
+const WORKER_AUTHORITY = "src/infra/process/workers/bounded-worker-spawner.ts"
 const EXECUTABLE_SOURCE = /\.[mc]?[jt]sx?$/
 const DECLARATION_SOURCE = /\.d\.[mc]?ts$/
 // Every recognized alias starts with one of these names in the same file.
@@ -49,9 +49,9 @@ const DECLARATION_SOURCE = /\.d\.[mc]?ts$/
 const WORKER_SOURCE_CANDIDATE = /Worker|MessageChannel|\\(?:[^nrtbfv0\\/'"]|0[0-9])/
 const KNOWN_ROLES = new Set<string>(Object.keys(WORKER_GENERATION_BUDGETS))
 const APPROVED_SPAWNER_SITES = [
-  { role: "process-watchdog", file: "src/infra/process-watchdog.ts", owner: undefined, factory: "createBoundedWorkerSpawner" },
-  { role: "hard-exit-clock", file: "src/infra/process-watchdog.ts", owner: "createWorker", factory: "embeddedWorkerSpawnerSource" },
-  { role: "hard-exit-clock", file: "src/infra/hard-exit-clock.ts", owner: undefined, factory: "createBoundedWorkerSpawner" },
+  { role: "process-watchdog", file: "src/infra/supervision/process-watchdog.ts", owner: undefined, factory: "createBoundedWorkerSpawner" },
+  { role: "hard-exit-clock", file: "src/infra/supervision/process-watchdog.ts", owner: "createWorker", factory: "embeddedWorkerSpawnerSource" },
+  { role: "hard-exit-clock", file: "src/infra/process/workers/hard-exit-clock.ts", owner: undefined, factory: "createBoundedWorkerSpawner" },
   { role: "streaming-edit-validation", file: "src/orchestration/agent-runtime/tools/edit/streaming-edit-validation.ts", owner: "createStreamingEditValidationService", factory: "createBoundedWorkerSpawner" },
   { role: "bash-private-copy", file: "src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-jobs.ts", owner: "createPrivateCopyJobs", factory: "createBoundedWorkerSpawner" },
   { role: "models-document", file: "src/infra/llm/models/models-document-job.ts", owner: "runModelsDocumentJob", factory: "createBoundedWorkerSpawner" },

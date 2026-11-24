@@ -4,10 +4,10 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, wri
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { processHolders } from "../../../../../../src/infra/process-holder.js"
+import { processHolders } from "../../../../../../src/infra/process/process-holder.js"
 import { openContainedDirectory, openExistingContainedDirectory } from "../../../../../../src/infra/descriptor-directory.js"
-import { acquireLockSyncIn, releaseLockIn } from "../../../../../../src/infra/ownership-file-lock.js"
-import { createPersistentProcessManager } from "../../../../../../src/infra/persistent-process-manager.js"
+import { acquireLockSyncIn, releaseLockIn } from "../../../../../../src/infra/locks/ownership-file-lock.js"
+import { createPersistentProcessManager } from "../../../../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import { claimHeadlessProjectExecution, claimProjectServing } from "../../../../../../src/orchestration/app-service/account/projects/project-serving-lane.js"
 
 let root: string | undefined

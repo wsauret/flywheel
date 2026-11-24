@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
-import { DebugLog } from "../../../../../src/infra/debug-log.js";
-import { Log } from "../../../../../src/infra/log.js";
+import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log.js";
+import { Log } from "../../../../../src/infra/diagnostics/log.js";
 import {
   CatalogDiscoveryDiagnosticAccumulator,
   recordCatalogDiscoveryDiagnostics,

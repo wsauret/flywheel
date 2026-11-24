@@ -1,4 +1,4 @@
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import { LlmStreamError } from "../../../agent-runtime/llm/errors.js";
 import type { ProviderTransportHiddenRequest } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import { CLAUDE_AGENT_SDK_LABEL } from "../names.js";

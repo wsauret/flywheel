@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { describe, expect, test } from "bun:test"
 
 import { resolveDefinitionCandidates } from "../../../../src/infra/definition-resolution.js"
-import { acquireLock, releaseLock } from "../../../../src/infra/ownership-file-lock.js"
+import { acquireLock, releaseLock } from "../../../../src/infra/locks/ownership-file-lock.js"
 import { createDefinitionOverrideBaselineOwner, readDefinitionOverrideBaselines, type AcknowledgeDefinitionOverrideBaselinesOptions } from "../../../../src/workflows/definitions/override-baselines.js"
 import { deriveDefinitionStalenessReport } from "../../../../src/workflows/definitions/override-staleness.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"

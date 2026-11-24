@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
 import { createEmit, EventBus } from "../../../../../src/infra/event-bus.ts"
-import type { ToolCallEventData } from "../../../../../src/infra/runtime-event-payload-types.ts"
+import type { ToolCallEventData } from "../../../../../src/infra/runtime-facts/runtime-event-payload-types.ts"
 import { createModuleChatObservers } from "../../../../../src/orchestration/chat/lifecycle/module-observers.ts"
 import type { ModuleChatObserverContext } from "../../../../../src/orchestration/module-seams.ts"
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.ts"

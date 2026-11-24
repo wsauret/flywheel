@@ -235,8 +235,7 @@ describe("return to latest", () => {
 
     createRoot((dispose) => {
       const controller = mountController(slot, snap, {
-        visibleMessageCount: () => 12,
-        jumpToLatest: async () => { jumps += 1 },
+        transcript: { visibleMessageCount: () => 12, jumpToLatest: async () => { jumps += 1 }, takeEstimateUpdates: () => [], evictBefore: () => {} },
       })
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
@@ -252,8 +251,7 @@ describe("return to latest", () => {
 
     createRoot((dispose) => {
       const controller = mountController(slot, snap, {
-        visibleMessageCount: () => 13,
-        jumpToLatest: async () => { jumps += 1 },
+        transcript: { visibleMessageCount: () => 13, jumpToLatest: async () => { jumps += 1 }, takeEstimateUpdates: () => [], evictBefore: () => {} },
       })
       expect(controller.returnToLatestBaseline()).toBe(12)
       // The remount holds the restored place one row above the bottom.

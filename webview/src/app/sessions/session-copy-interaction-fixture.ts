@@ -1,6 +1,6 @@
 import { createComponent, createRoot } from "solid-js"
 
-import type { SessionSummary } from "../../client/view-state.js"
+import type { SessionSummary } from "../../client/session/view-state.js"
 import { fakeClient, fakeClientActions, fakeClientHost, fakeViewState } from "../client-context-fixture.js"
 import { createCommandPanel } from "../composer/menus/command-panel.js"
 import { createElement, insert, nodes, textContent, type FixtureEvent } from "../../test-support/render-ownership-host-fixture.js"

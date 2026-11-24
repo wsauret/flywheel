@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { Log } from "../../../../../../src/infra/log.js";
+import { Log } from "../../../../../../src/infra/diagnostics/log.js";
 import { healConversation } from "../../../../../../src/orchestration/agent-runtime/llm/history/heal-messages.js";
 import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 

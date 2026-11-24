@@ -2,9 +2,9 @@ import { EventEmitter, once } from "node:events";
 import { PassThrough, Writable } from "node:stream";
 import type { SpawnedProcess, SpawnOptions } from "@anthropic-ai/claude-agent-sdk";
 import type { FileSink } from "bun";
-import type { StopHold } from "./stop-hold.js";
+import type { StopHold } from "./process/container/stop-hold.js";
 import type { LauncherScope, OwnershipClosure } from "./process-supervisor.js";
-import { launchFailed, type OwnedProcess, type OwnedProcessExit } from "./owned-subprocess.js";
+import { launchFailed, type OwnedProcess, type OwnedProcessExit } from "./supervision/launch/owned-subprocess.js";
 
 /** The longest stderr line the sink receives. Most of the CLI's debug lines are
  *  short, but an HTTP error line holds the whole response body, which the bridge

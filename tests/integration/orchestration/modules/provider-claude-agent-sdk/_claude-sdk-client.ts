@@ -9,7 +9,7 @@ import { mkdirSync, readdirSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Exit, Scope } from "effect";
-import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
+import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js";
 import type { ModelCost, ModelPricing } from "../../../../../src/infra/llm/models/models.js";
 import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js";

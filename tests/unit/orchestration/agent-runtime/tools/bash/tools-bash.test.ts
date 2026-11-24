@@ -14,7 +14,7 @@ import { createBackgroundWorkRegistry } from "../../../../../../src/orchestratio
 import { createForegroundBashHoldController } from "../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
-import { canonicalMutationPath } from "../../../../../../src/infra/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../../../src/infra/locks/file-mutation-queue.js";
 import * as treeSitter from "../../../../../../src/infra/tree-sitter-parser.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import type { RuntimeToolInput } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";

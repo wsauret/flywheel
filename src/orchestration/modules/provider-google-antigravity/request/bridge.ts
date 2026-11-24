@@ -1,4 +1,4 @@
-import { DebugLog } from "../../../../infra/debug-log.js"
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
 import type { ReasoningEffort } from "../../../../infra/llm/models/models.js"
 import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-schema.js"
 import { ContextLengthExceededError, LlmStreamError, RouteUnavailableError } from "../../../agent-runtime/llm/errors.js"
@@ -7,6 +7,7 @@ import type { ContentBlock, ConversationMessage, ProviderStreamEvent } from "../
 import { AcpConnectionClosed } from "../acp/connection.js"
 import type { AcpConfigOption, AcpPromptResult, AcpSessionUpdate, AcpTextBlock } from "../acp/schema.js"
 import type { EngineProcess } from "../engine/engine-process.js"
+import { createUsageLedger, type UsageLedger } from "../usage/conversation-usage.js"
 import { engineStoppedFailure } from "../acp/errors.js"
 import { renderMessages } from "./history-text.js"
 import type { ParkedToolCall, ToolServerRegistration } from "../tools/mcp-server.js"
@@ -23,7 +24,7 @@ import type { AuditedRelease, TransportAudit } from "./transport-audit.js"
  *  the engine's history and never in Flywheel's. */
 export const PRIMER_TEXT = "This session continues a conversation. Wait for its next message."
 
-export type BridgeEngine = Pick<EngineProcess, "processId" | "toolNames" | "openSession" | "releaseSession" | "prompt" | "cancel" | "configure" | "close">
+export type BridgeEngine = Pick<EngineProcess, "processId" | "toolNames" | "openSession" | "releaseSession" | "prompt" | "cancel" | "conversationRows" | "configure" | "close">
 export type BridgeGate = Pick<StepGate, "grant" | "expectCanary" | "revoke" | "onEvent">
 
 /** The engine process that serves a request, and the step gate of its login. */
@@ -122,8 +123,10 @@ interface Session {
   admitted: boolean
   /** agy reported context occupancy (`usage_update`) since the last release, which it does for each model request. */
   modelRequest: boolean
-  /** The tokens that the requests of the open prompt reported as partial usage (`RequestStream.partialTokens`). */
+  /** The tokens that the requests of the open prompt reported (`RequestStream.tokensReported`). */
   promptTokensReported: number
+  /** The usage of the session's model requests, which agy records in the session's conversation database. */
+  readonly usage: UsageLedger
   /** The gate refused a step of the session while the open request ran. */
   refused: number
   /** The kinds of tool result that the bridge delivered to the session, which agy then holds in every later model
@@ -303,6 +306,7 @@ export function createBridge(config: BridgeConfig): Bridge {
   const retire = async (target: Session): Promise<void> => {
     await cancel(target)
     target.unsubscribe()
+    target.usage.close()
     target.serving.engine.releaseSession(target.sessionId)
   }
 
@@ -421,6 +425,7 @@ export function createBridge(config: BridgeConfig): Bridge {
     const target: Session = {
       serving, sessionId: opened.sessionId, appendBytes: Buffer.byteLength(plan.append, "utf8"), config: opened.configOptions, view: plan.view,
       prompting: false, park: undefined, feed: undefined, pending: [], release: undefined, admitted: false, modelRequest: false, promptTokensReported: 0, refused: 0, delivered: { results: false, errors: false },
+      usage: createUsageLedger({ processId: serving.engine.processId, sessionId: opened.sessionId, read: (afterIdx) => serving.engine.conversationRows(opened.sessionId, afterIdx) }),
       primer: { canary: false, modelFrames: 0 }, lastCall: [],
       unsubscribe: serving.gate.onEvent((event) => { onGate(target, event) }),
     }
@@ -488,9 +493,10 @@ export function createBridge(config: BridgeConfig): Bridge {
 
     // A delivered result continues the open prompt; every other release starts a new one.
     const promptTokensReported = plan.kind === "deliver" ? target.promptTokensReported : 0
+    if (plan.kind !== "deliver") target.usage.startPrompt()
     const feed: Feed = {
       stream: createRequestStream({
-        requestId: crypto.randomUUID(), liveness: request.liveness, promptTokensReported,
+        requestId: crypto.randomUUID(), liveness: request.liveness, promptTokensReported, usage: target.usage,
         ...request.onDispatch === undefined ? {} : { onDispatch: request.onDispatch },
         onOccupancy: (used) => { target.view = { ...target.view, occupancy: used } },
         modelRequested: () => target.admitted || target.modelRequest,
@@ -539,7 +545,7 @@ export function createBridge(config: BridgeConfig): Bridge {
       }
     } finally {
       request.signal?.removeEventListener("abort", abort)
-      target.promptTokensReported = promptTokensReported + feed.stream.partialTokens
+      target.promptTokensReported = promptTokensReported + feed.stream.tokensReported
       // A request that settled on a revealed call leaves the step it admitted unused.
       target.serving.gate.revoke(admission)
       if (target.feed === feed && !feed.settled) {

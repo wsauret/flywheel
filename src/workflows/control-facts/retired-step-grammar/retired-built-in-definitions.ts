@@ -6,7 +6,7 @@
  *  from the base bytes fails the identity fixture of its workflow. Remove
  *  after 2027-04-30. */
 import { Schema } from "effect";
-import { parseWorkflowYaml } from "../../../infra/workflow-yaml.js";
+import { parseWorkflowYaml } from "../../../infra/yaml/workflow-yaml.js";
 import { StepGrammarWorkflowSchema, type StepGrammarWorkflow } from "../../schema/retired-step-grammar/schema.js";
 
 const RETIRED_BUILT_IN_TEXTS: ReadonlyMap<string, string> = new Map([

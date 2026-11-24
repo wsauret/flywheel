@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
 import { unifiedDiffPreview } from "../../../../infra/mutation-diff.js"
 import type { MutationEvidenceEntry } from "../../../../infra/mutation-evidence.js"
 import { MutationEvidenceEntrySchema } from "../../../../infra/mutation-evidence-schema.js"

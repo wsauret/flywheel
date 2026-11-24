@@ -10,7 +10,7 @@
  * recorded turns never change.
  */
 
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import type { FirstPartyModuleComposition } from "../../../modules.js";
 import type { HistorySink } from "../../agent-loop-types.js";
 import type { ConversationMessage } from "../../llm/types.js";

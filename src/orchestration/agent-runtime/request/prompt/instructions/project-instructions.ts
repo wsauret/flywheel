@@ -5,7 +5,7 @@ import { canonicalPathWithMissingTail } from "../../../../../infra/canonical-pat
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import { readFullSync } from "../../../../../infra/read-full.js";
 import { globalAgentsFile } from "../../../../../infra/paths.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import { extractMentionPaths } from "./instruction-mentions.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../../llm/system-prompt-tiers.js";
 

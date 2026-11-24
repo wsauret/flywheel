@@ -2,7 +2,7 @@ import { captureSubscriptionCredentials } from "../../../infra/auth/auth-context
 import { loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../infra/auth/store/auth-store.js"
 import { subscriptionSpendAccountCorrelationId } from "../../../protocol/subscription-spend-consent-protocol-types.js"
 import type { MeteredUsageSource } from "./usage-projection.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
 import type { FirstPartyModuleComposition } from "../../modules.js"
 
 import { accessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js"

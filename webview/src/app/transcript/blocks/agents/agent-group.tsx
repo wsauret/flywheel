@@ -6,7 +6,7 @@ import { parseSessionLink } from "../../../../../../src/protocol/client/session-
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../../src/protocol/app-service-types.js"
 import type { RoleAssignmentView } from "../../../../../../src/protocol/role-protocol-types.js"
 import type { StatusView } from "../../../../../../src/protocol/status-protocol-types.js"
-import { blockEndTimes } from "../../../../client/tool-runs.js"
+import { blockEndTimes } from "../../../../client/session/residents/tool-runs.js"
 import { RowTime, TranscriptClock } from "../../reading/row-time.js"
 import { createSessionReading, type SessionReadingSource } from "./session-reading.js"
 import { CompactToolRows } from "../compact-tool-rows.js"

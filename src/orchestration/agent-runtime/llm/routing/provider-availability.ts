@@ -13,7 +13,7 @@ import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../infra/auth/openai/
 import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderId } from "../../../../infra/llm/access/access-provider.js";
 import { errorMessage } from "../../../../infra/error-message.js";
 import type { CapacityHold } from "../../../../infra/llm/errors/provider-error-copy.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { isRecord } from "../../../../infra/record.js";
 import {
   AvailabilityCorruptError,

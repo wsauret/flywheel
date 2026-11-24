@@ -8,7 +8,7 @@ import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory, ty
 import { savedProviderModelIds } from "../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import type { AdmittedFailoverPlan, AccessProviderModelEligibility, AccessProviderSelection } from "../../../infra/llm/access/access-provider.js";
 import type { ProviderConnection } from "../../../infra/auth/auth-context.js";
 import type { ModelInfo } from "../../../infra/llm/models/models.js";

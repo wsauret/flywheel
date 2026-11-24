@@ -1,7 +1,7 @@
 import { closeSync, fstatSync, ftruncateSync, openSync, readSync, statSync, writeSync } from "node:fs"
 
 import { errorMessage } from "../../infra/error-message.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 
 /** The size past which a start trims the service's error log, and the tail
  *  it keeps: the file stays at most about 1 MiB and never loses the output

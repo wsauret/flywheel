@@ -1,7 +1,7 @@
 import { serveLaneFor } from "../../../infra/cli-subprocess.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
 import { ownedCommandRunner } from "../../../infra/owned-command.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { EMPTY_REMOTE_VIEW, remoteCursor } from "../../../protocol/modules/remote.js"
 import { DEFAULT_REMOTE_APP_ORIGIN } from "../../../protocol/modules/remote/relay-protocol.js"
 import type { AccountProjectModuleServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"

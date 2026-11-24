@@ -1,4 +1,4 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/event-store-types.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/store/event-store-types.js"
 import { InvariantViolation } from "../../infra/invariant.js"
 import { WORKFLOW_RUN_FACT_TYPES, workflowAggregateId } from "../run/run-facts.js"
 import { selectNewestWorkflowRoot, workflowFamilyBoundary, WORKFLOW_ROOT_FACT_TYPES } from "./workflow-root.js"

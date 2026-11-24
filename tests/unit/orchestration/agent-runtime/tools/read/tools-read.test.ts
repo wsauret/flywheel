@@ -13,7 +13,7 @@ import type { AgentPurpose } from "../../../../../../src/orchestration/agent-run
 import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/module-runtime.js";
 import { testKernelToolDeps, admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
-import { canonicalMutationPath } from "../../../../../../src/infra/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../../../src/infra/locks/file-mutation-queue.js";
 import { makeContext } from "../_fixtures.js";
 
 const nameInterpolation = ["", "{name}"].join("$");

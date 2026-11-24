@@ -51,7 +51,7 @@ import { abortableSleep } from "../../../../infra/abort.js";
 import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type LoginWaitAnswer } from "../../../../infra/llm/access/access-provider.js";
 import type { ModelFamily } from "../../../../infra/llm/models/model-family.js";
 import { errorMessage } from "../../../../infra/error-message.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErrorDetail, waitingClears, type CapacityHold, type CapacityReset, type ProviderUnavailableCause } from "../../../../infra/llm/errors/provider-error-copy.js";
 import { summarizeProviderError } from "../../../../infra/llm/errors/provider-error-diagnostic.js";
 import { providerOptionsUnservableReason, type ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import type { DebugLine } from "./stderr-signals.js";
 
 /**

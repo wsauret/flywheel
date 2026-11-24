@@ -7,7 +7,7 @@ import { SERVE_EXIT } from "../../../../src/cli/account-service/serve-contract.j
 import { restartRefusal } from "../../../../src/cli/account-service/serve-next-service.js"
 import { RESTART_NO_STARTER_REASON, RESTART_TASK_SCHEDULER_REASON, restartLaunchMissingReason } from "../../../../src/protocol/client/service-restart-copy.js"
 import { serveLaneFor } from "../../../../src/infra/cli-subprocess.js"
-import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
+import { createPersistentProcessManager } from "../../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import { accountServeRecordPath, accountServeSocketPath } from "../../../../src/infra/paths.js"
 import { ServeLifetime } from "../../../../src/orchestration/app-service/account/serve-lifetime.js"
 import { IDLE_SERVE, unusedLauncher } from "./_serve-fixtures.js"

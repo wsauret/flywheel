@@ -7,7 +7,7 @@ import { rmSync } from "node:fs";
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { Schema } from "effect";
 import { RoleSettingsSchema } from "../../../../../src/infra/role-settings.js";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-types.js";
 import { buildRegistry, makeContext, makeDeps, makeMockRunnerFactory, runnerEffort, TEST_RATIONALE } from "./_fixtures.js";
 
 function selectedModelLabels(events: readonly RuntimeEvent[]): string[] {

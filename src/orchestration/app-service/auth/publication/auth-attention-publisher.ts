@@ -1,8 +1,8 @@
 import { errorDetail, errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../infra/notification-episode.js"
 import { loggedOperation, type OperationFailure } from "../../../../infra/operation-log.js"
-import { coalesceRepeats } from "../../../../infra/repeat-coalescer.js"
+import { coalesceRepeats } from "../../../../infra/diagnostics/repeat-coalescer.js"
 import type { RuntimeAuthView } from "../../../../protocol/auth-status-protocol-types.js"
 
 const log = Log.create({ service: "auth-attention" })

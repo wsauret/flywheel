@@ -5,10 +5,10 @@
  *  at its top level, so the hooks that close what a case opened and remove
  *  its directories bind to that file. */
 import { afterEach, expect } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../../src/infra/store/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths"
-import type { BackgroundCommandRecord } from "../../../../../src/infra/runtime-fact-types"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store"
+import type { BackgroundCommandRecord } from "../../../../../src/infra/runtime-facts/runtime-fact-types"
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store"
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work"
 import { createBackgroundIndex } from "../../../../../src/orchestration/app-service/background/background-index"
 import { composeBackgroundIndex } from "../../../../../src/orchestration/app-service/background/background-index-publisher"

@@ -1,4 +1,4 @@
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { createOrderedLane, type OrderedLane } from "../../../infra/ordered-lane.js"
 import type { SessionHolder } from "../account/projects/session-holds.js"
 

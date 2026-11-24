@@ -21,7 +21,7 @@
 import * as path from "node:path"
 import { selectStartupDirectories } from "../infra/directory-authorities.js"
 import { errorMessage } from "../infra/error-message.js"
-import { Log } from "../infra/log.js"
+import { Log } from "../infra/diagnostics/log.js"
 import { buildPlatformArch } from "../infra/native-assets.js"
 import { ownedCommandRunner } from "../infra/owned-command.js"
 import { wrapperDirectory } from "../infra/update/wrapper-directory.js"

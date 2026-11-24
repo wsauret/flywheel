@@ -1,6 +1,6 @@
 import { Result, Schema } from "effect";
 import { isDeepStrictEqual } from "node:util";
-import { ContainedPathError } from "../../descriptor-directory-contract.js";
+import { ContainedPathError } from "../../descriptor-directory/descriptor-directory-contract.js";
 import { accountSecretFile } from "../../paths.js";
 import { isRecord } from "../../record.js";
 import { type AuthProfileAccess, openExistingAuthProfileDirectory } from "./auth-profile-store.js";
