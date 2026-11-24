@@ -1,0 +1,1124 @@
+AGENTS.md
+  h_4b47e9e4a8b456 194
+docs/architecture.md
+  h_4b47e9e4a8b456 170,298,341,510,553
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 62,125-127
+scripts/check-diagnostics-registry.ts
+  h_4b47e9e4a8b456 102,107
+scripts/check-terminal-io.ts
+  h_4b47e9e4a8b456 14
+scripts/check-terminology.ts
+  h_4b47e9e4a8b456 185
+scripts/render-reference-docs.ts
+  h_4b47e9e4a8b456 6-7
+src/cli/account-service/terminal-handoff.ts
+  h_4b47e9e4a8b456 7,94
+src/cli/main.ts
+  h_4b47e9e4a8b456 19,193,195
+src/tui/adapters/session-detail-cache.ts
+  h_4b47e9e4a8b456 2-6
+src/tui/adapters/tool-detail-highlight.ts
+  h_4b47e9e4a8b456 4
+src/tui/child-viewer/child-session-body.tsx
+  h_4b47e9e4a8b456 3,6-26
+src/tui/child-viewer/child-session-viewer.tsx
+  h_4b47e9e4a8b456 6-16,18-20,182
+src/tui/child-viewer/create-child-viewer-opener.tsx
+  h_4b47e9e4a8b456 4-9
+src/tui/commands/close-chat-surface.ts
+  h_4b47e9e4a8b456 2
+src/tui/commands/command-catalog.ts
+  h_4b47e9e4a8b456 1
+src/tui/commands/command-definitions.ts
+  h_4b47e9e4a8b456 4-6
+src/tui/commands/command-dispatch.ts
+  h_4b47e9e4a8b456 10-11
+src/tui/commands/command-types.ts
+  h_4b47e9e4a8b456 6-7
+src/tui/commands/runtime-command-bindings.ts
+  h_4b47e9e4a8b456 3
+src/tui/components/activity/create-spinner-status.ts
+  h_4b47e9e4a8b456 3-7
+src/tui/components/activity/spinner-status-animation.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/components/activity/spinner-status-display-activity.ts
+  h_4b47e9e4a8b456 1
+src/tui/components/activity/spinner-status-model.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/components/activity/spinner-status-notice.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/components/activity/spinner.tsx
+  h_4b47e9e4a8b456 6
+src/tui/components/activity/use-elapsed.ts
+  h_4b47e9e4a8b456 3
+src/tui/components/activity/use-spinner-frame.ts
+  h_4b47e9e4a8b456 2
+src/tui/components/chrome/cell-column.tsx
+  h_4b47e9e4a8b456 5
+src/tui/components/chrome/context-control.tsx
+  h_4b47e9e4a8b456 6-11
+src/tui/components/chrome/tabs-bar.tsx
+  h_4b47e9e4a8b456 6,8
+src/tui/components/composer/attachments/composer-attachments.ts
+  h_4b47e9e4a8b456 6-10,12
+src/tui/components/composer/attachments/file-attachments.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/components/composer/composer-draft.ts
+  h_4b47e9e4a8b456 1
+src/tui/components/composer/composer-recall.ts
+  h_4b47e9e4a8b456 1
+src/tui/components/composer/composer-types.ts
+  h_4b47e9e4a8b456 1-2,4-7,10-16
+src/tui/components/composer/composer.tsx
+  h_4b47e9e4a8b456 8-9,12-17,20,24-29
+src/tui/components/composer/create-composer-history.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/components/composer/create-composer-question-handoff.ts
+  h_4b47e9e4a8b456 2
+src/tui/components/composer/create-draft-cache.ts
+  h_4b47e9e4a8b456 1-2,4
+src/tui/components/composer/frame/border-content.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/components/composer/frame/composer-border-labels.tsx
+  h_4b47e9e4a8b456 2,4,8,10-11
+src/tui/components/composer/frame/composer-border-layout.ts
+  h_4b47e9e4a8b456 1
+src/tui/components/composer/frame/composer-frame.tsx
+  h_4b47e9e4a8b456 10-12,14
+src/tui/components/composer/frame/key-hint-row-state.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/components/composer/question-dock-form.ts
+  h_4b47e9e4a8b456 2,4-5
+src/tui/components/composer/suggestions/create-mention-suggestions.ts
+  h_4b47e9e4a8b456 3-5
+src/tui/components/composer/suggestions/create-slash-suggestions.ts
+  h_4b47e9e4a8b456 4
+src/tui/components/composer/suggestions/slash-suggestions.tsx
+  h_4b47e9e4a8b456 6-7
+src/tui/components/controls/button.tsx
+  h_4b47e9e4a8b456 4,6
+src/tui/components/controls/controlled-text-field.tsx
+  h_4b47e9e4a8b456 5-6
+src/tui/components/error-boundary.tsx
+  h_4b47e9e4a8b456 4,8-9
+src/tui/components/image/qr-code.tsx
+  h_4b47e9e4a8b456 6
+src/tui/components/layout/collapsible-box.tsx
+  h_4b47e9e4a8b456 4
+src/tui/components/lazy-tui-view.tsx
+  h_4b47e9e4a8b456 8
+src/tui/components/modal/help/modal-help-shortcuts.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/components/modal/help/modal-help.tsx
+  h_4b47e9e4a8b456 7-8,10-13,15
+src/tui/components/modal/image-viewer.tsx
+  h_4b47e9e4a8b456 8-9,11
+src/tui/components/modal/modal-frame.tsx
+  h_4b47e9e4a8b456 5-8
+src/tui/components/modal/modal-section.tsx
+  h_4b47e9e4a8b456 4
+src/tui/components/modal/modal.tsx
+  h_4b47e9e4a8b456 5,7-9
+src/tui/components/modal/select/modal-select.tsx
+  h_4b47e9e4a8b456 5,8
+src/tui/components/notices/runtime-notice.tsx
+  h_4b47e9e4a8b456 3,5-7
+src/tui/components/notices/toast-display.tsx
+  h_4b47e9e4a8b456 7
+src/tui/components/startup/startup-progress.tsx
+  h_4b47e9e4a8b456 4
+src/tui/components/startup/startup-viewport.tsx
+  h_4b47e9e4a8b456 4-8
+src/tui/components/use-copy-selection.ts
+  h_4b47e9e4a8b456 4-5
+src/tui/context/find/find-highlight.ts
+  h_4b47e9e4a8b456 4
+src/tui/context/find/reactive-text.ts
+  h_4b47e9e4a8b456 4-5
+src/tui/context/keymap.tsx
+  h_4b47e9e4a8b456 4
+src/tui/context/subagent-controls.ts
+  h_4b47e9e4a8b456 3
+src/tui/hooks/composer/composer-history-loader.ts
+  h_4b47e9e4a8b456 2-3
+src/tui/hooks/composer/create-attach-files-command.ts
+  h_4b47e9e4a8b456 3-8,10
+src/tui/hooks/composer/create-composer-border-layout.ts
+  h_4b47e9e4a8b456 3-10
+src/tui/hooks/composer/create-composer-returns.ts
+  h_4b47e9e4a8b456 1-6
+src/tui/hooks/composer/file-chooser.ts
+  h_4b47e9e4a8b456 1
+src/tui/hooks/composer/use-commands.ts
+  h_4b47e9e4a8b456 2-10
+src/tui/hooks/composer/use-composer-history-persistence.ts
+  h_4b47e9e4a8b456 2-5
+src/tui/hooks/create-launch-state.ts
+  h_4b47e9e4a8b456 6-9,11
+src/tui/hooks/create-tab-closer.ts
+  h_4b47e9e4a8b456 6,8
+src/tui/hooks/create-tabs.ts
+  h_4b47e9e4a8b456 5-7
+src/tui/hooks/foreground/background-foreground.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/hooks/foreground/create-foreground-switcher.ts
+  h_4b47e9e4a8b456 2-4
+src/tui/hooks/foreground/session-activation.ts
+  h_4b47e9e4a8b456 1-4,6-8
+src/tui/hooks/overlays/create-modals.tsx
+  h_4b47e9e4a8b456 3,5-29,31-35
+src/tui/hooks/overlays/create-module-slots.tsx
+  h_4b47e9e4a8b456 4-16,18
+src/tui/hooks/overlays/modals/auth/auth-modal-account-actions.ts
+  h_4b47e9e4a8b456 1-2,4
+src/tui/hooks/overlays/modals/auth/auth-modal-disconnect.ts
+  h_4b47e9e4a8b456 1-4
+src/tui/hooks/overlays/modals/auth/auth-modal-input.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/hooks/overlays/modals/auth/auth-modal-login-input.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/hooks/overlays/modals/auth/auth-modal-login-question.ts
+  h_4b47e9e4a8b456 1,3,5
+src/tui/hooks/overlays/modals/auth/auth-modal-login-settlement.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/hooks/overlays/modals/auth/auth-modal-model-actions.ts
+  h_4b47e9e4a8b456 1,3-10
+src/tui/hooks/overlays/modals/auth/auth-modal-profile-controls.ts
+  h_4b47e9e4a8b456 2-9
+src/tui/hooks/overlays/modals/auth/auth-modal-provider-model-controls.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/hooks/overlays/modals/auth/auth-modal-provider-settings.ts
+  h_4b47e9e4a8b456 2-10,13-14
+src/tui/hooks/overlays/modals/auth/auth-modal-setting-edits.ts
+  h_4b47e9e4a8b456 2,4-7
+src/tui/hooks/overlays/modals/auth/auth-modal-types.ts
+  h_4b47e9e4a8b456 2-9,12-14
+src/tui/hooks/overlays/modals/auth/use-auth-modal.ts
+  h_4b47e9e4a8b456 4-5,7-15,29
+src/tui/hooks/overlays/modals/auth/use-subscription-spend-consent-control.ts
+  h_4b47e9e4a8b456 2-6,8
+src/tui/hooks/overlays/modals/auth/use-subscription-spend-consent-modal.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/overlays/modals/model/observe-model-catalog.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/hooks/overlays/modals/model/use-model-modal.ts
+  h_4b47e9e4a8b456 3,11-13,15-24
+src/tui/hooks/overlays/modals/profile/auth-profile-edits.ts
+  h_4b47e9e4a8b456 1-4,6
+src/tui/hooks/overlays/modals/profile/auth-profile-selection.ts
+  h_4b47e9e4a8b456 2-5
+src/tui/hooks/overlays/modals/profile/use-profile-modal.ts
+  h_4b47e9e4a8b456 3-8
+src/tui/hooks/overlays/modals/session/use-session-modal-types.ts
+  h_4b47e9e4a8b456 2-8
+src/tui/hooks/overlays/modals/session/use-session-modal.ts
+  h_4b47e9e4a8b456 2-14,16
+src/tui/hooks/overlays/modals/settings/settings-capability-rows.ts
+  h_4b47e9e4a8b456 1,3-9
+src/tui/hooks/overlays/modals/settings/settings-diagnostic-projection.ts
+  h_4b47e9e4a8b456 2-5
+src/tui/hooks/overlays/modals/settings/settings-git-ai-attribution-row.ts
+  h_4b47e9e4a8b456 2-5
+src/tui/hooks/overlays/modals/settings/settings-modal-controller.ts
+  h_4b47e9e4a8b456 3-4,6-10
+src/tui/hooks/overlays/modals/settings/settings-provider-setting-row.ts
+  h_4b47e9e4a8b456 2-3,5
+src/tui/hooks/overlays/modals/settings/settings-row-tree.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/hooks/overlays/modals/settings/settings-training-routes-row.ts
+  h_4b47e9e4a8b456 2-4
+src/tui/hooks/overlays/modals/settings/settings-tree.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/overlays/modals/settings/terminal-setting-edit.ts
+  h_4b47e9e4a8b456 2-5
+src/tui/hooks/overlays/modals/settings/use-settings-modal.ts
+  h_4b47e9e4a8b456 2-15,17-20,22-25,31
+src/tui/hooks/overlays/modals/use-background-modal.ts
+  h_4b47e9e4a8b456 3-5,14-20
+src/tui/hooks/overlays/modals/use-command-palette.ts
+  h_4b47e9e4a8b456 3-9
+src/tui/hooks/overlays/modals/use-help-modal.ts
+  h_4b47e9e4a8b456 2-3
+src/tui/hooks/overlays/modals/use-session-changes-modal.ts
+  h_4b47e9e4a8b456 3-9
+src/tui/hooks/overlays/modals/use-status-modal.ts
+  h_4b47e9e4a8b456 3-13
+src/tui/hooks/overlays/modals/use-theme-modal.ts
+  h_4b47e9e4a8b456 3-11
+src/tui/hooks/overlays/questions/automatic-dialogs.ts
+  h_4b47e9e4a8b456 2-3
+src/tui/hooks/overlays/questions/use-login-question.ts
+  h_4b47e9e4a8b456 2-3
+src/tui/hooks/overlays/questions/use-paid-use-question.ts
+  h_4b47e9e4a8b456 2-3
+src/tui/hooks/sessions/create-session-creator.ts
+  h_4b47e9e4a8b456 1,3-8
+src/tui/hooks/sessions/create-session-process-controls.ts
+  h_4b47e9e4a8b456 1-5
+src/tui/hooks/sessions/use-session-controls.ts
+  h_4b47e9e4a8b456 1-4
+src/tui/hooks/state/active-model-label.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/hooks/state/create-auth-status-cache.ts
+  h_4b47e9e4a8b456 2-6
+src/tui/hooks/state/create-background-index.ts
+  h_4b47e9e4a8b456 3,9
+src/tui/hooks/state/create-command-catalog.ts
+  h_4b47e9e4a8b456 3,9-11
+src/tui/hooks/state/create-header-display.ts
+  h_4b47e9e4a8b456 3-7,9
+src/tui/hooks/state/create-ordered-patch-receiver.ts
+  h_4b47e9e4a8b456 2-4
+src/tui/hooks/state/create-session-catalog.ts
+  h_4b47e9e4a8b456 3-11
+src/tui/hooks/state/create-session-changes.ts
+  h_4b47e9e4a8b456 2-4
+src/tui/hooks/state/create-settings-store.ts
+  h_4b47e9e4a8b456 3-10
+src/tui/hooks/state/domains/create-module-cache.ts
+  h_4b47e9e4a8b456 2-4
+src/tui/hooks/state/domains/create-module-domain-intakes.ts
+  h_4b47e9e4a8b456 2-8
+src/tui/hooks/state/domains/create-workflow-domain-intake.ts
+  h_4b47e9e4a8b456 2-7
+src/tui/hooks/state/runtime/create-runtime-config-cache.ts
+  h_4b47e9e4a8b456 3-5
+src/tui/hooks/state/runtime/create-runtime-health.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/state/runtime/create-runtime-startup-status.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/state/runtime/create-update-status-cache.ts
+  h_4b47e9e4a8b456 2-4
+src/tui/hooks/state/session-empty-state.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/hooks/state/sessions/create-budget-cache.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/hooks/state/sessions/create-foreground-output-pager.ts
+  h_4b47e9e4a8b456 1
+src/tui/hooks/state/sessions/create-per-session-cache.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/hooks/state/sessions/create-question-cache.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/hooks/state/sessions/create-role-cache.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/hooks/state/sessions/create-session-surface.ts
+  h_4b47e9e4a8b456 3-14
+src/tui/hooks/state/sessions/create-status-cache.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/hooks/state/sessions/session-load-failure.ts
+  h_4b47e9e4a8b456 1
+src/tui/hooks/state/sessions/snapshot-hydration-limit.ts
+  h_4b47e9e4a8b456 1
+src/tui/hooks/state/shell-state.ts
+  h_4b47e9e4a8b456 4-34,36-37,40,42-49,51,53-57
+src/tui/hooks/state/use-question-pages.ts
+  h_4b47e9e4a8b456 2-4
+src/tui/hooks/transcript/create-background-hydration.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/hooks/transcript/create-transcript-selection-drag.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/transcript/create-transcript-visibility-refresh.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/hooks/transcript/transcript-in-view.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/use-chat-mode.ts
+  h_4b47e9e4a8b456 4
+src/tui/hooks/welcome/use-release-notice.ts
+  h_4b47e9e4a8b456 2-5
+src/tui/hooks/welcome/use-tabs-hint.ts
+  h_4b47e9e4a8b456 2-4
+src/tui/hooks/wiring/report-async.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/modals/auth/auth-modal-options.ts
+  h_4b47e9e4a8b456 3,6
+src/tui/modals/auth/auth-modal.tsx
+  h_4b47e9e4a8b456 6-7,9-10,18-22,25,27-28
+src/tui/modals/auth/auth-status-presentation.ts
+  h_4b47e9e4a8b456 1
+src/tui/modals/auth/subscription-spend-consent-modal.tsx
+  h_4b47e9e4a8b456 3
+src/tui/modals/background-modal.tsx
+  h_4b47e9e4a8b456 4,8,10-15
+src/tui/modals/command-palette-types.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/modals/command-palette.tsx
+  h_4b47e9e4a8b456 4-6,9-10
+src/tui/modals/lazy-modal-registry.ts
+  h_4b47e9e4a8b456 8,11,13,20-30
+src/tui/modals/model/model-modal-chrome.ts
+  h_4b47e9e4a8b456 4-5
+src/tui/modals/model/model-modal-helpers.ts
+  h_4b47e9e4a8b456 4
+src/tui/modals/model/model-modal-text.ts
+  h_4b47e9e4a8b456 3
+src/tui/modals/model/model-modal-types.ts
+  h_4b47e9e4a8b456 7
+src/tui/modals/model/model-modal.tsx
+  h_4b47e9e4a8b456 4,7-8,10-11,16,18-19
+src/tui/modals/profile-modal.tsx
+  h_4b47e9e4a8b456 4-8
+src/tui/modals/session-changes-modal.tsx
+  h_4b47e9e4a8b456 8,10-13
+src/tui/modals/session-picker/picker-helpers.ts
+  h_4b47e9e4a8b456 2
+src/tui/modals/session-picker/picker-types.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/modals/session-picker/session-modal.tsx
+  h_4b47e9e4a8b456 4-14,16-17
+src/tui/modals/session-picker/session-picker-list.tsx
+  h_4b47e9e4a8b456 6,8,10,14-18
+src/tui/modals/session-picker/session-picker-row.tsx
+  h_4b47e9e4a8b456 5,7
+src/tui/modals/session-picker/session-preview-pane.tsx
+  h_4b47e9e4a8b456 6-12,14-17
+src/tui/modals/session-picker/use-session-preview.ts
+  h_4b47e9e4a8b456 2-5
+src/tui/modals/settings/settings-destination.ts
+  h_4b47e9e4a8b456 1
+src/tui/modals/settings/settings-modal-types.ts
+  h_4b47e9e4a8b456 2-5
+src/tui/modals/settings/settings-modal.tsx
+  h_4b47e9e4a8b456 4,6-8,10-11,14-20
+src/tui/modals/status-modal.tsx
+  h_4b47e9e4a8b456 6-9
+src/tui/modals/theme-modal.tsx
+  h_4b47e9e4a8b456 4-8
+src/tui/modules/experiments/dashboard-lines.ts
+  h_4b47e9e4a8b456 4-5
+src/tui/modules/experiments/dashboard-modal.tsx
+  h_4b47e9e4a8b456 5,8-10
+src/tui/modules/experiments/strip.tsx
+  h_4b47e9e4a8b456 6,8
+src/tui/modules/mcp/list.ts
+  h_4b47e9e4a8b456 3,5
+src/tui/modules/mcp/modal.tsx
+  h_4b47e9e4a8b456 7-10,13-16
+src/tui/modules/project-notifications/list.ts
+  h_4b47e9e4a8b456 1,4
+src/tui/modules/project-notifications/modal.tsx
+  h_4b47e9e4a8b456 6,9-11,13-14
+src/tui/modules/reclaim-storage/surface.tsx
+  h_4b47e9e4a8b456 6-8,11
+src/tui/modules/remote/modal.tsx
+  h_4b47e9e4a8b456 6-12
+src/tui/modules/remote/use-remote-modal.ts
+  h_4b47e9e4a8b456 7-8,10,12-13
+src/tui/modules/side-question/modal.tsx
+  h_4b47e9e4a8b456 4-7,9
+src/tui/modules/side-question/model.ts
+  h_4b47e9e4a8b456 5-6
+src/tui/modules/subscription-usage/modal.tsx
+  h_4b47e9e4a8b456 5-7,12-13,15-16,18-19,21
+src/tui/modules/subscription-usage/stats-surface.tsx
+  h_4b47e9e4a8b456 7-10,13,15
+src/tui/modules/subscription-usage/use-usage-modal.ts
+  h_4b47e9e4a8b456 7,9
+src/tui/modules/workflows/activity-block.tsx
+  h_4b47e9e4a8b456 15,18-21,25-28
+src/tui/modules/workflows/agent-header.tsx
+  h_4b47e9e4a8b456 6-7,9-10
+src/tui/modules/workflows/agent-viewer.tsx
+  h_4b47e9e4a8b456 16,20-21,23-25,27-28
+src/tui/modules/workflows/card-viewer.tsx
+  h_4b47e9e4a8b456 7-8,20-22,26-28
+src/tui/modules/workflows/index.tsx
+  h_4b47e9e4a8b456 7,10-11
+src/tui/modules/workflows/inspection.ts
+  h_4b47e9e4a8b456 4
+src/tui/shell/app.tsx
+  h_4b47e9e4a8b456 3,6-7,14-31,71
+src/tui/shell/create-keyboard-handler.ts
+  h_4b47e9e4a8b456 2-4,6-13
+src/tui/shell/launcher.ts
+  h_4b47e9e4a8b456 4-7
+src/tui/shell/question-dock-editor-layout.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/shell/question-dock.tsx
+  h_4b47e9e4a8b456 6-7,9-10,13-16,18
+src/tui/shell/shell-composer.tsx
+  h_4b47e9e4a8b456 4-5,7-23,25-40,43
+src/tui/shell/shell-header.tsx
+  h_4b47e9e4a8b456 6-10
+src/tui/shell/shell-navigation.ts
+  h_4b47e9e4a8b456 2,4-24
+src/tui/shell/shell-overlays.ts
+  h_4b47e9e4a8b456 2,6-30
+src/tui/shell/shell.tsx
+  h_4b47e9e4a8b456 2-5,7-8,16-40
+src/tui/terminal/clipboard.ts
+  h_4b47e9e4a8b456 4-7
+src/tui/terminal/exit.ts
+  h_4b47e9e4a8b456 7-10
+src/tui/terminal/keymap/keymap.ts
+  h_4b47e9e4a8b456 11
+src/tui/terminal/keymap/text-entry.ts
+  h_4b47e9e4a8b456 3
+src/tui/terminal/terminal-input.ts
+  h_4b47e9e4a8b456 1-2
+src/tui/terminal/terminal-output.ts
+  h_4b47e9e4a8b456 3
+src/tui/transcript/output-blocks/agents/agent-group-block.tsx
+  h_4b47e9e4a8b456 5-18,20-23
+src/tui/transcript/output-blocks/agents/agent-line.ts
+  h_4b47e9e4a8b456 2-6
+src/tui/transcript/output-blocks/agents/workflow-card.tsx
+  h_4b47e9e4a8b456 6-17
+src/tui/transcript/output-blocks/agents/workflow-palette.ts
+  h_4b47e9e4a8b456 9-10
+src/tui/transcript/output-blocks/block-frame.tsx
+  h_4b47e9e4a8b456 3,7
+src/tui/transcript/output-blocks/block-renderer.tsx
+  h_4b47e9e4a8b456 3,7-8,22
+src/tui/transcript/output-blocks/markdown/markdown-body.tsx
+  h_4b47e9e4a8b456 7,9-10
+src/tui/transcript/output-blocks/markdown/markdown-styles.ts
+  h_4b47e9e4a8b456 3
+src/tui/transcript/output-blocks/markdown/markdown-table-helpers.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/transcript/output-blocks/markdown/markdown-table.tsx
+  h_4b47e9e4a8b456 5-6
+src/tui/transcript/output-blocks/markdown/streaming-line-model.ts
+  h_4b47e9e4a8b456 40
+src/tui/transcript/output-blocks/messages/text-block.tsx
+  h_4b47e9e4a8b456 5
+src/tui/transcript/output-blocks/messages/thinking-block.tsx
+  h_4b47e9e4a8b456 3,6,9-12
+src/tui/transcript/output-blocks/messages/user-message-block.tsx
+  h_4b47e9e4a8b456 6,8-9,11-12,16,19-20,22
+src/tui/transcript/output-blocks/stop-affordance.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/transcript/output-blocks/system-block.tsx
+  h_4b47e9e4a8b456 4-5,7-8,13,15
+src/tui/transcript/output-blocks/tool-entry-helpers.ts
+  h_4b47e9e4a8b456 2-3
+src/tui/transcript/output-blocks/tools/diff-preview.tsx
+  h_4b47e9e4a8b456 5,9,11,20-22,24
+src/tui/transcript/output-blocks/tools/question-history-block.tsx
+  h_4b47e9e4a8b456 6
+src/tui/transcript/output-blocks/tools/question-history-format.ts
+  h_4b47e9e4a8b456 2
+src/tui/transcript/output-blocks/tools/tool-entry.tsx
+  h_4b47e9e4a8b456 4-7,11,16-17,19-22,27,39
+src/tui/transcript/output-blocks/tools/tool-row-wrap.ts
+  h_4b47e9e4a8b456 2
+src/tui/transcript/output-blocks/tools/tool-row.tsx
+  h_4b47e9e4a8b456 4,7,13-16,25
+src/tui/transcript/output-blocks/tools/tool-run-block.tsx
+  h_4b47e9e4a8b456 4-6,9,22
+src/tui/transcript/output-blocks/transcript-rows.tsx
+  h_4b47e9e4a8b456 5
+src/tui/transcript/output-blocks/use-body-toggle.ts
+  h_4b47e9e4a8b456 4-6
+src/tui/transcript/output-blocks/visible-output-blocks.ts
+  h_4b47e9e4a8b456 1-5
+src/tui/transcript/output-window/create-find-bar.ts
+  h_4b47e9e4a8b456 2-4,6
+src/tui/transcript/output-window/create-output-scroll-controller.ts
+  h_4b47e9e4a8b456 5
+src/tui/transcript/output-window/find-bar.tsx
+  h_4b47e9e4a8b456 7-11
+src/tui/transcript/output-window/output-window-diagnostics.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/transcript/output-window/output-window-projection.ts
+  h_4b47e9e4a8b456 1-3
+src/tui/transcript/output-window/output-window-scroll-anomalies.ts
+  h_4b47e9e4a8b456 16-17
+src/tui/transcript/output-window/output-window-scroll-diagnostics.ts
+  h_4b47e9e4a8b456 10-11
+src/tui/transcript/output-window/output-window-scroll.ts
+  h_4b47e9e4a8b456 3,7
+src/tui/transcript/output-window/output-window-viewport.tsx
+  h_4b47e9e4a8b456 3,9,20-22,25
+src/tui/transcript/output-window/output-window.tsx
+  h_4b47e9e4a8b456 2,7-9,17,19,22-24,36,38-41
+src/tui/transcript/transcript-store/create-output-transcript-cache.ts
+  h_4b47e9e4a8b456 3-11,14-16,42
+src/tui/transcript/transcript-store/output-height-estimates.ts
+  h_4b47e9e4a8b456 1-4
+src/tui/transcript/transcript-store/output-transcript-cache-types.ts
+  h_4b47e9e4a8b456 1-5,98
+src/tui/transcript/welcome-notice.tsx
+  h_4b47e9e4a8b456 9-18
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 5,7-10
+src/tui/tui-module.ts
+  h_4b47e9e4a8b456 8-9,11-12,17
+tests/fixtures/mutation-evidence-fixture.ts
+  h_4b47e9e4a8b456 1-10
+tests/fixtures/output-scroll-harness.ts
+  h_4b47e9e4a8b456 2-6
+tests/helpers/command-catalog.ts
+  h_4b47e9e4a8b456 7
+tests/helpers/solid-transform-preload.ts
+  h_4b47e9e4a8b456 3
+tests/integration/local/dev-source-snapshot.test.ts
+  h_4b47e9e4a8b456 578,585
+tests/release/lib/boot-trace.ts
+  h_4b47e9e4a8b456 39,47
+tests/unit/infra/render-probe.test.ts
+  h_4b47e9e4a8b456 16
+tests/unit/orchestration/app-service/runtime-composition-capabilities.test.ts
+  h_4b47e9e4a8b456 70-72,90-92
+tests/unit/orchestration/app-service/runtime-ui-cascade.test.ts
+  h_4b47e9e4a8b456 13-14
+tests/unit/protocol/file-change-body.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/scripts/check-terminal-io.test.ts
+  h_4b47e9e4a8b456 95
+tests/unit/scripts/generate-docs.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/scripts/lazy-tui-view-boundary.test.ts
+  h_4b47e9e4a8b456 40,52-53
+tests/unit/tui/adapters/session-detail-cache.test.ts
+  h_4b47e9e4a8b456 3-9
+tests/unit/tui/ask-user-text-options.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/tui/chat-auth-guard.test.ts
+  h_4b47e9e4a8b456 6-8
+tests/unit/tui/chat-default-landing.test.ts
+  h_4b47e9e4a8b456 16,19-20,22
+tests/unit/tui/child-viewer/_child-session-viewer-fixtures.ts
+  h_4b47e9e4a8b456 1-4
+tests/unit/tui/child-viewer/child-session-viewer-background.test.tsx
+  h_4b47e9e4a8b456 4-9,11
+tests/unit/tui/child-viewer/child-session-viewer-input.test.tsx
+  h_4b47e9e4a8b456 5-9,11-18
+tests/unit/tui/child-viewer/child-session-viewer.test.tsx
+  h_4b47e9e4a8b456 6-21,23-29
+tests/unit/tui/commands/command-dispatch.test.ts
+  h_4b47e9e4a8b456 7-8,12
+tests/unit/tui/commands/font-command.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/tui/components/activity/shimmer-text.test.tsx
+  h_4b47e9e4a8b456 6
+tests/unit/tui/components/activity/spinner-status-animation.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/tui/components/activity/spinner-status-display-activity.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/tui/components/charts/progress-bar.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/components/charts/sparkline.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/components/chrome/context-control.test.tsx
+  h_4b47e9e4a8b456 6-11
+tests/unit/tui/components/chrome/tabs-bar.test.ts
+  h_4b47e9e4a8b456 6-9,31-32
+tests/unit/tui/components/composer/attachments/file-attachments.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/tui/components/composer/composer-ghost.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/tui/components/composer/composer-status.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/components/composer/create-draft-cache.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/tui/components/composer/frame/key-hint-row-state.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/components/composer/frame/prompt-border-fixtures.ts
+  h_4b47e9e4a8b456 5-12,68-70,123-125
+tests/unit/tui/components/composer/frame/prompt-border-layout.test.ts
+  h_4b47e9e4a8b456 3-14
+tests/unit/tui/components/composer/frame/prompt-frame-popup.test.tsx
+  h_4b47e9e4a8b456 8-10,47-48
+tests/unit/tui/components/composer/frame/prompt-text-entry.test.tsx
+  h_4b47e9e4a8b456 7
+tests/unit/tui/components/composer/paste-burst.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/components/composer/paste-collapse.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/tui/components/composer/prompt-area-draft.test.ts
+  h_4b47e9e4a8b456 6-13,282-283
+tests/unit/tui/components/composer/prompt-area-fixture.ts
+  h_4b47e9e4a8b456 1-7,11-15
+tests/unit/tui/components/composer/prompt-area-recall.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/components/composer/prompt-bar-cursor.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/tui/components/composer/question-dock-form-keys.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/tui/components/composer/question-dock-form.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/tui/components/composer/suggestions/prompt-history-popup.test.tsx
+  h_4b47e9e4a8b456 6,12-13
+tests/unit/tui/components/composer/suggestions/slash-suggestions-scrollbar.test.tsx
+  h_4b47e9e4a8b456 6-7,44-45
+tests/unit/tui/components/controls/button.test.tsx
+  h_4b47e9e4a8b456 6-8
+tests/unit/tui/components/controls/controlled-text-field.test.tsx
+  h_4b47e9e4a8b456 6
+tests/unit/tui/components/layout/create-measured-width.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/tui/components/modal/help/modal-help-shortcuts.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/tui/components/modal/help/modal-help.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/tui/components/modal/modal-disclosure.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/tui/components/modal/modal-layout.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/components/modal/modal.test.tsx
+  h_4b47e9e4a8b456 13-18
+tests/unit/tui/components/modal/question-input.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/components/modal/scroll/modal-scroll-controller.test.tsx
+  h_4b47e9e4a8b456 7
+tests/unit/tui/components/modal/select/modal-list-keys.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/components/modal/select/modal-select-helpers.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/tui/components/modal/select/modal-select.test.tsx
+  h_4b47e9e4a8b456 6-10
+tests/unit/tui/components/notices/runtime-notice.test.tsx
+  h_4b47e9e4a8b456 4-9,20-21
+tests/unit/tui/components/notices/toast-display.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/components/startup/startup-progress.test.tsx
+  h_4b47e9e4a8b456 6-9
+tests/unit/tui/components/startup/startup-viewport.test.tsx
+  h_4b47e9e4a8b456 7-14
+tests/unit/tui/components/workflow-agent-viewer.test.tsx
+  h_4b47e9e4a8b456 7,14,16,20
+tests/unit/tui/components/workflow-card-inline.test.tsx
+  h_4b47e9e4a8b456 6,10
+tests/unit/tui/components/workflow-card-viewer.test.tsx
+  h_4b47e9e4a8b456 9,17
+tests/unit/tui/context/find/find-highlight.test.tsx
+  h_4b47e9e4a8b456 11
+tests/unit/tui/context/mutation-evidence.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/tui/context/output-blocks-questions.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/tui/hooks/_session-modal-fixtures.ts
+  h_4b47e9e4a8b456 5,7-8
+tests/unit/tui/hooks/composer-attach-slot.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/hooks/composer/create-composer-border-layout.test.ts
+  h_4b47e9e4a8b456 3,8-10
+tests/unit/tui/hooks/composer/file-chooser.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/hooks/composer/prompt-history-loader.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/hooks/composer/use-commands-async.test.ts
+  h_4b47e9e4a8b456 2-4
+tests/unit/tui/hooks/create-launch-state.test.ts
+  h_4b47e9e4a8b456 6-7,10
+tests/unit/tui/hooks/create-output-transcript-cache-live-range.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/hooks/create-output-transcript-cache-preferences.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/hooks/create-output-transcript-cache-residency.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/tui/hooks/create-output-transcript-cache-streamed-count.test.ts
+  h_4b47e9e4a8b456 3,5
+tests/unit/tui/hooks/create-output-transcript-cache.test.ts
+  h_4b47e9e4a8b456 7-9
+tests/unit/tui/hooks/create-tabs.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/tui/hooks/foreground/background-foreground.test.ts
+  h_4b47e9e4a8b456 2-3,6-9
+tests/unit/tui/hooks/foreground/session-activation.test.ts
+  h_4b47e9e4a8b456 2-7
+tests/unit/tui/hooks/ghost-text.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/hooks/live-renderable-ref.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/hooks/mention-suggestions.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/hooks/output-transcript-incremental-window.test.ts
+  h_4b47e9e4a8b456 3,6
+tests/unit/tui/hooks/overlays/create-modals-startup-consent.test.ts
+  h_4b47e9e4a8b456 3-14
+tests/unit/tui/hooks/overlays/create-module-slots.test.tsx
+  h_4b47e9e4a8b456 6-20,220,246,299,339-340
+tests/unit/tui/hooks/overlays/modal-source-coherence.test.ts
+  h_4b47e9e4a8b456 3-4,8-11,17
+tests/unit/tui/hooks/overlays/modals/auth/use-subscription-spend-consent-control.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/tui/hooks/overlays/modals/background-modal.test.ts
+  h_4b47e9e4a8b456 3-14
+tests/unit/tui/hooks/overlays/modals/command-palette.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/tui/hooks/overlays/modals/model/use-model-modal-defaults.test.ts
+  h_4b47e9e4a8b456 3-7
+tests/unit/tui/hooks/overlays/modals/profile/profile-modal.test.ts
+  h_4b47e9e4a8b456 3-9
+tests/unit/tui/hooks/overlays/modals/session/use-session-modal-catalog.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/hooks/overlays/modals/session/use-session-modal-content-search.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/hooks/overlays/modals/session/use-session-modal.test.ts
+  h_4b47e9e4a8b456 4-8
+tests/unit/tui/hooks/overlays/modals/settings/settings-modal-controller-filter.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/tui/hooks/overlays/modals/settings/settings-modal-controller-harness.ts
+  h_4b47e9e4a8b456 2-4
+tests/unit/tui/hooks/overlays/modals/settings/settings-modal-controller.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/tui/hooks/overlays/modals/settings/settings-tree.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/hooks/overlays/modals/settings/settings-write-refusals.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/tui/hooks/overlays/modals/use-help-modal.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/hooks/overlays/modals/use-status-modal.test.ts
+  h_4b47e9e4a8b456 3-7
+tests/unit/tui/hooks/prompt-attachments.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/tui/hooks/prompt-draft-merge.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/hooks/prompt-focus.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/tui/hooks/prompt-history-popup.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/hooks/prompt-history.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/hooks/prompt-popup-key-slot.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/hooks/session-detail-reattach.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/hooks/sessions/create-session-creator.test.ts
+  h_4b47e9e4a8b456 3-9
+tests/unit/tui/hooks/sessions/create-session-process-controls.test.ts
+  h_4b47e9e4a8b456 3-10,66-68
+tests/unit/tui/hooks/sessions/use-session-controls.test.ts
+  h_4b47e9e4a8b456 4-9
+tests/unit/tui/hooks/slash-suggestions.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/hooks/spinner-status.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/tui/hooks/state/active-model-label.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/tui/hooks/state/auth-status-cache.test.ts
+  h_4b47e9e4a8b456 3-8
+tests/unit/tui/hooks/state/cache-invalidation-admission.test.ts
+  h_4b47e9e4a8b456 3-8
+tests/unit/tui/hooks/state/create-command-catalog.test.ts
+  h_4b47e9e4a8b456 3-7
+tests/unit/tui/hooks/state/create-ordered-patch-receiver.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/tui/hooks/state/create-session-catalog.test.ts
+  h_4b47e9e4a8b456 3-7,9-11
+tests/unit/tui/hooks/state/domains/create-capability-cache.test.ts
+  h_4b47e9e4a8b456 3-9
+tests/unit/tui/hooks/state/domains/create-module-domain-intakes.test.ts
+  h_4b47e9e4a8b456 3-8
+tests/unit/tui/hooks/state/domains/create-workflow-domain-intake.test.ts
+  h_4b47e9e4a8b456 3-12
+tests/unit/tui/hooks/state/header-display.test.ts
+  h_4b47e9e4a8b456 3-5,7
+tests/unit/tui/hooks/state/header-empty-state.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/tui/hooks/state/runtime-overflow-recovery.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/tui/hooks/state/runtime/create-runtime-health.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/hooks/state/runtime/create-runtime-startup-status.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/tui/hooks/state/runtime/create-update-status-cache.test.ts
+  h_4b47e9e4a8b456 3-8
+tests/unit/tui/hooks/state/runtime/runtime-config-cache.test.ts
+  h_4b47e9e4a8b456 3-9
+tests/unit/tui/hooks/state/session-catalog-startup.test.ts
+  h_4b47e9e4a8b456 3-10
+tests/unit/tui/hooks/state/session-changes.test.ts
+  h_4b47e9e4a8b456 2-3,5-10,92-93
+tests/unit/tui/hooks/state/sessions/_session-surface-transcript-fixture.ts
+  h_4b47e9e4a8b456 1
+tests/unit/tui/hooks/state/sessions/create-budget-cache.test.ts
+  h_4b47e9e4a8b456 3-8
+tests/unit/tui/hooks/state/sessions/create-foreground-output-pager.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/tui/hooks/state/sessions/create-session-surface.test.ts
+  h_4b47e9e4a8b456 3-18
+tests/unit/tui/hooks/state/sessions/create-status-cache.test.ts
+  h_4b47e9e4a8b456 3-8
+tests/unit/tui/hooks/state/sessions/session-load-failure.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/hooks/state/sessions/snapshot-hydration-limit.test.ts
+  h_4b47e9e4a8b456 2-5
+tests/unit/tui/hooks/state/shell-state-harness.ts
+  h_4b47e9e4a8b456 5-6,8-41
+tests/unit/tui/hooks/state/shell-state-load-failure-toast.test.ts
+  h_4b47e9e4a8b456 3-11
+tests/unit/tui/hooks/state/shell-state-memos.test.ts
+  h_4b47e9e4a8b456 3-13
+tests/unit/tui/hooks/state/shell-state-migrated-signals.test.ts
+  h_4b47e9e4a8b456 3-15,17-21
+tests/unit/tui/hooks/state/shell-state-reactivation-display.test.ts
+  h_4b47e9e4a8b456 3-11,13-15
+tests/unit/tui/hooks/state/use-question-pages.test.ts
+  h_4b47e9e4a8b456 3-12
+tests/unit/tui/hooks/state/use-subscription-usage-alerts.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/tui/hooks/transcript/transcript-visibility-refresh.test.ts
+  h_4b47e9e4a8b456 3-7
+tests/unit/tui/hooks/use-auth-modal.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/hooks/welcome/use-release-notice.test.ts
+  h_4b47e9e4a8b456 2-6
+tests/unit/tui/hooks/welcome/use-tabs-hint.test.ts
+  h_4b47e9e4a8b456 3-8
+tests/unit/tui/modals/auth/_auth-modal-model-harness.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/tui/modals/auth/auth-modal-keybindings.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/tui/modals/auth/auth-modal-login-question.test.ts
+  h_4b47e9e4a8b456 3-4,12-13
+tests/unit/tui/modals/auth/auth-modal-model-ordering.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/modals/auth/auth-modal-paid-use-question.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/tui/modals/auth/auth-modal-test-harness.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/tui/modals/background-modal.test.tsx
+  h_4b47e9e4a8b456 7
+tests/unit/tui/modals/modal-copy-budgets.test.ts
+  h_4b47e9e4a8b456 3,19
+tests/unit/tui/modals/model/model-modal-operations.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/tui/modals/model/model-modal-regression-rendering.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/modals/model/model-modal-regression-source.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/tui/modals/model/model-modal-scopes.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/tui/modals/session-picker/picker-helpers.test.ts
+  h_4b47e9e4a8b456 3,10-11
+tests/unit/tui/modals/session-picker/session-modal-delete.test.ts
+  h_4b47e9e4a8b456 6-10,12-15,17
+tests/unit/tui/modals/session-picker/session-modal-open-warning.test.ts
+  h_4b47e9e4a8b456 6-13
+tests/unit/tui/modals/session-picker/session-picker-row.test.ts
+  h_4b47e9e4a8b456 5-9
+tests/unit/tui/modals/session-picker/session-picker-scroll.test.tsx
+  h_4b47e9e4a8b456 11-12,46-48
+tests/unit/tui/modals/session-picker/session-picker-text-entry.test.tsx
+  h_4b47e9e4a8b456 6-9,23-25
+tests/unit/tui/modals/session-picker/session-preview-pane.test.tsx
+  h_4b47e9e4a8b456 8-16,22,24-25,54-56
+tests/unit/tui/modals/session-picker/use-session-preview.test.ts
+  h_4b47e9e4a8b456 2-7,10
+tests/unit/tui/modals/settings-store.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/modals/settings/_settings-modal-fixtures.ts
+  h_4b47e9e4a8b456 2,4-19,21,23,248
+tests/unit/tui/modals/settings/settings-modal-auth.test.ts
+  h_4b47e9e4a8b456 3,5-6
+tests/unit/tui/modals/settings/settings-modal-capabilities.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/modals/settings/settings-modal-controls.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/tui/modals/settings/settings-modal-render.test.tsx
+  h_4b47e9e4a8b456 7-13,17-18
+tests/unit/tui/modals/settings/settings-modal.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/tui/modals/theme-modal.test.ts
+  h_4b47e9e4a8b456 6,8,12
+tests/unit/tui/modules/experiment-dashboard-lines.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/tui/modules/experiments.test.tsx
+  h_4b47e9e4a8b456 7,13-15,20
+tests/unit/tui/modules/project-notifications/list.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/tui/modules/project-notifications/modal.test.tsx
+  h_4b47e9e4a8b456 7
+tests/unit/tui/modules/side-question/modal.test.tsx
+  h_4b47e9e4a8b456 18-19
+tests/unit/tui/modules/subscription-usage/modal.test.tsx
+  h_4b47e9e4a8b456 6
+tests/unit/tui/modules/subscription-usage/settings.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/settings-definition-propagation.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/shell/app.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/tui/shell/keyboard-handler.test.ts
+  h_4b47e9e4a8b456 4-12
+tests/unit/tui/shell/question-dock-editor-layout.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/shell/question-dock-retry.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/tui/shell/question-dock.test.tsx
+  h_4b47e9e4a8b456 8-14
+tests/unit/tui/shell/solid-transform-stack-trace.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/terminal/clipboard.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/tui/terminal/exit.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/tui/terminal/keymap/keymap.test.ts
+  h_4b47e9e4a8b456 3-6,8
+tests/unit/tui/terminal/keymap/text-entry-native-contract.test.tsx
+  h_4b47e9e4a8b456 11
+tests/unit/tui/terminal/keymap/text-entry.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/tui/terminal/selection.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/terminal/terminal-input.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/terminal/terminal-output.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/terminal/text-attributes.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/terminal/text.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/transcript-place.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/tui/transcript/output-blocks/agents/_agent-group-render.ts
+  h_4b47e9e4a8b456 2-7,31-37
+tests/unit/tui/transcript/output-blocks/agents/agent-group-error-detail.test.ts
+  h_4b47e9e4a8b456 5-7,14-16,63-65
+tests/unit/tui/transcript/output-blocks/agents/agent-group-launch.test.tsx
+  h_4b47e9e4a8b456 6-13
+tests/unit/tui/transcript/output-blocks/agents/agent-group-read-runs.test.ts
+  h_4b47e9e4a8b456 2-6,8-13
+tests/unit/tui/transcript/output-blocks/agents/agent-group-stop.test.ts
+  h_4b47e9e4a8b456 2-5,11-14,100-103,161,177-180,220-225
+tests/unit/tui/transcript/output-blocks/agents/agent-group-waiting.test.ts
+  h_4b47e9e4a8b456 2-3,12-14
+tests/unit/tui/transcript/output-blocks/agents/subagent-line.test.tsx
+  h_4b47e9e4a8b456 6-18
+tests/unit/tui/transcript/output-blocks/degraded-block.test.tsx
+  h_4b47e9e4a8b456 2,8-9
+tests/unit/tui/transcript/output-blocks/markdown-body.test.tsx
+  h_4b47e9e4a8b456 7-12
+tests/unit/tui/transcript/output-blocks/markdown-format-token.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/tui/transcript/output-blocks/markdown-incremental-lexing.test.ts
+  h_4b47e9e4a8b456 4-8
+tests/unit/tui/transcript/output-blocks/markdown-list-marker.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/transcript/output-blocks/markdown-streaming-line-model.test.ts
+  h_4b47e9e4a8b456 5-9
+tests/unit/tui/transcript/output-blocks/markdown-table-helpers.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/tui/transcript/output-blocks/merge-explore-reads.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/transcript/output-blocks/messages/thinking-block.test.tsx
+  h_4b47e9e4a8b456 6-19
+tests/unit/tui/transcript/output-blocks/messages/user-message-block.test.tsx
+  h_4b47e9e4a8b456 3,6-7,11-18,102,123-124,157
+tests/unit/tui/transcript/output-blocks/system-block.test.ts
+  h_4b47e9e4a8b456 2-6,20-23,113-114
+tests/unit/tui/transcript/output-blocks/tail-execution-output.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/transcript/output-blocks/tool-entry-preview-state.test.ts
+  h_4b47e9e4a8b456 3-4,8
+tests/unit/tui/transcript/output-blocks/tools/_edit-diff-fixture.ts
+  h_4b47e9e4a8b456 1
+tests/unit/tui/transcript/output-blocks/tools/_tool-entry-render.tsx
+  h_4b47e9e4a8b456 3-8,10,36,49,58,81-86
+tests/unit/tui/transcript/output-blocks/tools/_write-entry-fixture.ts
+  h_4b47e9e4a8b456 1-2
+tests/unit/tui/transcript/output-blocks/tools/bash-output-row.test.ts
+  h_4b47e9e4a8b456 5-10,50-53,104-107
+tests/unit/tui/transcript/output-blocks/tools/diff-preview-reactivity.test.ts
+  h_4b47e9e4a8b456 7-9
+tests/unit/tui/transcript/output-blocks/tools/diff-preview.test.ts
+  h_4b47e9e4a8b456 6-11,23,29,72,359,497
+tests/unit/tui/transcript/output-blocks/tools/group-summary.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/transcript/output-blocks/tools/mutation-evidence-retry.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/transcript/output-blocks/tools/question-history-block.test.ts
+  h_4b47e9e4a8b456 4,20-23
+tests/unit/tui/transcript/output-blocks/tools/tool-entry-evidence-publications.test.ts
+  h_4b47e9e4a8b456 2-5,7
+tests/unit/tui/transcript/output-blocks/tools/tool-entry-execution-output.test.ts
+  h_4b47e9e4a8b456 2,4-6
+tests/unit/tui/transcript/output-blocks/tools/tool-entry-multi-file-disclosure.test.ts
+  h_4b47e9e4a8b456 2-6,9
+tests/unit/tui/transcript/output-blocks/tools/tool-entry-mutation-rendering.test.ts
+  h_4b47e9e4a8b456 2-7,12-13
+tests/unit/tui/transcript/output-blocks/tools/tool-entry-proposed-diff.test.ts
+  h_4b47e9e4a8b456 3-4,7-8
+tests/unit/tui/transcript/output-blocks/tools/tool-entry-render-probe.test.ts
+  h_4b47e9e4a8b456 2-3,8
+tests/unit/tui/transcript/output-blocks/tools/tool-entry-shell-mutations.test.ts
+  h_4b47e9e4a8b456 3-8,10,12-14,282-285
+tests/unit/tui/transcript/output-blocks/tools/tool-preview-displayed-rows.test.ts
+  h_4b47e9e4a8b456 2-3,6
+tests/unit/tui/transcript/output-blocks/tools/tool-row-stop.test.ts
+  h_4b47e9e4a8b456 2-4,11-13,92-94
+tests/unit/tui/transcript/output-blocks/tools/tool-row-wrap.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/transcript/output-blocks/tools/tool-run-block.test.ts
+  h_4b47e9e4a8b456 5-9,69-72
+tests/unit/tui/transcript/output-blocks/unwrap-fences.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/transcript/output-blocks/use-body-toggle.test.ts
+  h_4b47e9e4a8b456 4-5,20-21,300-301,385-388
+tests/unit/tui/transcript/output-blocks/visible-output-blocks.test.ts
+  h_4b47e9e4a8b456 2-6
+tests/unit/tui/transcript/output-window/_output-window-transcript.ts
+  h_4b47e9e4a8b456 1-5,11-14,71-73
+tests/unit/tui/transcript/output-window/create-find-bar.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/tui/transcript/output-window/create-height-index.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/tui/transcript/output-window/find-bar.test.tsx
+  h_4b47e9e4a8b456 6-7
+tests/unit/tui/transcript/output-window/output-window-bottom-follow.test.tsx
+  h_4b47e9e4a8b456 9-12,14,71-72
+tests/unit/tui/transcript/output-window/output-window-budgeted-mount.test.tsx
+  h_4b47e9e4a8b456 14-19,21-24,110-111
+tests/unit/tui/transcript/output-window/output-window-duplicate-identity.test.tsx
+  h_4b47e9e4a8b456 6-8,55-56
+tests/unit/tui/transcript/output-window/output-window-find.test.ts
+  h_4b47e9e4a8b456 5-10,21-23
+tests/unit/tui/transcript/output-window/output-window-large-window-virtualization.test.tsx
+  h_4b47e9e4a8b456 7-9,38-39
+tests/unit/tui/transcript/output-window/output-window-layout.test.ts
+  h_4b47e9e4a8b456 5,15-16
+tests/unit/tui/transcript/output-window/output-window-measurement-work.test.tsx
+  h_4b47e9e4a8b456 8-9
+tests/unit/tui/transcript/output-window/output-window-near-edge.test.tsx
+  h_4b47e9e4a8b456 9-18,55-56
+tests/unit/tui/transcript/output-window/output-window-projection.test.ts
+  h_4b47e9e4a8b456 2-4
+tests/unit/tui/transcript/output-window/output-window-resize.test.tsx
+  h_4b47e9e4a8b456 4
+tests/unit/tui/transcript/output-window/output-window-scroll-anomalies.test.ts
+  h_4b47e9e4a8b456 3-8
+tests/unit/tui/transcript/output-window/output-window-scroll.test.ts
+  h_4b47e9e4a8b456 4-8
+tests/unit/tui/transcript/output-window/output-window-selection-auto-scroll.test.tsx
+  h_4b47e9e4a8b456 7-11,13
+tests/unit/tui/transcript/output-window/output-window-virtualization.test.tsx
+  h_4b47e9e4a8b456 6-9,11-15
+tests/unit/tui/transcript/output-window/output-window-wheel.test.ts
+  h_4b47e9e4a8b456 5-9
+tests/unit/tui/transcript/output-window/output-window.test.tsx
+  h_4b47e9e4a8b456 7-9,11-14,16-18,34-36
+tests/unit/tui/transcript/transcript-store/output-height-estimates.test.ts
+  h_4b47e9e4a8b456 2-4
+tests/unit/tui/transcript/welcome-notice.test.tsx
+  h_4b47e9e4a8b456 6-12,27-28,107-108
+tests/unit/tui/tui-boundary.test.ts
+  h_4b47e9e4a8b456 16
+webview/src/app/file-diff.test.ts
+  h_4b47e9e4a8b456 13
+webview/src/app/tool-settlement.test.ts
+  h_4b47e9e4a8b456 8
+webview/src/app/tool-stretch-ownership.test.ts
+  h_4b47e9e4a8b456 5
+webview/src/app/turn-features.test.ts
+  h_4b47e9e4a8b456 11
+webview/src/app/write-evidence-render.test.ts
+  h_4b47e9e4a8b456 5
+webview/src/client/tool-runs.test.ts
+  h_4b47e9e4a8b456 8
+webview/src/client/turn-folds.test.ts
+  h_4b47e9e4a8b456 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b0acb942a541879d41bcb4a7fa103349791e6332",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
