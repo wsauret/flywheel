@@ -1,0 +1,1662 @@
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 46,83
+bench/README.md
+  h_4b47e9e4a8b456 291
+bench/ab-persona/bench.ts
+  h_4b47e9e4a8b456 17,20-23,183-184,203,265
+bench/ab-persona/chat-routing-bench.ts
+  h_4b47e9e4a8b456 8,14-15,17,19
+bench/ab-persona/compare.ts
+  h_4b47e9e4a8b456 6,9-11,18,24,26
+bench/ab-persona/rank.ts
+  h_4b47e9e4a8b456 13,15-16
+bench/ab-persona/strategy-bench.ts
+  h_4b47e9e4a8b456 18-21,24-30,32,41-42
+bench/chat-ab/README.md
+  h_4b47e9e4a8b456 18
+bench/chat-ab/arms.ts
+  h_4b47e9e4a8b456 4-5
+bench/chat-ab/benchmark-infrastructure.ts
+  h_4b47e9e4a8b456 3
+bench/chat-ab/block-judge.ts
+  h_4b47e9e4a8b456 17-18
+bench/chat-ab/campaign-artifacts.ts
+  h_4b47e9e4a8b456 3-4
+bench/chat-ab/campaign-execution.ts
+  h_4b47e9e4a8b456 1-2
+bench/chat-ab/campaign-pair-judge.ts
+  h_4b47e9e4a8b456 4-7,12
+bench/chat-ab/campaign-policy.ts
+  h_4b47e9e4a8b456 1
+bench/chat-ab/campaign-runner.ts
+  h_4b47e9e4a8b456 4-6,8
+bench/chat-ab/campaign-store.ts
+  h_4b47e9e4a8b456 3-5
+bench/chat-ab/campaign-subject.ts
+  h_4b47e9e4a8b456 8,10-13,20
+bench/chat-ab/challenge-score.ts
+  h_4b47e9e4a8b456 4-5
+bench/chat-ab/chat-compare.ts
+  h_4b47e9e4a8b456 4-5,9
+bench/chat-ab/chat-family.ts
+  h_4b47e9e4a8b456 2
+bench/chat-ab/chat-judge-inputs.ts
+  h_4b47e9e4a8b456 1,8
+bench/chat-ab/chat-report.ts
+  h_4b47e9e4a8b456 5
+bench/chat-ab/chat-score.ts
+  h_4b47e9e4a8b456 3
+bench/chat-ab/chat-store.ts
+  h_4b47e9e4a8b456 3
+bench/chat-ab/check-task.ts
+  h_4b47e9e4a8b456 26
+bench/chat-ab/coding-ab-judge.ts
+  h_4b47e9e4a8b456 5,130
+bench/chat-ab/coding-ab-report.ts
+  h_4b47e9e4a8b456 3
+bench/chat-ab/coding-ab-store.ts
+  h_4b47e9e4a8b456 2
+bench/chat-ab/coding-task.ts
+  h_4b47e9e4a8b456 24,26
+bench/chat-ab/compare.ts
+  h_4b47e9e4a8b456 21
+bench/chat-ab/judge-inputs.ts
+  h_4b47e9e4a8b456 8-9
+bench/chat-ab/pair-judge.ts
+  h_4b47e9e4a8b456 9-10
+bench/chat-ab/planning-family.ts
+  h_4b47e9e4a8b456 4-5
+bench/chat-ab/planning-judge.ts
+  h_4b47e9e4a8b456 2,35
+bench/chat-ab/planning-recall.ts
+  h_4b47e9e4a8b456 6-7
+bench/chat-ab/planning-report.ts
+  h_4b47e9e4a8b456 3
+bench/chat-ab/planning-task.ts
+  h_4b47e9e4a8b456 17-18
+bench/chat-ab/score-run.ts
+  h_4b47e9e4a8b456 4-6
+bench/chat-ab/score.ts
+  h_4b47e9e4a8b456 19-22
+bench/chat-ab/source-treatment.ts
+  h_4b47e9e4a8b456 5
+bench/chat-ab/store.ts
+  h_4b47e9e4a8b456 4-5
+bench/chat-ab/tasks.ts
+  h_4b47e9e4a8b456 7-8
+bench/chat-ab/workflow-audit-family.ts
+  h_4b47e9e4a8b456 4-5
+bench/chat-ab/workflow-audit-judge.ts
+  h_4b47e9e4a8b456 3,29
+bench/chat-ab/workflow-audit-report.ts
+  h_4b47e9e4a8b456 5-6
+bench/chat-ab/workflow-authorship-family.ts
+  h_4b47e9e4a8b456 5-6
+bench/chat-ab/workflow-authorship-judge.ts
+  h_4b47e9e4a8b456 2,30
+bench/chat-ab/workflow-authorship-metrics.ts
+  h_4b47e9e4a8b456 4-6
+bench/chat-ab/workflow-authorship-report.ts
+  h_4b47e9e4a8b456 3
+bench/harbor/harbor-config.ts
+  h_4b47e9e4a8b456 6,11
+bench/harbor/harbor-jobs.ts
+  h_4b47e9e4a8b456 13
+bench/harbor/quota-preflight.ts
+  h_4b47e9e4a8b456 19-20
+bench/shared/native-persona-launcher.ts
+  h_4b47e9e4a8b456 3,5
+bench/shared/native-persona-worker.ts
+  h_4b47e9e4a8b456 8,49-51
+bench/shared/runtime.ts
+  h_4b47e9e4a8b456 14
+bench/tasks/qualify.ts
+  h_4b47e9e4a8b456 6,8
+docs/architecture.md
+  h_4b47e9e4a8b456 148,503,544,553
+docs/provider-terms.md
+  h_4b47e9e4a8b456 77-79,82,115,243
+package.json
+  h_4b47e9e4a8b456 117
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 62,69-70,74
+scripts/binary-entries.ts
+  h_4b47e9e4a8b456 13
+scripts/build-review-fixtures.ts
+  h_4b47e9e4a8b456 9
+scripts/check-bench-pins.ts
+  h_4b47e9e4a8b456 6
+scripts/check-boundaries.ts
+  h_4b47e9e4a8b456 116,126
+scripts/check-diagnostics-registry.ts
+  h_4b47e9e4a8b456 87,177,202,207,212,222,227,232,237,242,247,252,297
+scripts/check-model-catalog.ts
+  h_4b47e9e4a8b456 1,3-4
+scripts/check-provider-model-literals.ts
+  h_4b47e9e4a8b456 12
+scripts/check-terminology.ts
+  h_4b47e9e4a8b456 295
+scripts/check-worker-ownership.ts
+  h_4b47e9e4a8b456 57
+scripts/claude-engine-release.ts
+  h_4b47e9e4a8b456 26
+scripts/generate-third-party-licenses.ts
+  h_4b47e9e4a8b456 338
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 39
+scripts/readiness-login.ts
+  h_4b47e9e4a8b456 52,54
+scripts/refresh-models-snapshot.ts
+  h_4b47e9e4a8b456 2,11-12,17
+scripts/release.ts
+  h_4b47e9e4a8b456 116-117
+scripts/review-fixture-publication.ts
+  h_4b47e9e4a8b456 4
+scripts/uat/harness.ts
+  h_4b47e9e4a8b456 15
+src/cli/commands/headless-snapshot-auth.ts
+  h_4b47e9e4a8b456 5
+src/infra/catalog-model-offering.ts
+  h_4b47e9e4a8b456 2
+src/infra/llm/access/access-provider.ts
+  h_4b47e9e4a8b456 2-11
+src/infra/llm/access/availability-store.ts
+  h_4b47e9e4a8b456 74,76-77
+src/infra/llm/access/free-plan-accounts.ts
+  h_4b47e9e4a8b456 2
+src/infra/llm/access/model-access-audit.ts
+  h_4b47e9e4a8b456 2,4-6,8-11
+src/infra/llm/access/model-listing-evidence.ts
+  h_4b47e9e4a8b456 2-6
+src/infra/llm/access/model-listing-rows.ts
+  h_4b47e9e4a8b456 3-11
+src/infra/llm/access/model-listing.ts
+  h_4b47e9e4a8b456 4-7,10,12-16,19-24
+src/infra/llm/access/provider-options.ts
+  h_4b47e9e4a8b456 3
+src/infra/llm/catalog/model-catalog-diagnostics.ts
+  h_4b47e9e4a8b456 3-4
+src/infra/llm/catalog/model-catalog-resolution.ts
+  h_4b47e9e4a8b456 2-5,7-9
+src/infra/llm/catalog/provider-model-info.ts
+  h_4b47e9e4a8b456 1-2,9
+src/infra/llm/errors/provider-error-copy.ts
+  h_4b47e9e4a8b456 21,25-26,28
+src/infra/llm/errors/provider-error-diagnostic.ts
+  h_4b47e9e4a8b456 2-3
+src/infra/llm/models/model-family.ts
+  h_4b47e9e4a8b456 1-3
+src/infra/llm/models/model-relationships.ts
+  h_4b47e9e4a8b456 1
+src/infra/llm/models/model-scores.ts
+  h_4b47e9e4a8b456 3-5
+src/infra/llm/models/models-document-job.ts
+  h_4b47e9e4a8b456 1-5
+src/infra/llm/models/models.ts
+  h_4b47e9e4a8b456 21-24,31,33
+src/infra/llm/models/openai-pricing.ts
+  h_4b47e9e4a8b456 1-3
+src/infra/llm/usage/subscription-usage-reader.ts
+  h_4b47e9e4a8b456 1-3
+src/infra/llm/usage/subscription-usage-store-codec.ts
+  h_4b47e9e4a8b456 3-4
+src/infra/llm/usage/subscription-usage-store-migration.ts
+  h_4b47e9e4a8b456 3
+src/infra/llm/usage/subscription-usage-store.ts
+  h_4b47e9e4a8b456 6-8,10-11
+src/infra/llm/usage/subscription-usage.ts
+  h_4b47e9e4a8b456 2,131,149
+src/infra/llm/usage/usage-authority.ts
+  h_4b47e9e4a8b456 6-8
+src/infra/model-catalog-rows.ts
+  h_4b47e9e4a8b456 4
+src/infra/output/output-formatter.ts
+  h_4b47e9e4a8b456 2
+src/infra/role-settings.ts
+  h_4b47e9e4a8b456 2
+src/infra/runtime-event-payload-types.ts
+  h_4b47e9e4a8b456 2
+src/infra/usage-measured-payloads.ts
+  h_4b47e9e4a8b456 2
+src/infra/workflow-types.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/agent-runtime/active-request-context.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/agent-runtime/agent-loop-types.ts
+  h_4b47e9e4a8b456 5-6
+src/orchestration/agent-runtime/agent-resilience.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  h_4b47e9e4a8b456 6-7,9,12-13
+src/orchestration/agent-runtime/assistant-turn-stream.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/budget-exhaust.ts
+  h_4b47e9e4a8b456 17-18
+src/orchestration/agent-runtime/compaction/token-counter.ts
+  h_4b47e9e4a8b456 1,24
+src/orchestration/agent-runtime/errors.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/factory.ts
+  h_4b47e9e4a8b456 2,4
+src/orchestration/agent-runtime/failure-message.ts
+  h_4b47e9e4a8b456 27
+src/orchestration/agent-runtime/llm/access-provider-registry.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/agent-runtime/llm/anthropic-adapter-helpers.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/agent-runtime/llm/anthropic-options.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 19,21,23-24
+src/orchestration/agent-runtime/llm/chat-completions-messages.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/agent-runtime/llm/chat-completions.ts
+  h_4b47e9e4a8b456 19-20,22
+src/orchestration/agent-runtime/llm/chatgpt-client.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/agent-runtime/llm/client-factory.ts
+  h_4b47e9e4a8b456 21,24-27
+src/orchestration/agent-runtime/llm/content-repair.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/llm/conversions/google-generative-ai.ts
+  h_4b47e9e4a8b456 11,15
+src/orchestration/agent-runtime/llm/conversions/openai-responses.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/agent-runtime/llm/errors.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/llm/failover-client.ts
+  h_4b47e9e4a8b456 51-52,55-57
+src/orchestration/agent-runtime/llm/google.ts
+  h_4b47e9e4a8b456 27,29
+src/orchestration/agent-runtime/llm/messages.ts
+  h_4b47e9e4a8b456 1,8-9
+src/orchestration/agent-runtime/llm/model-compat.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/llm/openai-adapter-helpers.ts
+  h_4b47e9e4a8b456 2,4
+src/orchestration/agent-runtime/llm/openai-helpers.ts
+  h_4b47e9e4a8b456 7-8
+src/orchestration/agent-runtime/llm/openai-options.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/agent-runtime/llm/openai-responses.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/agent-runtime/llm/openai.ts
+  h_4b47e9e4a8b456 5-7,21
+src/orchestration/agent-runtime/llm/provider-affordability.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/llm/provider-availability-types.ts
+  h_4b47e9e4a8b456 5-8
+src/orchestration/agent-runtime/llm/provider-availability.ts
+  h_4b47e9e4a8b456 13,15,26
+src/orchestration/agent-runtime/llm/provider-description.ts
+  h_4b47e9e4a8b456 1-4
+src/orchestration/agent-runtime/llm/provider-failure.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/agent-runtime/llm/provider-history.ts
+  h_4b47e9e4a8b456 2,4
+src/orchestration/agent-runtime/llm/provider-request-audit.ts
+  h_4b47e9e4a8b456 28-29
+src/orchestration/agent-runtime/llm/runtime-errors.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/agent-runtime/llm/runtime-reminders.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/agent-runtime/llm/shared-provider-availability.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 3-5,8,16,87,675
+src/orchestration/agent-runtime/model-interaction-profile.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/model-runtime-capture.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/agent-runtime/module-runtime-services.ts
+  h_4b47e9e4a8b456 12-14
+src/orchestration/agent-runtime/provider-runtime-cache.ts
+  h_4b47e9e4a8b456 3,6
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 142,180
+src/orchestration/agent-runtime/runtime-stream-events.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/runtime-usage.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/tools/kernel-tool-deps.ts
+  h_4b47e9e4a8b456 8-9
+src/orchestration/agent-runtime/turn-request-model-client.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/turn-usage-tracker.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 5-7,9-10
+src/orchestration/agent-runtime/unattended-recovery.ts
+  h_4b47e9e4a8b456 62
+src/orchestration/agent-runtime/usage-settlement.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/app-service/auth-login-service.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/app-service/auth-status-projection.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/app-service/eligibility-preparation.ts
+  h_4b47e9e4a8b456 13-14,17,19
+src/orchestration/app-service/legacy-model-spelling-catalog.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/app-service/model-assignment-admission.ts
+  h_4b47e9e4a8b456 29
+src/orchestration/app-service/provider-model-preference-service.ts
+  h_4b47e9e4a8b456 2,9
+src/orchestration/auth/auth-actions.ts
+  h_4b47e9e4a8b456 33-36,39
+src/orchestration/auth/catalog-settlement.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/auth/openai-oauth.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/auth/provider-observations/subscription-usage-service.ts
+  h_4b47e9e4a8b456 11-13,15,17
+src/orchestration/auth/provider-observations/usage-availability-fold.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/chat/types.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/config/models/llm-clients.ts
+  h_4b47e9e4a8b456 13-14
+src/orchestration/config/models/model-assignment-controller.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/config/models/model-assignment-providers.ts
+  h_4b47e9e4a8b456 5-10,15,61,219
+src/orchestration/config/models/model-assignment-types.ts
+  h_4b47e9e4a8b456 4-6,8
+src/orchestration/config/models/model-assignments.ts
+  h_4b47e9e4a8b456 5-6,391
+src/orchestration/config/models/model-score-scope.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/config/models/model-tiers.ts
+  h_4b47e9e4a8b456 2-4
+src/orchestration/config/models/provider-model-eligibility.ts
+  h_4b47e9e4a8b456 1,5
+src/orchestration/config/models/role-model-defaults.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/config/models/role-resolution.ts
+  h_4b47e9e4a8b456 1-2,12,14
+src/orchestration/config/models/session-role-resolver.ts
+  h_4b47e9e4a8b456 7-9,11
+src/orchestration/config/roles.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/config/schema/setting-definitions.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/credential-provider-modules.ts
+  h_4b47e9e4a8b456 3,5
+src/orchestration/custom-provider-modules.ts
+  h_4b47e9e4a8b456 4,6
+src/orchestration/headless/benchmark-auth-file.ts
+  h_4b47e9e4a8b456 13
+src/orchestration/headless/headless-profile-runtime.ts
+  h_4b47e9e4a8b456 6,8
+src/orchestration/headless/headless-usage-authority.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 24
+src/orchestration/headless/snapshot-eligibility.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/headless/task-progress.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 18,22,150
+src/orchestration/modules/development/benchmark-tool.ts
+  h_4b47e9e4a8b456 21-22,24,32-33
+src/orchestration/modules/development/benchmark/accounting/accounting.ts
+  h_4b47e9e4a8b456 1-3
+src/orchestration/modules/development/benchmark/campaign/content-identity.ts
+  h_4b47e9e4a8b456 43-45
+src/orchestration/modules/development/benchmark/campaign/json-lines.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/development/benchmark/campaign/paths.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 3,5-7
+src/orchestration/modules/development/benchmark/chat-routing-run.ts
+  h_4b47e9e4a8b456 10-11
+src/orchestration/modules/development/benchmark/chat-routing-store.ts
+  h_4b47e9e4a8b456 3-6
+src/orchestration/modules/development/benchmark/comparison-v2-store.ts
+  h_4b47e9e4a8b456 3-7
+src/orchestration/modules/development/benchmark/execution/artifact-capture.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/development/benchmark/execution/claude-code-execution.ts
+  h_4b47e9e4a8b456 5-7,9
+src/orchestration/modules/development/benchmark/execution/headless-execution-contract.ts
+  h_4b47e9e4a8b456 2-4
+src/orchestration/modules/development/benchmark/execution/headless-execution.ts
+  h_4b47e9e4a8b456 5-13
+src/orchestration/modules/development/benchmark/execution/implement-evidence.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/modules/development/benchmark/execution/invocation.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/modules/development/benchmark/execution/snapshot-workspace.ts
+  h_4b47e9e4a8b456 4-8
+src/orchestration/modules/development/benchmark/implement-task.ts
+  h_4b47e9e4a8b456 13-14,22-24
+src/orchestration/modules/development/benchmark/persona/admission.ts
+  h_4b47e9e4a8b456 1-3,6-14
+src/orchestration/modules/development/benchmark/persona/benchmark-plan.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/modules/development/benchmark/persona/native-persona-codec.ts
+  h_4b47e9e4a8b456 2,5
+src/orchestration/modules/development/benchmark/persona/native-persona-invocation.ts
+  h_4b47e9e4a8b456 4,6-8,57-59
+src/orchestration/modules/development/benchmark/persona/persona-benchmark.ts
+  h_4b47e9e4a8b456 3-8,10-14,28-34,37,39
+src/orchestration/modules/development/benchmark/persona/persona-evidence-validation.ts
+  h_4b47e9e4a8b456 1-4
+src/orchestration/modules/development/benchmark/persona/persona-run.ts
+  h_4b47e9e4a8b456 3-28
+src/orchestration/modules/development/benchmark/persona/persona-store.ts
+  h_4b47e9e4a8b456 3-7,9
+src/orchestration/modules/development/benchmark/persona/review-sandbox.ts
+  h_4b47e9e4a8b456 3-6
+src/orchestration/modules/development/benchmark/records/benchmark-records.ts
+  h_4b47e9e4a8b456 4-6,8-9
+src/orchestration/modules/development/benchmark/records/ranking.ts
+  h_4b47e9e4a8b456 1-2,4-5
+src/orchestration/modules/development/benchmark/records/regrade.ts
+  h_4b47e9e4a8b456 2,4-6
+src/orchestration/modules/development/benchmark/rejudge.ts
+  h_4b47e9e4a8b456 4-5,7-15
+src/orchestration/modules/development/benchmark/scoring/implement-scoring.ts
+  h_4b47e9e4a8b456 2-3,5-8
+src/orchestration/modules/development/benchmark/scoring/judge.ts
+  h_4b47e9e4a8b456 1-4,6-10
+src/orchestration/modules/development/benchmark/scoring/reports.ts
+  h_4b47e9e4a8b456 1,4,6-7
+src/orchestration/modules/development/benchmark/scoring/research-scoring.ts
+  h_4b47e9e4a8b456 2,4
+src/orchestration/modules/development/benchmark/scoring/run-store.ts
+  h_4b47e9e4a8b456 3,5-7
+src/orchestration/modules/development/benchmark/scoring/scoring.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/development/benchmark/tasks/research-task.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/modules/development/definitions/skills/webview-rendering/SKILL.md
+  h_4b47e9e4a8b456 31-32,35,50
+src/orchestration/modules/development/definitions/skills/webview-rendering/references/rules.md
+  h_4b47e9e4a8b456 3,32,34,60,70,123,136,140,149,159,187,193,206,230,234,237,239,247,254,260,262
+src/orchestration/modules/development/module.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/learning/maintenance/skill-corpus-cleanup-classifier.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/modules/learning/review/learning-review-runner.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/provider-anthropic-api/module.ts
+  h_4b47e9e4a8b456 3-4,7-8
+src/orchestration/modules/provider-chatgpt/catalog.ts
+  h_4b47e9e4a8b456 3,5-8
+src/orchestration/modules/provider-chatgpt/module.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/provider-chatgpt/usage-reader.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/modules/provider-claude-agent-sdk/account-usage.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+  h_4b47e9e4a8b456 9,14,16-19,23-28
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-file.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-demand.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-plugin/hooks/register.js.txt
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.ts
+  h_4b47e9e4a8b456 3-4,8-10
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts
+  h_4b47e9e4a8b456 14,16-26
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/hosted-requests.ts
+  h_4b47e9e4a8b456 5-6
+src/orchestration/modules/provider-claude-agent-sdk/bridge/assistant-assembler.ts
+  h_4b47e9e4a8b456 2-4
+src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-requests.ts
+  h_4b47e9e4a8b456 3-7,9
+src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-reservation.ts
+  h_4b47e9e4a8b456 2-3,6-7,9-10
+src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-state.ts
+  h_4b47e9e4a8b456 3-5,8,10-21
+src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge.ts
+  h_4b47e9e4a8b456 4-6,10-11,13,15-17,19-28,31-33
+src/orchestration/modules/provider-claude-agent-sdk/bridge/engine-additions.ts
+  h_4b47e9e4a8b456 1-7
+src/orchestration/modules/provider-claude-agent-sdk/bridge/extra-usage-guard.ts
+  h_4b47e9e4a8b456 3-9
+src/orchestration/modules/provider-claude-agent-sdk/catalog.ts
+  h_4b47e9e4a8b456 2-3,5,54,79
+src/orchestration/modules/provider-claude-agent-sdk/cli-launch.ts
+  h_4b47e9e4a8b456 8-9,11
+src/orchestration/modules/provider-claude-agent-sdk/cli-view.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 11-12,14-17,19-20
+src/orchestration/modules/provider-claude-agent-sdk/engine/cli-environment.ts
+  h_4b47e9e4a8b456 3-7
+src/orchestration/modules/provider-claude-agent-sdk/engine/engine-demand.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/modules/provider-claude-agent-sdk/engine/engine-environment.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-claude-agent-sdk/engine/observed-engine.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.ts
+  h_4b47e9e4a8b456 6-14,16,20
+src/orchestration/modules/provider-claude-agent-sdk/engine/service-requests.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.ts
+  h_4b47e9e4a8b456 1-3
+src/orchestration/modules/provider-claude-agent-sdk/engine/step-gate.ts
+  h_4b47e9e4a8b456 4-8
+src/orchestration/modules/provider-claude-agent-sdk/engine/transcript.ts
+  h_4b47e9e4a8b456 5-10
+src/orchestration/modules/provider-claude-agent-sdk/login-observations.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-claude-agent-sdk/login/cli-login.ts
+  h_4b47e9e4a8b456 3-16
+src/orchestration/modules/provider-claude-agent-sdk/login/login-status.ts
+  h_4b47e9e4a8b456 1-6,8-10,12
+src/orchestration/modules/provider-claude-agent-sdk/login/login-token.ts
+  h_4b47e9e4a8b456 3-5,7-8
+src/orchestration/modules/provider-claude-agent-sdk/login/profile-conversions.ts
+  h_4b47e9e4a8b456 4-15
+src/orchestration/modules/provider-claude-agent-sdk/module.ts
+  h_4b47e9e4a8b456 6,15-18,142
+src/orchestration/modules/provider-claude-agent-sdk/query/in-place-check.ts
+  h_4b47e9e4a8b456 6-7,9-10,12-13,15
+src/orchestration/modules/provider-claude-agent-sdk/query/in-place.ts
+  h_4b47e9e4a8b456 3,5-6,8-9
+src/orchestration/modules/provider-claude-agent-sdk/query/query-engine.ts
+  h_4b47e9e4a8b456 2-7
+src/orchestration/modules/provider-claude-agent-sdk/query/request-plan.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-claude-agent-sdk/query/sdk-events.ts
+  h_4b47e9e4a8b456 5-8,10-13
+src/orchestration/modules/provider-claude-agent-sdk/query/tool-gate.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/provider-claude-agent-sdk/usage-reader.ts
+  h_4b47e9e4a8b456 2,5,34
+src/orchestration/modules/provider-deepseek/module.ts
+  h_4b47e9e4a8b456 2-3,5
+src/orchestration/modules/provider-deepseek/usage-reader.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/modules/provider-github-copilot/allowance-admission.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/modules/provider-github-copilot/catalog.ts
+  h_4b47e9e4a8b456 5-7
+src/orchestration/modules/provider-github-copilot/clients.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/modules/provider-github-copilot/model-support.ts
+  h_4b47e9e4a8b456 1,3-4
+src/orchestration/modules/provider-github-copilot/module.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-github-copilot/oauth.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/provider-github-copilot/quota-meter.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/provider-google-antigravity/catalog/catalog.ts
+  h_4b47e9e4a8b456 8-9,11-12
+src/orchestration/modules/provider-google-antigravity/catalog/model-identity.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-google-antigravity/client.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-google-antigravity/login/login-status.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-google-antigravity/login/login.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/modules/provider-google-antigravity/module.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-google-antigravity/request/bridge.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-google-antigravity/request/request-plan.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/modules/provider-google-antigravity/request/session-view.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-google-api/module.ts
+  h_4b47e9e4a8b456 3,5-6
+src/orchestration/modules/provider-google-vertex/module.ts
+  h_4b47e9e4a8b456 5,9
+src/orchestration/modules/provider-openai-api/module.ts
+  h_4b47e9e4a8b456 3-4,6-8
+src/orchestration/modules/provider-opencode-go/module.ts
+  h_4b47e9e4a8b456 2-3,6
+src/orchestration/modules/provider-opencode-go/usage-reader.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/modules/provider-openrouter/model-support.ts
+  h_4b47e9e4a8b456 1,3-4
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 3-4,6
+src/orchestration/modules/provider-supergrok/module.ts
+  h_4b47e9e4a8b456 6-7,9-11
+src/orchestration/modules/provider-supergrok/usage-reader.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/modules/subagents/execution/dispatch/dispatch-configuration.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.ts
+  h_4b47e9e4a8b456 3-5
+src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/modules/subscription-usage/notification-materializer.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/modules/subscription-usage/queries.ts
+  h_4b47e9e4a8b456 1-3
+src/orchestration/modules/subscription-usage/usage-history.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/modules/subscription-usage/usage-projection.ts
+  h_4b47e9e4a8b456 1-3,5,23
+src/orchestration/modules/workflows/models.ts
+  h_4b47e9e4a8b456 1,7-8
+src/orchestration/session/conversation/conversation-entry-schemas.ts
+  h_4b47e9e4a8b456 5,9
+src/orchestration/session/conversation/conversation-facts.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/session/durable-usage.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/session/provider-request-audit-facts.ts
+  h_4b47e9e4a8b456 31
+src/orchestration/session/provider-request-audit-types.ts
+  h_4b47e9e4a8b456 2,4-5
+src/orchestration/session/schemas.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/session/session-title.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/subscription-spend-consent/admission-capture.ts
+  h_4b47e9e4a8b456 4,6-7
+src/orchestration/subscription-spend-consent/runtime-composition.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/subscription-spend-consent/subscription-spend-consent-service.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/workflow-host/deps.ts
+  h_4b47e9e4a8b456 6-7,20
+src/orchestration/workflow-host/execution/agent-callback.ts
+  h_4b47e9e4a8b456 8
+src/protocol/active-serving-seat.ts
+  h_4b47e9e4a8b456 2
+src/protocol/auth-status-protocol-schemas.ts
+  h_4b47e9e4a8b456 4
+src/protocol/auth-status-protocol-types.ts
+  h_4b47e9e4a8b456 2
+src/protocol/client/provider-account-copy.ts
+  h_4b47e9e4a8b456 2
+src/protocol/execution-evidence.ts
+  h_4b47e9e4a8b456 2
+src/protocol/model-assignment-protocol-types.ts
+  h_4b47e9e4a8b456 2
+src/protocol/modules/subscription-usage.ts
+  h_4b47e9e4a8b456 3
+src/protocol/subscription-spend-consent-protocol-types.ts
+  h_4b47e9e4a8b456 3
+src/tui/modals/model/model-modal-chrome.ts
+  h_4b47e9e4a8b456 1
+src/tui/modules/subscription-usage/modal.tsx
+  h_4b47e9e4a8b456 9
+tests/e2e/seed-subscription-spend-consent.ts
+  h_4b47e9e4a8b456 6-7
+tests/e2e/seed-usage.ts
+  h_4b47e9e4a8b456 6-8
+tests/helpers/benchmark-admission.ts
+  h_4b47e9e4a8b456 4-5
+tests/helpers/catalog-profile.ts
+  h_4b47e9e4a8b456 5
+tests/helpers/eager-tool-visibility-provider.ts
+  h_4b47e9e4a8b456 6
+tests/helpers/fake-listing-client.ts
+  h_4b47e9e4a8b456 1-3
+tests/helpers/model-catalog-fixtures.ts
+  h_4b47e9e4a8b456 1
+tests/helpers/model-tier-fixtures.ts
+  h_4b47e9e4a8b456 1-2
+tests/helpers/provider-authority.ts
+  h_4b47e9e4a8b456 1
+tests/helpers/usage-price-fixtures.ts
+  h_4b47e9e4a8b456 1
+tests/integration/bench/benchmark-role-requests.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/integration/bench/review-sandbox.test.ts
+  h_4b47e9e4a8b456 7
+tests/integration/local/subscription-usage-store-coordination.test.ts
+  h_4b47e9e4a8b456 8,11,63
+tests/integration/local/usage-authority-coordination.test.ts
+  h_4b47e9e4a8b456 5-6,85
+tests/integration/orchestration/modules/provider-claude-agent-sdk/_claude-sdk-client.ts
+  h_4b47e9e4a8b456 13-14,24
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-notices.test.ts
+  h_4b47e9e4a8b456 17
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-recovery.test.ts
+  h_4b47e9e4a8b456 6,9
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts
+  h_4b47e9e4a8b456 10,14-15
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-conformance.test.ts
+  h_4b47e9e4a8b456 14,30
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-wire.test.ts
+  h_4b47e9e4a8b456 12,18
+tests/integration/orchestration/modules/provider-google-antigravity/_client.ts
+  h_4b47e9e4a8b456 7
+tests/integration/orchestration/modules/provider-google-antigravity/engine-conformance.test.ts
+  h_4b47e9e4a8b456 12
+tests/integration/orchestration/modules/provider-google-antigravity/engine-wire.test.ts
+  h_4b47e9e4a8b456 11
+tests/integration/providers/claude-sdk-subscription-real.test.ts
+  h_4b47e9e4a8b456 34-35
+tests/unit/bench/_persona-benchmark-fixtures.ts
+  h_4b47e9e4a8b456 5-8
+tests/unit/bench/benchmark-invocation.test.ts
+  h_4b47e9e4a8b456 2,4-5
+tests/unit/bench/benchmark-ranking.test.ts
+  h_4b47e9e4a8b456 2,4
+tests/unit/bench/benchmark-records.test.ts
+  h_4b47e9e4a8b456 4,12
+tests/unit/bench/benchmark-regrade.test.ts
+  h_4b47e9e4a8b456 5,7-8
+tests/unit/bench/benchmark-rejudge.test.ts
+  h_4b47e9e4a8b456 4,6
+tests/unit/bench/campaign-subject.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/bench/catalog.test.ts
+  h_4b47e9e4a8b456 6,8
+tests/unit/bench/chat-ab-challenge-score.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/bench/chat-ab-coding.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/bench/chat-ab-score.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/bench/chat-ab-shared-campaign.test.ts
+  h_4b47e9e4a8b456 2,9,19
+tests/unit/bench/chat-ab-source-treatment.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/bench/chat-routing-cli.test.ts
+  h_4b47e9e4a8b456 9-10
+tests/unit/bench/coding-ab-judge.test.ts
+  h_4b47e9e4a8b456 9-11
+tests/unit/bench/coding-ab-store.test.ts
+  h_4b47e9e4a8b456 4,10
+tests/unit/bench/compare.test.ts
+  h_4b47e9e4a8b456 7-8,11
+tests/unit/bench/harbor-quota-preflight.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/bench/implement-fixture-containment.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/bench/implement-task.test.ts
+  h_4b47e9e4a8b456 7,15
+tests/unit/bench/json-lines.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/bench/judge-accounting.test.ts
+  h_4b47e9e4a8b456 3,14-15
+tests/unit/bench/persona-benchmark-stored-records.test.ts
+  h_4b47e9e4a8b456 6,11-13,15
+tests/unit/bench/persona-benchmark.test.ts
+  h_4b47e9e4a8b456 9,14-17,19-20,22
+tests/unit/bench/persona-native-benchmark.test.ts
+  h_4b47e9e4a8b456 7-10,12-15
+tests/unit/bench/persona-run-accounting.test.ts
+  h_4b47e9e4a8b456 14,20
+tests/unit/bench/planning.test.ts
+  h_4b47e9e4a8b456 13-15
+tests/unit/bench/report-accounting.test.ts
+  h_4b47e9e4a8b456 5-7
+tests/unit/bench/run-store.test.ts
+  h_4b47e9e4a8b456 12-14
+tests/unit/bench/standalone-admission.test.ts
+  h_4b47e9e4a8b456 18,20,22-23
+tests/unit/bench/strategy.test.ts
+  h_4b47e9e4a8b456 6,21-25,28
+tests/unit/bench/workflow-audit-judge.test.ts
+  h_4b47e9e4a8b456 10-11
+tests/unit/bench/workflow-audit.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/bench/workflow-authorship.test.ts
+  h_4b47e9e4a8b456 10-12
+tests/unit/cli/commands/cli-auth.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/cli/startup-imports.test.ts
+  h_4b47e9e4a8b456 19
+tests/unit/infra/auth/auth-lock.test.ts
+  h_4b47e9e4a8b456 11,58-92,139-142,148-151,188-189,192-193,204-205,207-211,214,229-244,262-265,267,427-430,434,441-443
+tests/unit/infra/auth/auth-profile-normalization.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/infra/auth/provider-models/provider-model-catalog-store.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/infra/auth/provider-models/provider-model-preference-store.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/infra/llm/access/api-key-rejection.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/llm/access/model-listing-custom-provider.test.ts
+  h_4b47e9e4a8b456 2-10
+tests/unit/infra/llm/access/model-listing-pagination.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/llm/access/model-listing-persistence.test.ts
+  h_4b47e9e4a8b456 5-18
+tests/unit/infra/llm/access/model-listing-relationships.test.ts
+  h_4b47e9e4a8b456 6-18,70
+tests/unit/infra/llm/access/model-listing-supergrok.test.ts
+  h_4b47e9e4a8b456 6-16
+tests/unit/infra/llm/access/model-listing-vertex.test.ts
+  h_4b47e9e4a8b456 2-12
+tests/unit/infra/llm/access/model-listing.test.ts
+  h_4b47e9e4a8b456 2,7-22
+tests/unit/infra/llm/catalog/model-catalog-diagnostics.test.ts
+  h_4b47e9e4a8b456 2-3,9-10
+tests/unit/infra/llm/catalog/model-catalog-resolution.test.ts
+  h_4b47e9e4a8b456 2-13
+tests/unit/infra/llm/catalog/openrouter-model-support.test.ts
+  h_4b47e9e4a8b456 2,8-10
+tests/unit/infra/llm/catalog/provider-model-info.test.ts
+  h_4b47e9e4a8b456 2-5
+tests/unit/infra/llm/custom-provider-registry.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/infra/llm/errors/auth-error.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/llm/errors/provider-error-copy.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/llm/models/model-tokenizer.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/infra/llm/models/models-document-job.test.ts
+  h_4b47e9e4a8b456 2-5
+tests/unit/infra/llm/models/models-fetch.test.ts
+  h_4b47e9e4a8b456 5-8
+tests/unit/infra/llm/models/models-index.test.ts
+  h_4b47e9e4a8b456 5-8
+tests/unit/infra/llm/models/openai-pricing.test.ts
+  h_4b47e9e4a8b456 16-17
+tests/unit/infra/llm/models/usage-pricing.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/infra/module-regression.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/infra/subscription-usage-store.test.ts
+  h_4b47e9e4a8b456 7,9-11
+tests/unit/infra/subscription-usage.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/infra/usage-authority.test.ts
+  h_4b47e9e4a8b456 6-7,9
+tests/unit/orchestration/agent-resilience.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/agent-runtime/_runtime-assembly-harness.ts
+  h_4b47e9e4a8b456 1
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/assistant-turn-stream.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/attempt-settlement-regressions.test.ts
+  h_4b47e9e4a8b456 2-3,5-6
+tests/unit/orchestration/agent-runtime/context/loop-live-effort.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/failure-message.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/_openai-chatgpt-adapter-fixtures.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/agent-runtime/llm/_provider-availability-harness.ts
+  h_4b47e9e4a8b456 11-12
+tests/unit/orchestration/agent-runtime/llm/_provider-chain-harness.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/agent-runtime/llm/_wire-fixtures.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/orchestration/agent-runtime/llm/adapter-boundary-regressions.test.ts
+  h_4b47e9e4a8b456 7,14,17-18
+tests/unit/orchestration/agent-runtime/llm/anthropic-adapter-config.test.ts
+  h_4b47e9e4a8b456 6,9
+tests/unit/orchestration/agent-runtime/llm/anthropic-progress-updates.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/llm/anthropic-tool-input.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/llm/anthropic-usage-accounting.test.ts
+  h_4b47e9e4a8b456 16,18
+tests/unit/orchestration/agent-runtime/llm/availability-store.test.ts
+  h_4b47e9e4a8b456 7,17
+tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/agent-runtime/llm/chat-completions-converter.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/agent-runtime/llm/chatgpt-backend/sse.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/agent-runtime/llm/chatgpt-backend/websocket.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
+  h_4b47e9e4a8b456 14,18
+tests/unit/orchestration/agent-runtime/llm/client-factory-login.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/llm/client-factory-opencode-go.test.ts
+  h_4b47e9e4a8b456 11,60
+tests/unit/orchestration/agent-runtime/llm/client-factory-single-account.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/agent-runtime/llm/client-factory-supergrok.test.ts
+  h_4b47e9e4a8b456 11,54
+tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+  h_4b47e9e4a8b456 25,32
+tests/unit/orchestration/agent-runtime/llm/copilot-affordability.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/failover-client-audit.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/failover-client-auth.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/failover-client-model-access.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/llm/failover-client-outage.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/orchestration/agent-runtime/llm/failover-client-pending.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/failover-client-records.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/agent-runtime/llm/failover-client-retry.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/agent-runtime/llm/failover-client.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/google-failure-signals.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/agent-runtime/llm/image-limit.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/agent-runtime/llm/llm-client-routing.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/llm/model-compat.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter-validation.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/llm/openai-copilot-responses.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/openai-error-classification.test.ts
+  h_4b47e9e4a8b456 12-13
+tests/unit/orchestration/agent-runtime/llm/openrouter-affordability.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/agent-runtime/llm/openrouter-reasoning-details.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+  h_4b47e9e4a8b456 14,28
+tests/unit/orchestration/agent-runtime/llm/openrouter-wire-model.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/llm/provider-availability-authority.test.ts
+  h_4b47e9e4a8b456 9,15
+tests/unit/orchestration/agent-runtime/llm/provider-availability-coordination.test.ts
+  h_4b47e9e4a8b456 19,24
+tests/unit/orchestration/agent-runtime/llm/provider-availability-outage.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/agent-runtime/llm/provider-availability-wait.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/provider-availability.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/agent-runtime/llm/provider-chain-preflight.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/agent-runtime/llm/provider-description.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/llm/provider-history.test.ts
+  h_4b47e9e4a8b456 19
+tests/unit/orchestration/agent-runtime/llm/quota-vocabulary-coherence.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/agent-runtime/llm/reasoning-effort-boundaries.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/request-admission-diagnostics.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/llm/request-descriptor.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/provider-runtime-cache.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/agent-runtime/request-golden.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/agent-runtime/runtime-assembly-usage-settlement.test.ts
+  h_4b47e9e4a8b456 22
+tests/unit/orchestration/agent-runtime/shared-tree.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/system-prompt-tiers.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/agent-runtime/tree-host-key.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/typed-error-boundary.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/agent-runtime/usage-measured-emission.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/agent-runtime/usage-settlement.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/agent-runtime/workflow-agent-prompt-prefix.test.ts
+  h_4b47e9e4a8b456 16
+tests/unit/orchestration/app-service/eligibility-preparation-models-dev.test.ts
+  h_4b47e9e4a8b456 4,6
+tests/unit/orchestration/app-service/model-assignment-read-admission.test.ts
+  h_4b47e9e4a8b456 36
+tests/unit/orchestration/app-service/model-assignment-service-fixtures.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/app-service/model-catalog-auth-eligibility.test.ts
+  h_4b47e9e4a8b456 15-16,18
+tests/unit/orchestration/app-service/model-catalog-chatgpt-login.test.ts
+  h_4b47e9e4a8b456 8-12
+tests/unit/orchestration/app-service/provider-model-preference-metadata.test.ts
+  h_4b47e9e4a8b456 2,4
+tests/unit/orchestration/app-service/runtime-worker-resilience.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/app-service/session-recovery-gate.test.ts
+  h_4b47e9e4a8b456 7-12,27
+tests/unit/orchestration/app-service/usage-authority-lifecycle.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/orchestration/app-service/usage-runtime-coordination.test.ts
+  h_4b47e9e4a8b456 9-10
+tests/unit/orchestration/auth/login-abort.test.ts
+  h_4b47e9e4a8b456 8-9,17-18
+tests/unit/orchestration/auth/provider-login-flow.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/auth/provider-observations/_service-fixtures.ts
+  h_4b47e9e4a8b456 4,6
+tests/unit/orchestration/auth/provider-observations/subscription-usage-account-check.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/auth/provider-observations/subscription-usage-service-lifecycle.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/orchestration/auth/provider-observations/subscription-usage-service.test.ts
+  h_4b47e9e4a8b456 5-6,8
+tests/unit/orchestration/auth/provider-observations/usage-availability-fold.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/orchestration/chat/lifecycle/chat-runner-lifecycle-capacity.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/chat/lifecycle/chat-runner-lifecycle-respawn.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/chat/lifecycle/session-engines-claude.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/config/config.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/config/custom-providers-config.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/config/default-pin-normalization.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/config/model-assignment-reset.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/config/model-listing-access-provider.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/config/model-listing-client.test.ts
+  h_4b47e9e4a8b456 3-4,12-14
+tests/unit/orchestration/config/model-provider-unavailable.test.ts
+  h_4b47e9e4a8b456 6-8
+tests/unit/orchestration/config/models/model-tiers.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/config/models/provider-model-eligibility.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/config/models/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 6,111
+tests/unit/orchestration/config/provider-model-catalog-contracts.test.ts
+  h_4b47e9e4a8b456 8-9,12
+tests/unit/orchestration/headless/_auth-snapshot-fixtures.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/headless/auth-profile.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/headless/benchmark-auth-file.test.ts
+  h_4b47e9e4a8b456 8,12
+tests/unit/orchestration/headless/headless-cached-catalog-ownership.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/headless/headless-role-authority.test.ts
+  h_4b47e9e4a8b456 16
+tests/unit/orchestration/headless/headless-run.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/headless/headless-task-report.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/headless/headless-usage-authority.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/modules/development/benchmark-tool-execution.test.ts
+  h_4b47e9e4a8b456 22-23
+tests/unit/orchestration/modules/development/benchmark-tool.test.ts
+  h_4b47e9e4a8b456 8,10
+tests/unit/orchestration/modules/development/benchmark/campaign/matrix-runner.test.ts
+  h_4b47e9e4a8b456 2-4
+tests/unit/orchestration/modules/development/benchmark/execution/claude-code-execution.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/orchestration/modules/development/benchmark/execution/headless-execution.test.ts
+  h_4b47e9e4a8b456 7-21
+tests/unit/orchestration/modules/development/benchmark/persona/persona-run.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/modules/provider-anthropic-api/module.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 23-26,29,31-33
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_launcher-harness.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.test.ts
+  h_4b47e9e4a8b456 6,11,19,25
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host.test.ts
+  h_4b47e9e4a8b456 9-10,13-14
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/hosted-requests.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/assistant-assembler.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-audit.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-extra-usage.test.ts
+  h_4b47e9e4a8b456 2,5-6
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-in-place.test.ts
+  h_4b47e9e4a8b456 3-4,7
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-lifecycle.test.ts
+  h_4b47e9e4a8b456 6-11,15
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-login.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-reservation.test.ts
+  h_4b47e9e4a8b456 3,5-7
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/bridge.test.ts
+  h_4b47e9e4a8b456 5-6,9,13
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/extra-usage-guard.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/orchestration/modules/provider-claude-agent-sdk/catalog.test.ts
+  h_4b47e9e4a8b456 7-9,11
+tests/unit/orchestration/modules/provider-claude-agent-sdk/cli-view.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/provider-claude-agent-sdk/client.test.ts
+  h_4b47e9e4a8b456 8,15
+tests/unit/orchestration/modules/provider-claude-agent-sdk/engine/engine-environment.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher-probe.test.ts
+  h_4b47e9e4a8b456 3-7
+tests/unit/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.test.ts
+  h_4b47e9e4a8b456 5,8-16
+tests/unit/orchestration/modules/provider-claude-agent-sdk/engine/service-requests.test.ts
+  h_4b47e9e4a8b456 3-5,9
+tests/unit/orchestration/modules/provider-claude-agent-sdk/engine/session-id.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/provider-claude-agent-sdk/engine/step-gate.test.ts
+  h_4b47e9e4a8b456 4-7,9,11,91
+tests/unit/orchestration/modules/provider-claude-agent-sdk/engine/stop-query.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/orchestration/modules/provider-claude-agent-sdk/engine/transcript.test.ts
+  h_4b47e9e4a8b456 4-11
+tests/unit/orchestration/modules/provider-claude-agent-sdk/login/cli-login.test.ts
+  h_4b47e9e4a8b456 5-15
+tests/unit/orchestration/modules/provider-claude-agent-sdk/login/login-token.test.ts
+  h_4b47e9e4a8b456 4-8
+tests/unit/orchestration/modules/provider-claude-agent-sdk/login/profile-conversions.test.ts
+  h_4b47e9e4a8b456 4-22
+tests/unit/orchestration/modules/provider-claude-agent-sdk/module.test.ts
+  h_4b47e9e4a8b456 10,19
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query/cli-images.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query/in-place-check.test.ts
+  h_4b47e9e4a8b456 6-10
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query/in-place.test.ts
+  h_4b47e9e4a8b456 4-7
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query/request-plan.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query/sdk-events.test.ts
+  h_4b47e9e4a8b456 6-11
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query/tool-gate.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/modules/provider-deepseek/catalog.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/modules/provider-github-copilot/allowance-admission.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/modules/provider-google-antigravity/_fake-agy.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/modules/provider-google-antigravity/acp/errors.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/modules/provider-google-antigravity/catalog/catalog.test.ts
+  h_4b47e9e4a8b456 6-8
+tests/unit/orchestration/modules/provider-google-antigravity/module.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/modules/provider-google-vertex/module.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/modules/provider-opencode-go/catalog.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/modules/subagents/subagent-continuation.test.ts
+  h_4b47e9e4a8b456 20
+tests/unit/orchestration/modules/subscription-usage/notification-materializer.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/subscription-usage/session-stats.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/modules/subscription-usage/subscription-usage-alert-publication.test.ts
+  h_4b47e9e4a8b456 5-7
+tests/unit/orchestration/modules/subscription-usage/usage-history.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/orchestration/modules/subscription-usage/usage-projection-history.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/modules/subscription-usage/usage-protocol.test.ts
+  h_4b47e9e4a8b456 11-12
+tests/unit/orchestration/modules/synthetic-provider.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/modules/workflows/models.test.ts
+  h_4b47e9e4a8b456 20
+tests/unit/orchestration/session/execution-evidence.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/session/live-usage-settlement.test.ts
+  h_4b47e9e4a8b456 10-11
+tests/unit/orchestration/subscription-spend-consent/admission-capture.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/orchestration/subscription-spend-consent/capture-cache-freshness.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/subscription-spend-consent/subscription-spend-consent-service.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/subscription-usage-provider-readers.test.ts
+  h_4b47e9e4a8b456 2,11
+tests/unit/orchestration/workflow-host/handoff-registry-injection.test.ts
+  h_4b47e9e4a8b456 33
+tests/unit/protocol/protocol-closure-purity.test.ts
+  h_4b47e9e4a8b456 122-124
+tests/unit/scripts/check-model-catalog.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/scripts/check-provider-model-literals.test.ts
+  h_4b47e9e4a8b456 54
+tests/unit/scripts/coverage-lines.test.ts
+  h_4b47e9e4a8b456 18-19
+tests/unit/scripts/model-scores.test.ts
+  h_4b47e9e4a8b456 4-5,7
+tests/unit/scripts/readiness-login.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/scripts/review-fixture-publication.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/tui/hooks/create-session-process-controls.test.ts
+  h_4b47e9e4a8b456 106-110,114,116
+tests/unit/tui/modals/auth/auth-modal.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/tui/usage-fixtures.ts
+  h_4b47e9e4a8b456 2
+tests/unit/webview/local-route.test.ts
+  h_4b47e9e4a8b456 15,18
+tests/unit/webview/rail-layout.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/webview/shortcuts.test.ts
+  h_4b47e9e4a8b456 3
+vscode/src/webview/changes.test.ts
+  h_4b47e9e4a8b456 30
+webview/local/gate.tsx
+  h_4b47e9e4a8b456 3
+webview/local/route.ts
+  h_4b47e9e4a8b456 1
+webview/phone/session-address.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/app/app-readiness-fixture.tsx
+  h_4b47e9e4a8b456 13,17
+webview/src/app/app.tsx
+  h_4b47e9e4a8b456 15,20-34,38,44,46,48-49,51
+webview/src/app/client-context-fixture.ts
+  h_4b47e9e4a8b456 16
+webview/src/app/client-context.ts
+  h_4b47e9e4a8b456 11-12
+webview/src/app/composer/attachments.ts
+  h_4b47e9e4a8b456 3,7
+webview/src/app/composer/composer-session-drafts.test.ts
+  h_4b47e9e4a8b456 4-5
+webview/src/app/composer/composer-session-drafts.ts
+  h_4b47e9e4a8b456 2-4
+webview/src/app/composer/composer-submission-fixture.tsx
+  h_4b47e9e4a8b456 2-16,18,20-23
+webview/src/app/composer/composer-submission-loader-fixture.ts
+  h_4b47e9e4a8b456 2-3
+webview/src/app/composer/composer-submission.test.ts
+  h_4b47e9e4a8b456 3,5
+webview/src/app/composer/composer.tsx
+  h_4b47e9e4a8b456 4-17,19,21-30,33,49
+webview/src/app/composer/conversation-body.tsx
+  h_4b47e9e4a8b456 3,5
+webview/src/app/composer/menus/attach-menu-fixture.tsx
+  h_4b47e9e4a8b456 3
+webview/src/app/composer/menus/attach-menu.test.ts
+  h_4b47e9e4a8b456 4-5
+webview/src/app/composer/menus/attach-menu.tsx
+  h_4b47e9e4a8b456 2
+webview/src/app/composer/menus/command-panel-budget.test.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/composer/menus/command-panel-controls-fixture.tsx
+  h_4b47e9e4a8b456 3-15,17
+webview/src/app/composer/menus/command-panel-controls.test.ts
+  h_4b47e9e4a8b456 4-9
+webview/src/app/composer/menus/command-panel.tsx
+  h_4b47e9e4a8b456 1,3,6-17
+webview/src/app/composer/menus/mention-panel.tsx
+  h_4b47e9e4a8b456 2,4-6
+webview/src/app/composer/menus/option-picker-interaction-fixture.tsx
+  h_4b47e9e4a8b456 2-4,6
+webview/src/app/composer/menus/option-picker-interaction.test.ts
+  h_4b47e9e4a8b456 5-6
+webview/src/app/composer/questions/question-panel-fixture.tsx
+  h_4b47e9e4a8b456 3,5-7
+webview/src/app/composer/questions/question-panel.test.ts
+  h_4b47e9e4a8b456 4-6
+webview/src/app/composer/questions/question-panel.tsx
+  h_4b47e9e4a8b456 3,5-10
+webview/src/app/controls/control-css.test.ts
+  h_4b47e9e4a8b456 4-5,70
+webview/src/app/controls/icons.tsx
+  h_4b47e9e4a8b456 1-2
+webview/src/app/dialogs/confirmation-queue.ts
+  h_4b47e9e4a8b456 2
+webview/src/app/dialogs/dialogs.tsx
+  h_4b47e9e4a8b456 4-5
+webview/src/app/dialogs/login-question.test.ts
+  h_4b47e9e4a8b456 3,5
+webview/src/app/dialogs/login-question.tsx
+  h_4b47e9e4a8b456 2-5
+webview/src/app/screens/module-host-presence.test.ts
+  h_4b47e9e4a8b456 6-8
+webview/src/app/screens/module-host-presence.ts
+  h_4b47e9e4a8b456 3-6
+webview/src/app/screens/module-strips-fixture.tsx
+  h_4b47e9e4a8b456 3-4,6
+webview/src/app/screens/module-strips.test.tsx
+  h_4b47e9e4a8b456 4-5,7-8
+webview/src/app/screens/module-strips.tsx
+  h_4b47e9e4a8b456 3
+webview/src/app/screens/screen-stack.test.ts
+  h_4b47e9e4a8b456 5,7-9
+webview/src/app/screens/screen-stack.ts
+  h_4b47e9e4a8b456 2-3
+webview/src/app/screens/stages.tsx
+  h_4b47e9e4a8b456 4-7
+webview/src/app/screens/workspace-navigation.ts
+  h_4b47e9e4a8b456 2
+webview/src/app/sessions/session-actions.ts
+  h_4b47e9e4a8b456 1-3,6-7
+webview/src/app/sessions/session-copy-interaction-fixture.ts
+  h_4b47e9e4a8b456 3-6
+webview/src/app/sessions/session-copy-interaction.test.ts
+  h_4b47e9e4a8b456 5-6
+webview/src/app/sessions/session-list-budget.test.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/sessions/session-list.tsx
+  h_4b47e9e4a8b456 4-11,13,15
+webview/src/app/sessions/session-notices.tsx
+  h_4b47e9e4a8b456 4-5
+webview/src/app/sessions/session-rail.tsx
+  h_4b47e9e4a8b456 2,4-6
+webview/src/app/sessions/session-rows.test.ts
+  h_4b47e9e4a8b456 4,6
+webview/src/app/sessions/session-rows.ts
+  h_4b47e9e4a8b456 1
+webview/src/app/sessions/sessions-screen.tsx
+  h_4b47e9e4a8b456 2,4-6
+webview/src/app/sessions/sessions-sheet.tsx
+  h_4b47e9e4a8b456 5-8
+webview/src/app/sheets/commands/commands-sheet.tsx
+  h_4b47e9e4a8b456 4-10
+webview/src/app/sheets/commands/module-menu-rows.ts
+  h_4b47e9e4a8b456 1-2
+webview/src/app/sheets/commands/surfaces.ts
+  h_4b47e9e4a8b456 1-10
+webview/src/app/sheets/models/model-catalog.ts
+  h_4b47e9e4a8b456 2-5
+webview/src/app/sheets/models/model-sheet.tsx
+  h_4b47e9e4a8b456 11
+webview/src/app/sheets/models/models-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 2-3,5-10
+webview/src/app/sheets/models/models-sheet-interaction.test.ts
+  h_4b47e9e4a8b456 5-6
+webview/src/app/sheets/models/models-sheet.tsx
+  h_4b47e9e4a8b456 10
+webview/src/app/sheets/providers/providers-sheet-focus.test.ts
+  h_4b47e9e4a8b456 5-6
+webview/src/app/sheets/providers/providers-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 4-17
+webview/src/app/sheets/providers/providers-sheet-interaction.test.ts
+  h_4b47e9e4a8b456 5-8,44,64,80,90,125
+webview/src/app/sheets/settings/capability-preset-interaction-fixture.ts
+  h_4b47e9e4a8b456 2-15
+webview/src/app/sheets/settings/capability-preset-interaction.test.ts
+  h_4b47e9e4a8b456 1,5-6
+webview/src/app/sheets/settings/setting-rows.tsx
+  h_4b47e9e4a8b456 16
+webview/src/app/sheets/sheet-field-fixture.ts
+  h_4b47e9e4a8b456 3
+webview/src/app/sheets/sheet.tsx
+  h_4b47e9e4a8b456 3-5
+webview/src/app/sheets/shortcuts/shortcuts-sheet-fixture.tsx
+  h_4b47e9e4a8b456 3
+webview/src/app/sheets/shortcuts/shortcuts-sheet.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/app/sheets/shortcuts/shortcuts-sheet.tsx
+  h_4b47e9e4a8b456 3-6
+webview/src/app/sheets/workspace/background-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 2-6,8-12
+webview/src/app/sheets/workspace/background-sheet-interaction.test.ts
+  h_4b47e9e4a8b456 5-7
+webview/src/app/sheets/workspace/background-sheet.tsx
+  h_4b47e9e4a8b456 2
+webview/src/app/sheets/workspace/changes-content.tsx
+  h_4b47e9e4a8b456 3-10
+webview/src/app/sheets/workspace/changes-folders.test.ts
+  h_4b47e9e4a8b456 4-6
+webview/src/app/sheets/workspace/changes-header.test.ts
+  h_4b47e9e4a8b456 3-5
+webview/src/app/sheets/workspace/changes-review-fixture.ts
+  h_4b47e9e4a8b456 1-3
+webview/src/app/sheets/workspace/changes-sheet.tsx
+  h_4b47e9e4a8b456 3
+webview/src/app/sheets/workspace/status-sheet-budget.test.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/sheets/workspace/status-sheet-restart.test.tsx
+  h_4b47e9e4a8b456 5
+webview/src/app/sheets/workspace/status-sheet-runtime.test.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/sheets/workspace/workspace-surface.tsx
+  h_4b47e9e4a8b456 2-3
+webview/src/app/toolbar/composer-status-fixture.ts
+  h_4b47e9e4a8b456 4-6,8-12
+webview/src/app/toolbar/composer-status.test.ts
+  h_4b47e9e4a8b456 4-6
+webview/src/app/toolbar/composer-status.tsx
+  h_4b47e9e4a8b456 3,5-10
+webview/src/app/toolbar/context-gauge.tsx
+  h_4b47e9e4a8b456 3-4
+webview/src/app/toolbar/toolbar-badges-fixture.ts
+  h_4b47e9e4a8b456 4-8
+webview/src/app/toolbar/toolbar-badges.test.ts
+  h_4b47e9e4a8b456 4-5
+webview/src/app/toolbar/toolbar-badges.tsx
+  h_4b47e9e4a8b456 3-5
+webview/src/app/toolbar/toolbar-budget.test.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/toolbar/toolbar-update.test.tsx
+  h_4b47e9e4a8b456 4-6
+webview/src/app/toolbar/toolbar.tsx
+  h_4b47e9e4a8b456 3-10,14-15
+webview/src/app/transcript/activity-status-css.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/app/transcript/activity-status.tsx
+  h_4b47e9e4a8b456 3-6
+webview/src/app/transcript/blocks/agents/agent-group-controls.test.ts
+  h_4b47e9e4a8b456 4-6
+webview/src/app/transcript/blocks/agents/agent-group-fixture.ts
+  h_4b47e9e4a8b456 1-8
+webview/src/app/transcript/blocks/agents/agent-group.tsx
+  h_4b47e9e4a8b456 2-10,12,15-16,18
+webview/src/app/transcript/blocks/agents/agent-line.tsx
+  h_4b47e9e4a8b456 2-3
+webview/src/app/transcript/blocks/agents/session-reading.test.ts
+  h_4b47e9e4a8b456 5
+webview/src/app/transcript/blocks/agents/subagent-header.tsx
+  h_4b47e9e4a8b456 2
+webview/src/app/transcript/blocks/block-disclosure.ts
+  h_4b47e9e4a8b456 3
+webview/src/app/transcript/blocks/blocks-render-loader-fixture.ts
+  h_4b47e9e4a8b456 2-3,6,14
+webview/src/app/transcript/blocks/blocks-render.test.ts
+  h_4b47e9e4a8b456 4-6,65,438
+webview/src/app/transcript/blocks/blocks.test.ts
+  h_4b47e9e4a8b456 4-6
+webview/src/app/transcript/blocks/blocks.tsx
+  h_4b47e9e4a8b456 3-13,15-16,18-20,22-35
+webview/src/app/transcript/blocks/compact-tool-row.tsx
+  h_4b47e9e4a8b456 4-8
+webview/src/app/transcript/blocks/compact-tool-rows.tsx
+  h_4b47e9e4a8b456 3-6
+webview/src/app/transcript/blocks/message/image-viewer.tsx
+  h_4b47e9e4a8b456 2-3
+webview/src/app/transcript/blocks/message/message.tsx
+  h_4b47e9e4a8b456 3-7,9,11
+webview/src/app/transcript/blocks/message/person-text.tsx
+  h_4b47e9e4a8b456 2-3
+webview/src/app/transcript/blocks/text/file-diff.test.ts
+  h_4b47e9e4a8b456 4-9,11-14,17,27
+webview/src/app/transcript/blocks/text/file-diff.tsx
+  h_4b47e9e4a8b456 3,7-8
+webview/src/app/transcript/blocks/text/markdown-view.tsx
+  h_4b47e9e4a8b456 3
+webview/src/app/transcript/blocks/text/markdown.test.ts
+  h_4b47e9e4a8b456 163
+webview/src/app/transcript/blocks/text/write-syntax.test.ts
+  h_4b47e9e4a8b456 6-8
+webview/src/app/transcript/blocks/text/write-syntax.ts
+  h_4b47e9e4a8b456 1
+webview/src/app/transcript/blocks/tools/tool-group-render.test.ts
+  h_4b47e9e4a8b456 3-4
+webview/src/app/transcript/blocks/tools/tool-group.tsx
+  h_4b47e9e4a8b456 4-13
+webview/src/app/transcript/blocks/tools/tool-settlement-fixture.tsx
+  h_4b47e9e4a8b456 3-8
+webview/src/app/transcript/blocks/tools/tool-settlement.test.ts
+  h_4b47e9e4a8b456 4-6,8
+webview/src/app/transcript/blocks/tools/tool-stretch-ownership.test.ts
+  h_4b47e9e4a8b456 3-5
+webview/src/app/transcript/blocks/tools/write-evidence-render.test.ts
+  h_4b47e9e4a8b456 3-6
+webview/src/app/transcript/blocks/turn-changes.tsx
+  h_4b47e9e4a8b456 3-7,9-10
+webview/src/app/transcript/blocks/turn-features.test.ts
+  h_4b47e9e4a8b456 3,5-11
+webview/src/app/transcript/intro-card.tsx
+  h_4b47e9e4a8b456 3,5-11
+webview/src/app/transcript/reading/find-bar.tsx
+  h_4b47e9e4a8b456 3-11
+webview/src/app/transcript/reading/find-css.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/app/transcript/reading/return-to-latest.test.ts
+  h_4b47e9e4a8b456 4-5
+webview/src/app/transcript/reading/return-to-latest.tsx
+  h_4b47e9e4a8b456 1-2
+webview/src/app/transcript/reading/row-time-copy.test.ts
+  h_4b47e9e4a8b456 5-7,23,35
+webview/src/app/transcript/reading/row-time.tsx
+  h_4b47e9e4a8b456 4-10
+webview/src/app/transcript/reading/transcript-time-reveal.ts
+  h_4b47e9e4a8b456 1
+webview/src/app/transcript/render-continuity.test.ts
+  h_4b47e9e4a8b456 4-6,8-13,15-18,171,181
+webview/src/app/transcript/render-ownership-fixture.ts
+  h_4b47e9e4a8b456 3-15,18-32,242,245,430,488
+webview/src/app/transcript/render-ownership-loader-fixture.ts
+  h_4b47e9e4a8b456 2-3,19,23
+webview/src/app/transcript/render-ownership.test.ts
+  h_4b47e9e4a8b456 6-10,13
+webview/src/app/transcript/transcript-scroll.test.ts
+  h_4b47e9e4a8b456 3-6,10
+webview/src/app/transcript/transcript-scroll.ts
+  h_4b47e9e4a8b456 1-2
+webview/src/app/transcript/transcript-window-ownership.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/app/transcript/transcript.tsx
+  h_4b47e9e4a8b456 4-18,20-22,24-28
+webview/src/client/actions.test.ts
+  h_4b47e9e4a8b456 16
+webview/src/client/session.test.ts
+  h_4b47e9e4a8b456 13
+webview/src/client/turn-folds.test.ts
+  h_4b47e9e4a8b456 6-7
+webview/src/index.ts
+  h_4b47e9e4a8b456 7,18
+webview/src/modules/bug-reports/surfaces-fixture.ts
+  h_4b47e9e4a8b456 7-8
+webview/src/modules/experiments/strip-fixture.ts
+  h_4b47e9e4a8b456 4
+webview/src/modules/experiments/strip.tsx
+  h_4b47e9e4a8b456 2,6
+webview/src/modules/mcp/sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 5
+webview/src/modules/project-notifications/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 1
+webview/src/modules/project-notifications/sheet-fixture.ts
+  h_4b47e9e4a8b456 6
+webview/src/modules/project-notifications/sheet.test.ts
+  h_4b47e9e4a8b456 6
+webview/src/modules/reclaim-storage/sheet-fixture.ts
+  h_4b47e9e4a8b456 8
+webview/src/modules/remote/index.tsx
+  h_4b47e9e4a8b456 7
+webview/src/modules/remote/runtimes.tsx
+  h_4b47e9e4a8b456 11
+webview/src/modules/remote/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 2
+webview/src/modules/remote/sheet.test.ts
+  h_4b47e9e4a8b456 6
+webview/src/modules/side-question/command.test.ts
+  h_4b47e9e4a8b456 9,19
+webview/src/modules/side-question/sheet-fixture.ts
+  h_4b47e9e4a8b456 5
+webview/src/modules/side-question/sheet.tsx
+  h_4b47e9e4a8b456 7
+webview/src/modules/subscription-usage/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 1
+webview/src/modules/subscription-usage/sheet.test.tsx
+  h_4b47e9e4a8b456 6
+webview/src/modules/subscription-usage/stats-render-fixture.tsx
+  h_4b47e9e4a8b456 4
+webview/src/modules/subscription-usage/stats-render-test-loader.ts
+  h_4b47e9e4a8b456 1
+webview/src/modules/subscription-usage/stats-sheet.test.tsx
+  h_4b47e9e4a8b456 6
+webview/src/modules/subscription-usage/usage-render-fixture.tsx
+  h_4b47e9e4a8b456 6-7
+webview/src/modules/workflows/activity-fixture.tsx
+  h_4b47e9e4a8b456 2
+webview/src/modules/workflows/activity.tsx
+  h_4b47e9e4a8b456 7-9,16
+webview/src/modules/workflows/card.tsx
+  h_4b47e9e4a8b456 12-14
+webview/src/modules/workflows/index.tsx
+  h_4b47e9e4a8b456 8,10
+webview/src/modules/workflows/inspection.test.ts
+  h_4b47e9e4a8b456 10-11
+webview/src/modules/workflows/navigation.ts
+  h_4b47e9e4a8b456 4
+webview/src/modules/workflows/screen/agent-header-fixture.tsx
+  h_4b47e9e4a8b456 2-9,11-15
+webview/src/modules/workflows/screen/agent-header.tsx
+  h_4b47e9e4a8b456 3-15
+webview/src/modules/workflows/screen/card-screen-fixture.tsx
+  h_4b47e9e4a8b456 2-6,8-9
+webview/src/modules/workflows/screen/card-screen.tsx
+  h_4b47e9e4a8b456 3-14
+webview/src/modules/workflows/screen/workflow-agent-view.test.ts
+  h_4b47e9e4a8b456 4-7,10,20
+webview/src/modules/workflows/screen/workflow-card-screen.test.ts
+  h_4b47e9e4a8b456 4-6,9,19
+webview/src/modules/workflows/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 2
+webview/src/modules/workflows/stability-fixture.tsx
+  h_4b47e9e4a8b456 10-12,14,19,24
+webview/src/test-support/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 12-16,18-20
+webview/src/test-support/budget-render-test-loader.ts
+  h_4b47e9e4a8b456 1-2
+webview/src/test-support/module-rows-fixture.ts
+  h_4b47e9e4a8b456 8-11
+webview/src/test-support/module-rows.test.tsx
+  h_4b47e9e4a8b456 4-5
+webview/src/test-support/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 2-4,9-13
+webview/src/test-support/semantic-rows-loader-fixture.ts
+  h_4b47e9e4a8b456 2-3
+webview/src/test-support/solid-transform.ts
+  h_4b47e9e4a8b456 12
+webview/src/test-support/stability.test.ts
+  h_4b47e9e4a8b456 6
+webview/src/web-module-client.ts
+  h_4b47e9e4a8b456 7
+webview/src/web-module.ts
+  h_4b47e9e4a8b456 10
+webview/test-support/web-blocks-render.ts
+  h_4b47e9e4a8b456 8-9,11,17-18,20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "85349be412936c070d593e5b94b0d1ed68a774d3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
