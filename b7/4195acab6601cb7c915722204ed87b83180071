@@ -1,0 +1,106 @@
+src/infra/llm/model-access-audit.ts
+  h_4b47e9e4a8b456 5,10-19
+src/infra/llm/model-listing-rows.ts
+  h_4b47e9e4a8b456 4,22-37
+src/infra/llm/model-listing.ts
+  h_4b47e9e4a8b456 9,13,15
+src/orchestration/app-service/output-sequence.ts
+  h_4b47e9e4a8b456 7-8
+src/orchestration/app-service/provider-model-preference-service.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/app-service/transcript-projection-cache.ts
+  h_4b47e9e4a8b456 10-11
+src/orchestration/app-service/transcript-queries.ts
+  h_4b47e9e4a8b456 8-9
+src/orchestration/config/model-assignment-providers.ts
+  h_4b47e9e4a8b456 7-9
+src/orchestration/modules/mcp/manager-types.ts
+  h_4b47e9e4a8b456 1-93
+src/orchestration/modules/mcp/manager.ts
+  h_4b47e9e4a8b456 6,8-9,11-12
+src/orchestration/modules/mcp/nested-tool.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/modules/mcp/registry-owner.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/mcp/service.ts
+  h_4b47e9e4a8b456 16-17
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+  h_4b47e9e4a8b456 16,32
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-demand.ts
+  h_4b47e9e4a8b456 1-77
+src/orchestration/session/conversation/branch-history-builder.ts
+  h_4b47e9e4a8b456 1,4
+src/orchestration/session/conversation/tool-result-meta.ts
+  h_4b47e9e4a8b456 90-97
+src/orchestration/session/conversation/transcript-projection.ts
+  h_4b47e9e4a8b456 15,26
+src/tui/commands/command-catalog.ts
+  h_4b47e9e4a8b456 2
+src/tui/commands/command-definitions.ts
+  h_4b47e9e4a8b456 7
+src/tui/commands/command-types.ts
+  h_4b47e9e4a8b456 1-8,30-56
+src/tui/commands/runtime-command-bindings.ts
+  h_4b47e9e4a8b456 2
+src/workflows/authored-repairs.ts
+  h_4b47e9e4a8b456 196-197,199
+src/workflows/retired-step-grammar/flow-reads.ts
+  h_4b47e9e4a8b456 46-53,62,70,79,86-91,98
+tests/helpers/code-mode-loopback-mcp.ts
+  h_4b47e9e4a8b456 2
+tests/helpers/command-context.ts
+  h_4b47e9e4a8b456 2
+tests/helpers/mcp.ts
+  h_4b47e9e4a8b456 3
+tests/integration/mcp-stdio.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/infra/llm/model-listing-supergrok.test.ts
+  h_4b47e9e4a8b456 9-10
+tests/unit/orchestration/agent-runtime/runtime-assembly-development-tools.test.ts
+  h_4b47e9e4a8b456 22
+tests/unit/orchestration/modules/code-mode/code-mcp.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/modules/mcp/cli/args.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/modules/mcp/protocol.test.ts
+  h_4b47e9e4a8b456 15-16
+tests/unit/orchestration/modules/provider-claude-agent-sdk/catalog.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/tui/commands/command-dispatch.test.ts
+  h_4b47e9e4a8b456 3-4
+webview/src/app/app-readiness-fixture.tsx
+  h_4b47e9e4a8b456 90
+webview/src/app/app.tsx
+  h_4b47e9e4a8b456 120-121,273,327,350,403,475,500,544,546,560
+webview/src/app/blocks.tsx
+  h_4b47e9e4a8b456 3,98,100-101
+webview/src/app/client-context-fixture.ts
+  h_4b47e9e4a8b456 118
+webview/src/app/client-context.ts
+  h_4b47e9e4a8b456 14,94-95
+webview/src/app/client-extensions.tsx
+  h_4b47e9e4a8b456 1
+webview/src/app/command-panel.tsx
+  h_4b47e9e4a8b456 8,227
+webview/src/app/module-menu-rows.ts
+  h_4b47e9e4a8b456 1-9
+webview/src/app/sheets/setting-rows.tsx
+  h_4b47e9e4a8b456 16,377
+webview/src/app/sheets/status-sheet.tsx
+  h_4b47e9e4a8b456 56,62
+webview/src/client/session-host-loader-fixture.ts
+  h_4b47e9e4a8b456 48
+webview/src/index.ts
+  h_4b47e9e4a8b456 9,221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b74195acab6601cb7c915722204ed87b83180071",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
