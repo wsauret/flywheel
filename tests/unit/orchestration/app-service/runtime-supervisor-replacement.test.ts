@@ -17,7 +17,7 @@ import type { WorkflowRunner } from "../../../../src/orchestration/workflow-host
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
 import { turnInFlight } from "../../../../src/orchestration/session-store/view.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"
-import { WORKFLOW_LAUNCH_OPERATION_KIND } from "../../../../src/orchestration/workflow-host/launch-operation-contract.js"
+import { WORKFLOW_LAUNCH_OPERATION_KIND } from "../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract.js"
 
 type RunnerState = SessionEntryBase["runnerState"]
 

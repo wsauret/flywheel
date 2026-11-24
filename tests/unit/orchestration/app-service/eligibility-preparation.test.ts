@@ -6,7 +6,7 @@ import { composeFirstPartyModules } from "../../../../src/orchestration/modules.
 import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
 import type { CatalogModelOffering } from "../../../../src/infra/catalog-model-offering.js"
 import type { ResolvedProviderModels } from "../../../../src/infra/auth/provider-model-preferences.js"
-import type { ResolvedProviderModelCatalogs } from "../../../../src/orchestration/config/model-assignment-providers.js"
+import type { ResolvedProviderModelCatalogs } from "../../../../src/orchestration/config/models/model-assignment-providers.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"

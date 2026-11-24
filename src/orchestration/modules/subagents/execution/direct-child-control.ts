@@ -2,7 +2,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../i
 import { liveChildRun, whenLiveChildRun, type LiveChildControl } from "../../../session/live-session-control.js"
 import { readUnreadMessages, type QueuedUserInputCell } from "../../../session/conversation/queued-user-inputs.js"
 import { readConversationBackgroundNotifications } from "../../../session/conversation/queued-background-notifications.js"
-import { tryOpenConversationTree } from "../../../session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../session/conversation/tree/conversation-tree-handle.js"
 import { readPlannedSessionContinuationAsync } from "../../../session/planned-session-continuation.js"
 import { settleUnreadMessages, wakeAfterSettlement } from "../../../session/session-input-delivery.js"
 import { readSubagentRuns } from "../history/subagent-run-projection.js"

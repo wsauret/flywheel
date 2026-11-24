@@ -6,7 +6,7 @@ import { openExternalUrl, type ExternalUrlOpener } from "../../../../infra/open-
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import { accountAuthDir, globalConfigFile } from "../../../../infra/paths.js"
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
-import { configSection } from "../../../config/config-section.js"
+import { configSection } from "../../../config/schema/config-section.js"
 import type { ClaudeLoginHost } from "../../../../infra/claude-engine.js"
 import { mcpConfigSection, resolveMcpConfig, resolveMcpTemplate, isMcpConnector, isMcpEnabledOverride, withMcpConnectors, type McpServerConfig, type McpConfig, type McpConfiguredServers, type McpRegistryServer, type McpScope, type McpServerRegistry, type McpServerSource } from "../config.js"
 import { createMcpConnectors } from "../connectors.js"

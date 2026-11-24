@@ -7,7 +7,7 @@ import { parseSessionRuntimeFact, parseStoredSessionRuntimeFact } from "../../..
 import { extractToolContentFact } from "../../../src/infra/tool-content-extraction.js"
 import { hydrateToolContentFact } from "../../../src/infra/tool-content-hydration.js"
 import { parseConversationTreeFact, chatEntriesFacts } from "../../../src/orchestration/session/conversation/conversation-facts.js"
-import { extractTreeFactContent } from "../../../src/orchestration/session/conversation/conversation-tree-content-extraction.js"
+import { extractTreeFactContent } from "../../../src/orchestration/session/conversation/tree/conversation-tree-content-extraction.js"
 
 const evidence = {
   version: 2,

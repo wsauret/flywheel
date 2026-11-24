@@ -8,7 +8,7 @@ import { withEventStore } from "../../../../../src/infra/with-event-store.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
 import type { StartupDirectories } from "../../../../../src/infra/directory-authorities.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
-import { clearSharedModelListingClients, getSharedModelsClient } from "../../../../../src/orchestration/config/llm-clients.js";
+import { clearSharedModelListingClients, getSharedModelsClient } from "../../../../../src/orchestration/config/models/llm-clients.js";
 import * as workflowDeps from "../../../../../src/orchestration/workflow-host/deps.js";
 
 describe("skill maintenance request hosts", () => {

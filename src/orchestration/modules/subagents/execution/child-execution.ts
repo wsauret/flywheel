@@ -20,7 +20,7 @@ import { buildSubagentPaused } from "../history/subagent-run-fact-writers.js";
 import { interruptedTurnEnd, isVisibleTurnEnd } from "../../../session/conversation/turn-end-record.js";
 import { publishLiveParentResult, reconcileParentCompletion } from "./parent-delivery.js";
 import { HandoffCorrectionExhausted } from "../../../agent-runtime/handoff-correction-exhausted.js";
-import { createRefusedHandoff } from "../../../workflow-host/handoff-tool-schema.js";
+import { createRefusedHandoff } from "../../../workflow-host/attempt/handoff-tool-schema.js";
 import {
   deliveredHandoffResult,
   failedRunResult,
@@ -44,8 +44,8 @@ import type { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch-p
 import type { SubagentDispatchDeps } from "./dispatch-deps.js";
 import { resolveChildRole } from "./dispatch-configuration.js";
 import { canonicalModelId } from "../../../../infra/model-id.js";
-import { AssistantPrefillSessionContextError } from "../../../session/conversation/conversation-tree-context.js";
-import { launchAssignmentText, recordedEntryText } from "../../../session/conversation/brief-entry.js";
+import { AssistantPrefillSessionContextError } from "../../../session/conversation/tree/conversation-tree-context.js";
+import { launchAssignmentText, recordedEntryText } from "../../../session/conversation/tree/brief-entry.js";
 import { readRecordedInheritedIntent } from "../../../session/conversation-checkpoint.js";
 import { CONTINUATION_MESSAGES } from "../../../agent-runtime/continuation-messages.js";
 import { readAuthorizedRestoredWait } from "../../../session/chat-session-run-evidence.js";

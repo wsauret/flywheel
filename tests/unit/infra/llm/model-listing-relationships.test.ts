@@ -9,7 +9,7 @@ import { DebugLog } from "../../../../src/infra/debug-log.js";
 import { createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { createModelsClient } from "../../../../src/infra/llm/models.js";
-import { providerModelEligibilityDecision } from "../../../../src/orchestration/config/provider-model-eligibility.js";
+import { providerModelEligibilityDecision } from "../../../../src/orchestration/config/models/provider-model-eligibility.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { combinedModelsDevDocument, TEST_CATALOG_LIMITS } from "../../../helpers/model-catalog-fixtures.js";
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";

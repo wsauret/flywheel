@@ -219,7 +219,7 @@ export const SUBCOMMANDS: KernelNouns = {
  *  cannot act on selects nothing, and its reason is the line before the
  *  refusal. */
 async function projectModuleSelection(directories: StartupDirectories, modules: readonly FirstPartyModule[] | undefined): Promise<FirstPartyModuleComposition> {
-  const { startModulePolicy } = await import("../orchestration/config/module-policy.js")
+  const { startModulePolicy } = await import("../orchestration/config/policy/module-policy.js")
   const { composeRealmModuleSnapshot } = await import("../orchestration/modules.js")
   const started = await startModulePolicy({ userDataRoot: directories.userDataRoot })
   try {

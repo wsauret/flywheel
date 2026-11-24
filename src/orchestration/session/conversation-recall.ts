@@ -7,7 +7,7 @@ import {
   type RecallSearchQuery,
 } from "../../infra/conversation-recall-search.js"
 import { branchVisibleTranscriptEntries, readConversationSnapshot, type DegradedTranscriptRecord } from "./conversation/conversation-projection.js"
-import { walkBranchFromLeaf, type BranchWalkGap } from "./conversation/conversation-tree-context.js"
+import { walkBranchFromLeaf, type BranchWalkGap } from "./conversation/tree/conversation-tree-context.js"
 import type { ConversationEntry } from "./conversation/conversation-entry-types.js"
 import {
   RECALL_PAGE_SIZE,

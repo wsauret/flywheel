@@ -7,7 +7,7 @@ import { createModelListingClient } from "../../../../src/infra/llm/model-listin
 import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/eligibility-preparation.js"
 import { createProviderModelPreferenceService, type ProviderModelEligibilityState } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js"
-import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/model-assignment-providers.js"
+import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/models/model-assignment-providers.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"

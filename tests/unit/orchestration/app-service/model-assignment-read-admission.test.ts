@@ -22,7 +22,7 @@ import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-prof
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { installedCredentialProviderIds } from "../../../../src/orchestration/credential-provider-modules.js"
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js"
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js"
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js"
 import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"

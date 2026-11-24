@@ -7,10 +7,10 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createModelReminders } from "../../../../src/orchestration/agent-runtime/llm/runtime-reminders";
 import { ENGINE_INSTRUCTIONS } from "../../../helpers/hosted-engine-text.js";
-import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context";
+import { buildSessionContext } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context";
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
-import { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
+import { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage";
 import { compaction, message, nextTimestamp, resetTimestamps } from "./_conversation-tree-entries";
 import { SHELL_CAPABILITIES } from "../../../helpers/prompt-capabilities.js";
 

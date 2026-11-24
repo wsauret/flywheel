@@ -42,7 +42,7 @@ export function createSubagentContinuationService(services: ContinuationServices
           capture: async () => (await environment.authAdmission.admit(childSessionId)).workflowDeps,
           current: () => environment.authAdmission.current(childSessionId).workflowDeps,
         })
-        const { createSessionRoleResolver } = await import("../../../config/session-role-resolver.js")
+        const { createSessionRoleResolver } = await import("../../../config/models/session-role-resolver.js")
         const resolveRoles = createSessionRoleResolver({ reader: services.projectionReader, projectRoot: services.directories.projectRoot, sessionId: childSessionId, userDataRoot: deps.userDataRoot, capture: deps.captureProviderConnection })
         return runtime.resume(childSessionId, {
           createRunner: deps.createAgent,

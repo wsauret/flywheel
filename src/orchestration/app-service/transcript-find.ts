@@ -6,7 +6,7 @@ import { terminateWorker } from "../../infra/worker-termination.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import { compileFind, TRANSCRIPT_FIND_LIMIT } from "../../protocol/transcript-find.js"
 import type { TranscriptFindMatch, TranscriptFindRequest, TranscriptFindResult } from "../../protocol/transcript-protocol-types.js"
-import type { IndexedBlockReader } from "../session/conversation/branch-history-builder.js"
+import type { IndexedBlockReader } from "../session/conversation/transcript/branch-history-builder.js"
 
 /** Blocks read together: the cold rows of one chunk share one batched read. */
 const READ_CHUNK = 64

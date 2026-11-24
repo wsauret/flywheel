@@ -3,7 +3,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { namesShippedSite, SHIPPED_SITES, test1Input, TEST1_WORKFLOW } from "../../../bench/chat-ab/workflow-audit-tests.js";
 import { ToolActionSchema } from "../../../src/infra/workflow-types.js";
-import { describeDefinitionRefusal, loadPathWorkflow } from "../../../src/orchestration/workflow-host/path-workflow.js";
+import { describeDefinitionRefusal, loadPathWorkflow } from "../../../src/orchestration/workflow-host/lifecycle/path-workflow.js";
 import { latestReducer } from "../../../src/workflows/reducers/registry.js";
 import { compileOutput } from "../../../src/workflows/output-contract/compile.js";
 import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js";

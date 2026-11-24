@@ -2,7 +2,7 @@ import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.j
 import { workflowLaunchTitle } from "../../infra/output/deferred-agent-meta.js"
 import type { FrontendAttempt, WorkflowAgentPersona } from "../../protocol/workflow-view-protocol-types.js"
 import { getPersonaMetadataIndex } from "../../workflows/agents/agent-roles.js"
-import { personaRoleChain } from "../config/role-selection.js"
+import { personaRoleChain } from "../config/models/role-selection.js"
 import { readToolExecutions } from "../session/tool-execution-projection.js"
 import type { DefinitionLineageView } from "../../workflows/definition-provenance-projection.js"
 import type { AttemptRow, WorkflowView } from "../../workflows/view/types.js"

@@ -10,8 +10,8 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/
 import { resolveEventStoreDbFile } from "../../../src/infra/paths"
 import { resolveDebugLogDirectory } from "../../../src/infra/debug-log"
 import { appendProviderRequestFacts, providerRequestFacts } from "../orchestration/session/_provider-request-audit-fixtures"
-import { buildSessionContext } from "../../../src/orchestration/session/conversation/conversation-tree-context"
-import { createConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { buildSessionContext } from "../../../src/orchestration/session/conversation/tree/conversation-tree-context"
+import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 
 let tmpDir: string
 

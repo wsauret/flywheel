@@ -3,7 +3,7 @@ import { buildCustomProviderSlice, publishCustomProviderSlice, type CustomProvid
 import { catalogCredentialProviderIds } from "../credential-provider-modules.js";
 import { modelIdHasTerminalControl } from "../../infra/model-catalog-rows.js";
 import { Log } from "../../infra/log.js";
-import type { FlywheelConfig } from "./schema.js";
+import type { FlywheelConfig } from "./schema/schema.js";
 
 /** Lowercase, starts with a letter, at most 32 chars: the id doubles as the
  *  access-provider identity and the auth.json credential key. */

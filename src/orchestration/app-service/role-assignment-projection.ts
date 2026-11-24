@@ -6,8 +6,8 @@ import { activeServingSeat } from "../../protocol/active-serving-seat.js"
 import { parseBriefRoleId } from "../../protocol/brief-role-id.js"
 import type { AgentPersonas } from "../workflow-host/frontend-attempts.js"
 import type { ProviderConnectionCapture } from "../agent-runtime/model-runtime-capture.js"
-import { resolveSessionRoles } from "../config/session-role-resolver.js"
-import { childServingSeat, roleSlot, type BriefScope } from "../config/role-selection.js"
+import { resolveSessionRoles } from "../config/models/session-role-resolver.js"
+import { childServingSeat, roleSlot, type BriefScope } from "../config/models/role-selection.js"
 
 /** Reads next-request policy without persisting resolved pairs. Missing sessions return null. */
 export function createRoleAssignmentReader(deps: {

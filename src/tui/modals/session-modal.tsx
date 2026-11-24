@@ -11,7 +11,7 @@ import { useSessionPreview, type SessionPreviewAppService, type SessionPreviewRe
 import type { SessionModalAction } from "../hooks/use-session-modal-types.js"
 import type { PickerCorruptRow, SessionPickerResult } from "../session-picker/picker-types.js"
 import type { StatusView } from "../../protocol/status-protocol-types.js"
-import type { DiffColorMode } from "../../orchestration/config/schema.js"
+import type { DiffColorMode } from "../../orchestration/config/schema/schema.js"
 import { createMemo, Show, untrack, type Accessor, type JSX } from "solid-js"
 import type { TextEditorPresentation } from "../keymap/text-entry.js"
 import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"

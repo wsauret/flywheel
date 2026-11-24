@@ -5,7 +5,7 @@ import { captureProviderConnection, type AuthContext, type SubscriptionCredentia
 import { testEligibility, testProviderRegistry } from "../../../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
-import { resolveCapturedRole } from "../../../../../src/orchestration/config/role-resolution.js";
+import { resolveCapturedRole } from "../../../../../src/orchestration/config/models/role-resolution.js";
 
 describe("role resolution through captured ChatGPT auth", () => {
 

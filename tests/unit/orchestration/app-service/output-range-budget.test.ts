@@ -4,7 +4,7 @@
 import { describe, expect, it } from "bun:test"
 import { minOutputRangeRecords, projectRecordsWithinRangeBudget, trimOutputRangeFromTail } from "../../../../src/orchestration/app-service/output-range-budget.js"
 import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/transcript-queries.js"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import { Schema } from "effect"
 import { HydratedOutputRangeSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"

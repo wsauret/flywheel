@@ -14,8 +14,8 @@ import { executePreparedTool, prepareToolCall, preparedToolAdmission } from "../
 import { admitEveryTool } from "../../../helpers/request-tool-surface.js";
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js";
 import { branchBlocks } from "../../../helpers/branch-blocks.js";
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
-import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer.js";
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
+import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer.js";
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js";
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
 import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js";

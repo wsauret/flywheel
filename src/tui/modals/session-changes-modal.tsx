@@ -2,7 +2,7 @@
 import { createMemo, onCleanup, Show, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import type { MutationDiff } from "../../infra/mutation-diff.js"
-import type { DiffColorMode } from "../../orchestration/config/schema.js"
+import type { DiffColorMode } from "../../orchestration/config/schema/schema.js"
 import type { SessionChangeFile } from "../../protocol/session-changes-protocol-types.js"
 import type { SessionChangesModalControls, SessionChangesView } from "./session-changes-modal-types.js"
 import { useModalDimensions } from "../components/use-modal-dimensions.js"

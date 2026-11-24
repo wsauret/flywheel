@@ -11,7 +11,7 @@ import { providerLoginFlow, type ProviderOAuthLogin } from "../../../../src/orch
 import { FrontendMutationSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
 import { testAuthContext } from "../../../helpers/auth-context.js";
 import type { AuthOperationNotice } from "../../../../src/protocol/auth-status-protocol-types.js";
-import { startModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
+import { startModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
 import { defaultModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { createAuthStatusProjection } from "../../../../src/orchestration/app-service/auth-status-projection.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../src/orchestration/modules.js";

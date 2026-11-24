@@ -15,10 +15,10 @@ import {
   type WorkflowLaunchConfirmation,
   type WorkflowLaunchRefusal,
   workflowRefusalText,
-} from "../../workflow-host/launch-origin.js";
-import { stageWorkflowSource, type LaunchingSessionAuthority } from "../../workflow-host/path-workflow.js";
+} from "../../workflow-host/lifecycle/launch-origin.js";
+import { stageWorkflowSource, type LaunchingSessionAuthority } from "../../workflow-host/lifecycle/path-workflow.js";
 import type { VerificationUncertaintyKind, WorkflowVerificationResult } from "../../../workflows/vm/verify-types.js";
-import type { WorkflowAgentModels } from "../../config/workflow-agent-models.js";
+import type { WorkflowAgentModels } from "../../config/models/workflow-agent-models.js";
 
 import type { CapabilityAccess, RuntimeToolInput } from "./types.js";
 /** Result of an atomic workflow aggregate publication. The parent is the

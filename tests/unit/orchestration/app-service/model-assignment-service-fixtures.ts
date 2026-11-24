@@ -1,4 +1,4 @@
-import type { RoleCaptureStore } from "../../../../src/orchestration/config/model-assignment-controller.js"
+import type { RoleCaptureStore } from "../../../../src/orchestration/config/models/model-assignment-controller.js"
 import type { SessionManager } from "../../../../src/orchestration/session/manager.js"
 import { normalizeRoleAssignments, type RoleSettings, type RoleAssignments, type RoleAssignmentSnapshot, type Session } from "../../../../src/orchestration/session/schemas.js"
 import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"

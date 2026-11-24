@@ -15,7 +15,7 @@ import {
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
 import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
 import { captureRuntimeConfigRequest } from "../../../src/orchestration/agent-runtime/request-config.js";
-import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema.js";
+import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema/schema.js";
 import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
 import { runGroups } from "../../../src/orchestration/modules/development/benchmark/matrix-runner.js";
 

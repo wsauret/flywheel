@@ -8,7 +8,7 @@ import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-m
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../src/infra/model-catalog-rows.js"
 import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
-import { providerModelEligibilityDecision, type ProviderModelEnabledCandidate } from "../../../../src/orchestration/config/provider-model-eligibility.js"
+import { providerModelEligibilityDecision, type ProviderModelEnabledCandidate } from "../../../../src/orchestration/config/models/provider-model-eligibility.js"
 import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runtime-assembly.js"
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
@@ -20,7 +20,7 @@ import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helper
 import { attemptHistoryTarget } from "./_model-client.js"
 import { createAdmittedClient, type AccessProviderBuild } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission, type LLMClient, type ServingAttempt } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import { resolveSessionRoles } from "../../../../src/orchestration/config/session-role-resolver.js"
+import { resolveSessionRoles } from "../../../../src/orchestration/config/models/session-role-resolver.js"
 import type { RoleHold } from "../../../../src/orchestration/agent-runtime/types.js"
 import { capabilityAccessHolding } from "./tools/_fixtures.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"

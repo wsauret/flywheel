@@ -12,7 +12,7 @@ import { hydrateDerivedOutputGroupChildren, hydrateDerivedOutputRange, hydrateDe
 import { readOutputSequence, type OutputSequence } from "./output-sequence.js"
 import { findInTranscript } from "./transcript-find.js"
 import type { ShippedOutput } from "./shipped-output.js"
-import { indexOutputBlocks } from "../session/conversation/branch-history-builder.js"
+import { indexOutputBlocks } from "../session/conversation/transcript/branch-history-builder.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import type { CommandKeeper } from "./command-keeper.js"
 import type { TranscriptProjectionCache } from "./transcript-projection-cache.js"

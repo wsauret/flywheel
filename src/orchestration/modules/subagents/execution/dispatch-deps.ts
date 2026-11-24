@@ -12,7 +12,7 @@ import type { ChildSlotRegistry } from "../../../agent-runtime/child-slot-regist
 import type { SubagentToolCallRecord } from "./work-log.js"
 import type { SessionFactWriter } from "../../../session/session-fact-writer.js"
 import type { PromptKind } from "../../../agent-runtime/system-prompt.js"
-import type { BriefScope } from "../../../config/role-selection.js"
+import type { BriefScope } from "../../../config/models/role-selection.js"
 import type { RoleResolver } from "../../../config/roles.js"
 import type { ChildSessionAuthority, ChildSessionConversation, ParentNotificationDelivery } from "../../../module-seams.js"
 import type { DefinitionAvailabilitySnapshot } from "../../../app-service/definition-availability.js"

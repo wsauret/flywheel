@@ -8,7 +8,7 @@ import { publishCustomProvidersFromConfig } from "../../../../src/orchestration/
 import { CONFIG_VALUE_ABSENT, createRuntimeConfigOwner, type RuntimeConfigOwnerOptions } from "../../../../src/orchestration/config/runtime-config-owner.js";
 import { ConfigPublicationError, withConfigOwnership } from "../../../../src/orchestration/config/config-file.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { resolveRoles } from "../../../../src/orchestration/config/role-resolution.js";
+import { resolveRoles } from "../../../../src/orchestration/config/models/role-resolution.js";
 
 // Custom providers publish into a process-wide registry that every module
 // composition in this process reads; a test that publishes clears it, so

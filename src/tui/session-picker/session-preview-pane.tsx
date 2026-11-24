@@ -5,7 +5,7 @@ import { createEffect, createMemo, createSignal, on, onCleanup, Show, untrack } 
 import type { BoxRenderable, ScrollBoxRenderable } from "@opentui/core"
 import { formatCostSplit, formatDuration, formatTokens } from "../../protocol/client/format.js"
 import type { SessionCatalogRow } from "../../protocol/app-service-types.js"
-import type { DiffColorMode } from "../../orchestration/config/schema.js"
+import type { DiffColorMode } from "../../orchestration/config/schema/schema.js"
 import { TranscriptRows } from "../output-blocks/transcript-rows.js"
 import { useTheme } from "../context/theme.js"
 import { ScrollPreserveProvider } from "../context/scroll-preserve.js"

@@ -9,7 +9,7 @@ import { createRemoteService, remoteService } from "./service.js"
 import { createAccountRelayService, retiredServiceInstallation } from "./account-relay-service.js"
 import { servedClientOf } from "./relay-control-channel.js"
 import { createKeepAwake, NO_KEEP_AWAKE } from "./keep-awake.js"
-import { configSection } from "../../config/config-section.js"
+import { configSection } from "../../config/schema/config-section.js"
 
 export const remoteModule = {
   id: "remote", dependencies: [],

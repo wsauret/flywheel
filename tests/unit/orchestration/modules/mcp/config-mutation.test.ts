@@ -5,7 +5,7 @@ import { Schema, Redacted } from "effect";
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js";
 import { addMcpServers, mcpExpectedToken, mcpMutationMessage, removeMcpServer, setMcpClient, setMcpEnabled } from "../../../../../src/orchestration/modules/mcp/config-mutation.js";
 import { McpConfigSchema, mcpConfigSection, resolveMcpConfig } from "../../../../../src/orchestration/modules/mcp/config.js";
-import { configSection } from "../../../../../src/orchestration/config/config-section.js";
+import { configSection } from "../../../../../src/orchestration/config/schema/config-section.js";
 import { createMcpCredentialStore } from "../../../../../src/orchestration/modules/mcp/credentials.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 

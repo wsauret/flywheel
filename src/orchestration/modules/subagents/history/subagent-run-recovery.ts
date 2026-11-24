@@ -7,7 +7,7 @@ import { createSessionFactWriter, prepareSessionFactAppend } from "../../../sess
 import { recordSubagentInterrupted, buildSubagentCompleted } from "./subagent-run-fact-writers.js"
 import { readSubagentRuns } from "./subagent-run-projection.js"
 import type { SubagentRunEntry } from "./subagent-run-types.js"
-import { readReconciledBranch, tryOpenConversationTree } from "../../../session/conversation/conversation-tree-handle.js"
+import { readReconciledBranch, tryOpenConversationTree } from "../../../session/conversation/tree/conversation-tree-handle.js"
 import { readToolExecutions } from "../../../session/tool-execution-projection.js"
 import type { ToolExecutionStatus } from "../../../session/tool-execution-types.js"
 // oxlint-disable-next-line import/no-cycle -- recovery inspects the kernel's planned authorization without owning it.

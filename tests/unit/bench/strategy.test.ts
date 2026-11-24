@@ -42,7 +42,7 @@ import { refusingLauncher } from "../../helpers/launcher-fake.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
 import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js";
 import { captureRuntimeConfigRequest } from "../../../src/orchestration/agent-runtime/request-config.js";
-import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema.js";
+import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema/schema.js";
 import { authProviders } from "../../helpers/auth-context.js";
 import { planEveryCapability } from "../../helpers/attempt-brief.js";
 

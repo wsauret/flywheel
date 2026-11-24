@@ -5,7 +5,7 @@ import { displayWidth } from "../../../../src/tui/text.js";
 import { styledTextContent, theme } from "./_model-modal-fixtures";
 import type { ModelOptionRow } from "../../../../src/protocol/model-assignment-protocol-types.js";
 
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 import { createSignal } from "solid-js";
 import { ScrollBoxRenderable, TextAttributes, TextRenderable, type Renderable } from "@opentui/core";
 import type { ModelModalState } from "../../../../src/tui/modals/model-modal-types.js";

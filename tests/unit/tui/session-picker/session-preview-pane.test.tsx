@@ -9,7 +9,7 @@ import type { SessionPreviewState } from "../../../../src/tui/session-picker/use
 import type { HydratedOutputRange, OutputRangeRequest } from "../../../../src/protocol/transcript-protocol-types.js"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/transcript-queries.js"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { session as catalogSession } from "../hooks/_session-modal-fixtures.js"
 import type { SessionPickerResult } from "../../../../src/tui/session-picker/picker-types.js"

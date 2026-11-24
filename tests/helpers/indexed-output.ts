@@ -1,4 +1,4 @@
-import type { IndexedBlockReader } from "../../src/orchestration/session/conversation/branch-history-builder.js"
+import type { IndexedBlockReader } from "../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 
 /** Explicit complete-body read for equivalence assertions, not a production read path. */
 export async function readAllOutputBlocks(history: IndexedBlockReader | null | undefined) {

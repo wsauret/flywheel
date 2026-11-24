@@ -8,9 +8,9 @@ import { createDefinitionAvailability } from "../../../../src/orchestration/app-
 import { createRuntimeModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-service.js";
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
-import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js";
+import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema.js";
 import { pruneStaleConfig, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { createPersonaRegistryOwner, type PersonaRegistryRevision } from "../../../../src/workflows/agents/registry.js";
 import { testDirectories } from "../../../helpers/directories.js";

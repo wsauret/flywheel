@@ -6,7 +6,7 @@ import type { LiveRecipientState } from "../../../../src/orchestration/session/m
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { settleUnreadMessages, wakeAfterSettlement } from "../../../../src/orchestration/session/session-input-delivery"
 import { buildSubagentCompleted, buildSubagentPaused } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { readReplyWaitViews } from "../../../../src/orchestration/session/reply-waits"
 import { registerTestChildRun } from "../../../helpers/live-child-run"

@@ -12,7 +12,7 @@ import { useTheme } from "@tui/context/theme"
 import { useBlockDisclosure } from "@tui/context/block-disclosure.js"
 import { allowSelectionStart } from "@tui/selection.js"
 import { type Accessor, createEffect, createMemo, For } from "solid-js"
-import type { DiffColorMode } from "../../orchestration/config/schema.js"
+import type { DiffColorMode } from "../../orchestration/config/schema/schema.js"
 
 interface SystemBlockProps {
   block: SystemBlockType

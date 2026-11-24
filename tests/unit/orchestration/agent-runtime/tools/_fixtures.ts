@@ -4,7 +4,7 @@ import * as os from "node:os";
 import { unguardedSpawnOwned } from "../../../../helpers/real-process-fixture.js";
 import { capabilityAccessFor, type CapabilityAccess, type DispatchedToolContext, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
-import type { CapabilityGrant } from "../../../../../src/orchestration/config/module-policy.js";
+import type { CapabilityGrant } from "../../../../../src/orchestration/config/policy/module-policy.js";
 import type { ModuleId } from "../../../../../src/orchestration/modules.js";
 import type { InFlightWrite, StoredFact } from "../../../../../src/infra/event-store-types.js";
 import { parseFileMutationFact, type FileMutationFact } from "../../../../../src/orchestration/session/file-mutation-facts.js";

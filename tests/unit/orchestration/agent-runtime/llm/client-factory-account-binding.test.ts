@@ -8,7 +8,7 @@ import { storedTokensToCredential } from "../../../../../src/infra/auth/openai-a
 import { authDir, modelsSnapshotFile } from "../../../../../src/infra/paths.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
 import { fakeModelsClient, modelInfo } from "../../../../helpers/model-tier-fixtures.js";
-import { clearSharedModelListingClients, getSharedModelListingClient, getSharedModelsClient } from "../../../../../src/orchestration/config/llm-clients.js";
+import { clearSharedModelListingClients, getSharedModelListingClient, getSharedModelsClient } from "../../../../../src/orchestration/config/models/llm-clients.js";
 import { createAdmittedClient, createClient, type AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import type { AdapterAdmission } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
@@ -26,7 +26,7 @@ import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/mod
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/factory.js";
 import { fixedDefinitions } from "../../../../helpers/project-definitions.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
-import { resolveSessionRoles } from "../../../../../src/orchestration/config/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../../../src/orchestration/config/models/session-role-resolver.js";
 import { asModelClient } from "../_model-client.js";
 import { testCapabilityModules, testEligibility, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";

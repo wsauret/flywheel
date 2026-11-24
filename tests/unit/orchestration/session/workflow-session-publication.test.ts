@@ -3,12 +3,12 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type InFlightSwap } from "../../../../src/infra/event-store-types";
 import { resolveSessionDir } from "../../../../src/infra/paths";
 import { chatSessionActions, readChatTurnEnd } from "../../../../src/orchestration/session/chat-session-run-evidence";
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import { turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record";
 import { createSessionManager, ParentPublicationContendedError } from "../../../../src/orchestration/session/manager";
 import { cleanupTmpRoot, makeDepsWithStore, racingPublicationWriter } from "./_session-manager-fixtures";
 import { temporaryDirectories } from "../../../helpers/directories";
-import { briefEntryId, isBriefEntry } from "../../../../src/orchestration/session/conversation/brief-entry";
+import { briefEntryId, isBriefEntry } from "../../../../src/orchestration/session/conversation/tree/brief-entry";
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership";
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery";
 import { commitWorkflowEvent, publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures";

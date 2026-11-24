@@ -8,7 +8,7 @@ import { spawnProjectStateWorker } from "../../../src/orchestration/app-service/
 import { connectProjectStateChannel, serveProjectStateChannel } from "../../../src/orchestration/app-service/project-state-channel.js"
 import { createProjectExecutionState } from "../../../src/orchestration/app-service/project-execution-state.js"
 import { createSessionFactWriter } from "../../../src/orchestration/session/session-fact-writer.js"
-import { tryOpenConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { checkpointFinalizedToolResult } from "../../../src/orchestration/session/finalized-tool-result-checkpoint.js"
 import { createProjectControlRuntime, type ProjectControlRuntime, type ProjectControlRuntimeOptions } from "../../../src/orchestration/app-service/project-control-runtime.js"
 import { createMaintenanceQueue } from "../../../src/orchestration/app-service/runtime-maintenance-owner.js"

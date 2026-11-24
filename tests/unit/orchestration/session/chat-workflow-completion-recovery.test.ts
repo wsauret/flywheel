@@ -18,7 +18,7 @@ import { createSessionFactWriter } from "../../../../src/orchestration/session/s
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createContinuationLanes } from "../../../../src/orchestration/session/planned-session-continuation.js"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { loadToolExecutionTimelineFromEvents } from "../../../../src/orchestration/session/tool-execution-projection.js"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
 import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
@@ -32,7 +32,7 @@ import { createBackgroundNotificationDelivery } from "../../../../src/orchestrat
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types.js"
 import { registerLiveWorkflowControl } from "../../../../src/orchestration/session/live-session-control.js"
-import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/injection-queue.js"
+import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/execution/injection-queue.js"
 import {
   QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND,
   type HeldBackgroundNotification,

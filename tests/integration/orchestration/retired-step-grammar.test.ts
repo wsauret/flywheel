@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { readFileSync, realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { loadPathWorkflow } from "../../../src/orchestration/workflow-host/path-workflow.js"
+import { loadPathWorkflow } from "../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js"
 import { createContextAccumulator } from "../../../src/workflows/context-bundle/context.js"
 import { loadWorkflowDefinitions, stagedWorkflowContent } from "../../helpers/workflow-files.js"

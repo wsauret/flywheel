@@ -14,7 +14,7 @@ import { createModelListingClient } from "../../../../src/infra/llm/model-listin
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { modelsSnapshotFile } from "../../../../src/infra/paths.js";
 import { createHeadlessProfileRuntime } from "../../../../src/orchestration/headless/headless-profile-runtime.js";
-import { clearSharedModelListingClients, getSharedModelsClient } from "../../../../src/orchestration/config/llm-clients.js";
+import { clearSharedModelListingClients, getSharedModelsClient } from "../../../../src/orchestration/config/models/llm-clients.js";
 import { modelsDevDocument, modelsDevJson, type MutableModelsDevProviders } from "../../../helpers/model-catalog-fixtures.js";
 import { testAuthContext } from "../../../helpers/auth-context.js";
 import { catalogProfile } from "../../../helpers/catalog-profile.js";

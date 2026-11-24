@@ -6,7 +6,7 @@ import type { JudgeScoreIdentity, JudgeTerminal } from "./run-store.js";
 import type { BenchmarkAccounting } from "./evidence.js";
 import { buildResearchPairJudgePrompt } from "../../../../infra/benchmark-rubrics.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/model-runtime-capture.js";
-import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../config/models/session-role-resolver.js";
 import type { ResolvedRole } from "../../../config/roles.js";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";

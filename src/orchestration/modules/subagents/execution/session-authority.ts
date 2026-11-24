@@ -25,7 +25,7 @@ export function createSubagentSessionAuthority(input: SessionStorePorts & {
 }): ChildSessionAuthority {
   const pendingReconciliations = new Set<Promise<void>>()
   const resolveRoles = async (sessionId: string, capture?: import("../../../agent-runtime/model-runtime-capture.js").ProviderConnectionCapture) => {
-    const { createSessionRoleResolver } = await import("../../../config/session-role-resolver.js")
+    const { createSessionRoleResolver } = await import("../../../config/models/session-role-resolver.js")
     return createSessionRoleResolver({ reader: input.projectionReader, projectRoot: input.projectRoot, sessionId })(capture)
   }
   const openExecution = async (publication: Omit<Parameters<ChildSessionAuthority["publish"]>[0], "runBinding" | "forkHistory" | "assignment">) => {

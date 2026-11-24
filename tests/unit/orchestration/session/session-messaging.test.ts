@@ -13,7 +13,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { createSessionMessaging } from "../../../../src/orchestration/session/session-messaging"
 import { workflowParentBinding } from "../../../helpers/workflow-parent"
 import { validateWorkflowBootstrap } from "../../../../src/workflows/vm/bootstrap-validation"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { branchBlocks } from "../../../helpers/branch-blocks"
 import { lowerProviderHistory } from "../../../../src/orchestration/agent-runtime/llm/provider-history"
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"

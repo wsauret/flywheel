@@ -36,8 +36,8 @@ import { providerModelPreferencePersistence } from "../../../src/orchestration/a
 import { createSubscriptionUsageService } from "../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { createSubscriptionUsageServicePool } from "../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
 import { credentialSlotClassifier } from "../../../src/orchestration/auth/credential-slot-classifier.js";
-import { getSharedModelsClient } from "../../../src/orchestration/config/llm-clients.js";
-import { startModulePolicy } from "../../../src/orchestration/config/module-policy.js";
+import { getSharedModelsClient } from "../../../src/orchestration/config/models/llm-clients.js";
+import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
 import { composeRealmModuleSnapshot, type FirstPartyModule } from "../../../src/orchestration/modules.js";

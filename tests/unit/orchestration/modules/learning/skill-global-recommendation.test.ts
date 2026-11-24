@@ -8,8 +8,8 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { createSkillManageTool } from "../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { ToolResult, DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import type { ConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree.js";
-import { createConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
+import type { ConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree.js";
+import { createConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { loadAgentInputProjection } from "../../../../../src/orchestration/session/agent-input-projection.js";
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { reconcileLearning } from "../../../../../src/orchestration/modules/learning/reconciliation.js";

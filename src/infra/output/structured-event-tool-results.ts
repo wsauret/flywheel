@@ -80,7 +80,7 @@ function asEditFile(entry: unknown): EditFile | undefined {
 }
 
 /** Exported for the derived-history tool-result meta reader
- *  (orchestration/session/conversation/tool-result-meta.ts), which narrows the same
+ *  (orchestration/session/conversation/transcript/tool-result-meta.ts), which narrows the same
  *  recorded `details` payload the live resolver reads. */
 export function extractDisplayMeta(details: unknown, identity: ToolResultIdentity): ToolResultDisplayFields {
   const d = asRecord(details);

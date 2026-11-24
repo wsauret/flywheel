@@ -8,7 +8,7 @@ import { acquireSharedProviderAvailability, disposeSharedProviderAvailability } 
 import { composeRealmModuleSnapshot } from "../../modules.js"
 import { installedAccessProviderIds } from "../../credential-provider-modules.js"
 import { createRuntimeConfigOwner } from "../../config/runtime-config-owner.js"
-import { startModulePolicy } from "../../config/module-policy.js"
+import { startModulePolicy } from "../../config/policy/module-policy.js"
 import { moduleRequirementsForContribution } from "../../module-requirements.js"
 import { createSessionFactWriter } from "../../session/session-fact-writer.js"
 import { resolveHeadlessAuthProfile, withHeadlessProfileRuntime } from "../../headless/headless-profile-runtime.js"

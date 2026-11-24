@@ -16,7 +16,7 @@ import { Log } from "../infra/log.js"
  *  cannot reach to repair. */
 export async function prepareProjectDefaults(directories: StartupDirectories, options: { readonly publishReferences: boolean }): Promise<void> {
   const { migrateModelAssignments, seedConfigDefaults } = await import("../orchestration/config/writer.js")
-  const { migrateCapabilityModules } = await import("../orchestration/config/module-selection-writer.js")
+  const { migrateCapabilityModules } = await import("../orchestration/config/policy/module-selection-writer.js")
   const migration = await migrateCapabilityModules({ userDataRoot: directories.userDataRoot })
   if (!migration.write.ok) Log.Default.warn("capability module migration failed", { error: migration.write.error.message })
   if (migration.notice) Log.Default.warn(migration.notice)

@@ -7,9 +7,9 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
 import { createSessionManager } from "../../../../src/orchestration/session/manager";
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
-import { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage";
+import { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
 
 export interface SavePointTestContext {

@@ -3,7 +3,7 @@ import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-t
 import type { HydratedOutputRange, RuntimeTranscriptWindow, OutputRangeRequest } from "../../../../src/protocol/transcript-protocol-types.js"
 import type { SessionPreviewAppService, SessionPreviewReader } from "../../../../src/tui/session-picker/use-session-preview.js"
 import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/transcript-queries.js"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 
 const { createRoot, createSignal } = await import("solid-js")

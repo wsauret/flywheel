@@ -24,7 +24,7 @@ import { normalizeAuthProfile } from "../../infra/auth/auth-profile-normalizatio
 import { credentialSlotClassifier } from "../auth/credential-slot-classifier.js"
 import { createHeadlessUsageAuthorityOwner } from "./headless-usage-authority.js"
 import { connectionEligibilitySources } from "./snapshot-eligibility.js"
-import { getSharedModelsClient } from "../config/llm-clients.js"
+import { getSharedModelsClient } from "../config/models/llm-clients.js"
 import { captureSubscriptionAdmission } from "../subscription-spend-consent/admission-capture.js"
 import { createSubscriptionSpendConsentCaptureCache } from "../subscription-spend-consent/capture-cache.js"
 import type { SubscriptionSpendConsentCapture } from "../subscription-spend-consent/subscription-spend-consent-service.js"

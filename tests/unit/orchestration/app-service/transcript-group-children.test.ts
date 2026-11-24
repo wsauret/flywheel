@@ -17,7 +17,7 @@ import {
   createSubagentStats,
 } from "../../../../src/orchestration/modules/subagents/execution/stream-filter.js"
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types.js"
-import { createToolResultDisplayMetaCursorReader } from "../../../../src/orchestration/session/conversation/tool-result-meta.js"
+import { createToolResultDisplayMetaCursorReader } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js"
 

@@ -4,7 +4,7 @@ import type { AuthProfileRetirements } from "../../infra/auth/auth-profile-retir
 import { authDir, globalConfigFile, requireAuthProfileDisplayName, requireAuthProfileName } from "../../infra/paths.js";
 import { readConfigFile } from "../config/config-file.js";
 import { loadConfig } from "../config/loader.js";
-import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema.js";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema/schema.js";
 import { migrateRootProviderSettings, removeAuthProjectProfile, retireAuthProfileConfig, setAuthProjectProfile, type ConfigWriteResult } from "../config/writer.js";
 
 const DEFAULT_PROFILE = "default";

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { decodeCanonicalConfigText } from "../../../../src/orchestration/config/loader.js";
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 import { migrateModelAssignments, pruneStaleConfig, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 

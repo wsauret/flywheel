@@ -2,7 +2,7 @@ import type { AttachedRuntimeClient, FrontendEvent, FrontendOutputBlock, Fronten
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import { threadHistoryRangeIndices } from "../../../../src/orchestration/session/conversation/branch-history-pagination.js"
+import { threadHistoryRangeIndices } from "../../../../src/orchestration/session/conversation/transcript/branch-history-pagination.js"
 import type {
   HydratedOutputGroupChildrenBatch,
   HydratedOutputGroupChildren,

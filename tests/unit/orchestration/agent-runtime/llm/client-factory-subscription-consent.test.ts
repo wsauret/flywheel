@@ -8,7 +8,7 @@ import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/factory.js";
 import { createSubscriptionUsageServicePool } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
 import { createSubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
-import { clearSharedModelListingClients } from "../../../../../src/orchestration/config/llm-clients.js";
+import { clearSharedModelListingClients } from "../../../../../src/orchestration/config/models/llm-clients.js";
 import { captureSubscriptionAdmission } from "../../../../../src/orchestration/subscription-spend-consent/admission-capture.js";
 import { createSubscriptionSpendConsentCaptureCache } from "../../../../../src/orchestration/subscription-spend-consent/capture-cache.js";
 import type { SubscriptionSpendConsentCapture } from "../../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";

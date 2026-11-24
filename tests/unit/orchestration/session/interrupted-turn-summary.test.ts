@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test"
-import { interruptedTurnEntryId, interruptedWorkMessage, readInterruptedWork } from "../../../../src/orchestration/session/conversation/interrupted-turn-summary.js"
+import { interruptedTurnEntryId, interruptedWorkMessage, readInterruptedWork } from "../../../../src/orchestration/session/conversation/tree/interrupted-turn-summary.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, readConversationQueuedUserInputs } from "../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { chatTurnEndOf, turnEndOfEntry, type TurnEndEntry } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { readChatTurnEnd } from "../../../../src/orchestration/session/chat-session-run-evidence.js"

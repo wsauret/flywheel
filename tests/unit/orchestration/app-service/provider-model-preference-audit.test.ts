@@ -5,7 +5,7 @@ import { subscriptionSpendAccountCorrelationId } from "../../../../src/protocol/
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
 import { authStoreRevision } from "../../../../src/infra/auth/auth-store.js"
 import { deselectAllProviderModels, providerModelPreferencesRevision, setProviderAutoEnableNewModels, setProviderModelPreference } from "../../../../src/infra/auth/provider-model-preference-store.js"
-import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/model-assignment-providers.js"
+import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/models/model-assignment-providers.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"

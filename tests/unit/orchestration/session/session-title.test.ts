@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test"
 import { generateSessionTitle, type SessionTitles } from "../../../../src/orchestration/session/session-title.js"
-import { resolveSessionRoles } from "../../../../src/orchestration/config/session-role-resolver.js"
+import { resolveSessionRoles } from "../../../../src/orchestration/config/models/session-role-resolver.js"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
 import { testAuth as auth, titleRoots } from "../../../fixtures/session-title-fixtures.js"

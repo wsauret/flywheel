@@ -7,7 +7,7 @@ import { collectSkillLoadStats, refreshSkillLoadStatsSnapshot } from "../../../s
 import { createSessionFactWriter } from "../../../src/orchestration/session/session-fact-writer.js";
 import { createLearningReview, reviewReplay } from "../../../src/orchestration/modules/learning/learning-review.js";
 import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js";
-import { createConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle.js";
+import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { capabilityAccessFor } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { composeRealmModuleSnapshot } from "../../../src/orchestration/modules.js";
 

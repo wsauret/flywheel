@@ -5,7 +5,7 @@ import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import { createRuntimeSupervisor as createRuntimeSupervisorBase } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { createDeferred, createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { publishTestSubagent } from "../session/_session-manager-fixtures.js"
 

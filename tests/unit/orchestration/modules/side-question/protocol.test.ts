@@ -17,7 +17,7 @@ import { CommandOutcomeSchema } from "../../../../../src/protocol/command-catalo
 import type { ChatModuleHostContribution } from "../../../../../src/orchestration/chat-module-host.js"
 import { composeModules } from "../../../../../src/infra/module-descriptor.js"
 import type { FirstPartyModule } from "../../../../../src/orchestration/modules.js"
-import { makeLifecycle } from "../../chat/_chat-runner-lifecycle-fixtures.js"
+import { makeLifecycle } from "../../chat/lifecycle/_chat-runner-lifecycle-fixtures.js"
 
 type Runner = { readonly chatModuleHosts: ReturnType<typeof composeModuleRuntimes> }
 

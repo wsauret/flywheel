@@ -42,7 +42,7 @@ import { createMcpRuntime } from "../src/orchestration/modules/mcp/runtime.js";
 import type { DefinitionOverrideOperations } from "../src/workflows/definitions/override-staleness.js";
 import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagents/execution/dispatch-deps.js";
 import type { WorkflowsMode } from "../src/protocol/module-protocol-types.js";
-import { workflowLaunchTargets } from "../src/orchestration/workflow-host/launch-origin.js";
+import { workflowLaunchTargets } from "../src/orchestration/workflow-host/lifecycle/launch-origin.js";
 import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definition-registry.js";
 import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/session-messaging.js";
 

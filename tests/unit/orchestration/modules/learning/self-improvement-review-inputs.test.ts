@@ -5,7 +5,7 @@ import {
   resolveReviewRoute,
   reviewReplay,
 } from "../../../../../src/orchestration/modules/learning/learning-review.js";
-import { resolveSessionRoles } from "../../../../../src/orchestration/config/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../../../src/orchestration/config/models/session-role-resolver.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
 
 describe("review route resolution", () => {

@@ -3,7 +3,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/e
 import { Log } from "../../infra/log.js"
 import { ComposerReturnSchema, returnedInputNoticeId, type ClaimComposerReturnsResult } from "../../protocol/composer-returns.js"
 import { owningChat } from "./session-metadata-projection.js"
-import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "./conversation/tree/conversation-tree-handle.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, queuedInputPayload, type QueuedUserInputCell } from "./conversation/queued-user-inputs.js"
 import { liveSessionControl } from "./live-session-control.js"
 

@@ -14,8 +14,8 @@ import { prepareToolCall, executePreparedTool } from "../../../../../src/orchest
 import { makeContext } from "./_fixtures.js";
 import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 import { resolveConversationResources } from "../../../../../src/orchestration/session/conversation-resources.js";
-import { ConversationTreeStorage } from "../../../../../src/orchestration/session/conversation/conversation-tree-storage.js";
-import { ConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree.js";
+import { ConversationTreeStorage } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-storage.js";
+import { ConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree.js";
 
 describe("conversation checkpoint tools", () => {
   const temporaryDirectory = temporaryDirectories();

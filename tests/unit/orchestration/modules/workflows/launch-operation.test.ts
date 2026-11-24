@@ -5,15 +5,15 @@ import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../
 import { createLazyWorkflowController } from "../../../../../src/orchestration/app-service/lazy-workflow-controller";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work";
 import { workflowLaunchRetainedOperation } from "../../../../../src/orchestration/modules/workflows/launch-operation";
-import type { ConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree";
-import { createConversationTreeWriter } from "../../../../../src/orchestration/session/conversation/conversation-tree-writer";
+import type { ConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree";
+import { createConversationTreeWriter } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
 import { turnEndEntryId } from "../../../../../src/orchestration/session/conversation/turn-end-record";
 import {
   WORKFLOW_LAUNCH_OPERATION_KIND,
   workflowLaunchHost,
   type WorkflowLaunchHost,
   type WorkflowLaunchOperation,
-} from "../../../../../src/orchestration/workflow-host/launch-operation-contract";
+} from "../../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract";
 import { fakeManager, fakeSessionStore, workflowController } from "../../app-service/app-service-doubles";
 import { createSavePointContext, disposeSavePointContext, type SavePointTestContext } from "../../session/_save-point-fixtures";
 

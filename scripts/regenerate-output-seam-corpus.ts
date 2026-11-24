@@ -19,7 +19,7 @@ import { createOutputSession } from "../src/orchestration/runner/output-session.
 import { createSessionStore } from "../src/orchestration/session-store/store.js"
 import { readSessionMetadata } from "../src/orchestration/session/session-metadata-store.js"
 import { readSubagentRunsByToolUseId } from "../src/orchestration/modules/subagents/history/subagent-history.js"
-import { readToolResultDisplayMeta } from "../src/orchestration/session/conversation/tool-result-meta.js"
+import { readToolResultDisplayMeta } from "../src/orchestration/session/conversation/transcript/tool-result-meta.js"
 import { workflowMembershipReader } from "../src/orchestration/session/workflow-membership.js"
 import { outputSeamInlineFixtures, type OutputSeamInlineFixtureId } from "../tests/fixtures/tolerant-reprojection-fixtures.js"
 

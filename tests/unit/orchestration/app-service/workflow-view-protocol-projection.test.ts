@@ -23,7 +23,7 @@ import { Log } from "../../../../src/infra/log.js"
 import { publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures.js"
 import { recordRuntimeEvent } from "../session/_budget-store-fixtures.js"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { authorizePlannedSessionContinuation, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, retirePlannedSessionContinuation } from "../../../../src/orchestration/session/planned-session-continuation.js"
 

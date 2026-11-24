@@ -1,5 +1,5 @@
 import type { AnyBlock } from "../../src/infra/output-blocks.js"
-import { BranchHistoryBuilder, type BranchHistoryBuilderOptions } from "../../src/orchestration/session/conversation/branch-history-builder.js"
+import { BranchHistoryBuilder, type BranchHistoryBuilderOptions } from "../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import type { ConversationTreeTranscriptEntry } from "../../src/orchestration/session/conversation/conversation-projection.js"
 
 /** The history of a stored branch, folded entry by entry through the builder

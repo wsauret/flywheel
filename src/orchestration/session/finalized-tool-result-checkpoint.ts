@@ -14,13 +14,13 @@ import {
   type InFlightWrite,
 } from "../../infra/event-store-types.js";
 import { toolResultMessages } from "../agent-runtime/agent-state.js";
-import type { ConversationTree } from "./conversation/conversation-tree.js";
+import type { ConversationTree } from "./conversation/tree/conversation-tree.js";
 import { parseSessionRuntimeFact, type SessionRuntimeFact } from "./session-runtime-event-types.js";
 import { prepareSessionFactAppend, type SessionFactWriter } from "./session-fact-writer.js";
 import { enforceTurnBudget } from "../agent-runtime/tools/truncation.js";
 import { turnBudgetChars } from "../agent-runtime/compaction/compaction-policy.js";
-import { openToolExchangeSuffix } from "./conversation/conversation-tree-context.js";
-import { recoveredToolResultEntryId } from "./conversation/interrupted-turn-summary.js";
+import { openToolExchangeSuffix } from "./conversation/tree/conversation-tree-context.js";
+import { recoveredToolResultEntryId } from "./conversation/tree/interrupted-turn-summary.js";
 import { decodeLegacyFinalizedToolResultCheckpoint, FinalizedToolResultCheckpointSchema, UnversionedFinalizedToolResultCheckpointSchema, type FinalizedToolResultCheckpoint, type RecoverableCheckpoint } from "./finalized-tool-result-checkpoint-schema.js";
 
 export const FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND = "finalized-tool-result";

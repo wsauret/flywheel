@@ -14,7 +14,7 @@ import { createConversationTreeWriterController, type ConversationTreeWriterCont
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
 import { asModelClient } from "../agent-runtime/_model-client"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { interruptedTurnMessage, turnEndEntryId, turnEndOfEntry, type TurnEnd } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { redactMessage } from "../../../../src/orchestration/agent-runtime/agent-loop-history"
 import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"

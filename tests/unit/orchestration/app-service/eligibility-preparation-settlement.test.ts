@@ -6,7 +6,7 @@ import type { ResolvedProviderModels } from "../../../../src/infra/auth/provider
 import { authDir } from "../../../../src/infra/paths.js"
 import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/eligibility-preparation.js"
 import { createProviderModelPreferenceService, type ProviderModelEligibilityState } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
-import type { ResolvedProviderModelCatalogs } from "../../../../src/orchestration/config/model-assignment-providers.js"
+import type { ResolvedProviderModelCatalogs } from "../../../../src/orchestration/config/models/model-assignment-providers.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"

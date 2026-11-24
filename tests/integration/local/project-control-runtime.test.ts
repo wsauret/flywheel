@@ -31,7 +31,7 @@ import { prepareWorkspaceState } from "../../../src/orchestration/workspace-stat
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types.js"
 import { createSessionManager } from "../../../src/orchestration/session/manager.js"
-import { tryOpenConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { frameKind, recordAccountLog, silenceHeartbeatsAfter, TEST_EXECUTOR_HEARTBEAT_INTERVAL_MS } from "./_executor-heartbeats.js"
 import { writeFixtureAccountConfig } from "./_fixture-account.js"
 
