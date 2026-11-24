@@ -1,0 +1,80 @@
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 75-76
+src/cli/remote-terminal.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/app-service/budget-protocol-projection.ts
+  h_4b47e9e4a8b456 1,16
+src/orchestration/app-service/frontend-projection.ts
+  h_4b47e9e4a8b456 9,56,308
+src/orchestration/app-service/session-view-projection.ts
+  h_4b47e9e4a8b456 3,133
+src/orchestration/app-service/status-projection.ts
+  h_4b47e9e4a8b456 5,7,28
+src/orchestration/auth/provider-observations/runtime-composition.ts
+  h_4b47e9e4a8b456 16,18-19,25-30,38-56
+src/orchestration/headless/headless-profile-runtime.ts
+  h_4b47e9e4a8b456 31-32,88-91
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 32,297
+src/orchestration/modules/development/benchmark/chat-routing-run.ts
+  h_4b47e9e4a8b456 9,146
+src/orchestration/modules/development/benchmark/invocation.ts
+  h_4b47e9e4a8b456 2,24
+src/orchestration/modules/experiments/protocol.ts
+  h_4b47e9e4a8b456 7,12,56
+src/orchestration/modules/learning/chat-review-spawn.ts
+  h_4b47e9e4a8b456 3,46
+src/orchestration/modules/learning/learning-review-runner.ts
+  h_4b47e9e4a8b456 13,262
+src/orchestration/modules/remote/terminal-remote.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/side-question/request.ts
+  h_4b47e9e4a8b456 6,23
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 10,416
+src/orchestration/modules/subagents/execution/summarize-work.ts
+  h_4b47e9e4a8b456 28,151
+src/orchestration/runner/host.ts
+  h_4b47e9e4a8b456 7,10-15
+src/orchestration/runner/types.ts
+  h_4b47e9e4a8b456 33-35,37-48
+src/orchestration/session-store/types.ts
+  h_4b47e9e4a8b456 191-210
+src/orchestration/session/session-title.ts
+  h_4b47e9e4a8b456 8,287
+src/orchestration/terminal-remote.ts
+  h_4b47e9e4a8b456 1,68-113
+src/orchestration/update/archive-spool.ts
+  h_4b47e9e4a8b456 377-467
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 21,653
+tests/integration/local/bootstrap-archive-fixture.ts
+  h_4b47e9e4a8b456 95-96
+tests/integration/local/bootstrap-installers.test.ts
+  h_4b47e9e4a8b456 9-11
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 17,495
+tests/unit/orchestration/app-service/_status-projection-fixtures.ts
+  h_4b47e9e4a8b456 4,63,66-67
+tests/unit/orchestration/modules/remote/terminal-remote.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/runner/runner-context.test.ts
+  h_4b47e9e4a8b456 3,14
+tests/unit/orchestration/terminal-remote.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/update/archive-spool.test.ts
+  h_4b47e9e4a8b456 2-8,11-45,48-59,62,64-67,70-72,74,79-82,85-86,88,91-92,94,97-100,103-104
+tests/unit/orchestration/update/update-install.test.ts
+  h_4b47e9e4a8b456 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "256e732698e5e589d7cfd428f81d991e9c5225c6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
