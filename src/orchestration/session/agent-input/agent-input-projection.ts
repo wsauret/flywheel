@@ -201,9 +201,15 @@ export async function loadSessionsWithPendingInput(reader: AsyncEventReadSurface
 /** When the question that a session's dock shows opened, or undefined when
  *  no question waits. The dock serves pending questions in the order the
  *  agent asked them, and the entries keep that order. */
-export function pendingInputOpenedAt(entries: ReadonlyMap<string, AgentInputEntry>): number | undefined {
+function pendingInputOpenedAt(entries: ReadonlyMap<string, AgentInputEntry>): number | undefined {
   for (const entry of entries.values()) if (entry.kind === "pending") return entry.openedAt
   return undefined
+}
+
+/** One session's answer to `loadSessionsWithPendingInput`, from its held fold:
+ *  when its docked question opened, or undefined when no question waits. */
+export async function loadPendingInputOpenedAt(reader: AsyncEventReadSurface, sessionId: string): Promise<number | undefined> {
+  return pendingInputOpenedAt(await loadAgentInputProjection(reader, sessionId))
 }
 
 /** Incrementally folds one session's question facts for transcript projection. */

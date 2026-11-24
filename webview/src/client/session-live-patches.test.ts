@@ -4,7 +4,7 @@ import type { FrontendEvent, SessionCatalogRow } from "../../../src/protocol/app
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import { createRuntimeSession } from "./session.js"
 import { createViewProjection } from "./view-state.js"
-import { layoutSessionRows } from "../app/session-rows.js"
+import { layoutSessionRows } from "../app/sessions/session-rows.js"
 import { fakeConnection, settle } from "./session-connection-fixture.js"
 import { statusView } from "../../../tests/helpers/runtime-views.js"
 import { recordedQuery, runtimeQuery } from "../../../tests/helpers/runtime-dispatch.js"

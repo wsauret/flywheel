@@ -2,7 +2,7 @@ import { isSessionHistoryFailure, type AsyncEventReadSurface, type StoredFact } 
 import { Log } from "../../../infra/log.js"
 import { createBackgroundLane } from "../../../infra/ordered-lane.js"
 import { AGENT_INPUT_FACT_TYPES } from "../../session/agent-input/agent-input-facts.js"
-import { loadAgentInputProjection, loadSessionsWithPendingInput, pendingInputOpenedAt } from "../../session/agent-input/agent-input-projection.js"
+import { loadPendingInputOpenedAt, loadSessionsWithPendingInput } from "../../session/agent-input/agent-input-projection.js"
 import { waitingSessionsCursor, type RuntimeWaitingSessionsSnapshotResult, type WaitingSession } from "../../../protocol/question-protocol-types.js"
 import type { RuntimePosition, RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
 import type { RuntimeReadAnchor } from "./runtime-ui-patch-sequencer.js"
@@ -63,7 +63,7 @@ export function createWaitingSessionsProjection(deps: WaitingSessionsProjectionD
 
   async function openedAt(sessionId: string): Promise<number | undefined> {
     try {
-      return pendingInputOpenedAt(await loadAgentInputProjection(deps.reader, sessionId))
+      return await loadPendingInputOpenedAt(deps.reader, sessionId)
     } catch (error) {
       // A read that the store did not serve says nothing about the session.
       if (!isSessionHistoryFailure(error)) throw error
