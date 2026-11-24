@@ -5,7 +5,7 @@
  * Both modes need installed dependencies; neither changes the source checkout or archive. */
 import { createHash } from "node:crypto"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { dirname, join, relative, resolve } from "node:path"
 import { parseArgs } from "node:util"
 
 const preDRevision = "01612ddbd517c1dc76eea1797ad1f07f06a5ef99"
@@ -40,7 +40,7 @@ if (values.tag) {
   writeFileSync(scenarioCopy, absoluteImports(scenarioSource, join(sourceRoot, "tests/release/scenarios/chat-runner-reconciliation.ts"), {
     "../lib/isolated-serve.js": isolated,
     "./workflow-load-provider.js": provider,
-  }))
+  }, pathsAtRevision()))
   const entrypoint = join(outputRoot, "published-driver.ts")
   writeFileSync(entrypoint, [
     "import { readFileSync, writeFileSync } from 'node:fs'",
@@ -80,9 +80,30 @@ function replace(source: string, before: string, after: string): string {
   return source.replace(before, after)
 }
 
-function absoluteImports(source: string, original: string, overrides: { readonly [specifier: string]: string } = {}): string {
-  return source.replace(/from (["'])(\.\.?\/[^"']+)\1/gu, (_match, _quote: string, specifier: string) =>
-    `from ${JSON.stringify(overrides[specifier] ?? resolve(dirname(original), specifier))}`)
+/** Re-roots each relative import of `source` as if it sat at `original` in the source checkout.
+ * `earlierPaths` maps a candidate path to the path that the same file had in the source revision,
+ * so an import of a file that moved after that revision still reaches the file in the source checkout. */
+function absoluteImports(source: string, original: string, overrides: { readonly [specifier: string]: string } = {}, earlierPaths: ReadonlyMap<string, string> = new Map()): string {
+  return source.replace(/from (["'])(\.\.?\/[^"']+)\1/gu, (_match, _quote: string, specifier: string) => {
+    const override = overrides[specifier]
+    if (override !== undefined) return `from ${JSON.stringify(override)}`
+    const path = relative(sourceRoot, resolve(dirname(original), specifier)).replaceAll("\\", "/")
+    const stem = path.replace(/\.js$/u, "")
+    const earlier = earlierPaths.get(path) ?? [".ts", ".tsx"].map(extension => earlierPaths.get(stem + extension)?.replace(/\.tsx?$/u, ".js")).find(Boolean)
+    return `from ${JSON.stringify(join(sourceRoot, earlier ?? path))}`
+  })
+}
+
+/** Candidate path to source-revision path for every file that Git sees as renamed since the source revision. */
+function pathsAtRevision(): ReadonlyMap<string, string> {
+  const diff = Bun.spawnSync(["git", "diff", "-M", "--name-status", "--diff-filter=R", revision, "HEAD"], { cwd: candidateRoot, windowsHide: true, stderr: "inherit" })
+  if (diff.exitCode !== 0) throw new Error(`renames since ${revision} cannot be read`)
+  const paths = new Map<string, string>()
+  for (const line of diff.stdout.toString().split("\n")) {
+    const [status, earlier, current] = line.split("\t")
+    if (status?.startsWith("R") && earlier && current) paths.set(current, earlier)
+  }
+  return paths
 }
 
 const isolated = join(candidateRoot, "tests/release/lib/isolated-serve.ts")
