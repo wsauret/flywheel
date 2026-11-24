@@ -1,0 +1,90 @@
+src/orchestration/modules/development/definitions/skills/webview-rendering/references/rules.md
+  h_4b47e9e4a8b456 268
+tests/integration/local/account-socket-heartbeat-contract.test.ts
+  h_4b47e9e4a8b456 12
+vscode/scripts/e2e-bootstrap.ts
+  h_4b47e9e4a8b456 41
+vscode/scripts/e2e-live.ts
+  h_4b47e9e4a8b456 28,32
+vscode/src/extension.ts
+  h_4b47e9e4a8b456 11
+vscode/src/runtime/connection/editor-client.ts
+  h_4b47e9e4a8b456 7
+vscode/src/runtime/connection/node-socket.ts
+  h_4b47e9e4a8b456 8
+vscode/src/webview/panel-mount.ts
+  h_4b47e9e4a8b456 8-9
+vscode/src/webview/socket-bridge.ts
+  h_4b47e9e4a8b456 8
+webview/src/app/app.tsx
+  h_4b47e9e4a8b456 35-37,39-43,45,47
+webview/src/app/background-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 9
+webview/src/app/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 19
+webview/src/app/capability-preset-interaction-fixture.ts
+  h_4b47e9e4a8b456 10-11
+webview/src/app/command-panel.tsx
+  h_4b47e9e4a8b456 15
+webview/src/app/models-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 9-10
+webview/src/app/module-rows-fixture.ts
+  h_4b47e9e4a8b456 11
+webview/src/app/providers-sheet-focus.test.ts
+  h_4b47e9e4a8b456 6
+webview/src/app/providers-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 11-12
+webview/src/app/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 10-11
+webview/src/app/sheets/models/model-option-detail.tsx
+  h_4b47e9e4a8b456 2
+webview/src/app/sheets/models/model-sheet.tsx
+  h_4b47e9e4a8b456 3-5,7-13,15
+webview/src/app/sheets/models/models-sheet.tsx
+  h_4b47e9e4a8b456 4-10,12-13
+webview/src/app/sheets/providers/profiles-sheet.tsx
+  h_4b47e9e4a8b456 4-11
+webview/src/app/sheets/providers/provider-models-sheet.tsx
+  h_4b47e9e4a8b456 4-9
+webview/src/app/sheets/providers/providers-sheet.tsx
+  h_4b47e9e4a8b456 5-17
+webview/src/app/sheets/settings/capabilities-sheet.tsx
+  h_4b47e9e4a8b456 4-5,7
+webview/src/app/sheets/settings/capability-preset.ts
+  h_4b47e9e4a8b456 1-7
+webview/src/app/sheets/settings/setting-rows.tsx
+  h_4b47e9e4a8b456 4-20,22-23
+webview/src/app/sheets/settings/settings-sheet.test.ts
+  h_4b47e9e4a8b456 3-5
+webview/src/app/sheets/settings/settings-sheet.tsx
+  h_4b47e9e4a8b456 3-4,6-7
+webview/src/app/sheets/sheet.tsx
+  h_4b47e9e4a8b456 6,126-141
+webview/src/app/sheets/workspace/background-sheet.tsx
+  h_4b47e9e4a8b456 2,4,13-16,18-19
+webview/src/app/sheets/workspace/changes-sheet.tsx
+  h_4b47e9e4a8b456 2-4,6
+webview/src/app/sheets/workspace/status-sheet-budget.test.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/sheets/workspace/status-sheet-restart.test.tsx
+  h_4b47e9e4a8b456 4-5
+webview/src/app/sheets/workspace/status-sheet-runtime.test.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/sheets/workspace/status-sheet.tsx
+  h_4b47e9e4a8b456 2-3,5-18,20
+webview/src/app/sheets/workspace/workspace-surface.tsx
+  h_4b47e9e4a8b456 2-5
+webview/src/modules/workflows/stability-fixture.tsx
+  h_4b47e9e4a8b456 13,20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b75e6ca9f17a462d3e9415130ee90e5581181fb6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
