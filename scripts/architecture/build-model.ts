@@ -11,14 +11,17 @@
 import * as path from "node:path";
 import { API, SymbolFlags, type Checker, type Project, type Symbol as TsSymbol, type Type } from "typescript/unstable/async";
 import * as is from "typescript/unstable/ast/is";
-import { SyntaxKind as K, ModifierFlags, type ClassDeclaration, type ExpressionWithTypeArguments, type Node, type SourceFile } from "typescript/unstable/ast";
+import {
+  SyntaxKind as K, ModifierFlags, type ClassDeclaration, type ExpressionWithTypeArguments, type Node, type ObjectLiteralExpression, type SourceFile,
+  type TypeLiteralNode,
+} from "typescript/unstable/ast";
 import { cast } from "typescript/unstable/ast/utils";
 import { analyseFieldAccess } from "./field-access.ts";
 import { markTestOnly, type Layout } from "./layout.ts";
 import type { Item, ItemKind, Model, Reference } from "./model.ts";
 import {
-  DECLARATION_KINDS, PARAMETER_PROPERTY, flagsOf, handleKey, inBatches, isFunctionLike, isStatic, isWriteTarget, keyOf, memberNameOf, nameOf, textOfName,
-  type MemberName,
+  DECLARATION_KINDS, PARAMETER_PROPERTY, flagsOf, handleKey, inBatches, isFunctionLike, isStatic, isWriteTarget, keyOf, memberNameOf, nameOf, strip, textOfName,
+  unwrapFunction, type MemberName,
 } from "./syntax.ts";
 
 // What the declaration and reference phases learned, which the field-access
@@ -193,22 +196,50 @@ async function declare(project: Project, laid: Layout): Promise<Declarations> {
       }
     }
   };
+  // The members of the object that a top-level function returns belong to
+  // one type item below the function, `ReturnType<typeof f>`. So a read of
+  // such a value links to `f`, and field-leak judges the returned object as
+  // it judges a class: a method that uses `this` works on it.
+  const returnedFields = (fn: Node | undefined, owner: string, factory: number, fileId: number) => {
+    const { literals, types } = returnedObjects(fn);
+    const first = literals[0] ?? types[0];
+    if (!first) return;
+    const returned = add(first, `ReturnType<typeof ${owner}>`, "type", fileId, factory);
+    for (const t of types) addMembers(t.members, owner, returned, fileId);
+    for (const literal of literals) {
+      for (const p of literal.properties) {
+        const name = textOfName(nameOf(p));
+        if (!name) continue;
+        const member = `${owner}::${name}`;
+        if (is.isMethodDeclaration(p)) add(p, member, "function", fileId, returned, { takesSelf: usesThis(p) });
+        else if (is.isGetAccessorDeclaration(p)) add(p, member, "function", fileId, returned, { takesSelf: usesThis(p), accessorRole: "get" });
+        else if (is.isSetAccessorDeclaration(p)) add(p, `${member}=`, "function", fileId, returned, { takesSelf: usesThis(p), accessorRole: "set" });
+        else if (is.isPropertyAssignment(p) && isFunctionLike(p.initializer)) {
+          // An arrow's `this` is the factory's, not the returned object's.
+          const value = unwrapFunction(p.initializer);
+          add(p, member, "function", fileId, returned, { takesSelf: is.isFunctionExpression(value) && usesThis(value) });
+        } else if (is.isPropertyAssignment(p) || is.isShorthandPropertyAssignment(p)) add(p, member, "field", fileId, returned);
+      }
+    }
+  };
   const declareTop = (stmt: Node, fileId: number) => {
-    if (is.isFunctionDeclaration(stmt) && stmt.name) add(stmt, stmt.name.text, "function", fileId, null);
-    else if (is.isClassDeclaration(stmt)) declareClass(stmt, fileId);
+    if (is.isFunctionDeclaration(stmt)) {
+      const name = stmt.name?.text ?? "default";
+      returnedFields(stmt, name, add(stmt, name, "function", fileId, null), fileId);
+    } else if (is.isClassDeclaration(stmt)) declareClass(stmt, fileId);
     else if (is.isInterfaceDeclaration(stmt)) addMembers(stmt.members, stmt.name.text, add(stmt, stmt.name.text, "type", fileId, null), fileId);
     else if (is.isTypeAliasDeclaration(stmt)) {
       const id = add(stmt, stmt.name.text, "type", fileId, null);
-      const t = stmt.type;
-      const literals = (is.isIntersectionTypeNode(t) ? [...t.types] : [t]).filter((p) => is.isTypeLiteralNode(p));
-      for (const l of literals) addMembers(l.members, stmt.name.text, id, fileId);
+      for (const l of typeLiteralsOf(stmt.type)) addMembers(l.members, stmt.name.text, id, fileId);
     } else if (is.isEnumDeclaration(stmt)) {
       const id = add(stmt, stmt.name.text, "type", fileId, null);
       for (const m of stmt.members) if (is.isIdentifier(m.name) || is.isStringLiteral(m.name)) add(m, `${stmt.name.text}::${m.name.text}`, "variant", fileId, id);
     } else if (is.isVariableStatement(stmt)) {
       for (const d of stmt.declarationList.declarations) {
         if (is.isIdentifier(d.name)) {
-          add(d, d.name.text, isFunctionLike(d.initializer) ? "function" : "constant", fileId, null);
+          const fn = isFunctionLike(d.initializer);
+          const id = add(d, d.name.text, fn ? "function" : "constant", fileId, null);
+          if (fn && d.initializer) returnedFields(unwrapFunction(d.initializer), d.name.text, id, fileId);
           continue;
         }
         const visit = (n: Node) => {
@@ -265,7 +296,13 @@ async function declare(project: Project, laid: Layout): Promise<Declarations> {
     }
     const preferred = write ? setters : getters;
     for (const c of preferred.length ? preferred : write ? getters : setters) out.add(c);
-    return [...out];
+    // A property that types of several modules share through a union, such
+    // as the `kind` of a union of payloads from many modules, belongs to the
+    // union: the use depends on the union, not on each member's module.
+    // Declarations in one module, such as the variants of one alias, the
+    // types of one module's union, or an intersection's parts, still link.
+    const owners = new Set([...out].map((id) => items[id]!.owner));
+    return owners.size > 1 ? [] : [...out];
   };
 
   // Phase 5: references. A reference inside a type node is type-only, except
@@ -331,6 +368,56 @@ async function declare(project: Project, laid: Layout): Promise<Declarations> {
   return {
     project, checker, sources: [...sourceOf.values()], items, bodies, itemOfKey, ctorsOfClass, symbolAt, target, declItems, references, accesses,
   };
+}
+
+// The type literals whose members are the fields of a type alias: the alias
+// itself, or each literal in its unions and intersections, however nested.
+function typeLiteralsOf(type: Node): TypeLiteralNode[] {
+  if (is.isTypeLiteralNode(type)) return [type];
+  if (is.isParenthesizedTypeNode(type)) return typeLiteralsOf(type.type);
+  if (is.isUnionTypeNode(type) || is.isIntersectionTypeNode(type)) return type.types.flatMap(typeLiteralsOf);
+  return [];
+}
+
+// The objects that a function returns: the object literal of its arrow body,
+// or of each `return` in its body outside nested functions and classes, and
+// the type literals that a type assertion around one states, because a read
+// through `{ ... } as { ... }` resolves to the asserted type's members.
+function returnedObjects(fn: Node | undefined) {
+  const literals: ObjectLiteralExpression[] = [];
+  const types: TypeLiteralNode[] = [];
+  if (!fn || !is.isFunctionLikeDeclaration(fn) || !fn.body) return { literals, types };
+  const take = (e: Node | undefined) => {
+    let at = e;
+    // `strip` removes one wrapper or more; each wrapper holds `expression`.
+    while (at && strip(at) !== at) {
+      if (is.isAsExpression(at) || is.isTypeAssertion(at)) types.push(...typeLiteralsOf(at.type));
+      at = cast(at, (n): n is Node & { readonly expression: Node } => "expression" in n).expression;
+    }
+    if (at && is.isObjectLiteralExpression(at)) literals.push(at);
+  };
+  if (!is.isBlock(fn.body)) take(fn.body);
+  else {
+    const visit = (n: Node) => {
+      if (is.isReturnStatement(n)) take(n.expression);
+      else if (!is.isFunctionLikeDeclaration(n) && !is.isClassLikeDeclaration(n)) n.forEachChild(visit);
+    };
+    fn.body.forEachChild(visit);
+  }
+  return { literals, types };
+}
+
+// Whether a function's own `this` occurs in it, outside nested functions and
+// classes that bind their own; an arrow sees the enclosing `this`.
+function usesThis(fn: Node): boolean {
+  let found = false;
+  const visit = (n: Node) => {
+    if (found) return;
+    if (n.kind === K.ThisKeyword) found = true;
+    else if (!(is.isFunctionLikeDeclaration(n) && !is.isArrowFunction(n)) && !is.isClassLikeDeclaration(n)) n.forEachChild(visit);
+  };
+  fn.forEachChild(visit);
+  return found;
 }
 
 // The property names of each class's extends clauses, so a member that
