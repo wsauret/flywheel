@@ -29,7 +29,7 @@ import {
 import { failedJudgeCallCount } from "./judge-attempt-reconciliation.js";
 import { parseVariant, sameVariants, type VariantSpec } from "./variant.js";
 import { personaToolEntries, toolRegistryFromComposition } from "../../../agent-runtime/tools/tool-registry.js";
-import { DEFAULT_BENCHMARK_CONCURRENCY, runGroups } from "./matrix-runner.js";
+import { runGroups } from "./matrix-runner.js";
 import { benchmarkTaskIdentity, structuredIdentity } from "./content-identity.js";
 import type { BenchmarkAccounting } from "./evidence.js";
 import { validateAttempts, validateJudgeAttempts, validateRuns, validateScores } from "./persona-evidence-validation.js";
@@ -101,6 +101,8 @@ export interface PersonaBenchmarkDeps {
   readonly judge?: JudgeSelection;
   readonly onEvent: (event: BenchmarkEvent) => void;
   readonly signal?: AbortSignal;
+  /** How many cells run at once; `DEFAULT_BENCHMARK_CONCURRENCY` when absent. It is not part of the campaign identity, so a resume may change it. */
+  readonly concurrency?: number;
   /** The identity of the Flywheel source that runs this process's candidates, from `runningSourceIdentity`.
    *  Each cell records it, and the report names every source that ran cells. It is not part of the campaign
    *  identity, so a resume after an unrelated source change continues the campaign. ARCH-DIRECTORIES-018. */
@@ -293,7 +295,7 @@ export async function loadBenchmarkPersona(plan: BenchmarkPlan, catalog: Benchma
 }
 
 export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenchmarkDeps): Promise<BenchmarkOutcome> {
-  const { catalog, onEvent, signal } = deps;
+  const { catalog, onEvent, signal, judge } = deps;
   const taskIdentity = benchmarkTaskIdentity(plan.tasks);
   if (benchmarkTaskIdentity(selectTasks(await planTasks(plan.persona, plan.mode, catalog), plan.taskIds)) !== taskIdentity) {
     throw new Error("Benchmark task content changed after planning");
@@ -317,7 +319,6 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
   if (stored && stored.scoringVersion !== campaignScoringVersion) {
     throw new Error(`These results were scored under ${stored.scoringVersion} and this harness scores under ${campaignScoringVersion}; start a new campaign (the old report stays readable with --report)`);
   }
-  const { judge } = deps;
   if (campaignJudges(plan)) {
     if (!judge) throw new Error("This benchmark needs a judge, but no judge model resolved; pin one with --judge model:effort");
     // A campaign created before 2026-11-10 recorded no judge, so its scores cannot be shown to come from this one.
@@ -408,7 +409,7 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
         onEvent({ kind: "cell.failed", cell: cellId(cell), message: error.message });
       },
       signal,
-      DEFAULT_BENCHMARK_CONCURRENCY,
+      deps.concurrency,
     );
   }
 

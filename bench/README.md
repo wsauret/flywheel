@@ -16,7 +16,7 @@ Use these observed ranges to budget a run, not as guaranteed completion times or
 
 Pass rate means the entire original task criterion passed, not the percentage of individual tests. Samples are small: a 2/2 result provides regression coverage, not proof that a task is easy for every model. A 0/2 result shows observed headroom for this seat, not a population failure rate.
 
-New persona campaigns default to `claude-sonnet-5-5:medium` on the auth profile that you select (refer to `--auth-profile` below), with one repeat and four concurrent cells. The menu retains its measured model, effort, runtime, cost, and pass rate; those observations do not establish performance for the new default.
+New persona campaigns default to `claude-sonnet-5-5:medium` on the auth profile that you select (refer to `--auth-profile` below), with one repeat and four concurrent cells. `--concurrency <n>` lowers the number of cells that run at once, also on `--resume`. A Google Antigravity seat needs `--concurrency 1`, because one Flywheel process at a time serves an Antigravity login and each native cell runs in its own worker process. The menu retains its measured model, effort, runtime, cost, and pass rate; those observations do not establish performance for the new default.
 
 | Fixture | What it exercises | Availability | Candidate time | Equivalent USD/run | Task passes |
 |---|---|---|---|---|---|

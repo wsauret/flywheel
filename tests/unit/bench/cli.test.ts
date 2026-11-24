@@ -15,6 +15,8 @@ describe("persona benchmark CLI", () => {
       .toMatchObject({ profile: "Personal", taskIds: ["native-a", "native-b"], personaDir: resolve("/scratch/personas"), resultsRoot: resolve("/scratch/results") });
     expect(() => parsePersonaArgs(["--profile", "Personal"])).toThrow("--auth-profile");
     expect(() => parsePersonaArgs(["--task", "native-a"])).toThrow("--tasks");
+    expect(parsePersonaArgs(["--resume", RESULTS_DIR, "--concurrency", "1"])).toMatchObject({ operation: "resume", concurrency: 1 });
+    for (const value of ["0", "1.5", "two"]) expect(() => parsePersonaArgs(["--concurrency", value])).toThrow(`--concurrency must be a positive integer, got ${value}`);
   });
   it("parses --rejudge with its judge and refuses it without --judge or beside a campaign option", () => {
     expect(parsePersonaArgs(["--rejudge", "reviewer-mechanism", "--judge", "claude-opus-5.5:xhigh", "--dry-run"]))

@@ -26,6 +26,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 interface CliArgs extends BenchmarkOptions {
   dryRun: boolean;
+  concurrency?: number;
   profile?: string;
   personaDir?: string;
   resultsRoot?: string;
@@ -46,6 +47,7 @@ const createRuntimeDefault: CreateRuntime = async (projectRoot, stored, profile)
 export function parseArgs(argv: readonly string[]): CliArgs {
   let persona: string | undefined;
   let repeats: number | undefined;
+  let concurrency: number | undefined;
   let dryRun = false;
   let resumeDir: string | undefined;
   let rescoreDir: string | undefined;
@@ -68,6 +70,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       const value = argv[++i];
       if (!value) throw new Error("--repeats requires a value");
       repeats = Number(value);
+    } else if (arg === "--concurrency") {
+      const value = argv[++i];
+      if (!value) throw new Error("--concurrency requires a value");
+      concurrency = Number(value);
+      if (!Number.isInteger(concurrency) || concurrency < 1) throw new Error(`--concurrency must be a positive integer, got ${value}`);
     } else if (arg === "--persona") {
       const value = argv[++i];
       if (!value) throw new Error("--persona requires a value");
@@ -105,7 +112,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   if (repeats !== undefined && (!Number.isInteger(repeats) || repeats < 1)) throw new Error("--repeats must be a positive integer");
   if (rejudge !== undefined) {
     if (!judge) throw new Error("--rejudge requires --judge model:effort");
-    const refused = [["--resume", resumeDir], ["--rescore", rescoreDir], ["--report", reportDir], ["--variant", variants[0]], ["--repeats", repeats], ["--tasks", taskIds[0]], ["--persona", persona]]
+    const refused = [["--resume", resumeDir], ["--rescore", rescoreDir], ["--report", reportDir], ["--variant", variants[0]], ["--repeats", repeats], ["--tasks", taskIds[0]], ["--persona", persona], ["--concurrency", concurrency]]
       .filter(([, value]) => value !== undefined).map(([flag]) => flag);
     if (refused.length > 0) throw new Error(`--rejudge scores the recorded cells of one persona and cannot be used with ${refused.join(", ")}`);
   }
@@ -115,6 +122,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ...(persona === undefined ? {} : { persona }),
     variants,
     ...(repeats === undefined ? {} : { repeats }),
+    ...(concurrency === undefined ? {} : { concurrency }),
     operation: resumeDir ? "resume" : rescoreDir ? "rescore" : "run",
     ...(resultsDir === undefined ? {} : { resultsDir }),
     dryRun,
@@ -240,6 +248,7 @@ export async function main(
       ...judge,
       onEvent: render,
       signal: controller.signal,
+      concurrency: args.concurrency,
       sourceIdentity: await runningSourceIdentity([join(REPO_ROOT, "bench", "shared")]),
     });
     if (outcome.status === "completed") console.log(outcome.report);
