@@ -3,7 +3,7 @@ import { Effect, Exit, Schema, Scope } from "effect";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { providerModelInfo } from "../../../../../../src/infra/llm/provider-model-info.js";
+import { providerModelInfo } from "../../../../../../src/infra/llm/catalog/provider-model-info.js";
 import { prepareAnthropicRequest, type AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type ConversationMessage, type ProviderDemand, type StreamOptions, type ToolPresentation } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { TOOL_MCP_PREFIX } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";

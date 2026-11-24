@@ -1,5 +1,5 @@
 // Refresh the bundled models.dev snapshot committed at
-// src/infra/llm/models-bundled.txt (JSON content; .txt so tsc treats the
+// src/infra/llm/models/models-bundled.txt (JSON content; .txt so tsc treats the
 // import as an opaque string instead of materializing a 5 MB literal type).
 // The snapshot is the guaranteed-present
 // fallback the models client serves when both the fresh fetch and the disk
@@ -8,13 +8,13 @@
 // Usage: bun run models:snapshot
 
 import { join } from "node:path";
-import { readBoundedModelsResponse } from "../src/infra/llm/models.js";
-import { admitCurrentModelsDocument } from "../src/infra/llm/models-document.js";
+import { readBoundedModelsResponse } from "../src/infra/llm/models/models.js";
+import { admitCurrentModelsDocument } from "../src/infra/llm/models/models-document.js";
 import { assertModelCatalog } from "./check-model-catalog.js";
 import { canonicalCatalogModelId, parseCanonicalModelGeneration } from "../src/infra/model-id.js";
 import { isRecord } from "../src/infra/record.js";
 
-const SNAPSHOT_PATH = join(import.meta.dir, "..", "src", "infra", "llm", "models-bundled.txt");
+const SNAPSHOT_PATH = join(import.meta.dir, "..", "src", "infra", "llm", "models", "models-bundled.txt");
 const API_URL = "https://models.dev/catalog.json";
 
 function isRetiredGeneration(identity: string): boolean {

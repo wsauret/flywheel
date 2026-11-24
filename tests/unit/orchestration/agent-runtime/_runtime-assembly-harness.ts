@@ -1,4 +1,4 @@
-import { detectModelFamily } from "../../../../src/infra/llm/model-family.js"
+import { detectModelFamily } from "../../../../src/infra/llm/models/model-family.js"
 import { testProviderSessionLifetime } from "../../../helpers/provider-authority.js";
 import type { ProviderSessionLifetime, ProviderStreamEvent, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runtime-assembly.js"

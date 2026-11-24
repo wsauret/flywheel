@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import type { FileSink } from "bun";
 import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ExternalLoginPorts } from "../../../../../src/infra/llm/access-provider.js";
+import type { ExternalLoginPorts } from "../../../../../src/infra/llm/access/access-provider.js";
 import type { OsAccount } from "../../../../../src/infra/os-account.js";
 import type { OwnedProcess, OwnedProcessExit } from "../../../../../src/infra/owned-subprocess.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";

@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { Log } from "../../../../../src/infra/log.js";
-import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../../../src/infra/llm/access/access-provider.js";
 import { createRoutingDecisions } from "../../../../../src/orchestration/agent-runtime/llm/failover-client.js";
 import type { ProviderAffordabilityCapability } from "../../../../../src/orchestration/agent-runtime/llm/provider-affordability.js";
 import {

@@ -5,7 +5,7 @@ import type { ChatCampaign, ChatOutcome } from "./chat-store.js";
 import { CHAT_AB_JUDGE, type Redaction, type RunInputs } from "./judge-inputs.js";
 import { loadBenchTasks } from "./tasks.js";
 import { TASKS_DIR } from "./harness-paths.js";
-import { detectModelFamily } from "../../src/infra/llm/model-family.js";
+import { detectModelFamily } from "../../src/infra/llm/models/model-family.js";
 import { campaignBlinding } from "./campaign-role-evidence.js";
 import type { CampaignExecutionOutcome } from "./campaign-store.js";
 

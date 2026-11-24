@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { Log } from "../../../../../src/infra/log.js";
-import { createModelsClient } from "../../../../../src/infra/llm/models.js";
+import { createModelsClient } from "../../../../../src/infra/llm/models/models.js";
 import { authDir, modelsSnapshotFile } from "../../../../../src/infra/paths.js";
 import { createClient } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { executeStream, preparedRequest } from "./_provider-chain-harness.js";

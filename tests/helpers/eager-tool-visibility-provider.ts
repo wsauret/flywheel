@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { asAsyncEventWriter } from "../../src/infra/event-store-types.js";
 import { createRuntimeEvent } from "../../src/infra/runtime-event-factory.js";
 import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js";
-import { providerModelInfo } from "../../src/infra/llm/provider-model-info.js";
+import { providerModelInfo } from "../../src/infra/llm/catalog/provider-model-info.js";
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../src/infra/runtime-fact-mapper.js";
 import { createChatCompletionsAdapter } from "../../src/orchestration/agent-runtime/llm/chat-completions.js";
 import type { LLMClient } from "../../src/orchestration/agent-runtime/llm/types.js";

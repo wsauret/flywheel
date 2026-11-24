@@ -4,7 +4,7 @@ import { availabilityFixtures } from "./_provider-availability-harness.js";
 import { Database } from "bun:sqlite";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { accessProviderCandidateKey } from "../../../../../src/infra/llm/access-provider.js";
+import { accessProviderCandidateKey } from "../../../../../src/infra/llm/access/access-provider.js";
 import { availabilityAuthorityDbFile } from "../../../../../src/infra/paths.js";
 import {
   type AvailabilityAuthority,
@@ -14,7 +14,7 @@ import {
   AvailabilityProtocolError,
   AvailabilityTransientError,
   AVAILABILITY_PROTOCOL_VERSION,
-} from "../../../../../src/infra/llm/availability-store.js";
+} from "../../../../../src/infra/llm/access/availability-store.js";
 
 const CANDIDATE = accessProviderCandidateKey({ kind: "subscription", providerId: "openai_api", instanceId: "account-a", spendMode: "prepaid" });
 const OTHER_CANDIDATE = accessProviderCandidateKey({ kind: "subscription", providerId: "openai_api", instanceId: "account-b", spendMode: "automatic" });

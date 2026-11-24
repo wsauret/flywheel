@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, spyOn } from "bun:test";
 import { preparedRequest } from "./_provider-chain-harness.js";
 import { Redacted } from "effect";
 import { Log } from "../../../../../src/infra/log.js";
-import { candidateProviderId, type AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+import { candidateProviderId, type AccessProviderId } from "../../../../../src/infra/llm/access/access-provider.js";
 import type { OpenAIAuth } from "../../../../../src/infra/auth/openai/openai-auth-types.js";
 import { createFailoverClient, createRoutingDecisions } from "../../../../../src/orchestration/agent-runtime/llm/failover-client.js";
 import { testProviderSelection } from "../../../../helpers/provider-authority.js";

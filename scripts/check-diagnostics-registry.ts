@@ -84,7 +84,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /defineRuntimeEvent\(\{\s*type:\s*"([^"]+)"[^\n]*\bdebug:\s*\w/g,
   },
   {
-    file: "src/infra/llm/model-catalog-resolution.ts",
+    file: "src/infra/llm/catalog/model-catalog-resolution.ts",
     what: "dynamic model catalog collision evidence",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -294,7 +294,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/llm/model-listing.ts",
+    file: "src/infra/llm/access/model-listing.ts",
     what: "saved model refusals",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },

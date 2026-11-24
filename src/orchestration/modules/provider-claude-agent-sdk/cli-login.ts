@@ -5,7 +5,7 @@ import { errorMessage } from "../../../infra/error-message.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "../../../infra/descriptor-directory.js";
 import { Log } from "../../../infra/log.js";
 import { osAccount } from "../../../infra/os-account.js";
-import type { ExternalLoginPorts } from "../../../infra/llm/access-provider.js";
+import type { ExternalLoginPorts } from "../../../infra/llm/access/access-provider.js";
 import { runOwnedCommand } from "../../../infra/owned-command.js";
 import { isAuthProfileName } from "../../../infra/paths.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";

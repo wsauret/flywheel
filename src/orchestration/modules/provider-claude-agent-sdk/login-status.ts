@@ -1,4 +1,4 @@
-import type { ExternalLoginProblem } from "../../../infra/llm/access-provider.js";
+import type { ExternalLoginProblem } from "../../../infra/llm/access/access-provider.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { keychainUnlocked } from "../../../infra/macos-keychain.js";
 import type { OwnedCommandRunner } from "../../../infra/owned-command.js";

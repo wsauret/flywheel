@@ -2,8 +2,8 @@ import type { AuthContext } from "../../../infra/auth/auth-context.js";
 import { resolveAuthContext } from "../../../infra/auth/auth-context.js";
 import { installedCredentialProviderIds } from "../../credential-provider-modules.js";
 import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js";
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
-import { offeringTransportFamily } from "../../../infra/llm/model-catalog-resolution.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
+import { offeringTransportFamily } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import type { ResolvedProviderModels } from "../../../infra/auth/provider-models/provider-model-preferences.js";
 import { resolveEnabledProviderModelCatalog } from "./model-assignment-providers.js";
 import type { EffortOptionRow, ModelAssignmentExpected, ModelAssignmentPatch, ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort, ModelSelectionSlot, ModelTier } from "../../../protocol/model-assignment-protocol-types.js";
@@ -388,7 +388,7 @@ async function modelOptionRanks(
   selectedRoutes: ModelPickerConfigDeps["selectedModelRoutes"],
 ): Promise<ReadonlyMap<string, OptionRank>> {
   const ranks = new Map<string, OptionRank>();
-  const routeRequests = new Map<string, { readonly key: string; readonly wireModelId: string; readonly providerHint: string; readonly metadata?: import("../../../infra/llm/models.js").ModelInfo }>();
+  const routeRequests = new Map<string, { readonly key: string; readonly wireModelId: string; readonly providerHint: string; readonly metadata?: import("../../../infra/llm/models/models.js").ModelInfo }>();
   for (const row of rows) {
     if (!row.family || !row.model) continue;
     const route = optionsForSelectedRoute(row.model);

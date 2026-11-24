@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { DebugLog } from "../../../../infra/debug-log.js";
-import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access-provider.js";
-import type { ModelInfo } from "../../../../infra/llm/models.js";
+import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access/access-provider.js";
+import type { ModelInfo } from "../../../../infra/llm/models/models.js";
 import { mapAnthropicAdaptiveEffort } from "../../../agent-runtime/llm/anthropic-options.js";
 import { supportsAdaptiveThinking } from "../../../agent-runtime/llm/model-compat.js";
 import { orderedJson } from "../cli-view.js";

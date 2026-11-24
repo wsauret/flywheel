@@ -5,7 +5,7 @@ import { antigravityEnginePath, separatedAntigravityEnvironment, type Antigravit
 import { readAppVersion } from "../../../../infra/app-version.js"
 import { writeFileAtomic } from "../../../../infra/atomic-write.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import type { ExternalLoginDefinition, ExternalLoginPorts } from "../../../../infra/llm/access-provider.js"
+import type { ExternalLoginDefinition, ExternalLoginPorts } from "../../../../infra/llm/access/access-provider.js"
 import { Log } from "../../../../infra/log.js"
 import { ownedCommandRunner } from "../../../../infra/owned-command.js"
 import type { OwnedProcess } from "../../../../infra/owned-subprocess.js"

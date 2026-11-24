@@ -14,7 +14,7 @@ describe("role resolution through captured ChatGPT auth", () => {
     providers: testProviderRegistry(),
     eligibility: testEligibility({
       modelIds: new Set(["gpt-6.1-sol"]),
-      candidateOfferings: (candidate: import("../../../../../src/infra/llm/access-provider.js").AccessProviderCandidate, model: string) =>
+      candidateOfferings: (candidate: import("../../../../../src/infra/llm/access/access-provider.js").AccessProviderCandidate, model: string) =>
         candidate.providerId === providerId
           ? [{ candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-responses" as const }]
           : [],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { UsageEntry } from "../../../src/infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../../src/infra/llm/usage/usage-entry.js";
 import { createBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting.js";
 import type { JudgeModel } from "../../../src/orchestration/modules/development/benchmark/judge.js";
 import { openCampaignScoring, readHistoricalScoring, readRunScores, renderModelTable, renderScoreReport } from "../../../bench/chat-ab/score.js";

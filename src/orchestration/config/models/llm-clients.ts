@@ -10,8 +10,8 @@ import type { FirstPartyModuleComposition } from "../../modules.js";
 
 import { captureSubscriptionCredentials } from "../../../infra/auth/auth-context.js";
 import { loadAuthStoreWithDiagnostics } from "../../../infra/auth/store/auth-store.js";
-import { createModelListingClient, type ModelListingClient } from "../../../infra/llm/model-listing.js";
-import { createModelsClient, type ModelsClient } from "../../../infra/llm/models.js";
+import { createModelListingClient, type ModelListingClient } from "../../../infra/llm/access/model-listing.js";
+import { createModelsClient, type ModelsClient } from "../../../infra/llm/models/models.js";
 import { modelsSnapshotFile } from "../../../infra/paths.js";
 import { accessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js";
 import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js";

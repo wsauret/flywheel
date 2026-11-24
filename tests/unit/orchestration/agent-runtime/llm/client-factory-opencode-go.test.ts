@@ -8,7 +8,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Redacted } from "effect";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
 import type { AuthContext } from "../../../../../src/infra/auth/auth-context.js";
-import { createModelsClient } from "../../../../../src/infra/llm/models.js";
+import { createModelsClient } from "../../../../../src/infra/llm/models/models.js";
 import { authDir, modelsSnapshotFile } from "../../../../../src/infra/paths.js";
 import { createAdmittedClient } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { testDirectories } from "../../../../helpers/directories.js";
@@ -57,7 +57,7 @@ async function capturedRequests(model: string): Promise<Array<{ url: string; hea
       ? "openai-responses" as const
       : "chat-completions" as const;
   const eligibility = testEligibility({
-    candidateOfferings: (candidate: import("../../../../../src/infra/llm/access-provider.js").AccessProviderCandidate) => [{
+    candidateOfferings: (candidate: import("../../../../../src/infra/llm/access/access-provider.js").AccessProviderCandidate) => [{
       candidate,
       wireModelId: model,
       dataUse: "standard" as const,

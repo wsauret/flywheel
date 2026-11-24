@@ -1,6 +1,6 @@
 import type { RuntimeAuthStatusScope } from "../auth-status-protocol-types.js"
 import { Schema } from "effect"
-import { type SubscriptionUsageMetric, type SubscriptionUsageSpendSource, SubscriptionUsageMetricSchema, SubscriptionUsageSpendSourceSchema } from "../../infra/llm/subscription-usage.js"
+import { type SubscriptionUsageMetric, type SubscriptionUsageSpendSource, SubscriptionUsageMetricSchema, SubscriptionUsageSpendSourceSchema } from "../../infra/llm/usage/subscription-usage.js"
 import { RuntimeAuthStatusScopeSchema } from "../auth-status-protocol-schemas.js"
 import { defineProtocolModule, defineProtocolMutation, defineProtocolQuery, type ModuleRow } from "../protocol-module.js"
 import { formatGenerationSpeed, GenerationStatisticsSchema, type GenerationStatistics } from "../generation-statistics.js"

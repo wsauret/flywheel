@@ -1,4 +1,4 @@
-import { candidateProviderId, type AccessProviderId, type AdmittedFailoverPlan } from "../../../../infra/llm/access-provider.js";
+import { candidateProviderId, type AccessProviderId, type AdmittedFailoverPlan } from "../../../../infra/llm/access/access-provider.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/model-runtime-capture.js";
 import { createAgentJudge, type JudgeModel } from "./judge.js";
 import { campaignJudges, type BenchmarkPlan, type JudgeSelection } from "./benchmark-plan.js";

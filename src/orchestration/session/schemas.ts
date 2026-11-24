@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { isAbsolute, resolve } from "node:path";
-import { ProviderRequestOptionsSchema } from "../../infra/llm/provider-options.js";
+import { ProviderRequestOptionsSchema } from "../../infra/llm/access/provider-options.js";
 import { canonicalModelId } from "../../infra/model-id.js";
 import { canonicalRoleId } from "../config/retired-config-names.js";
 import { parseBriefRoleId } from "../../protocol/brief-role-id.js";

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../../src/infra/llm/access/access-provider.js";
 import { logoutProfileExternalLogins, providerLoginFlow } from "../../../../src/orchestration/auth/auth-actions.js";
 import { SHIPPED_MODULES } from "../../../../src/orchestration/modules.js";
 import { fileTemporaryDirectory } from "../../../helpers/directories.js";

@@ -1,5 +1,5 @@
 import { DebugLog } from "../../../../infra/debug-log.js"
-import type { ReasoningEffort } from "../../../../infra/llm/models.js"
+import type { ReasoningEffort } from "../../../../infra/llm/models/models.js"
 import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-schema.js"
 import { ContextLengthExceededError, LlmStreamError, RouteUnavailableError } from "../../../agent-runtime/llm/errors.js"
 import type { SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js"

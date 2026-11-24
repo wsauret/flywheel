@@ -6,7 +6,7 @@ import {
   SubscriptionUsageSpendSourceSchema,
   normalizeSubscriptionUsageReport,
   selectSubscriptionUsageResetCredit,
-} from "../../../src/infra/llm/subscription-usage.js";
+} from "../../../src/infra/llm/usage/subscription-usage.js";
 
 const exactMetric = {
   metricKey: "primary_window",

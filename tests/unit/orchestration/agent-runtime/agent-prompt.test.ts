@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { buildSystemPrompt as buildSystemPromptTiers } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { detectModelFamily } from "../../../../src/infra/llm/model-family.js";
+import { detectModelFamily } from "../../../../src/infra/llm/models/model-family.js";
 import { testBaseTools } from "../../../helpers/request-tool-surface.js";
 import { bashToolSurface } from "../../../../src/orchestration/agent-runtime/tools/bash-guidance.js";
 import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines } from "../../../../src/orchestration/agent-runtime/global-guidelines.js";

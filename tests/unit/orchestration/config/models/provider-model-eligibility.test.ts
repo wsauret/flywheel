@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
 import type { AuthContext, RuntimeCredential } from "../../../../../src/infra/auth/auth-context.js"
-import { createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderDefinition } from "../../../../../src/infra/llm/access-provider.js"
+import { createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderDefinition } from "../../../../../src/infra/llm/access/access-provider.js"
 import type { CatalogCanonicalRow } from "../../../../../src/infra/model-catalog-rows.js"
 import type { CatalogModelOffering } from "../../../../../src/infra/catalog-model-offering.js"
 import { authProviders } from "../../../../helpers/auth-context.js"

@@ -4,7 +4,7 @@ import {
   resolveOpenAIServiceTier,
   type OpenAIReasoningSummary,
   type ProviderRequestOptions,
-} from "../../../infra/llm/provider-options.js";
+} from "../../../infra/llm/access/provider-options.js";
 import { supportsParallelToolCalls } from "./model-compat.js";
 
 export interface UnknownFields { [key: string]: unknown }

@@ -11,7 +11,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { Effect, Redacted } from "effect";
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
+import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
 import type { ToolOutcome } from "../../../../../src/infra/tool-outcome.js";
 import { toolResultMessages } from "../../../../../src/orchestration/agent-runtime/agent-state.js";
 import { formatSubagentNotificationBatch } from "../../../../../src/orchestration/agent-runtime/background-work-notifications.js";

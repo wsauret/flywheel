@@ -1,7 +1,7 @@
 // The canonical row shape of a provider model catalog, its limits, and its
 // validation. Both the saved-catalog store in auth and catalog resolution in
 // llm read rows through this one codec.
-import type { ModelInfo } from "./llm/models.js";
+import type { ModelInfo } from "./llm/models/models.js";
 import type { CatalogJsonValue, CatalogModelOffering, OfferingTransport } from "./catalog-model-offering.js";
 
 export interface CatalogCanonicalRow {

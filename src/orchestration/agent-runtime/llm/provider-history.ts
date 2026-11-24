@@ -1,7 +1,7 @@
 import { isProgressUpdate } from "../../../infra/llm/anthropic-narration.js";
-import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../infra/llm/access/access-provider.js";
 import { sessionMessageRecoveryNotice, type SessionInputProducer, type SessionMessageEnvelope } from "../../../infra/chat-input.js";
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import type { PromptHistoryLowering } from "../../session/provider-request-audit-types.js";
 import { IMAGE_REMOVED, imagesReplaced } from "./image-limit.js";
 import { isSameProviderReplay, type LlmApi } from "./messages.js";

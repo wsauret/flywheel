@@ -1,5 +1,5 @@
 import type { CatalogDataUse } from "./model-id.js";
-import type { ModelInfo } from "./llm/models.js";
+import type { ModelInfo } from "./llm/models/models.js";
 
 /** One provider route of a catalog model: the record that catalog resolution builds and route metadata reads. */
 export interface CatalogModelOffering {

@@ -6,7 +6,7 @@ import { awaitWithAbortSignal } from "../../../../infra/abort.js";
 import type { ModelRefusal } from "../../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import { DebugLog } from "../../../../infra/debug-log.js";
 import { isGitRepo } from "../../../../infra/env-detection.js";
-import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access-provider.js";
+import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access/access-provider.js";
 import type { AnthropicOperations } from "../../../agent-runtime/llm/anthropic.js";
 import { LlmStreamError, ProviderRequestValidationError } from "../../../agent-runtime/llm/errors.js";
 import { engineModelId } from "../../../agent-runtime/llm/runtime-reminders.js";

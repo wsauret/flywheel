@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { Redacted } from "effect";
 
 import { captureProviderConnection, type AuthContext } from "../../../../../src/infra/auth/auth-context.js";
-import type { FailoverPlan } from "../../../../../src/infra/llm/access-provider.js";
+import type { FailoverPlan } from "../../../../../src/infra/llm/access/access-provider.js";
 import { createBenchmarkTool } from "../../../../../src/orchestration/modules/development/benchmark-tool.js";
 import { admitBenchmark, type BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/admission.js";
 import { createBenchmarkCatalog } from "../../../../../src/orchestration/modules/development/benchmark/catalog.js";

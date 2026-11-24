@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import type { AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js"
-import type { SubscriptionUsageMetric, SubscriptionUsageResetCredits } from "../../../../src/infra/llm/subscription-usage.js"
+import type { AccessProviderCandidate } from "../../../../src/infra/llm/access/access-provider.js"
+import type { SubscriptionUsageMetric, SubscriptionUsageResetCredits } from "../../../../src/infra/llm/usage/subscription-usage.js"
 import { createSubscriptionUsageService } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { createSubscriptionUsageServicePool } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
 import { captureSubscriptionAdmission } from "../../../../src/orchestration/subscription-spend-consent/admission-capture.js"

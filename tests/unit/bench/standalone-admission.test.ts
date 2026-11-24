@@ -15,7 +15,7 @@ import { join } from "node:path";
 
 import { main } from "../../../bench/ab-persona/bench.js";
 import { captureProviderConnection, type AuthContext } from "../../../src/infra/auth/auth-context.js";
-import type { FailoverPlan } from "../../../src/infra/llm/access-provider.js";
+import type { FailoverPlan } from "../../../src/infra/llm/access/access-provider.js";
 import type { UsageAuthorityGeneration } from "../../../src/orchestration/agent-runtime/usage-settlement.js";
 import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/admission.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";

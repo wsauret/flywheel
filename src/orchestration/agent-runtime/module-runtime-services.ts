@@ -9,9 +9,9 @@ import type { LearningReviewRun } from "./review-types.js";
 
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js";
-import type { ModelFamily } from "../../infra/llm/model-family.js";
-import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
-import type { UsageEntry } from "../../infra/llm/usage-entry.js";
+import type { ModelFamily } from "../../infra/llm/models/model-family.js";
+import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
+import type { UsageEntry } from "../../infra/llm/usage/usage-entry.js";
 import type { OwnedCommandRunner } from "../../infra/owned-command.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import { NO_MODULE_SERVICES, type ModuleServices } from "../../infra/module-service.js";

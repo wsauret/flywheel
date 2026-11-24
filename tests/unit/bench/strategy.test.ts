@@ -25,7 +25,7 @@ import { loadBenchmarkPersona } from "../../../src/orchestration/modules/develop
 import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { createBenchmarkCatalog, RESEARCH_SNAPSHOT, RESEARCH_TASKS_CHANGED } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { captureProviderConnection, type AuthContext } from "../../../src/infra/auth/auth-context.js";
-import type { FailoverPlan } from "../../../src/infra/llm/access-provider.js";
+import type { FailoverPlan } from "../../../src/infra/llm/access/access-provider.js";
 import type { AgentOptions } from "../../../src/orchestration/agent-runtime/types.js";
 import type { WorkflowDeps } from "../../../src/orchestration/workflow-host/deps.js";
 import type { OwnedBenchmarkRuntime } from "../../../bench/shared/runtime.js";
