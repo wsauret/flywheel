@@ -1,0 +1,14 @@
+tests/release/lib/materialize-revision-driver.ts
+  h_4b47e9e4a8b456 8,43,83-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f5cd152a214e9163c8f4fa4c65a15d38d68e997a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
