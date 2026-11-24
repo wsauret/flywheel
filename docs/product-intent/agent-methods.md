@@ -272,7 +272,11 @@ A child that its parent or the runtime interrupted is not active work, so no wai
 
 ## PI-AGENT-080: Managed-work waits receive timed assessments
 
-Every agent wait on managed work, including background commands, subagents, and workflows, has a finite duration of at most one hour that the agent sets from its estimate of the remaining work. Without an estimate, a wait lasts at most four minutes. Completion or expiry wakes the agent once without ending the work, and an assessment that finds nothing to act on waits again without writing to the transcript. A wait that a restart or planned replacement cuts continues on the new runtime with its original deadline, without waking the agent.
+Every agent wait on managed work, including background commands, subagents, and workflows, has a finite duration of at most one hour that the agent sets from its estimate of the remaining work. Without an estimate, a wait lasts at most four minutes. Completion, a watch event, or expiry wakes the agent once without ending the work, and an assessment that finds nothing to act on waits again without writing to the transcript. A wait that a restart or planned replacement cuts continues on the new runtime with its original deadline, without waking the agent.
+
+## PI-AGENT-136: A watch delivers a command's output while it runs
+
+An agent can start a background command as a watch. Each line it writes reaches the agent while it runs and wakes the agent as a completion does. Lines written close together arrive as one event, and oversized ones are cut. A source that writes too fast loses events and is then stopped. A watch ends after five minutes, or up to one hour when the agent says so. While its chat is interrupted or waits on the person or on capacity, it holds its lines and delivers them afterwards. The transcript shows each event and how the watch ended.
 
 ## PI-AGENT-081: A parent reads its child's progress without waking it
 

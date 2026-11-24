@@ -96,7 +96,7 @@ On a phone-width web client, a subagent's or workflow's card header stays on one
 
 ## PI-INTERACTION-156: Every client shows the same transcript
 
-Every client shows the same messages, calls, results, subagents, and the thoughts the reader chose to see, in the same order. Clients differ only in how they group and preview those rows. On every client, consecutive reads by one tool fold into one row that names each file by its basename and shows what was read, never its contents.
+Every client shows the same messages, calls, results, watch events, subagents, and the thoughts the reader chose to see, in the same order. Clients differ only in how they group and preview those rows. On every client, consecutive reads by one tool fold into one row that names each file by its basename and shows what was read, never its contents.
 
 ## PI-INTERACTION-157: Tool calls gather under headings
 

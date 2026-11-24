@@ -387,7 +387,7 @@ Because: Startup responsiveness is load-bearing, and an established project need
 
 ## ARCH-RUNTIME-072: A handed-over command is adopted once and completes once
 
-The successor's host for the same conversation adopts each command that a replacement hands over (ARCH-RUNTIME-033) before its first model request. The executor keeps each command that no attached chat adopts as the one durable record of a running command that no host holds. Exactly one consumer retires each handover. The consumer that retires an ended command holds its completion for the conversation in the same step. Publications are keyed by command, so a repeated delivery adds nothing. A held completion is the one path that a background outcome takes into a conversation with no running turn.
+The successor's host for the same conversation adopts each command that a replacement hands over (ARCH-RUNTIME-033) before its first model request. The executor keeps each command that no attached chat adopts as the one durable record of a running command that no host holds. Exactly one consumer retires each handover. The consumer that retires an ended command holds its completion for the conversation in the same step. Publications are keyed by command, so a repeated delivery adds nothing. Held completions and watch events are the one path of a background outcome into a conversation with no running turn.
 
 ## ARCH-RUNTIME-073: Role and root-command selection precede composition
 
