@@ -28,7 +28,7 @@ import { requestKernel, sharesTreeHost } from "../src/orchestration/agent-runtim
 import { requestSystemPromptOptions } from "../src/orchestration/agent-runtime/request-system-prompt.js";
 import { buildSystemPromptParts, type SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
 import type { KernelToolDeps } from "../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
-import { createShellRuntime } from "../src/orchestration/agent-runtime/tools/shell-runtime.js";
+import { createShellRuntime } from "../src/orchestration/agent-runtime/shell-runtime.js";
 import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import type { CapabilityAccess, RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";

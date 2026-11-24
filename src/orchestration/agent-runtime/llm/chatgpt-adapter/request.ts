@@ -1,6 +1,6 @@
 import { Redacted } from "effect";
 import { errorMessage } from "../../../../infra/error-message.js";
-import { CHATGPT_BACKEND_API_BASE } from "../../../../infra/auth/openai-auth-types.js";
+import { CHATGPT_BACKEND_API_BASE } from "../../../../infra/auth/openai/openai-auth-types.js";
 import { JWT_CLAIM_PATH } from "./types.js";
 import { providerRequestHeaders } from "../../../../infra/llm/provider-request-identity.js";
 

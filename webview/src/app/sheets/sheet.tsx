@@ -3,6 +3,7 @@ import { createEffect, createMemo, on, Show, type JSX } from "solid-js"
 import { trapFocus } from "../focus-trap.js"
 import { scrollEdges } from "../scroll-edges.js"
 import { Icon, ICONS } from "../icons.js"
+import type { ModuleRow, ModuleRowAction } from "../../../../src/protocol/protocol-module.js"
 import "../../styles/sheets.css"
 
 /** The frame every client sheet renders in.
@@ -119,6 +120,22 @@ export function SheetRow(props: {
         <div class="sheet-row sheet-row-button" ref={props.rowRef} role="button" aria-disabled={props.disabled || undefined} aria-busy={props.working || undefined} tabIndex={0} onClick={() => { if (!props.disabled) props.onClick?.() }} onKeyDown={activate}>{body}</div>
       </Show>
     </Show>
+  )
+}
+
+/** One module row as a sheet row, in Status or Settings: the hint is the
+ *  detail under the label, a warning tone colours the label, and an action
+ *  makes the row a button. */
+export function ModuleRowView(props: { readonly row: ModuleRow; readonly onAction: (action: ModuleRowAction) => void }): JSX.Element {
+  const action = () => props.row.action
+  return (
+    <SheetRow
+      label={props.row.label}
+      value={props.row.value}
+      tone={props.row.tone === "warning" ? "warn" : undefined}
+      detail={props.row.hint}
+      onClick={action() === undefined ? undefined : () => { const current = action(); if (current) props.onAction(current) }}
+    />
   )
 }
 

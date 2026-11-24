@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import type { SubscriptionUsageHistoryEntry } from "../../../../../src/infra/llm/subscription-usage-store.js"
+import type { SubscriptionUsageHistoryEntry } from "../../../../../src/infra/llm/subscription-usage-store-codec.js"
 import type { SubscriptionUsageMetric } from "../../../../../src/infra/llm/subscription-usage.js"
 import { historyAccount } from "../../../../../src/orchestration/modules/subscription-usage/usage-history.js"
 

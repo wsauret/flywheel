@@ -5,7 +5,8 @@ import { Log } from "../../../../src/infra/log.js";
 
 import { createAssistantAttempt } from "../../../../src/orchestration/agent-runtime/assistant-turn-attempt.js";
 import type { AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js";
-import { ContextOverflow, fromStreamError, OutputOverflow, toFailureReason } from "../../../../src/orchestration/agent-runtime/errors.js";
+import { ContextOverflow, fromStreamError, OutputOverflow } from "../../../../src/orchestration/agent-runtime/llm/runtime-errors.js";
+import { toFailureReason } from "../../../../src/orchestration/agent-runtime/errors.js";
 import { describeAgentFailure } from "../../../../src/orchestration/agent-runtime/failure-message.js";
 import { ContentFilteredError, ContentRefusedError, LlmStreamError } from "../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js";

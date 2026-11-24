@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test"
-import { decodeAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js"
+import { decodeAuthStoreWithDiagnostics } from "../../../../src/infra/auth/store/auth-store.js"
 import { Log } from "../../../../src/infra/log.js"
 import { createAuthConditionOwner } from "../../../../src/orchestration/auth/auth-condition-owner.js"
 

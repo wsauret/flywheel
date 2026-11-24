@@ -15,10 +15,10 @@
  */
 
 import type { ResponseCreateParamsStreaming, ResponseInput, ResponseStreamEvent } from "openai/resources/responses/responses.js";
-import type { StoredTokens } from "../../../../infra/auth/openai-auth-types.js";
+import type { StoredTokens } from "../../../../infra/auth/openai/openai-auth-types.js";
 import { isAbortError } from "../../../../infra/abort.js";
 import { Log } from "../../../../infra/log.js";
-import { openAISessionAffinityHeaders } from "../openai-helpers.js";
+import { openAISessionAffinityHeaders } from "../openai-prompt-cache.js";
 import type { ChatGPTTokenAccessor } from "../openai-chatgpt.js";
 import type { StreamOptions } from "../types.js";
 import { runtimeWebSocket } from "./deps.js";

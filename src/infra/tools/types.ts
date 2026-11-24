@@ -1,6 +1,5 @@
-import type { ToolPresentation } from "../output-blocks.js";
+import type { ToolEntry, ToolPresentation } from "../output-blocks.js";
 import type { LlmToolOutputPart } from "../llm/tool-output-part-schema.js";
-import type { StandaloneHandler } from "../output/output-tool-projection-types.js";
 import type { ToolAction } from "../workflow-types.js";
 
 export type { ToolPresentation } from "../output-blocks.js";
@@ -24,6 +23,25 @@ export interface ToolPresentationContext {
 interface ToolInput {
   [key: string]: unknown;
 }
+
+interface StandaloneToolLocation {
+  index: number;
+  toolName: string;
+}
+
+/** The one write a standalone handler makes: it adds its row to the block
+ *  tree and gets back the index where the row was inserted. The index is read
+ *  before cap eviction, which can move the row to a lower index. */
+export interface StandaloneToolSink {
+  pushStandaloneToolEntry(tool: ToolEntry): number;
+}
+
+type StandaloneHandler = (
+  input: ToolInput | undefined,
+  now: number,
+  sink: StandaloneToolSink,
+  toolUseId?: string,
+) => StandaloneToolLocation | null;
 
 interface ToolStreamingBodyFields {
   readonly [field: string]: "content" | "diff";

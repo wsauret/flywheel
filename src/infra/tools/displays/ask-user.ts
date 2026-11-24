@@ -131,9 +131,9 @@ export const askUserDisplay: ToolDisplay = {
   leadingText: askUserLeadingContext,
   // The controller replaces this provisional identity with the interactive
   // question only after the request is durable.
-  standaloneHandler: (input, timestamp, builder, toolUseId) => {
+  standaloneHandler: (input, timestamp, sink, toolUseId) => {
     if (toolUseId) {
-      const index = builder.pushStandaloneToolEntry({
+      const index = sink.pushStandaloneToolEntry({
         kind: "tool",
         id: toolUseId,
         name: "ask_user",

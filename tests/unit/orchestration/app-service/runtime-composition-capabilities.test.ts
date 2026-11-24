@@ -64,7 +64,7 @@ describe("a runtime composition root's capability startup", () => {
  *  startup chain may carry a copy of it. */
 describe("startup chains carry no capability copy", () => {
   const owners = {
-    "runtime launch options": "src/cli/runtime-launch.ts",
+    "runtime launch options": "src/cli/account-service/runtime-launch.ts",
     "runtime server options": "src/orchestration/app-service/account-service-runtime.ts",
     "runtime composition": "src/orchestration/app-service/project-execution-runtime.ts",
     "TUI app props": "src/tui/app.tsx",
@@ -85,7 +85,7 @@ describe("startup chains carry no capability copy", () => {
    *  selected set reaches the client as a runtime publication, never as a
    *  startup value threaded through them. */
   const capabilityFreeOwners = {
-    "runtime launch options": "src/cli/runtime-launch.ts",
+    "runtime launch options": "src/cli/account-service/runtime-launch.ts",
     "runtime server options": "src/orchestration/app-service/account-service-runtime.ts",
     "TUI app props": "src/tui/app.tsx",
     "TUI shell props": "src/tui/shell.tsx",

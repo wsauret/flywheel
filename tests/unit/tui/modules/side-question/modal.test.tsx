@@ -16,7 +16,7 @@ const { createSideQuestionSurface } = await import("../../../../../src/tui/modul
 const { createModalStack } = await import("../../../../../src/tui/components/modal-stack.js")
 const { createTextAttributes, ScrollBoxRenderable } = await import("@opentui/core")
 const { ComposerBody } = await import("../../../../../src/tui/components/composer-frame.js")
-const { createComposerFocus } = await import("../../../../../src/tui/hooks/create-composer-focus.js")
+const { createComposerFocus } = await import("../../../../../src/tui/components/create-composer-focus.js")
 
 const [sideQuestionDomain, sideQuestionRequestDomain] = sideQuestionProtocol.domains
 const query: TuiControllerHost["client"]["query"] = async () => { throw new Error("side question must not query") }

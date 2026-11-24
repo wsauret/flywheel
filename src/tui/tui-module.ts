@@ -9,7 +9,7 @@ import type { ListModalKeyEvent } from "./components/modal-list-keys.js"
 import type { ModalScrollController } from "./components/modal-scroll-controller.js"
 import type { ToastInput } from "./context/toast.js"
 import type { OpenSettingsDestination } from "./settings-destination.js"
-import type { Clipboard } from "./utils/clipboard.js"
+import type { Clipboard } from "./clipboard.js"
 
 /** The terminal client's module contract. A module contributes its presence
  *  through the slot map (ARCH-PROTOCOL-034): declarative rows come from its protocol

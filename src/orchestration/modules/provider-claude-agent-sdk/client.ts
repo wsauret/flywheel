@@ -1,5 +1,5 @@
 import { Effect, Exit, Redacted, Scope } from "effect";
-import { ApiError } from "../../agent-runtime/errors.js";
+import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
 import { createAnthropicAdapter, prepareAnthropicRequest, type AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
@@ -22,7 +22,7 @@ import { createHostedAgent, type HostedAgent, type HostedBinding } from "./agent
 import { createHostedAgentEntries } from "./agent-host/engine-text.js";
 import { cliView } from "./cli-view.js";
 import { processAgentHosts } from "./agent-host/host-registry.js";
-import { accessProviderAccountKey } from "../../../infra/llm/access-provider.js";
+import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js";
 
 /** The gate that runs the fake-host self-test of each listed CLI version once per process for the bridge's model. */
 function selfTestedGate(config: SelfTestConfig): InPlaceGate {

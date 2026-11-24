@@ -120,7 +120,7 @@ uat_dir="\${1:?uat directory required}"
 stderr_log="\${2:?stderr log required}"
 binary="\${3:?binary required}"
 cd "\$uat_dir"
-# The sandbox's account service binds an ephemeral hub port so this run never collides with the operator's own \`flywheel serve\` on 41000 (src/cli/serve.ts releaseHarnessRuntimeOptions).
+# The sandbox's account service binds an ephemeral hub port so this run never collides with the operator's own \`flywheel serve\` on 41000 (src/cli/account-service/serve.ts releaseHarnessRuntimeOptions).
 HOME="\$uat_dir" FLYWHEEL_PROJECT_ROOT="\$uat_dir" FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS="0" FLYWHEEL_INTERNAL_RELEASE_HARNESS="account-service-isolation-v1" FLYWHEEL_INTERNAL_RELEASE_HUB_PORT="0" HTTPS_PROXY="http://127.0.0.1:$PROXY_PORT" https_proxy="http://127.0.0.1:$PROXY_PORT" NODE_EXTRA_CA_CERTS="$CA_FILE" SSL_CERT_FILE="$CA_FILE" exec "\$binary" 2>"\$stderr_log"
 SH
 chmod +x "$LAUNCHER"

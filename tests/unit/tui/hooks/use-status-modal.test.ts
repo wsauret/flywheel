@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
 import { createModalStack, type ModalContext } from "../../../../src/tui/components/modal-stack.js"
 import type { ModuleRowAction } from "../../../../src/protocol/protocol-module.js"
-import { statusRows, useStatusModal, type StatusModalHook, type StatusRow } from "../../../../src/tui/hooks/use-status-modal.js"
+import { statusRows, useStatusModal, type StatusModalHook } from "../../../../src/tui/hooks/use-status-modal.js"
+import type { StatusRow } from "../../../../src/tui/modals/status-modal-types.js"
 import type { UpdateAutoInstall, UpdateStatus, UpdateStatusView } from "../../../../src/protocol/update-protocol-types.js"
 
 const ROWS: StatusRow[] = [

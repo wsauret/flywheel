@@ -3,17 +3,8 @@ import { createMemo, createSignal, mapArray } from "solid-js"
 import { effectiveSessionShortTitle, type SessionCatalogRow } from "../../protocol/app-service-types.js"
 import { isWorkingStatus } from "../../protocol/status-protocol-types.js"
 import { isEmptyNewChat } from "../session-empty-state.js"
+import type { TabPresentation } from "../components/tabs-bar.js"
 import type { ForegroundTarget, ShellSignals } from "./shell-state.js"
-
-interface TabPresentation {
-  id: string
-  title: string
-  isForeground: boolean
-  // Runner is currently processing a chat turn.
-  isBusy: boolean
-  // Agent has emitted an `ask_user` question and is parked waiting on an answer.
-  isBlocked: boolean
-}
 
 export type TabInfo = TabPresentation & ({ readonly kind: "session" } | { readonly kind: "pending" })
 

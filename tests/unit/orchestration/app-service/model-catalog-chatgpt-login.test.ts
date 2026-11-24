@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { Redacted } from "effect";
 import { join } from "node:path";
 import { captureSubscriptionCredentials, resolveAuthContext } from "../../../../src/infra/auth/auth-context.js";
-import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
-import { isCredentialCollection } from "../../../../src/infra/auth/auth-store-types.js";
-import { accessProviderAccountKey, accessProviderCandidateKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
+import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
+import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/store/auth-store.js";
+import { isCredentialCollection } from "../../../../src/infra/auth/store/auth-store-types.js";
+import { accessProviderCandidateKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import type { ModelInfo, ModelsClient } from "../../../../src/infra/llm/models.js";
 import { admitModelsDocument } from "../../../../src/infra/llm/models-document.js";
@@ -24,6 +24,7 @@ import { credentialSlotClassifier } from "../../../../src/orchestration/auth/cre
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 
 const SECRET = "phase-7-access-token";
 const temporaryDirectory = temporaryDirectories();

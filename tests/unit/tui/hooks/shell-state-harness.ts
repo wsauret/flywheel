@@ -24,7 +24,7 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/ru
 import type { RuntimeSummaryProjection } from "../../../../src/orchestration/app-service/runtime-summary-projection"
 import { runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime-shutdown"
 import type { FlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
-import type { RuntimeConfigCache } from "../../../../src/tui/hooks/shell-state.js"
+import type { RuntimeConfigCache } from "../../../../src/tui/hooks/create-runtime-config-cache.js"
 import type { GitView } from "../../../../src/protocol/git-protocol-types.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import type { SessionManager } from "../../../../src/orchestration/session/manager"

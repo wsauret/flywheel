@@ -52,7 +52,7 @@ In a source run, when the checkout's newer source cannot start or cannot open an
 
 ## PI-UPDATES-010: A source run moves to new source only on request
 
-A running source run never moves to newer source by itself. An edit to the checkout, including one that changes the runtime protocol, leaves every session on the source the service started with. A package install that replaces the Claude engine leaves every session on the engine the service started with. Only a person who starts a new source run, or restarts Flywheel, moves the service to the checkout's current source. A Flywheel client that an agent's command starts never moves or restarts the service that other sessions run on.
+A running source run never moves to newer source by itself. An edit to the checkout, including one that changes the runtime protocol, leaves every session on the source the service started with. A package install that replaces the Claude engine leaves every session on the engine the service started with. Only a person who starts a new source run, or restarts Flywheel from the terminal or a web client, moves the service to the checkout's current source. A Flywheel client that an agent's command starts never moves or restarts the service that other sessions run on.
 
 ## PI-UPDATES-011: Every served installation can update to each release
 

@@ -25,7 +25,7 @@ import { bridgeExternalPromise } from "../../../agent-runtime/external-promise-b
 import { failureTerminal, type Agent, type OmitAgentOptions, type RunnableAgentOptions } from "../../../agent-runtime/types.js";
 import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
 import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
-import { createAgentHost } from "../../../runner/host.js";
+import { createAgentGeneration } from "../../../runner/host.js";
 import { tryParseJsonFromText } from "./json-extract.js";
 import {
   buildFallbackSummary,
@@ -148,7 +148,7 @@ async function callLLMForSummary(
 ): Promise<string> {
   const { child } = input;
   const text: string[] = [];
-  const result = await createAgentHost<RunnableAgentOptions>({ createRunner: input.createRunner }).runTurn({
+  const result = await createAgentGeneration<RunnableAgentOptions>({ createRunner: input.createRunner }).runTurn({
     createContextOptions: async () => {
       text.length = 0;
       return {

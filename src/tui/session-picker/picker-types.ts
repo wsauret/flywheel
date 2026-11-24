@@ -39,3 +39,14 @@ export interface PickerFoundRow {
   readonly session: SessionCatalogRow
   readonly found: FoundChat
 }
+
+/** The rows the session picker shows for the current filter. */
+export interface SessionPickerResult {
+  readonly rows: readonly PickerRow[]
+  readonly totalMatches: number
+  readonly capped: boolean
+  readonly effectiveHighlightQuery: string
+  readonly timeAgoWidth: number
+  /** True while the filter's search of the chats' messages has not answered yet. */
+  readonly searchingMessages: boolean
+}

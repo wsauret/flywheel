@@ -1,5 +1,5 @@
 import { emitToolResultAvailable } from "../../../agent-runtime/emit.js";
-import type { BackgroundWorkResult } from "../../../agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../agent-runtime/background-work-types.js";
 import type { SubagentDispatchDeps } from "./dispatch-deps.js";
 
 /** Shows a settled child's result on the parent's live tool-call row. A

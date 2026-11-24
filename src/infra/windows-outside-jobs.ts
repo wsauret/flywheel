@@ -2,7 +2,8 @@ import { existsSync } from "node:fs"
 import { win32 } from "node:path"
 
 import { Log } from "./log.js"
-import { trustedCommandRun, type TrustedCommandResult, type TrustedProbeLaunch } from "./process-container.js"
+import { trustedCommandRun, type TrustedCommandResult } from "./process-container.js"
+import type { TrustedProbeLaunch } from "./trusted-probe-launch.js"
 import { windowsProcessApi, type WindowsProcessHold } from "./windows-process-api.js"
 
 /** A process that WMI starts outside every job of this process.
@@ -49,6 +50,7 @@ export interface OutsideJobsChild {
 
 /** The step at which a launch outside every job stopped. */
 type OutsideJobsStage =
+  | "create"
   | "argument"
   | "system-directory"
   | "powershell"
@@ -94,7 +96,7 @@ const WMI_CREATE_ANSWERS = new Map([[2, "access denied"], [3, "insufficient priv
 /** A cold PowerShell start prepares its runtime first, which can take
  *  seconds on a loaded host. */
 const WMI_CREATE_TIMEOUT_MS = 30_000
-const OUTSIDE_JOBS_POLL_MS = 100
+export const OUTSIDE_JOBS_POLL_MS = 100
 /** The exit codes the script chooses: it failed before WMI created the
  *  process, or after. */
 const SCRIPT_NOT_CREATED = 2
@@ -244,10 +246,10 @@ function cimDatetimeMicros(text: string): bigint | undefined {
 export async function launchOutsideJobs(request: OutsideJobsLaunchRequest, seams: OutsideJobsSeams = OUTSIDE_JOBS_SEAMS): Promise<OutsideJobsChild> {
   try {
     const child = await startOutsideJobs(request, seams)
-    log.info("a process started outside every job", { pid: child.pid })
+    log.info("a process started outside every job", { pid: child.pid, path: "wmi" })
     return child
   } catch (error) {
-    if (error instanceof OutsideJobsLaunchError) log.warn("a process could not start outside every job", { stage: error.stage, outcome: "refused" })
+    if (error instanceof OutsideJobsLaunchError) log.warn("a process could not start outside every job", { stage: error.stage, path: "wmi", outcome: "refused" })
     throw error
   }
 }
@@ -290,12 +292,12 @@ async function startOutsideJobs(request: OutsideJobsLaunchRequest, seams: Outsid
     hold.close()
     throw new OutsideJobsLaunchError("resume", `the process that WMI created, pid ${pid}, could not be resumed`)
   }
-  return watch(pid, hold, seams.pollMs)
+  return watchHeldProcess(pid, hold, seams.pollMs)
 }
 
 /** Reads the exit of the held process every `pollMs`, and closes the hold
  *  once it ended or the launcher gives the process up. */
-function watch(pid: number, hold: WindowsProcessHold, pollMs: number): OutsideJobsChild {
+export function watchHeldProcess(pid: number, hold: WindowsProcessHold, pollMs: number): OutsideJobsChild {
   const ended = Promise.withResolvers<number>()
   const check = (): boolean => {
     const code = hold.exitCode()

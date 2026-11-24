@@ -2,7 +2,7 @@ import type { Accessor } from "solid-js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { ModuleProviderSetting } from "../../protocol/module-protocol-types.js"
 import { groupDigits, parseDigits, sanitizeDigitInput, sanitizeDigitPaste } from "./settings-digit-input.js"
-import type { SettingsEditResult, SettingsRow } from "./settings-modal-types.js"
+import type { SettingsEditResult, SettingsRow } from "../modals/settings-modal-types.js"
 
 interface SettingsMutationResult {
   readonly ok: boolean

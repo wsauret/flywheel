@@ -19,13 +19,13 @@ import { useTheme } from "@tui/context/theme.js"
 import { useTickPool } from "@tui/context/tick-pool-context.js"
 import { workflowProgressChunks } from "@tui/output-blocks/workflow-card.js"
 import { workflowChitChunks } from "@tui/output-blocks/workflow-palette.js"
-import { bindStyledTextContent } from "@tui/utils/reactive-text.js"
-import { chunksWidth, displayWidth, shareWidth, truncateToWidth } from "@tui/utils/text.js"
+import { bindStyledTextContent } from "@tui/context/reactive-text.js"
+import { chunksWidth, displayWidth, shareWidth, truncateToWidth } from "@tui/text.js"
 import { Button } from "@tui/components/button.js"
 import { ModalFrame, MODAL_FRAME_CLOSE_WIDTH, MODAL_FRAME_HORIZONTAL_INSET, modalFrameBackWidth, sessionViewerBodyHeight, sessionViewerWidth } from "@tui/components/modal-frame.js"
 import { WorkflowAgentHeader } from "./agent-header.js"
-import { ChildSessionBody, type ChildSessionBodyProps } from "@tui/components/child-session-body.js"
-import type { ChildSessionViewerInput } from "@tui/components/child-session-viewer.js"
+import { ChildSessionBody, type ChildSessionBodyProps } from "@tui/child-session-body.js"
+import type { ChildSessionViewerInput } from "@tui/child-session-viewer.js"
 
 /** What an agent viewer opens: an agent, with `follow` once the viewer knows
  *  whether it runs, or the follow-up conversation. A link names an agent

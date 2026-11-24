@@ -10,7 +10,8 @@ import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app
 import { createBudgetCache } from "../../../../src/tui/hooks/create-budget-cache.js"
 import { sessionHeaderParts } from "../../../../src/tui/hooks/create-header-display.js"
 import { createSessionCatalog } from "../../../../src/tui/hooks/create-session-catalog.js"
-import { createSessionDetailCache, createSessionSurface as bindSessionSurface, type SessionSurfaceDeps } from "../../../../src/tui/hooks/create-session-surface.js"
+import { createSessionSurface as bindSessionSurface, type SessionSurfaceDeps } from "../../../../src/tui/hooks/create-session-surface.js"
+import { createSessionDetailCache } from "../../../../src/tui/session-detail-cache.js"
 import { createStatusCache } from "../../../../src/tui/hooks/create-status-cache.js"
 import { catalogRow, readyCatalogRow, snapshotResult } from "../../../helpers/session-catalog.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
@@ -474,7 +475,7 @@ describe("createSessionSurface", () => {
     } finally { jest.useRealTimers() }
   })
 
-  it("reads a stopped workflow member from its ordinary detail and admits no Resume", async () => {
+  it("reads a workflow member a person canceled from its ordinary detail and admits no Resume", async () => {
     await createRoot(async (dispose) => {
       const listed: Extract<RuntimeSessionDetailView, { kind: "workflow-agent" }>["row"] = {
         id: "wf", kind: "workflow-agent", workflowMembership: { kind: "attempt", workflowId: "run", attemptId: "attempt-1" }, title: "Investigate", lifecycleState: "inactive", notices: [], inputMode: { kind: "message" },
@@ -496,7 +497,7 @@ describe("createSessionSurface", () => {
       await Bun.sleep(0)
       const summary = surface.summary()
       expect(summary?.stoppedBy).toBe("person")
-      expect(workflowStateLabel("paused", summary)).toBe("Stopped")
+      expect(workflowStateLabel("paused", summary)).toBe("Canceled")
       expect(offeredSessionControls(summary, false).primary).toBeNull()
       dispose()
     })

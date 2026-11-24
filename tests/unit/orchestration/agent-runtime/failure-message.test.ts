@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test"
 import { exhaustedProvidersCopy } from "../../../../src/infra/llm/provider-error-copy.js"
 import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "../../../../src/orchestration/agent-runtime/failure-message.js"
 import { PersistenceWriteRefused, type PersistenceWriteStage } from "../../../../src/infra/event-store-types.js"
-import { fromStreamError, toFailureReason } from "../../../../src/orchestration/agent-runtime/errors.js"
+import { fromStreamError } from "../../../../src/orchestration/agent-runtime/llm/runtime-errors.js"
+import { toFailureReason } from "../../../../src/orchestration/agent-runtime/errors.js"
 import { ContentRefusedError, ProviderRequestValidationError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
 
 describe("describeAgentFailure", () => {

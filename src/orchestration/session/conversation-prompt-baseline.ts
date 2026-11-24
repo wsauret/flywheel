@@ -8,36 +8,13 @@
 import { createHash } from "node:crypto";
 import { Schema } from "effect";
 import { durableOwnerAggregate, type DurableOwner } from "../../infra/durable-owner.js";
-import { defineFact } from "../../infra/event-registry.js";
 import { createEventProjection, parseProjectionFact } from "../../infra/event-projection.js";
 import type { AsyncEventReadSurface } from "../../infra/event-store-types.js";
 import { heldProjection } from "../../infra/projection-registry.js";
 import type { ConversationMessage } from "../agent-runtime/llm/types.js";
 import type { SessionFactWriter } from "./session-fact-writer.js";
+import { ConversationPromptFixedFactSchema, type ConversationPromptFixedFact } from "./conversation-prompt-baseline-facts.js";
 
-const PromptPartSchema = Schema.Struct({
-  label: Schema.NonEmptyString,
-  tier: Schema.Literals(["stable", "session", "conversation"]),
-  change: Schema.Literals(["replace", "catalog", "hold"]),
-  text: Schema.String,
-});
-
-const ConversationPromptFixedFactSchema = defineFact({
-  type: "conversation.prompt.fixed",
-  version: 1,
-  actor: Schema.Literal("flywheel"),
-  payload: Schema.Struct({
-    conversationId: Schema.NonEmptyString,
-    /** The context that the prompt is fixed for (`promptContextOpening`). */
-    opening: Schema.NonEmptyString,
-    /** The code, the model, and the tool surface that the prompt rendered for. */
-    identity: Schema.NonEmptyString,
-    parts: Schema.Array(PromptPartSchema),
-  }),
-});
-
-export const ConversationPromptBaselineFactSchemas = [ConversationPromptFixedFactSchema] as const;
-export type ConversationPromptFixedFact = typeof ConversationPromptFixedFactSchema.Type;
 const parseConversationPromptFixedFact = Schema.decodeUnknownSync(ConversationPromptFixedFactSchema, { onExcessProperty: "error" });
 
 /** One conversation's fixed prompt: the context it is fixed for, the identity it rendered for, and its parts. */

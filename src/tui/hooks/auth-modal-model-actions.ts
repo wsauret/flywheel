@@ -6,7 +6,7 @@ import type { RuntimeAuthStatusScope } from "../../protocol/auth-status-protocol
 import { observeModelCatalog } from "./observe-model-catalog.js"
 import { createListModalKeys } from "../components/modal-list-keys.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY } from "../keymap/text-entry.js"
-import { filterProviderModelRows, providerModelsCanDeselect, type AuthView } from "./auth-modal-options.js"
+import { filterProviderModelRows, providerModelsCanDeselect, type AuthView } from "../modals/auth-modal-options.js"
 import { providerCatalogStatusText } from "../modals/provider-catalog-text.js"
 
 interface AuthModalModelActionDeps {

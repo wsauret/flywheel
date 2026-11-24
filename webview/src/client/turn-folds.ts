@@ -1,5 +1,5 @@
 import { formatElapsed } from "../../../src/protocol/client/format.js"
-import { rowIdentity, toolWorkCounts, type TranscriptView, type TranscriptViewRow } from "./tool-runs.js"
+import { rowIdentity, toolWorkCounts, type TranscriptView, type TranscriptViewRow, type TurnFold } from "./tool-runs.js"
 import { selectFileChangeBody } from "../../../src/protocol/client/file-change-body.js"
 import type { HydratedOutputBlockBody } from "../../../src/protocol/transcript-protocol-types.js"
 import { isReviewableSessionFile } from "../../../src/protocol/client/session-changes-copy.js"
@@ -8,16 +8,6 @@ import type { FrontendToolEntry } from "../../../src/protocol/app-service-types.
 import { isReturnedInputNotice } from "../../../src/protocol/composer-returns.js"
 
 export type TurnFileEdit = { readonly callId: string; readonly evidence: NonNullable<FrontendToolEntry["mutationEvidence"]>; readonly entry: Extract<MutationFilesView["files"][number], { kind: "applied" | "display" }> }
-
-export interface TurnFold {
-  readonly kind: "turnFold"
-  readonly id: string
-  readonly rows: readonly TranscriptViewRow[]
-  readonly open: boolean
-  readonly timestamp: number
-  readonly duration: number
-  readonly answerId: string
-}
 
 const personMessage = (row: TranscriptViewRow) => row.kind === "userMessage" && !row.pending && !row.injected && row.from === undefined
 const isWork = (row: TranscriptViewRow) => row.kind === "toolGroup" || row.kind === "tool" || row.kind === "agentGroup" || row.kind === "thinking" || row.kind === "text" || row.kind === "question"

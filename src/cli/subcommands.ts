@@ -44,15 +44,15 @@ function nounDispatch(usage: string, verbs: Readonly<Subcommands>): SubcommandDi
 
 const EVENT_VERBS: Readonly<Subcommands> = {
   evidence: async (args, directories) => {
-    const { runEventEvidence } = await import("./event-evidence.js")
+    const { runEventEvidence } = await import("./events/event-evidence.js")
     await runEventEvidence(args, directories.projectRoot)
   },
   search: async (args, directories) => {
-    const { runEventSearch } = await import("./event-search.js")
+    const { runEventSearch } = await import("./events/event-search.js")
     await runEventSearch(args, directories.projectRoot)
   },
   maintain: async (args, directories) => {
-    const { runMaintain } = await import("./event-maintain.js")
+    const { runMaintain } = await import("./events/event-maintain.js")
     await runMaintain(args, directories.projectRoot)
   },
 }
@@ -60,7 +60,7 @@ const EVENT_VERBS: Readonly<Subcommands> = {
 const HEADLESS_VERBS: Readonly<Subcommands> = {
   "snapshot-auth": async (args, directories, launcher) => {
     const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/auth/resolve-key.js")
-    const { runHeadlessSnapshotAuth, snapshotAuthProviders } = await import("./headless-snapshot-auth.js")
+    const { runHeadlessSnapshotAuth, snapshotAuthProviders } = await import("./commands/headless-snapshot-auth.js")
     await runHeadlessSnapshotAuth(args, directories, createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope)), await snapshotAuthProviders(directories))
   },
 }
@@ -96,7 +96,7 @@ export const SUBCOMMANDS: KernelNouns = {
       const { promptFromReadline } = await import("./readline-prompt.js")
       const { composeRealmModuleSnapshot } = await import("../orchestration/modules.js")
       const { MODULE_IDS } = await import("../protocol/module-ids.js")
-      const { AUTH_OPERATIONS, runAuth } = await import("./auth.js")
+      const { AUTH_OPERATIONS, runAuth } = await import("./commands/auth.js")
       const { createCatalogSettlement } = await import("../orchestration/auth/catalog-settlement.js")
       const resolveKey = createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope))
       await runAuth([...args], directories, {
@@ -133,15 +133,15 @@ export const SUBCOMMANDS: KernelNouns = {
       // proves at this point who asked for the start: a client that finds a
       // registered service down asks its service manager, exactly as the
       // manager starts it at login, so every start pre-starts it.
-      const { startsService } = await import("./serve-contract.js")
+      const { startsService } = await import("./account-service/serve-contract.js")
       let stateStandby: ProjectStateStandby | undefined
       if (startsService(args)) {
-        const { runtimeWorkerUrl } = await import("./runtime-launch.js")
+        const { runtimeWorkerUrl } = await import("./account-service/runtime-launch.js")
         const { startProjectStateStandby } = await import("../orchestration/app-service/project-state-standby.js")
         stateStandby = startProjectStateStandby(runtimeWorkerUrl())
       }
       try {
-        const { releaseHarnessRuntimeOptions, runServe } = await import("./serve.js")
+        const { releaseHarnessRuntimeOptions, runServe } = await import("./account-service/serve.js")
         process.exitCode = await runServe(
           args,
           directories,
@@ -163,9 +163,9 @@ export const SUBCOMMANDS: KernelNouns = {
       // Diagnostics go to the project's debug log the way every attach does;
       // the terminal shows the link and nothing else.
       await Log.init({ dir: directories.projectRoot })
-      const { createAccountRuntimeAttach } = await import("./runtime-attach.js")
+      const { createAccountRuntimeAttach } = await import("./account-service/runtime-attach.js")
       const { openExternalUrl } = await import("../infra/open-external-url.js")
-      const { runWeb } = await import("./web.js")
+      const { runWeb } = await import("./commands/web.js")
       const attach = createAccountRuntimeAttach({ ...directories, allowPersistentProcesses: resources.allowPersistentProcesses })
       await runWeb(args, directories, attach, (url) => openExternalUrl(launcher.scope, url))
     },
@@ -176,7 +176,7 @@ export const SUBCOMMANDS: KernelNouns = {
       const { Log } = await import("../infra/log.js")
       // The account log, where the services this command ends write theirs.
       await Log.init({ dir: directories.accountHome })
-      const { runKill } = await import("./kill.js")
+      const { runKill } = await import("./commands/kill.js")
       process.exitCode = await runKill(args, directories)
     },
   },
@@ -188,7 +188,7 @@ export const SUBCOMMANDS: KernelNouns = {
       { syntax: "reset", description: "Show the Flywheel font tip again." },
     ],
     dispatch: async (args, directories, launcher) => {
-      const { runFont } = await import("./font.js")
+      const { runFont } = await import("./commands/font.js")
       await runFont([...args], directories, launcher.scope)
     },
   },
@@ -203,7 +203,7 @@ export const SUBCOMMANDS: KernelNouns = {
   update: {
     verbs: [{ syntax: "", description: "Check for a newer Flywheel and install it." }],
     dispatch: async (args, directories, launcher) => {
-      const { runUpdate } = await import("./update.js")
+      const { runUpdate } = await import("./commands/update.js")
       await runUpdate(args, directories, launcher)
     },
   },
@@ -251,7 +251,7 @@ function moduleNounDispatch(noun: InstalledCliNoun, catalog: readonly FirstParty
       return
     }
     const accountRequest = async (request: AccountModuleRequest, onAnswer: AccountModuleAnswerHandler): Promise<void> => {
-      const { createAccountRuntimeAttach } = await import("./runtime-attach.js")
+      const { createAccountRuntimeAttach } = await import("./account-service/runtime-attach.js")
       const attach = createAccountRuntimeAttach({ ...directories, allowPersistentProcesses: resources.allowPersistentProcesses })
       try {
         await attach.ensure(() => {})

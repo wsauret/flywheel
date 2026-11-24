@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector";
-import { OutputProjector } from "../../../../src/infra/output/output-projector";
-import { OutputToolProjector } from "../../../../src/infra/output/output-tool-projector";
-import { StructuredOutputBuilder } from "../../../../src/infra/output/structured-output-builder";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector";
+import { OutputToolProjector } from "../../../../src/infra/output/projector/output-tool-projector";
+import { StructuredOutputBuilder } from "../../../../src/infra/output/projector/structured-output-builder";
 import { blockIdentity } from "../../../../src/protocol/block-identity";
 import { applyOutputDelta, buildBlockIndex } from "../../../../src/protocol/client/transcript-delta";
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory";

@@ -3,7 +3,7 @@ import { slotDescription, slotLabel } from "../../orchestration/config/role-sele
 import type { ModelAssignmentItem, ModelModalState } from "./model-modal-types.js"
 import { MODAL_BACK_HINT } from "../components/modal-copy.js"
 import { modalDisclosureAction, modalDisclosureHelp } from "../components/modal-disclosure.js"
-import { scopeBreadcrumbRoot, scopeContextLine, scopeHelpHint } from "../hooks/use-model-modal-scope.js"
+import { scopeBreadcrumbRoot, scopeContextLine, scopeHelpHint } from "./model-modal-scope.js"
 import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
 
 /** The screen heads with the name of the command that opens it, then whose

@@ -1,9 +1,9 @@
 import { TextBufferRenderable, type MouseEvent, type Renderable, type ScrollBoxRenderable } from "@opentui/core"
 import { type Accessor, createComputed, createMemo, createRoot, createSignal, on, type Signal, untrack } from "solid-js"
 import { patchScrollBoxLayoutHooks } from "../components/scrollbox-layout-hooks.js"
-import { createHeightIndex, type ExtentCorrection, type HeightIndex, type HeightIndexConfig } from "../hooks/create-height-index.js"
+import { createHeightIndex, type ExtentCorrection, type HeightIndex, type HeightIndexConfig } from "./create-height-index.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
-import { DEFAULT_ESTIMATE } from "../hooks/output-height-estimates.js"
+import { DEFAULT_ESTIMATE } from "../transcript-store/output-height-estimates.js"
 import type { LaunchScroll } from "../../infra/launch-state.js"
 import type { TranscriptFollow } from "./transcript-follow.js"
 
@@ -13,21 +13,6 @@ import type { TranscriptFollow } from "./transcript-follow.js"
 // the single source of truth for offset-to-block mapping and measured extents.
 
 export type EdgeDirection = "older" | "newer"
-
-/** The resident-block budget: how many timeline blocks the TUI will hold
- *  mounted-or-resident for one session. One number, two enforcement
- *  mechanisms. A session whose TOTAL block count fits the budget mounts whole
- *  once to measure every height and hydrates to the head (then virtualizes to
- *  the viewport); a larger session virtualizes immediately, pages on demand,
- *  and far-page eviction sheds residency back under the same budget - so the
- *  two policies can never fight over one session. Sized ~3x the largest
- *  observed real session (~350 blocks; events fold heavily into blocks) at
- *  ~1ms measure cost per block. The over-budget path is insurance against the
- *  condensation policy changing, not an expected path. */
-export const RESIDENT_BLOCK_BUDGET = 1000
-
-/** Rows mounted and acquired on either side of the viewport before they enter it. */
-export const OVERSCAN_ROWS = 120
 
 /** Near-edge overscan in rows. Paging starts inside this band so the command
  *  layer can load an unhydrated edge before the user reaches the gap. */

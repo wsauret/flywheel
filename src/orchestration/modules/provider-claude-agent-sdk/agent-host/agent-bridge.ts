@@ -3,7 +3,7 @@ import { realpathSync } from "node:fs";
 import Anthropic from "@anthropic-ai/sdk";
 import { Cause, Effect, Queue } from "effect";
 import { awaitWithAbortSignal } from "../../../../infra/abort.js";
-import type { ModelRefusal } from "../../../../infra/auth/provider-model-catalog-store.js";
+import type { ModelRefusal } from "../../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import { DebugLog } from "../../../../infra/debug-log.js";
 import { isGitRepo } from "../../../../infra/env-detection.js";
 import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access-provider.js";

@@ -1,5 +1,5 @@
 import { bg as stBg, fg as stFg, type TextChunk } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 import type { FrontendToolEntry } from "../../protocol/app-service-types.js"
 import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, type ProcessStatus } from "../../protocol/client/transcript-model.js"
 

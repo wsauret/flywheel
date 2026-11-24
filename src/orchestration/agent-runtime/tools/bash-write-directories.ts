@@ -1,11 +1,25 @@
 import { isAbsolute, resolve } from "node:path";
 import type { ShellWriteCommand } from "./bash-write-effects.js";
-import type { ShellState } from "./bash-write-state.js";
-import { expandShellFields, type ShellDialect } from "./bash-write-words.js";
+import { expandShellFields, type ExpandedWord, type ShellDialect } from "./bash-write-words.js";
+
+/** One shell location. Null is unknown. */
+export interface Directory {
+  readonly cwd: string | null;
+  readonly pwd: string | null;
+}
+
+/** The part of a statement state that a directory change reads. */
+export interface DirectoryContext extends Directory {
+  readonly stack: readonly Directory[] | null;
+  readonly changedIFS: boolean;
+  lookup(name: string): string | null | undefined;
+  place(word: ExpandedWord, dialect: ShellDialect): string | null;
+  isDirectory(path: string): boolean;
+}
 
 /** Plan a builtin's success path. A missing directory also has a failure path;
  * unsupported argv makes only directory-dependent placement unknown. */
-export function directoryChange(command: ShellWriteCommand, state: ShellState, effective: ShellState, dialect: ShellDialect) {
+export function directoryChange(command: ShellWriteCommand, state: DirectoryContext, effective: DirectoryContext, dialect: ShellDialect) {
   const unknown = { location: { cwd: null, pwd: null, stack: null }, mayFail: false };
   const args: string[] = [];
   for (const raw of command.rawArgs) {

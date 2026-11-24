@@ -1,6 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { backgroundIndexEntries } from "../../../../src/protocol/client/background-index"
 import { workflowRunWriter } from "../../../../src/orchestration/module-catalog"

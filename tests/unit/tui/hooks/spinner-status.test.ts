@@ -4,7 +4,7 @@ import { Log } from "../../../../src/infra/log"
 import type { ConnectionState, StreamPhase } from "../../../../src/infra/output-blocks"
 import type { SessionNotice } from "../../../../src/infra/session-notice"
 import type { ActiveBackgroundCommandView, StatusView } from "../../../../src/protocol/status-protocol-types"
-import { createSpinnerStatus, type SpinnerStatusSource } from "../../../../src/tui/hooks/create-spinner-status"
+import { createSpinnerStatus, type SpinnerStatusSource } from "../../../../src/tui/components/create-spinner-status"
 
 function statusView(overrides: Partial<StatusView> = {}): StatusView {
   return {

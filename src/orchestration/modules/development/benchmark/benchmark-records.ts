@@ -6,8 +6,7 @@ import { structuredIdentity } from "./content-identity.js";
 import { BenchmarkAccountingSchema } from "./evidence.js";
 import { harnessLintFile, loadHarnessLint } from "./harness-names.js";
 import { createJsonLinesLedger } from "./json-lines.js";
-import { ResearchScoreSchema } from "./research-scoring.js";
-import { ImplementScoreSchema, ReviewScoreSchema, type AgentRunRecord, type AttemptRecord, type AttemptTerminal, type ScoreRecord } from "./run-store.js";
+import { ImplementScoreSchema, ResearchScoreSchema, ReviewScoreSchema, type AgentRunRecord, type AttemptRecord, type AttemptTerminal, type ScoreRecord } from "./run-store.js";
 
 // Benchmark records are the public ledger of scored cells (ARCH-DIRECTORIES-020).
 // Each campaign publishes one append-only file, bench/ab-persona/records/<persona>/<stamp>.jsonl:

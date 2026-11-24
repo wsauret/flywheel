@@ -15,7 +15,7 @@ import * as RealOpenAIModule from "openai";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { mapChatGptAdapterEvents } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/sse.js";
 import type { LLMClient, StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { StoredTokens } from "../../../../../src/infra/auth/openai-auth-types.js";
+import type { StoredTokens } from "../../../../../src/infra/auth/openai/openai-auth-types.js";
 import * as realOpenAiChatgpt from "../../../../../src/orchestration/agent-runtime/llm/openai-chatgpt.js";
 import * as realChatGptAdapterTransport from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/transport.js";
 import { wireResponse } from "./_wire-fixtures.js";

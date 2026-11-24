@@ -73,7 +73,7 @@ export interface SubagentDispatchDeps {
   sessionEventStore?: AsyncEventStateReadSurface
   proactiveCompactionThreshold?: () => number
   captureRuntimeConfig: RunnableAgentOptions["captureRuntimeConfig"]
-  captureProviderConnection?: import("../../../agent-runtime/factory.js").CaptureProviderConnection
+  captureProviderConnection?: import("../../../agent-runtime/model-runtime-capture.js").CaptureProviderConnection
   awaitModelAccessSettled: RunnableAgentOptions["awaitModelAccessSettled"]
   /** The dispatcher's environment resolver: the child states its own directory with it. */
   resolveEnvSnapshot?: RunnableAgentOptions["resolveEnvSnapshot"]

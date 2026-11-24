@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { createComponent, createSignal, ErrorBoundary, onCleanup, onMount, Show, type Component, type JSX } from "solid-js"
-import type { TuiTheme } from "../context/theme/resolve.js"
+import type { TuiTheme } from "../context/theme/tui-theme.js"
 import { useTheme } from "../context/theme.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"

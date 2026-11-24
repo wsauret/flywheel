@@ -5,7 +5,7 @@ import { testRender } from "@opentui/solid"
 import { ThemeProvider } from "../../../../src/tui/context/theme.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
-import type { StatusRow } from "../../../../src/tui/hooks/use-status-modal.js"
+import type { StatusRow } from "../../../../src/tui/modals/status-modal-types.js"
 import { StatusModal } from "../../../../src/tui/modals/status-modal.js"
 
 const theme = resolveTheme(flywheelTheme, "dark")

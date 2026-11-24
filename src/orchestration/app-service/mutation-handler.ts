@@ -43,6 +43,7 @@ export async function dispatchFrontendMutation(
     | { type: "settings.set_workflow_mode" }
     | { type: "settings.set_persistent_processes" }
     | { type: "settings.set_update_auto_install" }
+    | { type: "service.restart" }
     | { type: "command_usage.record" }
     | { type: "model.save_effort" }
     | { type: "model.reset_assignments" }

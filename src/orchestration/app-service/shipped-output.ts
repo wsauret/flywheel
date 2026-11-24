@@ -1,6 +1,6 @@
 import type { ToolStreamingText } from "../../infra/output-blocks.js"
 import type { StreamingToolTextOp } from "../../infra/output/output-block-delta.js"
-import { diffStreamingEntry, diffValues } from "../../infra/output/streaming-text-diff.js"
+import { diffStreamingEntry, diffValues } from "../../infra/output/streaming/streaming-text-diff.js"
 import type { FrontendOutputBlock } from "../../protocol/app-service-types.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import { appendText, editableBlock } from "../../protocol/client/streaming-text-edits.js"

@@ -2,9 +2,9 @@ import type { StoredFact } from "../../infra/event-store-types.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import { recordBackgroundFailure } from "../../infra/operation-log.js"
-import type { SessionEntry } from "../session-store/types.js"
+import type { SessionEntry, SessionStoreReader } from "../session-store/types.js"
 import { entryActivity } from "../session-store/activity.js"
-import { createSessionViewProjection, type ViewedSessionStore } from "./session-view-projection.js"
+import { createSessionViewProjection } from "./session-view-projection.js"
 import { isActiveActivity } from "../../protocol/app-service-types.js"
 import { statusCursor, type StatusView } from "../../protocol/status-protocol-types.js"
 import type { RuntimePosition, RuntimeUiPatch, RuntimeUiPatchInput } from "../../protocol/runtime-ui-protocol-types.js"
@@ -25,7 +25,7 @@ export interface StatusProjection {
 }
 
 export interface StatusProjectionDeps {
-  readonly sessionStore: ViewedSessionStore
+  readonly sessionStore: SessionStoreReader
   readonly publish: (input: RuntimeUiPatchInput) => RuntimeUiPatch
   readonly flushOutput: (sessionId: string) => Promise<void>
   readonly outputPosition: (sessionId: string) => RuntimePosition

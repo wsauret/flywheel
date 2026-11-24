@@ -2,7 +2,7 @@
 import type { TextChunk } from "@opentui/core"
 import { bold as stBold, fg as stFg } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
-import type { ComposerHistoryPopupHook } from "../hooks/create-composer-history-popup.js"
+import type { ComposerHistoryPopupHook } from "./create-composer-history-popup.js"
 import { ComposerPopupList } from "./composer-popup-list.js"
 
 interface ComposerHistoryPopupProps {

@@ -55,10 +55,11 @@ function signedInLine(identity: string): string {
  * each `HOME`'s search list and default keychain, as the real one does), `agy acp --login` (prints agy 1.5.14's
  * sign-in text, takes one pasted line, and on `GOOD_CODE` names `identity()` in its log and exits 0; any other line
  * or the end of its input fails as agy does), and `agy acp` (answers `initialize`, `authenticate`, which names
- * `identity()` in its log, and `logout`, which fails while `logoutFails` is set, and exits at the end of its input).
+ * `identity()` in its log or, with `noDisplay`, refuses as agy 1.5.14 does on a host with no display, and `logout`,
+ * which fails while `logoutFails` is set, and exits at the end of its input).
  * `beforeLogout` runs when a logout request arrives. Every launch, ACP method, and pasted line is recorded.
  */
-export function fakeAgy(options: { identity: string; logoutFails?: boolean; keyringLine?: string }) {
+export function fakeAgy(options: { identity: string; logoutFails?: boolean; keyringLine?: string; noDisplay?: boolean }) {
   const launches: FakeLaunch[] = []
   const methods: { readonly method: string; readonly home: string | undefined; readonly params: unknown }[] = []
   const pasted: string[] = []
@@ -148,6 +149,10 @@ export function fakeAgy(options: { identity: string; logoutFails?: boolean; keyr
               reply({ id: request.id, result: { protocolVersion: 1, agentCapabilities: { auth: { logout: {} } }, authMethods: [{ id: "oauth-personal", name: "Log in with Google" }], agentInfo: { name: "Antigravity ACP Server", version: "1.5.14" } } })
               return
             case "authenticate":
+              if (options.noDisplay === true) {
+                reply({ id: request.id, error: { code: -32603, message: "No browser is available here (no graphical display is available to open a browser). Run `agy acp --login` in a terminal on this machine, then retry; or use a Gemini API key." } })
+                return
+              }
               writeLog(signedInLine(options.identity))
               reply({ id: request.id, result: {} })
               return

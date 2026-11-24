@@ -39,5 +39,25 @@ const entry = runningSourceSnapshot() === undefined
 // The CLI loads after the native environment is staged, from the tree this
 // process runs.
 const scripts = entry === undefined || entry.kind === "failed" ? import.meta.dir : join(entry.root, "scripts");
-const source: { readonly runSourceCli: typeof runSourceCli } = await import(join(scripts, "source-cli.ts"));
-await source.runSourceCli(entry);
+try {
+  const source: { readonly runSourceCli: typeof runSourceCli } = await import(join(scripts, "source-cli.ts"));
+  await source.runSourceCli(entry);
+} catch (error) {
+  // A failure that rejects here never reached the CLI's own fatal path: the
+  // snapshot's CLI could not be imported, such as source with a syntax
+  // error. A service start refuses that snapshot here, from this entry's own
+  // modules, and exits to be restarted, so its manager's next start runs the
+  // proved snapshot (PI-UPDATES-009). Everything else fails as it did.
+  if (entry !== undefined && entry.kind !== "failed") {
+    const [{ SERVE_EXIT, startsServiceProcess }, { refuseFailedServiceStart }, { errorMessage }] = await Promise.all([
+      import("../src/cli/account-service/serve-contract.js"),
+      import("../src/infra/source-snapshot.js"),
+      import("../src/infra/error-message.js"),
+    ]);
+    if (startsServiceProcess(process.argv) && refuseFailedServiceStart(entry, errorMessage(error))) {
+      process.stderr.write(`flywheel: failed to start: ${errorMessage(error)}\n`);
+      process.exit(SERVE_EXIT.restart);
+    }
+  }
+  throw error;
+}

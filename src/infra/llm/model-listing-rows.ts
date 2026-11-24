@@ -1,11 +1,13 @@
 /** Catalog row joining for provider model listing: the models.dev baseline, saved and discovered rows, and their model maps. */
 import { createHash } from "node:crypto";
 import { CatalogDiscoveryDiagnosticAccumulator, type CatalogDiscoveryDiagnostics } from "./model-catalog-diagnostics.js";
-import { normalizeResolvedCatalogRows, offeringTransport, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogJsonValue, type CatalogModelOffering, type CatalogSourceRow, type ModelCatalogContribution, type OfferingTransport, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
+import { normalizeResolvedCatalogRows, type CatalogDiscovery, type CatalogSourceRow, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
+import { offeringTransport, type CatalogCanonicalRow } from "../model-catalog-rows.js";
+import type { CatalogJsonValue, CatalogModelOffering, OfferingTransport } from "../catalog-model-offering.js";
 import type { ModelInfo, ModelsClient, ProviderModelInfoField } from "./models.js";
 import { narrowContextWindow, preferCatalogModelInfoFields, providerModelInfo } from "./provider-model-info.js";
-import type { SavedModelRefusals } from "../auth/provider-model-catalog-store.js";
-import { authoredCatalogModelId, canonicalCatalogModelId, canonicalModelId, isMovingModelAlias, preferredWireModelId, type CatalogDataUse } from "./model-id.js";
+import type { SavedModelRefusals } from "../auth/provider-models/provider-model-catalog-store.js";
+import { authoredCatalogModelId, canonicalCatalogModelId, canonicalModelId, isMovingModelAlias, preferredWireModelId, type CatalogDataUse } from "../model-id.js";
 import { canonicalize } from "../canonical-name.js";
 
 const STATIC_OFFERING_ORDER: readonly CatalogDataUse[] = ["standard", "contributor"];

@@ -1,7 +1,7 @@
 import type { RuntimeQueryResult, SessionRow } from "../../protocol/app-service-types.js"
 import { sessionDetailCursor, type RuntimeSessionDetailView } from "../../protocol/session-detail-protocol-types.js"
 import type { RuntimeUiPatch } from "../../protocol/runtime-ui-protocol-types.js"
-import { createAdmissionEdges } from "../../protocol/client/session-controls.js"
+import { isInterruptible } from "../../protocol/client/session-controls.js"
 import type { StatusView } from "../../protocol/status-protocol-types.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { parseProjectionFact } from "../../infra/event-projection.js"
@@ -41,6 +41,35 @@ type TotalsWait = "waiting" | "waited"
 /** Why a held session is read only at the backoff: its read failed, or its
  *  row kept its totals loading after the wait for them settled. */
 type RetryCause = "read_failed" | "totals_loading"
+
+/** Says when a session's admitted actions, read once from its detail, are
+ *  stale. The status stream draws the line: a session that stops being
+ *  interruptible has ended its turn, and the runtime reports that only
+ *  after the turn-end record is durable, so a read then sees what the
+ *  record admits (Resume after an interrupt). A session that becomes
+ *  interruptible admits Interrupt again, and a status that goes away (a
+ *  child settled) leaves the live row behind. The first status a session
+ *  reports is a baseline, not an edge. */
+interface AdmissionEdges {
+  /** Records the session's status and answers whether its admitted actions must be read again. */
+  observe(sessionId: string, status: StatusView | undefined): boolean
+}
+
+function createAdmissionEdges(): AdmissionEdges {
+  const interruptible = new Map<string, boolean>()
+  return {
+    observe(sessionId, status) {
+      const prior = interruptible.get(sessionId)
+      if (status === undefined) {
+        interruptible.delete(sessionId)
+        return prior !== undefined
+      }
+      const next = isInterruptible(status)
+      interruptible.set(sessionId, next)
+      return prior !== undefined && prior !== next
+    },
+  }
+}
 
 /** The account's one publisher of session detail rows (C5). A session is held
  *  while at least one holder shows it or reads it, and the last hold to end

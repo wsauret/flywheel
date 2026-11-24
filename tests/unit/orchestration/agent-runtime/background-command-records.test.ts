@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 
 import type { BackgroundCommandRecord } from "../../../../src/infra/runtime-fact-types.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types.js";
 import { startManagedCommand } from "../../../../src/orchestration/agent-runtime/tools/managed-command.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { makeMockOwnedProcess, type OwnedExit } from "./tools/_bash-fixtures.js";

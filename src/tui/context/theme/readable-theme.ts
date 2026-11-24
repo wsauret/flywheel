@@ -1,7 +1,7 @@
 import { RGBA } from "@opentui/core"
 import { contrastRatio, correctContrast, TEXT_MINIMUM_CONTRAST } from "./color-contrast.js"
 import { oklchToRgb, rgbToOklch } from "./oklch.js"
-import type { TuiTheme } from "./resolve.js"
+import type { TuiTheme } from "./tui-theme.js"
 
 const UI_SURFACES = ["background", "backgroundRaised", "backgroundPanel", "backgroundElement", "backgroundMenu"] as const
 const DIFF_SURFACES = ["diffAddedBg", "diffRemovedBg", "diffContextBg", "diffAddedLineNumberBg", "diffRemovedLineNumberBg"] as const

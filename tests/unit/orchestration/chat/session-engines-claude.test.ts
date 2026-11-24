@@ -3,7 +3,7 @@ import { providerModelInfo } from "../../../../src/infra/llm/provider-model-info
 import { createSessionEngines } from "../../../../src/orchestration/chat/session-engines.js"
 import type { ResolvedRole, ResolvedRoles } from "../../../../src/orchestration/config/roles.js"
 import type { AccessProviderBuild } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
-import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/factory.js"
+import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/model-runtime-capture.js"
 import { FUNCTION_TOOL_PRESENTATION, type ProviderSessionLifetime } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { prepareRunRequest } from "../../../../src/orchestration/agent-runtime/request-preparation.js"
 import type { ProviderSession } from "../../../../src/orchestration/agent-runtime/provider-runtime-cache.js"

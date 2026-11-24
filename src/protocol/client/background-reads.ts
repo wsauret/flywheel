@@ -1,4 +1,4 @@
-import { reconnectBackoffMs } from "./connection.js"
+import { reconnectBackoffMs } from "../reconnect-backoff.js"
 import { explainedByConnection, lostWithLane } from "./connection-failures.js"
 import type { RuntimeClientDiagnostic } from "../runtime-client-diagnostics.js"
 

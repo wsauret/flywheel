@@ -1,6 +1,6 @@
 import { RGBA, StyledText, fg as stFg, type TextChunk } from "@opentui/core"
 import { blendToward } from "../context/theme/color-contrast.js"
-import type { TuiTheme } from "../context/theme/resolve.js"
+import type { TuiTheme } from "../context/theme/tui-theme.js"
 
 const MODEL_MODAL_COST_COLUMN_WIDTH = 17
 const COST_MARKER = "●"

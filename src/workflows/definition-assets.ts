@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
-import { workflowAssets as manifestWorkflowAssets } from "./agents/manifest.js";
+import { workflowAssets as manifestWorkflowAssets } from "./asset-manifest.js";
 
 /** Where a definition file lives. The core root is Flywheel's own workflow
  *  folder, `src/workflows/workflows/`, in a source run and in the compiled

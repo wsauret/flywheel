@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { Schema } from "effect";
-import { canonicalModelId } from "../../src/infra/llm/model-id.js";
+import { canonicalModelId } from "../../src/infra/model-id.js";
 import { RuntimeSessionModelPlanResultSchema } from "../../src/protocol/model-assignment-protocol-schemas.js";
 import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { codingRedaction, type JudgeJob } from "./block-judge.js";

@@ -24,6 +24,9 @@ import { personaRoleIds } from "../../workflows/definition-registry.js"
 import type { PersonaRegistryRevision } from "../../workflows/agents/registry.js"
 import type { ConfigValidity } from "../config/writer.js"
 import type {
+  EffortOptionRow,
+  ModelAssignmentRow,
+  ModelOptionRow,
   ModelSelectionSlot,
   RuntimeEffortOptionsQuery,
   RuntimeGlobalDefaultRolesResult,
@@ -40,9 +43,9 @@ const DEFAULTS_SCOPE = { kind: "defaults" } as const
 
 
 export interface RuntimeModelAssignmentService {
-  loadAssignments(query: RuntimeModelAssignmentsQuery): ReturnType<ReturnType<typeof createModelAssignmentController>["loadAssignments"]>
-  listModelOptions(query: RuntimeModelOptionsQuery): ReturnType<ReturnType<typeof createModelAssignmentController>["listModelOptions"]>
-  listEffortOptions(query: RuntimeEffortOptionsQuery): ReturnType<ReturnType<typeof createModelAssignmentController>["listEffortOptions"]>
+  loadAssignments(query: RuntimeModelAssignmentsQuery): Promise<readonly ModelAssignmentRow[]>
+  listModelOptions(query: RuntimeModelOptionsQuery): Promise<readonly ModelOptionRow[]>
+  listEffortOptions(query: RuntimeEffortOptionsQuery): Promise<readonly EffortOptionRow[]>
   saveEffort(command: RuntimeSaveModelEffortMutation): Promise<RuntimeSaveModelEffortResult>
   resetDefaults(command: RuntimeResetModelAssignmentsMutation): Promise<RuntimeResetModelAssignmentsResult>
   globalDefaultRoles(): Promise<RuntimeGlobalDefaultRolesResult>

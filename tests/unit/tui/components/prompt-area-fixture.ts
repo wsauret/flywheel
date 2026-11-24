@@ -2,14 +2,15 @@ import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
 import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
 import type { LocalRecall } from "../../../../src/protocol/client/chat-submissions.js"
 import type { ComposerHandle, ComposerProps } from "../../../../src/tui/components/composer-types.js"
-import type { DraftCache } from "../../../../src/tui/hooks/create-draft-cache.js"
-import type { PromptHistoryHook } from "../../../../src/tui/hooks/create-composer-history.js"
-import type { SpinnerStatusSource } from "../../../../src/tui/hooks/create-spinner-status.js"
+import type { DraftCache } from "../../../../src/tui/components/create-draft-cache.js"
+import type { PromptHistoryHook } from "../../../../src/tui/components/create-composer-history.js"
+import type { SpinnerStatusSource } from "../../../../src/tui/components/create-spinner-status.js"
 
 const { testRender } = await import("@opentui/solid")
 const { createComponent } = await import("solid-js/web")
 const { Composer } = await import("../../../../src/tui/components/composer.js")
 const { QuestionInputProvider } = await import("../../../../src/tui/components/question-input.js")
+const { QuestionDock } = await import("../../../../src/tui/question-dock.js")
 const { ThemeProvider } = await import("../../../../src/tui/context/theme.js")
 const { TickPoolProvider } = await import("../../../../src/tui/context/tick-pool-context.js")
 
@@ -102,6 +103,7 @@ export async function mountPrompt(options: MountOptions) {
                   ...(options.onRecallLocal ? { onRecallLocal: options.onRecallLocal } : {}),
                   onAnswerQuestion: async () => true,
                   onCancelQuestion: async () => true,
+                  questionDock: QuestionDock,
                   draftCache: options.draftCache,
                   onOpenSessions: () => {},
                   onModuleAction: () => {},

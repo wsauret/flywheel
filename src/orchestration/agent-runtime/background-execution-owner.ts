@@ -47,7 +47,7 @@ import { Log } from "../../infra/log.js";
 import type { OwnedProcess } from "../../infra/owned-subprocess.js";
 import type { BackgroundWorkRegistry } from "./background-work.js";
 import type { CommandHandoverHost } from "./command-handover.js";
-import { createShellRuntime } from "./tools/shell-runtime.js";
+import { createShellRuntime } from "./shell-runtime.js";
 import type { ShellRuntimeClient } from "./tools/shell-runtime-types.js";
 
 const log = Log.create({ service: "background-execution-owner" });

@@ -12,7 +12,7 @@ import {
   scopeChromeColor,
   scopeContextLine,
   scopeSaveToast,
-} from "../../../../src/tui/hooks/use-model-modal-scope.js"
+} from "../../../../src/tui/modals/model-modal-scope.js"
 import { fakeRow, theme } from "./_model-modal-fixtures"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"

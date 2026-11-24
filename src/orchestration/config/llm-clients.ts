@@ -9,7 +9,7 @@ import type { FirstPartyModuleComposition } from "../modules.js";
  */
 
 import { captureSubscriptionCredentials } from "../../infra/auth/auth-context.js";
-import { loadAuthStoreWithDiagnostics } from "../../infra/auth/auth-store.js";
+import { loadAuthStoreWithDiagnostics } from "../../infra/auth/store/auth-store.js";
 import { createModelListingClient, type ModelListingClient } from "../../infra/llm/model-listing.js";
 import { createModelsClient, type ModelsClient } from "../../infra/llm/models.js";
 import { modelsSnapshotFile } from "../../infra/paths.js";

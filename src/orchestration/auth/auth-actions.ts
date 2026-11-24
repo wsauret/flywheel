@@ -9,7 +9,7 @@
 import type { AuthAccountAttention, AuthProviderAttention } from "../../protocol/auth-status-protocol-types.js";
 import { Redacted } from "effect";
 import { oauthCredentialDto, resolveAuthContext, runtimeCredential, type AuthContext } from "../../infra/auth/auth-context.js";
-import type { AuthProfileAccess } from "../../infra/auth/auth-profile-store.js";
+import type { AuthProfileAccess } from "../../infra/auth/store/auth-profile-store.js";
 import type { KeyResolver } from "../../infra/auth/resolve-key.js";
 import {
   appendCredentialInstanceWithReceipt,
@@ -25,17 +25,18 @@ import {
   setMeteredCredentialWithReceipt,
   type AuthStoreMutationReceipt,
   type CredentialCollectionReview,
-} from "../../infra/auth/auth-store-mutations.js";
-import { loadAuthStoreWithDiagnostics, storedApiKeyHint, type AuthStoreCondition, type AuthStoreDiagnostic, type AuthStoreLoadResult } from "../../infra/auth/auth-store.js";
-import { isCredentialCollection, type AuthStore, type Credential, type CredentialInstance, type CredentialProviderId } from "../../infra/auth/auth-store-types.js";
+} from "../../infra/auth/store/auth-store-mutations.js";
+import { loadAuthStoreWithDiagnostics, storedApiKeyHint, type AuthStoreCondition, type AuthStoreDiagnostic, type AuthStoreLoadResult } from "../../infra/auth/store/auth-store.js";
+import { isCredentialCollection, type AuthStore, type Credential, type CredentialInstance, type CredentialProviderId } from "../../infra/auth/store/auth-store-types.js";
 import { isWebProviderId } from "../../infra/auth/web-providers.js";
-import { storedTokensToCredential } from "../../infra/auth/openai-auth-types.js";
+import { storedTokensToCredential } from "../../infra/auth/openai/openai-auth-types.js";
 import { FREE_PLAN_REPLACE_QUESTION, isFreePlan } from "../../infra/llm/free-plan-accounts.js";
 import type { SubscriptionUsageReader, SubscriptionUsageReport } from "../../infra/llm/subscription-usage.js";
-import { createUsageAuthority, type SubscriptionUsageSnapshot, type UsageAuthority } from "../../infra/llm/usage-authority.js";
+import { createUsageAuthority, type UsageAuthority } from "../../infra/llm/usage-authority.js";
+import type { SubscriptionUsageSnapshot } from "../../infra/llm/subscription-usage-store-codec.js";
 import { keptFreePlanMessage } from "../../protocol/client/auth-login.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { apiKeyRejectionReason, credentialIdOf, isExternalLoginDefinition, type AccessProviderAccountIdentity, type AccessProviderDefinition, type BrowserLoginPorts, type DeviceCodeLoginPorts, type ExternalLoginDefinition, type OAuthLoginResult } from "../../infra/llm/access-provider.js";
+import { apiKeyRejectionReason, type AccessProviderDefinition, type BrowserLoginPorts, type DeviceCodeLoginPorts, type ExternalLoginDefinition, type OAuthLoginResult } from "../../infra/llm/access-provider.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import { Log } from "../../infra/log.js";
 import { customProviderRejections } from "../../infra/llm/custom-provider-registry.js";
@@ -48,6 +49,7 @@ import { customProviderRejections } from "../../infra/llm/custom-provider-regist
 // off. Login lookup describes a flow; CLI and runtime callers admit the provider
 // through their effective selection before they invoke it.
 import { installedAccessProviderDefinitions, installedAccessProviderSelection, installedCredentialProviderIds, installedCredentialSlotClassifier, installedUsageReader, installedWebAuthProviderDefinitions } from "../credential-provider-modules.js";
+import { credentialIdOf, isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../infra/auth/provider-account.js";
 const destination = (authDir: string, writeAccess?: AuthProfileAccess) => writeAccess ?? authDir;
 const log = Log.create({ service: "auth-actions" });
 

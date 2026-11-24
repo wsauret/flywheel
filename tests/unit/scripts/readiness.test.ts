@@ -107,7 +107,7 @@ const statusAnswering = (line: string): ReadinessDependencies["run"] => (command
 const check = (outcome: ReturnType<typeof orchestrate>["outcome"], name: string) => outcome.checks.find((entry) => entry.name === name);
 const LIVE_TIER = [BUN, "run", "test:integration:claude-engine"];
 const hostStatus = (home: string) => [BUN, "run", "scripts/readiness-login.ts", "--status", home];
-const linuxContainer = (step: "status" | "live") => (candidate: string) => releaseLoginContainerCommand({ dockerPlatform: "linux/arm64", bunVersion: "1.3.14", candidate, liveAuthProfile: PROFILE, step }).map((part, index) => index === 0 ? "/docker" : part);
+const linuxContainer = (step: "status" | "live", engine: "claude" | "antigravity" = "claude") => (candidate: string) => releaseLoginContainerCommand({ dockerPlatform: "linux/arm64", bunVersion: "1.3.14", candidate, liveAuthProfile: PROFILE, engine, step }).map((part, index) => index === 0 ? "/docker" : part);
 const linuxStatus = linuxContainer("status");
 const linuxLive = linuxContainer("live");
 const LINUX_LIVE = linuxLive("/scratch/candidate.tar");
@@ -208,7 +208,7 @@ describe("readiness orchestration", () => {
       [BUN, "run", HARNESS, "--archive", join(ROOT, "dist", "flywheel-win32-x64.tar.gz"), "--target", "win32-x64", "--expected-version", "0.0.8", "--expected-antigravity-version", "1.5.14"],
     ]);
     expect(outcome.exitCode).toBe(0);
-    expect(outcome.checks.filter(({ status }) => status === "skip").map(({ name }) => name)).toEqual(["Claude engine live qualification", ANTIGRAVITY_QUALIFICATION, "agent-observed live TUI UAT"]);
+    expect(outcome.checks.filter(({ status }) => status === "skip").map(({ name }) => name)).toEqual(["Claude engine live qualification", ANTIGRAVITY_QUALIFICATION, "Antigravity engine live qualification", "agent-observed live TUI UAT"]);
     expect(outcome.checks.find(({ name }) => name === ANTIGRAVITY_QUALIFICATION)?.detail).toBe(`${RELEASE_TAG} already shipped the Antigravity CLI 1.5.14`);
     expect(outcome.checks.find(({ name }) => name === "Claude engine live qualification")?.detail).toBe(`${RELEASE_TAG} already shipped ${SDK} 0.3.296`);
   });
@@ -321,7 +321,7 @@ describe("readiness orchestration", () => {
   test("on an Antigravity CLI bump, a Mac runs its fake-host tier in a Linux container of the candidate after the integration suite, and every host runs it in the no-api suite", () => {
     const { commands, outcome } = orchestrate("darwin", "arm64", {}, { agyShipped: "1.5.13" });
     const integration = commands.findIndex((command) => command.includes("test:integration:no-api"));
-    const [candidate] = candidatesOf(commands);
+    const [, candidate] = candidatesOf(commands);
     expect(commands.slice(integration + 1, integration + 4)).toEqual([["/docker", "info"], archiveTo(candidate!), antigravityFakeHostContainerCommand({ dockerPlatform: "linux/arm64", bunVersion: "1.3.14", candidate: candidate! }).map((part, index) => index === 0 ? "/docker" : part)]);
     // The guarded runner gives the tier a private TMPDIR and fails on leftovers, which a bare `bun test` skips.
     expect(commands[integration + 3]?.at(-1)).toEndWith("&& bun run test:integration:antigravity-engine");
@@ -339,6 +339,37 @@ describe("readiness orchestration", () => {
 
     const noDocker = orchestrate("darwin", "arm64", { which: (name) => name === "tmux" ? "/tmux" : undefined }, { agyShipped: "1.5.13" });
     expect(check(noDocker.outcome, `linux-arm64 ${ANTIGRAVITY_QUALIFICATION}`)).toEqual({ name: `linux-arm64 ${ANTIGRAVITY_QUALIFICATION}`, status: "blocked", detail: "the Antigravity CLI 1.5.13-1 in v0.0.12 is now 1.5.14-1; Docker CLI is unavailable; install Docker Desktop" });
+  });
+
+  test("on an Antigravity CLI bump, reads each host's Google Antigravity login in the same release login homes before the long gates, and runs the live tier there after the fake-host tier", () => {
+    const { commands, environments, outcome } = orchestrate("darwin", "arm64", { run: statusAnswering("held\n") }, { agyShipped: "1.5.13" });
+    const [statusCandidate, , liveCandidate] = candidatesOf(commands);
+    const contract = commands.findIndex((command) => command.includes("check:commits"));
+    expect(commands.slice(contract + 1, contract + 9)).toEqual([
+      ...ENGINE_BUMP_READS, ...ANTIGRAVITY_BUMP_READS,
+      [...hostStatus(ACCOUNT_HOME), "antigravity"], archiveTo(statusCandidate!), linuxContainer("status", "antigravity")(statusCandidate!),
+    ]);
+    // The status line comes from the account records only, so the container reads the volume and runs no agy.
+    expect(linuxContainer("status", "antigravity")(statusCandidate!).at(-1)).not.toContain("apt-get");
+    const fakeHost = commands.findIndex((command) => command.at(-1)?.endsWith("test:integration:antigravity-engine") === true);
+    const host = [BUN, "run", "test:integration:antigravity"];
+    expect(commands.slice(fakeHost + 1, fakeHost + 5)).toEqual([host, ["/docker", "info"], archiveTo(liveCandidate!), linuxContainer("live", "antigravity")(liveCandidate!)]);
+    expect(commands[fakeHost + 4]?.at(-1)).toStartWith("apt-get update -qq && apt-get install -qq -y --no-install-recommends git procps && ");
+    expect(environments.has(host.join(" "))).toBe(false);
+    expect(check(outcome, "Antigravity engine live login")).toEqual({ name: "Antigravity engine live login", status: "pass", detail: `the account home ${ACCOUNT_HOME} holds a Google Antigravity login in the auth profile "Live"; the engine keeps its token, and the live tier decides whether it still signs in` });
+    expect(check(outcome, "linux-arm64 Antigravity engine live qualification")?.status).toBe("pass");
+    expect(check(outcome, "Antigravity engine live qualification")?.status).toBe("pass");
+    expect(outcome.exitCode).toBe(0);
+
+    // Windows reads and runs on the release login home that the setting names, as the Claude engine tier does.
+    const home = resolve("/users/person/AppData/Local/FlywheelReadiness");
+    const windows = orchestrate("win32", "x64", { run: statusAnswering("absent\n") }, { agyShipped: "1.5.13", releaseLoginHome: home });
+    expect(windows.commands).toContainEqual([...hostStatus(home), "antigravity"]);
+    expect(windows.commands).not.toContainEqual([BUN, "run", "test:integration:antigravity"]);
+    expect(check(windows.outcome, "Antigravity engine live qualification")?.status).toBe("blocked");
+    expect(check(windows.outcome, "Antigravity engine live qualification")?.detail).toEndWith(`the release login home ${home} holds no Google Antigravity login in the auth profile "Live": run \`bun run readiness:login windows antigravity\` (run it on the release machine, with FLYWHEEL_READINESS_WINDOWS_HOST naming the SSH host of this machine); it logs in to %LOCALAPPDATA%\\FlywheelReadiness of the real profile, so FLYWHEEL_READINESS_CLAUDE_HOME must name that folder`);
+    const present = orchestrate("win32", "x64", { run: statusAnswering("held\n") }, { agyShipped: "1.5.13", releaseLoginHome: home });
+    expect(present.environments.get([BUN, "run", "test:integration:antigravity"].join(" "))).toEqual({ HOME: home });
   });
 
   test("reports the Claude engine pin's freshness, and an unanswered registry as blocked", () => {

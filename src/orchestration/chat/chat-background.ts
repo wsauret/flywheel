@@ -4,7 +4,7 @@ import type { RuntimeEvent } from "../../infra/runtime-event-types.js"
 import { createBackgroundExecutionOwner } from "../agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../agent-runtime/background-work.js"
 import { createChatNotificationDelivery } from "../runner/background-notification-delivery.js"
-import type { ChatSessionDeps } from "./session.js"
+import type { ChatSessionDeps } from "./types.js"
 import type { ChatTurnMailbox } from "./turn-mailbox.js"
 
 /** A chat's background work: subagent and workflow dispatches and

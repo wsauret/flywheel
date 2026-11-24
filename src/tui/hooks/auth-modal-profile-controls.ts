@@ -5,7 +5,7 @@ import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import { createProfileEdit, renameProfileEdit } from "./auth-profile-edits.js"
 import type { AuthProfileScopeLabel } from "./auth-profile-selection.js"
-import type { AuthRow, AuthView } from "./auth-modal-options.js"
+import type { AuthRow, AuthView } from "../modals/auth-modal-options.js"
 import type { ShellServices } from "./shell-state.js"
 
 interface AuthModalProfileControlDeps {

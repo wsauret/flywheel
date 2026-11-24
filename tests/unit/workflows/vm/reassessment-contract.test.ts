@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
 import type { Attempt, LogicalNode } from "../../../../src/workflows/vm/graph-types.js";
-import { compileReassessmentOutput, compileRetiredReassessmentOutput } from "../../../../src/workflows/vm/reassessment-contract.js";
+import { compileReassessmentOutput, compileRetiredReassessmentOutput } from "../../../../src/workflows/reassessment-contract.js";
 import { reassessesRetiredFor, reassessmentIssues, reassessmentProposal, type ReassessmentControl } from "../../../../src/workflows/vm/reassessment.js";
 import { loadBriefs } from "../../../../src/workflows/brief.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";

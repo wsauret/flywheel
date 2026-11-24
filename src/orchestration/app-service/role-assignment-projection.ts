@@ -5,7 +5,7 @@ import type { RoleAssignmentView, RuntimeRoleAssignments } from "../../protocol/
 import { activeServingSeat } from "../../protocol/active-serving-seat.js"
 import { parseBriefRoleId } from "../../protocol/brief-role-id.js"
 import type { AgentPersonas } from "../workflow-host/frontend-attempts.js"
-import type { ProviderConnectionCapture } from "../agent-runtime/factory.js"
+import type { ProviderConnectionCapture } from "../agent-runtime/model-runtime-capture.js"
 import { resolveSessionRoles } from "../config/session-role-resolver.js"
 import { childServingSeat, roleSlot, type BriefScope } from "../config/role-selection.js"
 

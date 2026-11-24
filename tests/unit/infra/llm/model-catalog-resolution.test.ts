@@ -1,13 +1,16 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { DebugLog } from "../../../../src/infra/debug-log.js";
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
-import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
-import { groupedOfferingIndex, normalizeResolvedCatalogRows, recordUnresolvedModelRelationships, resolveModelCatalog, validateCanonicalRows, type CatalogDiscovery, type CatalogJsonValue, type CatalogSourceRow, type ModelCatalogContribution, type ResolvedModelCatalog } from "../../../../src/infra/llm/model-catalog-resolution.js";
+import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
+import { groupedOfferingIndex, normalizeResolvedCatalogRows, recordUnresolvedModelRelationships, resolveModelCatalog, type CatalogDiscovery, type CatalogSourceRow, type ModelCatalogContribution, type ResolvedModelCatalog } from "../../../../src/infra/llm/model-catalog-resolution.js";
+import { validateCanonicalRows } from "../../../../src/infra/model-catalog-rows.js";
+import type { CatalogJsonValue } from "../../../../src/infra/catalog-model-offering.js";
 import { createModelListingClient, fetchCatalog } from "../../../../src/infra/llm/model-listing.js";
 import { providerModelInfo } from "../../../../src/infra/llm/provider-model-info.js";
 import { canonicalTestRow, TEST_CATALOG_LIMITS } from "../../../helpers/model-catalog-fixtures.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { makeModelsClient, modelInfo } from "../../../helpers/model-tier-fixtures.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 
 const contribution: ModelCatalogContribution = {
   limits: TEST_CATALOG_LIMITS,

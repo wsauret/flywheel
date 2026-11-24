@@ -1,5 +1,5 @@
 import type { RenderContext, ScrollBoxRenderable } from "@opentui/core"
-import { createOutputScrollController, type OutputScrollController, type OutputScrollControllerDeps } from "../../src/tui/hooks/create-output-scroll-controller.js"
+import { createOutputScrollController, type OutputScrollController, type OutputScrollControllerDeps } from "../../src/tui/output-window/create-output-scroll-controller.js"
 import type { TranscriptSnapshot } from "../../src/tui/transcript-store/output-transcript-cache-types.js"
 import type { TranscriptWindowProjection } from "../../src/tui/output-window/output-window-projection.js"
 import type { TranscriptLayoutSlot } from "../../src/tui/output-window/output-window-scroll.js"

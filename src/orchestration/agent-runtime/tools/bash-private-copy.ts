@@ -18,9 +18,11 @@ import { Log } from "../../../infra/log.js";
 import type { OwnedCommandRunner } from "../../../infra/owned-command.js";
 import type { MutationGuardKind } from "./bash-mutation-guard.js";
 import { readRepositoryRefs, readReftableStack } from "./bash-copy-refs.js";
-import { digestStateEntries, readCopyRepositoryState, readIndexDigest, type RepositoryState, type StateDigest } from "./bash-copy-repository-state.js";
+import { readCopyRepositoryState, readIndexDigest, type RepositoryState } from "./bash-copy-repository-state.js";
+import { digestStateEntries, type StateDigest } from "./bash-copy-state-digest.js";
 import { PrivateCopyStateDropped, type PrivateCopyJobs } from "./bash-private-copy-jobs.js";
 import { PRIVATE_COPY_RECORD, type RecordedCopy } from "./bash-private-copy-record.js";
+import { firstReplaced, homeChain } from "./bash-private-copy-home.js";
 import type { CopyGeometry, PrivateCopyPool, ReusableCopy } from "./bash-private-copy-pool.js";
 import { rootAtPathBoundary, type CopyRecordRead, type CopyTopologyRequest, type ScannedChanges } from "./bash-private-copy-tree.js";
 import { BEFORE_IMAGE, type SessionFolderSnapshot } from "./bash-session-observation.js";
@@ -280,32 +282,6 @@ async function intactHome(copy: ReusableCopy, pool: PrivateCopyPool): Promise<bo
   return false;
 }
 
-/** The entries of a home `<parent>/mutations/<id>` that Flywheel creates: the
- *  directory of the copies and the home. A command can replace either, by a
- *  link, a junction, or a file. The parent is the session scratch directory
- *  or the system temporary directory, which can be a person's own link, so
- *  it is never checked or removed. */
-function homeChain(home: string): readonly [mutations: string, home: string] {
-  return [dirname(home), home];
-}
-
-/** The first of `paths`, in order, that is not a real directory. Reads with
- *  `lstat` only, so a link or junction is never followed, and a path below a
- *  replaced one is never read. A path that cannot be read counts as replaced. */
-function firstReplaced(paths: readonly string[]): { readonly path: string; readonly kind: "link" | "other" | "missing" } | undefined {
-  for (const path of paths) {
-    let stats;
-    try {
-      stats = lstatSync(path, { throwIfNoEntry: false });
-    } catch {
-      return { path, kind: "other" };
-    }
-    if (stats?.isDirectory()) continue;
-    return { path, kind: stats?.isSymbolicLink() ? "link" : stats ? "other" : "missing" };
-  }
-  return undefined;
-}
-
 /** Returns a reused home to what a new take finds: no record, no entry beside
  *  `tree`, `base`, the session image, and a held private Git directory without
  *  its index, and
@@ -421,35 +397,6 @@ export function pathInCopy(copy: PrivateProjectCopy, path: string): string {
 /** Rewrites each literal occurrence of the real project root that ends at a path boundary to the copy root. */
 export function rewriteProjectRoot(copy: PrivateProjectCopy, command: string): string {
   return command.replace(rootAtPathBoundary(copy.realRoot), () => copy.copyRoot);
-}
-
-/** Deletes the copy off the command's critical path. Links are removed, never
- *  followed. The record goes first: a home without one is a copy no landing
- *  can read, which the idle scratch sweep removes within an hour, so a copy
- *  whose files cannot be removed now, such as a full clone on Windows with a
- *  file still open, never waits for the sweep's large-entry rule. Before each
- *  removal the home's chain (`homeChain`) is checked: an entry of it that is
- *  no longer a real directory is removed itself, never joined through, and
- *  the removal ends there. The returned promise settles when the removal
- *  ended; it never rejects. Only the pool that owns the copy calls this
- *  (`PrivateCopyPool.discard`), so its close waits for the removal. */
-export function discardPrivateCopy(copy: Pick<PrivateProjectCopy, "home">): Promise<void> {
-  const { home } = copy;
-  return (async () => {
-    for (const path of [join(home, PRIVATE_COPY_RECORD), home]) {
-      const replaced = firstReplaced(homeChain(home));
-      if (replaced?.kind === "missing") return;
-      if (replaced) {
-        log.warn("private copy removal met a replaced directory; only the replacement is removed", { kind: replaced.kind });
-        await rm(replaced.path, { force: true, maxRetries: 3 });
-        return;
-      }
-      await rm(path, { recursive: path === home, force: true, maxRetries: 3 });
-    }
-  })()
-    .catch((error: unknown) => {
-      log.warn("private copy removal failed; the scratch sweep retries it", { home: copy.home, error: error instanceof Error ? error.message : String(error) });
-    });
 }
 
 /** Whether `projectRoot` or a directory above it holds a `.git` entry. Git's

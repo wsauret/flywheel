@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
 
 describe("runtime terminal text projection", () => {

@@ -12,6 +12,11 @@ import type { ToolRenderEntry } from "./tool-entry-helpers.js"
  *  row of its own, a visible thought inside the stretch is a row between runs,
  *  and queued messages are pinned under the timeline instead of drawn in it. */
 
+/** Rows mounted and acquired on either side of the viewport before they
+ *  enter it: the transcript window mounts its rows by this margin, and a
+ *  block that loads content on demand acquires it within the same margin. */
+export const OVERSCAN_ROWS = 120
+
 /** Display-only fold of consecutive same-category calls inside one stretch,
  *  synthesized per frame. TUI-local view vocabulary, not a block: it never
  *  travels the wire, has no durable identity, and its status derives from its

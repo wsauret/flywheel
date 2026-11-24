@@ -5,7 +5,7 @@ import { join } from "node:path";
 import {
   enforceTurnBudget,
   type TurnBudgetEntry,
-} from "../../../../../src/orchestration/agent-runtime/compaction/truncation.js";
+} from "../../../../../src/orchestration/agent-runtime/tools/truncation.js";
 import {
   createContextAdmission,
   effectiveProactiveTrigger,

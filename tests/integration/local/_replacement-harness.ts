@@ -4,9 +4,10 @@ import * as fs from "node:fs"
 import { tmpdir } from "node:os"
 import * as path from "node:path"
 
-import { createAccountRuntimeAttach, isRuntimeListening, readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
-import { launchRuntimeClient } from "../../../src/cli/runtime-launch.js"
-import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
+import { createAccountRuntimeAttach, isRuntimeListening } from "../../../src/cli/account-service/runtime-attach.js"
+import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-identity-record.js"
+import { launchRuntimeClient } from "../../../src/cli/account-service/runtime-launch.js"
+import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import { accountEventStoreDbFile, accountServeRecordPath, accountServeSocketPath, accountServeTokenPath, CURRENT_BUILD_LINK, resolveEventStoreDbFile } from "../../../src/infra/paths.js"
 import { isSqliteBusyError } from "../../../src/infra/sqlite-durability.js"
@@ -377,6 +378,17 @@ export function createReplacementHarness(name: string) {
     reader.read({ sessionId, types: ["chat.entries.appended"] }).flatMap((event) => Array.isArray(event.payload.entries) ? event.payload.entries : [])
       .filter((entry: unknown) => JSON.stringify(entry).includes(marker)).length)
 
+  /** The id Flywheel gave the tool call that the fixture provider streamed as
+   *  `providerCallId` in a session, as its recorded tool input names it. The
+   *  provider's own id stays on the wire; every client surface names the call
+   *  by this one. */
+  const toolUseIdFor = (projectRoot: string, sessionId: string, providerCallId: string): string => {
+    const ids = readStore(projectRoot, (reader) => reader.read({ sessionId, types: ["tool.input.completed"] })
+      .flatMap((fact) => fact.payload.providerCallId === providerCallId && typeof fact.payload.toolUseId === "string" ? [fact.payload.toolUseId] : []))
+    if (ids.length !== 1) throw new Error(`session ${sessionId} recorded ${ids.length} tool calls for provider id ${providerCallId}`)
+    return ids[0] ?? ""
+  }
+
   /** The ids of every conversation entry a session committed, in order. */
   const conversationEntryIds = (projectRoot: string, sessionId: string): readonly string[] => readStore(projectRoot, (reader) =>
     reader.read({ sessionId, types: ["chat.entries.appended"] }).flatMap((event) => {
@@ -446,7 +458,7 @@ export function createReplacementHarness(name: string) {
     useChatModel: writeAccountConfig,
     setInstalledBuild, activateCurrentLink, makeProject, requestCutover, serviceListening, serviceIdentity,
     stopAccountService, killAccountServiceUncleanly, startSuccessor, replace, attach, attachWhileDraining,
-    readStore, continuationRows, allContinuationSessions, handoverSessions, entriesCarrying, conversationEntryIds, handoffRows, executorOf, lockStore,
+    readStore, toolUseIdFor, continuationRows, allContinuationSessions, handoverSessions, entriesCarrying, conversationEntryIds, handoffRows, executorOf, lockStore,
     async dispose(): Promise<void> {
       await stopAccountService()
       provider.stop()

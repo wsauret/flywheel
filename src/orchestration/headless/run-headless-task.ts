@@ -29,7 +29,7 @@ import { createForegroundBashHoldController } from "../agent-runtime/foreground-
 import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
 import { subscribeSessionRuntimeFacts } from "../session/create-session-infra.js"
 import { createTaskProgressWriter, HEADLESS_PROGRESS_EVENT_TYPES } from "./task-progress.js"
-import { createAgentHost } from "../runner/host.js"
+import { createAgentGeneration } from "../runner/host.js"
 import { AgentTurnAborted } from "../runner/agent-turn-types.js"
 import { createUnattendedRecovery } from "../agent-runtime/unattended-recovery.js"
 import { HEADLESS_MODULE_CEILING } from "./host-registration.js"
@@ -294,7 +294,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
         try {
           await treeWriter.commitSystemTurn(task)
 
-          const runnerHost = createAgentHost({ createRunner: wfDeps.createAgent })
+          const runnerHost = createAgentGeneration({ createRunner: wfDeps.createAgent })
           // A capacity wait lives and ends with this process, within the
           // task's own deadline, so it records no durable authority (PI-MODEL-063).
           const recovery = createUnattendedRecovery({

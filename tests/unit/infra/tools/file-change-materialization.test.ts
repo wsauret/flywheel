@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js";
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
-import { StructuredOutputBuilder } from "../../../../src/infra/output/structured-output-builder.js";
+import { StructuredOutputBuilder } from "../../../../src/infra/output/projector/structured-output-builder.js";
 import type { ToolEntry } from "../../../../src/infra/output-blocks.js";
 import { selectFileChangeBody } from "../../../../src/protocol/client/file-change-body.js";
 import { buildMutationEvidence } from "../../../../src/infra/mutation-evidence.js";

@@ -1,30 +1,21 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { ScrollBoxRenderable } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve"
+import type { TuiTheme } from "@tui/context/theme/tui-theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
-import { BOLD } from "@tui/utils/text-attributes.js"
+import { BOLD } from "@tui/text-attributes.js"
 import { createMemo, createSignal, Show, type JSX } from "solid-js"
-import { useListSelectionReveal } from "../hooks/use-list-selection-reveal.js"
+import { useListSelectionReveal } from "../components/use-list-selection-reveal.js"
 import { Key } from "@solid-primitives/keyed"
 import { isWorkingStatus, type StatusView } from "../../protocol/status-protocol-types.js"
 import { SessionPickerRow } from "./session-picker-row.js"
-import type { PickerRow } from "./picker-types.js"
+import type { PickerRow, SessionPickerResult } from "./picker-types.js"
 import { pickerRowLines } from "./picker-helpers.js"
 import { ModalFooter } from "../components/modal-footer.js"
 import { SESSION_CONTROL_COPY } from "../components/modal-copy.js"
 import { ControlledTextField } from "../components/controlled-text-field.js"
 import type { TextEditorPresentation } from "../keymap/text-entry.js"
 import { SHORT_TITLE_MAX_CHARS } from "../../protocol/app-service-types.js"
-
-interface SessionPickerResult {
-  rows: readonly PickerRow[]
-  totalMatches: number
-  capped: boolean
-  effectiveHighlightQuery: string
-  timeAgoWidth: number
-  searchingMessages: boolean
-}
 
 interface SessionPickerAction {
   key: string

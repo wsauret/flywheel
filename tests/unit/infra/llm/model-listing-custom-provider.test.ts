@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 import { installCustomProviders } from "../../../helpers/custom-providers.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { staticOfferingMap } from "../../../../src/infra/llm/model-listing-rows.js";

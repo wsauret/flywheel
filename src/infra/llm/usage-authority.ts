@@ -12,7 +12,7 @@ import { selectSubscriptionUsageResetCredit, SubscriptionUsageMetricSchema } fro
 import { CREATE_USAGE_LEDGER, CREATE_USAGE_LEDGER_HOURLY, CREATE_USAGE_LEDGER_HOURLY_BACKLOG, CREATE_USAGE_LEDGER_HOURLY_TRIGGER, CREATE_USAGE_QUOTA_INDEX, CREATE_USAGE_RANGE_INDEX, CREATE_USAGE_RESET_IN_FLIGHT, FOLD_USAGE_LEDGER_HOURLY_BACKLOG, ledgerRowFlags, type RawUsageLedgerEntry, RETIRED_USAGE_LEDGER_HOURLY, USAGE_AUTHORITY_PROTOCOL_VERSION, USAGE_LEDGER_HOURLY, USAGE_LEDGER_HOURLY_BACKLOG, usageRangeBounds } from "./usage-authority-codec.js";
 import { canonicalUsageEntry, currentLedgerEntryJson, ensureCanonicalLedger, INSERT_USAGE_LEDGER_ROW, usageLedgerRow } from "./usage-authority-migration.js";
 import { migrateSubscriptionUsageAuthority } from "./subscription-usage-store-migration.js";
-export type { SubscriptionUsageAccount, SubscriptionUsageAccountRef, SubscriptionUsageSnapshot } from "./subscription-usage-store.js";
+export type { SubscriptionUsageAccount, SubscriptionUsageAccountRef } from "./subscription-usage-store.js";
 
 const log = Log.create({ service: "usage-authority" });
 

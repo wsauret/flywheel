@@ -23,7 +23,7 @@ import type { RuntimeConfigRequestCapture } from "../request-config.js";
 import type { AgentPurpose } from "../types.js";
 import type { ModelInteractionProfile } from "../model-interaction-profile.js";
 import type { SessionMessaging } from "../../session/session-messaging.js";
-import type { CaptureProviderConnection } from "../factory.js";
+import type { CaptureProviderConnection } from "../model-runtime-capture.js";
 import type { ConversationCheckpointOwner } from "../../session/conversation-checkpoint.js";
 
 /** The model one request is served with. Per request, because the provider

@@ -19,8 +19,34 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import type { FileFingerprint } from "../../file-edits/file-state.js";
 import type { MutationGuardKind } from "./bash-mutation-guard.js";
-import type { CopiedFile, CopiedProject, RealFileState } from "./bash-private-copy-tree.js";
-import type { RepositoryState, StateDigest } from "./bash-copy-repository-state.js";
+import type { MirroredFile } from "./bash-private-copy-mirror.js";
+import type { RepositoryState } from "./bash-copy-repository-state.js";
+import type { StateDigest } from "./bash-copy-state-digest.js";
+
+/** A real project file's state when the copy was taken, pinned by hash when it changed too recently for its timestamps alone. */
+type RealFileState = MirroredFile["source"];
+
+interface CopiedFile {
+  /** The real file's state when the copy was taken. */
+  readonly real: RealFileState;
+  /** The clone's own state and permission bits before the command started. */
+  readonly copy: FileFingerprint;
+  readonly mode: number;
+}
+
+/** A taken copy as the change scan reads it. */
+export interface CopiedProject {
+  readonly realRoot: string;
+  readonly copyRoot: string;
+  /** The copy's own files as the command started, which nothing writes after that. */
+  readonly baseRoot: string;
+  /** Project-relative entries through which the command reaches the real project instead of its copy. */
+  readonly shared: readonly string[];
+  /** Copied regular files by project-relative path. */
+  readonly files: ReadonlyMap<string, CopiedFile>;
+  /** Copied symlinks by project-relative path, with their targets. */
+  readonly links: ReadonlyMap<string, string>;
+}
 
 /** The copy's record, in its home. Taking the copy writes it last. */
 export const PRIVATE_COPY_RECORD = "copy.json";

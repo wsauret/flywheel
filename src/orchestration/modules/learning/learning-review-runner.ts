@@ -8,13 +8,13 @@ import type { ProviderRequestOptions } from "../../../infra/llm/provider-options
 import type { RuntimeEvent } from "../../../infra/runtime-event-types.js";
 import type { SkillRegistryRevision } from "../../../workflows/skill-schema.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../agent-runtime/model-interaction-profile.js";
-import type { CaptureProviderConnection } from "../../agent-runtime/factory.js";
+import type { CaptureProviderConnection } from "../../agent-runtime/model-runtime-capture.js";
 import type { AgentFactory, AgentRunTerminal } from "../../agent-runtime/types.js";
-import { createAgentHost } from "../../runner/host.js";
+import { createAgentGeneration } from "../../runner/host.js";
 
 import { verifySkillSemanticAudit } from "./skill-semantic-audit.js";
 import type { ServingAttempt } from "../../agent-runtime/llm/types.js";
-import { ModelUnavailable } from "../../agent-runtime/errors.js";
+import { ModelUnavailable } from "../../agent-runtime/llm/runtime-errors.js";
 import { resolveCapturedRole } from "../../config/role-resolution.js";
 import { resolveSessionRoles } from "../../config/session-role-resolver.js";
 import { LEARNING_REVIEW_ROLE_ID, type RoleResolver, type ResolvedRole } from "../../config/roles.js";
@@ -259,7 +259,7 @@ function createOneShotChild(createRunner: AgentFactory, captureProviderConnectio
   return async (request: LearningReviewChildRequest): Promise<{ readonly output: string; readonly turns: number }> => {
     let output = "";
     let turns = 0;
-    const result = await createAgentHost({ createRunner }).runTurn({
+    const result = await createAgentGeneration({ createRunner }).runTurn({
       createContextOptions: () => {
         request.onAttempt?.();
         output = "";

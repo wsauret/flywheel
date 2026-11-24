@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import { createRoot } from "solid-js"
-import { createComposerHistoryPopup, type ComposerHistoryPopupHook } from "../../../../src/tui/hooks/create-composer-history-popup.js"
+import { createComposerHistoryPopup, type ComposerHistoryPopupHook } from "../../../../src/tui/components/create-composer-history-popup.js"
 
 const WIDTH = 40
 

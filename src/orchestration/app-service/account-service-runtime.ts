@@ -3,6 +3,7 @@ import { basename } from "node:path"
 import { canonicalPathWithMissingTail } from "../../infra/canonical-path.js"
 import type { ReplacementBlocker } from "./replacement-blockers.js"
 import { createReplacementOwner, type ReplacementOwner } from "./replacement-owner.js"
+import { createServiceRestart } from "./service-restart.js"
 import type { ServeLane } from "../../infra/cli-subprocess.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { accountProjectDirectories, type AccountDirectories, type StartupDirectories } from "../../infra/directory-authorities.js"
@@ -147,6 +148,11 @@ export interface AccountServiceRuntimeOptions extends AccountDirectories {
   readonly answerCutover: (beforeRetire?: () => Promise<void>) => Promise<"busy" | "retiring">
   /** Begins this service's stop path once a requested replacement has no blockers left. */
   readonly retire: () => void
+  /** Why nothing would start a successor once this service retires, in
+   *  words a person reads, or undefined when its service manager or this
+   *  service itself does. A person's restart from a client that cannot start
+   *  a service is refused with this reason. */
+  readonly restartRefusal: () => string | undefined
   /** How long the stop waits for a replacement's cut; the owner's own limit
    *  applies when absent. A harness shortens it. */
   readonly replacementCutLimitMs?: number
@@ -208,13 +214,6 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
     initial: { kind: "serving" }, report: reportFault,
     publish: (state) => { for (const listener of serviceListeners) listener(state) },
   })
-  const serviceReport: ProjectServiceState = {
-    state: faultReporting.state,
-    subscribe(listener) {
-      serviceListeners.add(listener)
-      return () => { serviceListeners.delete(listener) }
-    },
-  }
   // The account module services, which start only once admission opens, and
   // the cause each module's service could not start with. The report is one
   // value for the account, and every open project hands it to its modules.
@@ -232,6 +231,13 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
   // every project slot: a project still opening is itself a blocker, an open
   // one answers from its composition, and a closing or failed one holds nothing.
   const replacement = createReplacementOwner({ blockers: () => blockers(), handOff: (handoffId) => handoffs.handOff(handoffId), retire: options.retire, ...(options.replacementCutLimitMs === undefined ? {} : { cutLimitMs: options.replacementCutLimitMs }) })
+  // A person's restart from a web client moves the service through the same
+  // owner as the terminal's restart.
+  const serviceReport: ProjectServiceState = {
+    state: faultReporting.state,
+    subscribe: (listener) => { serviceListeners.add(listener); return () => { serviceListeners.delete(listener) } },
+    ...createServiceRestart({ lane: options.lane, refusal: options.restartRefusal, replacement }),
+  }
   // The build this service runs proves itself when an executor of any
   // project reports ready, and leaves through the replacement owner when its
   // executors cannot open (ARCH-DISTRIBUTION-024).

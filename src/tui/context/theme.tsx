@@ -3,12 +3,12 @@
 import { RGBA, type SyntaxStyle } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { createContext, createMemo, onCleanup, type JSX, useContext } from "solid-js"
-import { generateSyntax } from "./syntax-rules.js"
+import { generateSyntax } from "./theme/syntax-rules.js"
 import { subduedTheme } from "./theme/readable-theme.js"
-import { baseSurfacesUseDefaultBackground } from "../utils/terminal-capabilities.js"
+import { baseSurfacesUseDefaultBackground } from "./theme/terminal-capabilities.js"
 import type { RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
 import { DEFAULT_WRITE_SYNTAX_THEME_ID, getWriteSyntaxColors } from "../../protocol/write-syntax-theme.js"
-import { chatSyntaxColors, type SyntaxColors } from "../adapters/syntax-highlight.js"
+import { chatSyntaxColors, type SyntaxColors } from "./theme/syntax-colors.js"
 import auraTheme from "./theme/aura.json" with { type: "json" }
 import ayuTheme from "./theme/ayu.json" with { type: "json" }
 import azureTheme from "./theme/azure.json" with { type: "json" }
@@ -41,7 +41,8 @@ import orngTheme from "./theme/orng.json" with { type: "json" }
 import osakaJadeTheme from "./theme/osaka-jade.json" with { type: "json" }
 import palenightTheme from "./theme/palenight.json" with { type: "json" }
 import peachTheme from "./theme/peach.json" with { type: "json" }
-import { resolveStyles, resolveTheme, type TuiTheme, type ThemeJson } from "./theme/resolve.js"
+import { resolveStyles, resolveTheme, type ThemeJson } from "./theme/resolve.js"
+import type { TuiTheme } from "./theme/tui-theme.js"
 import rosepineTheme from "./theme/rosepine.json" with { type: "json" }
 import solarizedTheme from "./theme/solarized.json" with { type: "json" }
 import subliminalTheme from "./theme/subliminal.json" with { type: "json" }
@@ -52,7 +53,7 @@ import vercelTheme from "./theme/vercel.json" with { type: "json" }
 import vesperTheme from "./theme/vesper.json" with { type: "json" }
 import zenburnTheme from "./theme/zenburn.json" with { type: "json" }
 import { generateSystemTheme } from "./theme/system-theme.js"
-import { createTerminalPalette } from "../hooks/create-terminal-palette.js"
+import { createTerminalPalette } from "./theme/terminal-palette.js"
 
 interface ThemesByName { [name: string]: ThemeJson | "system" }
 /** Every built-in theme by id, with "system" for the theme that follows the terminal. */

@@ -45,7 +45,7 @@ const MUTATIONS = [
   },
   {
     name: "a truncation hint that names the search tool",
-    path: "src/orchestration/agent-runtime/compaction/truncation.ts",
+    path: "src/orchestration/agent-runtime/tools/truncation.ts",
     bad: `export const HINT = \`Output truncated. Use the search tool on \${'file'} to find the part you need.\`;\n`,
     corrected: `export const HINT = \`Output truncated. Find the part you need in \${'file'}.\`;\n`,
     module: "discovery",

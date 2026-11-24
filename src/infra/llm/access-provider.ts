@@ -1,13 +1,13 @@
 import { Schema, type Redacted } from "effect";
 import type { AuthContext, CapturedSubscriptionCredential, OAuthPersistencePolicy, ProviderConnection, RuntimeCredential, RuntimeOAuthCredential, SubscriptionCredentials } from "../auth/auth-context.js";
-import type { AuthProfileAccess } from "../auth/auth-profile-store.js";
-import type { CredentialSlotClassifier } from "../auth/auth-store-types.js";
+import type { CredentialSlotClassifier } from "../auth/store/auth-store-types.js";
+import { credentialIdOf, type AccessProviderAccountIdentity, type AuthProfileConversion, type CredentialProvider, type CredentialProviderCli, type CredentialStrategy, type ExternalAccount } from "../auth/provider-account.js";
 import type { ExternalUrlOpener } from "../open-external-url.js";
-import type { NotificationOccurrence } from "../notification-episode.js";
 import type { LauncherScope } from "../process-supervisor.js";
-import { offeringTransportFamily, type CatalogDiscovery, type CatalogJsonValue, type ModelCatalogContribution, type OfferingTransport } from "./model-catalog-resolution.js";
+import { offeringTransportFamily, type CatalogDiscovery, type ModelCatalogContribution } from "./model-catalog-resolution.js";
+import type { CatalogJsonValue, OfferingTransport } from "../catalog-model-offering.js";
 import type { ModelFamily } from "./model-family.js";
-import { canonicalModelId, type CatalogDataUse } from "./model-id.js";
+import { canonicalModelId, type CatalogDataUse } from "../model-id.js";
 import type { ModelInfo } from "./models.js";
 import type { CacheRetentionPolicy } from "./provider-options.js";
 /** Open provider identity. Installed membership belongs to the injected catalog. */
@@ -26,9 +26,6 @@ export function compareAutomaticSelection(
 ): number {
   return SPEND_CLASS[left.spendMode] - SPEND_CLASS[right.spendMode] || left.rank - right.rank;
 }
-export type AccessProviderAccountIdentity =
-  | { readonly kind: "subscription"; readonly providerId: AccessProviderId; readonly instanceId: string }
-  | { readonly kind: "singleton"; readonly providerId: AccessProviderId };
 export type AccessProviderCandidate =
   | ({ readonly spendMode: "included" | "prepaid" | "automatic" | "direct_api" } & Extract<AccessProviderAccountIdentity, { readonly kind: "subscription" }>)
   | ({ readonly spendMode: "direct_api" | "aggregator" } & Extract<AccessProviderAccountIdentity, { readonly kind: "singleton" }>);
@@ -67,26 +64,9 @@ export function accessProviderAccountIdentity(candidate: AccessProviderCandidate
     : { kind: "singleton", providerId: candidate.providerId };
 }
 
-export function accessProviderAccountKey(account: AccessProviderAccountIdentity | AccessProviderCandidate): string {
-  return account.kind === "subscription"
-    ? JSON.stringify([account.kind, account.providerId, account.instanceId])
-    : JSON.stringify([account.kind, account.providerId]);
-}
-
 
 export function candidateProviderId(candidate: AccessProviderCandidate): AccessProviderId {
   return candidate.providerId;
-}
-
-type AccessProviderBilling = "subscription" | "metered";
-
-/** How the terminal names a credential provider: the `flywheel auth login
- *  --<flag>` spelling and the provider's plain name, which the command line
- *  joins with the sign-in method that the provider's login flow declares. A
- *  provider without a flag is reached by `--provider <id>`. */
-export interface CredentialProviderCli {
-  readonly name: string;
-  readonly flag?: string;
 }
 
 export interface OAuthLoginPrompt {
@@ -140,22 +120,6 @@ type AccessProviderOAuthLogin =
   | { readonly flow: "device-code"; readonly start: (ports: DeviceCodeLoginPorts) => Promise<OAuthLoginResult> }
   | { readonly flow: "browser"; readonly start: (ports: BrowserLoginPorts) => Promise<OAuthLoginResult> };
 
-/** One account of a login that another program owns. Flywheel holds none of
- *  the login's secrets: it knows only which account it is and where the
- *  program keeps it. */
-export interface ExternalAccount {
-  /** The program's stable id for the account. */
-  readonly accountId: string;
-  /** The account as a person reads it, such as an email address. */
-  readonly identity: string;
-  /** The directory in which the program keeps this login. */
-  readonly configDir: string;
-  /** The account's plan as the program names it, such as "Claude Max", when the program states it. */
-  readonly plan?: string;
-  /** The program explicitly classifies this account as usage-only, with no included allowance or paid rollover. */
-  readonly billing?: "metered";
-}
-
 /** The routes an account's captured billing classification permits, before admission checks. */
 function accountSpendModes(account: { readonly billing?: "metered" }, paidModes: readonly ("prepaid" | "automatic")[]): readonly Extract<AccessProviderCandidate, { readonly kind: "subscription" }>["spendMode"][] {
   return account.billing === "metered" ? ["direct_api"] : ["included", ...paidModes];
@@ -201,10 +165,6 @@ interface AccessProviderExternalLogin {
   /** The program as a person reads it: the product name of the vendor CLI that owns the login. Each client names it
    *  when it says what a logout leaves in place. */
   readonly program: string;
-  /** The accounts of the program's logins inside the auth profile directory
-   *  `authDir`, each once. A read of the program's files with no launch, so
-   *  it is safe at startup. */
-  readonly accounts: (authDir: string) => readonly ExternalAccount[];
   /** The problems of the auth profile in `authDir`, with no launch: a program that is missing or that this
    *  process found unable to serve, and each account whose last request in this process failed for its login or
    *  for its program. A later response of the account, or a new login, clears its problem. */
@@ -252,9 +212,7 @@ export interface ExternalTokenLogin {
   readonly configDir: (fingerprint: string) => string;
 }
 
-interface AccessProviderOAuthStrategy {
-  readonly kind: "oauth";
-  readonly credentialId: string;
+interface AccessProviderOAuthStrategy extends Extract<CredentialStrategy, { readonly kind: "oauth" }> {
   readonly statusRank: number;
   /** Rotates `credential` now, whatever its remaining lifetime, and returns the new credential without persisting
    *  it: the caller persists it through the profile's compare-and-set. A provider declares this only when its
@@ -264,8 +222,7 @@ interface AccessProviderOAuthStrategy {
 }
 
 type AccessProviderAuthStrategy =
-  | {
-    readonly kind: "api_key";
+  | (Extract<CredentialStrategy, { readonly kind: "api_key" }> & {
     readonly statusRank: number;
     /** A key format the provider owns. A login that receives a key carrying another
      *  provider's prefix is refused before it is stored, because the store would
@@ -275,16 +232,12 @@ type AccessProviderAuthStrategy =
      *  key's project. The login saves the project with the key. It throws an error that names the cause for the
      *  person, such as a key that the provider rejects, and the login then stores nothing. */
     readonly discoverProject?: (key: Redacted.Redacted<string>) => Promise<string>;
-  }
+  })
   | (AccessProviderOAuthStrategy & AccessProviderOAuthLogin)
-  | ({ readonly kind: "external"; readonly statusRank: number } & AccessProviderExternalLogin);
+  | (Extract<CredentialStrategy, { readonly kind: "external" }> & { readonly statusRank: number } & AccessProviderExternalLogin);
 
 /** A definition whose login another program owns. */
 export type ExternalLoginDefinition = AccessProviderDefinition & { readonly auth: { readonly kind: "external" } };
-
-export function isExternalLoginDefinition(definition: AccessProviderDefinition): definition is ExternalLoginDefinition {
-  return definition.auth.kind === "external";
-}
 
 /** One immutable user eligibility revision captured for a provider-chain plan. */
 export interface AccessProviderModelEligibility {
@@ -390,27 +343,6 @@ export interface SubscriptionPlanReading {
   readonly tier?: string;
 }
 
-/** What a profile conversion reads and writes: the profile, under whose locks it writes, the slot classifier, and
- *  the complete installed credential vocabulary that the store decodes with. */
-export interface AuthProfileConversionInput {
-  readonly access: AuthProfileAccess;
-  readonly classifySlot: CredentialSlotClassifier;
-  readonly installedIds: readonly string[];
-  /** The notify seam (ARCH-STRUCTURE-034), where a conversion states a condition that the person must act on, such as an
-   *  account whose saved choices could not move. Absent where no person reads notifications, such as a headless
-   *  run, which states the condition in its log only. */
-  readonly notify?: (occurrence: NotificationOccurrence) => void;
-}
-
-/** A dated conversion of state that the provider stored in an auth profile in an earlier shape. Profile
- *  normalization runs every installed provider's conversions, also of a provider whose module is off. A
- *  `before-decode` conversion runs before the credential store is decoded, so it can take out an entry that the
- *  current decoder refuses. An `after-decode` conversion runs on a decoded store whose lineages are in place. */
-export interface AuthProfileConversion {
-  readonly phase: "before-decode" | "after-decode";
-  readonly convert: (profile: AuthProfileConversionInput) => Promise<void>;
-}
-
 interface AccessProviderDefinitionBase {
   readonly id: AccessProviderId;
   readonly displayName: string;
@@ -458,12 +390,6 @@ export type AccessProviderDefinition = AccessProviderDefinitionBase & AccessProv
   | { readonly billing: "subscription"; readonly spendMode?: never; readonly paidModes?: readonly ("prepaid" | "automatic")[] }
   | { readonly billing: "metered"; readonly spendMode: "direct_api" | "aggregator" }
 );
-
-/** The auth store key this provider's credentials live under. An external
- *  login stores nothing, and its accounts are known under the provider id. */
-export function credentialIdOf(definition: Pick<AccessProviderDefinition, "id" | "auth">): string {
-  return definition.auth.kind === "oauth" ? definition.auth.credentialId : definition.id;
-}
 
 /** Whether the account holds a usable credential for this provider. A
  *  subscription provider's API-key accounts are captured as instances, not as
@@ -513,7 +439,7 @@ export interface AccessProviderSelection {
   readonly getConfigured: (auth: AuthContext) => AccessProviderId[];
   readonly displayName: (id: AccessProviderId) => string;
   readonly shortName: (id: AccessProviderId) => string;
-  readonly billing: (id: AccessProviderId) => AccessProviderBilling;
+  readonly billing: (id: AccessProviderId) => CredentialProvider["billing"];
   readonly billingUrl: (id: AccessProviderId) => string | undefined;
   /** models.dev source for provider-specific model metadata. */
   readonly catalogId: (id: AccessProviderId) => string | undefined;
@@ -563,7 +489,7 @@ function accessProviderShortName(id: AccessProviderId): string {
   return providerDefinitions().find((d) => d.id === id)?.shortName ?? id;
 }
 
-function accessProviderBilling(id: AccessProviderId): AccessProviderBilling {
+function accessProviderBilling(id: AccessProviderId): CredentialProvider["billing"] {
   return definitionForProvider(id).billing;
 }
 

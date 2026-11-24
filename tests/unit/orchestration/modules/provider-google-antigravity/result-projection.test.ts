@@ -4,7 +4,7 @@ import { join } from "node:path"
 
 import { canonicalDirectory } from "../../../../../src/infra/directory-authorities.js"
 import { createBudgetNudge } from "../../../../../src/orchestration/agent-runtime/budget-nudge.js"
-import { limitOutput } from "../../../../../src/orchestration/agent-runtime/compaction/truncation.js"
+import { limitOutput } from "../../../../../src/orchestration/agent-runtime/tools/truncation.js"
 import type { LlmToolOutputPart } from "../../../../../src/orchestration/agent-runtime/llm/messages.js"
 import * as breadcrumb from "../../../../../src/orchestration/agent-runtime/tools/output-breadcrumb.js"
 import { readDefinition } from "../../../../../src/orchestration/agent-runtime/tools/read.js"

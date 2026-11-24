@@ -2,7 +2,7 @@ import { type Accessor, createSignal } from "solid-js"
 import { settingRowId } from "../../orchestration/config/setting-definitions.js"
 import { configProblemText } from "../../protocol/client/config-problem-copy.js"
 import type { RuntimeConfigDiagnostic, RuntimeConfigStatusView } from "../../protocol/runtime-config-protocol-types.js"
-import type { SettingsRow } from "./settings-modal-types.js"
+import type { SettingsRow } from "../modals/settings-modal-types.js"
 
 /** Marks the row whose authored value has a configuration problem, with
  *  what the problem means for the value in force. */

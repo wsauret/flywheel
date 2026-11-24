@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 import { createSettingsModalController } from "../../../../src/tui/hooks/settings-modal-controller.js"
-import type { SettingsRow } from "../../../../src/tui/hooks/settings-modal-types.js"
+import type { SettingsRow } from "../../../../src/tui/modals/settings-modal-types.js"
 
 function createFilterHarness() {
   const modals = createModalStack()

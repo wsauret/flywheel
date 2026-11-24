@@ -12,13 +12,12 @@ import { createAgentHost } from "../runner/host.js"
 import type { AgentHostContextOptions, AgentHostTurnLease } from "../runner/types.js"
 import { reportPersistenceWriteRefusal, resolveProviderNotices } from "../agent-runtime/agent-resilience.js"
 import { AgentTurnAborted } from "../runner/agent-turn-types.js"
-import type { ChatSessionState } from "./types.js"
+import type { ChatSessionDeps, ChatSessionState } from "./types.js"
 import type { ChatPorts } from "./host-ports.js"
 import { createForegroundBashHoldController } from "../agent-runtime/foreground-bash-hold.js"
 import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
 import type { AgentRunResult, AgentRunTerminal } from "../agent-runtime/types.js"
 import type { AgentLoopMaintenance } from "../agent-runtime/agent-loop-types.js"
-import type { ChatSessionDeps } from "./session.js"
 import { ChatTurnMailbox } from "./turn-mailbox.js"
 import { createChatQueuedInputRecall } from "./chat-queued-input-recall.js"
 import { createChatMessageDelivery, type IdleLanding } from "./runner-message-delivery.js"
@@ -114,7 +113,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   }, lifecycleInput.eventBus)
   background.addSettle(async () => { await moduleObserver.dispose() })
 
-  const moduleHosts = createChatModuleHosts({ deps, state, emit, background, foregroundBashHold, mailbox, applyNestedStoredFact, hasActiveTurn })
+  const moduleHosts = createChatModuleHosts(deps.moduleSelection, { deps, state, emit, background, foregroundBashHold, mailbox, applyNestedStoredFact, hasActiveTurn })
+  background.addSettle(() => moduleHosts.dispose())
 
   // A chat with no provider session identity yet takes one now, which its pre-start and its first run share: the
   // client that the pre-start built serves the run, and holds the identity that it was built with. The first run's

@@ -9,7 +9,7 @@ import { errorMessage } from "../../infra/error-message.js";
 import { parseFrontmatter } from "../../infra/frontmatter.js";
 import { Log } from "../../infra/log.js";
 import type { SkillRegistryRevision } from "../skill-schema.js";
-import { agents as manifestAgents } from "./manifest.js";
+import { agents as manifestAgents } from "../asset-manifest.js";
 import { createPersonaDefinitionSchema } from "./persona-schema.js";
 import { resolveDefinitionCandidates, shouldLogDefinitionMasking, type DefinitionCandidate, type DefinitionResolution } from "../../infra/definition-resolution.js";
 

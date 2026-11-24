@@ -5,7 +5,6 @@ import type { ImplementCandidate } from "./implement-scoring.js";
 import { createJsonLinesLedger, readJsonFile } from "./json-lines.js";
 import { realDirectoryUnder } from "./paths.js";
 import { BenchmarkAccountingSchema, BenchmarkCampaignIdentitySchema } from "./evidence.js";
-import { ResearchScoreSchema } from "./research-scoring.js";
 
 // Stored records are decoded with onExcessProperty: "error" so a record from
 // a superseded shape (e.g. the removed provider field) fails loudly instead
@@ -174,6 +173,18 @@ export const ImplementScoreSchema = Schema.Struct({
   repeat: RepeatSchema,
   traps: Schema.Array(TrapVerdictSchema),
 });
+/** One research answer scored against its task's answer key. `citations` is the
+ *  mechanical check: how many distinct `path:line` citations the answer makes, and
+ *  those that name no line of exactly one file at the pin. */
+export const ResearchScoreSchema = Schema.Struct({
+  variant: Schema.String,
+  task: Schema.String,
+  repeat: RepeatSchema,
+  caught: Schema.Array(Schema.String),
+  uncertain: Schema.Array(Schema.String),
+  trapsAsserted: Schema.Array(Schema.String),
+  citations: Schema.Struct({ total: Schema.Int, invalid: Schema.Array(Schema.String) }),
+});
 const ScoreRecordSchema = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("pair-score"),
@@ -216,6 +227,7 @@ export type JudgeAttemptRecord = typeof JudgeAttemptRecordSchema.Type;
 export type JudgeScoreIdentity = typeof JudgeScoreIdentitySchema.Type;
 export type JudgeTerminal = typeof JudgeTerminalSchema.Type;
 export type ScoreRecord = typeof ScoreRecordSchema.Type;
+export type ResearchScore = typeof ResearchScoreSchema.Type;
 
 const decodeConfig = Schema.decodeUnknownSync(RunConfigSchema, { onExcessProperty: "error" });
 

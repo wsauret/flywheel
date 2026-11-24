@@ -13,7 +13,7 @@ import { composeRealmModuleSnapshot, type ModuleId } from "../../src/orchestrati
 import { installedAccessProviderIds } from "../../src/orchestration/credential-provider-modules.js";
 import { createAgentJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/judge.js";
 import { prepareWorkflowDeps, type WorkflowDeps } from "../../src/orchestration/workflow-host/deps.js";
-import { createCliLauncher } from "../../src/cli/runtime-launch.js";
+import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";
 import { createInstalledDefinitionRegistry } from "../../src/orchestration/definition-catalog.js";
 import { createHeadlessProfileRuntime, resolveHeadlessAuthProfile } from "../../src/orchestration/headless/headless-profile-runtime.js";
 import { getSharedModelsClient } from "../../src/orchestration/config/llm-clients.js";
@@ -34,6 +34,8 @@ import type { LauncherScope } from "../../src/infra/process-supervisor.js";
 import type { ShellRuntimeClient } from "../../src/orchestration/agent-runtime/tools/shell-runtime-types.js";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../src/infra/owned-command.js";
 import { accessProviderRegistry } from "../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { composePortableModuleServices, type ComposedModuleServices } from "../../src/orchestration/app-service/module-service-host.js";
+import { installedModules } from "../../src/orchestration/module-catalog.js";
 import type { ProjectDefinitionRegistry } from "../../src/workflows/definition-registry.js";
 export interface OwnedBenchmarkRuntime extends AsyncDisposable {
   readonly deps: WorkflowDeps;
@@ -55,6 +57,10 @@ export interface PreparedBenchmarkRuntime {
   readonly foregroundBashHold: ForegroundBashHoldController;
   readonly launcher: LauncherScope;
   readonly shell: ShellRuntimeClient;
+  /** The portable services of the enabled modules, such as the Google
+   *  Antigravity engine runtime, composed but not started. The runtime starts
+   *  them before its first cell and disposes them before `dispose`. */
+  readonly moduleServices: ComposedModuleServices;
   assertUsageAuthority(expected: UsageAuthorityGeneration): void;
   dispose(): Promise<void>;
 }
@@ -92,6 +98,13 @@ const PRODUCTION_COMPOSITION: BenchmarkRuntimeComposition = {
     resources.defer(async () => { await modulePolicy.dispose(); });
     const moduleComposition = composeRealmModuleSnapshot({ moduleIds: modulePolicy.policy.state().moduleIds });
     const moduleSelection = () => moduleComposition;
+    const moduleServices = composePortableModuleServices(installedModules(), () => moduleComposition.enabledModuleIds, {
+      directories,
+      config: configOwner,
+      launcher: launcher.scope,
+      // A benchmark process holds one selection for its whole life.
+      onSelectionChanged: () => () => {},
+    });
     const usagePool = createSubscriptionUsageServicePool({
       create: (profile, thresholds) => createSubscriptionUsageService({
         profile: () => profile,
@@ -155,6 +168,7 @@ const PRODUCTION_COMPOSITION: BenchmarkRuntimeComposition = {
       foregroundBashHold,
       launcher: launcher.scope,
       shell: background.shell,
+      moduleServices,
       assertUsageAuthority: profileRuntime.assertGeneration,
       dispose: async () => { await generationResources.disposeAsync(); },
     };
@@ -183,51 +197,61 @@ export async function createBenchmarkRuntime(projectRoot: string, options: Bench
   const { composition = PRODUCTION_COMPOSITION, accountHome, ...preparation } = options;
   const directories = selectStartupDirectories({ projectRootOption: projectRoot, env: process.env, cwd: projectRoot, home: accountHome });
   composition.acquireAvailability(directories.userDataRoot);
+  let prepared: PreparedBenchmarkRuntime;
   try {
-    const prepared = await composition.prepare(directories, preparation);
-    let disposal: Promise<void> | undefined;
-    return {
-      deps: prepared.deps,
-      profileId: prepared.profileId,
-      usageAuthority: prepared.usageAuthority,
-      background: prepared.background,
-      foregroundBashHold: prepared.foregroundBashHold,
-      launcher: prepared.launcher,
-      shell: prepared.shell,
-      runOwnedCommand: ownedCommandRunner(prepared.launcher),
-      assertUsageAuthority: prepared.assertUsageAuthority,
-      [Symbol.asyncDispose]: () => {
-        disposal ??= (async () => {
-        // Availability is released even when the prepared generation's own
-        // disposal fails: a leaked availability lease outlives the process
-        // that took it, and the rejection still reaches the caller.
-        try {
-          const failures: Error[] = [];
-          const attempt = async (operation: () => void | Promise<void>): Promise<void> => {
-            try {
-              await operation();
-            } catch (cause) {
-              failures.push(cause instanceof Error ? cause : new Error(String(cause)));
-            }
-          };
-          await attempt(() => prepared.background.close());
-          await attempt(() => prepared.foregroundBashHold.awaitSettlement());
-          await attempt(() => prepared.foregroundBashHold.dispose());
-          await attempt(() => prepared.dispose());
-          if (failures.length > 0) {
-            throw new AggregateError(failures, `Benchmark runtime cleanup failed: ${failures.map((failure) => failure.message).join("; ")}`);
-          }
-        } finally {
-          await composition.disposeAvailability();
-        }
-        })();
-        return disposal;
-      },
-    };
+    prepared = await composition.prepare(directories, preparation);
   } catch (error) {
     await composition.disposeAvailability();
     throw error;
   }
+  let disposal: Promise<void> | undefined;
+  const dispose = (): Promise<void> => {
+    disposal ??= (async () => {
+      // Availability is released even when the prepared generation's own
+      // disposal fails: a leaked availability lease outlives the process
+      // that took it, and the rejection still reaches the caller.
+      try {
+        const failures: Error[] = [];
+        const attempt = async (operation: () => void | Promise<void>): Promise<void> => {
+          try {
+            await operation();
+          } catch (cause) {
+            failures.push(cause instanceof Error ? cause : new Error(String(cause)));
+          }
+        };
+        await attempt(() => prepared.background.close());
+        await attempt(() => prepared.foregroundBashHold.awaitSettlement());
+        await attempt(() => prepared.foregroundBashHold.dispose());
+        await attempt(() => prepared.moduleServices.dispose());
+        await attempt(() => prepared.dispose());
+        if (failures.length > 0) {
+          throw new AggregateError(failures, `Benchmark runtime cleanup failed: ${failures.map((failure) => failure.message).join("; ")}`);
+        }
+      } finally {
+        await composition.disposeAvailability();
+      }
+    })();
+    return disposal;
+  };
+  try {
+    prepared.moduleServices.start();
+    for (const notice of await prepared.moduleServices.settleStartup()) process.stderr.write(`${notice}\n`);
+  } catch (error) {
+    await dispose().catch(() => {});
+    throw error;
+  }
+  return {
+    deps: prepared.deps,
+    profileId: prepared.profileId,
+    usageAuthority: prepared.usageAuthority,
+    background: prepared.background,
+    foregroundBashHold: prepared.foregroundBashHold,
+    launcher: prepared.launcher,
+    shell: prepared.shell,
+    runOwnedCommand: ownedCommandRunner(prepared.launcher),
+    assertUsageAuthority: prepared.assertUsageAuthority,
+    [Symbol.asyncDispose]: dispose,
+  };
 }
 
 /** Build the tool-free, one-call Agent judge shared by every standalone harness. */

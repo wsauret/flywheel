@@ -14,7 +14,7 @@ import { GOOGLE_ANTIGRAVITY_LABEL } from "./names.js"
 import { planRequest, type PlanLimits, type RequestPlan } from "./request-plan.js"
 import { messageFingerprint, type SessionView } from "./session-view.js"
 import type { StepGate, StepGateEvent } from "./step-gate.js"
-import { createRequestStream, type RequestStream, type RequestStreamOptions } from "./stream-map.js"
+import { createRequestStream, NO_MODEL_REQUEST_USAGE, type RequestStream, type RequestStreamOptions } from "./stream-map.js"
 import type { McpToolDeclaration } from "./tool-projection.js"
 import type { AuditedRelease, TransportAudit } from "./transport-audit.js"
 
@@ -122,6 +122,8 @@ interface Session {
   admitted: boolean
   /** agy reported context occupancy (`usage_update`) since the last release, which it does for each model request. */
   modelRequest: boolean
+  /** The tokens that the requests of the open prompt reported as partial usage (`RequestStream.partialTokens`). */
+  promptTokensReported: number
   /** The gate refused a step of the session while the open request ran. */
   refused: number
   /** The kinds of tool result that the bridge delivered to the session, which agy then holds in every later model
@@ -145,6 +147,8 @@ interface RequestRecord {
   sharedTools: readonly string[]
   /** The session to which the request released work, and the request's events on it. */
   released?: { readonly target: Session; readonly feed: Feed }
+  /** The request continued to the session's last call (`Session.lastCall`), which holds its usage, and released nothing. */
+  continued?: true
 }
 
 function isModelText(update: AcpSessionUpdate): boolean {
@@ -282,7 +286,8 @@ export function createBridge(config: BridgeConfig): Bridge {
     target.view = feed.call === undefined
       ? { ...target.view, output: { kind: "answer", fingerprint } }
       : { ...target.view, output: { kind: "call", toolUseId: feed.call.id, fingerprint } }
-    if (feed.call !== undefined) target.lastCall = [...feed.events]
+    // A request that continues to the call runs no model request: the request that revealed the call reported its usage.
+    if (feed.call !== undefined) target.lastCall = feed.events.flatMap((event) => event.kind === "usage" ? [] : event.kind === "done" ? [NO_MODEL_REQUEST_USAGE, event] : [event])
   }
 
   /** Cancels the session's open prompt and answers its parked call, so the session never continues (P7). */
@@ -387,17 +392,19 @@ export function createBridge(config: BridgeConfig): Bridge {
     })
   }
 
-  /** Sets the session's model and effort between prompts (`session/set_config_option`). */
+  /** Sets one option of the session (`session/set_config_option`) and records the value that the engine acknowledged. */
+  const configure = async (target: Session, configId: "model" | "thought_level", value: string): Promise<void> => {
+    const from = optionValue(target.config, configId)
+    target.config = (await engineRequest(target.serving.engine.configure("session/set_config_option", { sessionId: target.sessionId, configId, value }))).configOptions
+    DebugLog.record({ type: "provider.antigravity.session.configured", payload: { processId: target.serving.engine.processId, sessionId: target.sessionId, configId, from, to: optionValue(target.config, configId) } })
+  }
+
+  /** Sets the session's model and effort between prompts. */
   const select = async (target: Session, model: string, effort: ReasoningEffort | undefined): Promise<void> => {
-    const { engine } = target.serving
-    if (optionValue(target.config, "model") !== model) {
-      target.config = (await engineRequest(engine.configure("session/set_config_option", { sessionId: target.sessionId, configId: "model", value: model }))).configOptions
-    }
+    if (optionValue(target.config, "model") !== model) await configure(target, "model", model)
     // A family offers only some thought levels; an effort it does not list leaves the family's default.
     const levels = target.config.find((option) => option.id === "thought_level")?.options.map((level) => level.value) ?? []
-    if (effort !== undefined && levels.includes(effort) && optionValue(target.config, "thought_level") !== effort) {
-      target.config = (await engineRequest(engine.configure("session/set_config_option", { sessionId: target.sessionId, configId: "thought_level", value: effort }))).configOptions
-    }
+    if (effort !== undefined && levels.includes(effort) && optionValue(target.config, "thought_level") !== effort) await configure(target, "thought_level", effort)
   }
 
   /** Opens a new session for a rotation: its append, its selection, and its primer, which must reach the gate. */
@@ -413,7 +420,7 @@ export function createBridge(config: BridgeConfig): Bridge {
     }))
     const target: Session = {
       serving, sessionId: opened.sessionId, appendBytes: Buffer.byteLength(plan.append, "utf8"), config: opened.configOptions, view: plan.view,
-      prompting: false, park: undefined, feed: undefined, pending: [], release: undefined, admitted: false, modelRequest: false, refused: 0, delivered: { results: false, errors: false },
+      prompting: false, park: undefined, feed: undefined, pending: [], release: undefined, admitted: false, modelRequest: false, promptTokensReported: 0, refused: 0, delivered: { results: false, errors: false },
       primer: { canary: false, modelFrames: 0 }, lastCall: [],
       unsubscribe: serving.gate.onEvent((event) => { onGate(target, event) }),
     }
@@ -460,6 +467,7 @@ export function createBridge(config: BridgeConfig): Bridge {
       const target = session
       if (target === undefined) throw new Error("continue-call without a session")
       target.view = plan.view
+      record.continued = true
       yield* target.lastCall
       return
     }
@@ -478,11 +486,14 @@ export function createBridge(config: BridgeConfig): Bridge {
       target.view = plan.view
     }
 
+    // A delivered result continues the open prompt; every other release starts a new one.
+    const promptTokensReported = plan.kind === "deliver" ? target.promptTokensReported : 0
     const feed: Feed = {
       stream: createRequestStream({
-        requestId: crypto.randomUUID(), liveness: request.liveness,
+        requestId: crypto.randomUUID(), liveness: request.liveness, promptTokensReported,
         ...request.onDispatch === undefined ? {} : { onDispatch: request.onDispatch },
         onOccupancy: (used) => { target.view = { ...target.view, occupancy: used } },
+        modelRequested: () => target.admitted || target.modelRequest,
       }),
       queue: [], settled: false, wake: undefined, text: new Map(), events: [],
     }
@@ -528,6 +539,7 @@ export function createBridge(config: BridgeConfig): Bridge {
       }
     } finally {
       request.signal?.removeEventListener("abort", abort)
+      target.promptTokensReported = promptTokensReported + feed.stream.partialTokens
       // A request that settled on a revealed call leaves the step it admitted unused.
       target.serving.gate.revoke(admission)
       if (target.feed === feed && !feed.settled) {
@@ -544,7 +556,7 @@ export function createBridge(config: BridgeConfig): Bridge {
     const release: AuditedRelease = {
       ...released?.target.admitted === true ? { step: { appendBytes: released.target.appendBytes, synthetic: released.target.view.synthetic, delivered: { ...released.target.delivered } } } : {},
       refusedSteps: released?.target.refused ?? 0,
-      usageReported: released?.feed.stream.usageReported ?? false,
+      usageReported: released === undefined ? record.continued ?? false : released.feed.stream.usageReported,
       missingTools: record.missingTools,
       sharedTools: record.sharedTools,
     }

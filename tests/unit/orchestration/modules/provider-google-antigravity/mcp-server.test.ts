@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js"
+import { JSONRPCMessageSchema, type CallToolResult, type JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js"
 import { Redacted } from "effect"
 
 import { openToolListener, type ParkedToolCall, type RegisteredToolServer, type ToolListener } from "../../../../../src/orchestration/modules/provider-google-antigravity/mcp-server.js"
@@ -52,6 +52,50 @@ const aborted = (signal: AbortSignal | undefined) => new Promise<void>((released
   if (signal?.aborted === true) released()
   signal?.addEventListener("abort", () => released(), { once: true })
 })
+
+/**
+ * A POST of `body` to `server` whose head the listener has taken before this resolves: the request asks for
+ * `100 Continue`, which the listener sends only once its handler has the request, and the body waits for `send`.
+ * No fetch gives that signal, and without it the head can still be in flight when the test moves on.
+ */
+async function takenPost(server: Pick<RegisteredToolServer, "url" | "token">, body: string) {
+  const url = new URL(server.url)
+  const continued = Promise.withResolvers<void>()
+  const closed = Promise.withResolvers<void>()
+  let received = ""
+  const socket = await Bun.connect({
+    hostname: url.hostname,
+    port: Number(url.port),
+    socket: {
+      data(_socket, chunk) {
+        received += chunk.toString()
+        if (received.startsWith("HTTP/1.1 100 Continue\r\n\r\n")) continued.resolve()
+      },
+      close: () => closed.resolve(),
+    },
+  })
+  socket.write([
+    `POST ${url.pathname} HTTP/1.1`,
+    `Host: ${url.host}`,
+    `Authorization: Bearer ${Redacted.value(server.token)}`,
+    "Content-Type: application/json",
+    "Accept: application/json, text/event-stream",
+    `Content-Length: ${String(Buffer.byteLength(body))}`,
+    "Expect: 100-continue",
+    "Connection: close",
+    "",
+    "",
+  ].join("\r\n"))
+  await continued.promise
+  return {
+    /** Sends the body and resolves with the JSON-RPC message of the final response. */
+    async send(): Promise<JSONRPCMessage> {
+      socket.write(body)
+      await closed.promise
+      return JSONRPCMessageSchema.parse(JSON.parse(received.slice(received.lastIndexOf("\r\n\r\n") + 4)))
+    },
+  }
+}
 
 describe("the Antigravity tool listener", () => {
   test("serves each process its own tools on its own path, ready at its first listing, and parks each call until it is settled", async () => {
@@ -111,24 +155,13 @@ describe("the Antigravity tool listener", () => {
     const call = client.callTool({ name: "read", arguments: { path: "a.ts" }, _meta: { [SESSION_KEY]: "session-s" } })
     await p.parked(1)
 
-    // A call whose request began before the unregister and whose body arrives after it.
-    const body = Promise.withResolvers<ReadableStreamDefaultController<Uint8Array>>()
-    const late = fetch(server.url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${Redacted.value(server.token)}`, "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
-      body: new ReadableStream<Uint8Array>({ start: (controller) => body.resolve(controller) }),
-    })
-    const lateBody = await body.promise
-    lateBody.enqueue(new TextEncoder().encode('{"jsonrpc":"2.0","id":9,'))
-    // A whole exchange after the first chunk: the late request has reached the listener by now.
-    await client.listTools()
+    // A call whose request the listener took before the unregister and whose body arrives after it.
+    const late = await takenPost(server, JSON.stringify({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "read", arguments: {}, _meta: { [SESSION_KEY]: "session-s" } } }))
 
     tools.unregister("process-p")
     await expect(call).rejects.toThrow("The engine process's tool server was closed")
     expect(p.calls[0]?.signal.aborted).toBe(true)
-    lateBody.enqueue(new TextEncoder().encode(`"method":"tools/call","params":{"name":"read","arguments":{},"_meta":{"${SESSION_KEY}":"session-s"}}}`))
-    lateBody.close()
-    expect(await (await late).json()).toMatchObject({ id: 9, error: { message: expect.stringContaining("The engine process's tool server was closed") } })
+    expect(await late.send()).toMatchObject({ id: 9, error: { message: expect.stringContaining("The engine process's tool server was closed") } })
     expect(p.calls).toHaveLength(1)
     await expect(connect(server)).rejects.toThrow()
   })

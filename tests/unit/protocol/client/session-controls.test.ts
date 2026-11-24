@@ -4,7 +4,6 @@ import { Socket } from "effect/socket"
 import type { FrontendMutation, MutationResult } from "../../../../src/protocol/app-service-types.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 import {
-  createAdmissionEdges,
   dispatchInterrupt,
   isInterruptible,
   offeredSessionControls,
@@ -162,21 +161,6 @@ describe("session controls", () => {
     expect(isInterruptible({ activity: "idle", waitingOnBackgroundWork: true })).toBe(true)
     expect(isInterruptible({ activity: "idle", waitingOnBackgroundWork: false })).toBe(false)
     expect(isInterruptible(undefined)).toBe(false)
-  })
-
-  test("admitted actions go stale when a session crosses the interruptible line or its status goes away, never on its first status", () => {
-    const edges = createAdmissionEdges()
-    const waiting = { activity: "idle", waitingOnBackgroundWork: true } as const
-    const settled = { activity: "idle", waitingOnBackgroundWork: false } as const
-    expect(edges.observe("s", waiting)).toBe(false)
-    expect(edges.observe("s", { activity: "generating", waitingOnBackgroundWork: false })).toBe(false)
-    expect(edges.observe("s", settled)).toBe(true)
-    expect(edges.observe("s", settled)).toBe(false)
-    expect(edges.observe("s", undefined)).toBe(true)
-    expect(edges.observe("s", undefined)).toBe(false)
-    edges.observe("t", waiting)
-    edges.forget("t")
-    expect(edges.observe("t", settled)).toBe(false)
   })
 })
 

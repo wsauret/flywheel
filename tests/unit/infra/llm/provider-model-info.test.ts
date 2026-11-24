@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { CatalogModelOffering } from "../../../../src/infra/llm/model-catalog-resolution.js";
+import type { CatalogModelOffering } from "../../../../src/infra/catalog-model-offering.js";
 import type { ModelPricing } from "../../../../src/infra/llm/models.js";
 import { enrichProviderModelInfo, fillCatalogRouteModelInfos, providerModelInfo, sharedModelInfos } from "../../../../src/infra/llm/provider-model-info.js";
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";

@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import * as path from "node:path"
 
-import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
+import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
 import { LOG_DIR } from "../../../src/infra/paths.js"
 import { joinIsolatedAccountService } from "./_account-service.js"
 import { createReplacementHarness, sessionStatus, startHeldChat, until } from "./_replacement-harness.js"
@@ -14,7 +14,7 @@ import { COMMAND_DEADLINE_SECONDS, EDITED_CONTENT, EDITED_FILE } from "./_replac
 // end reaches it. Each case runs one chat whose held turn started one
 // background command in a project of its own.
 const harness = createReplacementHarness("replacement-handover")
-const { tmp, userDataRoot, provider, makeProject, setInstalledBuild, activateCurrentLink, requestCutover, serviceListening, stopAccountService, startSuccessor, replace, handoverSessions, entriesCarrying, handoffRows, executorOf, readStore } = harness
+const { tmp, userDataRoot, provider, makeProject, setInstalledBuild, activateCurrentLink, requestCutover, serviceListening, stopAccountService, startSuccessor, replace, handoverSessions, entriesCarrying, handoffRows, executorOf, readStore, toolUseIdFor } = harness
 
 afterAll(async () => {
   await harness.dispose()
@@ -76,7 +76,7 @@ describe("a command the successor adopted", () => {
     await until("the turn continued", async () => provider.trace("stopTarget").continued, (count) => count === 1)
     const viewer = await harness.attach(project)
     try {
-      await viewer.client.dispatch({ type: "background.terminate", sessionId: chat, toolUseId: "stop-target-1" })
+      await viewer.client.dispatch({ type: "background.terminate", sessionId: chat, toolUseId: toolUseIdFor(project, chat, "stop-target-1") })
       await until("the command ended", async () => alive(pid), (running) => !running)
       await until("the stopped completion delivered", async () => entriesCarrying(project, chat, "A person stopped this work with Stop"), (count) => count > 0)
       expect((await sessionStatus(viewer.client, chat))?.activeBackgroundCommands).toEqual([])
@@ -209,10 +209,11 @@ describe("a command the successor adopted", () => {
     expect(readFileSync(path.join(project, EDITED_FILE), "utf8")).toBe(`${EDITED_CONTENT}\n`)
     expect(entriesCarrying(project, chat, `Updated ${EDITED_FILE}`)).toBe(1)
     expect(entriesCarrying(project, chat, "fixture-command-finished")).toBe(1)
+    const edits = toolUseIdFor(project, chat, "edits-1")
     const changes = readStore(project, (reader) => reader.read({ sessionId: chat, types: ["file.changed"] }).map((fact) => fact.payload))
-    expect(changes).toEqual([expect.objectContaining({ displayPath: EDITED_FILE, origin: expect.objectContaining({ toolUseId: "edits-1" }) })])
+    expect(changes).toEqual([expect.objectContaining({ displayPath: EDITED_FILE, origin: expect.objectContaining({ toolUseId: edits }) })])
     const recorded = readStore(project, (reader) => reader.read({ sessionId: chat, types: ["tool.execution_output.recorded"] }).map((fact) => fact.payload))
-    expect(recorded).toEqual([expect.objectContaining({ toolUseId: "edits-1", mutationEvidence: expect.objectContaining({ applied: 1, samples: [{ kind: "applied", path: EDITED_FILE }] }) })])
+    expect(recorded).toEqual([expect.objectContaining({ toolUseId: edits, mutationEvidence: expect.objectContaining({ applied: 1, samples: [{ kind: "applied", path: EDITED_FILE }] }) })])
     expect(provider.commandLaunchCount("edits-1")).toBe(1)
     await stopAccountService()
   }, 180_000)

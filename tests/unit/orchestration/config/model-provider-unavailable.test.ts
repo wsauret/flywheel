@@ -3,10 +3,10 @@ import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
 import { RuntimeModelOptionRowSchema } from "../../../../src/protocol/model-assignment-protocol-schemas.js";
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
-import { accessProviderAccountKey, type AccessProviderId } from "../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../../src/infra/llm/access-provider.js";
 import { detectModelFamily, type ModelFamily } from "../../../../src/infra/llm/model-family.js";
 import type { ModelListingClient } from "../../../../src/infra/llm/model-listing.js";
-import { canonicalModelId } from "../../../../src/infra/llm/model-id.js";
+import { canonicalModelId } from "../../../../src/infra/model-id.js";
 import { listModelOptionsForSlot } from "../../../../src/orchestration/config/model-assignments.js";
 import { installedConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js";
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
@@ -15,6 +15,7 @@ import { testCapabilityModules } from "../../../helpers/provider-authority.js";
 
 import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
 import { authProviders } from "../../../helpers/auth-context.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 const resolveKey = async () => undefined;
 const profileConfig = (roles: FlywheelConfig["profiles"][string]["roles"]) => parseSchema(installedConfigSchema(), { profiles: { personal: { roles } } });
 
@@ -229,7 +230,7 @@ describe("provider-unavailable model rows", () => {
   });
 
   test("keeps a current raw-catalog model unavailable when picker eligibility excludes it", async () => {
-    const catalogs = new Map<AccessProviderId, import("../../../../src/infra/llm/provider-model-preferences.js").ResolvedProviderModels>([["openai_api", {
+    const catalogs = new Map<AccessProviderId, import("../../../../src/infra/auth/provider-models/provider-model-preferences.js").ResolvedProviderModels>([["openai_api", {
       catalog: new Set(["gpt-5.5"]),
       curatedDefault: new Set(["gpt-5.5"]),
       effective: new Set(),
@@ -252,7 +253,7 @@ describe("provider-unavailable model rows", () => {
   });
 
   test("carries serving catalog provenance into selectable picker rows", async () => {
-    const catalogs = new Map<AccessProviderId, import("../../../../src/infra/llm/provider-model-preferences.js").ResolvedProviderModels>([["chatgpt", {
+    const catalogs = new Map<AccessProviderId, import("../../../../src/infra/auth/provider-models/provider-model-preferences.js").ResolvedProviderModels>([["chatgpt", {
       catalog: new Set(["gpt-5.5"]), curatedDefault: new Set(["gpt-5.5"]),
       effective: new Set(["gpt-5.5"]), enabled: new Set(), disabled: new Set(),
     }]]);

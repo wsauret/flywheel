@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
-import { createHeightIndex } from "../../../src/tui/hooks/create-height-index.js"
+import { createHeightIndex } from "../../../src/tui/output-window/create-height-index.js"
 import { transcriptPlace, type TranscriptLayoutSlot, type TranscriptScrollState } from "../../../src/tui/output-window/output-window-scroll.js"
 import type { TranscriptFollow } from "../../../src/tui/output-window/transcript-follow.js"
 import type { TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"

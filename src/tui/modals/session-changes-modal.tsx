@@ -4,14 +4,13 @@ import { Key } from "@solid-primitives/keyed"
 import type { MutationDiff } from "../../infra/mutation-diff.js"
 import type { DiffColorMode } from "../../orchestration/config/schema.js"
 import type { SessionChangeFile } from "../../protocol/session-changes-protocol-types.js"
-import type { SessionChangesView } from "../hooks/create-session-changes.js"
-import type { SessionChangesModalHook } from "../hooks/use-session-changes-modal.js"
-import { useModalDimensions } from "../hooks/use-modal-dimensions.js"
+import type { SessionChangesModalControls, SessionChangesView } from "./session-changes-modal-types.js"
+import { useModalDimensions } from "../components/use-modal-dimensions.js"
 import { useTheme } from "../context/theme.js"
 import { Button } from "../components/button.js"
 import { ModalFrame } from "../components/modal-frame.js"
 import { DiffPreview, parseDiffs } from "../output-blocks/diff-preview.js"
-import { BOLD } from "../utils/text-attributes.js"
+import { BOLD } from "../text-attributes.js"
 import { sessionChangeDiffStatusLine, sessionChangeFolderLabel, sessionChangePathLabel, sessionChangesLabel, sessionChangeWritersLabel, undoResultLine, type SessionChangesRow } from "../../protocol/client/session-changes-copy.js"
 import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
 
@@ -30,7 +29,7 @@ function NetDiff(props: { diff: MutationDiff; complete: boolean; expanded: boole
 
 export function SessionChangesModal(props: {
   view: SessionChangesView | undefined
-  controls: SessionChangesModalHook
+  controls: SessionChangesModalControls
   projectRoot: string
   diffColors: Accessor<DiffColorMode>
 }) {

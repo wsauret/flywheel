@@ -146,7 +146,7 @@ export interface SubscriptionUsageReaderContext {
   /** The runtime's launch authority, for a reader that asks a program that owns the login, such as an external
    *  login's CLI. Without it the reader starts no process. */
   readonly launcher?: LauncherScope;
-  readonly compareAndSetTokens: (expected: import("../auth/openai-auth-types.js").StoredTokens, next: import("../auth/openai-auth-types.js").StoredTokens, signal?: AbortSignal) => Promise<boolean>;
+  readonly compareAndSetTokens: (expected: import("../auth/openai/openai-auth-types.js").StoredTokens, next: import("../auth/openai/openai-auth-types.js").StoredTokens, signal?: AbortSignal) => Promise<boolean>;
 }
 
 export type SubscriptionUsageReader = (context: SubscriptionUsageReaderContext) => Promise<SubscriptionUsageOutcome>;

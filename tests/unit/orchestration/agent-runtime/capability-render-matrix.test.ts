@@ -12,7 +12,7 @@ import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtim
 import { createCapabilityNarrowing } from "../../../../src/orchestration/agent-runtime/capability-narrowing.js";
 import { createAgentLoopInputWaiter } from "../../../../src/orchestration/agent-runtime/agent-loop-input-consumer.js";
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox.js";
-import { enforceTurnBudget, limitOutput } from "../../../../src/orchestration/agent-runtime/compaction/truncation.js";
+import { enforceTurnBudget, limitOutput } from "../../../../src/orchestration/agent-runtime/tools/truncation.js";
 import { createPendingWorkNudge } from "../../../../src/orchestration/agent-runtime/pending-work-nudge.js";
 import { availableToolNames } from "../../../../src/orchestration/agent-runtime/persona-tool-rules.js";
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js";

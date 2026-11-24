@@ -10,7 +10,7 @@ import { darwinProcess } from "../../src/infra/darwin-process-api.js"
 import { bunContainerProbe, unixProcessFacts, windowsProcessIdentity } from "../../src/infra/process-container.js"
 import { windowsJobApi } from "../../src/infra/windows-job-object.js"
 import { windowsProcessApi } from "../../src/infra/windows-process-api.js"
-import { windowsContainerName } from "../../src/infra/owned-command-supervisor.js"
+import { windowsContainerName } from "../../src/infra/windows-launch-names.js"
 import { listProcesses, type ProcessRow } from "../../src/infra/process-table.js"
 import { removeWhenReleased } from "./remove-when-released.js"
 

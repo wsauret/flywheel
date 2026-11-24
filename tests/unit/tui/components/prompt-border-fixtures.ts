@@ -3,9 +3,10 @@ import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 
 import type { ModuleComposerStatus, ModuleRowAction } from "../../../../src/protocol/protocol-module.js"
-import type { SpinnerStatus } from "../../../../src/tui/hooks/spinner-status-animation.js"
+import type { SpinnerStatus } from "../../../../src/tui/components/spinner-status-model.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
-import { resolveTheme, type TuiTheme } from "../../../../src/tui/context/theme/resolve.js"
+import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
+import type { TuiTheme } from "../../../../src/tui/context/theme/tui-theme.js"
 import type { KeyHintSpec } from "../../../../src/tui/components/key-hint-row-state.js"
 import type { ComposerControlAction } from "../../../../src/tui/components/composer-border-labels.js"
 import type { ComposerBorderUpdate } from "../../../../src/tui/components/composer-border-layout.js"

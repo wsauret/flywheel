@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { OutputProjector } from "../../../../../src/infra/output/output-projector.js";
+import { OutputProjector } from "../../../../../src/infra/output/projector/output-projector.js";
 import type { QuestionEntry } from "../../../../../src/infra/output-blocks.js";
 import type { AskUserController } from "../../../../../src/orchestration/runner/ask-user-controller.js";
 import type { ResolveWorkflowLaunchTarget } from "../../../../../src/orchestration/workflow-host/launch-origin.js";

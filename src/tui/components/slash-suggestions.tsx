@@ -3,9 +3,9 @@ import type { TextChunk } from "@opentui/core"
 import { bold as stBold, fg as stFg } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { createMemo } from "solid-js"
-import type { TuiTheme } from "../context/theme/resolve.js"
+import type { TuiTheme } from "../context/theme/tui-theme.js"
 import type { ModalSelectOption } from "./modal-select-types.js"
-import type { SlashSuggestionsHook } from "../hooks/create-slash-suggestions.js"
+import type { SlashSuggestionsHook } from "./create-slash-suggestions.js"
 import { ComposerPopupList } from "./composer-popup-list.js"
 
 const TOKEN_COLUMN_GAP = 2

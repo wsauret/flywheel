@@ -3,12 +3,12 @@ import { createFactParser, defineFact } from "../infra/event-registry.js"
 import { Sha256Schema } from "./definition-hash.js"
 import { AgentPolicyRecordSchema } from "./definition-records.js"
 import { DefinitionLoadedV8PayloadSchema } from "./definition-loaded-v8.js"
-import { USER_REQUEST_ARTIFACT_ID } from "./definition-validation.js"
+import { USER_REQUEST_ARTIFACT_ID } from "./artifact-contracts.js"
 import { DefinitionProvenanceSchema } from "./definition-provenance.js"
-import { AttemptRowSchema } from "./view/schemas.js"
+import { AttemptRowSchema } from "./attempt-row.js"
 import { WorkflowDefinitionSchema } from "./workflow-schema.js"
 import { StepGrammarWorkflowSchema } from "./retired-step-grammar/schema.js"
-import { DefinitionIdentityMismatchSchema } from "./vm/definition-identity.js"
+import { DefinitionIdentityMismatchSchema, type DefinitionIdentityMismatch } from "./definition-identity-mismatch.js"
 import type { WorkflowVerificationResult } from "./vm/verify-types.js"
 
 /** What one v1 hash names. The stored kind `step` is history from before
@@ -382,4 +382,19 @@ export type DefinitionDriftRejectedFact = typeof DefinitionDriftRejectedFactSche
 
 export function parseDefinitionProvenanceFact(value: unknown): DefinitionProvenanceFact {
   return parseDefinitionProvenanceFactFromRegistry<DefinitionProvenanceFact>(value)
+}
+
+export function buildDefinitionDriftRejectedFact(input: {
+  readonly workflowId: string
+  readonly changes: readonly [DefinitionIdentityMismatch, ...DefinitionIdentityMismatch[]]
+  readonly latestSeq: number
+}): DefinitionDriftRejectedFact {
+  const fact = parseDefinitionProvenanceFact({
+    type: "definition.drift_rejected",
+    version: 1,
+    actor: "flywheel",
+    payload: input,
+  })
+  if (fact.type !== "definition.drift_rejected") throw new Error("Definition drift fact parser returned the wrong type")
+  return fact
 }

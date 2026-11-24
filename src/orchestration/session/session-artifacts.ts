@@ -25,24 +25,15 @@ import { basename, dirname, join } from "node:path"
 import { decodeGitDirectory } from "../../infra/git-metadata.js"
 import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js"
 import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
-import { FLYWHEEL_DIR_NAME } from "../../infra/directory-authorities.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import type { OwnedCommandRunner } from "../../infra/owned-command.js"
-import { requireSessionIdComponent, SCRATCH_MUTATION_GIT_DIR, SCRATCH_MUTATIONS_DIR, SESSIONS_DIR, sessionRelativeDir, workflowRelativeDir } from "../../infra/paths.js"
+import { AGENT_OUTPUTS_DIR, requireSessionIdComponent, SCRATCH_MUTATION_GIT_DIR, SCRATCH_MUTATIONS_DIR, SESSIONS_DIR, sessionRelativeDir, workflowRelativeDir } from "../../infra/paths.js"
 import { mutationGitDirectoryName, mutationGitRuntimeExists } from "../agent-runtime/tools/bash-git-wrapper.js"
 import { PRIVATE_COPY_RECORD } from "../agent-runtime/tools/bash-private-copy-record.js"
 import { directoryComponents, removeTreeUnder, writeFileUnder } from "../../infra/write-file-under.js"
 
 const log = Log.create({ service: "session-artifacts" })
-
-const AGENT_OUTPUTS_NAME = "agent-outputs"
-const AGENT_OUTPUTS_DIR = `${FLYWHEEL_DIR_NAME}/${AGENT_OUTPUTS_NAME}`
-
-/** Every entry of `.flywheel` that holds session-scoped artifacts, named as the
- *  entry it is. A caller that stages or deletes a whole state generation names
- *  these roots from their owner instead of restating them. */
-export const SESSION_ARTIFACT_ROOTS = [basename(SESSIONS_DIR), AGENT_OUTPUTS_NAME, "workflows"] as const
 
 /** A breadcrumb outlives the runner that wrote it: a resumed session's durable
  *  transcript can still instruct the model to read one written before that

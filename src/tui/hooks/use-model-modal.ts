@@ -20,7 +20,7 @@ import { createModalDisclosureState, modalDisclosureAction } from "../components
 import { createListModalKeys } from "../components/modal-list-keys.js"
 import type { ModalContext, ModalHandle } from "../components/modal-stack.js"
 import type { ShellServices } from "./shell-state.js"
-import { scopeSaveToast, type ModelModalScope } from "./use-model-modal-scope.js"
+import { scopeSaveToast, type ModelModalScope } from "../modals/model-modal-scope.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY } from "../keymap/text-entry.js"
 
 interface ModelModalDeps {

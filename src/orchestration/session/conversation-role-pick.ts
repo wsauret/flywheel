@@ -7,37 +7,14 @@
 
 import { Schema } from "effect";
 import { durableOwnerAggregate, type DurableOwner } from "../../infra/durable-owner.js";
-import { defineFact } from "../../infra/event-registry.js";
 import { createEventProjection, parseProjectionFact } from "../../infra/event-projection.js";
 import type { AsyncEventReadSurface } from "../../infra/event-store-types.js";
 import { heldProjection } from "../../infra/projection-registry.js";
 import type { SessionFactWriter } from "./session-fact-writer.js";
+import { ConversationRolePickedFactSchema, type ConversationRolePickFact, type RolePickSetting } from "./conversation-role-pick-facts.js";
 
-/** The authored setting that a pick answers: the role and the fields that a person or a workflow authored for it. */
-const RolePickSettingSchema = Schema.Struct({
-  roleId: Schema.NonEmptyString,
-  model: Schema.optionalKey(Schema.NonEmptyString),
-  effort: Schema.optionalKey(Schema.NonEmptyString),
-  defaultEffort: Schema.optionalKey(Schema.NonEmptyString),
-});
-
-const ConversationRolePickedFactSchema = defineFact({
-  type: "conversation.role.picked",
-  version: 1,
-  actor: Schema.Literal("flywheel"),
-  payload: Schema.Struct({
-    conversationId: Schema.NonEmptyString,
-    setting: RolePickSettingSchema,
-    model: Schema.NonEmptyString,
-    effort: Schema.NonEmptyString,
-  }),
-});
-
-export const ConversationRolePickFactSchemas = [ConversationRolePickedFactSchema] as const;
-export type ConversationRolePickFact = typeof ConversationRolePickedFactSchema.Type;
 const parseConversationRolePickedFact = Schema.decodeUnknownSync(ConversationRolePickedFactSchema, { onExcessProperty: "error" });
 
-export type RolePickSetting = typeof RolePickSettingSchema.Type;
 type RolePick = ConversationRolePickFact["payload"];
 
 /** The identity of a setting, by which a pick applies only while its setting stays as it was. */

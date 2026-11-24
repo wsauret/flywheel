@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { useTheme } from "@tui/context/theme"
-import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
+import { useModalDimensions } from "@tui/components/use-modal-dimensions"
 import { ModalSelect } from "../components/modal-select.js"
 import type { FilteredResult } from "../components/modal-select-types.js"
 import { ModalFrame } from "../components/modal-frame.js"

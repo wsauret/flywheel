@@ -40,6 +40,7 @@ export const runtimeCallPolicies = {
   authStatusSnapshot: controlRead,
   authProfileDeletionPreview: controlRead,
   updateSnapshot: controlRead,
+  restartReadiness: controlRead,
   moduleSnapshot: controlRead,
   configSnapshot: controlRead,
   gitAiAttributionSnapshot: controlRead,

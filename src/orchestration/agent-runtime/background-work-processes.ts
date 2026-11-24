@@ -8,7 +8,7 @@
  */
 
 import type { BackgroundCommandRecord } from "../../infra/runtime-fact-types.js";
-import type { BackgroundKillSource, BackgroundWorkMeta, BackgroundWorkResult } from "./background-work.js";
+import type { BackgroundKillSource, BackgroundWorkMeta, BackgroundWorkResult, CommandExit } from "./background-work-types.js";
 import type { ManagedCommand } from "./tools/managed-command.js";
 
 const SETTLED_PROCESS_HISTORY_LIMIT = 100;
@@ -30,11 +30,6 @@ export interface BackgroundOutputRequest {
   limit: number;
   query?: string;
 }
-
-/** How a command whose end was observed ended: with its own exit code, or
- *  by a signal, which leaves it no exit code. `signal` is null when the
- *  platform named none. */
-export type CommandExit = { readonly code: number } | { readonly signal: string | null };
 
 /** The exit code of an observed exit that has one. */
 function exitCodeOf(exit: CommandExit | undefined): number | undefined {

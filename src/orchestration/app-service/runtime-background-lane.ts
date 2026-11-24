@@ -12,15 +12,13 @@ import { PROTOCOL_BACKGROUND_DOMAINS, protocolDomain, type ProtocolBackgroundDom
 import type { RuntimeBackgroundClient } from "./worker-background-client.js"
 import type { SessionFileChangeCounts } from "../../protocol/session-changes-protocol-types.js"
 import { createRuntimeBackgroundConversationSearch, type RuntimeBackgroundConversationSearch } from "./runtime-background-conversation-search.js"
-import { budgetViewsFromSummary } from "./runtime-summary-projection.js"
+import { budgetViewsFromSummary, type RuntimeSummarySource } from "./runtime-summary-read.js"
 
 /** A read-only optimization lane. Its results are unpositioned domain data;
  * the authoritative app-service bus publication boundary owns all positions. */
-export interface RuntimeBackgroundLane extends Pick<RuntimeBackgroundClient, "transcriptSearch" | "findChats">, RuntimeBackgroundConversationSearch {
+export interface RuntimeBackgroundLane extends Pick<RuntimeBackgroundClient, "transcriptSearch" | "findChats">, RuntimeBackgroundConversationSearch, RuntimeSummarySource {
   start(): void
   snapshot(): Promise<RuntimeBackgroundSummaryResult>
-  sessionSummaryImmediate(sessionIds: readonly string[]): Promise<RuntimeBackgroundSummaryResult>
-  waitForTotals(sessionIds: readonly string[]): Promise<RuntimeBackgroundSummaryResult>
   sessionDetail(query: RuntimeSessionDetailQuery): Promise<RuntimeSessionDetailResult>
   sessionChangeSummary(sessionId: string): Promise<SessionFileChangeCounts>
   /** One module domain's durable history for a session that is not live. */

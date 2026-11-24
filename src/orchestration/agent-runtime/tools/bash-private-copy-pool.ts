@@ -12,7 +12,7 @@ import { mayHaveSurvivingDescendant } from "../../../infra/container-mark.js";
 import { Log } from "../../../infra/log.js";
 import { bunContainerProbe, processStart, type ContainerProbe } from "../../../infra/process-container.js";
 import type { RepositoryState } from "./bash-copy-repository-state.js";
-import { discardPrivateCopy } from "./bash-private-copy.js";
+import { discardPrivateCopy } from "./bash-private-copy-home.js";
 import { createPrivateCopyJobs, type PrivateCopyJobs, type SpawnWorker } from "./bash-private-copy-jobs.js";
 
 const log = Log.create({ service: "bash-private-copy" });
@@ -104,7 +104,7 @@ export function createPrivateCopyPool({ now = Date.now, probe = bunContainerProb
   const removals = new Set<Promise<void>>();
   let closed = false;
   const discard = (copy: Pick<ReusableCopy, "home">): Promise<void> => {
-    const removal = discardPrivateCopy(copy);
+    const removal = discardPrivateCopy(copy.home);
     removals.add(removal);
     void removal.then(() => removals.delete(removal));
     return removal;

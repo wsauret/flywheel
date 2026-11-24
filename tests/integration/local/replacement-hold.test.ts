@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from "bun:test"
 
-import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
+import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
 import { joinIsolatedAccountService } from "./_account-service.js"
 import { answerChoice, createReplacementHarness, openChat, sessionStatus, until } from "./_replacement-harness.js"
 import { toolResult } from "./_replacement-provider.js"
@@ -12,7 +12,7 @@ import { toolResult } from "./_replacement-provider.js"
  *  proven by the replacement-blockers unit tests, and what the replacement
  *  does to each owner kind by replacement-continuation.test.ts. */
 const harness = createReplacementHarness("replacement-hold")
-const { tmp, userDataRoot, provider, makeProject, setInstalledBuild, requestCutover, serviceListening, stopAccountService, startSuccessor, handoverSessions, entriesCarrying, handoffRows } = harness
+const { tmp, userDataRoot, provider, makeProject, setInstalledBuild, requestCutover, serviceListening, stopAccountService, startSuccessor, handoverSessions, entriesCarrying, handoffRows, toolUseIdFor } = harness
 
 /** How long a client of the new build may take to answer in the busy
  *  project: an ordinary attach, with no wait for the command. */
@@ -71,13 +71,14 @@ describe("a replacement across two projects while a command runs", () => {
       await until("project B command adopted", async () => handoverSessions(projectB), (sessions) => sessions.length === 0)
       expect(provider.commandPid("shell-1")).toBe(shellPid)
       const status = await until("the adopted command shown", () => sessionStatus(second.client, shell), (view) => (view?.activeBackgroundCommands.length ?? 0) > 0)
-      expect(status?.activeBackgroundCommands.map((command) => command.toolUseId)).toEqual(["shell-1"])
+      expect(status?.activeBackgroundCommands.map((command) => command.toolUseId)).toEqual([toolUseIdFor(projectB, shell, "shell-1")])
       const asked = await harness.attach(projectA)
       try {
-        await until("question still open", async () => (await asked.client.query({ type: "questionSnapshot", sessionIds: [ask] })).views[0]?.view ?? null, (view) => view?.toolUseId === "ask-1")
+        const question = toolUseIdFor(projectA, ask, "ask-1")
+        await until("question still open", async () => (await asked.client.query({ type: "questionSnapshot", sessionIds: [ask] })).views[0]?.view ?? null, (view) => view?.toolUseId === question)
         expect(provider.trace("ask").continued).toBe(0)
         expect(provider.trace("ask").requests).toBe(1)
-        expect(await answerChoice(asked.client, ask, "ask-1", "Yes")).toMatchObject({ ok: true })
+        expect(await answerChoice(asked.client, ask, question, "Yes")).toMatchObject({ ok: true })
         await until("the answer continued the turn", async () => provider.trace("ask").requests, (count) => count === 2)
         expect(toolResult(JSON.parse(provider.trace("ask").lastBody ?? "null"), "ask-1")).toContain("Yes")
         expect(provider.trace("ask").continued).toBe(0)

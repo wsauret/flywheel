@@ -4,7 +4,8 @@ import { testRender } from "@opentui/solid"
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
 import type { TextEditorPresentation } from "../../../../src/tui/keymap/text-entry.js"
-import type { SessionModalAction, SessionPickerResult } from "../../../../src/tui/hooks/use-session-modal-types.js"
+import type { SessionModalAction } from "../../../../src/tui/hooks/use-session-modal-types.js"
+import type { SessionPickerResult } from "../../../../src/tui/session-picker/picker-types.js"
 import { createModal, session } from "../hooks/_session-modal-fixtures.js"
 
 const presentation: TextEditorPresentation = {

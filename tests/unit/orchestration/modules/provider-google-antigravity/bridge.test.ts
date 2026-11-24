@@ -47,7 +47,11 @@ function fakeGate() {
 
 const MODELS: AcpConfigOption = { id: "model", name: "Model", currentValue: "gemini-3.1-pro", options: [{ value: "gemini-3.1-pro", name: "Pro" }, { value: "gemini-4-neon", name: "Neon" }] }
 const LEVELS: AcpConfigOption = { id: "thought_level", name: "Thinking", currentValue: "low", options: [{ value: "low", name: "Low" }, { value: "high", name: "High" }] }
-const USAGE = { inputTokens: 10, outputTokens: 2, cachedReadTokens: 0, cachedWriteTokens: 0, thoughtTokens: 0, totalTokens: 12 }
+/** The usage of a request that ran no model request. */
+const NO_USAGE = { kind: "usage" as const, final: true, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 }
+/** The aggregate usage of a prompt with `requests` model requests, each of 990 input and 10 output tokens, whose total
+ *  each request's occupancy report (`used: 1_000`) states, as agy reports both. */
+const promptUsage = (requests: number) => ({ inputTokens: 990 * requests, outputTokens: 10 * requests, cachedReadTokens: 0, cachedWriteTokens: 0, thoughtTokens: 0, totalTokens: 1_000 * requests })
 
 /**
  * An engine process whose model answers each admitted step with the next scripted response. A step asks the gate
@@ -67,9 +71,11 @@ function fakeEngine(gate: ReturnType<typeof fakeGate>, options: EngineOptions = 
   }
   const step = async (sessionId: string): Promise<AcpPromptResult> => {
     const session = sessions.get(sessionId)!
+    let requests = 0
     for (;;) {
       if ((options.hookRuns?.() ?? true) && gate.ask(sessionId) !== "consumed") return { stopReason: "end_turn" }
       const response = responses.shift() ?? [{ text: "reply" }]
+      requests += 1
       // agy reports the occupancy of each model request: before the calls of a response, after its text.
       const usage: AcpSessionUpdate = { sessionUpdate: "usage_update", used: 1_000, size: 250_000 }
       const hasCall = response.some((action) => "call" in action)
@@ -90,12 +96,13 @@ function fakeEngine(gate: ReturnType<typeof fakeGate>, options: EngineOptions = 
         session.onUpdate(revealed)
         const cancelled = new Promise<"cancelled">((resolve) => { session.cancel = () => { resolve("cancelled") } })
         const answer = await Promise.race([session.onToolCall({ sessionId, name: "echo", arguments: { text: action.call } }, new AbortController().signal), cancelled])
-        if (answer === "cancelled") return { stopReason: "cancelled" }
+        // A cancelled prompt still reports its aggregate, as agy does.
+        if (answer === "cancelled") return { stopReason: "cancelled", usage: promptUsage(requests) }
         log.push(`result ${JSON.stringify(answer.content)}`)
         called = true
       }
       if (!hasCall) session.onUpdate(usage)
-      if (!called) return { stopReason: "end_turn", usage: USAGE }
+      if (!called) return { stopReason: "end_turn", usage: promptUsage(requests) }
     }
   }
   const engine: BridgeEngine = {
@@ -206,7 +213,7 @@ describe("Google Antigravity bridge", () => {
     expect(log).toEqual([expect.stringMatching(/^prompt /u)])
   })
 
-  test("a request that settles on a revealed call revokes the admission that its delivery granted", async () => {
+  test("a request that settles on a revealed call without a model request reports zero usage and revokes the admission that its delivery granted", async () => {
     const { bridge, gate, script } = rig()
     script([{ call: "a" }, { call: "b" }])
     const history: ConversationMessage[] = [user("go")]
@@ -215,9 +222,34 @@ describe("Google Antigravity bridge", () => {
     history.push(first.assistant, { kind: "toolResult", toolUseId: first.toolUseId!, content: [{ type: "text", text: "a done" }] })
     const second = await serve(bridge, history)
     expect(stops(second)).toEqual(["tool_use"])
-    expect(second.audit?.notRecorded).toContain("usage")
+    expect(second.events.filter((event) => event.kind === "usage")).toEqual([NO_USAGE])
+    expect(second.audit?.notRecorded).not.toContain("usage")
     // The second call followed the first result without a model step, so the grant of the delivery is gone.
     expect(gate.held.size).toBe(0)
+  })
+
+  test("requests that settle at calls report their totals as partial usage, the prompt's end reports the rest, and a cancelled prompt adds nothing", async () => {
+    const { bridge, script } = rig()
+    script([{ call: "a" }], [{ call: "b" }])
+    const usage = (served: Served) => served.events.filter((event) => event.kind === "usage")
+    const partial = { kind: "usage" as const, final: false, inputTokens: 1_000, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 }
+    const history: ConversationMessage[] = [user("go")]
+    for (const done of ["a", "b"]) {
+      const served = await serve(bridge, history)
+      expect(usage(served)).toEqual([partial])
+      expect(served.audit?.notRecorded).not.toContain("usage")
+      history.push(served.assistant, { kind: "toolResult", toolUseId: served.toolUseId!, content: [{ type: "text", text: `${done} done` }] })
+    }
+    const last = await serve(bridge, history)
+    expect(stops(last)).toEqual(["end_turn"])
+    // Three requests of 990 input and 10 output tokens: the earlier two reported 2,000 tokens as input.
+    expect(usage(last)).toEqual([{ kind: "usage", final: true, inputTokens: 970, outputTokens: 30, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 }])
+
+    // A new prompt starts its own sums; its aggregate, which agy reports when the bridge cancels it, has no request left.
+    script([{ call: "c" }])
+    history.push(last.assistant, user("again"))
+    expect(usage(await serve(bridge, history))).toEqual([partial])
+    await bridge.close()
   })
 
   test("a request whose history does not hold the revealed call yet settles on that call again and releases nothing", async () => {
@@ -228,6 +260,9 @@ describe("Google Antigravity bridge", () => {
     const again = await serve(bridge, [user("go")])
     expect(again.toolUseId).toBe(first.toolUseId)
     expect(stops(again)).toEqual(["tool_use"])
+    // The first request already reported the model request that revealed the call.
+    expect(again.events.filter((event) => event.kind === "usage")).toEqual([NO_USAGE])
+    expect(again.audit?.notRecorded).not.toContain("usage")
     expect(log).toEqual([])
   })
 

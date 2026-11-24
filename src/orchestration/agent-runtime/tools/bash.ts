@@ -18,7 +18,6 @@ import { checkNumericRange } from "./numeric-input.js";
 import type { AdvertisedTool, BashOperations, RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolResult } from "./types.js";
 import type { RuntimePlatform } from "./bash-script.js";
 import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
-import { DEFAULT_TOTAL_YIELD_MS } from "./shell-runtime.js";
 import type { ShellRuntimeClient } from "./shell-runtime-types.js";
 import { DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS, POST_EXIT_DRAIN_GRACE_MS } from "./shell-execution.js";
 import { createToolEnvironmentFactory, refuseBackgroundCommand, runPersistentCommand } from "./shell-environment.js";
@@ -33,6 +32,11 @@ interface BashInput {
 const log = Log.create({ service: "agent-bash" });
 
 const MAX_TIMEOUT_SEC = 3600;
+
+/** Default foreground hold before an auto-yield transfers a still-running
+ *  command to a managed process. Shared by every shell dialect; the
+ *  configured foreground_bash_hold_seconds overrides it per request. */
+const DEFAULT_TOTAL_YIELD_MS = 240_000;
 
 /** Structured execution evidence carried on current Bash results. */
 const SynchronousBashResultDetailsSchema = Schema.Struct({

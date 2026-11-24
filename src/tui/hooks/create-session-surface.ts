@@ -1,18 +1,16 @@
 import type { Accessor } from "solid-js"
-import { createEffect, createMemo, createSignal, getOwner, onCleanup, untrack } from "solid-js"
+import { createEffect, createMemo, onCleanup, untrack } from "solid-js"
 import type { ToolStreamingText } from "../../infra/output-blocks.js"
 import { isInterruptible } from "../../protocol/client/session-controls.js"
-import { isActiveActivity, type AttachedRuntimeClient, type RuntimeClient, type SessionCatalogRow, type SessionRow } from "../../protocol/app-service-types.js"
-import { isLaneBreak } from "../../protocol/client/cursor-intake.js"
-import { createHeldSessionDetails } from "../../protocol/client/held-session-details.js"
+import { isActiveActivity, type RuntimeClient, type SessionCatalogRow, type SessionRow } from "../../protocol/app-service-types.js"
 import { sessionActiveMs } from "../../protocol/client/session-time.js"
-import { isGlobalRuntimeInvalidation } from "../../protocol/runtime-ui-protocol-types.js"
 import type { BudgetView } from "../../protocol/budget-protocol-types.js"
 import type { OutputView } from "../../protocol/output-protocol-types.js"
 import type { PendingQuestionView } from "../../protocol/question-protocol-types.js"
 import type { RuntimeSessionDetailView } from "../../protocol/session-detail-protocol-types.js"
 import type { ActiveBackgroundCommandView, StatusView } from "../../protocol/status-protocol-types.js"
 import type { SessionLifecycleState } from "../../orchestration/session/types.js"
+import type { SessionDetailCache } from "../session-detail-cache.js"
 import type { OutputTranscriptCache, OutputTranscriptView } from "../transcript-store/output-transcript-cache-types.js"
 import type { BudgetCache } from "./create-budget-cache.js"
 import { createForegroundOutputPager } from "./create-foreground-output-pager.js"
@@ -52,14 +50,6 @@ export interface SessionSurface {
   readonly pageOutput: (direction: "older" | "newer") => void
 }
 
-/** The held detail a surface reads, counted per surface that holds it. */
-export interface SessionDetailCache {
-  retain(sessionId: string): { release(): void }
-  /** Whether a held session's read has answered, and why its last read failed. */
-  state(sessionId: string): { readonly loaded: boolean; readonly error?: string } | undefined
-  view(sessionId: string): RuntimeSessionDetailView | undefined
-}
-
 export interface SessionSurfaceDeps {
   readonly detailCache: SessionDetailCache
   readonly appService: Pick<RuntimeClient, "query">
@@ -74,72 +64,6 @@ export interface SessionSurfaceDeps {
   readonly now: Accessor<number>
   readonly hydrateToHead: (sessionId: string, stillMounted: () => boolean) => Promise<void>
   readonly onTranscriptFailure: (sessionId: string, cause: unknown) => void
-}
-
-/** The terminal's binding of the shared held detail (`createHeldSessionDetails`),
- *  the one session-detail cache every client uses. It holds each session one
- *  surface or more shows, while one does, and holds no parent chain: a
- *  listed chat reads its row from the catalog (C5). A detail read makes the
- *  runtime hold the session's detail for this connection, so the last
- *  release tells the runtime through `releases`, which bypasses any limit
- *  that `reads` puts on snapshot reads. The release names the detail alone:
- *  a tab this connection shows keeps its runner. */
-export function createSessionDetailCache(
-  reads: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane">,
-  releases: Pick<RuntimeClient, "dispatch">,
-): SessionDetailCache {
-  // One signal for each held session, created with its first hold and
-  // dropped with its last release, so a change to one session wakes only
-  // that session's readers. A reader of a session that is not held tracks
-  // `holdsChanged`, which fires when a session becomes held.
-  const changed = new Map<string, { readonly track: () => void; readonly notify: () => void }>()
-  const [holdsChanged, setHoldsChanged] = createSignal(undefined, { equals: false })
-  const track = (sessionId: string): void => { (changed.get(sessionId)?.track ?? holdsChanged)() }
-  const notify = (sessionId: string): void => { changed.get(sessionId)?.notify() }
-  const held = createHeldSessionDetails({
-    client: { query: reads.query, dispatch: releases.dispatch },
-    onChange: notify,
-  })
-  const holds = new Map<string, number>()
-  // Each new lane reads every held session again. A break reads nothing,
-  // because the next lane's read answers for it.
-  const stopLanes = reads.onLane(() => held.refresh())
-  const unsubscribe = reads.subscribe((event) => {
-    if (event.type !== "patch") return
-    if (isGlobalRuntimeInvalidation(event.patch) && !isLaneBreak(event.patch)) held.refresh()
-    else held.accept(event.patch)
-  })
-  if (getOwner()) onCleanup(() => { stopLanes(); unsubscribe(); held.dispose(); changed.clear() })
-  return {
-    retain(sessionId) {
-      const count = holds.get(sessionId) ?? 0
-      holds.set(sessionId, count + 1)
-      if (count === 0) {
-        const [readChanged, setChanged] = createSignal(undefined, { equals: false })
-        changed.set(sessionId, { track: readChanged, notify: () => setChanged(undefined) })
-        setHoldsChanged(undefined)
-        void held.holdSession(sessionId)
-      }
-      let released = false
-      return { release() {
-        if (released) return
-        released = true
-        const remaining = (holds.get(sessionId) ?? 1) - 1
-        if (remaining > 0) { holds.set(sessionId, remaining); return }
-        holds.delete(sessionId)
-        // Drop the signal before it fires. Outside a batch, Solid re-runs a
-        // reader inside the notify, and that reader must then track
-        // `holdsChanged`, or a later hold of this id never wakes it.
-        const entry = changed.get(sessionId)
-        changed.delete(sessionId)
-        // The shared owner notifies a forgotten detail's signal, so remove the signal first to keep one wakeup.
-        held.forget(sessionId)
-        entry?.notify()
-      } }
-    },
-    state: (sessionId) => { track(sessionId); return held.state(sessionId) },
-    view: (sessionId) => { track(sessionId); return held.view(sessionId) },
-  }
 }
 
 /** What a surface reads beyond its session's detail, status, and budget. A
@@ -241,50 +165,7 @@ export function createSessionSurface(deps: SessionSurfaceDeps, sessionId: Access
   const sessionKind = () => summary()?.kind ?? detail()?.kind ?? null
   const elapsed = () => sessionActiveMs(status() ?? undefined, deps.now())
 
-  const transcript: OutputTranscriptView = {
-    protectReader: (reader) => { const id = untrack(sessionId); if (id) deps.transcriptCache.protectReader(id, reader) },
-    mutationEvidence: bound(deps.transcriptCache.mutationEvidence),
-    reportProjectionFailure: (error) => deps.transcriptCache.reportProjectionFailure(untrack(sessionId) ?? "", error),
-    visibleRange: bound(deps.transcriptCache.visibleRange),
-    visibleMessageCount: () => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.visibleMessageCount(id) : 0
-    },
-    jumpToLatest: () => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.jumpToLatest(id) : Promise.resolve()
-    },
-    freshness: bound(deps.transcriptCache.freshness),
-    hydrateAnchor: () => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.hydrateAnchor(id) : Promise.resolve()
-    },
-    loadAround: (entryId) => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.loadAround(id, entryId) : Promise.resolve()
-    },
-    takeEstimateUpdates: () => {
-      const id = untrack(sessionId)
-      return id ? deps.transcriptCache.takeEstimateUpdates(id) : []
-    },
-    evictBefore: (blockIndex) => {
-      const id = untrack(sessionId)
-      if (id) deps.transcriptCache.evictBefore(id, blockIndex)
-    },
-    setDisclosure: (key, expanded) => {
-      const id = sessionId()
-      if (!id) return
-      deps.transcriptCache.setDisclosure(id, key, expanded)
-    },
-    disclosure: (key) => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.disclosure(id, key) : undefined
-    },
-    hydrateBlockBody: (blockId) => {
-      const id = sessionId()
-      if (id) void deps.transcriptCache.hydrateBlockBody(id, blockId)
-    },
-  }
+  const transcript = deps.transcriptCache.bindSession(sessionId)
 
   const pager = createForegroundOutputPager({ foregroundId: sessionId, transcriptCache: deps.transcriptCache, onFailure: deps.onTranscriptFailure })
   return {

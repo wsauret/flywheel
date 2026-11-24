@@ -26,7 +26,7 @@ import { createMutationAdmission } from "../../app-service/mutation-admission.js
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
 import { createRelayControlChannel, linkConnection, linkFailure, type ControlFailure, type RelayLink, type ServedClient } from "./relay-control-channel.js"
 import { dialRelayDataChannel } from "./relay-data-channel.js"
-import type { AccountServiceInstallation } from "../../app-service/account-service-installation.js"
+import type { AccountServiceInstallation } from "../../app-service/account-service-platform.js"
 import type { AccountModuleFaults } from "../../app-service/module-service-host.js"
 import { ensureRemoteIdentity, type RemoteIdentity } from "./remote-identity.js"
 import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./remote-pairing-exchange.js"

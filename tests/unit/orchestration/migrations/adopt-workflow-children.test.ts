@@ -23,7 +23,7 @@ import { createConversationMessageEntry } from "../../../../src/orchestration/se
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { chatSessionActions, readChatTurnEnd } from "../../../../src/orchestration/session/chat-session-run-evidence.js"
-import { historicalCompletionEntryId } from "../../../../src/orchestration/session/child-session-completion.js"
+import { historicalCompletionEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { reconcileChildSessionCompletions } from "../../../../src/orchestration/session/child-session-reconciliation.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications.js"
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js"
@@ -32,7 +32,7 @@ import { createWorkflowDetailReader } from "../../../../src/orchestration/module
 import { createWorkflowViewProtocolReader } from "../../../../src/orchestration/modules/workflows/view-protocol.js"
 import { convertWorkflowAgentSessions } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions.js"
 import { branchBlocks } from "../../../helpers/branch-blocks.js"
-import { deferredAgentMeta } from "../../../../src/infra/output/deferred-agent-meta.js"
+import { deferredAgentMeta } from "../../../../src/infra/output/projector/deferred-agent-meta.js"
 import { acceptOlderFollowUp, adoptionCard, adoptionFixture, adoptionWarnings, branch, chat, described, launchCard, launchedWorkflow, launchingParent, owner, parentTurn, recordCompletedRun, previousWorkflowCreatedFact } from "./_workflow-adoption.js"
 
 const temporary = temporaryDirectories()

@@ -2,7 +2,7 @@
 
 import { StyledText, type ScrollBoxRenderable, type TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
-import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
+import { useModalDimensions } from "@tui/components/use-modal-dimensions"
 import { createEffect, createMemo, Index, onCleanup, Show } from "solid-js"
 import { experimentViewDomain } from "../../../protocol/modules/experiments.js"
 import { modalCopyLimit } from "../../components/modal-copy.js"

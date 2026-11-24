@@ -1,12 +1,8 @@
 import { Effect, Exit, Scope } from "effect"
-import type { AuthContext } from "../../infra/auth/auth-context.js"
 import { chatInputText, type ChatInputLike } from "../../infra/chat-input.js"
-import type { EnvCaptureResolver } from "../../infra/env-detection.js"
-import type { OwnedCommandRunner } from "../../infra/owned-command.js"
-import { createEmit, type EventBus, type Unsubscribe } from "../../infra/event-bus.js"
+import { createEmit, type Unsubscribe } from "../../infra/event-bus.js"
 import { Log } from "../../infra/log.js"
 import { errorMessage } from "../../infra/error-message.js"
-import type { ModelFamily } from "../../infra/llm/model-family.js"
 import type { AnyBlock, ConnectionState } from "../../infra/output-blocks.js"
 import type { RuntimeEvent } from "../../infra/runtime-event-types.js"
 import { nestedFactProjectionEvents } from "../../infra/output/nested-fact-projection.js"
@@ -14,132 +10,19 @@ import { hydrateToolContentFact } from "../../infra/tool-content-hydration.js"
 import { createChatControls } from "./controls.js"
 import type { ChatRunner } from "./runner-types.js"
 import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
-import { ChatSessionState, type ChatCallbacks } from "./types.js"
+import { ChatSessionState, type ChatCallbacks, type ChatSessionDeps } from "./types.js"
 import { createChatRunnerLifecycle } from "./runner-lifecycle.js"
-import type { LLMClientFactory } from "../agent-runtime/factory.js"
-import type { AgentFactory, AgentOptions, CreateChildConversation } from "../agent-runtime/types.js"
-import type { CommandHandoverAuthority } from "../agent-runtime/command-handover.js"
-import type { ConversationTreeWriterController } from "./tree-writer.js"
-import { TITLE_GENERATION_ROLE_ID, type RoleResolver } from "../config/roles.js"
-import type { CapturedModuleConfig } from "../chat-module-host.js"
-import type { CapabilityAccess } from "../agent-runtime/tools/types.js"
-import type { StartModelWorkflow } from "../agent-runtime/tools/workflow-tool.js"
-import { type MetricsWriter, type SessionInfra, wireSessionSubscribers } from "../session/create-session-infra.js"
+import { TITLE_GENERATION_ROLE_ID } from "../config/roles.js"
+import { wireSessionSubscribers } from "../session/create-session-infra.js"
 import { createOutputSession } from "../runner/output-session.js"
 import { SessionEventAdapter } from "../session-store/event-adapter.js"
 import { deleteSessionArtifacts } from "../session/session-artifacts.js"
-import type { ChatEntryPatch } from "../session-store/types.js"
 import { generateSessionTitle, type SessionTitleGeneration } from "../session/session-title.js"
 import { createAskUserController } from "../runner/ask-user-controller.js"
 import { voidUnclaimedDecisions } from "../session/agent-input-decision.js"
 import { readChatTurnEnd } from "../session/chat-session-run-evidence.js"
-import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js"
-import type { AgentDefinition } from "../../infra/agent-definition.js"
-import type { FirstPartyModuleSnapshot } from "../modules.js"
-import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
-import type { ChildSessionAuthority } from "../module-seams.js"
-import type { SessionMessaging } from "../session/session-messaging.js"
-import type { createChatInvocationCompletion } from "./runner-completion.js"
 
 const log = Log.create({ service: "chat" })
-
-type ChatInfra = Pick<SessionInfra, "budgetStore" | "sessionEventWriter" | "toolExecutionStore" | "eventStore" | "projectionReader">
-
-export interface ChatSessionDeps {
-  /** Invocation-owned completion, published only after accepted handoff and durable turn settlement. */
-  rootChatCompletion?: ReturnType<typeof createChatInvocationCompletion>
-  projectRoot: string
-  /** Session's recorded execution directory. Agent tools resolve relative paths here. */
-  executionCwd: string
-  /** Startup-selected account data root every runner this session builds reads
-   *  account-global state from. */
-  userDataRoot: string
-  /** Account home `userDataRoot` was derived from, for the account paths
-   *  outside it: global memory, global `AGENTS.md`, and `~/.agents`. */
-  accountHome: string
-  /** Definition owner of this project: briefs, workflows, and skill revisions. */
-  definitions: ProjectDefinitionRegistry
-  /** Persona map captured from the same project revision as the session roles. */
-  personas: ReadonlyMap<string, AgentDefinition>
-  createAgent: AgentFactory
-  /** Prepares the next request of the session's chat and its hosts for their pre-starts (`SessionEngines`). */
-  prepareRequest: import("../agent-runtime/request-preparation.js").RequestPreparer
-  /** Answers the agent check of the chat's next request for `ChatRunner.capabilities`. */
-  planCapabilities: import("../agent-runtime/request-preparation.js").CapabilityPlanner
-  createLLMClient: LLMClientFactory
-  captureProviderConnection: import("../agent-runtime/factory.js").CaptureProviderConnection
-  onNotification?: AgentOptions["onNotification"]
-  moduleSelection: FirstPartyModuleSnapshot
-  proactiveCompactionThreshold: () => number
-  idleCompaction?: ReturnType<typeof import("./idle-compaction.js").createIdleCompactionPolicy>
-  workflowMode: () => WorkflowsMode
-  resolveRoles: RoleResolver
-  /** Calls `listener` after a change that can change this session's resolved roles: of its metadata, which holds its
-   *  role assignments, or of the profiles, which hold the profile's assignments. Returns the removal, which
-   *  waits for a call that runs. The session's engines plan again on it (`SessionEngines.rolesChanged`). */
-  subscribeRoleChanges: (listener: () => void) => () => Promise<void>
-  /** Resolves the `<env>` block this session's idle compaction carries, shared
-   *  with every other assembly of the same directory pair. */
-  resolveEnvSnapshot: EnvCaptureResolver
-  /** Runs bounded experiment and Git commands through this session's owned launch scope. */
-  runOwnedCommand?: OwnedCommandRunner
-  /** The executor's command handover, through which this chat's background
-   *  owner hands its commands to the next build and adopts what a previous
-   *  build handed to its conversation. Absent where no account serves. */
-  commandHandover?: CommandHandoverAuthority
-  availableModels?: ReadonlyMap<ModelFamily, ReadonlySet<string>>
-  activeProfileId?: string
-  auth: AuthContext
-  infra: ChatInfra
-  /** Scope holding the session's acquired infra resources (transcript flusher,
-   *  budget store, trace collector). The session owns its close: dispose()
-   *  flushes and disposes the tree writer first, then closes this scope. */
-  resourceScope: Scope.Closeable
-  eventBus: EventBus
-  sessionId: string
-  conversationId: string
-  updateEntry: (patch: ChatEntryPatch) => void
-  metricsWriter?: MetricsWriter
-  /** Persists chat metadata (provider continuation token) outside the live
-   *  entry so a later process can resume the same prompt-cache slot. */
-  onChatMetadata?: (patch: { providerConversationId?: string; seedContext?: string }) => void
-  /** Receives generated session titles; the caller gates them against the
-   *  durable label (a user-chosen name always wins). */
-  onSessionName?: (labels: { label: string; shortLabel: string }) => void
-  /** True when the shell already holds display blocks (a reactivated durable
-   *  tail or a cold send's pre-runner turn); skips title regeneration unless
-   *  generateTitleForNextMessage requests it. The blocks themselves arrive via
-   *  seedDisplayBlocks at attach, never through the create call. */
-  hasPriorBlocks?: boolean
-  generateTitleForNextMessage?: boolean
-  /** True when the user explicitly named this session; skips title generation
-   *  entirely (updateLabel's user-named gate is the durable backstop). */
-  suppressTitleGeneration?: boolean
-  initialProviderConversationId?: string
-  seedContext?: string
-  /** Interval and notification config for the learning review.
-   *  Absent means the review never spawns (tests). */
-  reviewConfig?: CapturedModuleConfig
-  /** Capability boundary of this chat (ARCH-RUNTIME-066): every optional tool call, the
-   *  memory snapshot read, learning reconciliation, and each automatic review
-   *  admit through it. Absent in a realm that owns no policy. */
-  capabilityAccess?: CapabilityAccess
-  /** The chat runs headless (`WorkflowDeps.headless`). */
-  headless?: true
-  treeWriter: ConversationTreeWriterController
-  createChildConversation: CreateChildConversation
-  subagentSessions?: ChildSessionAuthority
-  /** The project's session messaging authority, which this chat's tools and
-   *  every child it launches use. */
-  sessionMessaging?: SessionMessaging
-  /** Surfaces a save-point flush failure as a session error so the UI can
-   *  warn the user that durable conversation state has diverged. */
-  onTreeFailure: <ErrorValue>(err: ErrorValue) => void
-  /** Reloads the environment behind the live `auth`/`availableModels` getters
-   *  (config, credentials, model listing) so the next turn observes changes. */
-  refreshEnvironment: () => Promise<void>
-  startWorkflow?: StartModelWorkflow
-}
 
 /** Detects the provider's hard context overflow on a completed turn and drops
  *  the provider continuation token so the next request rebuilds from the

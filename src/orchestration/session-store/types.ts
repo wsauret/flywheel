@@ -188,7 +188,26 @@ interface SessionRuntimeOptionsBase {
 }
 
 
-export interface SessionStore {
+/** What a projection of the store reads: its entries, their revisions, and
+ *  one coalesced change notification. It holds no runner control. */
+export interface SessionStoreReader {
+  get(sessionId: string): SessionEntry | undefined
+  has(sessionId: string): boolean
+  isRunning(sessionId: string): boolean
+  allIds(): string[]
+  /** Monotonic per-session revision, bumped on every UI-visible entry mutation.
+   *  The frontend projection diffs by `id -> revision` to re-project only the
+   *  sessions that changed since the last notify. Absent sessions read 0. */
+  revision(sessionId: string): number
+  /** `label` names this subscriber in slow-loop-unit and stall-attribution
+   *  warnings (session-fairness plan, phase 0). */
+  /** One coalesced notification per burst. `changed` names the sessions whose
+   *  entries moved since the last notification; it is undefined after a
+   *  membership or order change, when every subscriber sweeps the whole store. */
+  onChange(listener: (changed: ReadonlySet<string> | undefined) => void, label?: string): Unsubscribe
+}
+
+export interface SessionStore extends SessionStoreReader {
 
   openSessionRuntime(opts: SessionRuntimeOptions): string
   /** Replace a chat's bounded derived display tail and publish one full resync.
@@ -210,9 +229,6 @@ export interface SessionStore {
    *  store holds no chat for the session. */
   showStartupFailure(sessionId: string, message: string): boolean
 
-  get(sessionId: string): SessionEntry | undefined
-  has(sessionId: string): boolean
-  isRunning(sessionId: string): boolean
   abort(sessionId: string): Promise<boolean>
   /** The runtime's stop of one chat's runner (`ChatRunner.prepareForShutdown`). */
   prepareForShutdown(sessionId: string, by: RuntimeInterruption): void
@@ -246,23 +262,12 @@ export interface SessionStore {
   learnFromSession(sessionId: string): boolean
   reorder(sessionId: string, beforeSessionId: string | null): boolean
   runningCount(): number
-  allIds(): string[]
-  /** Monotonic per-session revision, bumped on every UI-visible entry mutation.
-   *  The frontend projection diffs by `id -> revision` to re-project only the
-   *  sessions that changed since the last notify. Absent sessions read 0. */
-  revision(sessionId: string): number
   /** Reads and clears the output deltas queued for this session since the
    *  last drain. The app-service output projection is the sole consumer;
    *  each batch is meant to be applied once. Absent/never-queued sessions
    *  read an empty batch. */
   drainOutputChanges(sessionId: string): OutputChangeBatch
   disposeAll(): Promise<void>
-  /** `label` names this subscriber in slow-loop-unit and stall-attribution
-   *  warnings (session-fairness plan, phase 0). */
-  /** One coalesced notification per burst. `changed` names the sessions whose
-   *  entries moved since the last notification; it is undefined after a
-   *  membership or order change, when every subscriber sweeps the whole store. */
-  onChange(listener: (changed: ReadonlySet<string> | undefined) => void, label?: string): Unsubscribe
   /** Reload runtime dependencies for the named sessions, or every active runner
    *  when no session list is supplied. */
   refreshDeps(sessionIds?: readonly string[]): Promise<void>

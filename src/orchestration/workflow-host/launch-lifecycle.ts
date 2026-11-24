@@ -1,16 +1,23 @@
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
-import { readTerminalHandoff, readWorkflowCompletionEvidence, workflowCompletionContent, workflowStopContent } from "../../workflows/output-contract/workflow-completion.js"
-import type { BackgroundKillSource, BackgroundWorkResult, BackgroundWorkTracking, ChildInterruption } from "../agent-runtime/background-work.js"
+import { readTerminalHandoff, readWorkflowCompletionEvidence, workflowCompletionContent, workflowStopContent } from "../../workflows/workflow-completion.js"
+import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import type { BackgroundKillSource, BackgroundWorkResult, ChildInterruption } from "../agent-runtime/background-work-types.js"
 import { parentHost } from "../session/live-session-control.js"
-import { textField } from "../../infra/output/json-field.js"
+import { textField } from "../../infra/tools/json-field.js"
 import { readToolExecution } from "../session/tool-execution-projection.js"
 import { workflowCallSource, workflowSourceLabel } from "../../infra/tools/workflow-call-source.js"
 import type { StoppedBy } from "../../protocol/app-service-types.js"
 import { readChildStop } from "../session/chat-session-run-evidence.js"
 import { recordChildWorkflowStartFailure, recordChildWorkflowStop } from "../session/child-workflow-result.js"
 import { observeSessionChanged } from "../session/reply-waits.js"
-import type { WorkflowControllerDeps } from "./controller.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
+import type { ChatRunner } from "../chat/runner-types.js"
+import type { SessionStore } from "../session-store/types.js"
+import type { ChildSessionReconciliation } from "../session/child-session-reconciliation.js"
+import type { SessionManager } from "../session/manager.js"
+import type { SessionLifecycleState } from "../session/types.js"
+import type { WorkflowHosts } from "./host-collection.js"
 import type { WorkflowCompletionAcknowledgement, WorkflowResult } from "./runner-types.js"
 import { workflowRunReader } from "../module-catalog.js"
 
@@ -47,8 +54,24 @@ export interface WorkflowLaunchLifecycle {
   handleStartFailure(id: string, err: unknown): Promise<void>
 }
 
+/** What the launch lifecycle reads of the workflow host's composition. */
+export interface WorkflowLaunchLifecycleDeps {
+  workflowHosts: WorkflowHosts
+  sessionStore: SessionStore
+  manager: SessionManager
+  /** Attaches a launched child's parent chat without starting a turn. */
+  openChatRunner?: (sessionId: string) => Promise<ChatRunner | undefined>
+  onRunnerDone?: (id: string, lifecycleState: SessionLifecycleState, result: WorkflowResult) => void
+  onRunnerError?: (id: string, errorMessage: string) => void | Promise<void>
+  eventReader: AsyncEventStateReadSurface
+  projectionReader: AsyncEventStateReadSurface
+  eventWriter: AsyncEventWriter
+  /** Admits a child workflow's completion delivery through its parent chat's actor. */
+  reconcileChildSessionCompletions?: (parentSessionId: string) => Promise<ChildSessionReconciliation>
+}
+
 /** Owns live launch promises while durable reconciliation remains the settlement authority. */
-export function createWorkflowLaunchLifecycle(deps: WorkflowControllerDeps): WorkflowLaunchLifecycle {
+export function createWorkflowLaunchLifecycle(deps: WorkflowLaunchLifecycleDeps): WorkflowLaunchLifecycle {
   const { workflowHosts, projectionReader } = deps
   const runs = workflowRunReader(projectionReader)
   const origins = new Map<string, WorkflowOrigin>()

@@ -12,7 +12,7 @@ import type { TranscriptLayoutSlot } from "./output-window/output-window-scroll.
 import type { SessionIntroProps } from "./welcome-notice.js"
 import { createTuiModuleClients, moduleNavigation } from "./modules.js"
 import { discardIfTransientForeground } from "./hooks/background-foreground.js"
-import { createChildViewerOpener } from "./hooks/create-child-viewer-opener.js"
+import { createChildViewerOpener } from "./create-child-viewer-opener.js"
 import { createForegroundSwitcher } from "./hooks/create-foreground-switcher.js"
 import { createLaunchState } from "./hooks/create-launch-state.js"
 import { createSessionCreator } from "./hooks/create-session-creator.js"

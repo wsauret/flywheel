@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import { simpleSettingRow } from "../../../src/tui/hooks/settings-modal-types.js"
+import { simpleSettingRow } from "../../../src/tui/modals/settings-modal-types.js"
 import type { PersistedSettingDefinition } from "../../../src/orchestration/config/setting-definitions.js"
 
 describe("settings definition propagation", () => {

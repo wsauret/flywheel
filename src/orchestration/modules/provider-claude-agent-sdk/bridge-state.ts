@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Cause, Deferred, Fiber, Queue, Scope } from "effect";
-import type { ModelRefusal } from "../../../infra/auth/provider-model-catalog-store.js";
+import type { ModelRefusal } from "../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import type { ProviderDemand } from "../../agent-runtime/llm/types.js";
 import type { UsageWindows } from "./account-usage.js";
 import type { AssistantAssembler, SettlementEvidence } from "./assistant-assembler.js";

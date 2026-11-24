@@ -18,7 +18,7 @@ import { agentPersonaRun, personaTask } from "./agent-persona.js"
 import type { AgentOutput } from "../../workflows/vm/agent-outcome.js"
 import type { ComposeAttemptBrief } from "../../workflows/vm/attempt-runner.js"
 import type { CapabilityPlanner } from "../agent-runtime/request-preparation.js"
-import { createAgentHost } from "../runner/host.js"
+import { createAgentGeneration } from "../runner/host.js"
 import { createBackgroundNotificationDelivery } from "../runner/background-notification-delivery.js"
 import type { AgentHostContextOptions } from "../runner/types.js"
 import { CONTINUATION_MESSAGES, reopenedContinuation } from "../agent-runtime/continuation-messages.js"
@@ -29,7 +29,7 @@ import type { RoleResolver } from "../config/roles.js"
 import { createUnattendedRecovery } from "../agent-runtime/unattended-recovery.js"
 import { capacityWaitAuthority } from "../session/capacity-wait.js"
 import { workerOutcome } from "./worker-outcome.js"
-import { HandoffCorrectionExhausted } from "../agent-runtime/errors.js"
+import { HandoffCorrectionExhausted } from "../agent-runtime/handoff-correction-exhausted.js"
 import { HandoffInvalidError } from "../../workflows/context-bundle/handoff-errors.js"
 import { workflowAgentSubagents } from "../../workflows/agents/subagent-reachability.js"
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../agent-runtime/background-execution-owner.js"
@@ -39,7 +39,7 @@ import { createForegroundBashHoldController } from "../agent-runtime/foreground-
 import type { FirstPartyModuleComposition } from "../modules.js"
 import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
 import type { Agent, AgentFactory, AgentOptions, CreateChildConversation, RoleHold } from "../agent-runtime/types.js"
-import type { CaptureProviderConnection, LLMClientFactory } from "../agent-runtime/factory.js"
+import type { CaptureProviderConnection, LLMClientFactory } from "../agent-runtime/model-runtime-capture.js"
 import { createRefusedHandoff, handoffToolSchemaFromOutput } from "./handoff-tool-schema.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
 import { createWorkflowLoopObservers } from "./loop-observers.js"
@@ -650,7 +650,7 @@ export function createWorkerCallback(
       // conversation before its first request, and parks on them as on its own.
       await background.adoptHandedOver()
       const runStartedAt = Date.now()
-      const agentResult = await createAgentHost({ createRunner: createAgent }).runTurn({
+      const agentResult = await createAgentGeneration({ createRunner: createAgent }).runTurn({
         createContextOptions,
         onContextCreated: (context) => { slot.runner = context },
         onContextStarted: () => {

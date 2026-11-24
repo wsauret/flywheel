@@ -2,7 +2,7 @@ import type { Accessor } from "solid-js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import type { ReleaseNotice } from "../../protocol/update-protocol-types.js"
 import { mutateRuntimeConfig } from "./create-settings-store.js"
-import type { RuntimeConfigCache } from "./shell-state.js"
+import type { RuntimeConfigCache } from "./create-runtime-config-cache.js"
 
 interface ReleaseNoticeActions {
   dismiss(): Promise<void>
