@@ -1,0 +1,322 @@
+bench/chat-ab/campaign-store.ts
+  h_4b47e9e4a8b456 7
+bench/chat-ab/campaign-subject.ts
+  h_4b47e9e4a8b456 9
+bench/chat-ab/coding-ab-judge.ts
+  h_4b47e9e4a8b456 3
+scripts/check-model-catalog.ts
+  h_4b47e9e4a8b456 2
+scripts/claude-engine-release.ts
+  h_4b47e9e4a8b456 22
+scripts/refresh-models-snapshot.ts
+  h_4b47e9e4a8b456 14
+src/cli/auth.ts
+  h_4b47e9e4a8b456 7
+src/cli/headless-args.ts
+  h_4b47e9e4a8b456 1
+src/infra/auth/auth-context.ts
+  h_4b47e9e4a8b456 21,109-115,141,167,199,244
+src/infra/auth/auth-profile-normalization.ts
+  h_4b47e9e4a8b456 4,6,18,39
+src/infra/auth/provider-account.ts
+  h_4b47e9e4a8b456 1-101
+src/infra/auth/provider-model-catalog-store.ts
+  h_4b47e9e4a8b456 1-3,5
+src/infra/auth/provider-model-preference-store.ts
+  h_4b47e9e4a8b456 4-6,13-22
+src/infra/auth/provider-model-preferences.ts
+  h_4b47e9e4a8b456 1,39,41-42
+src/infra/auth/subscription-spend-consent-store.ts
+  h_4b47e9e4a8b456 4
+src/infra/auth/subscription-spend-consent.ts
+  h_4b47e9e4a8b456 2
+src/infra/auth/web-providers.ts
+  h_4b47e9e4a8b456 10
+src/infra/catalog-model-offering.ts
+  h_4b47e9e4a8b456 2
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 4,8,10,215,225,235,237,442,492
+src/infra/llm/custom-provider-registry.ts
+  h_4b47e9e4a8b456 1
+src/infra/llm/free-plan-accounts.ts
+  h_4b47e9e4a8b456 1-2
+src/infra/llm/model-access-audit.ts
+  h_4b47e9e4a8b456 2-6,8,10-11
+src/infra/llm/model-catalog-diagnostics.ts
+  h_4b47e9e4a8b456 3
+src/infra/llm/model-catalog-resolution.ts
+  h_4b47e9e4a8b456 3,7-9
+src/infra/llm/model-family.ts
+  h_4b47e9e4a8b456 3
+src/infra/llm/model-listing-evidence.ts
+  h_4b47e9e4a8b456 3,5-6
+src/infra/llm/model-listing-rows.ts
+  h_4b47e9e4a8b456 4-6,10
+src/infra/llm/model-listing.ts
+  h_4b47e9e4a8b456 4,6,11,14-16,24
+src/infra/llm/model-relationships.ts
+  h_4b47e9e4a8b456 1
+src/infra/llm/models.ts
+  h_4b47e9e4a8b456 31
+src/infra/llm/openai-pricing.ts
+  h_4b47e9e4a8b456 3
+src/infra/llm/provider-model-info.ts
+  h_4b47e9e4a8b456 1
+src/infra/llm/subscription-usage-store-codec.ts
+  h_4b47e9e4a8b456 4
+src/infra/llm/subscription-usage-store.ts
+  h_4b47e9e4a8b456 11
+src/infra/local-tokenizer.ts
+  h_4b47e9e4a8b456 8
+src/infra/model-catalog-rows.ts
+  h_4b47e9e4a8b456 1-233
+src/infra/model-id.ts
+  h_4b47e9e4a8b456 1
+src/infra/workflow-types.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/compaction/token-counter.ts
+  h_4b47e9e4a8b456 27
+src/orchestration/agent-runtime/factory.ts
+  h_4b47e9e4a8b456 2,28
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/agent-runtime/llm/failover-client.ts
+  h_4b47e9e4a8b456 51,78
+src/orchestration/agent-runtime/llm/model-compat.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/agent-runtime/llm/runtime-reminders.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/app-service/auth-login-service.ts
+  h_4b47e9e4a8b456 15-16
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 65
+src/orchestration/app-service/auth-status-projection.ts
+  h_4b47e9e4a8b456 4,16
+src/orchestration/app-service/eligibility-preparation.ts
+  h_4b47e9e4a8b456 16,18,30
+src/orchestration/app-service/model-assignment-admission.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/app-service/provider-model-preference-service.ts
+  h_4b47e9e4a8b456 2-3,8,11
+src/orchestration/auth/auth-actions.ts
+  h_4b47e9e4a8b456 39,52
+src/orchestration/auth/catalog-settlement.ts
+  h_4b47e9e4a8b456 8,12
+src/orchestration/auth/provider-observations/subscription-usage-service.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/config/custom-providers.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/config/env.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/config/model-assignment-providers.ts
+  h_4b47e9e4a8b456 5,10-13,23
+src/orchestration/config/model-assignment-types.ts
+  h_4b47e9e4a8b456 7,13
+src/orchestration/config/model-assignments.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/config/model-compatibility.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/config/provider-model-eligibility.ts
+  h_4b47e9e4a8b456 1,3-4,6
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 3,9
+src/orchestration/config/writer.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/headless/benchmark-auth-file.ts
+  h_4b47e9e4a8b456 10,13-14,18
+src/orchestration/modules/development/benchmark/headless-execution.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/development/claude-sdk/setup.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/modules/development/cli/claude-sdk.ts
+  h_4b47e9e4a8b456 11
+src/orchestration/modules/provider-anthropic-api/module.ts
+  h_4b47e9e4a8b456 4-6
+src/orchestration/modules/provider-chatgpt/catalog.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/modules/provider-chatgpt/module.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/provider-claude-agent-sdk/catalog.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/provider-claude-agent-sdk/cli-login.ts
+  h_4b47e9e4a8b456 8,16
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 25
+src/orchestration/modules/provider-claude-agent-sdk/login-observations.ts
+  h_4b47e9e4a8b456 3,5
+src/orchestration/modules/provider-claude-agent-sdk/login-status.ts
+  h_4b47e9e4a8b456 1,12
+src/orchestration/modules/provider-claude-agent-sdk/module.ts
+  h_4b47e9e4a8b456 6,21
+src/orchestration/modules/provider-claude-agent-sdk/profile-conversions.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/modules/provider-deepseek/module.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/provider-github-copilot/affordability.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/modules/provider-github-copilot/catalog.ts
+  h_4b47e9e4a8b456 7-8
+src/orchestration/modules/provider-github-copilot/model-support.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-google-antigravity/catalog.ts
+  h_4b47e9e4a8b456 9-10
+src/orchestration/modules/provider-google-antigravity/login-status.ts
+  h_4b47e9e4a8b456 3,10
+src/orchestration/modules/provider-google-antigravity/login.ts
+  h_4b47e9e4a8b456 8,20
+src/orchestration/modules/provider-google-antigravity/model-identity.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-google-api/module.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/modules/provider-google-vertex/module.ts
+  h_4b47e9e4a8b456 9-11
+src/orchestration/modules/provider-openai-api/module.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/modules/provider-opencode-go/module.ts
+  h_4b47e9e4a8b456 3-4
+src/orchestration/modules/provider-openrouter/model-support.ts
+  h_4b47e9e4a8b456 2,5
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/modules/provider-supergrok/module.ts
+  h_4b47e9e4a8b456 7-8
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 46
+src/orchestration/session/schemas.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/subscription-spend-consent/admission-capture.ts
+  h_4b47e9e4a8b456 4,16-17
+src/orchestration/subscription-spend-consent/subscription-spend-consent-service.ts
+  h_4b47e9e4a8b456 4
+tests/e2e/seed-subscription-spend-consent.ts
+  h_4b47e9e4a8b456 8
+tests/helpers/model-catalog-fixtures.ts
+  h_4b47e9e4a8b456 1-2
+tests/helpers/model-tier-fixtures.ts
+  h_4b47e9e4a8b456 3
+tests/helpers/provider-authority.ts
+  h_4b47e9e4a8b456 3
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-separation.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/infra/auth/provider-model-catalog-store.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/infra/auth/provider-model-preference-store.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/infra/auth/subscription-spend-consent-store.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/infra/llm/model-catalog-diagnostics.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/infra/llm/model-catalog-resolution.test.ts
+  h_4b47e9e4a8b456 4-7,13
+tests/unit/infra/llm/model-listing-custom-provider.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/llm/model-listing-persistence.test.ts
+  h_4b47e9e4a8b456 7,18
+tests/unit/infra/llm/model-listing-relationships.test.ts
+  h_4b47e9e4a8b456 9,18,70
+tests/unit/infra/llm/model-listing-supergrok.test.ts
+  h_4b47e9e4a8b456 8,12
+tests/unit/infra/llm/model-listing-vertex.test.ts
+  h_4b47e9e4a8b456 4,12
+tests/unit/infra/llm/model-listing.test.ts
+  h_4b47e9e4a8b456 11,22
+tests/unit/infra/llm/provider-model-info.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/local-tokenizer.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/infra/model-id.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/agent-runtime/llm/copilot-affordability.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/agent-runtime/llm/failover-client.test.ts
+  h_4b47e9e4a8b456 2,607
+tests/unit/orchestration/agent-runtime/llm/openrouter-affordability.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/llm/provider-chain-preflight.test.ts
+  h_4b47e9e4a8b456 6,18
+tests/unit/orchestration/agent-runtime/runtime-assembly-model-selection.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/orchestration/agent-runtime/subagent/_fixtures.ts
+  h_4b47e9e4a8b456 31
+tests/unit/orchestration/app-service/auth-status-projection.test.ts
+  h_4b47e9e4a8b456 21
+tests/unit/orchestration/app-service/eligibility-preparation-models-dev.test.ts
+  h_4b47e9e4a8b456 4-5,21
+tests/unit/orchestration/app-service/eligibility-preparation-settlement.test.ts
+  h_4b47e9e4a8b456 3-5
+tests/unit/orchestration/app-service/eligibility-preparation.test.ts
+  h_4b47e9e4a8b456 6-8
+tests/unit/orchestration/app-service/held-profile-revisions.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/app-service/model-assignment-read-admission.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/app-service/model-catalog-auth-eligibility.test.ts
+  h_4b47e9e4a8b456 15,17,32
+tests/unit/orchestration/app-service/model-catalog-chatgpt-login.test.ts
+  h_4b47e9e4a8b456 8,27
+tests/unit/orchestration/app-service/provider-model-preference-audit.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/app-service/provider-model-preference-metadata.test.ts
+  h_4b47e9e4a8b456 2-3,11
+tests/unit/orchestration/app-service/provider-model-preference-service.test.ts
+  h_4b47e9e4a8b456 4,6
+tests/unit/orchestration/auth/catalog-settlement.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/orchestration/auth/provider-login-flow.test.ts
+  h_4b47e9e4a8b456 3,8
+tests/unit/orchestration/auth/provider-observations/subscription-usage-service.test.ts
+  h_4b47e9e4a8b456 6-7,16
+tests/unit/orchestration/config/model-assignment-providers.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/orchestration/config/model-listing-client.test.ts
+  h_4b47e9e4a8b456 3,19
+tests/unit/orchestration/config/model-provider-unavailable.test.ts
+  h_4b47e9e4a8b456 6,9,18,233,256
+tests/unit/orchestration/config/provider-model-eligibility.test.ts
+  h_4b47e9e4a8b456 4-6,14
+tests/unit/orchestration/config/provider-model-preferences.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/headless/benchmark-auth-export.test.ts
+  h_4b47e9e4a8b456 13,16
+tests/unit/orchestration/headless/headless-cached-catalog-ownership.test.ts
+  h_4b47e9e4a8b456 11-12
+tests/unit/orchestration/modules/provider-claude-agent-sdk/catalog.test.ts
+  h_4b47e9e4a8b456 7,17
+tests/unit/orchestration/modules/provider-claude-agent-sdk/module.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/modules/provider-claude-agent-sdk/profile-conversions.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/modules/provider-deepseek/catalog.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/modules/provider-google-antigravity/catalog.test.ts
+  h_4b47e9e4a8b456 6,20
+tests/unit/orchestration/modules/provider-google-antigravity/module.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/modules/provider-opencode-go/catalog.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/subscription-spend-consent/capture-cache-freshness.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/subscription-spend-consent/subscription-spend-consent-service.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/protocol/protocol-closure-purity.test.ts
+  h_4b47e9e4a8b456 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b0ce808c5c87056531ff92b661e3d22ff0b2a2f1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
