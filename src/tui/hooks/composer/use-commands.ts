@@ -1,7 +1,7 @@
 import { createEffect, createRoot, getOwner } from "solid-js"
 import { normalizeChatInput, type ChatInput, type ChatInputLike } from "../../../infra/chat-input.js"
 import type { CommandDispatch } from "../../commands/command-dispatch.js"
-import { createAsyncReporter } from "../wiring/report-async.js"
+import { createAsyncReporter } from "../../context/toast-presenter.js"
 import type { ComposerSubmitResult } from "../../components/composer/composer-types.js"
 import type { ShellServices, ShellSignals } from "../state/shell-state.js"
 import type { OpenSettingsDestination } from "../../modals/settings/settings-destination.js"

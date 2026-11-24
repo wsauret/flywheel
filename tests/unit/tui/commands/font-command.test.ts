@@ -1,15 +1,19 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createLauncherScope } from "../../../../src/infra/process-supervisor.js"
 import { handleFontCommand } from "../../../../src/tui/commands/command-definitions.js"
-import type { RuntimeConfigCache } from "../../../../src/tui/hooks/state/runtime/create-runtime-config-cache.js"
+import type { CommandRuntimeConfig } from "../../../../src/tui/commands/command-types.js"
+import { mutateRuntimeConfig } from "../../../../src/tui/hooks/state/create-settings-store.js"
+import type { RuntimeClient } from "../../../../src/protocol/app-service-types.js"
 import { configValues } from "../modals/settings/_settings-modal-fixtures.js"
 import { runtimeDispatch, type DispatchAnswer } from "../../../helpers/runtime-dispatch.js"
 
-function config(dismissed: boolean, settlePublication = async () => true): RuntimeConfigCache {
-  return {
-    view: () => ({ revision: 4, values: { ...configValues(), fontTipDismissed: dismissed }, status: { kind: "valid" }, warnings: [], diagnostics: [] }),
+/** The composition's binding: the cache's view, and its mutation settled through publication. */
+function config(dismissed: boolean, appService: Pick<RuntimeClient, "dispatch">, settlePublication = async () => true): CommandRuntimeConfig {
+  const cache = {
+    view: () => ({ revision: 4, values: { ...configValues(), fontTipDismissed: dismissed }, status: { kind: "valid" as const }, warnings: [], diagnostics: [] }),
     settlePublication,
   }
+  return { view: cache.view, mutate: (command) => mutateRuntimeConfig(cache, appService, command) }
 }
 
 function configDispatch(handler: DispatchAnswer<"config.mutate">) {
@@ -23,13 +27,18 @@ describe("font command config mutation", () => {
   it("uses the projected value as CAS and reports success after publication", async () => {
     const dispatch = mock(async () => ({ kind: "committed", revision: 5 } as const))
     const showToast = mock(() => {})
+    const published = Promise.withResolvers<boolean>()
 
-    await handleFontCommand({ directories, launcher, appService: configDispatch(dispatch), runtimeConfig: config(false), showToast }, "dismiss")
+    const done = handleFontCommand({ directories, launcher, runtimeConfig: config(false, configDispatch(dispatch), () => published.promise), showToast }, "dismiss")
+    await Bun.sleep(0)
 
     expect(dispatch).toHaveBeenCalledWith({
       type: "config.mutate",
       setting: { id: "fontTipDismissed", expected: { kind: "value", value: false }, desired: true },
     })
+    expect(showToast).not.toHaveBeenCalled()
+    published.resolve(true)
+    await done
     expect(showToast).toHaveBeenLastCalledWith({ message: "Font tip dismissed", variant: "success" })
   })
 
@@ -37,7 +46,7 @@ describe("font command config mutation", () => {
     const dispatch = mock(async () => ({ kind: "stale", message: "The configuration changed before this update. Try again." } as const))
     const showToast = mock(() => {})
 
-    await handleFontCommand({ directories, launcher, appService: configDispatch(dispatch), runtimeConfig: config(true), showToast }, "reset")
+    await handleFontCommand({ directories, launcher, runtimeConfig: config(true, configDispatch(dispatch)), showToast }, "reset")
 
     expect(showToast).toHaveBeenCalledTimes(1)
     expect(showToast).toHaveBeenCalledWith({

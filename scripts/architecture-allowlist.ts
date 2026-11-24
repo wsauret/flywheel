@@ -45,14 +45,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
       "flywheel::workflows::vm",
     ].join(","),
   },
-  {
-    lint: "module-cycle",
-    reason: "The command context reads the shell (ShellSignals fields, RuntimeConfigCache.view, mutateRuntimeConfig, and the report-async reporters), while the shell wires the commands. The cheapest tie: `hooks` uses `commands` by 3 items (commandsToOptions, CommandDispatch.dispatch, SurfaceRequest.isCurrent), against 7 the other way, but those 3 are the commands' own interface, so cut the 7 instead: give the command context its own contract in commands/command-types.ts that the shell state and the runtime config cache satisfy, and move report-async below both.",
-    key: [
-      "flywheel::tui::commands",
-      "flywheel::tui::hooks",
-    ].join(","),
-  },
   { lint: "shallow-module", key: "flywheel::orchestration::runner", reason: "AgentGeneration now gives one-shot callers a contract without the chat turn slot of AgentHost, but OutputSession and Runner still show most of their methods. Next cut: move OutputSession to session-store, which drives it (ARCH-SESSIONS-002)." },
   { lint: "shallow-module", key: "flywheel::orchestration::session-store", reason: "SessionStoreReader now gives read-only projections a contract without runner control, but SessionStore still shows 31 methods. Next cut: move toSessionView and createSessionViewLoader (view.ts) to the app-service projections that use them, and give app-service one runner-control interface that keeps the activeEntry rule in the store." },
   { lint: "shallow-module", key: "flywheel::protocol::client", reason: "The shared client core shows about 357 of 555 functions, most of them small helpers that both the terminal and the web client call. Next cut: move the functions that only orchestration calls (workflow address and target parsing, RuntimeConnection ready and fault, decodeRuntimeEventFrame, workflow progress and coverage text) to the orchestration domain that uses them." },
@@ -102,15 +94,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
       "flywheel::protocol::runtime-delivery-policy",
       "flywheel::protocol::runtime-dispatch-result-schemas",
       "flywheel::protocol::runtime-protocol-schemas",
-    ].join(","),
-  },
-  {
-    lint: "module-cycle",
-    reason: "The shell owners are grouped by concern (docs/architecture.md, the shell composition site), but they build in phases: the composer core, then the places, the overlays, the navigation, and last the commands and prompt area. shell-composer.tsx holds the first and last phases and shell-navigation.ts the second and fourth, so each file reads the other's results. Next cut: move createShellComposer to its own file below createShellPlaces, and createShellPlaces out of shell-navigation.ts, so each file holds one phase; update the composition order in docs/architecture.md.",
-    key: [
-      "flywheel::tui::shell::shell-composer",
-      "flywheel::tui::shell::shell-navigation",
-      "flywheel::tui::shell::shell-overlays",
     ].join(","),
   },
 ];

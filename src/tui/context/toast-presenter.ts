@@ -1,5 +1,6 @@
 import type { PresentationChannel, PresentationIdOn } from "../../infra/error-presentation.js"
 import type { PresentationResult } from "../../infra/desktop-notify.js"
+import { errorMessage } from "../../infra/error-message.js"
 
 interface ToastDisplay {
   message: string
@@ -63,5 +64,32 @@ export function createToastPresenter(showToast: ToastSink, config: { readonly pr
     reset(presentation: ToastPresentation): void {
       lastShownByFamily.delete(presentation)
     },
+  }
+}
+
+/** Where a reporter shows a failure. */
+type ErrorToast = (toast: { message: string; variant: "error" }) => void
+
+/** Fire-and-forget runner for async actions triggered from sync UI handlers
+ *  (key presses, command palette). Failures surface as error toasts. */
+export function createAsyncReporter(showToast: ErrorToast): (fn: () => Promise<void>) => void {
+  return (fn) => {
+    void Promise.resolve(fn()).catch((err) => {
+      showToast({ message: errorMessage(err), variant: "error" })
+    })
+  }
+}
+
+/** Runs an async command step that answers whether it accepted the person's
+ *  input. A failure surfaces as an error toast and counts as a refusal, so
+ *  the caller can hand the input back. */
+export function createAcceptanceReporter(showToast: ErrorToast): (fn: () => Promise<boolean>) => Promise<boolean> {
+  return async (fn) => {
+    try {
+      return await fn()
+    } catch (err) {
+      showToast({ message: errorMessage(err), variant: "error" })
+      return false
+    }
   }
 }
