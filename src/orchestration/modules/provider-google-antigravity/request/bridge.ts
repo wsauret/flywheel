@@ -7,7 +7,7 @@ import type { ContentBlock, ConversationMessage, ProviderStreamEvent } from "../
 import { AcpConnectionClosed } from "../acp/connection.js"
 import type { AcpConfigOption, AcpPromptResult, AcpSessionUpdate, AcpTextBlock } from "../acp/schema.js"
 import type { EngineProcess } from "../engine/engine-process.js"
-import { createUsageLedger, type UsageLedger } from "../engine/conversation-usage.js"
+import { createUsageLedger, type UsageLedger } from "../usage/conversation-usage.js"
 import { engineStoppedFailure } from "../acp/errors.js"
 import { renderMessages } from "./history-text.js"
 import type { ParkedToolCall, ToolServerRegistration } from "../tools/mcp-server.js"

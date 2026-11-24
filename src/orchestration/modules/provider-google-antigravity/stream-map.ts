@@ -4,7 +4,7 @@ import type { CompletedStopReason, ProviderStreamEvent, ToolCall } from "../../a
 import type { AcpCloseReason } from "./acp/connection.js";
 import type { AcpPromptResult, AcpSessionUpdate, AcpUsage } from "./acp/schema.js";
 import { engineFailure, engineNoticeDetail, engineStoppedFailure } from "./acp/errors.js";
-import type { RowUsage, UsageLedger } from "./engine/conversation-usage.js";
+import type { RowUsage, UsageLedger } from "./usage/conversation-usage.js";
 
 type ModelFrame = Extract<AcpSessionUpdate, { readonly sessionUpdate: "agent_message_chunk" | "agent_thought_chunk" | "tool_call" }>;
 
