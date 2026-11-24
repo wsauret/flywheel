@@ -23,7 +23,7 @@ import { createPromptBorderChunks } from "./composer-border-labels.js"
 import { InitialMessageProvider } from "../output-blocks/user-message-block.js"
 import type { UserMessageBlock } from "../../infra/output-blocks.js"
 import type { ChatInputLike } from "../../infra/chat-input.js"
-import { useWrappedLineCount } from "../utils/text.js"
+import { useWrappedLineCount } from "../text.js"
 
 /** A hidden composer keeps its draft. Sending resolves true only after runtime acceptance. */
 export interface ChildMessaging {

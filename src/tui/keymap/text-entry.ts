@@ -7,7 +7,7 @@ import {
   graphemes,
   nextGraphemeBoundary,
   previousGraphemeBoundary,
-} from "../utils/text.js"
+} from "../text.js"
 
 export type TextEntryAction =
   | "move-left" | "move-right" | "move-up" | "move-down"

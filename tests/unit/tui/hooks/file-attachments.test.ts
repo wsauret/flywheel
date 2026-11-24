@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { readFileAttachment } from "../../../../src/tui/utils/file-attachments.js"
+import { readFileAttachment } from "../../../../src/tui/hooks/file-attachments.js"
 
 let dir: string
 beforeAll(async () => { dir = await mkdtemp(join(tmpdir(), "flywheel-attach-")) })

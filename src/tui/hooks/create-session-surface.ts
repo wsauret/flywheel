@@ -241,50 +241,7 @@ export function createSessionSurface(deps: SessionSurfaceDeps, sessionId: Access
   const sessionKind = () => summary()?.kind ?? detail()?.kind ?? null
   const elapsed = () => sessionActiveMs(status() ?? undefined, deps.now())
 
-  const transcript: OutputTranscriptView = {
-    protectReader: (reader) => { const id = untrack(sessionId); if (id) deps.transcriptCache.protectReader(id, reader) },
-    mutationEvidence: bound(deps.transcriptCache.mutationEvidence),
-    reportProjectionFailure: (error) => deps.transcriptCache.reportProjectionFailure(untrack(sessionId) ?? "", error),
-    visibleRange: bound(deps.transcriptCache.visibleRange),
-    visibleMessageCount: () => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.visibleMessageCount(id) : 0
-    },
-    jumpToLatest: () => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.jumpToLatest(id) : Promise.resolve()
-    },
-    freshness: bound(deps.transcriptCache.freshness),
-    hydrateAnchor: () => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.hydrateAnchor(id) : Promise.resolve()
-    },
-    loadAround: (entryId) => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.loadAround(id, entryId) : Promise.resolve()
-    },
-    takeEstimateUpdates: () => {
-      const id = untrack(sessionId)
-      return id ? deps.transcriptCache.takeEstimateUpdates(id) : []
-    },
-    evictBefore: (blockIndex) => {
-      const id = untrack(sessionId)
-      if (id) deps.transcriptCache.evictBefore(id, blockIndex)
-    },
-    setDisclosure: (key, expanded) => {
-      const id = sessionId()
-      if (!id) return
-      deps.transcriptCache.setDisclosure(id, key, expanded)
-    },
-    disclosure: (key) => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.disclosure(id, key) : undefined
-    },
-    hydrateBlockBody: (blockId) => {
-      const id = sessionId()
-      if (id) void deps.transcriptCache.hydrateBlockBody(id, blockId)
-    },
-  }
+  const transcript = deps.transcriptCache.bindSession(sessionId)
 
   const pager = createForegroundOutputPager({ foregroundId: sessionId, transcriptCache: deps.transcriptCache, onFailure: deps.onTranscriptFailure })
   return {

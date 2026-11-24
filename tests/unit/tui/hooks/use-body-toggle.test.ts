@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { BoxRenderable, MouseEvent, ScrollBoxRenderable, TextBufferRenderable, TextRenderable } from "@opentui/core"
 import { createComponent } from "solid-js/web"
 import type { ClickToggleHook } from "../../../../src/tui/hooks/use-body-toggle.js"
-import { hitsDrawnContent, hitsLabel } from "../../../../src/tui/utils/content-hit.js"
+import { hitsDrawnContent, hitsLabel } from "../../../../src/tui/content-hit.js"
 
 /** A press on the first glyph of `target`, a text drawn at the origin. */
 function pressAt(target: TextRenderable): MouseEvent {

@@ -130,21 +130,21 @@ it("exposes only the existing resident session reader and retires it with the ca
   createRoot((cleanup) => {
     dispose = cleanup
     cache = createOutputTranscriptCache({ appService: fake.client, maxSessions: 1 })
-    createEffect(() => { observed = cache.mutationEvidence("first") })
+    createEffect(() => { observed = cache.bindSession(() => "first").mutationEvidence() })
   })
   try {
     expect(observed).toBeUndefined()
     expect(cache.residentSessionIds()).toEqual([])
     cache.startKnownEmpty("first")
-    const reader = cache.mutationEvidence("first")
+    const reader = cache.bindSession(() => "first").mutationEvidence()
     expect(reader).toBeDefined()
     expect(observed).toBe(reader)
     cache.ensure("first")
-    expect(cache.mutationEvidence("first")).toBe(reader)
+    expect(cache.bindSession(() => "first").mutationEvidence()).toBe(reader)
     cache.startKnownEmpty("second")
     expect(observed).toBeUndefined()
-    expect(cache.mutationEvidence("first")).toBeUndefined()
-    expect(cache.mutationEvidence("second")).not.toBe(reader)
+    expect(cache.bindSession(() => "first").mutationEvidence()).toBeUndefined()
+    expect(cache.bindSession(() => "second").mutationEvidence()).not.toBe(reader)
   } finally {
     dispose()
   }

@@ -1,4 +1,4 @@
-import type { LoadDirection, OutputTranscriptCache } from "../transcript-store/output-transcript-cache-types.js"
+import type { LoadDirection, TranscriptPaging } from "../transcript-store/output-transcript-cache-types.js"
 
 export interface ForegroundOutputPager { readonly pageForegroundOutput: (direction: LoadDirection) => void }
 
@@ -7,7 +7,7 @@ export interface ForegroundOutputPager { readonly pageForegroundOutput: (directi
  * release the session and are reported through onFailure. */
 export function createForegroundOutputPager(deps: {
   readonly foregroundId: () => string | undefined
-  readonly transcriptCache: Pick<OutputTranscriptCache, "loadPage">
+  readonly transcriptCache: Pick<TranscriptPaging, "loadPage">
   readonly onFailure: (sessionId: string, cause: unknown) => void
 }): ForegroundOutputPager {
   const inFlight = new Set<string>()

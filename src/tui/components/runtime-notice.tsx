@@ -4,7 +4,7 @@ import type { TuiFaultNotice } from "../tui-module.js"
 import { Show } from "solid-js"
 import { Button } from "./button.js"
 import { useTheme } from "../context/theme.js"
-import { BOLD } from "../utils/text-attributes.js"
+import { BOLD } from "../text-attributes.js"
 
 /** The runtime's one notice. Before the first session it takes the viewport;
  *  after, it sits above the composer and the transcript stays readable. A

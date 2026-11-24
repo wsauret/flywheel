@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test"
 import { marked, type Token, type Tokens } from "marked"
 import { buildTableModel, shouldUseCardView } from "../../../../src/tui/output-blocks/markdown/markdown-table-helpers.js"
 import type { MarkdownStyles } from "../../../../src/tui/output-blocks/markdown/markdown-styles.js"
-import { BOLD, ITALIC, UNDERLINE } from "../../../../src/tui/utils/text-attributes.js"
+import { BOLD, ITALIC, UNDERLINE } from "../../../../src/tui/text-attributes.js"
 
 const DIM = createTextAttributes({ dim: true })
 

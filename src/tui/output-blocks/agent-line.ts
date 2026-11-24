@@ -3,7 +3,7 @@ import type { ToolPresentation, WorkflowAgentState } from "../../infra/output-bl
 import type { WorkflowAgentDetail } from "../../protocol/client/workflow-card.js"
 import type { SubagentLine } from "../../protocol/client/subagent-line.js"
 import { workflowAgentGlyph } from "../../protocol/client/workflow-outline.js"
-import { chunksWidth, displayWidth, fitChunks } from "../utils/text.js"
+import { chunksWidth, displayWidth, fitChunks } from "../text.js"
 import { agentStateColor } from "./workflow-palette.js"
 
 export interface AgentLineTheme {

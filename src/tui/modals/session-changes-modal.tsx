@@ -11,7 +11,7 @@ import { useTheme } from "../context/theme.js"
 import { Button } from "../components/button.js"
 import { ModalFrame } from "../components/modal-frame.js"
 import { DiffPreview, parseDiffs } from "../output-blocks/diff-preview.js"
-import { BOLD } from "../utils/text-attributes.js"
+import { BOLD } from "../text-attributes.js"
 import { sessionChangeDiffStatusLine, sessionChangeFolderLabel, sessionChangePathLabel, sessionChangesLabel, sessionChangeWritersLabel, undoResultLine, type SessionChangesRow } from "../../protocol/client/session-changes-copy.js"
 import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
 

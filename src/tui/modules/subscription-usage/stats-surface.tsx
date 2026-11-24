@@ -12,7 +12,7 @@ import type { ModalHandle } from "../../components/modal-stack.js"
 import { useTheme } from "../../context/theme.js"
 import { useModalDimensions } from "../../hooks/use-modal-dimensions.js"
 import type { TuiControllerHost } from "../../tui-module.js"
-import { BOLD } from "../../utils/text-attributes.js"
+import { BOLD } from "../../text-attributes.js"
 import { UsageTokenLines } from "./token-lines.js"
 
 function CostLine(props: { label: string; summary: UsageStatsSummary }) {

@@ -1,7 +1,7 @@
 import type { BorderCharacters, TextChunk } from "@opentui/core"
 import type { Token, Tokens } from "marked"
-import { displayWidth } from "@tui/utils/text.js"
-import { BOLD } from "@tui/utils/text-attributes.js"
+import { displayWidth } from "@tui/text.js"
+import { BOLD } from "@tui/text-attributes.js"
 import { renderMarkdownToken, plainOf } from "./format-token.js"
 import type { MarkdownStyles } from "./markdown-styles.js"
 import type {

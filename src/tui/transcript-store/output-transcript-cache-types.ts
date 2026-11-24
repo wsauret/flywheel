@@ -90,9 +90,9 @@ export interface TranscriptFreshness {
   readonly source: "live" | "range" | "status"
 }
 
-/** The narrow per-session read interface OutputWindow renders. It is the cache's
- *  surface with the sessionId already bound and the paging/lifecycle methods the
- *  render boundary must not call (open/loadPage/setReady/pin) removed. */
+/** One session's transcript as OutputWindow renders it, bound to the shown
+ *  session by `OutputTranscriptCache.bindSession`. The paging and lifecycle calls
+ *  the render boundary must not make (open, loadPage, retain) are absent. */
 export interface OutputTranscriptView {
   /** Publish visible block identities before the shared store chooses residency. */
   protectReader(reader: import("../../protocol/client/transcript-view.js").TranscriptReader): void
@@ -107,7 +107,7 @@ export interface OutputTranscriptView {
   visibleMessageCount(): number
   /** Replace the resident reader window with the live tail. */
   jumpToLatest(): Promise<void>
-  /** Low-cardinality freshness marker for render-boundary diagnostics. */
+  /** Low-cardinality freshness marker for render-boundary diagnostics. Reactive. */
   freshness(): TranscriptFreshness | undefined
   /** Re-request the anchor range when the mounted window does not fill the viewport. */
   hydrateAnchor(): Promise<void>
@@ -117,40 +117,28 @@ export interface OutputTranscriptView {
    *  (absolute blockIndex -> rows) for the height index. Non-reactive. */
   takeEstimateUpdates(): readonly (readonly [number, number])[]
   /** Far-page eviction: drop resident blocks before `blockIndex` once the
-   *  scroll controller's viewport-protected range clears them; the older-page
-   *  path re-fetches on demand. */
+   *  scroll controller's viewport-protected range clears them; absolute
+   *  indices are untouched and the older-page path re-fetches on demand. */
   evictBefore(blockIndex: number): void
   /** Read/write the block-identity-keyed disclosure map (stable across
    *  prepends, generation bumps, and row virtualization). `undefined` means
    *  never written; the reading component resolves its own default. */
   disclosure(key: string): boolean | undefined
   setDisclosure(key: string, expanded: boolean): void
-  /** Lazily fetch the full body of a wire-truncated historical diff-bearing
-   *  block. Fire-and-forget. */
+  /** Lazily fetch the full diffs/content of a wire-truncated historical
+   *  diff-bearing block (tool artifact or review notice) and merge it into
+   *  the resident window. Single-flight per block; fire-and-forget. */
   hydrateBlockBody(blockId: string): void
 }
 
-/** The terminal's transcript residency over the shared client store: one
- *  `TranscriptStore` per resident session, projected into the Solid snapshots
- *  the output window renders. */
-export interface OutputTranscriptCache {
-  protectReader(sessionId: string, reader: import("../../protocol/client/transcript-view.js").TranscriptReader): void
-  /** Whether the resident window is current on this lane, or its read failed. Reactive. */
-  isCurrent(sessionId: string): boolean
-  /** The existing resident reader, or undefined before admission or after eviction. Reactive. */
-  mutationEvidence(sessionId: string): MutationEvidenceReader | undefined
-  /** Record a failed projection for one resident session and rethrow the same error. */
-  reportProjectionFailure(sessionId: string, error: unknown): never
-  /** Publish the known-empty initial window for a session this client just
-   * created while its first authoritative tail read remains in flight. */
-  startKnownEmpty(sessionId: string): void
-  /** The composed live view (the one block list + its streaming tool text), or
-   *  undefined when the session has no resident entry. Reactive. */
-  view(sessionId: string): OutputView | undefined
+/** Which sessions stay resident, and when their tails are read. */
+export interface TranscriptResidency {
+  /** Retain one mounted transcript surface. Each caller owns an independent,
+   * idempotent release handle, so nested viewers cannot evict the foreground
+   * or one another when they close. */
+  retain(sessionId: string): { release(): void }
   /** Make a session resident, reading its tail if it was not. */
   ensure(sessionId: string): void
-  /** Read the live tail again and lay it over the resident window. */
-  recoverOutputCursor(sessionId: string): void
   /** Make a session resident and resolve once its first tail read settled
    *  (the whole window for an under-budget session). Idempotent for a
    *  resident session. */
@@ -158,57 +146,56 @@ export interface OutputTranscriptCache {
   /** Read the tail again even for a resident session. Active sessions use
    *  this to follow newly derived output from the runtime. */
   refresh(sessionId: string): Promise<void>
+  /** Publish the known-empty initial window for a session this client just
+   * created while its first authoritative tail read remains in flight. */
+  startKnownEmpty(sessionId: string): void
   /** Snapshot the bounded set of sessions with resident transcript entries. */
   residentSessionIds(): readonly string[]
+  /** Whether the resident window is current on this lane, or its read failed. Reactive. */
+  isCurrent(sessionId: string): boolean
+}
+
+/** Paging a resident session's window from outside its view: the foreground
+ *  pager and background hydration. */
+export interface TranscriptPaging {
   /** Page one bounded outputRange toward an edge and splice it in. Concurrent
    *  duplicate loads for the same range coalesce to a single RPC. */
   loadPage(sessionId: string, direction: LoadDirection): Promise<LoadPageResult>
-  /** Replace the resident window with the bounded range around one transcript entry. */
-  loadAround(sessionId: string, entryId: string): Promise<void>
-  /** Re-request the anchor range when the mounted window does not fill the viewport. */
-  hydrateAnchor(sessionId: string): Promise<void>
-  /** Fetch the full diffs/content of a wire-truncated historical diff-bearing
-   *  block (tool artifact or review notice) and merge it into the resident
-   *  window. Single-flight per block. */
-  hydrateBlockBody(sessionId: string, blockId: string): Promise<void>
-  /** Drain the incremental delta path's per-block row-estimate point updates
-   *  (absolute blockIndex -> rows). Non-reactive; the scroll controller's
-   *  seeding effect feeds them to the height index. */
-  takeEstimateUpdates(sessionId: string): readonly (readonly [number, number])[]
-  /** Drop resident blocks before `blockIndex` (far-page eviction); absolute
-   *  indices are untouched and the older-page path re-fetches on demand. */
-  evictBefore(sessionId: string, blockIndex: number): void
+  /** Historical metadata (consistencyToken + totals + window) at the SAME token as
+   *  visibleRange(), so spacer math never mixes old blocks with new counts. */
+  historyMetadata(sessionId: string): { readonly consistencyToken: string | null; readonly totalBlocks: number; readonly window: TranscriptWindow } | undefined
+}
 
-  /** Retain one mounted transcript surface. Each caller owns an independent,
-   * idempotent release handle, so nested viewers cannot evict the foreground
-   * or one another when they close. */
-  retain(sessionId: string): { release(): void }
+/** Reading any resident session's transcript, and the disclosure intent a
+ *  terminal hands to the build that replaces it. */
+interface TranscriptReads {
+  /** The render boundary's view of whichever session `sessionId` names when
+   *  each call runs. While it names no session, reads answer nothing and
+   *  writes do nothing, except `reportProjectionFailure`, which still logs
+   *  and rethrows the error. */
+  bindSession(sessionId: () => string | undefined): OutputTranscriptView
+  /** The composed live view (the one block list + its streaming tool text), or
+   *  undefined when the session has no resident entry. Reactive. */
+  view(sessionId: string): OutputView | undefined
   /** The generation-consistent hydrated window (status + generation + totals +
    *  window + blocks) for the session, or undefined if never opened. Reactive:
-   *  tracks the disposable Solid store. Phase-3 OutputWindow reads `.blocks`. */
+   *  tracks the disposable Solid store. */
   visibleRange(sessionId: string): TranscriptSnapshot | undefined
-  visibleMessageCount(sessionId: string): number
   /** The characters the session's current phase has streamed, or undefined
    *  until its first read lands. Reactive on its own, apart from `view()`:
    *  the count moves several times per second while a session streams, and
    *  only a status line reads it. A hidden resident's count stays current. */
   streamingOutputChars(sessionId: string): number | undefined
-  jumpToLatest(sessionId: string): Promise<void>
-  /** Reactive low-cardinality freshness marker for render-boundary diagnostics
-   *  and stale-output repair. */
-  freshness(sessionId: string): TranscriptFreshness | undefined
-  /** Historical metadata (consistencyToken + totals + window) at the SAME token as
-   *  visibleRange(), so spacer math never mixes old blocks with new counts. */
-  historyMetadata(sessionId: string): { readonly consistencyToken: string | null; readonly totalBlocks: number; readonly window: TranscriptWindow } | undefined
-  /** The per-session, block-identity-keyed disclosure map, stable across
-   *  prepends, generation bumps, and row virtualization so a disclosed block
-   *  is not collapsed by a remount. `undefined` means never written. Entries
-   *  leave with their session's eviction. */
-  disclosure(sessionId: string, key: string): boolean | undefined
-  /** Every disclosure intent written for one session, by key. */
+  /** Every disclosure intent written for one session, by key. The map is
+   *  block-identity-keyed and leaves with its session's eviction. */
   disclosures(sessionId: string): { readonly [key: string]: boolean }
   setDisclosure(sessionId: string, key: string, expanded: boolean): void
 }
+
+/** The terminal's transcript residency over the shared client store: one
+ *  `TranscriptStore` per resident session, projected into the Solid snapshots
+ *  the output window renders. Each caller takes the part for its job. */
+export interface OutputTranscriptCache extends TranscriptResidency, TranscriptPaging, TranscriptReads {}
 
 /** The window reflects real transcript state: seeded from a read or live
  *  deltas, not the loading sentinel. */

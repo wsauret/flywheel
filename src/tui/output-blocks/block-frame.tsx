@@ -4,7 +4,7 @@ import { Spinner } from "@tui/components/spinner.js"
 import { useTheme } from "@tui/context/theme"
 import type { Accessor, JSX } from "solid-js"
 import type { RGBA, TextRenderable } from "@opentui/core"
-import { allowSelectionStartWithoutContent } from "@tui/utils/selection.js"
+import { allowSelectionStartWithoutContent } from "@tui/selection.js"
 
 /** The dot every rendering block is prefaced with - the same glyph tool calls use. */
 const BLOCK_DOT = "\u2022"

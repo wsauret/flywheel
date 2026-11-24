@@ -4,8 +4,8 @@ import { Show, type JSX } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { Button } from "@tui/components/button"
 import { OpaqueBox } from "@tui/components/opaque-box"
-import { BOLD } from "@tui/utils/text-attributes"
-import { displayWidth } from "@tui/utils/text"
+import { BOLD } from "@tui/text-attributes"
+import { displayWidth } from "@tui/text"
 
 const MODAL_SIDE_PADDING = 2
 const MODAL_FRAME_CHROME_ROWS = 5

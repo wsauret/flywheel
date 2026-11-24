@@ -101,37 +101,6 @@ export function isInterruptible(status: InterruptStatus | undefined): boolean {
   return isActiveActivity(status?.activity) || status?.waitingOnBackgroundWork === true
 }
 
-/** Says when a session's admitted actions, read once from its detail, are
- *  stale. The status stream draws the line: a session that stops being
- *  interruptible has ended its turn, and the runtime reports that only
- *  after the turn-end record is durable, so a read then sees what the
- *  record admits (Resume after an interrupt). A session that becomes
- *  interruptible admits Interrupt again, and a status that goes away (a
- *  child settled) leaves the live row behind. The first status a session
- *  reports is a baseline, not an edge. */
-interface AdmissionEdges {
-  /** Records the session's status and answers whether its admitted actions must be read again. */
-  observe(sessionId: string, status: InterruptStatus | undefined): boolean
-  forget(sessionId: string): void
-}
-
-export function createAdmissionEdges(): AdmissionEdges {
-  const interruptible = new Map<string, boolean>()
-  return {
-    observe(sessionId, status) {
-      const prior = interruptible.get(sessionId)
-      if (status === undefined) {
-        interruptible.delete(sessionId)
-        return prior !== undefined
-      }
-      const next = isInterruptible(status)
-      interruptible.set(sessionId, next)
-      return prior !== undefined && prior !== next
-    },
-    forget(sessionId) { interruptible.delete(sessionId) },
-  }
-}
-
 /** The interrupt mutation a row's kind answers to; one control, three sessions. */
 function interruptMutationType(kind: SessionRow["kind"]): "chat.interrupt" | "subagent.interrupt" {
   return kind === "subagent" ? "subagent.interrupt" : "chat.interrupt"

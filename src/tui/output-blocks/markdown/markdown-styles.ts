@@ -1,6 +1,6 @@
 import type { TextChunk } from "@opentui/core"
 import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
-import { BOLD, ITALIC, UNDERLINE } from "@tui/utils/text-attributes.js"
+import { BOLD, ITALIC, UNDERLINE } from "@tui/text-attributes.js"
 
 /**
  * Per-role formatting spec consulted by `renderMarkdownToken`. Themes can override

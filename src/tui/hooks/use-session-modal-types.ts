@@ -4,7 +4,7 @@ import type { PickerRow, SelectablePickerRow } from "../session-picker/picker-ty
 import type { ModalContext } from "../components/modal-stack.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
 import type { SessionActivationResult } from "./session-activation.js"
-import type { Clipboard } from "../utils/clipboard.js"
+import type { Clipboard } from "../clipboard.js"
 import type { TextEditorPresentation } from "../keymap/text-entry.js"
 
 export interface SessionModalDeps {
