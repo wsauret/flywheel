@@ -6,7 +6,7 @@ import { createExperimentsProtocol, experimentsBackgroundReaders } from "../../.
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import { createExperimentOperation, type ExperimentOperation } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import type { ChatRunner } from "../../../../../src/orchestration/chat/runner-types.js"
-import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js"
+import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js"
 import type { SessionEntry, SessionStore } from "../../../../../src/orchestration/session-store/types.js"
 import type { ModuleProtocolServices } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
 import { NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js"

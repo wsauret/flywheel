@@ -4,7 +4,7 @@ import { agentPersonas, frontendAttempts } from "../../../../src/orchestration/w
 import { parentRoleId } from "../../../../src/orchestration/config/roles.js"
 import type { DefinitionLineageView } from "../../../../src/workflows/definition-provenance-projection.js"
 import type { AttemptRow } from "../../../../src/workflows/view/types.js"
-import { prepareSubagentTools } from "../../../../src/orchestration/modules/subagents/execution/dispatch-preparation.js"
+import { prepareSubagentTools } from "../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { composeFirstPartyModules, type ModuleId } from "../../../../src/orchestration/modules.js"

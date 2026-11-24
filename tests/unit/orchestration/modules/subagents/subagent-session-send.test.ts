@@ -14,7 +14,7 @@ import { publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } fro
 import { replaceWorkflowState } from "../../session/_child-session-reconciliation-fixtures.js"
 import { subagentChildHarnesses, continuationParentHost } from "./_subagent-child-fixtures.js"
 import { makeContext, makeDeps, makeCapabilityAccess, TEST_RATIONALE } from "../../agent-runtime/subagent/_fixtures.js"
-import { createSubagentContinuationService } from "../../../../../src/orchestration/modules/subagents/execution/continuation-service.js"
+import { createSubagentContinuationService } from "../../../../../src/orchestration/modules/subagents/execution/control/continuation-service.js"
 import { createSessionAuthAdmission } from "../../../../../src/orchestration/session/session-auth-profile.js"
 import { childSessionProjectionAttachment } from "../../../../../src/orchestration/session-store/child-session-projection.js"
 import { liveChildRun, registerLiveSessionControl, registerLiveWorkflowControl } from "../../../../../src/orchestration/session/live-session-control.js"

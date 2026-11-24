@@ -9,12 +9,12 @@ import type { LauncherScope } from "../../../src/infra/process-supervisor.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
 import { testDirectories } from "../../helpers/directories.js"
-import { manifestPath } from "../../../src/orchestration/modules/learning/skill-operation-manifest.js"
+import { manifestPath } from "../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js"
 import { ownedSkillStoreDirs } from "../../../src/workflows/skills.js"
 
-const telemetry = await import("../../../src/orchestration/modules/learning/skill-load-stats.js")
+const telemetry = await import("../../../src/orchestration/modules/learning/skills/skill-load-stats.js")
 const collectSkillLoadStats = telemetry.collectSkillLoadStats
-const cleanupHost = await import("../../../src/orchestration/modules/learning/skill-corpus-cleanup-host.js")
+const cleanupHost = await import("../../../src/orchestration/modules/learning/maintenance/skill-corpus-cleanup-host.js")
 
 /** Injected failure of the first read a command makes after it owns the state
  *  generation. */

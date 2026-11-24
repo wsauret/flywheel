@@ -11,7 +11,7 @@ import { CONVERSATION, handoverWorker, publishStep, STEP, WORKFLOW } from "./_wo
 import type { SessionManager } from "../../../../src/orchestration/session/manager"
 import type { Agent, AgentFactory } from "../../../../src/orchestration/agent-runtime/types"
 import type { AgentDefinition } from "../../../../src/infra/agent-definition"
-import { scopedAgentRegistry } from "../../../../src/orchestration/modules/subagents/execution/dispatch-configuration"
+import { scopedAgentRegistry } from "../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-configuration"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND, commandHandoversOfAsync } from "../../../../src/orchestration/session/command-handover"
 import { createBackgroundIndex } from "../../../../src/orchestration/app-service/background-index"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"

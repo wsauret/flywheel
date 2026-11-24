@@ -1,8 +1,8 @@
 import { formatRuntimeNotification } from "../../agent-runtime/runtime-notifications.js"
 import type { ToolCallEventData } from "../../../infra/runtime-event-payload-types.js"
-import type { ExperimentFact } from "./facts.js"
-import type { ExperimentSnapshot } from "./projection.js"
-import { autoResumeStopReasonFor } from "./auto-resume-guards.js"
+import type { ExperimentFact } from "./state/facts.js"
+import type { ExperimentSnapshot } from "./state/projection.js"
+import { autoResumeStopReasonFor } from "./guards/auto-resume-guards.js"
 
 const BENCHMARK_GUARDRAIL =
   "Be careful not to overfit to the benchmarks and do not cheat on the benchmarks."

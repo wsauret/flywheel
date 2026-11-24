@@ -7,8 +7,8 @@ import type { ModuleChatObserverContext } from "../../../../../src/orchestration
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.ts"
 import { createTestChatSessionDeps } from "../../chat/_chat-session-agent-runtime-fixtures.ts"
 import { createExperimentChatObserver } from "../../../../../src/orchestration/modules/experiments/chat-observer.ts"
-import type { ExperimentSnapshot } from "../../../../../src/orchestration/modules/experiments/projection.ts"
-import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.ts"
+import type { ExperimentSnapshot } from "../../../../../src/orchestration/modules/experiments/state/projection.js"
+import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js"
 
 function snapshot(overrides: Partial<ExperimentSnapshot> = {}): ExperimentSnapshot {
   return {

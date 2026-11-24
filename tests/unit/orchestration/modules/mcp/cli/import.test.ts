@@ -6,7 +6,7 @@ import { accountAuthDir } from "../../../../../../src/infra/paths.js"
 import { temporaryDirectories, testDirectories } from "../../../../../helpers/directories.js"
 import { Redacted, Schema } from "effect"
 import { McpConfigSchema } from "../../../../../../src/orchestration/modules/mcp/config.js"
-import type { McpCredential, McpCredentialStore } from "../../../../../../src/orchestration/modules/mcp/credentials.js"
+import type { McpCredential, McpCredentialStore } from "../../../../../../src/orchestration/modules/mcp/oauth/credentials.js"
 
 const temporaryDirectory = temporaryDirectories()
 const originalError = console.error

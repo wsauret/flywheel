@@ -1,11 +1,11 @@
 import { canonicalModuleIds } from "../../../../protocol/module-ids.js";
 import { prepareSessionFactAppend } from "../../../session/session-fact-writer.js";
 import { buildDurableSubagentCreated, buildSubagentPrompted } from "../history/subagent-run-fact-writers.js";
-import { scopedAgentRegistry } from "./dispatch-configuration.js";
+import { scopedAgentRegistry } from "./dispatch/dispatch-configuration.js";
 import { DEFAULT_BUDGET, toBudgetLimits } from "../../../../workflows/budget.js";
-import { resumeSubagentSession, type ContinuationTarget, type SubagentContext, type SubagentInput, type SubagentResult } from "./control-actions.js";
-import { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch-preparation.js";
-import type { SubagentDispatchDeps } from "./dispatch-deps.js";
+import { resumeSubagentSession, type ContinuationTarget, type SubagentContext, type SubagentInput, type SubagentResult } from "./dispatch/control-actions.js";
+import { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch/dispatch-preparation.js";
+import type { SubagentDispatchDeps } from "./dispatch/dispatch-deps.js";
 import { roleModelDefault } from "../../../config/role-model-defaults.js";
 import { resolveSubagentRole } from "../../../config/role-selection.js";
 import type { RoleSettings } from "../../../session/schemas.js";

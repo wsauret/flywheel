@@ -2,7 +2,7 @@ import * as os from "node:os";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
 import * as path from "node:path";
 
-import type { SubagentDispatchDeps } from "../../../../../src/orchestration/modules/subagents/execution/dispatch-deps.js";
+import type { SubagentDispatchDeps } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
 import type { ConversationMessage, ModelClient } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
@@ -18,7 +18,7 @@ import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest } from "..
 import type { ModuleId } from "../../../../../src/orchestration/modules.js";
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
-import type { SummarizeSubagentWorkInput } from "../../../../../src/orchestration/modules/subagents/execution/summarize-work.js";
+import type { SummarizeSubagentWorkInput } from "../../../../../src/orchestration/modules/subagents/execution/result/summarize-work.js";
 import type { AsyncEventStateReadSurface } from "../../../../../src/infra/event-store-types.js";
 import type { ConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";

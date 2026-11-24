@@ -16,7 +16,7 @@ import { LiveAgent } from "../../../../src/orchestration/agent-runtime/runner.js
 import { ApiError } from "../../../../src/orchestration/agent-runtime/llm/runtime-errors.js"
 import { createAgentGeneration } from "../../../../src/orchestration/runner/host.js"
 import { generateSessionTitle, type SessionTitles } from "../../../../src/orchestration/session/session-title.js"
-import { createLearningReviewExecution } from "../../../../src/orchestration/modules/learning/learning-review-runner.js"
+import { createLearningReviewExecution } from "../../../../src/orchestration/modules/learning/review/learning-review-runner.js"
 import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runtime-assembly.js"
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import { createAnthropicAdapter, type AnthropicOperations } from "../../../../src/orchestration/agent-runtime/llm/anthropic.js"

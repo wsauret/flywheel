@@ -47,7 +47,7 @@ import { osAccount } from "../src/infra/os-account.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../src/infra/process-supervisor.js";
 import { authDir } from "../src/infra/paths.js";
 import { AuthProfileManager } from "../src/orchestration/auth/auth-profile-manager.js";
-import { antigravityAccounts } from "../src/orchestration/modules/provider-google-antigravity/login.js";
+import { antigravityAccounts } from "../src/orchestration/modules/provider-google-antigravity/login/login.js";
 import { GOOGLE_ANTIGRAVITY_CLI_FLAG } from "../src/orchestration/modules/provider-google-antigravity/names.js";
 import { cliLoginEnvironment } from "../src/orchestration/modules/provider-claude-agent-sdk/cli-environment.js";
 import { CLAUDE_AGENT_SDK_CLI_FLAG } from "../src/orchestration/modules/provider-claude-agent-sdk/names.js";

@@ -1,5 +1,5 @@
 import { createRelayControlChannel, linkConnection, linkFailure, type RelayControlChannelOptions, type RelayLink } from "../../../../../src/orchestration/modules/remote/relay-control-channel.js"
-import type { RemoteIdentity } from "../../../../../src/orchestration/modules/remote/remote-identity.js"
+import type { RemoteIdentity } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
 import { RELAY_PING } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 
 /** A relay control channel over a fake control socket that the test drives:

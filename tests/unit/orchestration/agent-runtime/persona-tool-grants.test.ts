@@ -26,7 +26,7 @@ import { toolNotice } from "../../../../src/orchestration/agent-runtime/tool-not
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "./tools/_fixtures.js";
 import { makeContext as makeDispatchContext, makeDeps } from "./subagent/_fixtures.js";
-import { prepareSubagentTools } from "../../../../src/orchestration/modules/subagents/execution/dispatch-preparation.js";
+import { prepareSubagentTools } from "../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.js";
 import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtime/capability-checks.js";
 const temporaryDirectory = temporaryDirectories();
 const shippedToolRegistry = createToolRegistry(SHIPPED_MODULES);

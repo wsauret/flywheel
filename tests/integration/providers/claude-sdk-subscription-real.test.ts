@@ -26,7 +26,7 @@ import { createLauncherScope, createProcessSupervisor, guardianCommand } from ".
 import { composePortableModuleServices } from "../../../src/orchestration/app-service/module-service-host.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
 import { installedModules } from "../../../src/orchestration/module-catalog.js";
-import { createMcpConnectors } from "../../../src/orchestration/modules/mcp/connectors.js";
+import { createMcpConnectors } from "../../../src/orchestration/modules/mcp/claude-engine/connectors.js";
 import { claudeLoginEngines } from "../../../src/orchestration/modules/mcp/service.js";
 import { createClaudeAgentSdkModule } from "../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import type { ClaudeAgentSdkSeams } from "../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";

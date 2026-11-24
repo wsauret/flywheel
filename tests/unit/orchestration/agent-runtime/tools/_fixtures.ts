@@ -10,7 +10,7 @@ import type { InFlightWrite, StoredFact } from "../../../../../src/infra/event-s
 import { parseFileMutationFact, type FileMutationFact } from "../../../../../src/orchestration/session/file-mutation-facts.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { createExperimentOperation, findExperimentInterruption } from "../../../../../src/orchestration/modules/experiments/operation-owner.js";
-import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js";
+import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js";
 import { moduleDisabledReason } from "../../../../../src/protocol/module-ids"
 import type { SessionContentNode } from "../../../../../src/infra/session-content.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"

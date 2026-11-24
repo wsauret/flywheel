@@ -16,7 +16,7 @@ import { workflowRunReader } from "../../../../src/orchestration/module-catalog"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store";
 import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts";
 import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent";
-import { readWorkflowLiveView } from "../../../../src/orchestration/modules/workflows/live-protocol";
+import { readWorkflowLiveView } from "../../../../src/orchestration/modules/workflows/protocol/live-protocol";
 import { readAttemptStarts } from "../../../../src/workflows/vm/attempt-conversations";
 
 const tempDir = temporaryDirectories();

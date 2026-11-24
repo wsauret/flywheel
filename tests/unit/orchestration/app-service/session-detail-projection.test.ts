@@ -26,7 +26,7 @@ import { createOutputSession } from "../../../../src/orchestration/runner/output
 import { branchBlocks } from "../../../helpers/branch-blocks.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
-import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail.js"
+import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/protocol/detail.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 function createSessionDetailProjection(deps: Omit<Parameters<typeof testSessionDetailProjection>[0], "reader" | "projectionReader"> & {

@@ -28,8 +28,8 @@ import { createRelayControlChannel, linkConnection, linkFailure, type ControlFai
 import { dialRelayDataChannel } from "./relay-data-channel.js"
 import type { AccountServiceInstallation } from "../../app-service/account-service-platform.js"
 import type { AccountModuleFaults } from "../../app-service/module-service-host.js"
-import { ensureRemoteIdentity, type RemoteIdentity } from "./remote-identity.js"
-import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./remote-pairing-exchange.js"
+import { ensureRemoteIdentity, type RemoteIdentity } from "./pairing/remote-identity.js"
+import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./pairing/remote-pairing-exchange.js"
 
 const log = Log.create({ service: "remote-access" })
 

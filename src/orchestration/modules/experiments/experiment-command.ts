@@ -1,6 +1,6 @@
 import type { CommandOutcome } from "../../../protocol/command-catalog-protocol-types.js"
 import type { CommandMethod, CommandPrompt } from "../../app-service/command-host.js"
-import type { ExperimentSnapshot } from "./projection.js"
+import type { ExperimentSnapshot } from "./state/projection.js"
 import { parseExperimentCharter } from "./charter.js"
 
 const USAGE = "Usage: /experiment [design <goal>|start|off|clear [discard]|finalize|dashboard]"

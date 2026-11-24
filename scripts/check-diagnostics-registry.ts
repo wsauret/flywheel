@@ -254,22 +254,22 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-google-antigravity/engine-process.ts",
+    file: "src/orchestration/modules/provider-google-antigravity/engine/engine-process.ts",
     what: "Google Antigravity engine launches and exits",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-google-antigravity/engine-registry.ts",
+    file: "src/orchestration/modules/provider-google-antigravity/engine/engine-registry.ts",
     what: "Google Antigravity engine replacements",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-google-antigravity/retry-watch.ts",
+    file: "src/orchestration/modules/provider-google-antigravity/engine/retry-watch.ts",
     what: "Google Antigravity prompts that the retry watch cancelled",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-google-antigravity/bridge.ts",
+    file: "src/orchestration/modules/provider-google-antigravity/request/bridge.ts",
     what: "Google Antigravity session rotations and gate failures",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },

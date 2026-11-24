@@ -1,4 +1,4 @@
-import { createChatLearningReview, learningChatHost } from "./learning/chat-review.js";
+import { createChatLearningReview, learningChatHost } from "./learning/review/chat-review.js";
 import { ImprovementFactSchemas } from "../../workflows/improvements/improvement-facts.js";
 import { MemoryFactSchemas } from "../../workflows/memory/memory-facts.js";
 import { SkillFactSchemas } from "../../workflows/skill-facts.js";
@@ -163,8 +163,8 @@ export const learningModule = {
   facts: { prefixes: ["memory.", "skill.", "improvement."], sessionSchemas: () => [...ImprovementFactSchemas, ...MemoryFactSchemas, ...SkillFactSchemas] as const },
   definitionReconciliation: { prepare: async (input) => (await import("./learning/definition-reconciliation.js")).prepareLearningDefinitionReconciliation(input) },
   maintenance: [
-    { phase: "before-store", run: async (input) => { await (await import("./learning/maintenance.js")).maintainSkillLifecycleIfAdmitted(input) } },
-    { phase: "after-store", run: async (input) => { await (await import("./learning/maintenance.js")).maintainSkillCorpus(input) } },
+    { phase: "before-store", run: async (input) => { await (await import("./learning/maintenance/maintenance.js")).maintainSkillLifecycleIfAdmitted(input) } },
+    { phase: "after-store", run: async (input) => { await (await import("./learning/maintenance/maintenance.js")).maintainSkillCorpus(input) } },
   ],
   retiredConfig: [{ section: "self_improvement", key: "enabled", label: "Learning" }],
   workspaceMigrations: [

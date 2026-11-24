@@ -6,7 +6,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { recoverSessionMetadata } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
-import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/run-record.js"
+import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/runs/run-record.js"
 import { convertWorkflowAgentSessions, workflowAgentSessionsNeedConversion } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions.js"
 import { Database } from "bun:sqlite"
 import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery.js"

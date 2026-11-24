@@ -10,7 +10,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/
 import { resolveEventStoreDbFile, resolveSessionSummaryDbFile } from "../../../src/infra/paths"
 import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-fact-mapper"
-import { collectSkillLoadStats } from "../../../src/orchestration/modules/learning/skill-load-stats"
+import { collectSkillLoadStats } from "../../../src/orchestration/modules/learning/skills/skill-load-stats"
 import { createConversationTree, tryOpenConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle"
 import { createSessionManager } from "../../../src/orchestration/session/manager"
 import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/session-summary-index"

@@ -6,7 +6,7 @@ import {
   boundHandoff,
   resultCharBudget,
   type ResultBudget,
-} from "../../../../../src/orchestration/modules/subagents/execution/result-budget.js";
+} from "../../../../../src/orchestration/modules/subagents/execution/result/result-budget.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();

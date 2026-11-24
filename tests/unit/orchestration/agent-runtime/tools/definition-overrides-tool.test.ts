@@ -12,7 +12,7 @@ import type { PreparedOverrideResolution } from "../../../../../src/workflows/de
 import { createManagedPackageWrites } from "../../../../../src/orchestration/modules/learning/managed-package-writes.js"
 import { loadSkillDefinitions } from "../../../../../src/workflows/skills.js"
 import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js"
-import { reconcilePendingAudits } from "../../../../../src/orchestration/modules/learning/learning-journal.js"
+import { reconcilePendingAudits } from "../../../../../src/orchestration/modules/learning/skills/learning-journal.js"
 
 test("refuses unsafe complete package keys before preparation", async () => {
   const root = await mkdtemp(join(tmpdir(), "definition-overrides-tool-"))

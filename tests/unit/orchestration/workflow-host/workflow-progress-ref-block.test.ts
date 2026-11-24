@@ -9,7 +9,7 @@ import { completedSurveyFacts, stoppedStepLoopFacts } from "../../workflows/vm/_
 import { initialFacts, sequentialWorkflow } from "../../workflows/vm/host-test-support.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
-import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/run-record.js"
+import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/runs/run-record.js"
 
 afterEach(() => {
   cleanupProjectRoots()

@@ -7,7 +7,7 @@ import { subscribeAuthOwners } from "../../../../src/orchestration/app-service/a
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import { createWorkflowRunWriter } from "../../../../src/orchestration/modules/workflows/run-facts.js"
-import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/run-record.js"
+import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/runs/run-record.js"
 import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-host/auth-owner.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"

@@ -40,7 +40,7 @@ import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-
 import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile.js"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection.js"
-import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/duration.js"
+import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/runs/duration.js"
 
 afterEach(() => {
   cleanupProjectRoots()

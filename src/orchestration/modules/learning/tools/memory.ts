@@ -16,7 +16,7 @@ import { normalizeMemoryTitle } from "../../../../infra/tools/memory-title.js";
 import type { LearningScope } from "../../../../infra/learning-scope.js";
 import type { MutationEvidence } from "../../../../infra/mutation-evidence.js";
 import { buildMutationDiffEvidence } from "../../../../infra/mutation-diff-evidence.js";
-import { openPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../learning-journal.js";
+import { openPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../skills/learning-journal.js";
 import { requireContainedDirectory } from "../../../../infra/write-file-under.js";
 import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
 import {

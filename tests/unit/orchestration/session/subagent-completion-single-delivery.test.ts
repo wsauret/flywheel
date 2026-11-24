@@ -15,7 +15,7 @@ import { createBackgroundNotificationDelivery as createRunnerNotificationDeliver
 import { registerLiveSessionControl } from "../../../../src/orchestration/session/live-session-control"
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
 import { buildDurableSubagentCreated, buildSubagentCompleted, buildSubagentPaused, buildSubagentPrompted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
-import { stopSubagentSession } from "../../../../src/orchestration/modules/subagents/execution/direct-child-control"
+import { stopSubagentSession } from "../../../../src/orchestration/modules/subagents/execution/control/direct-child-control"
 import { reconcileChildSessionCompletions } from "../../../../src/orchestration/session/child-session-reconciliation"
 import { readChildCompletionConversation } from "../../../../src/orchestration/session/child-completion-conversation"
 import { readReconciledBranch, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
