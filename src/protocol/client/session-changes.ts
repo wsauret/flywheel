@@ -7,9 +7,22 @@ import { lostWithLane } from "./connection-failures.js"
 import { createCursorIntake, isLaneBreak } from "./cursor-intake.js"
 import { createInvalidationRead } from "./invalidation-read.js"
 import { createMutationEvidenceReader, type MutationPatchHandle, type MutationPatchView } from "./mutation-evidence.js"
-import { sessionChangeNamesPath } from "./session-changes-copy.js"
 
 const DIFFS_IN_FLIGHT = 2
+
+/** Match a host's relative target against canonical list paths on either platform. */
+export function sessionChangeNamesPath(target: string, executionCwd: string, entryPath: string): boolean {
+  const normalize = (path: string): string => {
+    const segments: string[] = []
+    for (const segment of path.split(/[\\/]+/)) {
+      if (segment === "" || segment === ".") continue
+      if (segment === "..") segments.pop()
+      else segments.push(segment)
+    }
+    return segments.join("/")
+  }
+  return normalize(/^(?:[\\/]|[A-Za-z]:)/.test(target) ? target : `${executionCwd}/${target}`) === normalize(entryPath)
+}
 
 /** `stale` is an answer that a change landed after: the read that covers the change follows. */
 export type ChangesSummaryState =

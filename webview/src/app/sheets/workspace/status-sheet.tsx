@@ -1,39 +1,23 @@
 import { Key } from "@solid-primitives/keyed"
-import { createMemo, createResource, createSignal, onCleanup, Show, type JSX } from "solid-js"
-import { describeUpdateStatus } from "../../../../src/protocol/client/update-status-copy.js"
+import { createMemo, createResource, createSignal, onCleanup, Show } from "solid-js"
+import { describeUpdateStatus } from "../../../../../src/protocol/client/update-status-copy.js"
 
-import { readModuleStatusRows, sameModuleStatusScope, type ModuleStatusScope } from "../../../../src/protocol/client/module-status.js"
-import { pageDomainReader } from "../../client/module-domain-views.js"
-import { moduleRows } from "../../../../src/protocol/modules.js"
-import type { ModuleRow, ModuleRowAction } from "../../../../src/protocol/protocol-module.js"
-import type { WebModule } from "../../web-module.js"
-import { describeFailure } from "../../client/failure-message.js"
-import type { BudgetSummary } from "../../../../src/protocol/client/host-contract.js"
-import type { RuntimeHealth, RuntimeRestartReadiness } from "../../../../src/protocol/app-service-types.js"
-import { RESTART_CONFIRMATION, restartReadinessUnknownReason } from "../../../../src/protocol/client/service-restart-copy.js"
-import { restartService } from "../../client/service-restart.js"
-import { runtimeFaultCopy } from "../../../../src/protocol/client/runtime-fault-copy.js"
-import { actionKey } from "../../client/action-key.js"
-import { useClient } from "../client-context.js"
-import { SheetLoading, SheetRow } from "./sheet.js"
+import { readModuleStatusRows, sameModuleStatusScope, type ModuleStatusScope } from "../../../../../src/protocol/client/module-status.js"
+import { pageDomainReader } from "../../../client/module-domain-views.js"
+import { moduleRows } from "../../../../../src/protocol/modules.js"
+import type { ModuleRowAction } from "../../../../../src/protocol/protocol-module.js"
+import type { WebModule } from "../../../web-module.js"
+import { describeFailure } from "../../../client/failure-message.js"
+import type { BudgetSummary } from "../../../../../src/protocol/client/host-contract.js"
+import type { RuntimeHealth, RuntimeRestartReadiness } from "../../../../../src/protocol/app-service-types.js"
+import { RESTART_CONFIRMATION, restartReadinessUnknownReason } from "../../../../../src/protocol/client/service-restart-copy.js"
+import { restartService } from "../../../client/service-restart.js"
+import { runtimeFaultCopy } from "../../../../../src/protocol/client/runtime-fault-copy.js"
+import { actionKey } from "../../../client/action-key.js"
+import { useClient } from "../../client-context.js"
+import { ModuleRowView, SheetLoading, SheetRow } from "../sheet.js"
 import { WorkspaceSurface } from "./workspace-surface.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
-
-/** One module row as a sheet row, in Status or Settings: the hint is the
- *  detail under the label, a warning tone colours the label, and an action
- *  makes the row a button. */
-export function ModuleRowView(props: { readonly row: ModuleRow; readonly onAction: (action: ModuleRowAction) => void }): JSX.Element {
-  const action = () => props.row.action
-  return (
-    <SheetRow
-      label={props.row.label}
-      value={props.row.value}
-      tone={props.row.tone === "warning" ? "warn" : undefined}
-      detail={props.row.hint}
-      onClick={action() === undefined ? undefined : () => { const current = action(); if (current) props.onAction(current) }}
-    />
-  )
-}
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
 
 /** What the runtime knows about itself, in one place.
  *

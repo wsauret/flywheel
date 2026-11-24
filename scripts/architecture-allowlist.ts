@@ -91,13 +91,11 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "src/tui/output-blocks/", reason: WIDE },
   { lint: "wide-directory", key: "src/workflows/", reason: WIDE },
   { lint: "wide-directory", key: "src/workflows/vm/", reason: WIDE },
-  { lint: "wide-directory", key: "vscode/src/runtime/", reason: WIDE },
   { lint: "wide-directory", key: "webview/src/app/", reason: WIDE },
-  { lint: "wide-directory", key: "webview/src/app/sheets/", reason: WIDE },
   { lint: "wide-directory", key: "webview/src/client/", reason: WIDE },
   {
     lint: "module-cycle",
-    reason: "`module-requirements` (module-requirements.ts:31) and `tool-catalog` read the tool declaration types of agent-runtime/tools/tool-registry.ts while `agent-runtime` calls them; give the tool declaration contract a home below all three, then reassess.",
+    reason: "`module-requirements` (module-requirements.ts:31) and `tool-catalog` read the tool declaration types of agent-runtime/tools/tool-registry.ts while `agent-runtime` calls them; give the tool declaration contract a home below all three, then reassess. `module-catalog` joins because it reads the `DefinitionContribution` union of modules.ts (module-catalog.ts:143) while modules.ts calls installedModules; give the module descriptor and contribution types a home below both.",
     key: [
       "flywheel::orchestration::agent-runtime",
       "flywheel::orchestration::app-service",
@@ -111,6 +109,7 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
       "flywheel::orchestration::file-edits",
       "flywheel::orchestration::headless",
       "flywheel::orchestration::migrations",
+      "flywheel::orchestration::module-catalog",
       "flywheel::orchestration::module-requirements",
       "flywheel::orchestration::modules",
       "flywheel::orchestration::runner",
@@ -121,6 +120,28 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
       "flywheel::orchestration::update",
       "flywheel::orchestration::workflow-host",
       "flywheel::orchestration::workspace-state",
+    ].join(","),
+  },
+  {
+    lint: "module-cycle",
+    reason: "A module's protocol home builds `ClientCommand` literals of the host contract (protocol/modules/project-notifications.ts:141, NotificationActionView.open), while the shared client core reads the module domains, schemas, and delivery policy that the runtime-* files compose from protocol/modules. Next cut: give `ClientCommand`, `SheetFocus`, and `ClientSheetId` a home in src/protocol below both client and modules, and import it in host-contract.ts and every host.",
+    key: [
+      "flywheel::protocol::client",
+      "flywheel::protocol::modules",
+      "flywheel::protocol::runtime-client-deadlines",
+      "flywheel::protocol::runtime-cursor-schemas",
+      "flywheel::protocol::runtime-delivery-policy",
+      "flywheel::protocol::runtime-dispatch-result-schemas",
+      "flywheel::protocol::runtime-protocol-schemas",
+    ].join(","),
+  },
+  {
+    lint: "module-cycle",
+    reason: "The shell owners are grouped by concern (docs/architecture.md, the shell composition site), but they build in phases: the composer core, then the places, the overlays, the navigation, and last the commands and prompt area. shell-composer.tsx holds the first and last phases and shell-navigation.ts the second and fourth, so each file reads the other's results. Next cut: move createShellComposer to its own file below createShellPlaces, and createShellPlaces out of shell-navigation.ts, so each file holds one phase; update the composition order in docs/architecture.md.",
+    key: [
+      "flywheel::tui::shell-composer",
+      "flywheel::tui::shell-navigation",
+      "flywheel::tui::shell-overlays",
     ].join(","),
   },
 ];
