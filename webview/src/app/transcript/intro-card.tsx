@@ -2,7 +2,7 @@ import { Show, type JSX } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import { cardProfileName } from "../../../../src/protocol/client/new-chat-card.js"
 
-import { pageDomainReader } from "../../client/module-domain-views.js"
+import { pageDomainReader } from "../../client/domains/module-domain-views.js"
 import { formatRuntimeIdentity } from "../../../../src/protocol/client/runtime-identity.js"
 import { moduleRows } from "../../../../src/protocol/modules.js"
 import type { ModuleRow } from "../../../../src/protocol/protocol-module.js"

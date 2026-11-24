@@ -4,7 +4,7 @@ import type { RuntimeStorageView, StorageReclaimResult } from "../../../../src/p
 import type { StorageReclaimPreview } from "../../../../src/protocol/store-reclaim.js"
 import { ClientContext } from "../../app/client-context.js"
 import { fakeClient, fakeViewState } from "../../app/client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { ReclaimStorageSheet } from "./sheet.js"
 

@@ -8,10 +8,10 @@ import type { FrontendAttempt, LoadedWorkflowView } from "../../../src/protocol/
 import { plainAgentTree } from "../../helpers/workflow-view.js"
 import { importBuiltModule } from "../../../webview/src/test-support/import-built-module.js"
 import { fileURLToPath } from "node:url"
-import { headlessClient } from "../../../webview/src/client/session-host-loader-fixture.js"
-import { selectionConnection } from "../../../webview/src/client/session-selection-fixture.js"
-import { settle } from "../../../webview/src/client/session-connection-fixture.js"
-import type { ComposerCheckpoint } from "../../../webview/src/client/input-reload-checkpoint.js"
+import { headlessClient } from "../../../webview/src/session-host-loader-fixture.js"
+import { selectionConnection } from "../../../webview/src/client/session/session-selection-fixture.js"
+import { settle } from "../../../webview/src/test-support/session-connection-fixture.js"
+import type { ComposerCheckpoint } from "../../../webview/src/client/input/input-reload-checkpoint.js"
 import type { HistoryEntryState } from "../../../webview/src/app/screens/screen-stack.js"
 
 // The fixture compiles under the web client's JSX project, not the root test project.

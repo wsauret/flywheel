@@ -1,5 +1,5 @@
-import { describeFailure } from "../../client/failure-message.js"
-import { summaryOf } from "../../client/view-state.js"
+import { describeFailure } from "../../client/format/failure-message.js"
+import { summaryOf } from "../../client/session/view-state.js"
 import { useClient } from "../client-context.js"
 import { copySessionId } from "./session-copy.js"
 import type { SessionListActions } from "./session-list.js"
