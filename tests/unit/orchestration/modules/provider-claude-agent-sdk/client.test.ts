@@ -12,7 +12,7 @@ import type { ConversationMessage } from "../../../../../src/orchestration/agent
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { enginePath } from "../../../../../src/infra/claude-engine.js";
-import type { QueryLaunch, QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import type { QueryLaunch, QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { fakeAvailability } from "../../agent-runtime/llm/_provider-chain-harness.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";

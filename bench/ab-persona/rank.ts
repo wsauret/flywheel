@@ -10,10 +10,10 @@ import { fileURLToPath } from "node:url";
 import { selectStartupDirectories } from "../../src/infra/directory-authorities.js";
 import { modelPriceTier } from "../../src/orchestration/config/models/model-tiers.js";
 import { ROLE_MODEL_DEFAULTS, roleModelDefault } from "../../src/orchestration/config/models/role-model-defaults.js";
-import { loadAllCampaignRecords } from "../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import { loadAllCampaignRecords } from "../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
 import { benchmarkMode, createBenchmarkCatalog } from "../../src/orchestration/modules/development/benchmark/catalog.js";
-import { planTasks, scoringVersion } from "../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
-import { rankBenchmarkRecords, rankingCorpus, renderRanking, type RankingCorpus, type RankingFamily } from "../../src/orchestration/modules/development/benchmark/ranking.js";
+import { planTasks, scoringVersion } from "../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
+import { rankBenchmarkRecords, rankingCorpus, renderRanking, type RankingCorpus, type RankingFamily } from "../../src/orchestration/modules/development/benchmark/records/ranking.js";
 import { parseVariant } from "../../src/orchestration/modules/development/benchmark/variant.js";
 import { getPersonaMetadataIndex } from "../../src/workflows/agents/agent-roles.js";
 

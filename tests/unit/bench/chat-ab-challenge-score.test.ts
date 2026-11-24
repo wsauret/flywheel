@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { correctChallengeDecision, parseChallengeReply, renderChallengeReport } from "../../../bench/chat-ab/challenge-score.js";
-import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
+import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 import type { ChatOutcome } from "../../../bench/chat-ab/chat-store.js";
 
 test("parses the first challenge judgment object and rejects unknown classifications", () => {

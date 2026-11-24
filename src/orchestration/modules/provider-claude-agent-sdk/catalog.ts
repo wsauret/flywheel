@@ -51,7 +51,7 @@ async function discoverCliModels({ credential, instance, launcher, signal }: Acc
   if (launch.kind !== "ready") return { kind: "failed", reason: "transport" };
   try {
     // The Agent SDK loads only when a listing asks a CLI, so a process that never does keeps it out of its start.
-    const describeLogin = seams.describeLogin ?? (await import("./query-launcher.js")).describeCliLogin;
+    const describeLogin = seams.describeLogin ?? (await import("./engine/query-launcher.js")).describeCliLogin;
     const described = await describeLogin(launch.config, signal);
     if (described.plan !== undefined && instance !== undefined) observationsOf(seams).recordPlan({ configDir: launch.config.configDir, accountId: instance.instanceId }, described.plan);
     return described.loggedIn ? { kind: "rows", rows: extractCliModelRows(described) } : { kind: "auth-invalid" };
@@ -76,7 +76,7 @@ async function probeCliModelAccess({ credential, launcher, wireModelId, signal }
   if (launch.kind !== "ready") return "inconclusive";
   try {
     // The Agent SDK loads only when an audit probes, as for the listing.
-    const probe = seams.probeModel ?? (await import("./query-launcher.js")).probeCliModel;
+    const probe = seams.probeModel ?? (await import("./engine/query-launcher.js")).probeCliModel;
     const { refused, totalTokens } = await probe(launch.config, wireModelId, AbortSignal.any([signal, AbortSignal.timeout(ACCESS_PROBE_TIMEOUT_MS)]));
     return refused ? "refused" : totalTokens > 0 ? "completed" : "inconclusive";
   } catch {

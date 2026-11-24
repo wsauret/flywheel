@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import { GenerateContentResponse } from "@google/genai";
 import { Redacted } from "effect";
 import { createAnthropicAdapter, operationsFromAnthropicClient, type AnthropicOperations } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { engineBlockLocation } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine-additions.js";
+import { engineBlockLocation } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge/engine-additions.js";
 import { createGoogleAdapter } from "../../../../../src/orchestration/agent-runtime/llm/google.js";
 import { createOpenAIAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai.js";
 import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";

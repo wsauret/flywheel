@@ -21,7 +21,7 @@ import { engineModelId } from "../../../../../src/orchestration/agent-runtime/ll
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";
 import { holdSharedTree, type SharedTree } from "../../../../../src/orchestration/agent-runtime/shared-tree.js";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
-import { inPlaceGate, runInPlaceSelfTest } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/in-place-check.js";
+import { inPlaceGate, runInPlaceSelfTest } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/in-place-check.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js";
 import { FAKE_ACCOUNT, startFakeHost, writeFakeClaudeLogin, type FakeHost, type FakeReply, type RecordedRequest } from "./_fake-host.js";

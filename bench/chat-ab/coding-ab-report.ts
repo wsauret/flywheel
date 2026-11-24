@@ -1,6 +1,6 @@
 import { codingLedger, type CodingOutcomeRecord } from "./coding-ab-store.js";
 import { campaignRoleComparisons } from "./campaign-role-evidence.js";
-import { renderCampaignRoleChanges } from "../../src/orchestration/modules/development/benchmark/campaign-role-changes.js";
+import { renderCampaignRoleChanges } from "../../src/orchestration/modules/development/benchmark/campaign/campaign-role-changes.js";
 
 const average = (values: readonly number[]): string => values.length === 0 ? "unavailable" : (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1);
 const dollars = (outcomes: readonly CodingOutcomeRecord[], field: "estimatedUsd" | "billedUsd"): string => {

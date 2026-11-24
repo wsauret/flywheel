@@ -7,7 +7,7 @@ import { Redacted } from "effect";
 import { captureProviderConnection, type AuthContext } from "../../../../../src/infra/auth/auth-context.js";
 import type { FailoverPlan } from "../../../../../src/infra/llm/access/access-provider.js";
 import { createBenchmarkTool } from "../../../../../src/orchestration/modules/development/benchmark-tool.js";
-import { admitBenchmark, type BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/admission.js";
+import { admitBenchmark, type BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { createBenchmarkCatalog } from "../../../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability.js";

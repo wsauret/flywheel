@@ -1,4 +1,4 @@
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { codingRedaction } from "./block-judge.js";
 import { readCampaignArtifact } from "./campaign-artifacts.js";
 import type { ChatCampaign, ChatOutcome } from "./chat-store.js";

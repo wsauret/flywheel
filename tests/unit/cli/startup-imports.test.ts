@@ -16,7 +16,7 @@ const DEFERRED_PACKAGES: ReadonlySet<string> = new Set([
   "@anthropic-ai/claude-agent-sdk", "@anthropic-ai/sdk", "openai", "@google/genai", "@modelcontextprotocol/sdk",
 ]);
 const DEFERRED_FILES: ReadonlySet<string> = new Set([
-  resolve(REPO_ROOT, "src/orchestration/modules/provider-claude-agent-sdk/bridge.ts"),
+  resolve(REPO_ROOT, "src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge.ts"),
   resolve(REPO_ROOT, "src/orchestration/modules/provider-claude-agent-sdk/client.ts"),
   resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/request/bridge.ts"),
   resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/client.ts"),

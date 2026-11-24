@@ -2,7 +2,7 @@ import { closeSync, mkdirSync, openSync, readSync, rmSync, statSync, writeFileSy
 import { join } from "node:path";
 import { asRecord } from "../../../../infra/record.js";
 import type { CliBlock } from "../cli-view.js";
-import { cliProjectSlug, transcriptRows } from "../transcript.js";
+import { cliProjectSlug, transcriptRows } from "../engine/transcript.js";
 import { DISPATCH_TEXT, type HostedView } from "./engine-text.js";
 
 // An agent file is the conversation of one hosted agent where its host's engine reads it at each dispatch:

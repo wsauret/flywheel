@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main as compareRuns } from "../../../bench/ab-persona/compare.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { benchmarkTaskIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/admission.js";
+import { benchmarkTaskIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { dryRunBenchmarkAdmission, dryRunBenchmarkRuntime } from "../../helpers/benchmark-admission.js";
 import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
-import type { ImplementRunRecord, RunConfig, ScoreRecord } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
+import type { ImplementRunRecord, RunConfig, ScoreRecord } from "../../../src/orchestration/modules/development/benchmark/scoring/run-store.js";
 import { writeSplitLedger } from "../../helpers/split-ledger.js";
 import {
   createCrossComparisonV2Store,

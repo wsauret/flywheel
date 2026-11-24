@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
-import { createPersonaStore, type PersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
+import { createPersonaStore, type PersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import {
   assertSameVariants,
   buildPlanJudgePrompt,
@@ -18,11 +18,11 @@ import {
   strategyVariants,
   STRATEGY_PERSONA,
 } from "../../../bench/ab-persona/strategy-bench.js";
-import { validateRuns } from "../../../src/orchestration/modules/development/benchmark/persona-evidence-validation.js";
-import type { AttemptRecord, ResearchRunRecord, RunConfig } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
-import { PersonaTaskFailure, renderPersonaTaskGuidance } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
-import { loadBenchmarkPersona } from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
-import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { validateRuns } from "../../../src/orchestration/modules/development/benchmark/persona/persona-evidence-validation.js";
+import type { AttemptRecord, ResearchRunRecord, RunConfig } from "../../../src/orchestration/modules/development/benchmark/scoring/run-store.js";
+import { PersonaTaskFailure, renderPersonaTaskGuidance } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
+import { loadBenchmarkPersona } from "../../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
+import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { createBenchmarkCatalog, RESEARCH_SNAPSHOT, RESEARCH_TASKS_CHANGED } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { captureProviderConnection, type AuthContext } from "../../../src/infra/auth/auth-context.js";
 import type { FailoverPlan } from "../../../src/infra/llm/access/access-provider.js";

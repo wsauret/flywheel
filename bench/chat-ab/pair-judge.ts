@@ -6,8 +6,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/admission.js";
-import { completeJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/judge.js";
+import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/persona/admission.js";
+import { completeJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { createBenchmarkRuntime } from "../shared/runtime.js";
 import { REPO_ROOT, TASKS_DIR } from "./harness-paths.js";
 import { CHAT_AB_JUDGE, type Redaction, type RunInputs } from "./judge-inputs.js";

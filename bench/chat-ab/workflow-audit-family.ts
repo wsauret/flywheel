@@ -1,8 +1,8 @@
 import { copyFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/execution/headless-execution-contract.js";
 import type { CampaignFamily } from "./campaign-runner.js";
 import type { CampaignSubjectKind } from "./campaign-subject.js";
 import { ANSWER_TESTS, answerReference, COMPARISON_TASK, isAnswerTest, namesShippedSite, SHIPPED_SITES, TEST1_WORKFLOW, test1Message, authoredTestMessage } from "./workflow-audit-tests.js";

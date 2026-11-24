@@ -23,7 +23,7 @@ import type { ExternalAccount } from "../src/infra/auth/provider-account.js";
 import { authDir } from "../src/infra/paths.js";
 import { compareSemanticVersions, parseSemanticVersion, type SemanticVersion } from "./release-version.js";
 import { AuthProfileManager } from "../src/orchestration/auth/auth-profile-manager.js";
-import { profileClaudeAccounts } from "../src/orchestration/modules/provider-claude-agent-sdk/cli-login.js";
+import { profileClaudeAccounts } from "../src/orchestration/modules/provider-claude-agent-sdk/login/cli-login.js";
 import { lockedPackageIn, lockHasPackage, REGISTRY, SDK_PACKAGE } from "./claude-engine-asset.js";
 
 /** The tracked file that holds a stale pin past the window, relative to the repository root. */

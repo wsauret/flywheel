@@ -3,27 +3,27 @@
 import { realpath } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { createBenchmarkRuntime } from "../shared/runtime.js";
-import type { JudgeAttemptReport, JudgeSettlement, JudgeVerdict } from "../../src/orchestration/modules/development/benchmark/judge.js";
+import type { JudgeAttemptReport, JudgeSettlement, JudgeVerdict } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { createBenchmarkCatalog, type ImplementTask } from "../../src/orchestration/modules/development/benchmark/catalog.js";
 import { IMPLEMENT_QUALITY_RUBRIC } from "../../src/infra/benchmark-rubrics.js";
-import { implementQualityJudgeInputIdentity, judgeImplementPairs, type ImplementCandidate, type ImplementScore } from "../../src/orchestration/modules/development/benchmark/implement-scoring.js";
-import { benchmarkTaskIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { runGroups } from "../../src/orchestration/modules/development/benchmark/matrix-runner.js";
+import { implementQualityJudgeInputIdentity, judgeImplementPairs, type ImplementCandidate, type ImplementScore } from "../../src/orchestration/modules/development/benchmark/scoring/implement-scoring.js";
+import { benchmarkTaskIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { runGroups } from "../../src/orchestration/modules/development/benchmark/campaign/matrix-runner.js";
 import {
   implementCandidate,
   openReadOnlyRunEvidence,
   type BenchmarkVariant,
   type ImplementRunRecord,
   type RunConfig,
-} from "../../src/orchestration/modules/development/benchmark/run-store.js";
+} from "../../src/orchestration/modules/development/benchmark/scoring/run-store.js";
 import {
   createCrossComparisonV2Store,
   type CrossComparisonV2Config,
   type CrossComparisonV2Store,
 } from "../../src/orchestration/modules/development/benchmark/comparison-v2-store.js";
-import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/admission.js";
+import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { codedRolePreference } from "../../src/orchestration/config/models/role-model-defaults.js";
-import { formatAccountingObservation } from "../../src/orchestration/modules/development/benchmark/report-accounting.js";
+import { formatAccountingObservation } from "../../src/orchestration/modules/development/benchmark/accounting/report-accounting.js";
 
 /** The judge runs on the benchmark judge's coded OpenAI preference, whatever the role's order. */
 const JUDGE_SEAT = codedRolePreference("benchmark-judge", "openai");
