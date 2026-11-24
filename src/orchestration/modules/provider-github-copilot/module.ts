@@ -1,7 +1,7 @@
 import { Redacted } from "effect";
-import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutations.js";
+import { replaceCredentialInstance } from "../../../infra/auth/store/auth-store-mutations.js";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { ApiError } from "../../agent-runtime/errors.js";
+import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
 import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/provider-affordability.js";
 import type { ProviderAllowanceFactory } from "../../agent-runtime/llm/provider-availability-types.js";

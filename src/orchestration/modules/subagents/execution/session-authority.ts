@@ -24,8 +24,8 @@ export function createSubagentSessionAuthority(input: SessionStorePorts & {
   readonly attachProjection?: AttachChildSessionProjection
 }): ChildSessionAuthority {
   const pendingReconciliations = new Set<Promise<void>>()
-  const resolveRoles = async (sessionId: string, capture?: import("../../../agent-runtime/factory.js").ProviderConnectionCapture) => {
-    const { createSessionRoleResolver } = await import("../../../config/session-role-resolver.js")
+  const resolveRoles = async (sessionId: string, capture?: import("../../../agent-runtime/model-runtime-capture.js").ProviderConnectionCapture) => {
+    const { createSessionRoleResolver } = await import("../../../config/models/session-role-resolver.js")
     return createSessionRoleResolver({ reader: input.projectionReader, projectRoot: input.projectRoot, sessionId })(capture)
   }
   const openExecution = async (publication: Omit<Parameters<ChildSessionAuthority["publish"]>[0], "runBinding" | "forkHistory" | "assignment">) => {
@@ -43,7 +43,7 @@ export function createSubagentSessionAuthority(input: SessionStorePorts & {
     })
     return {
       ...resources,
-      resolveRoles: (capture?: import("../../../agent-runtime/factory.js").ProviderConnectionCapture) => resolveRoles(publication.childSessionId, capture),
+      resolveRoles: (capture?: import("../../../agent-runtime/model-runtime-capture.js").ProviderConnectionCapture) => resolveRoles(publication.childSessionId, capture),
     }
   }
   const scheduleParentReconciliation = (

@@ -1,5 +1,5 @@
 import type { AgentFactory, AgentOptions, AgentRunResult, OmitAgentOptions, RuntimeToolSurfaces } from "../../../agent-runtime/types.js";
-import { createAgentHost } from "../../../runner/host.js";
+import { createAgentGeneration } from "../../../runner/host.js";
 
 type BenchmarkAgentOptions = OmitAgentOptions<AgentOptions, "conversation" | "lifecycle" | "runtimeSurfaces">;
 
@@ -21,7 +21,7 @@ export async function invokeBenchmarkAgent(invocation: BenchmarkAgentInvocation)
     throw new Error("Benchmark invocation deadlineMs must be a finite positive number");
   }
 
-  const host = createAgentHost({ createRunner: invocation.createAgent });
+  const host = createAgentGeneration({ createRunner: invocation.createAgent });
   let cancellationRequested = invocation.signal?.aborted ?? false;
   const cancel = (): void => {
     cancellationRequested = true;

@@ -1,7 +1,7 @@
-import { configSection } from "../../../../src/orchestration/config/config-section.js";
+import { configSection } from "../../../../src/orchestration/config/schema/config-section.js";
 import { skillsConfigSection, memoryConfigSection } from "../../../../src/orchestration/modules/learning/config.js";
 import { describe, expect, test } from "bun:test";
-import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js";
+import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema.js";
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js";
 import { subagentsConfigSection } from "../../../../src/orchestration/modules/subagents/config.js";
 

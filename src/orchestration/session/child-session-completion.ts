@@ -3,8 +3,7 @@ import { createRuntimeEvent } from "../../infra/runtime-event-factory.js"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../infra/runtime-fact-mapper.js"
 import type { ToolOutcome } from "../../infra/tool-outcome.js"
 import type { ToolExecutionEntry } from "./tool-execution-types.js"
-import type { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
-import { turnEndEntryId } from "./conversation/turn-end-record.js"
+import type { tryOpenConversationTree } from "./conversation/tree/conversation-tree-handle.js"
 
 /** Old result bytes remain the notification identity when only workflow terminology changed. */
 export function retainedSettledContent(content: string, workflowId: string, tool: ToolExecutionEntry): string {
@@ -65,22 +64,4 @@ export function workflowCompletionEntryId(
 /** The entry of an outcome that differs from the one its parent already read or holds. */
 export function revisedCompletionEntryId(childSessionId: string, revision: number | string, message: string): string {
   return `workflow-completion:${childSessionId}:${revision}:${contentEvidence(message).sha256}:reply-required`
-}
-
-const HISTORICAL_COMPLETION_PREFIX = turnEndEntryId({ reason: "settled" }, "workflow-completion:")
-
-/** The entry under which an adoption records a completion that happened
- *  before the workflow had its current parent. It is a settled record
- *  (`turn-end-record.ts`): the model sees the result in later turns, but the
- *  parent owes no answer to it, offers no Resume for it, and gets no wake.
- *  The reconciler reads this entry as the delivered completion. */
-export function historicalCompletionEntryId(childSessionId: string): string {
-  return `${HISTORICAL_COMPLETION_PREFIX}${childSessionId}`
-}
-
-/** Whether an entry is an adoption's historical completion. The adopted
- *  card states the same result, so the transcript shows the entry no row of
- *  its own, as it shows no row for a live completion. */
-export function isHistoricalCompletionEntry(entryId: string): boolean {
-  return entryId.startsWith(HISTORICAL_COMPLETION_PREFIX)
 }

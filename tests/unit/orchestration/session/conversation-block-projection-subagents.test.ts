@@ -2,7 +2,7 @@ import { formatAgentFailureDisplay } from "../../../../src/infra/output/output-f
 import { describe, expect, it } from "bun:test"
 
 import type { MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
-import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/transcript/conversation-block-projection"
 import { branchBlocks } from "../../../helpers/branch-blocks"
 import { formatToolInputProblems } from "../../../../src/orchestration/agent-runtime/tools/validate-input"
 import type { ToolHistorySummary } from "../../../../src/orchestration/module-seams"

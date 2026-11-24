@@ -15,7 +15,7 @@ import * as pairing from "../../../../../src/orchestration/modules/remote/remote
 import { canonicalPathWithMissingTail } from "../../../../../src/infra/canonical-path.js"
 import type { OwnedProcessExit } from "../../../../../src/infra/owned-subprocess.js"
 import { createAccountProjectClone } from "../../../../../src/orchestration/app-service/account-project-clone.js"
-import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/remote-identity.js"
+import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
 import { requestProjectCreation, type CreatedProject } from "../../../../../src/protocol/modules/remote/project-creation.js"
 import { asKeyPair, fromBase64Url, keyDigest, ownedBytes, parsePairingCodeUrl, toBase64Url, type OpenFrame, type RuntimeControlFrame } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 import { openPairingChannel, type DeviceIdentity } from "../../../../../src/protocol/modules/remote/relay-channel.js"
@@ -24,7 +24,7 @@ import { fakeOwnedCommandRunner, ownedCommandResult } from "../../../../helpers/
 import { PendingRelaySocket, startRelayStub } from "./relay-stub.js"
 import { decodeRemoteAccountAnswer, type RemoteAccountAnswer, type RemoteAccountRequest } from "../../../../../src/protocol/modules/remote/account-requests.js"
 import { pairDevice } from "../../../../../src/protocol/modules/remote/relay-pairing.js"
-import { machineName } from "../../../../../src/orchestration/modules/remote/remote-pairing-exchange.js"
+import { machineName } from "../../../../../src/orchestration/modules/remote/pairing/remote-pairing-exchange.js"
 import { deviceIdentity, sealDevice, text } from "./_remote-device-fixtures.js"
 
 const temporary = temporaryDirectories()

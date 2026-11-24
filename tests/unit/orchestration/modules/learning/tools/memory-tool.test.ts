@@ -12,7 +12,7 @@ import type { CapabilityCheck } from "../../../../../../src/infra/capability-tex
 import { createMemoryTool } from "../../../../../../src/orchestration/modules/learning/tools/memory.js";
 import { type DispatchedToolContext, capabilityAccessFor, type CapabilityAccess, type RuntimeTool, type ToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
-import type { CapabilityGrant } from "../../../../../../src/orchestration/config/module-policy.js";
+import type { CapabilityGrant } from "../../../../../../src/orchestration/config/policy/module-policy.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot, type ModuleId } from "../../../../../../src/orchestration/modules.js";
 import { testKernelToolDeps, admitEveryTool, requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";

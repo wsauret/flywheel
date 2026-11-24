@@ -3,7 +3,7 @@ import type { InFlightRecord, InFlightWrite, StoredFact, InFlightPayload } from 
 import { Log } from "../../../infra/log.js"
 import { createOrderedLane } from "../../../infra/ordered-lane.js"
 import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
-import type { ExperimentFact } from "./facts.js"
+import type { ExperimentFact } from "./state/facts.js"
 
 const EXPERIMENT_OPERATION_KIND = "experiment.operation"
 const EXPERIMENT_GIT_SETTLEMENT_KIND = "experiment.git_settlement"

@@ -8,7 +8,7 @@ import { pageDomainReader, type ModuleDomainViews } from "../client/module-domai
 import { ClientContext } from "./client-context.js"
 import { fakeClient, fakeClientActions, fakePanelSettings, fakeViewState } from "./client-context-fixture.js"
 import { IntroCard } from "./intro-card.js"
-import { ModuleRowView } from "./sheets/status-sheet.js"
+import { ModuleRowView } from "./sheets/sheet.js"
 
 /** The intro card over a frame that carries only module views, so what it
  *  renders beyond the kernel rows comes from the registry's selectors. */

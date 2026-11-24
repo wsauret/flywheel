@@ -1,5 +1,5 @@
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js";
-import { maintainSkillLifecycleIfAdmitted } from "../../../../src/orchestration/modules/learning/maintenance.js";
+import { maintainSkillLifecycleIfAdmitted } from "../../../../src/orchestration/modules/learning/maintenance/maintenance.js";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

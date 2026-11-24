@@ -1,9 +1,10 @@
-import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest, ModulePolicy } from "../../config/module-policy.js";
+import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest, ModulePolicy } from "../../config/policy/module-policy.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import type { ToolAction } from "../../../infra/workflow-types.js";
 import type { SessionFactWriter } from "../../session/session-fact-writer.js";
 import type { ToolOutcome } from "../../../infra/tool-outcome.js";
-import type { BackgroundWorkRegistry, ToolCallIdentity } from "../background-work.js";
+import type { BackgroundWorkRegistry } from "../background-work.js";
+import type { ToolCallIdentity } from "../background-work-types.js";
 import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
 import type { ConversationMessage, ToolCall, ToolWirePresentation } from "../llm/types.js";
 import type { FileReadLedger } from "./file-read-ledger.js";
@@ -11,7 +12,7 @@ import type { ContextAdmission } from "../compaction/compaction-policy.js";
 import type { GitAiAttributionService, GitAiRequestRegistration } from "../git-ai-attribution-service.js";
 import type { NestedToolDispatchBatch } from "./nested-tool-dispatch.js";
 import type { ReadCommandEvidence } from "../../../workflows/output-contract/evidence.js";
-import type { HandoffRejection } from "../../workflow-host/handoff-tool-schema.js";
+import type { HandoffRejection } from "../../workflow-host/attempt/handoff-tool-schema.js";
 
 import type { PersistentProcessClient } from "../../../infra/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../../infra/persistent-process-bridge.js";

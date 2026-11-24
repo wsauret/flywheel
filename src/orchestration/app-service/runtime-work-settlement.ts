@@ -3,7 +3,7 @@ import { settlementCursor, type ChatSettlementOutcome, type ChatSettlementResult
 import type { RuntimeUiBus } from "./runtime-ui-bus.js"
 import type { StatusView } from "../../protocol/status-protocol-types.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
-import { durableBranchHasUserMessage } from "../session/conversation/conversation-tree-handle.js"
+import { durableBranchHasUserMessage } from "../session/conversation/tree/conversation-tree-handle.js"
 import type { RuntimeChatKernel } from "./runtime-chat-kernel.js"
 import type { RuntimeSupervisor } from "./runtime-supervisor-types.js"
 import type { WorkflowHosts } from "../workflow-host/host-collection.js"

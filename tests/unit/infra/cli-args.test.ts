@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { CliArgsError, parseArgsResult, parseTimeInput, requiredValue } from "../../../src/infra/cli-args.js"
-import { parseArgs as parseEventSearchArgs, eventSearchUsage } from "../../../src/cli/event-search-args.js"
+import { parseArgs as parseEventSearchArgs, eventSearchUsage } from "../../../src/cli/events/event-search-args.js"
 
 describe("cli args errors-as-values", () => {
   test("parseArgsResult returns the parsed value on success", () => {

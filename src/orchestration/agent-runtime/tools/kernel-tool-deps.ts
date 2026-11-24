@@ -9,7 +9,7 @@ import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
 import type { SkillRegistryRevision, SkillDefinition } from "../../../workflows/skill-schema.js";
 import type { AskUserController } from "../../runner/ask-user-controller.js";
-import type { HandoffToolSchema } from "../../workflow-host/handoff-tool-schema.js";
+import type { HandoffToolSchema } from "../../workflow-host/attempt/handoff-tool-schema.js";
 import type { RecallPort } from "../../../protocol/conversation-recall.js"
 import type { BackgroundWorkRegistry } from "../background-work.js";
 import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
@@ -23,7 +23,7 @@ import type { RuntimeConfigRequestCapture } from "../request-config.js";
 import type { AgentPurpose } from "../types.js";
 import type { ModelInteractionProfile } from "../model-interaction-profile.js";
 import type { SessionMessaging } from "../../session/session-messaging.js";
-import type { CaptureProviderConnection } from "../factory.js";
+import type { CaptureProviderConnection } from "../model-runtime-capture.js";
 import type { ConversationCheckpointOwner } from "../../session/conversation-checkpoint.js";
 
 /** The model one request is served with. Per request, because the provider

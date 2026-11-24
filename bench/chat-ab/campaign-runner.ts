@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { createCliLauncher } from "../../src/cli/runtime-launch.js";
+import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";
 import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import type { HeadlessBenchmarkInput } from "../../src/orchestration/modules/development/benchmark/headless-execution.js";
 import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";

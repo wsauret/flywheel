@@ -8,8 +8,8 @@ import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
 import {
   planPersonaBenchmark,
   runPersonaBenchmark,
-  type BenchmarkPlan,
 } from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
+import type { BenchmarkPlan } from "../../../src/orchestration/modules/development/benchmark/benchmark-plan.js";
 import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
 import { validateJudgeAttempts } from "../../../src/orchestration/modules/development/benchmark/persona-evidence-validation.js";

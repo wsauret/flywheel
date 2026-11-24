@@ -1,7 +1,7 @@
 import { mkdir, rm } from "node:fs/promises"
 import { join } from "node:path"
 
-import { createCliLauncher, type CliLauncher } from "../../src/cli/runtime-launch.js"
+import { createCliLauncher, type CliLauncher } from "../../src/cli/account-service/runtime-launch.js"
 import { createBackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js"
 import { createForegroundBashHoldController } from "../../src/orchestration/agent-runtime/foreground-bash-hold.js"
@@ -9,7 +9,7 @@ import { planToolExposure } from "../../src/orchestration/agent-runtime/tools/to
 import type { CapabilityAccess, DispatchedToolContext, RuntimeTool, ToolResult } from "../../src/orchestration/agent-runtime/tools/types.js"
 import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js"
 import { captureRuntimeConfigRequest } from "../../src/orchestration/agent-runtime/request-config.js"
-import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema.js"
+import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema/schema.js"
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js"
 import { definitionAvailabilityOf } from "../../src/orchestration/app-service/definition-availability.js"
 import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orchestration/agent-runtime/capability-checks.js"

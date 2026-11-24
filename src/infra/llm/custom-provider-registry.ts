@@ -1,4 +1,4 @@
-import { authoredCatalogModelId, canonicalCatalogModelId } from "./model-id.js";
+import { authoredCatalogModelId, canonicalCatalogModelId } from "../model-id.js";
 
 /**
  * Custom access-provider registry.

@@ -71,6 +71,7 @@ async function runLoop({ client, launcher }: LiveRun, input: { instruction: stri
           purpose,
           servingModel: { model: client.model, modelFamily: client.modelFamily },
           backgroundTasks: background.tasks,
+          shell: background.shell,
           foregroundBashHold,
         }),
         modules: NO_MODULE_RUNTIMES,

@@ -6,7 +6,7 @@ import { readModelScores, scoresForModel } from "../../../src/infra/llm/model-sc
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { createModelsClient } from "../../../src/infra/llm/models.js";
 import { modelsDevDocument } from "../../helpers/model-catalog-fixtures.js";
-import { scoreCatalogModels } from "../../../src/orchestration/config/model-score-scope.js";
+import { scoreCatalogModels } from "../../../src/orchestration/config/models/model-score-scope.js";
 
 const directories = temporaryDirectories();
 const now = new Date("2026-10-19T00:00:00Z");

@@ -34,6 +34,22 @@ interface ResolveOptions<Value> {
   readonly retain?: (value: Value) => boolean;
 }
 
+/** The client cache that a run reads through its provider session (`ProviderRuntimeCache`). A borrower never
+ *  disposes it, so only the owner's concrete cache has `dispose`. */
+export interface ProviderClientCache<Value> {
+  /** Ends the current client and closes its provider-session scope, after the resolve that runs now, so the next
+   *  resolve builds a new client. The session's owner calls it when no run of the session uses the client. */
+  release(): Promise<void>;
+  /** The client built for these inputs: the current one while it is reusable for them, else a new one from `build`. */
+  resolve(
+    composition: FirstPartyModuleComposition,
+    servingKey: ServingKey,
+    routingKey: string,
+    build: (lifetime: ProviderSessionLifetime) => Promise<Value>,
+    options: ResolveOptions<Value>,
+  ): Promise<Value>;
+}
+
 /**
  * Runner-owned memoization of provider construction. The runner uses one client at a time: the one built for the
  * request's module composition, serving key, routing key, and bound shared tree. The serving key is a value, so a
@@ -44,7 +60,7 @@ interface ResolveOptions<Value> {
  * provider process or socket that the client held (such as a Claude CLI) ends at once instead of idling until the
  * runner ends. A replaced client is never returned again: a later request with its inputs builds a new one.
  */
-export class ProviderRuntimeCache<Value> {
+export class ProviderRuntimeCache<Value> implements ProviderClientCache<Value> {
   private current: CurrentRuntime<Value> | undefined;
   private readonly unsubscribeRetirement: () => void;
   private disposed = false;
@@ -67,8 +83,6 @@ export class ProviderRuntimeCache<Value> {
     this.unsubscribeRetirement();
   }
 
-  /** Ends the current client and closes its provider-session scope, after the resolve that runs now, so the next
-   *  resolve builds a new client. The session's owner calls it when no run of the session uses the client. */
   release(): Promise<void> {
     const released = this.resolving.then(() => this.endCurrent());
     this.resolving = released.catch(() => undefined);
@@ -129,7 +143,7 @@ export class ProviderRuntimeCache<Value> {
  *  cache nor closes the scope, so those resources outlive the run; the session's owner closes them
  *  (`openProviderSession`). */
 export interface ProviderSession {
-  readonly cache: ProviderRuntimeCache<ModelClient>;
+  readonly cache: ProviderClientCache<ModelClient>;
   readonly scope: Scope.Scope;
   readonly demand?: ProviderDemand;
 }

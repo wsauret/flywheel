@@ -1,11 +1,11 @@
 import { candidateProviderId, type AccessProviderId, type AdmittedFailoverPlan } from "../../../../infra/llm/access-provider.js";
-import type { CaptureProviderConnection } from "../../../agent-runtime/factory.js";
+import type { CaptureProviderConnection } from "../../../agent-runtime/model-runtime-capture.js";
 import { createAgentJudge, type JudgeModel } from "./judge.js";
-import { campaignJudges, type BenchmarkPlan } from "./persona-benchmark.js";
+import { campaignJudges, type BenchmarkPlan, type JudgeSelection } from "./benchmark-plan.js";
 import type { BenchmarkRuntime } from "./persona-run.js";
 import { structuredIdentity } from "./content-identity.js";
-import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
-import { resolveCapturedRole } from "../../../config/role-resolution.js";
+import { resolveSessionRoles } from "../../../config/models/session-role-resolver.js";
+import { resolveCapturedRole } from "../../../config/models/role-resolution.js";
 import type { WorkflowDeps } from "../../../workflow-host/deps.js";
 import type { ResolvedRole } from "../../../config/roles.js";
 import { candidateCredentialLineage } from "../../../agent-runtime/llm/client-factory.js";
@@ -36,12 +36,6 @@ export function benchmarkModelSeats(plan: BenchmarkPlan, personaRole: string): r
     ...plan.variants.map(({ model, effort }) => ({ role: "candidate" as const, roleId: personaRole, model, effort })),
     ...(campaignJudges(plan) ? [{ role: "judge" as const, ...plan.judge }] : []),
   ];
-}
-
-/** The model and effort that score one persona campaign. */
-export interface JudgeSelection {
-  readonly model: string;
-  readonly effort: string;
 }
 
 /** The judge members of the persona benchmark's dependencies. */

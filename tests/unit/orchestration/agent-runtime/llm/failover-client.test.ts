@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { accessProviderAccountKey, type AccessProviderCandidate, type AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
 import { AllCandidatesExhaustedError, ContentRefusedError, QuotaExhaustedError, LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { classifyProviderFailure, isFailoverFailure, normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { candidateReadiness } from "../../../../../src/orchestration/agent-runtime/llm/failover-client.js";
@@ -604,6 +604,7 @@ describe("request-scoped canonical provider order", () => {
 
 });
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+import { accessProviderAccountKey } from "../../../../../src/infra/auth/provider-account.js";
 
 describe("the order of one provider's accounts", () => {
   const claude = (instanceId: string, spendMode: "included" | "automatic" = "included"): AccessProviderCandidate => ({ kind: "subscription", providerId: "claude_agent_sdk", instanceId, spendMode });

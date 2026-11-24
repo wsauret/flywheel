@@ -5,7 +5,7 @@ import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js
 import { Log } from "../../infra/log.js"
 import { messageInput } from "../../infra/agent-loop-events.js"
 import type { Agent, AgentFactory, AgentPurpose } from "../agent-runtime/types.js"
-import { createAgentHost } from "../runner/host.js"
+import { createAgentGeneration } from "../runner/host.js"
 import { SHORT_TITLE_MAX_CHARS } from "../../protocol/app-service-types.js"
 import { TITLE_GENERATION_ROLE_ID, type RoleResolver } from "../config/roles.js"
 
@@ -284,7 +284,7 @@ async function generateViaLLMWithModel(
     const { inputSource, onTurnEnded } = createTitleValidationObservers(chunks, () => armTimeout())
 
     let activeRunner: Agent | undefined
-    const runPromise = createAgentHost({ createRunner: deps.createRunner }).runTurn({
+    const runPromise = createAgentGeneration({ createRunner: deps.createRunner }).runTurn({
       createContextOptions: () => ({
         model,
         purpose: SESSION_TITLE_PURPOSE,

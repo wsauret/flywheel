@@ -51,8 +51,8 @@ import {
   normalizeWorkflowControlV9,
 } from "./historical-normalization.js";
 import { AttemptFailedV2PayloadSchema, AttemptRetryInsertedV1PayloadSchema, AttemptSucceededV2PayloadSchema, WorkflowProposalEventV6Schema, WorkflowProposalEventV9Schema } from "./historical-attempt-codecs.js";
+import { DefinitionIdentityMismatchSchema } from "../definition-identity-mismatch.js";
 import {
-  DefinitionIdentityMismatchSchema,
   DefinitionIdentitySchema,
   DefinitionIdentityMigrationSchema,
   definitionIdentityMigrationReason,

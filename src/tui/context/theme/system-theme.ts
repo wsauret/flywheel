@@ -4,7 +4,8 @@ import { okhslToRgb, rgbToOkhsl, oklabToOkhslLightness, type RgbColor } from "./
 import { rgbToOklch, oklchToRgb } from "./oklch.js"
 import { contrastRatio, rgbContrastRatio as wcagContrast, correctContrast, TEXT_MINIMUM_CONTRAST } from "./color-contrast.js"
 import { readableTheme } from "./readable-theme.js"
-import { resolveTheme, type TuiTheme } from "./resolve.js"
+import { resolveTheme } from "./resolve.js"
+import type { TuiTheme } from "./tui-theme.js"
 import { workflowNameColors } from "./name-colors.js"
 import fallback from "./flywheel.json" with { type: "json" }
 import lightFallback from "./github.json" with { type: "json" }

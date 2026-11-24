@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types"
-import { createWorkflowAgentInputs } from "../../../../src/orchestration/workflow-host/agent-inputs"
+import { createWorkflowAgentInputs } from "../../../../src/orchestration/workflow-host/execution/agent-inputs"
 import type { WorkflowWake } from "../../../../src/orchestration/workflow-host/runner-types"
 import { WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
 import { startedAgents } from "../../../../src/workflows/vm/host-commit-controller"

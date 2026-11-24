@@ -10,13 +10,13 @@ import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.
 import type { BudgetView } from "../../protocol/budget-protocol-types.js"
 import type { PendingQuestionView } from "../../protocol/question-protocol-types.js"
 import { noticeText, selectPrimarySessionNotice, sessionNoticeChannel, type SessionNotice } from "../../infra/session-notice.js"
-import { createToastPresenter } from "../utils/toast-presenter.js"
+import { createToastPresenter } from "../context/toast-presenter.js"
 import type { RuntimeChatDefault, SessionCatalogError, SessionCatalogRow, SessionInputMode, SessionRow, AttachedRuntimeClient, RuntimeClient, RuntimeHealth, RuntimeStartupStatus } from "../../protocol/app-service-types.js"
 import type { RoleAssignmentView } from "../../protocol/role-protocol-types.js"
 import type { ActiveBackgroundCommandView, StatusView } from "../../protocol/status-protocol-types.js"
 import type { UpdateStatusView } from "../../protocol/update-protocol-types.js"
 import type { RuntimeModulesView } from "../../protocol/module-protocol-types.js"
-import { runtimeConfigCursor, type RuntimeConfigMutation, type RuntimeConfigValues, type RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigValues } from "../../protocol/runtime-config-protocol-types.js"
 import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../protocol/git-ai-attribution-protocol-types.js"
 import { gitCursor, type GitView } from "../../protocol/git-protocol-types.js"
 import type { RuntimeIdentity } from "../../protocol/client/runtime-identity.js"
@@ -24,7 +24,7 @@ import type { CommandCatalogReadiness } from "../../protocol/client/slash-route.
 import { commandUsageCursor, type CommandUsageView } from "../../protocol/command-usage-protocol-types.js"
 import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../protocol/command-catalog-protocol-types.js"
 import type { SessionLifecycleState } from "../../orchestration/session/types.js"
-import type { RuntimeDomainIntakeBindings } from "../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeDomainIntakeBindings } from "../../protocol/runtime-delivery-policy.js"
 import { createHeldView } from "../../protocol/client/held-view.js"
 import { childCardStatus, type ChildCardStatus } from "../../protocol/client/session-controls.js"
 import { runtimeHealth as deriveRuntimeHealth } from "../../protocol/client/runtime-health.js"
@@ -43,15 +43,18 @@ import { createRoleCache } from "./create-role-cache.js"
 import { createRuntimeHealth } from "./create-runtime-health.js"
 import { createRuntimeStartupStatus } from "./create-runtime-startup-status.js"
 import { createBackgroundHydration } from "./create-background-hydration.js"
-import { RESIDENT_BLOCK_BUDGET } from "../output-window/output-window-scroll.js"
+import { RESIDENT_BLOCK_BUDGET } from "../transcript-store/output-transcript-cache-types.js"
 import { sessionLoadFailure } from "./session-load-failure.js"
 import { withSnapshotHydrationLimit } from "./snapshot-hydration-limit.js"
 import { createTranscriptVisibilityRefresh } from "./create-transcript-visibility-refresh.js"
-import { createSessionChangesIntake, type SessionChangesView } from "./create-session-changes.js"
+import { createSessionChangesIntake } from "./create-session-changes.js"
+import type { SessionChangesView } from "../modals/session-changes-modal-types.js"
 import { createSettingsStore, type SettingsStore } from "./create-settings-store.js"
-import { createSessionDetailCache, createSessionSurface, type SessionDetailCache, type SessionSurface, type SessionSurfaceOptions } from "./create-session-surface.js"
+import type { RuntimeConfigCache } from "./create-runtime-config-cache.js"
+import { createSessionSurface, type SessionSurface, type SessionSurfaceOptions } from "./create-session-surface.js"
+import { createSessionDetailCache, type SessionDetailCache } from "../session-detail-cache.js"
 import { isEmptyNewChat } from "../session-empty-state.js"
-import type { SpinnerStatusSource } from "./create-spinner-status.js"
+import type { SpinnerStatusSource } from "../components/create-spinner-status.js"
 import { sessionModelLabel } from "./active-model-label.js"
 
 // The terminal-title prefix is a TUI concern with exactly one consumer.
@@ -257,70 +260,6 @@ export function useShellState(): ShellState {
   return state
 }
 
-
-export interface RuntimeConfigCache {
-  readonly view: Accessor<RuntimeConfigView | undefined>
-  settlePublication(command: RuntimeConfigMutation, revision: number): Promise<boolean>
-}
-
-function publishedMutation(view: RuntimeConfigView | undefined, command: RuntimeConfigMutation, revision: number): boolean {
-  if (view === undefined || view.revision < revision) return false
-  // A reset commits several values under one revision; reaching it is the settlement.
-  if (command.type === "config.reset") return true
-  if (command.setting.id === "gitAiAttribution" || command.setting.id === "allowTrainingRoutes" || command.setting.id === "provider") {
-    if (command.target?.kind !== "profile") return false
-    const profile = view.values.profiles[command.target.profileId]
-    const actual = command.setting.id === "provider"
-      ? profile?.providers[command.setting.providerId]?.[command.setting.key]
-      : profile?.[command.setting.id]
-    return JSON.stringify(actual) === JSON.stringify(command.setting.desired)
-  }
-  if (command.setting.id === "module") return JSON.stringify(view.values.moduleSections[command.setting.section]?.[command.setting.key]) === JSON.stringify(command.setting.desired)
-  return JSON.stringify(view.values[command.setting.id]) === JSON.stringify(command.setting.desired)
-}
-
-/** The one client-side RuntimeConfigView cache. Composition creates it before
- * providers so all settings consumers observe the same snapshot and patches. */
-export function createRuntimeConfigCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }): RuntimeConfigCache {
-  const [view, setView] = createSignal<RuntimeConfigView | undefined>()
-  let closed = false
-  const settlements = new Set<() => void>()
-  const wake = (): void => { for (const settle of settlements) settle() }
-  const held = createHeldView<RuntimeConfigView>({
-    client: deps.appService,
-    cursor: runtimeConfigCursor(),
-    read: async () => {
-      const snapshot = await deps.appService.query({ type: "configSnapshot" })
-      return { view: snapshot.config, position: snapshot.snapshotPosition }
-    },
-    adopt: (payload) => (payload.kind === "config.changed" ? payload.config : undefined),
-    changed: (next) => { setView(next); wake() },
-    label: "configuration",
-  })
-  onCleanup(() => {
-    closed = true
-    held.dispose()
-    wake()
-  })
-  return {
-    view,
-    async settlePublication(command, revision) {
-      if (publishedMutation(view(), command, revision)) return true
-      await held.refresh()
-      // The write committed, so its revision reaches this cache: a failed read
-      // retries, and a patch or a later lane's read lands it. Only closing the
-      // cache ends the wait before the revision arrives.
-      const answered = (): boolean => closed || (view()?.revision ?? -1) >= revision
-      while (!answered()) {
-        await new Promise<void>((resolve) => {
-          const settle = (): void => { settlements.delete(settle); resolve() }
-          settlements.add(settle)
-        })
-      }
-      return !closed && publishedMutation(view(), command, revision)
-    },
-  }
-}
 
 function createGitAiAttributionCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
   const [status, setStatus] = createSignal<GitAiAttributionStatus | undefined>()

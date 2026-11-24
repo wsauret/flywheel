@@ -209,7 +209,7 @@ describe("check-fact-retention ownership", () => {
 
   test("a module-owned family defined under its owner's fact home passes", () => {
     const { failures } = withTree(
-      { "src/orchestration/modules/experiments/facts.ts": 'defineFact({\n  type: "gizmo.recorded",\n})\n' },
+      { "src/orchestration/modules/experiments/state/facts.ts": 'defineFact({\n  type: "gizmo.recorded",\n})\n' },
       (root) => findFactRetentionViolations(root, registry()),
     );
     expect(failures).toEqual([]);
@@ -227,7 +227,7 @@ describe("check-fact-retention ownership", () => {
 
   test("a module-owned family that carries none of the owner's prefixes fails", () => {
     const { failures } = withTree(
-      { "src/orchestration/modules/experiments/facts.ts": 'defineFact({\n  type: "gizmo.recorded",\n})\n' },
+      { "src/orchestration/modules/experiments/state/facts.ts": 'defineFact({\n  type: "gizmo.recorded",\n})\n' },
       (root) => findFactRetentionViolations(root, registry({ prefixes: () => ["experiment."] })),
     );
     expect(failures).toEqual(['"gizmo.recorded" is owned by experiments but carries none of its declared fact prefixes (experiment.)']);

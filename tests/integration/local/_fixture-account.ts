@@ -1,7 +1,7 @@
 import { chmod, mkdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { defaultRoleSlots } from "../../../src/orchestration/config/role-selection.js"
-import { ROLE_MODEL_DEFAULTS } from "../../../src/orchestration/config/role-model-defaults.js"
+import { defaultRoleSlots } from "../../../src/orchestration/config/models/role-selection.js"
+import { ROLE_MODEL_DEFAULTS } from "../../../src/orchestration/config/models/role-model-defaults.js"
 
 /** Writes the config and auth of the account under `userDataRoot`, so that
  *  every model role runs `model` at low effort on

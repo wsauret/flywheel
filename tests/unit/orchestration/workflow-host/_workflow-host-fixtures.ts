@@ -1,7 +1,7 @@
 import { mock } from "bun:test"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection.js"
 import type { WorkflowRunner } from "../../../../src/orchestration/workflow-host/runner-types.js"
-import type { WorkflowControllerDeps } from "../../../../src/orchestration/workflow-host/controller.js"
+import type { WorkflowControllerDeps } from "../../../../src/orchestration/workflow-host/lifecycle/controller.js"
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import type { WorkflowProposalEvent } from "../../../../src/workflows/vm/events.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js"

@@ -42,6 +42,7 @@ function defaultPlatform(overrides: Partial<WindowsPersistentSubprocessPlatform>
     createSpool: () => spool,
     closeSpool: async () => {},
     launch: async () => ({ pid: 42, exited: new Promise<number>(() => {}), unref: () => {} }),
+    launchBreakaway: () => { throw new Error("this launch did not ask to leave its jobs") },
     launchOutsideJobs: async () => { throw new Error("this launch did not ask to leave its jobs") },
     inspect: async () => ({ kind: "process", identity: "42:born" }),
     stopContainer: async () => {},
@@ -443,18 +444,29 @@ describe("persistent subprocess", () => {
     expect(await process.stop()).toBe("unsettled")
   })
 
-  test("a launch outside every job goes through WMI on Windows with its output in the spools, and stays an ordinary launch elsewhere", async () => {
-    let outside: Parameters<WindowsPersistentSubprocessPlatform["launchOutsideJobs"]>[0] | undefined
-    const windows = defaultPlatform({
-      launch: async () => { throw new Error("a launch outside every job used the ordinary spawn") },
-      launchOutsideJobs: async (request) => {
-        outside = request
-        return { pid: 42, exited: new Promise<number>(() => {}), unref: () => {} }
-      },
-    })
-    const launched = await launchPersistentSubprocess(command, { platform: windows, selfManaged: true, cwd: "/work", env: { PATH: "/bin" }, outsideJobs: true })
-    expect(outside).toEqual({ command, cwd: "/work", env: { PATH: "/bin" }, stdoutPath: "/spool/stdout", stderrPath: "/spool/stderr" })
-    expect(launched.pid).toBe(42)
+  test("a launch outside every job starts through breakaway on Windows, through WMI when breakaway leaves it to WMI, and stays an ordinary launch elsewhere", async () => {
+    const expected = { command, cwd: "/work", env: { PATH: "/bin" }, stdoutPath: "/spool/stdout", stderrPath: "/spool/stderr" }
+    const windows = (breakaway: WindowsPersistentSubprocessPlatform["launchBreakaway"]) => {
+      const requests: { readonly path: string; readonly request: Parameters<WindowsPersistentSubprocessPlatform["launchOutsideJobs"]>[0] }[] = []
+      const platform = defaultPlatform({
+        launch: async () => { throw new Error("a launch outside every job used the ordinary spawn") },
+        launchBreakaway: (request) => { requests.push({ path: "breakaway", request }); return breakaway(request) },
+        launchOutsideJobs: async (request) => {
+          requests.push({ path: "wmi", request })
+          return { pid: 43, exited: new Promise<number>(() => {}), unref: () => {} }
+        },
+      })
+      return { platform, requests }
+    }
+    const options = { selfManaged: true, cwd: "/work", env: { PATH: "/bin" }, outsideJobs: true } as const
+
+    const fast = windows(() => ({ kind: "started", child: { pid: 42, exited: new Promise<number>(() => {}), kill: () => {}, unref: () => {} } }))
+    expect((await launchPersistentSubprocess(command, { ...options, platform: fast.platform })).pid).toBe(42)
+    expect(fast.requests).toEqual([{ path: "breakaway", request: expected }])
+
+    const fallback = windows(() => ({ kind: "needs-wmi", reason: "in-job" }))
+    expect((await launchPersistentSubprocess(command, { ...options, platform: fallback.platform })).pid).toBe(43)
+    expect(fallback.requests).toEqual([{ path: "breakaway", request: expected }, { path: "wmi", request: expected }])
 
     let posixCommand: readonly string[] | undefined
     await launchPersistentSubprocess(command, {
@@ -475,6 +487,7 @@ describe("persistent subprocess", () => {
     let closed = 0
     const refusal = new OutsideJobsLaunchError("wmi", "WMI Win32_Process.Create answered 9 (path not found)")
     const platform = defaultPlatform({
+      launchBreakaway: () => ({ kind: "needs-wmi", reason: "refused" }),
       launchOutsideJobs: async () => { throw refusal },
       closeSpool: async () => { closed += 1 },
       removeSpool: (directory) => { removed.push(directory) },

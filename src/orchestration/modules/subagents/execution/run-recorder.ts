@@ -1,5 +1,5 @@
 import { buildSubagentCompleted } from "../history/subagent-run-fact-writers.js";
-import type { EndedWorkResult } from "../../../agent-runtime/background-work.js";
+import type { EndedWorkResult } from "../../../agent-runtime/background-work-types.js";
 import type { InFlightWrite } from "../../../../infra/event-store-types.js";
 import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
 

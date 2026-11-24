@@ -12,7 +12,7 @@ import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtim
 import { createCapabilityNarrowing } from "../../../../src/orchestration/agent-runtime/capability-narrowing.js";
 import { createAgentLoopInputWaiter } from "../../../../src/orchestration/agent-runtime/agent-loop-input-consumer.js";
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox.js";
-import { enforceTurnBudget, limitOutput } from "../../../../src/orchestration/agent-runtime/compaction/truncation.js";
+import { enforceTurnBudget, limitOutput } from "../../../../src/orchestration/agent-runtime/tools/truncation.js";
 import { createPendingWorkNudge } from "../../../../src/orchestration/agent-runtime/pending-work-nudge.js";
 import { availableToolNames } from "../../../../src/orchestration/agent-runtime/persona-tool-rules.js";
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js";
@@ -24,7 +24,7 @@ import { decodeModuleState } from "../../../../src/orchestration/config/module-d
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
 import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
 import { composeFirstPartyModules, effectiveModuleIds, SHIPPED_MODULES, workflowsModeOf, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js";
-import { reviewInstruction } from "../../../../src/orchestration/modules/learning/learning-review-prompts.js";
+import { reviewInstruction } from "../../../../src/orchestration/modules/learning/review/learning-review-prompts.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js";
 import type { ModuleId } from "../../../../src/protocol/module-ids.js";

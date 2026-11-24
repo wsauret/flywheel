@@ -9,7 +9,7 @@ import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/t
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
 import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
 import { capabilityAccessFor } from "../../../../src/orchestration/agent-runtime/tools/types.js";
-import type { CapabilityRequest } from "../../../../src/orchestration/config/module-policy.js";
+import type { CapabilityRequest } from "../../../../src/orchestration/config/policy/module-policy.js";
 import { composeFirstPartyModules, unattendedModuleIds, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js";
 import { canonicalModuleIds } from "../../../../src/protocol/module-ids.js";
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js";

@@ -6,7 +6,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
-import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { createConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js"
 import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner-stream-events.js"
 import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/turn-usage-tracker.js"

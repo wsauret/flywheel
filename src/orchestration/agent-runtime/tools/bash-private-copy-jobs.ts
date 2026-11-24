@@ -1,7 +1,7 @@
 import { createBoundedWorkerSpawner } from "../../../infra/bounded-worker-spawner.js";
 import { embeddedEntrySpecifier, runsThroughBun } from "../../../infra/cli-subprocess.js";
 import { terminateWorker } from "../../../infra/worker-termination.js";
-import type { StateDigest } from "./bash-copy-repository-state.js";
+import type { StateDigest } from "./bash-copy-state-digest.js";
 import type { CopyRecordRead, FinalizedCopy, PrivateCopyAnswer, PrivateCopyJob, PrivateCopyReply, PrivateCopyRequest, ScannedChanges, TakenTree } from "./bash-private-copy-tree.js";
 import type { SessionFolderObservation } from "./bash-session-observation.js";
 

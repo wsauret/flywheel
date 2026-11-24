@@ -26,7 +26,7 @@ import {
   subscription,
   availabilityFixtures,
 } from "./_provider-availability-harness.js";
-import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../src/infra/auth/openai-auth-types.js";
+import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../src/infra/auth/openai/openai-auth-types.js";
 
 const { tempDbFile, createAuthority: createAvailabilityAuthority } = availabilityFixtures();
 

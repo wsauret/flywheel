@@ -1,9 +1,8 @@
 import type { AuthContext, ProviderConnection } from "../../infra/auth/auth-context.js";
-import { accessProviderAccountKey, type AccessProviderCandidate, type AccessProviderModelEligibility, type FailoverPlan } from "../../infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../infra/llm/access-provider.js";
 import type { RequestAdmission } from "./llm/provider-availability-types.js";
-import type { ModelClient, ProviderSessionLifetime } from "./llm/types.js";
 import type { ModelsClient } from "../../infra/llm/models.js";
-import { getSharedModelsClient } from "../config/llm-clients.js";
+import { getSharedModelsClient } from "../config/models/llm-clients.js";
 import { captureAccountConnection, createAdmittedClient, createClient, type AdmittedClientOptions, type CreateClientOptions, type EffectiveProviderConnection } from "./llm/client-factory.js";
 import { LiveAgent } from "./runner.js";
 import { planCapabilitiesOfRun, prepareRunRequest, type CapabilityPlanner, type RequestPreparer } from "./request-preparation.js";
@@ -21,52 +20,12 @@ import type { WebSearchProviderId } from "./web-search/types.js";
 import { createWebSearchProviderResolver, type FirstPartyModuleComposition, type FirstPartyModuleSnapshot } from "../modules.js";
 import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "./request-config.js";
 import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
-import { requestAdmissionFromCaptures, type SubscriptionAdmissionCapture } from "../subscription-spend-consent/admission-capture.js";
+import { requestAdmissionFromCaptures } from "../subscription-spend-consent/admission-capture.js";
 import type { AuthConditionOwner } from "../auth/auth-condition-owner.js";
 import type { UsageAuthorityGeneration } from "./usage-settlement.js";
-import { accessProviderRegistry } from "./llm/access-provider-registry.js";
-
-/** Builds a client of `model` whose provider resources `providerSessionLifetime` owns. An absent snapshot or
- *  configuration reads the runtime's current one. */
-export type LLMClientFactory = (model: string, moduleSnapshot: FirstPartyModuleComposition | undefined, runtimeConfig: RuntimeConfigRequestCapture | undefined, providerSessionLifetime: ProviderSessionLifetime) => Promise<ModelClient>;
-
-/** One request-time model runtime. Generation identity prevents a runner cache
- *  from reusing clients after the owning session publishes new model state. */
-export interface ModelRuntimeCapture {
-  readonly generation: WeakKey;
-  readonly createLLMClient: LLMClientFactory;
-  readonly captureProviderConnection?: CaptureProviderConnection;
-}
-
-export type CaptureModelRuntime = () => Promise<ModelRuntimeCapture>;
-
-/** Runner and client construction bound to one admitted plan set: every client
- *  it builds comes from the plan its model was admitted with, and a model the
- *  set does not name is refused before any provider request. */
-interface AdmittedRuntime {
-  createAgent: AgentFactory;
-  createLLMClient: LLMClientFactory;
-}
-
-/** One captured account plus the only construction that spends it. A child run
- *  plans its models against `connection` and admits those plans, so no step
- *  below the capture reads the credential store or the model cache again. */
-export interface ProviderConnectionCapture {
-  readonly connection: EffectiveProviderConnection;
-  readonly providers: ReturnType<typeof accessProviderRegistry>;
-  readonly eligibility?: AccessProviderModelEligibility;
-  readonly runtimeConfig: RuntimeConfigRequestCapture;
-  /** Plans keyed by the model id their caller will ask for. */
-  admit(plans: ReadonlyMap<string, FailoverPlan>): AdmittedRuntime;
-  /** This request's spend admission of `candidates`: allowance and consent, captured once per candidate list for the
-   *  life of this capture, so every client that the capture admits reads the same evidence. */
-  requestAdmission(candidates: readonly AccessProviderCandidate[]): Promise<RequestAdmission>;
-}
-
-export type CaptureProviderConnection = (runtimeConfig?: RuntimeConfigRequestCapture, moduleSnapshot?: FirstPartyModuleComposition) => Promise<ProviderConnectionCapture>;
-/** Captures allowance and consent for one request: the candidates it plans, and the profile's authored provider settings every provider's allowance admission reads its own keys from. */
-export type CaptureSubscriptionAdmission = (candidates: readonly AccessProviderCandidate[], providerSettings: RuntimeConfigRequestCapture["providerSettings"]) => Promise<SubscriptionAdmissionCapture>;
-
+import { accessProviderRegistry, type AccessProviderRegistry } from "./llm/access-provider-registry.js";
+import type { CaptureProviderConnection, CaptureSubscriptionAdmission, LLMClientFactory } from "./model-runtime-capture.js";
+import { accessProviderAccountKey } from "../../infra/auth/provider-account.js";
 
 interface GenerationRuntimeToolSurfaces {
   moduleServices?: ModuleServices;
@@ -204,7 +163,7 @@ export function createAgentRuntime(deps: {
   };
   // The definition owner names the project this runtime serves, so every client
   // it builds writes provider diagnostics under that root and never resolves one.
-  const admittedClientOptions = (providers: ReturnType<typeof accessProviderRegistry>, connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture, eligibility: AdmittedClientOptions["eligibility"], providerSessionLifetime: AdmittedClientOptions["providerSessionLifetime"]): AdmittedClientOptions => {
+  const admittedClientOptions = (providers: AccessProviderRegistry, connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture, eligibility: AdmittedClientOptions["eligibility"], providerSessionLifetime: AdmittedClientOptions["providerSessionLifetime"]): AdmittedClientOptions => {
     const admission = requestAdmission(connection, runtimeConfig);
     return {
       providers,

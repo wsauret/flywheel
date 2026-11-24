@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 import type { AuthContext } from "../../../../../src/infra/auth/auth-context.js";
-import { accessProviderAccountKey } from "../../../../../src/infra/llm/access-provider.js";
+import { accessProviderAccountKey } from "../../../../../src/infra/auth/provider-account.js";
 import { createModelListingClient } from "../../../../../src/infra/llm/model-listing.js";
 import { createModelsClient } from "../../../../../src/infra/llm/models.js";
 import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/credential-slot-classifier.js";

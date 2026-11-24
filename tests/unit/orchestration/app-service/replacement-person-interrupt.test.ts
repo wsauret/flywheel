@@ -19,7 +19,7 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/ru
 import { subagentsModule } from "../../../../src/orchestration/modules/subagents.js"
 import { buildDurableSubagentCreated, buildSubagentPaused } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { readChatTurnEnd } from "../../../../src/orchestration/session/chat-session-run-evidence.js"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { authorizePlannedSessionContinuation, awaitsPlannedContinuation, createContinuationLanes, interruptChildForReplacement, readPlannedSessionContinuationAsync, recordOwedPersonInterrupt } from "../../../../src/orchestration/session/planned-session-continuation.js"
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js"

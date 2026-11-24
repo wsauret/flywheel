@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test"
-import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
+import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js"
 import { authDir } from "../../../../src/infra/paths.js"
-import { accessProviderAccountKey, createAccessProviderSelection } from "../../../../src/infra/llm/access-provider.js"
-import type { ResolvedProviderModels } from "../../../../src/infra/llm/provider-model-preferences.js"
+import { createAccessProviderSelection } from "../../../../src/infra/llm/access-provider.js"
+import type { ResolvedProviderModels } from "../../../../src/infra/auth/provider-models/provider-model-preferences.js"
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js"
 import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/eligibility-preparation.js"
 import { createProviderModelPreferenceService, type ProviderModelEligibilityState } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js"
-import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/model-assignment-providers.js"
+import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/models/model-assignment-providers.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
@@ -18,6 +18,7 @@ import type { SubscriptionUsagePublishedSnapshot } from "../../../../src/orchest
 import { Redacted } from "effect"
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
 import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js"
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
 
 const DIRECTORIES = testDirectories(process.cwd())
 const PROFILE = { id: "work", directory: authDir(DIRECTORIES.userDataRoot, "work") }

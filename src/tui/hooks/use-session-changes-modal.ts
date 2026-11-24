@@ -5,7 +5,7 @@ import type { SessionChangeFile } from "../../protocol/session-changes-protocol-
 import { createListModalKeys } from "../components/modal-list-keys.js"
 import { createModalScrollController } from "../components/modal-scroll-controller.js"
 import type { ModalContext, ModalHandle } from "../components/modal-stack.js"
-import type { SessionChangesView } from "./create-session-changes.js"
+import type { SessionChangesView } from "../modals/session-changes-modal-types.js"
 import { patchScrollBoxLayoutHooks } from "../components/scrollbox-layout-hooks.js"
 
 /** Modal navigation and disclosure only. Undo eligibility, confirmation, and dispatch belong to the shared session controller. */
@@ -178,4 +178,3 @@ export function useSessionChangesModal(deps: {
   return { openSessionChangesModal, close, snapshot, rows, cursor: currentCursor, setCursor, isExpanded, toggleExpanded, toggleViewed, registerHeader, registerSection, requestUndo, confirmUndo, cancelUndo, listScroll, attachScroll }
 }
 
-export type SessionChangesModalHook = ReturnType<typeof useSessionChangesModal>

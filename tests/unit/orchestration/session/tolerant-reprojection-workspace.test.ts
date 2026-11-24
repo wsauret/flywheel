@@ -6,9 +6,9 @@ import { createTolerantReprojectionWorkspace, readSessionPayloadBytes, tolerantW
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail.js"
+import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/protocol/detail.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 const tail = { anchor: { kind: "tail" as const }, maxBlocks: 100, maxBytes: 1024 * 1024 }

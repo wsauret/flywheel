@@ -1,10 +1,14 @@
 /** The access audit of one audited account: which models.dev rows wait for a probe, the probe pass, and the catalog that its results admit. */
-import { readSavedProviderModels, recordProviderModelAccess, writeProviderModelCandidates, type CatalogProfile, type ProviderModelAccessSnapshot, type SavedProviderModels } from "../auth/provider-model-catalog-store.js";
-import type { AccessProviderAccessOutcome, AccessProviderAccessProbeInput, AccessProviderAccountIdentity, AccessProviderCatalogFetchInput } from "./access-provider.js";
-import { enrichCatalogRows, resolveModelCatalog, type CatalogCanonicalRow, type CatalogLimits, type ModelCatalogContribution, type OfferingTransport, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
+import { readSavedProviderModels, recordProviderModelAccess, writeProviderModelCandidates, type CatalogProfile, type SavedProviderModels } from "../auth/provider-models/provider-model-catalog-store.js";
+import type { AccessProviderAccessOutcome, AccessProviderAccessProbeInput, AccessProviderCatalogFetchInput } from "./access-provider.js";
+import { enrichCatalogRows, resolveModelCatalog, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
+import type { CatalogCanonicalRow, CatalogLimits } from "../model-catalog-rows.js";
+import type { OfferingTransport } from "../catalog-model-offering.js";
 import { catalogRowsToModelMap, type AccessProviderCandidateModels, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
-import { isMovingModelAlias } from "./model-id.js";
+import { isMovingModelAlias } from "../model-id.js";
 import { isListableRoute } from "./provider-model-info.js";
+import type { ProviderModelAccessSnapshot } from "../auth/auth-context.js";
+import type { AccessProviderAccountIdentity } from "../auth/provider-account.js";
 
 type SavedAudit = NonNullable<SavedProviderModels["audit"]>;
 

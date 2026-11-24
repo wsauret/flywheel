@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url"
 import { zstdDecompressSync } from "node:zlib"
 import tokenizerFingerprint from "../../crates/tokenizer/tokenizer-prebuilt.json" with { type: "json" }
 import { runsThroughBun } from "./cli-subprocess.js"
-import type { ClaudeTokenizerIdentity } from "./llm/model-id.js"
+import type { ClaudeTokenizerIdentity } from "./model-id.js"
 import { nativeAssetDir } from "./native-assets.js"
 
 const ARTIFACT_FILE = "flywheel-tokenizer.wasm.zst"

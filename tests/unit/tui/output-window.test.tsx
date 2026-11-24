@@ -8,7 +8,7 @@ import type { AnyBlock, TextBlock, ToolEntry, ToolStreamingText } from "../../..
 import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
 import type { OutputTranscriptView, TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import { renderWindow, transcriptOf } from "./_output-window-transcript.js"
-import { heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
+import { heightEstimatesFromBlocks } from "../../../src/tui/transcript-store/output-height-estimates.js"
 import flywheelTheme from "../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../src/tui/context/theme/resolve.js"
 import { twoColorPng } from "../../helpers/image.js"

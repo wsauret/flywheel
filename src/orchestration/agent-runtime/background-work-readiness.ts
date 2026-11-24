@@ -1,4 +1,4 @@
-import type { ChildInterruption } from "./background-work.js"
+import type { ChildInterruption } from "./background-work-types.js"
 
 export interface HandoffBlock {
   /** Running work that the agent waits for or stops; a park waits for it. */

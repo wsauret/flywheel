@@ -1,5 +1,5 @@
 import type { RGBA } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve.js"
+import type { SyntaxColors } from "@tui/context/theme/syntax-colors.js"
 import { resolveSyntaxLanguage } from "./syntax-language.js"
 import type { HLJSApi } from "highlight.js"
 import clojure from "highlight.js/lib/languages/clojure"
@@ -44,35 +44,7 @@ export const MAX_HIGHLIGHT_LINES = 10_000
 // identifier of 18,000 characters takes about 0.5 s), and a token cannot be longer than its line.
 export const MAX_HIGHLIGHT_LINE_LENGTH = 2_000
 
-export interface SyntaxColors {
-  readonly text: RGBA
-  readonly comment: RGBA
-  readonly keyword: RGBA
-  readonly function: RGBA
-  readonly variable: RGBA
-  readonly string: RGBA
-  readonly number: RGBA
-  readonly type: RGBA
-  readonly operator: RGBA
-  readonly punctuation: RGBA
-}
-
 type SyntaxColorKey = Exclude<keyof SyntaxColors, "text">
-
-export function chatSyntaxColors(theme: TuiTheme): SyntaxColors {
-  return {
-    text: theme.text,
-    comment: theme.chatCodeComment,
-    keyword: theme.chatCodeKeyword,
-    function: theme.chatCodeFunction,
-    variable: theme.chatCodeVariable,
-    string: theme.chatCodeString,
-    number: theme.chatCodeNumber,
-    type: theme.chatCodeType,
-    operator: theme.chatCodeOperator,
-    punctuation: theme.chatCodePunctuation,
-  }
-}
 
 interface ScopeColors {
   [scope: string]: SyntaxColorKey

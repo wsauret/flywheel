@@ -1,8 +1,8 @@
 import type { ManagedPackageMutation, ManagedPackageReach, ManagedPackageWrites } from "../../module-seams.js"
 import type { SkillManageToolDeps } from "./tools/skill-manage.js"
-import { planSkillMutation } from "./skill-mutation-plan.js"
-import { publishSkillMutation } from "./skill-mutation-publisher.js"
-import { refuseUncontainedSkillStores } from "./skill-store.js"
+import { planSkillMutation } from "./skills/skill-mutation-plan.js"
+import { publishSkillMutation } from "./skills/skill-mutation-publisher.js"
+import { refuseUncontainedSkillStores } from "./skills/skill-store.js"
 
 const NO_GLOBAL_AUTHORITY = "This session has no durable global skill publication authority."
 

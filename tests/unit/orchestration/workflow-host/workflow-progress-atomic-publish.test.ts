@@ -13,11 +13,11 @@ import { hashContent } from "../../../../src/workflows/definition-hash.js"
 import { readStoredSession } from "../session/_session-metadata-test-helpers.js"
 import { seedModelWorkflowCall } from "./_workflow-progress-fixtures.js"
 import { cleanupProjectRoots, trackProjectRoot, trackEventStore, createDeps, fixtureSource, until, createMockSessionStore } from "./_workflow-controller-fixtures.js"
-import { createWorkflowController } from "../../../../src/orchestration/workflow-host/controller.js"
+import { createWorkflowController } from "../../../../src/orchestration/workflow-host/lifecycle/controller.js"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures.js"
-import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/run-record.js"
+import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/runs/run-record.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
-import { modelWorkflowLaunchOrigin } from "../../../../src/orchestration/workflow-host/launch-origin.js"
+import { modelWorkflowLaunchOrigin } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
 
 function origin(parentId: string, conversationId: string) {
   return modelWorkflowLaunchOrigin(parentId, { conversationId, toolUseId: "tool-1", confirmation: { kind: "absent" }, authority: fullAuthority() })

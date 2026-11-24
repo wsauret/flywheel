@@ -14,11 +14,11 @@ import type { WebSearchPort, WebSearchProviderId } from "./web-search/types.js";
 import type { SessionNoticeOperation } from "../../infra/session-notice.js";
 import type { AgentLoopWakeInput, InputSource, LogicalTurnStartedContext, TurnEndedContext, TurnParkedContext } from "../../infra/agent-loop-events.js";
 import type { ToolAction } from "../../infra/workflow-types.js";
-import type { BriefScope } from "../config/role-selection.js";
+import type { BriefScope } from "../config/models/role-selection.js";
 import type { RoleResolver } from "../config/roles.js";
 import type { RoleSettingEntry } from "../session/schemas.js";
 import type { AskUserController } from "../runner/ask-user-controller.js";
-import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/handoff-tool-schema.js";
+import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/attempt/handoff-tool-schema.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
 import type { ProviderRequestAuditFact } from "../session/provider-request-audit-facts.js";
 import type { SessionFactWriter } from "../session/session-fact-writer.js";
@@ -28,7 +28,7 @@ import type { NotificationEpisodeInput } from "../../infra/notification-episode.
 import type { ConversationMessage } from "./llm/types.js";
 import type { AgentRunTally } from "./agent-loop-state.js";
 import type { CommittedTree, ConversationTreeProjectionState } from "../session/conversation/conversation-projection.js";
-import type { CaptureProviderConnection } from "./factory.js";
+import type { CaptureProviderConnection } from "./model-runtime-capture.js";
 import type { BackgroundExecutionOwner } from "./background-execution-owner.js";
 import type { CommandHandoverAuthority } from "./command-handover.js";
 import type { PromptKind } from "./system-prompt.js";
@@ -51,7 +51,7 @@ import type { WorkflowsMode } from "../../protocol/module-protocol-types.js";
 import type { GitAiAttributionService } from "./git-ai-attribution-service.js";
 import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
 import type { ChildSessionAuthority } from "../module-seams.js";
-import type { SessionContext } from "../session/conversation/conversation-tree-context.js";
+import type { SessionContext } from "../session/conversation/tree/conversation-tree-context.js";
 import type { ShellRuntimeClient } from "./tools/shell-runtime-types.js";
 
 import type { SessionMessaging } from "../session/session-messaging.js";
@@ -408,7 +408,7 @@ interface AgentBaseOptions {
   captureProviderConnection?: CaptureProviderConnection;
   /** Captures the owning session's current model-serving revision before each
    *  provider request. Children inherit the same authority from their runner. */
-  captureModelRuntime?: import("./factory.js").CaptureModelRuntime;
+  captureModelRuntime?: import("./model-runtime-capture.js").CaptureModelRuntime;
   /** The provider runtime of the session that this run serves, which outlives the run (`ProviderSession`). Absent:
    *  the run owns its own, which ends with the run. */
   providerSession?: import("./provider-runtime-cache.js").ProviderSession;

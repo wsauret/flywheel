@@ -3,7 +3,7 @@ import { describe, it, expect } from "bun:test";
 import { join } from "node:path";
 import { Redacted } from "effect";
 import { bindWorkflowDepsToSession, prepareWorkflowDeps } from "../../../../src/orchestration/workflow-host/deps";
-import { CONFIG_DEFAULTS, type FlywheelConfig } from "../../../../src/orchestration/config/schema";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "../../../../src/orchestration/config/schema/schema";
 import type { AgentFactory, AgentOptions } from "../../../../src/orchestration/agent-runtime/types";
 import type { PrepareWorkflowDepsInput } from "../../../../src/orchestration/workflow-host/deps";
 import { fixtureDefinitions, repoDefinitions } from "../../../helpers/project-definitions.js";

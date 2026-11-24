@@ -7,7 +7,7 @@ import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
 import { deriveChildRuntimeSurfaces, toolRegistryFromComposition } from "../../../../src/orchestration/agent-runtime/tools/tool-registry.js"
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/factory.js"
+import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/model-runtime-capture.js"
 import type { RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import { asModelClient } from "./_model-client.js"
 import { makeOptions } from "./_runner-options.js"
@@ -20,7 +20,7 @@ import { createBackgroundExecutionOwner } from "../../../../src/orchestration/ag
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import { personaInstructions } from "../../../../src/workflows/agents/persona-instructions.js"
 import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
-import { subagentsRuntime } from "../../../../src/orchestration/modules/subagents/execution/runtime-binding.js"
+import { subagentsRuntime } from "../../../../src/orchestration/modules/subagents/execution/control/runtime-binding.js"
 import { makeDeps as makeSubagentDeps } from "./subagent/_fixtures.js"
 
 const ALL = composeFirstPartyModules()

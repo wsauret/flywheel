@@ -6,8 +6,10 @@ import * as path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { hostPlatformArch, nativeRuntimePackages } from "../../../scripts/binary-native-assets.js"
-import { createAccountRuntimeAttach, isRuntimeListening, readRuntimeIdentity, type ProjectRuntimeOptions, type RuntimeIdentity } from "../../../src/cli/runtime-attach.js"
-import { launchRuntimeClient, type LaunchedRuntimeClient } from "../../../src/cli/runtime-launch.js"
+import { createAccountRuntimeAttach, isRuntimeListening, type ProjectRuntimeOptions } from "../../../src/cli/account-service/runtime-attach.js"
+import { readRuntimeIdentity, type RuntimeIdentity } from "../../../src/cli/account-service/runtime-identity-record.js"
+import { launchRuntimeClient, type LaunchedRuntimeClient } from "../../../src/cli/account-service/runtime-launch.js"
+import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
 import { sourceSnapshotHome } from "../../../src/infra/cli-subprocess.js"
 import { scanDebugLogFiles } from "../../../src/infra/debug-log.js"
 import { openContainedDirectory } from "../../../src/infra/descriptor-directory.js"
@@ -44,6 +46,8 @@ const MODEL = "gpt-5"
 const STEP_MS = 60_000
 /** A module that only a project executor loads. */
 const EXECUTOR_MODULE = path.join(COPY, "src", "orchestration", "app-service", "project-executor-main.ts")
+/** The module that the CLI entry of a snapshot imports first. */
+const CLI_MODULE = path.join(COPY, "src", "cli", "index.ts")
 
 /** The copy holds its own source, so an edit to it reaches only what loads
  *  the copy. Bun names a linked source file by its real path, so a linked
@@ -176,6 +180,35 @@ async function serveEnsure(projectRoot: string): Promise<void> {
   })
   const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()])
   if (code !== 0) throw new Error(`serve ensure from the copy exited ${code}:\n${stdout}\n${stderr}`)
+}
+
+/** Runs `flywheel serve` from the copy, as the dev service manager starts
+ *  it. Answers its exit code, and, given `listening`, also settles
+ *  `listening` once that check passes, before the service exits. */
+function serveStart(projectRoot: string): Promise<{ readonly code: number }>
+function serveStart(projectRoot: string, listens: () => Promise<boolean>): { readonly listening: Promise<void>; readonly exited: Promise<{ readonly code: number }> }
+function serveStart(projectRoot: string, listens?: () => Promise<boolean>) {
+  const child = Bun.spawn([process.execPath, "--conditions=browser", path.join(COPY, "scripts", "dev.ts"), "serve"], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      HOME,
+      FLYWHEEL_DISABLE_AUTOUPDATE: "1",
+      FLYWHEEL_INTERNAL_RELEASE_HARNESS: "account-service-isolation-v1",
+      FLYWHEEL_INTERNAL_RELEASE_HUB_PORT: "0",
+    },
+    stdout: "ignore",
+    stderr: "ignore",
+    windowsHide: true,
+  })
+  const exited = by("the dev service start exits", Date.now() + STEP_MS * 2, child.exited).then((code) => ({ code }))
+  if (listens === undefined) return exited
+  return { listening: until("the dev service listens", listens, (listening) => listening).then(() => {}), exited }
+}
+
+/** The proof record of the copy's snapshots. */
+function readProof(): { readonly version?: number; readonly proved?: string; readonly refused?: { readonly digest: string; readonly reason: string } } {
+  return JSON.parse(fs.readFileSync(path.join(sourceSnapshotHome(COPY), "proof.json"), "utf8"))
 }
 
 function serviceIdentity(): RuntimeIdentity {
@@ -370,6 +403,28 @@ describe.skipIf(process.platform === "win32")("dev service source snapshot", () 
     const replaced = snapshotRoot(first.digest)
     await until(`the removal of ${replaced}`, async () => fs.existsSync(replaced), (exists) => !exists)
     expect(fs.existsSync(snapshotRoot(current))).toBe(true)
+  }, 240_000)
+
+  test("a service start whose checkout source cannot be imported refuses that source, and the next start runs the proved snapshot", async () => {
+    await until("the dev service leaves", () => isRuntimeListening(accountServeSocketPath(USER_DATA_ROOT, LANE)), (listening) => !listening)
+    const proved = readProof().proved
+    if (proved === undefined) throw new Error("no snapshot of the copy is proved")
+    // A syntax error in the module that the CLI entry imports first fails
+    // before the CLI's own fatal path exists.
+    fs.writeFileSync(CLI_MODULE, `${fs.readFileSync(CLI_MODULE, "utf8")}\nexport const brokenByThisTest = (\n`)
+    const project = makeProject("e")
+
+    // The service manager's start of the broken source.
+    const broken = await serveStart(project)
+    expect(broken.code).toBe(SERVE_EXIT.restart)
+    expect(readProof()).toEqual({ version: 1, proved, refused: { digest: expect.not.stringMatching(proved), reason: expect.stringContaining("failed to start") } })
+
+    // Its next start runs the proved snapshot and listens.
+    const next = serveStart(project, () => isRuntimeListening(accountServeSocketPath(USER_DATA_ROOT, LANE)))
+    await next.listening
+    expect(serviceIdentity().sourceSnapshot?.digest).toBe(proved)
+    // Nothing holds it, so it leaves on its own.
+    await next.exited
   }, 240_000)
 })
 

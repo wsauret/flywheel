@@ -14,7 +14,7 @@ describe("createOutputTranscriptCache (live deltas on historical ranges)", () =>
 
       fake.liveDelta("s1", { visibleMessageCount: 2, blocks: [] })
 
-      expect(cache.visibleMessageCount("s1")).toBe(2)
+      expect(cache.bindSession(() => "s1").visibleMessageCount()).toBe(2)
       expect(cache.visibleRange("s1")).toBe(range)
       expect(cache.visibleRange("s1")?.blocks.map(content)).toEqual(["one"])
       dispose()

@@ -18,7 +18,7 @@
  *  unreadable policy is never an install permission. */
 
 import { Schema } from "effect";
-import { persistedSettingDefinition } from "../config/setting-definitions.js";
+import { persistedSettingDefinition } from "../config/schema/setting-definitions.js";
 import { Log } from "../../infra/log.js";
 import { findConfigFile } from "../../infra/paths.js";
 import { applyEnvOverrides } from "../config/env.js";

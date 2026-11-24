@@ -11,7 +11,7 @@ import type { ConversationMessage } from "../agent-runtime/llm/types.js"
 import { loadAgentInputProjection, type AgentInputEntry } from "./agent-input-projection.js"
 import { createSessionFactWriter } from "./session-fact-writer.js"
 import type { ConversationEntry } from "./conversation/conversation-entry-types.js"
-import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "./conversation/tree/conversation-tree-handle.js"
 
 const log = Log.create({ service: "agent-input-reconciliation" })
 

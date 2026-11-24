@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test"
 import { RGBA } from "@opentui/core"
 import { costBarText, priceHeaderText, priceValueText } from "../../../../src/tui/modals/model-modal-cost.js"
 import { styledTextContent, theme } from "./_model-modal-fixtures.js"
-import { resolveTheme, type TuiTheme } from "../../../../src/tui/context/theme/resolve.js"
+import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
+import type { TuiTheme } from "../../../../src/tui/context/theme/tui-theme.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 
 /** The bar colors of a price range with no marker. */

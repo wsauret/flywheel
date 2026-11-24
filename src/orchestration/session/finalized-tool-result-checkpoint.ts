@@ -5,8 +5,6 @@ import { extractToolContentFact } from "../../infra/tool-content-extraction.js";
 import { hydrateToolContentFact } from "../../infra/tool-content-hydration.js";
 import { createRuntimeEvent } from "../../infra/runtime-event-factory.js";
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../infra/runtime-fact-mapper.js";
-import { LlmToolOutputPartSchema } from "../../infra/llm/tool-output-part-schema.js";
-import { TOOL_OUTCOME_VALUES } from "../../infra/tool-outcome.js";
 import {
   InFlightSwapConflictError,
   type AsyncEventStateReadSurface,
@@ -16,59 +14,18 @@ import {
   type InFlightWrite,
 } from "../../infra/event-store-types.js";
 import { toolResultMessages } from "../agent-runtime/agent-state.js";
-import type { ConversationTree } from "./conversation/conversation-tree.js";
+import type { ConversationTree } from "./conversation/tree/conversation-tree.js";
 import { parseSessionRuntimeFact, type SessionRuntimeFact } from "./session-runtime-event-types.js";
 import { prepareSessionFactAppend, type SessionFactWriter } from "./session-fact-writer.js";
-import { enforceTurnBudget } from "../agent-runtime/compaction/truncation.js";
+import { enforceTurnBudget } from "../agent-runtime/tools/truncation.js";
 import { turnBudgetChars } from "../agent-runtime/compaction/compaction-policy.js";
-import { openToolExchangeSuffix } from "./conversation/conversation-tree-context.js";
-import { MutationEvidenceResultDetailsSchema } from "../../infra/runtime-mutation-evidence.js";
+import { openToolExchangeSuffix } from "./conversation/tree/conversation-tree-context.js";
+import { recoveredToolResultEntryId } from "./conversation/tree/interrupted-turn-summary.js";
+import { decodeLegacyFinalizedToolResultCheckpoint, FinalizedToolResultCheckpointSchema, UnversionedFinalizedToolResultCheckpointSchema, type FinalizedToolResultCheckpoint, type RecoverableCheckpoint } from "./finalized-tool-result-checkpoint-schema.js";
 
 export const FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND = "finalized-tool-result";
 
-/** Inline mutation evidence written before 2026-10-16 is normalized at the family recovery boundary. Remove this conversion after 2027-04-16. */
-export const UnversionedFinalizedToolResultCheckpointSchema = Schema.Struct({
-  conversationId: Schema.String,
-  toolUseId: Schema.String,
-  toolName: Schema.String,
-  budgetExempt: Schema.Boolean,
-  /** The batch bound in force when the result was finalized. Every current write sets it. */
-  turnBudgetChars: Schema.optionalKey(Schema.Number),
-  /** Cells written before 2026-10-27 record the context window instead, and
-   *  recovery derives the fixed-share bound from it. Remove after 2027-04-27. */
-  contextWindowTokens: Schema.optionalKey(Schema.Number),
-  registrationOrdinal: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
-  content: Schema.mutable(Schema.Array(LlmToolOutputPartSchema)).check(Schema.isNonEmpty()),
-  outcome: Schema.Literals(TOOL_OUTCOME_VALUES),
-  details: Schema.optionalKey(Schema.Unknown),
-  modelRequestId: Schema.optionalKey(Schema.String),
-  parentToolUseId: Schema.optionalKey(Schema.String),
-  contentTruncated: Schema.optionalKey(Schema.Boolean),
-  originalContentBytes: Schema.optionalKey(Schema.Number),
-  originalContentSha256: Schema.optionalKey(Schema.String),
-  fullContentPath: Schema.optionalKey(Schema.String),
-  semanticOutputTruncated: Schema.optionalKey(Schema.Boolean),
-  byteOutputTruncated: Schema.optionalKey(Schema.Boolean),
-  executionOutputTail: Schema.optionalKey(Schema.String),
-});
-
-// Field order is the encoded key order of every current write, so the
-// bare-key shape is derived by omission rather than by reordering fields.
-const { conversationId: _conversationId, toolName: _toolName, budgetExempt: _budgetExempt, turnBudgetChars: _turnBudgetChars, contextWindowTokens: _contextWindowTokens, registrationOrdinal: _registrationOrdinal, ...bareKeyFields } = UnversionedFinalizedToolResultCheckpointSchema.fields;
-const BareKeyFinalizedToolResultCheckpointSchema = Schema.Struct(bareKeyFields);
-
-export const FinalizedToolResultCheckpointSchema = Schema.Struct({
-  ...UnversionedFinalizedToolResultCheckpointSchema.fields,
-  version: Schema.Literal(2),
-  details: Schema.optionalKey(MutationEvidenceResultDetailsSchema),
-});
-
-export type FinalizedToolResultCheckpoint = typeof FinalizedToolResultCheckpointSchema.Type;
-type RecoverableCheckpoint = FinalizedToolResultCheckpoint | typeof UnversionedFinalizedToolResultCheckpointSchema.Type;
-
 const decodeCheckpoint = Schema.decodeUnknownSync(FinalizedToolResultCheckpointSchema, { onExcessProperty: "error" });
-/** Reads the pre-conversation checkpoint shape without inventing missing metadata. */
-export const decodeLegacyFinalizedToolResultCheckpoint = Schema.decodeUnknownSync(BareKeyFinalizedToolResultCheckpointSchema, { onExcessProperty: "error" });
 /** Decodes current and supported historical cells, rejecting unknown shapes without discarding their bytes. */
 export const decodeRecoverableCheckpoint = Schema.decodeUnknownSync(Schema.Union([
   FinalizedToolResultCheckpointSchema, UnversionedFinalizedToolResultCheckpointSchema,
@@ -306,7 +263,7 @@ async function buildRecoveryAppends(
       content: replacementById.get(checkpoint.toolUseId) ?? checkpoint.content,
     }]));
   const conversation = await options.tree.prepareMessagesAppend(messages.map((message) => ({
-    id: recoveredResultEntryId(options.conversationId, message.toolUseId),
+    id: recoveredToolResultEntryId(options.conversationId, message.toolUseId),
     message,
   })));
   appends.push(...conversation);
@@ -381,21 +338,6 @@ async function retireAlreadyRecorded(
     expectedRaw: row.raw,
     payload: null,
   })));
-}
-
-const RECOVERED_RESULT_ENTRY_ID_PREFIX = "ftr-";
-
-/** Whether a conversation entry is a result this recovery committed for a
- *  turn whose owner died, rather than one the turn committed itself. */
-export function isRecoveredToolResultEntryId(entryId: string): boolean {
-  return entryId.startsWith(RECOVERED_RESULT_ENTRY_ID_PREFIX);
-}
-
-function recoveredResultEntryId(conversationId: string, toolUseId: string): string {
-  return RECOVERED_RESULT_ENTRY_ID_PREFIX + new Bun.CryptoHasher("sha256")
-    .update(`finalized-tool-result:${conversationId}:${toolUseId}`)
-    .digest("hex")
-    .slice(0, 8);
 }
 
 export function finalizedToolResultCheckpointSwaps(

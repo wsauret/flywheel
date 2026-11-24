@@ -13,10 +13,11 @@
 // randomized blinded pairwise judging.
 
 import { dirname, join, resolve } from "node:path";
-import { codedRolePreference, ROLE_MODEL_DEFAULTS } from "../../src/orchestration/config/role-model-defaults.js";
+import { codedRolePreference, ROLE_MODEL_DEFAULTS } from "../../src/orchestration/config/models/role-model-defaults.js";
 import { createBenchmarkCatalog, RESEARCH_SNAPSHOT, RESEARCH_TASKS_CHANGED, type ResearchTask } from "../../src/orchestration/modules/development/benchmark/catalog.js";
 import { admitBenchmark, benchmarkPreflightReport } from "../../src/orchestration/modules/development/benchmark/admission.js";
-import { loadBenchmarkPersona, type BenchmarkPlan } from "../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
+import { loadBenchmarkPersona } from "../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
+import type { BenchmarkPlan } from "../../src/orchestration/modules/development/benchmark/benchmark-plan.js";
 import { validateAttempts, validateJudgeAttempts, validateRuns, validateScores } from "../../src/orchestration/modules/development/benchmark/persona-evidence-validation.js";
 import { sameVariants } from "../../src/orchestration/modules/development/benchmark/variant.js";
 import { createBenchmarkRuntime, type OwnedBenchmarkRuntime } from "../shared/runtime.js";

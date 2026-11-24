@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { saveModelAssignment } from "../../../../src/orchestration/config/model-selection.js";
+import { saveModelAssignment } from "../../../../src/orchestration/config/models/model-selection.js";
 
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
-import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
+import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { NO_CREDENTIALS, USER_DATA_ROOT } from "./_config-models-fixtures.js";
 

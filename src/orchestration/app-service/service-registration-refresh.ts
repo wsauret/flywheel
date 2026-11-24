@@ -6,7 +6,7 @@ import { Schema } from "effect"
 import type { DarwinExecutable } from "../../infra/darwin-process-api.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
-import type { AccountServiceRegistrationControl } from "./account-service-installation.js"
+import type { AccountServiceRegistrationControl } from "./account-service-platform.js"
 import { REGISTRATION_FINGERPRINT_ENV, RegistrationReloadRecordSchema, type RegistrationReloadRecord, type ServiceNames } from "./account-service-registration.js"
 
 const log = Log.create({ service: "service-registration-refresh" })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
-import { createDraftCache } from "../../../../src/tui/hooks/create-draft-cache.js"
+import { createDraftCache } from "../../../../src/tui/components/create-draft-cache.js"
 import { idleSpinnerSource, mountPrompt } from "./prompt-area-fixture.js"
 
 describe("Composer status line", () => {

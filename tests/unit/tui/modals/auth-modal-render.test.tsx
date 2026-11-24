@@ -5,14 +5,14 @@ import { type Renderable, ScrollBoxRenderable } from "@opentui/core"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
 import { createSignal } from "solid-js"
-import type { AuthView } from "../../../../src/tui/hooks/auth-modal-options.js"
+import type { AuthView } from "../../../../src/tui/modals/auth-modal-options.js"
 
 const [{ testRender }, { createComponent }, { ThemeProvider }, { AuthModal }, { buildAuthRows }] = await Promise.all([
   import("@opentui/solid"),
   import("solid-js/web"),
   import("../../../../src/tui/context/theme.js"),
   import("../../../../src/tui/modals/auth-modal.js"),
-  import("../../../../src/tui/hooks/auth-modal-options.js"),
+  import("../../../../src/tui/modals/auth-modal-options.js"),
 ])
 const { createModal, setAuthStatuses } = await import("./auth-modal-test-harness.js")
 

@@ -4,8 +4,8 @@ import { workflowRunReader } from "../module-catalog.js"
 import { agentPersonas, installedPersonaRole } from "../workflow-host/frontend-attempts.js"
 import type { RuntimeModelRolesResult } from "../../protocol/model-role-protocol-types.js"
 import { modelRoleAdmission, publishedModelRoles } from "./model-role-projection.js"
-import type { ModelPickerConfigDeps } from "../config/model-assignment-types.js"
-import type { FlywheelConfig } from "../config/schema.js"
+import type { ModelPickerConfigDeps } from "../config/models/model-assignment-types.js"
+import type { FlywheelConfig } from "../config/schema/schema.js"
 import { EffortSchema } from "../../infra/workflow-types.js"
 import { Schema } from "effect"
 import { errorMessage } from "../../infra/error-message.js"
@@ -14,7 +14,7 @@ import {
   createModelAssignmentController,
   loadGlobalDefaultRoles,
   type RoleCaptureStore,
-} from "../config/model-assignment-controller.js"
+} from "../config/models/model-assignment-controller.js"
 import { ensureDurableChatSession } from "./session-chat-durability.js"
 import type { DefinitionAvailabilityOwner } from "./definition-availability.js"
 import { isProfileModelRole } from "../../protocol/brief-role-id.js"
@@ -24,6 +24,9 @@ import { personaRoleIds } from "../../workflows/definition-registry.js"
 import type { PersonaRegistryRevision } from "../../workflows/agents/registry.js"
 import type { ConfigValidity } from "../config/writer.js"
 import type {
+  EffortOptionRow,
+  ModelAssignmentRow,
+  ModelOptionRow,
   ModelSelectionSlot,
   RuntimeEffortOptionsQuery,
   RuntimeGlobalDefaultRolesResult,
@@ -40,9 +43,9 @@ const DEFAULTS_SCOPE = { kind: "defaults" } as const
 
 
 export interface RuntimeModelAssignmentService {
-  loadAssignments(query: RuntimeModelAssignmentsQuery): ReturnType<ReturnType<typeof createModelAssignmentController>["loadAssignments"]>
-  listModelOptions(query: RuntimeModelOptionsQuery): ReturnType<ReturnType<typeof createModelAssignmentController>["listModelOptions"]>
-  listEffortOptions(query: RuntimeEffortOptionsQuery): ReturnType<ReturnType<typeof createModelAssignmentController>["listEffortOptions"]>
+  loadAssignments(query: RuntimeModelAssignmentsQuery): Promise<readonly ModelAssignmentRow[]>
+  listModelOptions(query: RuntimeModelOptionsQuery): Promise<readonly ModelOptionRow[]>
+  listEffortOptions(query: RuntimeEffortOptionsQuery): Promise<readonly EffortOptionRow[]>
   saveEffort(command: RuntimeSaveModelEffortMutation): Promise<RuntimeSaveModelEffortResult>
   resetDefaults(command: RuntimeResetModelAssignmentsMutation): Promise<RuntimeResetModelAssignmentsResult>
   globalDefaultRoles(): Promise<RuntimeGlobalDefaultRolesResult>

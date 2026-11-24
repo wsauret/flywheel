@@ -23,8 +23,8 @@ import { agentCapabilityCheck } from "../../../agent-runtime/capability-checks.j
 import { availableToolNames } from "../../../agent-runtime/persona-tool-rules.js";
 import { definitionAvailabilityOf } from "../../../app-service/definition-availability.js";
 import { disabledAgentTypes } from "../../../module-catalog.js";
-import type { CaptureProviderConnection } from "../../../agent-runtime/factory.js";
-import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
+import type { CaptureProviderConnection } from "../../../agent-runtime/model-runtime-capture.js";
+import { resolveSessionRoles } from "../../../config/models/session-role-resolver.js";
 import type { ResolvedRole } from "../../../config/roles.js";
 
 export type PersonaDefinition = Extract<AgentDefinition, { kind: "persona" }>;

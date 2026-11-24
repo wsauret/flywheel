@@ -19,7 +19,7 @@ import { prepareSearchPathInput } from "./search-paths.js";
 import { resizeImage } from "./image-resize.js";
 import { checkNumericRange } from "./numeric-input.js";
 import { truncateUtf8Prefix } from "../../../infra/output/truncate-output.js";
-import { TOOL_RESULT_MAX_BYTES } from "../compaction/truncation.js";
+import { TOOL_RESULT_MAX_BYTES } from "./truncation.js";
 import { isRawSelector, type LineRange, parseSel, splitPathAndSel } from "./read-selectors.js";
 import { decodeTextSnapshot, readTextWindows } from "./read-text-windows.js";
 import { formatFileMap, generateFileMap, lookupSymbol } from "./structural-map.js";

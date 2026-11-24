@@ -1,5 +1,5 @@
 import { describe, expect, jest, spyOn, test } from "bun:test"
-import type { RemoteIdentity } from "../../../../../src/orchestration/modules/remote/remote-identity.js"
+import type { RemoteIdentity } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
 import { RELAY_PING, RELAY_PROTOCOL_VERSION, runtimeAttachSigningBytes, toBase64Url } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 import { ControlSocket, fixture, identity, turn } from "./_relay-control-fixtures.js"
 import { manualHeartbeatClock } from "../../../../helpers/heartbeat-clock.js"

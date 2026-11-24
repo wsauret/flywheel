@@ -7,10 +7,10 @@ import type { Agent, AgentRunResult, OmitAgentOptions, RunnableAgentOptions } fr
 import { deriveChildRuntimeSurfaces } from "../../../agent-runtime/tools/tool-registry.js";
 import { mergeAbortSignals } from "../../../../infra/abort.js";
 import type { RetryState } from "../../../agent-runtime/llm/retry-budget.js";
-import { createAgentHost } from "../../../runner/host.js";
+import { createAgentGeneration } from "../../../runner/host.js";
 import { AgentTurnAborted } from "../../../runner/agent-turn-types.js";
 import { createSubagentRunInputs } from "./run-inputs.js";
-import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work.js";
+import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work-types.js";
 import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
 import { createChildBackgroundExecution } from "./child-background.js";
 import { isReadOnlyPersona } from "../../../agent-runtime/persona-tool-rules.js";
@@ -19,33 +19,33 @@ import { recordSubagentCompletion } from "./run-recorder.js";
 import { buildSubagentPaused } from "../history/subagent-run-fact-writers.js";
 import { interruptedTurnEnd, isVisibleTurnEnd } from "../../../session/conversation/turn-end-record.js";
 import { publishLiveParentResult, reconcileParentCompletion } from "./parent-delivery.js";
-import { HandoffCorrectionExhausted } from "../../../agent-runtime/errors.js";
-import { createRefusedHandoff } from "../../../workflow-host/handoff-tool-schema.js";
+import { HandoffCorrectionExhausted } from "../../../agent-runtime/handoff-correction-exhausted.js";
+import { createRefusedHandoff } from "../../../workflow-host/attempt/handoff-tool-schema.js";
 import {
   deliveredHandoffResult,
   failedRunResult,
   resolveSubagentResult,
   usageFromStats,
   type SubagentResultContext,
-} from "./result-resolver.js";
+} from "./result/result-resolver.js";
 import {
   createFilteredSubagentStream,
   createSubagentStats,
-} from "./stream-filter.js";
-import { createSubagentTurnLog } from "./work-log.js";
-import { resultCharBudget } from "./result-budget.js";
+} from "./result/stream-filter.js";
+import { createSubagentTurnLog } from "./result/work-log.js";
+import { resultCharBudget } from "./result/result-budget.js";
 import type { ChildSlotReservation } from "../../../agent-runtime/child-slot-registry.js";
 import { withCapabilityGrant } from "../../../agent-runtime/tools/types.js";
 import { readConversationQueuedUserInputs, readUnreadMessages, type QueuedUserInputCell } from "../../../session/conversation/queued-user-inputs.js";
 import { readConversationBackgroundNotifications, type HeldBackgroundNotification } from "../../../session/conversation/queued-background-notifications.js";
 import { observeOpenReplyWaits } from "../../../session/reply-waits.js";
-import type { ContinuationTarget, SubagentContext } from "./control-actions.js";
-import type { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch-preparation.js";
-import type { SubagentDispatchDeps } from "./dispatch-deps.js";
-import { resolveChildRole } from "./dispatch-configuration.js";
-import { canonicalModelId } from "../../../../infra/llm/model-id.js";
-import { AssistantPrefillSessionContextError } from "../../../session/conversation/conversation-tree-context.js";
-import { launchAssignmentText, recordedEntryText } from "../../../session/conversation/brief-entry.js";
+import type { ContinuationTarget, SubagentContext } from "./dispatch/control-actions.js";
+import type { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch/dispatch-preparation.js";
+import type { SubagentDispatchDeps } from "./dispatch/dispatch-deps.js";
+import { resolveChildRole } from "./dispatch/dispatch-configuration.js";
+import { canonicalModelId } from "../../../../infra/model-id.js";
+import { AssistantPrefillSessionContextError } from "../../../session/conversation/tree/conversation-tree-context.js";
+import { launchAssignmentText, recordedEntryText } from "../../../session/conversation/tree/brief-entry.js";
 import { readRecordedInheritedIntent } from "../../../session/conversation-checkpoint.js";
 import { CONTINUATION_MESSAGES } from "../../../agent-runtime/continuation-messages.js";
 import { readAuthorizedRestoredWait } from "../../../session/chat-session-run-evidence.js";
@@ -53,7 +53,7 @@ import { awaitPlannedChildResumes } from "../../../session/planned-session-conti
 import { recallQueuedInput } from "../../../session/queued-input-recall.js";
 import { createUnattendedRecovery, endingCapacityWaitOnPersonMessage } from "../../../agent-runtime/unattended-recovery.js";
 import { capacityWaitAuthority } from "../../../session/capacity-wait.js";
-import { createRunEnd } from "./run-end.js";
+import { createRunEnd } from "./result/run-end.js";
 
 const log = Log.create({ service: "subagent-tool" });
 
@@ -413,7 +413,7 @@ export function createChildExecution(options: {
 
   // Read once per execution: the publication recorded it, and it never changes.
   let inheritedIntent: Promise<string | undefined> | undefined;
-  const startRunner = (): Promise<AgentRunResult> => createAgentHost<RunnableAgentOptions>({ createRunner: deps.createRunner }).runTurn({
+  const startRunner = (): Promise<AgentRunResult> => createAgentGeneration<RunnableAgentOptions>({ createRunner: deps.createRunner }).runTurn({
     createContextOptions: async (attempt: RetryState) => {
       if (dispatchAbort.signal.aborted) throw new AgentTurnAborted();
       await childBackground.adoptHandedOver();

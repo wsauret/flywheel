@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { configSection } from "../../../../src/orchestration/config/config-section.js";
+import { configSection } from "../../../../src/orchestration/config/schema/config-section.js";
 import { patchSemanticAssignment } from "../../../../src/orchestration/config/config-assignment.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
 import { mcpConfigSection } from "../../../../src/orchestration/modules/mcp/config.js";

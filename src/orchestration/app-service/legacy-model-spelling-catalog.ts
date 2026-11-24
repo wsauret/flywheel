@@ -1,5 +1,5 @@
 import { modelsDevBaseline } from "../../infra/llm/model-listing-rows.js"
-import { getSharedModelsClient } from "../config/llm-clients.js"
+import { getSharedModelsClient } from "../config/models/llm-clients.js"
 import { installedAccessProviderDefinitions } from "../credential-provider-modules.js"
 import type { ProviderModelEligibilityState } from "./provider-model-preference-service.js"
 

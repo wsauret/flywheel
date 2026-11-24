@@ -10,9 +10,9 @@ import { createListModalKeys, type ListModalKeyEvent } from "../components/modal
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY, type TextEditorPresentation } from "../keymap/text-entry.js"
 import { firstSelectableRow, matchAction, MAX_RENDERED_ROWS } from "../components/modal-select-helpers.js"
 import { flattenSessionRows, formatCompactTimeAgo, parseSessionIdQuery, pickerRowLastActive, timeAgoColumnWidth } from "../session-picker/picker-helpers.js"
-import type { PickerCorruptRow, PickerFoundRow, PickerRow, PickerSessionRow, SelectablePickerRow } from "../session-picker/picker-types.js"
+import type { PickerCorruptRow, PickerFoundRow, PickerRow, PickerSessionRow, SelectablePickerRow, SessionPickerResult } from "../session-picker/picker-types.js"
 import type { ModalHandle } from "../components/modal-stack.js"
-import type { SessionModalAction, SessionModalDeps, SessionModalHook, SessionPickerResult, SessionRenameState } from "./use-session-modal-types.js"
+import type { SessionModalAction, SessionModalDeps, SessionModalHook, SessionRenameState } from "./use-session-modal-types.js"
 import { createKeyedListSelection } from "./create-keyed-list-selection.js"
 
 const log = Log.create({ service: "session-modal" })

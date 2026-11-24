@@ -6,7 +6,7 @@ import type { ReplayedSession, RoleSettings, Session } from "./schemas.js"
 import { prepareChildExecutionOwner } from "./child-execution-resources.js"
 import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact, buildSessionCreatedFact, buildSessionOwnershipAdoptedFact, buildSessionRolesSnapshottedFact } from "./session-metadata-facts.js"
 import { buildSessionMetadataAppend } from "./session-metadata-store.js"
-import { ConversationTreeStorage } from "./conversation/conversation-tree-storage.js"
+import { ConversationTreeStorage } from "./conversation/tree/conversation-tree-storage.js"
 
 export interface WorkflowCommitPublication {
   readonly workflowId: string

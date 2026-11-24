@@ -9,7 +9,7 @@ import { attemptScope } from "../../../../src/workflows/vm/list-transitions.js";
 import { queuedAttempts } from "../../../../src/workflows/vm/structural-admission.js";
 import { CURRENT_PROPOSAL_ENCODING } from "../../../../src/workflows/vm/events.js";
 import { validateWorkflowBootstrap } from "../../../../src/workflows/vm/bootstrap-validation.js";
-import { failedAgents } from "../../../../src/workflows/output-contract/workflow-completion.js";
+import { failedAgents } from "../../../../src/workflows/workflow-completion.js";
 import { workflowTree } from "../../../../src/workflows/vm/view-tree.js";
 import { attemptOf, FINDINGS_CHECKS, FINDINGS_FILES, FINDINGS_REPORT, FINDINGS_REVIEWS, findingsAnswer, findingsWorkflow, mapSkills, VOTES_CHECKS, VOTES_REPORT, votesAnswer, votesWorkflow } from "./_map-fixtures.js";
 import { mapHost, SqliteVmDriver } from "./_sqlite-vm-driver.js";

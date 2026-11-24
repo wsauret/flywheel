@@ -1,8 +1,8 @@
 /** @jsxImportSource @opentui/solid */
 
 import { StyledText, bold as stBold, fg as stFg, type TextChunk, type TextRenderable } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve"
-import { chunksLength } from "@tui/utils/text-attributes.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme"
+import { chunksLength } from "@tui/text-attributes.js"
 import { createEffect, createMemo, For, type JSX } from "solid-js"
 import { snippetParts } from "../../protocol/client/search-snippet.js"
 import { formatCompactTimeAgo, pickerRowLastActive, pickerRowLines, buildDiffStatChunks } from "./picker-helpers.js"

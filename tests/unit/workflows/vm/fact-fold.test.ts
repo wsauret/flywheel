@@ -17,7 +17,7 @@ import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/w
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { items, mapSkills, mapWorkflow } from "./_map-fixtures.js"
-import { buildDefinitionDriftRejectedFact } from "../../../../src/workflows/definition-provenance-fact-writers.js"
+import { buildDefinitionDriftRejectedFact } from "../../../../src/workflows/definition-provenance-facts.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const workflow = loadedWorkflow({

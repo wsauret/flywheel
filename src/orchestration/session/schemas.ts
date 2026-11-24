@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { isAbsolute, resolve } from "node:path";
 import { ProviderRequestOptionsSchema } from "../../infra/llm/provider-options.js";
-import { canonicalModelId } from "../../infra/llm/model-id.js";
+import { canonicalModelId } from "../../infra/model-id.js";
 import { canonicalRoleId } from "../config/retired-config-names.js";
 import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
 import { SessionLifecycleStateSchema } from "./types.js";
@@ -262,6 +262,12 @@ type ReplayedSessionVariant<S> = S extends { readonly kind: string } ? Omit<S, "
 // Remove the historical workflow arm after 2027-10-17. Conversion and admitted
 // deletion recovery must read the previous representation before they replace it.
 export type ReplayedSession = ReplayedSessionVariant<Session | typeof WorkflowSessionSchema.Type>
+
+/** The single-session metadata read that the session manager answers. */
+export interface SessionMetadataReader {
+  /** Single-session metadata read for existence checks and narrow field access. */
+  read(id: string): Promise<ReplayedSession | null>
+}
 
 /** The name a session shows to the person, which other sessions read too. */
 export function sessionDisplayName({ id, session }: { readonly id: string; readonly session: Pick<ReplayedSession, "label" | "name"> }): string {

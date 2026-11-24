@@ -11,7 +11,7 @@ export interface TerminalIoViolation {
 const INTENTIONAL_STDOUT_WRITE_ALLOWLIST = new Set([
   "src/infra/desktop-notify.ts",
   "src/tui/components/error-boundary.tsx",
-  "src/tui/utils/clipboard.ts",
+  "src/tui/clipboard.ts",
 ]);
 
 const DIRECT_OUTPUT_FILE_ALLOWLIST = new Set([

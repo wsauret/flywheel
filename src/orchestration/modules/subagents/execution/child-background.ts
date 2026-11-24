@@ -6,7 +6,7 @@ import type { CommandHandoverScope } from "../../../agent-runtime/command-handov
 import { emitBackgroundCommandRecorded, emitToolExecutionOutput, emitToolExecutionOutputRecorded } from "../../../agent-runtime/emit.js";
 import type { ConversationTreeWriterController } from "../../../chat/tree-writer.js";
 import { createBackgroundNotificationDelivery } from "../../../runner/background-notification-delivery.js";
-import type { WorkflowInjectionQueue } from "../../../workflow-host/injection-queue.js";
+import type { WorkflowInjectionQueue } from "../../../workflow-host/execution/injection-queue.js";
 
 /** Builds the background execution of one child run (ARCH-SESSIONS-006, ARCH-SESSIONS-010): `owner`, the
  *  owner the child's shell, nested dispatches, and reply waits run in;

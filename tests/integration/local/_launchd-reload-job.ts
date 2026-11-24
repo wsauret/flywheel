@@ -12,7 +12,8 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
-import { accountServiceRegistrationControl, createAccountServiceInstallation, reloadLaunchdRegistration, type AccountServicePlatform } from "../../../src/orchestration/app-service/account-service-installation.js"
+import { accountServiceRegistrationControl, createAccountServiceInstallation, reloadLaunchdRegistration } from "../../../src/orchestration/app-service/account-service-installation.js"
+import type { AccountServicePlatform } from "../../../src/orchestration/app-service/account-service-platform.js"
 import { REGISTRATION_FINGERPRINT_ENV, SERVICE_NAMES } from "../../../src/orchestration/app-service/account-service-registration.js"
 import { createServiceRegistrationRefresh, registrationReloadGuard } from "../../../src/orchestration/app-service/service-registration-refresh.js"
 

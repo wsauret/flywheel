@@ -4,7 +4,8 @@ import { InvariantViolation } from "../../infra/invariant.js"
 import { readToolContentReference } from "../../infra/tool-content.js"
 import { storedToolContentReferences } from "../../infra/tool-content-hydration.js"
 import { parseSessionContentNodeRow, readSessionContentRange, type SessionContentRange } from "../../infra/session-content.js"
-import { boundedProjectStatePage, encodeProjectStateContentRow, encodeProjectStateResponse, PROJECT_STATE_MAX_BYTES, type ProjectStateContentReference, type ProjectStateContentRow, type ProjectStateOperation, type ProjectStateResult } from "./project-state-protocol.js"
+import { boundedProjectStatePage, encodeProjectStateContentRow, encodeProjectStateResponse, PROJECT_STATE_MAX_BYTES, type ProjectStateContentRow, type ProjectStateResult } from "./project-state-protocol.js"
+import type { ProjectStateContentReference, ProjectStateOperation } from "./project-state-operation.js"
 
 /** References only at supported fact content sites, with their source identity for deferred integrity errors. */
 export function projectStateFactReferences(facts: readonly (StoredFact | CorruptEventRowError)[]): ProjectStateContentReference[] {

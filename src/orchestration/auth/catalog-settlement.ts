@@ -2,13 +2,14 @@ import { resolveAuthContext, type AuthContext } from "../../infra/auth/auth-cont
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { AuthCatalogSettlement } from "./auth-actions.js"
-import { resolveProviderModelCatalog } from "../config/model-assignment-providers.js"
+import { resolveProviderModelCatalog } from "../config/models/model-assignment-providers.js"
 import { type FirstPartyModuleSnapshot, webAuthProviderDefinitions } from "../modules.js"
 import { installedCredentialProviderIds } from "../credential-provider-modules.js"
-import { accessProviderAccountKey, credentialIdOf, type AccessProviderAccountIdentity, type AccessProviderDefinition } from "../../infra/llm/access-provider.js"
+import type { AccessProviderDefinition } from "../../infra/llm/access-provider.js"
 
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { credentialSlotClassifier } from "./credential-slot-classifier.js"
+import { credentialIdOf, type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../infra/auth/provider-account.js"
 
 export interface CatalogSettlementOptions {
   readonly userDataRoot: string

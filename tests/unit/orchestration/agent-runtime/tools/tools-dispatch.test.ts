@@ -7,7 +7,7 @@ import * as path from "node:path";
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { createHandoffTool, handoffDefinition } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
-import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
+import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
 import { compileOutput } from "../../../../../src/workflows/output-contract/compile.js";
 import type { OutputObject } from "../../../../../src/workflows/output-contract/grammar.js";
 import { executePreparedTool, prepareToolCall, preparedToolAdmission, selectedToolNames, type ToolExecutionGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";

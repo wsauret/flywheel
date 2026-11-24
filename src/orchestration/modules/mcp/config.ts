@@ -1,5 +1,5 @@
 import { Effect, Redacted, Schema } from "effect";
-import type { ConfigOwnerIssue, ModuleConfigSection } from "../../config/config-section.js";
+import type { ConfigOwnerIssue, ModuleConfigSection } from "../../config/schema/config-section.js";
 
 const defaultTrue = Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(true)));
 const defaultStrings = Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed([])));

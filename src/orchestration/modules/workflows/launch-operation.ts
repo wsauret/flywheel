@@ -9,7 +9,7 @@ import { readToolExecution } from "../../session/tool-execution-projection.js"
 import { turnEndEntryId } from "../../session/conversation/turn-end-record.js"
 import { workflowRunReader } from "../../module-catalog.js"
 import { retirePlannedSessionContinuation } from "../../session/planned-session-continuation.js"
-import { WORKFLOW_LAUNCH_OPERATION_KIND, workflowLaunchHost, type WorkflowLaunchOperation } from "../../workflow-host/launch-operation-contract.js"
+import { WORKFLOW_LAUNCH_OPERATION_KIND, workflowLaunchHost, type WorkflowLaunchOperation } from "../../workflow-host/lifecycle/launch-operation-contract.js"
 import type {
   HeldRetainedOperation,
   ModuleRetainedOperationContribution,

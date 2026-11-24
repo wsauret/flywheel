@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { SubscriptionSpendConsentStatus } from "../infra/auth/subscription-spend-consent.js";
+import type { SubscriptionSpendConsentStatus } from "../infra/auth/subscription/subscription-spend-consent.js";
 import type { SubscriptionUsageSpendSource } from "../infra/llm/subscription-usage.js";
 import type { RuntimePosition } from "./runtime-ui-protocol-types.js";
 

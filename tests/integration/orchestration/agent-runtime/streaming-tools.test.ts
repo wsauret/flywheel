@@ -10,6 +10,7 @@ import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import { createTurnDispatcher, type ToolBatchEvent } from "../../../../src/orchestration/agent-runtime/agent-loop-tools.js";
 import { fixedTurnOutputBound } from "../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js";
+import { toolUseBlock } from "../../../../src/orchestration/agent-runtime/agent-state.js";
 import { settleTurn } from "../../../../src/orchestration/agent-runtime/agent-turn-settlement.js";
 import { emitAssistant, emitToolInputComplete, emitToolInputDelta, emitToolResult, emitToolResultAvailable } from "../../../../src/orchestration/agent-runtime/emit.js";
 import type { ConversationMessage, LLMClient, ProviderStreamEvent, ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -19,8 +20,8 @@ import { createOutputSession, type OutputSession } from "../../../../src/orchest
 import { recoverFinalizedToolResultCheckpoints } from "../../../../src/orchestration/session/finalized-tool-result-checkpoint.js";
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js";
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
-import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer.js";
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
+import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer.js";
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { branchBlocks } from "../../../helpers/branch-blocks.js";
 import {
   createEagerToolVisibilityProvider,
@@ -33,8 +34,11 @@ import {
 
 const CRASH_HELPER = join(import.meta.dir, "..", "..", "..", "helpers", "eager-tool-visibility-provider.ts");
 const roots: string[] = [];
+// A test that times out never reaches its own finally, so a fixture server is stopped here too.
+const providers: { stop(): void }[] = [];
 
 afterEach(() => {
+  for (const provider of providers.splice(0)) provider.stop();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -47,6 +51,13 @@ function temporaryRoot(label: string): string {
 function toolBlock(blocks: readonly AnyBlock[], id: string): ToolEntry | undefined {
   const block = blocks.find((candidate) => candidate.kind === "tool" && candidate.id === id);
   return block?.kind === "tool" ? block : undefined;
+}
+
+/** The canonical id Flywheel gave the call that the provider streamed under `providerCallId`. */
+function canonicalId(calls: readonly ToolCall[], providerCallId: string): string {
+  const call = calls.find((candidate) => candidate.providerCallId === providerCallId);
+  if (!call) throw new Error(`missing tool call for provider id ${providerCallId}`);
+  return call.id;
 }
 
 function runtimeTool(name: string, execute: RuntimeTool["execute"]): RuntimeTool {
@@ -230,15 +241,21 @@ describe("deterministic provider streaming and recovery", () => {
   it("updates one streaming body in place and publishes the first result before its sibling", async () => {
     const root = temporaryRoot("streaming-tools");
     const provider = createEagerToolVisibilityProvider();
+    providers.push(provider);
     const slowRelease = Promise.withResolvers<void>();
     const partialInputVisible = Promise.withResolvers<void>();
     const firstResultAvailable = Promise.withResolvers<void>();
     let streamedProposal: ToolEntry["proposedDiff"];
+    let streamedWriteId: string | undefined;
     const output = createOutputSession({
       executionCwd: root,
       updateEntry(patch) {
-        streamedProposal = patch.streamingToolText?.[EAGER_WRITE_TOOL_USE_ID]?.proposedDiff;
-        if (streamedProposal?.files[0]?.hunks[0]?.lines.some((line) => line.text.includes(EAGER_INPUT_PREFIX))) partialInputVisible.resolve();
+        for (const [toolUseId, streaming] of Object.entries(patch.streamingToolText ?? {})) {
+          if (!streaming?.proposedDiff?.files[0]?.hunks[0]?.lines.some((line) => line.text.includes(EAGER_INPUT_PREFIX))) continue;
+          streamedWriteId = toolUseId;
+          streamedProposal = streaming.proposedDiff;
+          partialInputVisible.resolve();
+        }
       },
     });
     const store = createSqliteEventStore(resolveEventStoreDbFile(root));
@@ -260,20 +277,25 @@ describe("deterministic provider streaming and recovery", () => {
       const firstTurn = drainProviderTurn(client, output, (await tree.buildContext()).messages, calls);
 
       await partialInputVisible.promise;
-      const streamingRow = toolBlock(output.getBlocks(), EAGER_WRITE_TOOL_USE_ID);
-      expect(streamingRow).toMatchObject({ id: EAGER_WRITE_TOOL_USE_ID, status: "streaming" });
+      if (streamedWriteId === undefined) throw new Error("missing streamed write id");
+      const streamingRow = toolBlock(output.getBlocks(), streamedWriteId);
+      expect(streamingRow).toMatchObject({ id: streamedWriteId, status: "streaming" });
       expect(streamedProposal).toMatchObject({ files: [{ path: "fixture.txt", action: "add" }] });
       provider.releaseInput();
       await firstTurn;
 
-      const completedInputRow = toolBlock(output.getBlocks(), EAGER_WRITE_TOOL_USE_ID);
+      // Flywheel gives each call its own canonical id and keeps the streamed provider id beside it.
+      expect(calls.map((call) => call.providerCallId)).toEqual([EAGER_WRITE_TOOL_USE_ID, EAGER_SLOW_TOOL_USE_ID]);
+      const writeId = canonicalId(calls, EAGER_WRITE_TOOL_USE_ID);
+      const slowId = canonicalId(calls, EAGER_SLOW_TOOL_USE_ID);
+      expect(writeId).toBe(streamedWriteId);
+      const completedInputRow = toolBlock(output.getBlocks(), writeId);
       expect(completedInputRow?.id).toBe(streamingRow?.id);
       expect(completedInputRow).not.toHaveProperty("content");
       expect(completedInputRow).toMatchObject({
         status: "pending",
         proposedDiff: { files: [{ path: "fixture.txt", action: "add" }] },
       });
-      expect(calls.map((call) => call.id)).toEqual([EAGER_WRITE_TOOL_USE_ID, EAGER_SLOW_TOOL_USE_ID]);
       expect(calls.map((call) => call.name)).toEqual(["write", "bash"]);
 
       const tools = new Map<string, RuntimeTool>([
@@ -293,7 +315,7 @@ describe("deterministic provider streaming and recovery", () => {
       const publish = (event: ToolBatchEvent): void => {
         if (event.kind === "tool_result_available") {
           emitToolResultAvailable(output.dispatchRuntimeEvent, event.toolUseId, event.content, event.outcome, event.details == null ? {} : { details: event.details });
-          if (event.toolUseId === EAGER_WRITE_TOOL_USE_ID) firstResultAvailable.resolve();
+          if (event.toolUseId === writeId) firstResultAvailable.resolve();
           return;
         }
         if (event.kind === "tool_result") {
@@ -320,7 +342,7 @@ describe("deterministic provider streaming and recovery", () => {
         dispatcher,
         stream: async () => calls,
         commitAssistant: () => {
-          treeWriter.enqueueMessage({ kind: "assistant", content: calls.map((call) => ({ type: "tool_use", id: call.id, name: call.name, input: call.input })) });
+          treeWriter.enqueueMessage({ kind: "assistant", content: calls.map(toolUseBlock) });
           return calls;
         },
         commitAssistantBarrier: (assistantCalls) => treeWriter.flushSavePoint(new Set(assistantCalls.map((call) => call.id))),
@@ -341,13 +363,13 @@ describe("deterministic provider streaming and recovery", () => {
       }));
 
       await firstResultAvailable.promise;
-      expect(toolBlock(output.getBlocks(), EAGER_WRITE_TOOL_USE_ID)).toMatchObject({ id: EAGER_WRITE_TOOL_USE_ID, status: "completed" });
-      expect(toolBlock(output.getBlocks(), EAGER_SLOW_TOOL_USE_ID)?.status).not.toBe("completed");
+      expect(toolBlock(output.getBlocks(), writeId)).toMatchObject({ id: writeId, status: "completed" });
+      expect(toolBlock(output.getBlocks(), slowId)?.status).not.toBe("completed");
       expect(conversationCommitted).toBe(false);
       expect(provider.requests).toHaveLength(1);
-      expect(store.readInFlight(sessionId, "finalized-tool-result").map((row) => row.key)).toContain(`${conversationId}:${EAGER_WRITE_TOOL_USE_ID}`);
+      expect(store.readInFlight(sessionId, "finalized-tool-result").map((row) => row.key)).toContain(`${conversationId}:${writeId}`);
       expect(store.readInFlight(sessionId, "finalized-tool-result")
-        .find((row) => row.key === `${conversationId}:${EAGER_WRITE_TOOL_USE_ID}`)?.payload)
+        .find((row) => row.key === `${conversationId}:${writeId}`)?.payload)
         .toMatchObject({ budgetExempt: false, turnBudgetChars: 16_000 });
 
       slowRelease.resolve();
@@ -356,7 +378,7 @@ describe("deterministic provider streaming and recovery", () => {
       output.flush();
       expect(conversationCommitted).toBe(true);
       expect(store.readInFlight(sessionId, "finalized-tool-result")).toEqual([]);
-      expect(output.getBlocks().filter((block) => block.kind === "tool" && block.id === EAGER_WRITE_TOOL_USE_ID)).toHaveLength(1);
+      expect(output.getBlocks().filter((block) => block.kind === "tool" && block.id === writeId)).toHaveLength(1);
 
       await tree.dispose();
       store.close();
@@ -364,8 +386,9 @@ describe("deterministic provider streaming and recovery", () => {
       const reopened = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(reopenedStore), writer: asAsyncEventWriter(reopenedStore) });
       if (!reopened) throw new Error("missing reopened tree");
       const recoveredResults = (await reopened.buildContext()).messages.filter((message) => message.kind === "toolResult");
-      expect(recoveredResults.map((message) => message.kind === "toolResult" ? message.toolUseId : "")).toEqual([EAGER_WRITE_TOOL_USE_ID, EAGER_SLOW_TOOL_USE_ID]);
+      expect(recoveredResults.map((message) => message.kind === "toolResult" ? message.toolUseId : "")).toEqual([writeId, slowId]);
 
+      // The next request replays each call and its result under the provider's own id.
       await drainProviderTurn(client, output, (await reopened.buildContext()).messages, []);
       expect(provider.requests).toHaveLength(2);
       const secondMessages = provider.requests[1]?.messages;

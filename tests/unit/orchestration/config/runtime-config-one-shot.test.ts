@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js";
+import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema.js";
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";

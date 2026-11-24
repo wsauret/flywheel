@@ -7,14 +7,14 @@ import { MODULE_IDS } from "../../../../src/protocol/module-ids.js";
 import { ConfigWriteError } from "../../../../src/orchestration/config/writer.js";
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { decodeCanonicalConfigText } from "../../../../src/orchestration/config/loader.js";
-import { startModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
+import { startModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
 import {
   applyModulePreset,
   migrateCapabilityModules,
   updateModuleMember,
   updateCapabilityModules,
   updateWorkflowsMode,
-} from "../../../../src/orchestration/config/module-selection-writer.js";
+} from "../../../../src/orchestration/config/policy/module-selection-writer.js";
 
 const providerModules = MODULE_IDS.filter((id) => id.startsWith("provider-"));
 

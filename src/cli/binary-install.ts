@@ -14,8 +14,9 @@
  *  one that is running.
  *
  *  This role selects the account directories, opens the launcher the engine
- *  needs for owned commands, and installs. The shared engine enters the
- *  installed command's account-service boundary after publication. */
+ *  needs for owned commands, installs, and then collects the builds the
+ *  account no longer needs. The shared engine enters the installed command's
+ *  account-service boundary after publication. */
 
 import * as path from "node:path"
 import { selectStartupDirectories } from "../infra/directory-authorities.js"
@@ -25,25 +26,38 @@ import { buildPlatformArch } from "../infra/native-assets.js"
 import { ownedCommandRunner } from "../infra/owned-command.js"
 import { wrapperDirectory } from "../infra/update/wrapper-directory.js"
 import { installBuild } from "../orchestration/update/install-engine.js"
-import { createCliLauncher } from "./runtime-launch.js"
+import { collectInstalledBuilds } from "../orchestration/update/update-install.js"
+import { createCliLauncher } from "./account-service/runtime-launch.js"
 
 export async function runBinaryInstall(): Promise<number> {
   const directories = selectStartupDirectories({ env: process.env, cwd: process.cwd() })
   try {
     await Log.init({ dir: directories.accountHome })
+    const installation = {
+      userDataRoot: directories.userDataRoot,
+      wrapperDir: wrapperDirectory(process.env.FLYWHEEL_INSTALL_DIR, directories.accountHome),
+      platform: process.platform,
+      platformArch: buildPlatformArch(),
+    }
     const launcher = await createCliLauncher()
     try {
       const installed = await installBuild({
-        userDataRoot: directories.userDataRoot,
+        ...installation,
         sourceDir: path.dirname(process.execPath),
-        wrapperDir: wrapperDirectory(process.env.FLYWHEEL_INSTALL_DIR, directories.accountHome),
-        platform: process.platform,
-        platformArch: buildPlatformArch(),
         runCommand: ownedCommandRunner(launcher.scope),
       })
       if (installed.serviceOutput) process.stdout.write(`${installed.serviceOutput}\n`)
     } finally {
       await launcher.dispose()
+    }
+    // A build installed from an archive or a local build runs no update, so
+    // the installation collects what the account no longer needs
+    // (ARCH-DISTRIBUTION-027). The build is already active, so a collection
+    // that fails costs disk, not the installation.
+    try {
+      await collectInstalledBuilds(installation)
+    } catch (err) {
+      Log.create({ service: "install" }).warn("build collection failed", { error: errorMessage(err) })
     }
     return 0
   } catch (err) {

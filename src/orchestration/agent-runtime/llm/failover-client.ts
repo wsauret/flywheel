@@ -48,7 +48,7 @@
  */
 
 import { abortableSleep } from "../../../infra/abort.js";
-import { accessProviderAccountKey, accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type LoginWaitAnswer } from "../../../infra/llm/access-provider.js";
+import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type LoginWaitAnswer } from "../../../infra/llm/access-provider.js";
 import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
@@ -56,9 +56,9 @@ import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErro
 import { summarizeProviderError } from "../../../infra/llm/provider-error-diagnostic.js";
 import { providerOptionsUnservableReason, type ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
 import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError, SUBSCRIPTION_PAID_REVIEW_DETAIL } from "./errors.js";
-import type { ModelRefusal } from "../../../infra/auth/provider-model-catalog-store.js";
+import type { ModelRefusal } from "../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import { ThinkingStallError } from "./thinking-stall.js";
-import type { AuthStoreCondition } from "../../../infra/auth/auth-store.js";
+import type { AuthStoreCondition } from "../../../infra/auth/store/auth-store.js";
 import { isFailoverFailure, isProviderAttributedFailure, ProviderAttemptFailure, type FailoverFailure, type ProviderFailure } from "./provider-failure.js";
 import { SAFE_RECHECK_MS } from "./provider-availability.js";
 import type { ProviderAvailability, QuotaExhaustion, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
@@ -75,6 +75,7 @@ import type {
 
 } from "./types.js";
 import type { ProviderAffordabilityCapability } from "./provider-affordability.js";
+import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js";
 
 
 export interface ProviderChainDeps {

@@ -12,7 +12,7 @@ import type {
 import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
 import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import { observeModelCatalog } from "./observe-model-catalog.js"
-import { defaultRoleSlots, sameSlot, roleSlot } from "../../orchestration/config/role-selection.js"
+import { defaultRoleSlots, sameSlot, roleSlot } from "../../orchestration/config/models/role-selection.js"
 import { isProfileModelRole } from "../../protocol/brief-role-id.js"
 import { buildModelModalItems, isSelectableItem } from "../modals/model-modal-helpers.js"
 import type { ModelAssignmentItem, ModelModalState, ModelModalView } from "../modals/model-modal-types.js"
@@ -20,7 +20,7 @@ import { createModalDisclosureState, modalDisclosureAction } from "../components
 import { createListModalKeys } from "../components/modal-list-keys.js"
 import type { ModalContext, ModalHandle } from "../components/modal-stack.js"
 import type { ShellServices } from "./shell-state.js"
-import { scopeSaveToast, type ModelModalScope } from "./use-model-modal-scope.js"
+import { scopeSaveToast, type ModelModalScope } from "../modals/model-modal-scope.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY } from "../keymap/text-entry.js"
 
 interface ModelModalDeps {

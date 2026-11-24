@@ -1,4 +1,4 @@
-import type { CredentialSlot, CredentialSlotClassifier } from "../../infra/auth/auth-store-types.js"
+import type { CredentialSlot, CredentialSlotClassifier } from "../../infra/auth/store/auth-store-types.js"
 import type { FirstPartyModuleComposition } from "../modules.js"
 
 /** Classifies retained credentials from the complete installed catalog, independent of provider admission. */

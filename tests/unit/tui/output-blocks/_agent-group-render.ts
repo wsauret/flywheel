@@ -4,7 +4,7 @@ import type { ChildCardStatus } from "../../../../src/protocol/client/session-co
 import type { RoleAssignmentView } from "../../../../src/protocol/role-protocol-types.js"
 import type { WorkflowCards } from "../../../../src/tui/modules/workflows/cards.js"
 import type { RowProcessControls } from "../../../../src/tui/output-blocks/stop-affordance.js"
-import { noWorkflowCards } from "../components/_child-session-viewer-fixtures.js"
+import { noWorkflowCards } from "../_child-session-viewer-fixtures.js"
 
 interface RenderToolGroupOptions {
   width?: number

@@ -9,7 +9,7 @@ import { createSessionDetailPublisher } from "../../../../src/orchestration/app-
 import { createSessionDetailReader } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { extractToolContentFact } from "../../../../src/infra/tool-content-extraction.js"
 import { childSessionResultFact } from "../../../../src/orchestration/session/child-session-completion.js"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { projectSessionCatalogRow, replaceCatalogTotals } from "../../../../src/orchestration/session/session-catalog-row.js"
 import type { SessionRow } from "../../../../src/protocol/app-service-types.js"
@@ -400,6 +400,36 @@ describe("session detail publisher", () => {
     for (const sessionId of ["chat", "child"]) report(sessionId, "idle")
     await p.settled()
     expect(p.reads).toEqual(["chat", "child", "chat", "child"])
+  })
+
+  test("a park on background work and a status that goes away are edges of what Interrupt can cut; a session's first status is not", async () => {
+    const p = publisher()
+    const sequencer = createRuntimeUiPatchSequencer()
+    const report = (status: StatusView | undefined) =>
+      p.details.apply(sequencer.publish({ cursor: statusCursor("child"), payload: status === undefined ? { kind: "status.removed" } : { kind: "status.updated", status } }))
+    const waiting = { ...RESTING, activity: "idle", waitingOnBackgroundWork: true } as const
+    const settled = { ...RESTING, activity: "idle" } as const
+    p.titles.set("child", "Child")
+    await p.details.snapshot(undefined, ["child"], async () => {})
+    p.reads.length = 0
+    report(waiting)
+    await p.settled()
+    expect(p.reads).toEqual([])
+    report({ ...RESTING, activity: "generating" })
+    await p.settled()
+    expect(p.reads).toEqual([])
+    report(settled)
+    report(settled)
+    await p.settled()
+    expect(p.reads).toEqual(["child"])
+    report(undefined)
+    report(undefined)
+    await p.settled()
+    expect(p.reads).toEqual(["child", "child"])
+    // A status after one that went away is a new baseline.
+    report(waiting)
+    await p.settled()
+    expect(p.reads).toEqual(["child", "child"])
   })
 
   test("a held child's provider retry with no activity edge reads it once at each connection edge", async () => {

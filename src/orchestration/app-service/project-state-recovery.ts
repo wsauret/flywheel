@@ -12,7 +12,7 @@ import { installedChildSessionHistory } from "../session/module-session-operatio
 import { reconcileAgentInput } from "../session/agent-input-reconciliation.js"
 import { parseConversationTreeFact } from "../session/conversation/conversation-facts.js"
 import { readReplyWaits } from "../session/conversation/reply-wait-cells.js"
-import { tryOpenConversationTree, readReconciledTranscript } from "../session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree, readReconciledTranscript } from "../session/conversation/tree/conversation-tree-handle.js"
 import { FILE_MUTATION_IN_FLIGHT_KIND } from "../session/file-mutation-fact-writers.js"
 import { loadSessionPendingFileMutations, reconcilePendingFileMutations } from "../session/file-mutation-recovery.js"
 import { FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND, recoverFinalizedToolResultCheckpoints, retireLegacyFinalizedToolResultCheckpoints } from "../session/finalized-tool-result-checkpoint.js"

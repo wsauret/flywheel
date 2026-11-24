@@ -1,11 +1,31 @@
 import { createModuleCatalogSlot } from "../infra/module-descriptor.js"
-import type { ModuleRuntimeInvocationTool } from "./module-seams.js"
+import type { ModuleRuntimeInvocationTool, SupersededFactInvalidationResult } from "./module-seams.js"
 import type { FirstPartyModule } from "./modules.js"
 import type { DefinitionBundle } from "../workflows/loader.js"
-import type { ModuleConfigSection } from "./config/config-section.js"
+import type { AnyFactSchema } from "../infra/event-registry.js"
 import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../infra/event-store-types.js"
 import type { WorkflowRunReader, WorkflowRunWriter } from "./workflow-host/run-record.js"
 import type { SessionManager } from "./session/manager.js"
+
+/** What every installed module declares for its durable history. The catalog
+ *  reads it whether or not a project enables the module, because history that
+ *  a disabled module wrote still replays. */
+export interface InstalledModuleHistory {
+  /** The type prefixes of the durable fact families this module owns. The
+   *  retention registry names the owner per family; the prefixes are the
+   *  module's namespace claim, and `bun run lint:fact-retention` fails a family
+   *  the registry gives this module that carries none of them (ARCH-STRUCTURE-023). */
+  readonly facts?: {
+    readonly prefixes: readonly string[]
+    readonly sessionSchemas?: () => readonly AnyFactSchema[]
+    readonly invalidateSuperseded?: (dbPath: string) => SupersededFactInvalidationResult
+  }
+  /** Fact types that delete a session's conversation without a
+   *  `session.deleted` fact, so a derived transcript index drops that
+   *  session's rows. */
+  readonly conversationDeletionFacts?: readonly string[]
+  readonly runtimeInvocationTool?: ModuleRuntimeInvocationTool
+}
 
 // The catalog has two halves, and each registry publishes its own tuple into
 // this light authority when it loads. The credential provider registry lists
@@ -129,18 +149,6 @@ export function installedDefinitionBundles(modules: readonly FirstPartyModule[] 
 export function disabledAgentTypes(config: { readonly [section: string]: unknown }, modules: readonly FirstPartyModule[] = installedModules()): readonly string[] {
   return modules.flatMap((module) => module.contributions.flatMap((contribution) =>
     contribution.domain === "definitions" && "disabledTypes" in contribution.value ? contribution.value.disabledTypes(config) : []))
-}
-
-/** Every config section the installed catalog contributes, whether or not a
- *  project enables the owner: the loader decodes them all, so a section a
- *  disabled module owns keeps its bytes and its meaning, and only the module's
- *  service reads it while the module is on. */
-export function installedConfigSections(modules: readonly FirstPartyModule[] = installedModules()): readonly ModuleConfigSection[] {
-  return modules.flatMap((module) => module.contributions.flatMap((contribution) => {
-    if (contribution.domain !== "config") return []
-    if (contribution.id !== contribution.value.key) throw new Error(`Config contribution id ${contribution.id} must equal its section key ${contribution.value.key}`)
-    return [contribution.value]
-  }))
 }
 
 /** Two modules cannot share a fact namespace: a prefix that is itself a

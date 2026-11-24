@@ -1,6 +1,5 @@
 import type { StoredFact } from "../infra/event-store-types.js"
 import type { AttemptRow } from "../workflows/view/types.js"
-import type { FirstPartyModule } from "./modules.js"
 
 /** Retained attempt identity, timing, and request attribution. No execution authority. */
 export interface AttemptExecutionHistory {
@@ -43,11 +42,12 @@ interface ExecutionDiagnostics {
   readonly children: readonly ChildExecutionMetrics[]
 }
 
-export function retainedExecutionDiagnostics(events: readonly StoredFact[], modules: readonly FirstPartyModule[]): ExecutionDiagnostics {
-  const histories = modules.flatMap((module) => {
-    const history = module.retainedDiagnostics?.attempts?.(events)
+/** Folds `events` through the retained diagnostics of every installed module that declares them. */
+export function retainedExecutionDiagnostics(events: readonly StoredFact[], diagnostics: readonly ModuleRetainedDiagnostics[]): ExecutionDiagnostics {
+  const histories = diagnostics.flatMap((module) => {
+    const history = module.attempts?.(events)
     return history ? [history] : []
   })
   if (histories.length > 1) throw new Error("Multiple modules provide attempt execution history")
-  return { attempts: histories[0], children: modules.flatMap((module) => module.retainedDiagnostics?.children?.(events) ?? []) }
+  return { attempts: histories[0], children: diagnostics.flatMap((module) => module.children?.(events) ?? []) }
 }

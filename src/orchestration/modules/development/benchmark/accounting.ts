@@ -81,7 +81,8 @@ export function createBenchmarkAccounting(): BenchmarkAccounting {
         if (entry.attribution.kind === "candidate") providers.add(entry.attribution.providerId);
         else providerAvailable = false;
         const priced = entry.coverage !== "unmeasured" && entry.price.kind === "priced" ? entry.price.estimatedUsd : undefined;
-        if (entry.coverage !== "unmeasured") tokens += entry.tokens.input + entry.tokens.output + (entry.tokens.cacheRead ?? 0) + entry.tokens.cacheWrite + entry.tokens.reasoning;
+        // Output includes reasoning (ARCH-PROVIDERS-076), so reasoning adds nothing to the total.
+        if (entry.coverage !== "unmeasured") tokens += entry.tokens.input + entry.tokens.output + (entry.tokens.cacheRead ?? 0) + entry.tokens.cacheWrite;
         if (entry.coverage !== "complete") unmeasuredTokens.push(entry.attemptId);
         if (priced === undefined) unpricedEntryCount++;
         else {

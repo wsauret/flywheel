@@ -89,11 +89,6 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/llm/model-id.ts",
-    what: "static model catalog collision evidence",
-    pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
-  },
-  {
     file: "src/infra/render-probe.ts",
     what: "render phase evidence",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
@@ -259,22 +254,22 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-google-antigravity/engine-process.ts",
+    file: "src/orchestration/modules/provider-google-antigravity/engine/engine-process.ts",
     what: "Google Antigravity engine launches and exits",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-google-antigravity/engine-registry.ts",
+    file: "src/orchestration/modules/provider-google-antigravity/engine/engine-registry.ts",
     what: "Google Antigravity engine replacements",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-google-antigravity/retry-watch.ts",
+    file: "src/orchestration/modules/provider-google-antigravity/engine/retry-watch.ts",
     what: "Google Antigravity prompts that the retry watch cancelled",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/modules/provider-google-antigravity/bridge.ts",
+    file: "src/orchestration/modules/provider-google-antigravity/request/bridge.ts",
     what: "Google Antigravity session rotations and gate failures",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -289,7 +284,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/workflow-host/path-workflow.ts",
+    file: "src/orchestration/workflow-host/lifecycle/path-workflow.ts",
     what: "workflow files saved from launch content",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },

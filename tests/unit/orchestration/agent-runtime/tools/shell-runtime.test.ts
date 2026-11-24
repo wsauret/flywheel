@@ -5,7 +5,7 @@ import { Log } from "../../../../../src/infra/log.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
+import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/shell-runtime.js";
 import { commandOutputOps, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, streamOf, type OwnedExit } from "./_bash-fixtures.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { processSettled } from "../../../../helpers/process-settled.js";

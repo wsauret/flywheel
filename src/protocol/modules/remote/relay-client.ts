@@ -1,7 +1,7 @@
 import { Effect, Layer } from "effect"
 import { Socket } from "effect/socket"
 
-import { reconnectBackoffMs } from "../../client/connection.js"
+import { reconnectBackoffMs } from "../../reconnect-backoff.js"
 import { attachDeviceChannel, RelayRefusal, watchPresence, type PresenceWatch } from "./relay-channel.js"
 import type { MachinePicker, MachinePickerSnapshot, RemoteCreation, RemotePairing, RemoteRuntimeSummary, RemoteStart } from "./machine-picker.js"
 import { parseRepository } from "../../repository-reference.js"

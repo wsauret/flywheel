@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { contentEvidence } from "../../../../src/infra/content-evidence.js"
-import { createWorkflowController } from "../../../../src/orchestration/workflow-host/controller.js"
+import { createWorkflowController } from "../../../../src/orchestration/workflow-host/lifecycle/controller.js"
 import { cleanupProjectRoots, createDeps, fixtureSource, seedWorkflowQueue } from "./_workflow-controller-fixtures.js"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures.js"
-import { modelWorkflowLaunchOrigin } from "../../../../src/orchestration/workflow-host/launch-origin.js"
+import { modelWorkflowLaunchOrigin } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { completedSurveyFacts, stoppedStepLoopFacts } from "../../workflows/vm/_tree-fixtures.js"
 import { initialFacts, sequentialWorkflow } from "../../workflows/vm/host-test-support.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
-import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/run-record.js"
+import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/runs/run-record.js"
 
 afterEach(() => {
   cleanupProjectRoots()

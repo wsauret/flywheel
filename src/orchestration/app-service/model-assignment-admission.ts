@@ -3,7 +3,7 @@ import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../infra/e
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import { authDir } from "../../infra/paths.js"
 import type { ModelAssignmentRow, RuntimeGlobalDefaultRolesResult, RuntimeModelAssignmentScope, RuntimeModelAssignmentWriteScope, RuntimeSessionModelPlanQuery, RuntimeSessionModelPlanResult } from "../../protocol/model-assignment-protocol-types.js"
-import { canonicalModelId } from "../../infra/llm/model-id.js"
+import { canonicalModelId } from "../../infra/model-id.js"
 import { TRAINING_ROUTES_REQUIRED } from "../../protocol/provider-model-preference-protocol-types.js"
 import type { RuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
@@ -14,17 +14,17 @@ import type { WorkflowDeps } from "../workflow-host/deps.js"
 import type { DefinitionAvailabilityOwner } from "./definition-availability.js"
 import { createRuntimeModelAssignmentService, type RuntimeModelAssignmentService } from "./model-assignment-service.js"
 import type { RuntimeProviderModelEligibilityState } from "./provider-model-preference-service.js"
-import type { SelectedModelRoute } from "../config/model-assignment-types.js"
-import { enabledModelInfos } from "../config/model-assignment-providers.js"
+import type { SelectedModelRoute } from "../config/models/model-assignment-types.js"
+import { enabledModelInfos } from "../config/models/model-assignment-providers.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
-import { enabledModelsFromEligibility } from "../config/session-role-resolver.js"
+import { enabledModelsFromEligibility } from "../config/models/session-role-resolver.js"
 import { isModelTierReference } from "../../protocol/model-tier-reference.js"
-import type { RoleCaptureStore } from "../config/model-assignment-controller.js"
+import type { RoleCaptureStore } from "../config/models/model-assignment-controller.js"
 import type { RuntimeChatDefault } from "../../protocol/app-service-types.js"
 import type { AuthProfileManager } from "../auth/auth-profile-manager.js"
 import type { EligibilityPreparation } from "./eligibility-preparation.js"
 import { candidateCredentialLineage, captureAccountConnection } from "../agent-runtime/llm/client-factory.js"
-import type { CaptureSubscriptionAdmission, ProviderConnectionCapture } from "../agent-runtime/factory.js"
+import type { CaptureSubscriptionAdmission, ProviderConnectionCapture } from "../agent-runtime/model-runtime-capture.js"
 import type { AuthContext } from "../../infra/auth/auth-context.js"
 import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderId, type AdmittedFailoverPlan, type FailoverPlan } from "../../infra/llm/access-provider.js"
 import type { ProviderAvailabilityOwner, RequestAdmission } from "../agent-runtime/llm/provider-availability-types.js"
@@ -193,12 +193,15 @@ export interface AdmittedModelAssignmentService extends RuntimeModelAssignmentSe
   loadSessionModelPlan(query: RuntimeSessionModelPlanQuery): Promise<RuntimeSessionModelPlanResult>
 }
 
-/** Binds model-assignment reads and writes to one admitted auth profile. */
-export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmissionDeps): AdmittedModelAssignmentService & {
+/** The admitted service that the auth runtime holds, with the check that capacity waits recheck. */
+export interface ServingModelAssignmentService extends AdmittedModelAssignmentService {
   /** Whether `model` can serve the agent of `sessionId` now: a route of the session's current capture offers it and
    *  one of its candidates is ready or waits on a recheck, by the readiness rule of a request's walk. */
   readonly servesNow: CapacityServingCheck
-} {
+}
+
+/** Binds model-assignment reads and writes to one admitted auth profile. */
+export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmissionDeps): ServingModelAssignmentService {
   const admissionStorage = new AsyncLocalStorage<ModelAssignmentAdmission>()
   const service = createRuntimeModelAssignmentService({
     roleCaptureStore: deps.manager,

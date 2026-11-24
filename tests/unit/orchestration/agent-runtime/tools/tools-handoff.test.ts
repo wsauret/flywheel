@@ -5,12 +5,13 @@ import { describe, expect, it } from "bun:test";
 import { Result } from "effect";
 
 import { handoffDefinition, createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work-types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { RuntimeTool, ToolDispatchContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "./_fixtures.js";
-import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
+import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
 import { compileOutput } from "../../../../../src/workflows/output-contract/compile.js";
 import { decodeOutputObject, type OutputObject } from "../../../../../src/workflows/output-contract/grammar.js";
 import implementationPlanContract from "../../../../../src/workflows/workflows/contracts/implementation-plan.json" with { type: "json" };

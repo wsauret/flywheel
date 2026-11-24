@@ -5,7 +5,6 @@
 import { Log } from "../../../infra/log.js";
 import { StreamIdleTimeoutError } from "./errors.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
-import type { StreamAttempt } from "./stream-attempt.js";
 import { ThinkingStallError } from "./thinking-stall.js";
 import { observeThinkingStall, observeWatchdogStall, observeWatchdogTimeout } from "./stream-observe.js";
 import type { StreamTelemetrySink } from "./types.js";
@@ -287,17 +286,6 @@ export function createStreamLiveness(options: StreamLivenessOptions, hooks: Atte
       cancelTimer = undefined;
     },
   };
-}
-
-/** Replaces the abort caused by the deadline with its typed timeout error before
- * provider classification. A caller-initiated abort passes through unchanged. */
-export function throwIfLivenessFailure(
-  err: unknown,
-  attempt: StreamAttempt,
-  signal: AbortSignal | undefined,
-): void {
-  if (signal?.aborted) throw err;
-  attempt.throwIfStreamTimedOut();
 }
 
 function configuredReasoningIdleTimeoutMs(): number {

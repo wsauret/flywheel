@@ -4,8 +4,14 @@ import { probeLoopUnit } from "../../infra/event-loop-lag.js"
 import { closeScopedAbortSignal, createScopedAbortSignal } from "../agent-runtime/scoped-abort-signal.js"
 import { runAgentTurn } from "./agent-turn.js"
 import { AgentTurnAborted } from "./agent-turn-types.js"
-import type { AgentHost, AgentHostContextOptions, AgentHostOptions, AgentHostTurnLease } from "./types.js"
+import type { AgentGeneration, AgentHost, AgentHostContextOptions, AgentHostOptions, AgentHostTurnLease } from "./types.js"
 import type { Agent, AgentRunResult } from "../agent-runtime/types.js"
+
+/** A host for a caller that runs one turn and then stops: it never sees the
+ *  chat turn slot. */
+export function createAgentGeneration<O = AgentHostContextOptions>(options: AgentHostOptions<O>): AgentGeneration<O> {
+  return createAgentHost(options)
+}
 
 /** Owns context construction and one logical turn's shared recovery policy. */
 export function createAgentHost<O = AgentHostContextOptions>(options: AgentHostOptions<O>): AgentHost<O> {

@@ -2,7 +2,7 @@
 
 import { StyledText, fg as stFg, type MouseEvent, type RGBA, type TextRenderable } from "@opentui/core"
 import { createEffect, createMemo, type Accessor } from "solid-js"
-import { useSpinnerFrame } from "../hooks/use-spinner-frame.js"
+import { useSpinnerFrame } from "./use-spinner-frame.js"
 
 const BAR = "─"
 

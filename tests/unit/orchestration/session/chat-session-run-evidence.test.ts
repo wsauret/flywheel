@@ -8,7 +8,7 @@ import { phaseBindings, phaseControl, startNext, interrupt } from "../../workflo
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/session-facts.js"
-import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { createConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { chatTurnEndOf, interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnEnd, type TurnEndEntry } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"

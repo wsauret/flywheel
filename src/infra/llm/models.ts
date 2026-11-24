@@ -28,7 +28,7 @@ import {
   type CatalogDataUse,
   type ClaudeTokenizerIdentity,
   parseCanonicalModelGeneration,
-} from "./model-id.js";
+} from "../model-id.js";
 import { inferModelFamilyFromProvider } from "./model-family.js";
 import { awaitWithAbortSignal } from "../abort.js";
 import {

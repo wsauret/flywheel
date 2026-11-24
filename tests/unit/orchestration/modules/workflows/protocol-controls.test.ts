@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { WorkflowController } from "../../../../../src/orchestration/workflow-host/controller.js"
+import type { WorkflowController } from "../../../../../src/orchestration/workflow-host/lifecycle/controller.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../../../../../src/orchestration/session/conversation/addressed-workflow-messages.js"
 import { flattenWorkflowView } from "../../../../../src/workflows/vm/view-flatten.js"
 import { queueFactsForState } from "../../../../../src/workflows/view/view-diff.js"

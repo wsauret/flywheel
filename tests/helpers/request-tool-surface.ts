@@ -5,7 +5,7 @@ import { createRequestToolSurface, type PlannedRequest, type RequestToolSurfaceO
 import type { KernelToolDeps } from "../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { NO_CAPABILITY_ACCESS, type RuntimeTool } from "../../src/orchestration/agent-runtime/tools/types.js";
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js";
-import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema.js";
+import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema/schema.js";
 import { captureRuntimeConfigRequest, type CaptureRuntimeConfig } from "../../src/orchestration/agent-runtime/request-config.js";
 import { createToolRegistry } from "../../src/orchestration/tool-catalog.js";
 import { definitionAvailabilityOf } from "../../src/orchestration/app-service/definition-availability.js";

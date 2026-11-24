@@ -12,8 +12,8 @@ import { join } from "node:path";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../src/infra/paths.js";
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js";
-import { buildSessionContext } from "../../../src/orchestration/session/conversation/conversation-tree-context.js";
-import { createConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle.js";
+import { buildSessionContext } from "../../../src/orchestration/session/conversation/tree/conversation-tree-context.js";
+import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { appendProviderRequestFacts } from "../../unit/orchestration/session/_provider-request-audit-fixtures.js";
 
 const ENTRY = join(import.meta.dir, "..", "..", "..", "src", "cli", "index.ts");

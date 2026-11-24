@@ -1,6 +1,6 @@
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { loadPathWorkflow, type LaunchingSessionAuthority } from "../../../../src/orchestration/workflow-host/path-workflow.js"
+import { loadPathWorkflow, type LaunchingSessionAuthority } from "../../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { fixtureDefinitions } from "../../../helpers/project-definitions.js"

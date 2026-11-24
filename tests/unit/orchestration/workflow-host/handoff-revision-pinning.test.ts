@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { handoffToolSchemaFromOutput } from "../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
+import { handoffToolSchemaFromOutput } from "../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
 import { assembleAgentPrompt } from "../../../../src/workflows/context-bundle/prompt-assembly.js";
 import type { AttemptRow } from "../../../../src/workflows/view/types.js";
 import { testResolvedAgent, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";

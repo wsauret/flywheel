@@ -10,10 +10,10 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff"
-import { createWorkflowController } from "../../../../src/orchestration/workflow-host/controller"
+import { createWorkflowController } from "../../../../src/orchestration/workflow-host/lifecycle/controller"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
-import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/publish"
-import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/lifecycle/publish"
+import { createConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { commitWorkflowEvent, createMockWorkflowHosts } from "./_workflow-host-fixtures"
 import { convertWorkflowAgentSessions } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions"
@@ -40,7 +40,7 @@ import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-
 import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile.js"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection.js"
-import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/duration.js"
+import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/runs/duration.js"
 
 afterEach(() => {
   cleanupProjectRoots()

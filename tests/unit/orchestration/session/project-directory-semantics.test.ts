@@ -22,7 +22,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js"
 import { executionCwdFromSession, requireSessionExecutionCwd } from "../../../../src/orchestration/session/session-execution-directory.js"
 import { fakeSessionStore } from "../app-service/_frontend-projection-fixtures.js"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures.js"

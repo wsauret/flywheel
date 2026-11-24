@@ -5,7 +5,7 @@ import type { RuntimeClient, SessionCatalogRow } from "../../protocol/app-servic
 
 import type { ShellServices } from "./shell-state.js"
 import type { TabInfo } from "./create-tabs.js"
-import type { DraftCache } from "./create-draft-cache.js"
+import type { DraftCache } from "../components/create-draft-cache.js"
 
 interface TabCloserDeps {
   tabs: Accessor<readonly TabInfo[]>

@@ -10,7 +10,7 @@ import { buildDurableSubagentCreated, buildSubagentPaused } from "../../../../sr
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
 import { registerTestChildRun } from "../../../helpers/live-child-run"
 import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact, buildSessionCreatedFact } from "../../../../src/orchestration/session/session-metadata-facts"
-import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { createConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff"
 import type { WorkflowView } from "../../../../src/workflows/view/types"
 import { workflowControlInitializedEvent } from "../../workflows/vm/_workflow-control-fixtures"

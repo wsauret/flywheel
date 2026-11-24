@@ -1,9 +1,5 @@
 import type { Accessor } from "solid-js"
-import type { SubscriptionSpendConsentControlState } from "./use-subscription-spend-consent-control.js"
-
-/** The one stop outside the paid-mode rows: the Models button in Provider
- *  Settings, the Continue button on the paid-use question. */
-export const CONSENT_ACTION_CURSOR = -1
+import { CONSENT_ACTION_CURSOR, type SubscriptionSpendConsentControlState } from "../modals/subscription-spend-consent-types.js"
 
 interface SubscriptionSpendConsentInputDeps {
   readonly state: Accessor<SubscriptionSpendConsentControlState>

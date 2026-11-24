@@ -20,7 +20,7 @@ import { createConversationTreeWriterController } from "../chat/tree-writer.js"
 import { createConversationRecall } from "../session/conversation-recall.js"
 import { ChatTurnMailbox } from "../chat/turn-mailbox.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
-import { getSharedModelsClient } from "../config/llm-clients.js"
+import { getSharedModelsClient } from "../config/models/llm-clients.js"
 import type { ModelsClient } from "../../infra/llm/models.js"
 import { createBackgroundExecutionOwner } from "../agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../agent-runtime/background-work.js"
@@ -29,7 +29,7 @@ import { createForegroundBashHoldController } from "../agent-runtime/foreground-
 import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
 import { subscribeSessionRuntimeFacts } from "../session/create-session-infra.js"
 import { createTaskProgressWriter, HEADLESS_PROGRESS_EVENT_TYPES } from "./task-progress.js"
-import { createAgentHost } from "../runner/host.js"
+import { createAgentGeneration } from "../runner/host.js"
 import { AgentTurnAborted } from "../runner/agent-turn-types.js"
 import { createUnattendedRecovery } from "../agent-runtime/unattended-recovery.js"
 import { HEADLESS_MODULE_CEILING } from "./host-registration.js"
@@ -38,7 +38,7 @@ import { createHeadlessDeadline, type HeadlessDeadlineExpired } from "./headless
 import { createHeadlessUsageAuthorityOwner, type HeadlessUsageAuthorityOwner } from "./headless-usage-authority.js"
 
 import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
-import { shellWriteGuardObserver } from "../config/shell-write-guard-policy.js"
+import { shellWriteGuardObserver } from "../config/policy/shell-write-guard-policy.js"
 import { createHeadlessProfileRuntime, resolveHeadlessAuth } from "./headless-profile-runtime.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { personaRoleIds } from "../../workflows/definition-registry.js"
@@ -249,7 +249,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
         const session = await manager.read(activeSessionId)
         if (!session || session.kind !== "chat") throw new Error(`headless task session ${activeSessionId} missing after creation`)
         if (!session.roleAssignments) throw new Error(`headless task session ${activeSessionId} has no role snapshot`)
-        const { createSessionRoleResolver } = await import("../config/session-role-resolver.js")
+        const { createSessionRoleResolver } = await import("../config/models/session-role-resolver.js")
         const resolveSessionRoles = createSessionRoleResolver({ reader: eventState, projectRoot, sessionId: activeSessionId, userDataRoot, capture: wfDeps.captureProviderConnection, requiredRoleIds: effectivePersonaRoleIds })
         const conversationId = session.conversationId
         const sessionEventWriter = createSessionFactWriter({
@@ -294,7 +294,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
         try {
           await treeWriter.commitSystemTurn(task)
 
-          const runnerHost = createAgentHost({ createRunner: wfDeps.createAgent })
+          const runnerHost = createAgentGeneration({ createRunner: wfDeps.createAgent })
           // A capacity wait lives and ends with this process, within the
           // task's own deadline, so it records no durable authority (PI-MODEL-063).
           const recovery = createUnattendedRecovery({

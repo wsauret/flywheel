@@ -8,7 +8,7 @@ import { accountServeStartRecordPath } from "../../../src/infra/paths.js"
 
 const LOG_MODULE = new URL("../../../src/infra/log.ts", import.meta.url).href
 const POLICY_MODULE = new URL("../../../src/infra/crash-policy.ts", import.meta.url).href
-const FATAL_EXIT_MODULE = new URL("../../../src/cli/fatal-exit.ts", import.meta.url).href
+const FATAL_EXIT_MODULE = new URL("../../../src/cli/startup/fatal-exit.ts", import.meta.url).href
 const SERVICE_START_MODULE = new URL("../../../src/orchestration/update/service-start.ts", import.meta.url).href
 const PLACED_BUILD_MODULE = new URL("../../helpers/placed-build.ts", import.meta.url).href
 

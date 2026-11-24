@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { modelAssignmentText, modelLabelColumn, modelText, providerChainText } from "../../../../src/tui/modals/model-modal-text.js";
 import { contextLine } from "../../../../src/tui/modals/model-modal-chrome.js";
-import { displayWidth } from "../../../../src/tui/utils/text.js";
+import { displayWidth } from "../../../../src/tui/text.js";
 import { styledTextContent, theme } from "./_model-modal-fixtures";
 import type { ModelOptionRow } from "../../../../src/protocol/model-assignment-protocol-types.js";
 
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 import { createSignal } from "solid-js";
 import { ScrollBoxRenderable, TextAttributes, TextRenderable, type Renderable } from "@opentui/core";
 import type { ModelModalState } from "../../../../src/tui/modals/model-modal-types.js";

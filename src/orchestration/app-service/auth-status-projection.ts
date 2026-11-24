@@ -1,7 +1,7 @@
 import { credentialProviderDisplayName, getAuthStatusWithDiagnostics, rejectedCustomProviderStatusId } from "../auth/auth-actions.js"
 import type { AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import { customProviderRejections } from "../../infra/llm/custom-provider-registry.js"
-import { accessProviderAccountKey, type AccessProviderCandidate } from "../../infra/llm/access-provider.js"
+import type { AccessProviderCandidate } from "../../infra/llm/access-provider.js"
 import type { ProviderModelEligibilityState, ProviderModelInventoryCandidate } from "./provider-model-preference-service.js"
 import type { AuthFileAttention, AuthOperationNotice, AuthProviderStatus, RuntimeAuthStatusScope, RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import { webAuthProviderDefinitions, type FirstPartyModuleComposition, type FirstPartyModuleSnapshot } from "../modules.js"
@@ -11,8 +11,9 @@ import type { SubscriptionSpendConsentView } from "../../protocol/subscription-s
 import { subscriptionSpendAccountCorrelationId } from "../../protocol/subscription-spend-consent-protocol-types.js"
 import { createAuthConditionOwner, type AuthConditionOwner } from "../auth/auth-condition-owner.js"
 import { accountSecretFile } from "../../infra/paths.js"
-import { lockedJsonStorePath } from "../../infra/auth/locked-json-store.js"
+import { lockedJsonStorePath } from "../../infra/auth/store/locked-json-store.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
+import { accessProviderAccountKey } from "../../infra/auth/provider-account.js"
 
 /** Reads the auth view. A reading has no effect beyond the condition owner's
  *  observation; the attention a view shows is stated by the auth attention

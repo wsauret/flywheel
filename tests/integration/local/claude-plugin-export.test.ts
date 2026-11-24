@@ -76,6 +76,7 @@ async function runEngine(pluginPath: string | undefined, reply: (request: Record
         HOME: home,
         USERPROFILE: home,
         CLAUDE_CONFIG_DIR: join(root, "config"),
+        CLAUDE_CODE_TMPDIR: root,
         ANTHROPIC_API_KEY: "sk-ant-fake-endpoint",
         CLAUDE_CODE_MAX_RETRIES: "0",
         DISABLE_TELEMETRY: "1",

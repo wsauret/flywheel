@@ -22,7 +22,7 @@ import { commandHandoversOfAsync } from "../../../../../src/orchestration/sessio
 import type { OutcomeRecordRead } from "../../../../../src/infra/command-handover.js";
 import { fakeContainer, handoverAuthority } from "../_command-handover-fixtures.js";
 import { createPrivateCopyPool, type PrivateCopyPool } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
-import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
+import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/shell-runtime.js";
 import type { ContainerProbe } from "../../../../../src/infra/process-container.js";
 
 /** A call's context overrides. `shell` is the session shell runtime that runs

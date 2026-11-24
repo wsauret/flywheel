@@ -6,14 +6,14 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { createBackgroundNotificationDelivery as createSessionBackgroundNotificationDelivery } from "../../../../src/orchestration/app-service/session-background-notifications"
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
 import { createBackgroundNotificationDelivery } from "../../../../src/orchestration/runner/background-notification-delivery"
-import { readReconciledBranch } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { readReconciledBranch } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { holdQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications"
-import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/injection-queue"
+import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/execution/injection-queue"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
 import { temporaryDirectories } from "../../../helpers/directories"
 import { chatEntry } from "../app-service/_frontend-projection-fixtures"
 import { mockRunner } from "../../../fixtures/runtime-supervisor-fixtures.js"
-import { createWorkflowMemberInputs } from "../../../../src/orchestration/workflow-host/member-inputs"
+import { createWorkflowMemberInputs } from "../../../../src/orchestration/workflow-host/execution/member-inputs"
 
 const temporary = temporaryDirectories()
 

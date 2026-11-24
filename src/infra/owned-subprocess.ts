@@ -1,7 +1,7 @@
 import type { CommandHandover } from "./command-handover.js"
 import { errorMessage } from "./error-message.js"
 import { Log } from "./log.js"
-import type { OwnedChild, OwnedExitStatus } from "./owned-subprocess-backend.js"
+import type { OwnedChild, OwnedExitStatus } from "./owned-command-control.js"
 import type { TerminationCause } from "./process-container.js"
 
 const log = Log.create({ service: "owned-subprocess" })

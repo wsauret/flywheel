@@ -1,20 +1,9 @@
 import type { ResponseStreamEvent } from "openai/resources/responses/responses.js";
+import { ChatGptAdapterApiError } from "../chatgpt-adapter-error.js";
 import { CHATGPT_BACKEND_RESPONSE_STATUSES, type ChatGptAdapterResponseStatus } from "./types.js";
 
 interface AdapterEvent {
 	[key: string]: unknown;
-}
-
-export class ChatGptAdapterApiError extends Error {
-	readonly code?: string;
-	readonly payload?: AdapterEvent;
-
-	constructor(message: string, options?: { code?: string; payload?: AdapterEvent }) {
-		super(message);
-		this.name = "ChatGptAdapterApiError";
-		this.code = options?.code;
-		this.payload = options?.payload;
-	}
 }
 
 export class ChatGptAdapterProtocolError extends Error {

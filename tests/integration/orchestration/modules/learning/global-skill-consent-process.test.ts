@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 
-import type { SkillMutation } from "../../../../../src/orchestration/modules/learning/skill-store-types.js";
+import type { SkillMutation } from "../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
 import { SKILL_FILE } from "../../../../../src/workflows/skill-schema.js";
 import { createGlobalSkillHarness, type GlobalSkillHarness } from "../../../../helpers/global-skill-operations.js";
 

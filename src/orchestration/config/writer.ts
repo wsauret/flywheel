@@ -1,6 +1,6 @@
 import { configurationReferenceFile } from "../../infra/paths.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { canonicalModelId, legacyDottedModelId, migrateModelId } from "../../infra/llm/model-id.js";
+import { canonicalModelId, legacyDottedModelId, migrateModelId } from "../../infra/model-id.js";
 import { withConfigOwnership, withConfigOwnershipBlocking, type ConfigOwnership } from "./config-file.js";
 import type { ModelAssignmentExpected, ModelAssignmentPatch, ModelSelectionSlot } from "../../protocol/model-assignment-protocol-types.js";
 import { AGENT_ROLE_IDS, AUX_ROLE_IDS, DEFAULT_ROLES, type RoleId } from "./roles.js";
@@ -8,10 +8,10 @@ import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
 import { canonicalRoleId, retiredBriefSeatWorkflow, patchRetiredConfigKeys } from "./retired-config-names.js";
 import { retireConfigTables } from "./retired-config-tables.js";
 import { persistedDisabledModuleIds } from "../../protocol/module-ids.js";
-import { CONFIG_DEFAULTS, type FlywheelConfig } from "./schema.js";
-import { PERSISTED_SETTING_DEFINITIONS, persistedSettingDefinition } from "./setting-definitions.js";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "./schema/schema.js";
+import { PERSISTED_SETTING_DEFINITIONS, persistedSettingDefinition } from "./schema/setting-definitions.js";
 import { configLines, findFieldIndex, findSectionEnd, patchSemanticAssignment, removeAssignment, removeSection, escapeTomlString, quoteTomlKey, removeSemanticSubtree, replaceAssignment, rootEndIndex, sectionHasKeyLines, upsertSemanticAssignment } from "./config-assignment.js";
-import { installedConfigSections } from "../module-catalog.js";
+import { installedConfigSections } from "./schema/config-section.js";
 import { decodeConfigObject } from "./loader.js";
 
 /** A runtime config write reaches us from a live TUI handler (theme, settings

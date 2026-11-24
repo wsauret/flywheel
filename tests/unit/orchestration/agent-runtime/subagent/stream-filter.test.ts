@@ -5,7 +5,7 @@ import {
   createFilteredSubagentStream,
   createSubagentStats,
   type SubagentTextState,
-} from "../../../../../src/orchestration/modules/subagents/execution/stream-filter.js";
+} from "../../../../../src/orchestration/modules/subagents/execution/result/stream-filter.js";
 
 interface UnknownRecord { [key: string]: unknown }
 

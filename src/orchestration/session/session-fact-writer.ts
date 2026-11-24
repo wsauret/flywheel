@@ -11,8 +11,8 @@ import type { ProviderRequestAuditFact } from "./provider-request-audit-facts.js
 import { parseSessionFact } from "./session-fact-registry.js"
 import type { SessionContentNodeRow } from "../../infra/session-content.js"
 import type { ConversationCheckpointFact } from "./conversation-checkpoint-facts.js"
-import type { ConversationRolePickFact } from "./conversation-role-pick.js"
-import type { ConversationPromptFixedFact } from "./conversation-prompt-baseline.js"
+import type { ConversationRolePickFact } from "./conversation-role-pick-facts.js"
+import type { ConversationPromptFixedFact } from "./conversation-prompt-baseline-facts.js"
 import { durableOwnerAggregate, durableOwnerId, type DurableOwner } from "../../infra/durable-owner.js"
 
 export type SessionFact = SessionRuntimeFact | ToolContentReferenceFact | FileMutationFact | AgentInputFact | ProviderRequestAuditFact | ModuleSessionFact | ConversationCheckpointFact | ConversationRolePickFact | ConversationPromptFixedFact

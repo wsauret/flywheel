@@ -4,7 +4,7 @@ import { terminalTranscript } from "../../../../src/tui/output-blocks/visible-ou
 import { workflowDetail, processStatus } from "../../../helpers/runtime-views.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 
-it("stops a linked durable child through its parent's tool call", async () => {
+it("cancels a linked durable child through its parent's tool call", async () => {
   const [{ testRender }, { createComponent }, { BlockRenderer }, { ThemeProvider }, { TickPoolProvider }, { RowWidthProvider }] = await Promise.all([
     import("@opentui/solid"),
     import("solid-js/web"),
@@ -73,17 +73,18 @@ it("stops a linked durable child through its parent's tool call", async () => {
     const frame = result.captureCharFrame()
     expect(frame).toContain("Explorer")
     expect(frame).toContain("bun run test")
-    expect(frame.match(/stop/g) ?? []).toHaveLength(1)
+    expect(frame.match(/cancel/g) ?? []).toHaveLength(1)
+    expect(frame).not.toContain("stop")
     expect(frame).not.toContain("detach")
 
-    const stopRow = frame.split("\n").findIndex((line) => line.includes("stop"))
-    const stopColumn = frame.split("\n")[stopRow]?.indexOf("stop") ?? -1
-    expect(stopRow).toBeGreaterThanOrEqual(0)
-    expect(stopColumn).toBeGreaterThanOrEqual(0)
+    const cancelRow = frame.split("\n").findIndex((line) => line.includes("cancel"))
+    const cancelColumn = frame.split("\n")[cancelRow]?.indexOf("cancel") ?? -1
+    expect(cancelRow).toBeGreaterThanOrEqual(0)
+    expect(cancelColumn).toBeGreaterThanOrEqual(0)
 
-    await result.mockMouse.click(stopColumn + 1, stopRow)
+    await result.mockMouse.click(cancelColumn + 1, cancelRow)
     expect(stopChild).toHaveBeenCalledWith("subagent-call")
-    await result.mockMouse.click(stopColumn + "stop".length, stopRow)
+    await result.mockMouse.click(cancelColumn + "cancel".length, cancelRow)
     expect(stopChild).toHaveBeenCalledTimes(2)
     expect(stop).not.toHaveBeenCalled()
     expect(detach).not.toHaveBeenCalled()
@@ -156,7 +157,7 @@ it("keeps an unlinked inline subagent stoppable through its parent tool", async 
   }
 })
 
-it("dispatches a child's Stop as background.terminate on the parent session and the card's tool call", async () => {
+it("dispatches a child's Cancel as background.terminate on the parent session and the card's tool call", async () => {
   const { createSessionProcessControls } = await import("../../../../src/tui/hooks/create-session-process-controls.js")
   const dispatched: unknown[] = []
   const controls = createSessionProcessControls({
@@ -169,7 +170,7 @@ it("dispatches a child's Stop as background.terminate on the parent session and 
   expect(dispatched).toEqual([{ type: "background.terminate", sessionId: "parent-session", toolUseId: "subagent-call" }])
 })
 
-it("labels a subagent a person stopped Stopped, and one the agent canceled Canceled", async () => {
+it("labels a subagent a person canceled Canceled, and one the agent canceled Canceled by the parent", async () => {
   const [{ testRender }, { createComponent }, { BlockRenderer }, { ThemeProvider }, { TickPoolProvider }, { RowWidthProvider }] = await Promise.all([
     import("@opentui/solid"),
     import("solid-js/web"),
@@ -178,7 +179,7 @@ it("labels a subagent a person stopped Stopped, and one the agent canceled Cance
     import("../../../../src/tui/context/tick-pool-context.js"),
     import("../../../../src/tui/context/row-width.js"),
   ])
-  for (const [status, label] of [["stopped", "Stopped"], ["cancelled", "Canceled"]] as const) {
+  for (const [status, label] of [["stopped", "Canceled"], ["cancelled", "Canceled by the parent"]] as const) {
     const block: AgentGroupBlockType = {
       kind: "agentGroup", containerKind: "subagent", id: `card-${status}`, toolUseId: `call-${status}`,
       totalToolCount: 0, label: "Explorer", description: "Trace", status, children: [], timestamp: Date.now(),
@@ -210,9 +211,9 @@ it("labels a subagent a person stopped Stopped, and one the agent canceled Cance
 })
 
 // A workflow outlives the turn that launched it, so a chat opened again reads
-// its card from settled history while the run can still be stopped. The held
-// row, not the transcript's history, decides its Stop.
-it("keeps the Stop of a workflow card that the chat reads from its history", async () => {
+// its card from settled history while the run can still be canceled. The held
+// row, not the transcript's history, decides its Cancel.
+it("keeps the Cancel of a workflow card that the chat reads from its history", async () => {
   const [{ testRender }, { createComponent }, { WorkflowActivityBlock }, { ThemeProvider }, { TickPoolProvider }, { RowWidthProvider }, { WorkflowCardsProvider }, { noWorkflowCards }] = await Promise.all([
     import("@opentui/solid"),
     import("solid-js/web"),
@@ -221,7 +222,7 @@ it("keeps the Stop of a workflow card that the chat reads from its history", asy
     import("../../../../src/tui/context/tick-pool-context.js"),
     import("../../../../src/tui/context/row-width.js"),
     import("../../../../src/tui/modules/workflows/cards.js"),
-    import("../components/_child-session-viewer-fixtures.js"),
+    import("../_child-session-viewer-fixtures.js"),
   ])
   const block: AgentGroupBlockType = {
     kind: "agentGroup", containerKind: "workflow", id: "workflow-card", toolUseId: "workflow-call", totalToolCount: 0,
@@ -260,9 +261,9 @@ it("keeps the Stop of a workflow card that the chat reads from its history", asy
   try {
     await result.renderOnce()
     const frame = result.captureCharFrame()
-    expect(frame).toMatch(/resume\s+stop/)
-    const stopRow = frame.split("\n").findIndex((line) => line.includes("stop"))
-    await result.mockMouse.click((frame.split("\n")[stopRow]?.lastIndexOf("stop") ?? 0) + 1, stopRow)
+    expect(frame).toMatch(/resume\s+cancel/)
+    const cancelRow = frame.split("\n").findIndex((line) => line.includes("cancel"))
+    await result.mockMouse.click((frame.split("\n")[cancelRow]?.lastIndexOf("cancel") ?? 0) + 1, cancelRow)
     expect(stopChild).toHaveBeenCalledWith("workflow-call")
   } finally {
     result.renderer.destroy()

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work-types.js";
 import type { BackgroundOutputRequest } from "../../../../../src/orchestration/agent-runtime/background-work-processes.js";
 import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
 import type { PersistentProcessRecord } from "../../../../../src/infra/persistent-process-manager.js";

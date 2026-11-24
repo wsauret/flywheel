@@ -6,7 +6,7 @@ import { recordedExecutionCwd } from "../session/session-execution-directory.js"
 import { durableCatalogRowFromSession, mergeListMetadata, projectSessionCatalogRow, replaceCatalogTotals, type SessionActionEvidence } from "../session/session-catalog-row.js"
 import { subagentRunOutcome, subagentSessionActions, subagentStoppedBy } from "../session/child-session-run-evidence.js"
 import { chatSessionActions } from "../session/chat-session-run-evidence.js"
-import type { SessionEntry, SessionStore } from "../session-store/types.js"
+import type { SessionEntry, SessionStoreReader } from "../session-store/types.js"
 import type { SessionView } from "../session-store/view.js"
 import { entryActivity } from "../session-store/activity.js"
 import type {
@@ -53,7 +53,7 @@ export interface FrontendProjection {
 
 
 export interface FrontendProjectionDeps {
-  readonly sessionStore: SessionStore
+  readonly sessionStore: SessionStoreReader
   readonly manager: SessionManager
   readonly projectRoot: string
   readonly summaries?: RuntimeSummaryProjection
@@ -305,7 +305,7 @@ function listedRow(row: SessionRow): SessionCatalogRow | null {
 }
 
 /** Live sessions the catalog lists: every store entry except a child's. */
-function listedLiveIds(sessionStore: SessionStore): readonly string[] {
+function listedLiveIds(sessionStore: SessionStoreReader): readonly string[] {
   return sessionStore.allIds().filter((id) => sessionStore.get(id)?.kind === "chat")
 }
 

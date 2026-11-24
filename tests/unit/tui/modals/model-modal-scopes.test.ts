@@ -12,12 +12,12 @@ import {
   scopeChromeColor,
   scopeContextLine,
   scopeSaveToast,
-} from "../../../../src/tui/hooks/use-model-modal-scope.js"
+} from "../../../../src/tui/modals/model-modal-scope.js"
 import { fakeRow, theme } from "./_model-modal-fixtures"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 const rows: readonly ModelAssignmentRow[] = [
   fakeRow("chat", "Chat"),
   fakeRow("workflow-agent", "Workflow"),

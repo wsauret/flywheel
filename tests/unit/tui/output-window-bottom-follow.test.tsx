@@ -7,11 +7,11 @@ import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
 import { createComponent } from "solid-js/web"
 import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
-import { heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
+import { heightEstimatesFromBlocks } from "../../../src/tui/transcript-store/output-height-estimates.js"
 import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
 import type { OutputTranscriptView, TranscriptSnapshot, TranscriptStatus } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import { renderScheduledFrame } from "./_output-window-transcript.js"
-import { BOLD } from "../../../src/tui/utils/text-attributes.js"
+import { BOLD } from "../../../src/tui/text-attributes.js"
 
 type TranscriptWindow = TranscriptSnapshot["window"]
 

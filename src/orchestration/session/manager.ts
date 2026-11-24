@@ -14,12 +14,12 @@ import { buildSessionChildUnlinkedFact } from "./session-metadata-facts.js"
 import { buildSessionMetadataAppend, createSessionMetadataStore, type SessionLabelSource } from "./session-metadata-store.js"
 import type { DurableSessionCatalog } from "./session-catalog-types.js"
 import { buildDurableSessionMetadataCatalog } from "./session-catalog-read.js"
-import type { ReplayedSession, RoleSettingEntry as RoleAssignmentEntry, RoleSettings as RoleAssignments, RoleAssignmentSnapshot, Session } from "./schemas.js"
+import type { SessionMetadataReader, RoleSettingEntry as RoleAssignmentEntry, RoleSettings as RoleAssignments, RoleAssignmentSnapshot, Session } from "./schemas.js"
 import { isSessionOwnerGone, writeOwnerPid } from "./pid-lock.js"
-import { createConversationTree } from "./conversation/conversation-tree-handle.js"
-import { ConversationTreeStorage } from "./conversation/conversation-tree-storage.js"
-import { forkConversationTree } from "./conversation/conversation-tree-fork.js"
-import { reconstructRawSessionMessages, validateRawForkBranchWork } from "./conversation/conversation-tree-context.js"
+import { createConversationTree } from "./conversation/tree/conversation-tree-handle.js"
+import { ConversationTreeStorage } from "./conversation/tree/conversation-tree-storage.js"
+import { forkConversationTree } from "./conversation/tree/conversation-tree-fork.js"
+import { reconstructRawSessionMessages, validateRawForkBranchWork } from "./conversation/tree/conversation-tree-context.js"
 import { runInTaskSlices } from "../../infra/task-scheduling.js"
 import type { ConversationMessage } from "../agent-runtime/llm/types.js"
 import { prepareChatBranchPublication } from "./session-chat-branch-publication.js"
@@ -80,7 +80,7 @@ export class ParentPublicationContendedError extends Error {
   override readonly name = "ParentPublicationContendedError"
 }
 
-export interface SessionManager {
+export interface SessionManager extends SessionMetadataReader {
   allocateId(): string
   /** Atomically publishes a non-session workflow aggregate and its invocation evidence under a chat. */
   publishWorkflow(input: WorkflowPublication): Promise<string>
@@ -105,8 +105,6 @@ export interface SessionManager {
   /** Targeted metadata and workflow state for the given sessions. Derived
    * totals come from the shared background summary index. */
   listForIds(ids: readonly string[]): Promise<DurableSessionCatalog>
-  /** Single-session metadata read for existence checks and narrow field access. */
-  read(id: string): Promise<ReplayedSession | null>
   updateLifecycleState(id: string, newState: SessionLifecycleState): Promise<void>
   /** Publishes run-start facts and active lifecycle as one sequence-guarded
    * commit, then installs the process-local active-owner marker. A first fact

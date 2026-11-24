@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   settingDefinitions,
   type ApplicationMode,
-} from "../../../../src/orchestration/config/setting-definitions.js";
+} from "../../../../src/orchestration/config/schema/setting-definitions.js";
 
 const CANONICAL_MODES = new Set<ApplicationMode>([
   "live",

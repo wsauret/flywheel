@@ -5,7 +5,8 @@ import { createSignal } from "solid-js"
 import { createComponent } from "solid-js/web"
 import type { TabInfo } from "../../../../src/tui/hooks/create-tabs.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
-import { resolveTheme, type TuiTheme } from "../../../../src/tui/context/theme/resolve.js"
+import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
+import type { TuiTheme } from "../../../../src/tui/context/theme/tui-theme.js"
 
 const color = (r: number, g: number, b: number) => RGBA.fromInts(r, g, b)
 const theme: TuiTheme = {

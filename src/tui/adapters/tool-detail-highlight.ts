@@ -1,7 +1,7 @@
 import type { ToolAction } from "@infra/workflow-types.js"
 import { fg as stFg, type TextChunk } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve.js"
-import { UNDERLINE } from "@tui/utils/text-attributes.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
+import { UNDERLINE } from "@tui/text-attributes.js"
 import { highlightShellCommand } from "./shell-command-highlight.js"
 
 // Per-action styling for the tool-row detail string. Keeps the two-tone

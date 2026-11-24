@@ -158,7 +158,7 @@ const DOMAIN_READERS: readonly string[] = ["src/protocol/modules.ts", "src/proto
 // every family, and maintenance prunes the retired ones.
 const FACT_READERS: readonly string[] = [
   "src/infra/fact-retention-registry.ts",
-  "src/cli/event-search-format.ts",
+  "src/cli/events/event-search-format.ts",
   "src/orchestration/session/event-store-maintenance.ts",
 ];
 

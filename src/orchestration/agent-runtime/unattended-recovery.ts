@@ -65,7 +65,7 @@ import type { SessionNotice, SessionNoticeOperation } from "../../infra/session-
 import { sleepUntil } from "../../infra/wall-clock-sleep.js"
 import { capacityWaitNotice, type CapacityWaitAuthority, type CapacityWaitWithdrawal } from "../session/capacity-wait.js"
 import type { TurnInterruption } from "../session/conversation/turn-end-record.js"
-import type { DeliveryOutcome } from "../session/live-session-control.js"
+import type { DeliveryOutcome } from "../session/message-disposition.js"
 import { CONTINUATION_MESSAGES } from "./continuation-messages.js"
 import type { AgentFailureReason, AgentRunResult } from "./types.js"
 

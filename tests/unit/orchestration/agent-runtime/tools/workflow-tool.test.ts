@@ -10,7 +10,7 @@ import {
 } from "../../../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
 import { createWorkflowTool } from "../../../../../src/orchestration/agent-runtime/tools/workflow.js";
 import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { approvalRefusal, type ResolveWorkflowLaunchTarget } from "../../../../../src/orchestration/workflow-host/launch-origin.js";
+import { approvalRefusal, type ResolveWorkflowLaunchTarget } from "../../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js";
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ConfigStaleWriteError, updateDefinedSetting, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js";
 
 async function withConfig(source: string, run: (configPath: string, dir: string) => Promise<void>): Promise<void> {

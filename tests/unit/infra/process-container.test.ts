@@ -10,7 +10,6 @@ import {
   ownUnixContainer,
   ownWindowsJobContainer,
   processStart,
-  trustedProbeLaunch,
   unixContainer,
   unixContainerIdentity,
   unixProcessIdentity,
@@ -22,6 +21,7 @@ import {
   type Procfs,
   type TerminationDecision,
 } from "../../../src/infra/process-container.js"
+import { trustedProbeLaunch } from "../../../src/infra/trusted-probe-launch.js"
 import type { DarwinBootSession, DarwinProcessApi, DarwinProcessQuery } from "../../../src/infra/darwin-process-api.js"
 import type { WindowsProcessApi, WindowsProcessQuery } from "../../../src/infra/windows-process-api.js"
 import { fakePid } from "../../helpers/fake-pid.js"

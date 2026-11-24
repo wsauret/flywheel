@@ -3,8 +3,8 @@ import type { ModelInfo } from "@anthropic-ai/claude-agent-sdk";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { captureSubscriptionCredentials } from "../../../../../src/infra/auth/auth-context.js";
-import { AuthProfileStore } from "../../../../../src/infra/auth/auth-profile-store.js";
-import { accessProviderAccountKey, createAccessProviderSelection } from "../../../../../src/infra/llm/access-provider.js";
+import { AuthProfileStore } from "../../../../../src/infra/auth/store/auth-profile-store.js";
+import { createAccessProviderSelection } from "../../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient, type ModelDiscoveryMode } from "../../../../../src/infra/llm/model-listing.js";
 import type { AccessAuditProgressListener } from "../../../../../src/infra/llm/model-access-audit.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
@@ -14,6 +14,7 @@ import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { modelInfo } from "../../../../helpers/model-tier-fixtures.js";
 import { AUTH_NONE } from "../../config/_model-listing-fixtures.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
+import { accessProviderAccountKey } from "../../../../../src/infra/auth/provider-account.js";
 
 const temporaryDirectory = temporaryDirectories();
 const ACCOUNT = { kind: "subscription", providerId: "claude_agent_sdk", instanceId: "uuid-person", spendMode: "included" } as const;

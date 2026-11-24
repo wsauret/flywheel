@@ -2,7 +2,7 @@ import type { Accessor } from "solid-js"
 import type { GitAiAttributionStatus } from "../../protocol/git-ai-attribution-protocol-types.js"
 import { gitAiAttributionReading, gitAiAttributionUnavailableReason } from "../../protocol/client/git-ai-attribution-copy.js"
 import type { SettingCatalogRow } from "../../protocol/setting-catalog.js"
-import { cycleRowActions, type SettingsRow } from "./settings-modal-types.js"
+import { cycleRowActions, type SettingsRow } from "../modals/settings-modal-types.js"
 
 const GIT_AI_ATTRIBUTION_PENDING = "Git AI attribution availability is still loading"
 

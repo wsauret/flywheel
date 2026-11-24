@@ -31,7 +31,7 @@ import { renderChatBody } from "../src/orchestration/agent-runtime/model-chat-bo
 import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { personaToolEntries } from "../src/orchestration/agent-runtime/tools/tool-registry.js";
-import { codedRolePreference } from "../src/orchestration/config/role-model-defaults.js";
+import { codedRolePreference } from "../src/orchestration/config/models/role-model-defaults.js";
 import { SHIPPED_MODULES } from "../src/orchestration/modules.js";
 import { createToolRegistry } from "../src/orchestration/tool-catalog.js";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";

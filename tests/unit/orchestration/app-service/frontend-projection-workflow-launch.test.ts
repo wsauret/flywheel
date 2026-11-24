@@ -5,7 +5,7 @@ import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../..
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createFrontendProjection, type SessionChange } from "../../../../src/orchestration/app-service/frontend-projection"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
-import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail"
+import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/protocol/detail"
 import { cleanupTmpRoot, makeTmpDir } from "../session/_session-manager-fixtures"
 import { chatEntry, fakeSessionStore, fileChanged } from "./_frontend-projection-fixtures"
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js"

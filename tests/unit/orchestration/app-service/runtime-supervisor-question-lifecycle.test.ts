@@ -4,7 +4,7 @@ import { createRuntimeSupervisor } from "../../../../src/orchestration/app-servi
 import { createChatTurnDurability } from "../../../../src/orchestration/chat/runner-completion.js"
 import { createAskUserController } from "../../../../src/orchestration/runner/ask-user-controller.js"
 import { loadAgentInputProjection } from "../../../../src/orchestration/session/agent-input-projection.js"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { removeOwnerPid } from "../../../../src/orchestration/session/pid-lock.js"
 import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"

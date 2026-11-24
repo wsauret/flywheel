@@ -3,7 +3,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { OwnedCommandRunner } from "../../../../../src/infra/owned-command.js"
-import { captureExperimentTree, keepExperimentChanges, revertExperimentChanges } from "../../../../../src/orchestration/modules/experiments/git-operations.js"
+import { captureExperimentTree, keepExperimentChanges, revertExperimentChanges } from "../../../../../src/orchestration/modules/experiments/git/git-operations.js"
 
 const directories: string[] = []
 afterEach(async () => {

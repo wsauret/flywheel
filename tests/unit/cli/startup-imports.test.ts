@@ -6,7 +6,7 @@ const REPO_ROOT = resolve(import.meta.dir, "../../..");
 
 /** The entries whose static imports load before chat input is ready: the account service and the project
  *  executor. Each process parses and runs every module its entry reaches through static imports. */
-const READINESS_ENTRIES = ["src/cli/serve.ts", "src/orchestration/app-service/project-executor-main.ts"] as const;
+const READINESS_ENTRIES = ["src/cli/account-service/serve.ts", "src/orchestration/app-service/project-executor-main.ts"] as const;
 
 /** Modules that serve no part of readiness. A provider's SDK and its adapter load when the provider opens its
  *  first connection, the Agent SDK bridge loads when the Claude engine is first built, the Antigravity client and
@@ -18,9 +18,9 @@ const DEFERRED_PACKAGES: ReadonlySet<string> = new Set([
 const DEFERRED_FILES: ReadonlySet<string> = new Set([
   resolve(REPO_ROOT, "src/orchestration/modules/provider-claude-agent-sdk/bridge.ts"),
   resolve(REPO_ROOT, "src/orchestration/modules/provider-claude-agent-sdk/client.ts"),
-  resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/bridge.ts"),
+  resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/request/bridge.ts"),
   resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/client.ts"),
-  resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/mcp-server.ts"),
+  resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/tools/mcp-server.ts"),
 ]);
 
 describe("the readiness entries", () => {

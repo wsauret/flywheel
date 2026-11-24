@@ -9,7 +9,7 @@ import { agentPersonas, installedPersonaRole } from "../workflow-host/frontend-a
 import { createRoleAssignmentReader } from "./role-assignment-projection.js"
 import { workflowRunOwner, workflowRunReader } from "../module-catalog.js"
 import type { RuntimeOwnership } from "./runtime-ownership.js"
-import type { ProviderConnectionCapture } from "../agent-runtime/factory.js"
+import type { ProviderConnectionCapture } from "../agent-runtime/model-runtime-capture.js"
 import { installedChildSessionHistory } from "../session/module-session-operations.js"
 import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js"
 import type { RuntimeUiBus } from "./runtime-ui-bus.js"

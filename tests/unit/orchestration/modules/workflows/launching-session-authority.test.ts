@@ -12,7 +12,7 @@ import { createBackgroundExecutionOwner } from "../../../../../src/orchestration
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js"
 import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/module-runtime-services.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
-import { loadPathWorkflow } from "../../../../../src/orchestration/workflow-host/path-workflow.js"
+import { loadPathWorkflow } from "../../../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { moduleRuntimeServices } from "../../../../helpers/module-runtime-services.js"

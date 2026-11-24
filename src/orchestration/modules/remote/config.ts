@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import type { ModuleConfigSection } from "../../config/config-section.js"
+import type { ModuleConfigSection } from "../../config/schema/config-section.js"
 
 const RemoteConfigSchema = Schema.Struct({
   keep_awake: Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(true)), Schema.annotate({ description: "Keep this machine awake while a phone uses a runtime it started?" })),

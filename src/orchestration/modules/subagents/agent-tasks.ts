@@ -1,6 +1,6 @@
 import type { ModuleAgentTasks } from "../../module-agent-tasks.js"
 import { renderSubagentRoster, buildSubagentTask, SUBAGENT_HANDOFF_SCHEMA, validateDispatchInput } from "./execution/prompts.js"
-import { createFilteredSubagentStream, createSubagentStats } from "./execution/stream-filter.js"
+import { createFilteredSubagentStream, createSubagentStats } from "./execution/result/stream-filter.js"
 import { subagentToolWith } from "./tool.js"
 
 export const subagentTasks: ModuleAgentTasks = {

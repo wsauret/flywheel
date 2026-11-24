@@ -5,12 +5,12 @@ import type { OutputWindowCommandType } from "../output-window/output-window.js"
 import type { OverlayLayers } from "../components/modal-stack.js"
 import { shouldShowGlobalHints } from "../components/key-hint-row-state.js"
 import type { QuestionInputContext } from "../components/question-input.js"
-import type { ComposerPopupKeySlot } from "./create-composer-popup-key-slot.js"
+import type { ComposerPopupKeySlot } from "../components/create-composer-popup-key-slot.js"
 import { createAsyncReporter } from "./report-async.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
 import type { ChatModeHook } from "./use-chat-mode.js"
 import type { SessionControlsHook } from "./use-session-controls.js"
-import type { FindBar } from "./create-find-bar.js"
+import type { FindBar } from "../output-window/create-find-bar.js"
 
 type KeyboardEventLike = { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean; sequence?: string; raw?: string; preventDefault?: () => void }
 

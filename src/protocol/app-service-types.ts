@@ -102,6 +102,7 @@ type RuntimeKernelQuery =
   | { readonly type: "authStatusSnapshot"; readonly scope: RuntimeAuthStatusScope }
   | { readonly type: "authProfileDeletionPreview"; readonly id: string }
   | { readonly type: "updateSnapshot" }
+  | { readonly type: "restartReadiness" }
   | { readonly type: "moduleSnapshot" }
   | { readonly type: "configSnapshot" }
   | { readonly type: "gitAiAttributionSnapshot" }
@@ -147,6 +148,7 @@ export type RuntimeQueryResult<Q extends RuntimeQuery> =
                     : Q extends { readonly type: "authStatusSnapshot" } ? RuntimeAuthStatusSnapshotResult
                     : Q extends { readonly type: "authProfileDeletionPreview" } ? RuntimeAuthProfileDeletionPreview
                         : Q extends { readonly type: "updateSnapshot" } ? RuntimeUpdateSnapshotResult
+                        : Q extends { readonly type: "restartReadiness" } ? RuntimeRestartReadiness
                           : Q extends { readonly type: "moduleSnapshot" } ? RuntimeModuleSnapshotResult
                           : Q extends { readonly type: "configSnapshot" } ? RuntimeConfigSnapshotResult
                               : Q extends { readonly type: "gitAiAttributionSnapshot" } ? RuntimeGitAiAttributionSnapshotResult
@@ -475,6 +477,12 @@ export type FrontendMutation =
   | { type: "settings.set_workflow_mode"; expected: WorkflowsMode; mode: WorkflowsMode }
   | { type: "settings.set_persistent_processes"; expected: boolean; enabled: boolean }
   | { type: "settings.set_update_auto_install"; expected: boolean; value: boolean }
+  /** A person's restart of the account service from a client that cannot
+   *  start one itself (PI-INTERACTION-048). It is answered once the service
+   *  has accepted it and before the service makes way, and refused, stopping
+   *  nothing, while `restartReadiness` is `unavailable` or the service cannot
+   *  accept it now. */
+  | { type: "service.restart" }
   | RuntimeCommandInvocation
   | CommandUsageRecordMutation
   | ({ type: "model.save_effort" } & RuntimeSaveModelEffortMutation)
@@ -777,6 +785,19 @@ export type RuntimeFaultReportOutcome =
 export type RuntimeServiceState =
   | { readonly kind: "serving" }
   | { readonly kind: "crash_loop"; readonly cause: string; readonly report?: RuntimeFaultReportOutcome }
+
+/** Whether a `service.restart` would bring the account service back, as
+ *  that service decides it now, and which start of the service answers.
+ *  - `ready`: something starts the service again once it makes way: its
+ *    service manager, or the service itself as it retires.
+ *  - `unavailable`: nothing would start it again, such as a source run that
+ *    a terminal started, so a restart is refused before anything stops.
+ *    `reason` says why in words a person reads.
+ *  `serviceStart` names this start of the service, so a client that
+ *  restarted it can tell its successor from the same service. */
+export type RuntimeRestartReadiness =
+  | { readonly kind: "ready"; readonly serviceStart: string }
+  | { readonly kind: "unavailable"; readonly reason: string; readonly serviceStart: string }
 
 /** The one runtime condition every surface renders: the connection's own
  *  health, or, while the runtime answers, what it reports about the account

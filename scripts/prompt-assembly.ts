@@ -28,7 +28,7 @@ import { requestKernel, sharesTreeHost } from "../src/orchestration/agent-runtim
 import { requestSystemPromptOptions } from "../src/orchestration/agent-runtime/request-system-prompt.js";
 import { buildSystemPromptParts, type SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
 import type { KernelToolDeps } from "../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
-import { createShellRuntime } from "../src/orchestration/agent-runtime/tools/shell-runtime.js";
+import { createShellRuntime } from "../src/orchestration/agent-runtime/shell-runtime.js";
 import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import type { CapabilityAccess, RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
@@ -40,9 +40,9 @@ import type { BenchmarkAdmissionDeps } from "../src/orchestration/modules/develo
 import { createIosSimulatorTool } from "../src/orchestration/modules/development/ios-simulator-tool.js";
 import { createMcpRuntime } from "../src/orchestration/modules/mcp/runtime.js";
 import type { DefinitionOverrideOperations } from "../src/workflows/definitions/override-staleness.js";
-import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagents/execution/dispatch-deps.js";
+import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
 import type { WorkflowsMode } from "../src/protocol/module-protocol-types.js";
-import { workflowLaunchTargets } from "../src/orchestration/workflow-host/launch-origin.js";
+import { workflowLaunchTargets } from "../src/orchestration/workflow-host/lifecycle/launch-origin.js";
 import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definition-registry.js";
 import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/session-messaging.js";
 

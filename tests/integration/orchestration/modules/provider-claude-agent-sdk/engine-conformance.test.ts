@@ -28,7 +28,7 @@ import { executePreparedTool, prepareToolCall } from "../../../../../src/orchest
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { createQueryLauncher, type LaunchedQuery } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
-import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
+import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
 import { handoffNudge } from "../../../../../src/workflows/shared/handoff-observer.js";
 import { compileOutput } from "../../../../../src/workflows/output-contract/compile.js";
 import type { OutputObject } from "../../../../../src/workflows/output-contract/grammar.js";

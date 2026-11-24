@@ -5,7 +5,7 @@ import type { Field, OutputObject } from "../../src/workflows/output-contract/gr
 import type { LoadedBrief } from "../../src/workflows/brief.js";
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../src/workflows/agent-resolution.js";
 import { publishSkillRevision, type SkillDefinition, type SkillRegistryRevision } from "../../src/workflows/skill-schema.js";
-import { compileReassessmentOutput, compileRetiredReassessmentOutput } from "../../src/workflows/vm/reassessment-contract.js";
+import { compileReassessmentOutput, compileRetiredReassessmentOutput } from "../../src/workflows/reassessment-contract.js";
 import type { AgentRecordKeys, WorkflowDefinition } from "../../src/workflows/workflow-schema.js";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "./project-definitions.js";
 import { loadedWorkflow } from "./workflow-files.js";

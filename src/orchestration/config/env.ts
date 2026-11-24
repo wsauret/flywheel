@@ -1,9 +1,9 @@
 import { Result, Schema } from "effect";
 import { EFFORT_VALUES, EffortSchema, TierConfigSchema } from "../../infra/workflow-types.js";
 import { validateRoleIds, WORKFLOW_AGENT_ROLE_ID } from "./roles.js";
-import type { FlywheelConfig } from "./schema.js";
+import type { FlywheelConfig } from "./schema/schema.js";
 import { canonicalRoleId } from "./retired-config-names.js";
-import { canonicalModelId } from "../../infra/llm/model-id.js";
+import { canonicalModelId } from "../../infra/model-id.js";
 
 type DeepPartial<T> = { -readonly [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
 

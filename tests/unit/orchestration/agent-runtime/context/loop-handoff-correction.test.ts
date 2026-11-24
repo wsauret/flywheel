@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
 import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
 import { makeCaptureClient } from "./_loop-fixtures.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";

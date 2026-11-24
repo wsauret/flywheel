@@ -8,7 +8,7 @@ import { openSheetCommand, type ClientCommand } from "../../src/protocol/client/
 import { summarizeProviders } from "../../src/protocol/client/provider-summary.js"
 import { installedLauncherPath, updateRepository } from "../../src/protocol/installation.js"
 import { createAuthNotificationCoordinator } from "./providers/auth-notification-coordinator.js"
-import { nodeSocketLayer } from "./runtime/node-socket.js"
+import { nodeSocketLayer } from "./runtime/connection/node-socket.js"
 import { MINIMUM_RUNTIME_VERSION, resolveRuntime } from "./runtime/runtime-resolver.js"
 import { createRuntimeRecovery } from "./runtime/runtime-recovery.js"
 import { ensureAccountRuntime, prepareAccountRuntime, type AccountSupervisorOptions } from "./runtime/supervisor.js"

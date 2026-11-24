@@ -1,5 +1,5 @@
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
-import type { DraftCache } from "./create-draft-cache.js"
+import type { DraftCache } from "../components/create-draft-cache.js"
 import type { ShellServices } from "./shell-state.js"
 
 interface DiscardTransientDeps {

@@ -1,22 +1,8 @@
-import { Schema } from "effect";
 import { completeJudge, judgePairs, type JudgeAttemptReport, type JudgeCandidate, type JudgeLoopOptions, type JudgeModel, type JudgeSettlement, type JudgeVerdict } from "./judge.js";
 import type { ResearchAnswerKey } from "./research-task.js";
-import type { RunStore, ScoreRecord } from "./run-store.js";
+import type { ResearchScore, RunStore, ScoreRecord } from "./run-store.js";
 import type { CommitSnapshot } from "./task-schema.js";
 
-/** One research answer scored against its task's answer key. `citations` is the
- *  mechanical check: how many distinct `path:line` citations the answer makes, and
- *  those that name no line of exactly one file at the pin. */
-export const ResearchScoreSchema = Schema.Struct({
-  variant: Schema.String,
-  task: Schema.String,
-  repeat: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
-  caught: Schema.Array(Schema.String),
-  uncertain: Schema.Array(Schema.String),
-  trapsAsserted: Schema.Array(Schema.String),
-  citations: Schema.Struct({ total: Schema.Int, invalid: Schema.Array(Schema.String) }),
-});
-export type ResearchScore = typeof ResearchScoreSchema.Type;
 type CitationCheck = ResearchScore["citations"];
 
 /** Each file of a pinned snapshot by its snapshot-relative path, with its line count. */

@@ -53,7 +53,7 @@ export function createWorkflowHosts(input: {
       try {
         ensureDirectoryUnder(options.projectRoot, workflowRelativeDir(id))
         writeOwnerPid(id, options.projectRoot, "workflow")
-        const { createWorkflowRunner } = await import("../../workflow-host/runner.js")
+        const { createWorkflowRunner } = await import("../../workflow-host/execution/runner.js")
         const onCoreCompleted = options.onCoreCompleted
         const created = createWorkflowRunner({
           ...options, runtime: input.runtime, projectionReader: input.projectionReader,

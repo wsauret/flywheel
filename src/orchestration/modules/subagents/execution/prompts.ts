@@ -1,5 +1,5 @@
 import { roleCovers, type AgentDefinition } from "../../../../infra/agent-definition.js";
-import type { HandoffToolSchema } from "../../../workflow-host/handoff-tool-schema.js";
+import type { HandoffToolSchema } from "../../../workflow-host/attempt/handoff-tool-schema.js";
 import type { ToolOutcome } from "../../../../infra/tool-outcome.js";
 import { formatToolInputProblems } from "../../../agent-runtime/tools/validate-input.js";
 import { gitDisciplineRule, isReadOnlyPersona } from "../../../agent-runtime/persona-tool-rules.js";

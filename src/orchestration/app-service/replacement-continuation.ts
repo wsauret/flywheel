@@ -6,7 +6,7 @@ import { commandHandoversForAsync } from "../session/command-handover.js"
 import type { SessionManager } from "../session/manager.js"
 import { attachChatOwners, type ChatHostAttach, type ExecutorCommandHandover } from "./executor-command-handover.js"
 import { authorizePlannedSessionContinuation, continuationTargetId, plannedContinuationWork, plannedContinuationsFor, readPlannedSessionContinuationAsync, recordInterrupt, retirePlannedSessionContinuation, type ContinuationLanes, type PlannedSessionContinuation } from "../session/planned-session-continuation.js"
-import type { WorkflowController } from "../workflow-host/controller.js"
+import type { WorkflowController } from "../workflow-host/lifecycle/controller.js"
 import { readChatTurnEndEvidence } from "../session/chat-session-run-evidence.js"
 
 const log = Log.create({ service: "replacement-continuation" })

@@ -1,9 +1,9 @@
 import type { RGBA, TextBufferRenderable, TextChunk } from "@opentui/core"
 import { type Accessor, createContext, createSignal, onCleanup, untrack, useContext } from "solid-js"
 import type { FindMatcher, FindRange } from "../../protocol/transcript-find.js"
-import { displayWidth } from "../utils/text.js"
+import { displayWidth } from "../text.js"
 import { blendToward, contrastRatio, correctContrast, TEXT_MINIMUM_CONTRAST } from "./theme/color-contrast.js"
-import type { TuiTheme } from "./theme/resolve.js"
+import type { TuiTheme } from "./theme/tui-theme.js"
 
 /** The occurrence a find bar moved to: its block and its ordinal among the
  *  occurrences that the block renders. */

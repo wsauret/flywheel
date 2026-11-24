@@ -4,14 +4,15 @@ import type { ChatInput, SessionInputProducer } from "../../../../src/infra/chat
 import { buildSubagentCompleted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import { holdQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, readWorkflowBackgroundNotifications, readConversationBackgroundNotifications } from "../../../../src/orchestration/session/conversation/queued-background-notifications"
 import { holdQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND, readUnreadMessages } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
-import { registerLiveSessionControl, messageDisposition, type RecipientState, type DeliveryOutcome, type LiveRecipientState } from "../../../../src/orchestration/session/live-session-control"
+import { registerLiveSessionControl } from "../../../../src/orchestration/session/live-session-control"
+import { messageDisposition, type RecipientState, type DeliveryOutcome, type LiveRecipientState } from "../../../../src/orchestration/session/message-disposition"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager"
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
 import { deliverSessionInput, settleUnreadMessages } from "../../../../src/orchestration/session/session-input-delivery"
 import { cleanupTmpRoot, finalizeTestSessionDeletion, makeDepsWithStore, makeTmpDir, publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
 import { returnUnreadHumanInput, claimComposerReturns } from "../../../../src/orchestration/session/composer-returns"
 import { conversationPersonMessage } from "../../../../src/orchestration/session/conversation/person-message-ledger"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
 
 /** The durable in-flight kind that holds composer input returned to a parent. */

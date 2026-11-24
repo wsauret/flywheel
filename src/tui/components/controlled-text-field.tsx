@@ -3,7 +3,7 @@
 import type { ColorInput } from "@opentui/core"
 import { For, Show } from "solid-js"
 import type { TextEditorPresentation } from "../keymap/text-entry.js"
-import { displayWidth, graphemes } from "../utils/text.js"
+import { displayWidth, graphemes } from "../text.js"
 
 const CURSOR = { inverse: true } as const
 

@@ -6,7 +6,8 @@ import type { RuntimeModuleSnapshotResult } from "../../../../src/protocol/modul
 import { papercutsProtocol, type RuntimePapercutCountView } from "../../../../src/protocol/modules/papercuts.js"
 import type { ProjectNotificationEpisode } from "../../../../src/protocol/modules/project-notifications.js"
 import type { OutputWindowSnapshot } from "../../../../src/protocol/transcript-protocol-types.js"
-import { cursorKey, sessionDomainCursor, type RuntimeDomainIntakeBindings } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import { cursorKey, sessionDomainCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeDomainIntakeBindings } from "../../../../src/protocol/runtime-delivery-policy.js"
 import { workflowsProtocol } from "../../../../src/protocol/modules/workflows.js"
 import {
   classifyRuntimeProtocolErrorKind,

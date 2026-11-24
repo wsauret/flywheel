@@ -1,13 +1,8 @@
 import { statSync } from "node:fs";
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import type { ShellWriteCommand } from "./bash-write-effects.js";
-import { directoryChange } from "./bash-write-directories.js";
+import { directoryChange, type Directory, type DirectoryContext } from "./bash-write-directories.js";
 import { expandShellWord, placeShellPath, type ExpandedWord, type ShellDialect } from "./bash-write-words.js";
-
-interface Directory {
-  readonly cwd: string | null;
-  readonly pwd: string | null;
-}
 
 interface ShellVariables {
   readonly [name: string]: string | null | undefined;
@@ -32,7 +27,7 @@ interface Trap {
 
 /** One statement-state owner. Null is unknown; an absent variable is unset.
  * Trap projections retain only paths on which their registration is active. */
-export class ShellState {
+export class ShellState implements DirectoryContext {
   private traps = new Map<string, Trap>();
   private retiredTraps = new Map<string, Trap>();
   private constructor(

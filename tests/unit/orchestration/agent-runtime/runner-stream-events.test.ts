@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 
 import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner-stream-events.js";
 import { emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js";
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
 import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/turn-usage-tracker.js";
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js";

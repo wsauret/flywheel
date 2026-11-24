@@ -1,14 +1,14 @@
 import { expect, spyOn, test } from "bun:test";
-import type { CredentialSlotClassifier } from "../../../../src/infra/auth/auth-store-types.js";
+import type { CredentialSlotClassifier } from "../../../../src/infra/auth/store/auth-store-types.js";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted } from "effect";
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
-import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js";
+import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
+import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
 import { DebugLog } from "../../../../src/infra/debug-log.js";
-import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
+import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { createModelsClient } from "../../../../src/infra/llm/models.js";
 import { testCapabilityModules, testProviderSelection } from "../../../helpers/provider-authority.js";
@@ -19,6 +19,7 @@ import { canonicalTestRow, combinedModelsDevProviders, modelsDevDocument, TEST_C
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { catalogProfile } from "../../../helpers/catalog-profile.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 
 const classifySlot = credentialSlotClassifier(testCapabilityModules());
 const LINEAGE = "c16045ec-29e2-43c7-bcde-ea7dc1e95280";

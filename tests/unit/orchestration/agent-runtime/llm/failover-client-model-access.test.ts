@@ -1,7 +1,7 @@
 /** The walk's answer to an account that does not grant the model or its extended window: the next candidate, with
  *  no in-place retry and no mark, the refusal recorded for the refusing account, and copy that names the refusal. */
 import { describe, expect, test } from "bun:test";
-import type { ModelRefusal } from "../../../../../src/infra/auth/provider-model-catalog-store.js";
+import type { ModelRefusal } from "../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
 import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
 import { describeAgentFailure } from "../../../../../src/orchestration/agent-runtime/failure-message.js";
 import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";

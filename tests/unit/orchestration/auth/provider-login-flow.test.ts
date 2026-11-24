@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import type { AccessProviderAccountIdentity, AccessProviderDefinition, ExternalAccount, ExternalLoginPorts } from "../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../../src/infra/llm/access-provider.js";
 import { logoutProfileExternalLogins, providerLoginFlow } from "../../../../src/orchestration/auth/auth-actions.js";
 import { SHIPPED_MODULES } from "../../../../src/orchestration/modules.js";
 import { fileTemporaryDirectory } from "../../../helpers/directories.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
+import type { AccessProviderAccountIdentity, ExternalAccount } from "../../../../src/infra/auth/provider-account.js";
 
 /** The login flow a client is shown is a fold over the enabled definitions:
  *  a provider that declares OAuth answers with the flow its definition

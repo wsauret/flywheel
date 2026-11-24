@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import { apiKey, apiKeyCredential, resolveAuthContext as resolveAuthContextWithSlots } from "../../../../src/infra/auth/auth-context.js";
 import { plainApiKey } from "../../../helpers/auth-context.js";
 import { createKeyResolver, type CredentialCommandRunner } from "../../../../src/infra/auth/resolve-key.js";
-import { setMeteredCredentialWithReceipt } from "../../../../src/infra/auth/auth-store-mutations.js";
+import { setMeteredCredentialWithReceipt } from "../../../../src/infra/auth/store/auth-store-mutations.js";
 import { fileTemporaryDirectory } from "../../../helpers/directories.js";
 
 /** The account layout the auth store is written for: an account home holding a

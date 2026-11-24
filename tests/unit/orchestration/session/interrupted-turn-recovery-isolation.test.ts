@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError } from "../../../../src/infra/event-store-types";
-import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer";
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
-import type { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
+import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
+import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import {
   createSavePointContext,
   disposeSavePointContext,
