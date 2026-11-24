@@ -1,6 +1,6 @@
 // Translates loop stream events into runtime events for the session's event
 // channel: one exhaustive switch, one emit per event kind.
-import { createRuntimeEvent } from "../../../infra/runtime-event-factory.js";
+import { createRuntimeEvent } from "../../../infra/runtime-facts/runtime-event-factory.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
 import { isAnthropicNarration } from "../../../infra/llm/anthropic-narration.js";
 import { reasoningSummaryText } from "../../../infra/output/assistant-content-runs.js";

@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 import { fileURLToPath } from "node:url"
-import type { BuiltInCommandDescriptor, CommandOutcome } from "../../../../src/protocol/command-catalog-protocol-types.js"
+import type { BuiltInCommandDescriptor, CommandOutcome } from "../../../../src/protocol/commands/command-catalog-protocol-types.js"
 import { buildCommandDefinitions } from "../../../../src/tui/commands/command-definitions.js"
 import { createCommandDispatch, createCommandUsageRecorder } from "../../../../src/tui/commands/command-dispatch.js"
 import type { BuiltInCommandDefinition } from "../../../../src/tui/commands/command-types.js"
@@ -9,7 +9,7 @@ import { createSurfaceOpener } from "../../../../src/protocol/client/surface-pre
 import { createOverlayLayers } from "../../../../src/tui/components/modal-stack.js"
 import type { SurfaceRequest } from "../../../../src/tui/commands/command-surfaces.js"
 import { commandSpecs, commandsToOptions } from "../../../../src/tui/commands/command-catalog.js"
-import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
 import { testCommandContext } from "../../../helpers/command-context.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 

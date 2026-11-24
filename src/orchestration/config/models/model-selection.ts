@@ -2,7 +2,7 @@ import type { ModelConfigDeps } from "./model-assignment-types.js";
 import type { ResolvedRoles } from "../roles.js";
 import { resolveRoles, resolveRolesForProfile, type RoleResolutionOptions } from "./role-resolution.js";
 import type { FlywheelConfig } from "../schema/schema.js";
-import type { ModelAssignmentExpected, ModelAssignmentPatch, ModelSelectionSlot } from "../../../protocol/model-assignment-protocol-types.js";
+import type { ModelAssignmentExpected, ModelAssignmentPatch, ModelSelectionSlot } from "../../../protocol/auth/model-assignment-protocol-types.js";
 import { updateModelAssignments } from "../writer.js";
 
 /** Writes one role of the active profile when its file entry still equals `expected`; otherwise it writes nothing and

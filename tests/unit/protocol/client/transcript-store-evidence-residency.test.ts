@@ -1,9 +1,9 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import type { MutationEvidence } from "../../../../src/infra/mutation-evidence.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { createTranscriptStore } from "../../../../src/protocol/client/transcript-store.js"
-import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
+import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import { SESSION, deltaPatch, fakeConnection, settle, toolBlock } from "./_transcript-store-fixtures.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 

@@ -1,5 +1,5 @@
-import type { FrontendOutputBlock } from "../../../protocol/app-service-types.js"
-import { blockEntryKeys, blockIdentity } from "../../../protocol/block-identity.js"
+import type { FrontendOutputBlock } from "../../../protocol/runtime/app-service-types.js"
+import { blockEntryKeys, blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import { closesToolStretch, type TranscriptRow } from "../../../protocol/client/transcript-model.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { terminalTranscript, type PresentedTerminalRow, type TerminalTranscript } from "../output-blocks/visible-output-blocks.js"

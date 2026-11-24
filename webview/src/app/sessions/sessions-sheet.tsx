@@ -6,7 +6,7 @@ import { Icon, ICONS } from "../controls/icons.js"
 import { SessionList } from "./session-list.js"
 import { useSessionActions } from "./session-actions.js"
 import { Sheet } from "../sheets/sheet.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/commands/command-names.js"
 
 /** The session list as a sheet, for a container too narrow to hold the rail.
  *  The same rows, actions, and search as the rail; only the frame differs. */

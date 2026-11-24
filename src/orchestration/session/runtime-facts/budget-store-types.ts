@@ -1,5 +1,5 @@
 import type { EmitFn } from "../../../infra/event-bus.js";
-import type { AsyncEventReadSurface, StoredFact } from "../../../infra/event-store-types.js";
+import type { AsyncEventReadSurface, StoredFact } from "../../../infra/store/event-store-types.js";
 import type { BudgetLimits } from "../../../workflows/run/budget.js";
 import type { SessionRuntimeFact } from "./session-runtime-event-types.js";
 import type { DurableOwner } from "../../../infra/durable-owner.js";

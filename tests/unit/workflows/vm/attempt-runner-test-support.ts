@@ -1,7 +1,7 @@
 // Shared fixtures of the attempt-runner suites: the bound skill one attempt
 // runs, the committed control the runner reads, and the invocation itself.
 import { createContextAccumulator } from "../../../../src/workflows/context-bundle/context.js";
-import { moduleDisabledReason } from "../../../../src/protocol/module-ids.js";
+import { moduleDisabledReason } from "../../../../src/protocol/runtime/module-ids.js";
 import type { AgentOutput } from "../../../../src/workflows/vm/host/agent-outcome.js";
 import type { ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution.js";
 import {
@@ -12,7 +12,7 @@ import {
 import type { AttemptExecutionInput } from "../../../../src/workflows/vm/control/commands.js";
 import { testResolvedAgent, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
 
 interface HandoffContent {
   [key: string]: unknown;

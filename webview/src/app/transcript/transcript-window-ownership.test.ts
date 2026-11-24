@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/runtime/app-service-types.js"
 import { mountToolGroup } from "./render-ownership-loader-fixture.js"
 
 const tool = (id: string): FrontendToolEntry => ({

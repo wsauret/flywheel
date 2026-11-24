@@ -1,6 +1,6 @@
 import type { ClaudeLoginEngines } from "../../../infra/claude-engine.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { accountAuthDir } from "../../../infra/paths.js"
 import { createOrderedLane } from "../../../infra/ordered-lane.js"
 import type { McpStatusRow } from "../../../protocol/modules/mcp.js"

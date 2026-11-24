@@ -8,7 +8,7 @@ import { POSIX_FILE_MODES } from "../../helpers/posix-modes.js";
 import { mkdirSync, mkdtempSync, lstatSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ContainedPathError } from "../../../src/infra/descriptor-directory-contract.js";
+import { ContainedPathError } from "../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import {
   directoryComponents,
   ensureDirectoryUnder,

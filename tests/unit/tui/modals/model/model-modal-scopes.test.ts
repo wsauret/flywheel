@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import type { ModelAssignmentRow, ModelOptionRow } from "../../../../../src/protocol/model-assignment-protocol-types.js";
-import type { AttachedRuntimeClient, FrontendEvent, FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
+import type { ModelAssignmentRow, ModelOptionRow } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js";
+import type { AttachedRuntimeClient, FrontendEvent, FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createModalStack, type ModalContext } from "../../../../../src/tui/components/modal-stack.js"
 import { descriptionLine, modalHelpRows, modalTitle, contextLine } from "../../../../../src/tui/modals/model/model-modal-chrome.js"
 import type { ModelModalState } from "../../../../../src/tui/modals/model/model-modal-types.js"
-import { authStatusCursor, type RuntimeAuthStatusScope, type RuntimeAuthView } from "../../../../../src/protocol/auth-status-protocol-types.js"
-import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { authStatusCursor, type RuntimeAuthStatusScope, type RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
+import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { useModelModal } from "../../../../../src/tui/hooks/overlays/modals/model/use-model-modal.js"
 import {
   scopeChromeColor,

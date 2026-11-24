@@ -7,7 +7,7 @@
 
 import type { LogicalTurnStartedContext, TurnParkedContext } from "../../../../infra/agent-loop-events.js"
 import type { EmitFn } from "../../../../infra/event-bus.js"
-import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js"
+import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js"
 import type { SessionNoticeOperation } from "../../../../infra/session-notice.js"
 import type { AgentLifecycleCallbacks } from "../../types.js"
 

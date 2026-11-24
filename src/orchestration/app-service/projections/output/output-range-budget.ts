@@ -1,4 +1,4 @@
-import type { OutputRangeAnchor } from "../../../../protocol/transcript-protocol-types.js"
+import type { OutputRangeAnchor } from "../../../../protocol/transcript/transcript-protocol-types.js"
 
 interface ProjectRangeBudgetOptions<Raw, Projected> {
   readonly records: readonly Raw[]

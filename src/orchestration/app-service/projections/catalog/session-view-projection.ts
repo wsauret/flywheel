@@ -1,7 +1,7 @@
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { createBackgroundLane, type BackgroundLane } from "../../../../infra/ordered-lane.js"
 import type { SessionEntry, SessionStoreReader } from "../../../session-store/types.js"
-import type { RuntimeSessionCursorIdentity, RuntimeUiPatch, RuntimeUiPatchInput, RuntimeUiPatchPayload } from "../../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeSessionCursorIdentity, RuntimeUiPatch, RuntimeUiPatchInput, RuntimeUiPatchPayload } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 
 /** The publish half every per-session view projection shares: an equality-gated
  *  diff against the last published view, one microtask batch, and the

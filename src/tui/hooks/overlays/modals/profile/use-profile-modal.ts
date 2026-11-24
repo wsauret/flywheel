@@ -1,6 +1,6 @@
 import { createMemo, createSignal, type Accessor, type JSX } from "solid-js"
 import { AUTH_PROFILE_PENDING, type AuthProfileSelection } from "./auth-profile-selection.js"
-import type { RuntimeAuthView } from "../../../../../protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import { createListModalKeys } from "../../../../components/modal/select/modal-list-keys.js"
 import { filterOptions, flattenWithCategories } from "../../../../components/modal/select/modal-select-helpers.js"
 import type { FilteredResult } from "../../../../components/modal/select/modal-select-types.js"

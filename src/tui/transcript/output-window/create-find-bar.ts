@@ -1,6 +1,6 @@
 import { type Accessor, batch, createEffect, createMemo, createSignal, on, onCleanup, untrack } from "solid-js"
-import { compileFind, TRANSCRIPT_FIND_LIMIT, type FindMatcher } from "../../../protocol/transcript-find.js"
-import type { TranscriptFindMatch, TranscriptFindRequest, TranscriptFindResult } from "../../../protocol/transcript-protocol-types.js"
+import { compileFind, TRANSCRIPT_FIND_LIMIT, type FindMatcher } from "../../../protocol/transcript/transcript-find.js"
+import type { TranscriptFindMatch, TranscriptFindRequest, TranscriptFindResult } from "../../../protocol/transcript/transcript-protocol-types.js"
 import type { FindTarget } from "../../context/find/find-highlight.js"
 import type { OutputTranscriptView } from "../transcript-store/output-transcript-cache-types.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY, type TextEditorPresentation, type TextEntryKeyEvent } from "../../terminal/keymap/text-entry.js"

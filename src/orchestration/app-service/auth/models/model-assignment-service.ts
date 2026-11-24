@@ -2,14 +2,14 @@ import type { RoleAssignments } from "../../../session/metadata/schemas.js"
 import type { FirstPartyModuleSnapshot } from "../../../modules.js"
 import { workflowRunReader } from "../../../module-catalog.js"
 import { agentPersonas, installedPersonaRole } from "../../../workflow-host/frontend-attempts.js"
-import type { RuntimeModelRolesResult } from "../../../../protocol/model-role-protocol-types.js"
+import type { RuntimeModelRolesResult } from "../../../../protocol/auth/model-role-protocol-types.js"
 import { modelRoleAdmission, publishedModelRoles } from "./model-role-projection.js"
 import type { ModelPickerConfigDeps } from "../../../config/models/model-assignment-types.js"
 import type { FlywheelConfig } from "../../../config/schema/schema.js"
 import { EffortSchema } from "../../../../infra/workflow-types.js"
 import { Schema } from "effect"
 import { errorMessage } from "../../../../infra/error-message.js"
-import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
+import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
 import {
   createModelAssignmentController,
   loadGlobalDefaultRoles,
@@ -17,7 +17,7 @@ import {
 } from "../../../config/models/model-assignment-controller.js"
 import { ensureDurableChatSession } from "../../supervisor/actor/session-chat-durability.js"
 import type { DefinitionAvailabilityOwner } from "../../definitions/definition-availability.js"
-import { isProfileModelRole } from "../../../../protocol/brief-role-id.js"
+import { isProfileModelRole } from "../../../../protocol/auth/brief-role-id.js"
 import type { SessionManager } from "../../../session/manager.js"
 import type { SessionStore } from "../../../session-store/types.js"
 import { personaRoleIds } from "../../../../workflows/definitions/definition-registry.js"
@@ -37,7 +37,7 @@ import type {
   RuntimeResetModelAssignmentsResult,
   RuntimeSaveModelEffortMutation,
   RuntimeSaveModelEffortResult,
-} from "../../../../protocol/model-assignment-protocol-types.js"
+} from "../../../../protocol/auth/model-assignment-protocol-types.js"
 const SESSION_ALREADY_EXISTS = "Session already exists:"
 const DEFAULTS_SCOPE = { kind: "defaults" } as const
 

@@ -1,4 +1,4 @@
-import type { LoadedWorkflowView, WorkflowTree, WorkflowTreeAgent, WorkflowTreeCoverage, WorkflowTreeDisposition, WorkflowTreeJoin, WorkflowTreeLoop, WorkflowTreeNode, WorkflowTreePhase, WorkflowTreeSelection, WorkflowTreeRound } from "../workflow-view-protocol-types.js"
+import type { LoadedWorkflowView, WorkflowTree, WorkflowTreeAgent, WorkflowTreeCoverage, WorkflowTreeDisposition, WorkflowTreeJoin, WorkflowTreeLoop, WorkflowTreeNode, WorkflowTreePhase, WorkflowTreeSelection, WorkflowTreeRound } from "../session/workflow-view-protocol-types.js"
 
 type WorkflowAttempt = LoadedWorkflowView["attempts"][number]
 

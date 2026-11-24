@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
 import {
   initializeWorkflow,
   transitionDecodedWorkflow,

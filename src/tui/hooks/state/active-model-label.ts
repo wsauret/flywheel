@@ -1,6 +1,6 @@
-import type { RuntimeChatDefault } from "../../../protocol/app-service-types.js"
-import { sessionServingSelection, type RuntimeRoleAssignmentEntry, type RoleAssignmentView } from "../../../protocol/role-protocol-types.js"
-import { isModelTierReference } from "../../../protocol/model-tier-reference.js"
+import type { RuntimeChatDefault } from "../../../protocol/runtime/app-service-types.js"
+import { sessionServingSelection, type RuntimeRoleAssignmentEntry, type RoleAssignmentView } from "../../../protocol/auth/role-protocol-types.js"
+import { isModelTierReference } from "../../../protocol/auth/model-tier-reference.js"
 
 /** Tiers are config vocabulary, never display vocabulary. An entry whose model
  *  is still a tier ref (resolved without a provider listing) counts as absent,

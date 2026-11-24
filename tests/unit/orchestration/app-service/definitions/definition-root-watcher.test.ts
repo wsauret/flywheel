@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
-import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js"
+import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js"
 import { watchDefinitionRoots } from "../../../../../src/orchestration/app-service/definitions/definition-root-watcher.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 

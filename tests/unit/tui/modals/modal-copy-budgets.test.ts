@@ -1,11 +1,11 @@
 import { usageFooterRows } from "../../../../src/tui/modules/subscription-usage/footer.js"
 import { describe, expect, it } from "bun:test"
 import { displayWidth } from "../../../../src/tui/terminal/text.js"
-import { SETTING_SECTIONS } from "../../../../src/protocol/setting-catalog.js"
+import { SETTING_SECTIONS } from "../../../../src/protocol/settings/setting-catalog.js"
 import { settingCatalogRows } from "../../../helpers/setting-catalog-rows.js"
 import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js"
 import { SHIPPED_MODULES } from "../../../../src/orchestration/modules.js"
-import { MODULE_SETTING_GROUPS } from "../../../../src/protocol/module-protocol-types.js"
+import { MODULE_SETTING_GROUPS } from "../../../../src/protocol/runtime/module-protocol-types.js"
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js"
 import {
   AUTH_CONTROL_COPY,

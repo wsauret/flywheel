@@ -7,7 +7,7 @@ import { BOLD } from "@tui/terminal/text-attributes.js"
 import { createMemo, createSignal, Show, type JSX } from "solid-js"
 import { useListSelectionReveal } from "../../components/modal/scroll/use-list-selection-reveal.js"
 import { Key } from "@solid-primitives/keyed"
-import { isWorkingStatus, type StatusView } from "../../../protocol/status-protocol-types.js"
+import { isWorkingStatus, type StatusView } from "../../../protocol/session/status-protocol-types.js"
 import { SessionPickerRow } from "./session-picker-row.js"
 import type { PickerRow, SessionPickerResult } from "./picker-types.js"
 import { pickerRowLines } from "./picker-helpers.js"
@@ -15,7 +15,7 @@ import { ModalFooter } from "../../components/modal/modal-footer.js"
 import { SESSION_CONTROL_COPY } from "../../components/modal/modal-copy.js"
 import { ControlledTextField } from "../../components/controls/controlled-text-field.js"
 import type { TextEditorPresentation } from "../../terminal/keymap/text-entry.js"
-import { SHORT_TITLE_MAX_CHARS } from "../../../protocol/app-service-types.js"
+import { SHORT_TITLE_MAX_CHARS } from "../../../protocol/runtime/app-service-types.js"
 
 interface SessionPickerAction {
   key: string

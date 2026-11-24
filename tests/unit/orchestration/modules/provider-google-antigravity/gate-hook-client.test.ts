@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { join } from "node:path"
 
 import { runGateHook } from "../../../../../src/infra/antigravity-gate-hook.js"
-import { listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../../../src/infra/internal-process-channel.js"
+import { listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../../../src/infra/process/channels/internal-process-channel.js"
 import { socketTemporaryRoot } from "../../../../helpers/directories.js"
 
 const ALLOW = "{}\n"

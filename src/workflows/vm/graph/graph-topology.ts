@@ -1,4 +1,4 @@
-import type { LogicalNode, WorkflowGraph } from "./graph-types.js";
+import type { LogicalNode, WorkflowGraph } from "../../control-facts/graph-types.js";
 
 /** The structure of one graph: where each node sits, what each node owns,
  *  what each node requires, which nodes read each node's state, and the

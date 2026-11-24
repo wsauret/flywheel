@@ -1,6 +1,6 @@
-import type { AttachedRuntimeClient } from "../app-service-types.js"
-import { cursorKey, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatchPayload } from "../runtime-ui-protocol-types.js"
-import { isGlobalRuntimeInvalidation } from "../runtime-invalidation.js"
+import type { AttachedRuntimeClient } from "../runtime/app-service-types.js"
+import { cursorKey, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatchPayload } from "../runtime/runtime-ui-protocol-types.js"
+import { isGlobalRuntimeInvalidation } from "../rpc/runtime-invalidation.js"
 import { createReadRetry } from "./background-reads.js"
 import { createCursorIntake, isLaneBreak } from "./cursor-intake.js"
 

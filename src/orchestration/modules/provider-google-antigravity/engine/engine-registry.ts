@@ -1,4 +1,4 @@
-import { DebugLog } from "../../../../infra/debug-log.js"
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
 import { RouteUnavailableError } from "../../../agent-runtime/llm/errors.js"
 import type { EngineProcess } from "./engine-process.js"
 import type { McpToolDeclaration } from "../tools/tool-projection.js"

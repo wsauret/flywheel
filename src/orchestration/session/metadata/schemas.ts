@@ -3,7 +3,7 @@ import { isAbsolute, resolve } from "node:path";
 import { ProviderRequestOptionsSchema } from "../../../infra/llm/access/provider-options.js";
 import { canonicalModelId } from "../../../infra/model-id.js";
 import { canonicalRoleId } from "../../config/retired-config-names.js";
-import { parseBriefRoleId } from "../../../protocol/brief-role-id.js";
+import { parseBriefRoleId } from "../../../protocol/auth/brief-role-id.js";
 import { SessionLifecycleStateSchema } from "./types.js";
 import { RoleAssignmentSnapshotSchema, RoleSettingEntrySchema, RoleSettingsSchema } from "../../../infra/role-settings.js";
 import { WorkflowMembershipSchema } from "../../../infra/session-workflow-membership.js";

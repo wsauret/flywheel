@@ -8,8 +8,8 @@
  */
 
 import { isAgentInFlight, type AgentGroupBlock, type ToolPresentation, type WorkflowAgentState, type WorkflowCard } from "../../infra/output-blocks.js"
-import type { FrontendActivity, WorkflowDefinitionDrift } from "../app-service-types.js"
-import type { LoadedWorkflowView, WorkflowAgentLive } from "../workflow-view-protocol-types.js"
+import type { FrontendActivity, WorkflowDefinitionDrift } from "../runtime/app-service-types.js"
+import type { LoadedWorkflowView, WorkflowAgentLive } from "../session/workflow-view-protocol-types.js"
 import { workflowDriftExplanation } from "./workflow-drift-copy.js"
 import { presentedWorkflowState, runStatusLabel, CONDITIONAL_PHASE_LABEL, type WorkflowStateRow } from "./session-controls.js"
 import { formatActivity, formatDuration, formatElapsed } from "./format.js"

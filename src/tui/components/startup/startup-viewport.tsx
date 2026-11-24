@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { createMemo, Match, Show, Switch } from "solid-js"
-import type { RuntimeStartupStatus } from "../../../protocol/app-service-types.js"
+import type { RuntimeStartupStatus } from "../../../protocol/runtime/app-service-types.js"
 import type { RuntimeFaultCopy } from "../../../protocol/client/runtime-fault-copy.js"
 import { useTheme } from "../../context/theme.js"
 import { BOLD } from "../../terminal/text-attributes.js"

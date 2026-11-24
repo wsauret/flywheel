@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createRoot, createSignal, getOwner, on, onCleanup, type Accessor } from "solid-js"
 
 import type { FaultReach } from "../../../../src/protocol/client/runtime-fault-copy.js"
-import type { ModuleId } from "../../../../src/protocol/module-ids.js"
+import type { ModuleId } from "../../../../src/protocol/runtime/module-ids.js"
 import type { ClientHost } from "../../host.js"
 import { webModuleEnabled, type WebHostPresence, type WebModule } from "../../web-module.js"
 import { createScreenStack, type PlacementLabels, type ScreenStack, type ScreenStackSelection } from "./screen-stack.js"

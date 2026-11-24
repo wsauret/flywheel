@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, defineProtocolQuery, type ModuleRow } from "../protocol-module.js"
-import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 import { formatStorageBytes, type StorageReclaimOutcome, type StorageReclaimPreview } from "../store-reclaim.js"
 
 /** The workspace-scoped `storage` contract: how large the project's Flywheel

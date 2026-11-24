@@ -1,6 +1,6 @@
 import type { Transport, TransportSendOptions } from "@modelcontextprotocol/sdk/shared/transport.js"
 import { JSONRPCMessageSchema, type JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js"
-import type { OwnedProcess } from "../../../infra/owned-subprocess.js"
+import type { OwnedProcess } from "../../../infra/supervision/launch/owned-subprocess.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
 import { withDeadline } from "../../../infra/with-deadline.js"
 

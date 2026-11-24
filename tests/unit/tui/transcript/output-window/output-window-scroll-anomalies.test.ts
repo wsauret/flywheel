@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { DebugLog } from "../../../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log.js"
 import { createRowChurnMonitor } from "../../../../../src/tui/transcript/output-window/output-window-scroll-anomalies.js"
 import type { TranscriptLayoutSlot } from "../../../../../src/tui/transcript/output-window/output-window-scroll.js"
 import type { TranscriptSnapshot } from "../../../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"

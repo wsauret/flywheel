@@ -3,9 +3,9 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Log } from "../../../../src/infra/log.js";
+import { Log } from "../../../../src/infra/diagnostics/log.js";
 import { loadStandalonePersonaRegistry } from "../../../../src/workflows/agents/registry.js";
-import { personaIdentitySha256 } from "../../../../src/workflows/vm/facts/definition-identity.js";
+import { personaIdentitySha256 } from "../../../../src/workflows/control-facts/definition-identity.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
 
 const SKILL_REVISION = repoDefinitions().skills();

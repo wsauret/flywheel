@@ -9,7 +9,7 @@ import { answerReference, SHIPPED_SITES } from "../../../bench/chat-ab/workflow-
 import { renderWorkflowAuditReport } from "../../../bench/chat-ab/workflow-audit-report.js";
 import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 import type { JudgeModel } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
-import type { ExecutionEvidence } from "../../../src/protocol/execution-evidence.js";
+import type { ExecutionEvidence } from "../../../src/protocol/session/execution-evidence.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporary = temporaryDirectories();

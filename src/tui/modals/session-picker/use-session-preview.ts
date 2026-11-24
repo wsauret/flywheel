@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
-import type { AttachedRuntimeClient, FrontendOutputBlock, FrontendToolStreamingText } from "../../../protocol/app-service-types.js"
-import type { HydratedOutputRange, OutputRangeRequest, TranscriptUnavailable, OutputRangeAnchor } from "../../../protocol/transcript-protocol-types.js"
-import { blockIdentity } from "../../../protocol/block-identity.js"
+import type { AttachedRuntimeClient, FrontendOutputBlock, FrontendToolStreamingText } from "../../../protocol/runtime/app-service-types.js"
+import type { HydratedOutputRange, OutputRangeRequest, TranscriptUnavailable, OutputRangeAnchor } from "../../../protocol/transcript/transcript-protocol-types.js"
+import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import { coversResidentSpan } from "../../../protocol/client/transcript-store-paging.js"
 
 const PREVIEW_DEBOUNCE_MS = 150

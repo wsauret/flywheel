@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, type DomainReader } from "../protocol-module.js"
-import type { RuntimeCursorIdentity } from "../runtime-ui-protocol-types.js"
+import type { RuntimeCursorIdentity } from "../runtime/runtime-ui-protocol-types.js"
 
 export const SIDE_QUESTION_SURFACE = "side-question"
 export const SIDE_QUESTION_COMMAND = "btw"

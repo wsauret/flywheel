@@ -1,9 +1,9 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { FrontendToolEntry } from "../../../../../src/protocol/app-service-types.js"
-import { applyNamedText, resolveQuestionAnswer } from "../../../client/question-answer.js"
-import { blockIdentity } from "../../../../../src/protocol/block-identity.js"
+import type { FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
+import { applyNamedText, resolveQuestionAnswer } from "../../../client/questions/question-answer.js"
+import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"
 import { createBlockDisclosure } from "./block-disclosure.js"
 import { rendered } from "./blocks-render-loader-fixture.js"
 

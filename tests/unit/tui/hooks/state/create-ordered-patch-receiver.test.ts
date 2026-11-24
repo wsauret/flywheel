@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import type { AttachedRuntimeClient, FrontendEvent } from "../../../../../src/protocol/app-service-types.js"
-import { sessionCursor } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { AttachedRuntimeClient, FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
+import { sessionCursor } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { createOrderedPatchReceiver } from "../../../../../src/tui/hooks/state/create-ordered-patch-receiver.js"
 import { fakeLanes } from "../../../../helpers/fake-lanes.js"
 

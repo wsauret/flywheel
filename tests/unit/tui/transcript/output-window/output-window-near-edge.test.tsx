@@ -6,7 +6,7 @@ import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import { createComponent } from "solid-js/web"
-import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createOutputTranscriptCache } from "../../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import type { OutputTranscriptView, TranscriptSnapshot, TranscriptStatus } from "../../../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"
 import type { OutputWindowCommand } from "../../../../../src/tui/transcript/output-window/output-window.js"
@@ -114,9 +114,8 @@ describe("OutputWindow near-edge paging", () => {
       reportProjectionFailure: (error): never => { throw error },
       visibleRange: () => snap(),
       visibleMessageCount: () => snap()?.totalBlocks ?? 0,
-      jumpToLatest: async () => {},
+      jumpToLatest: async () => { hydrates += 1 },
       freshness: () => undefined,
-      hydrateAnchor: async () => { hydrates += 1 },
       loadAround: async () => {},
       hydrateBlockBody: () => {},
       takeEstimateUpdates: () => [],
@@ -150,7 +149,6 @@ describe("OutputWindow near-edge paging", () => {
       visibleMessageCount: () => snap()?.totalBlocks ?? 0,
       jumpToLatest: async () => {},
       freshness: () => undefined,
-	      hydrateAnchor: async () => {},
         loadAround: async () => {},
         hydrateBlockBody: () => {},
       takeEstimateUpdates: () => [],
@@ -201,7 +199,6 @@ describe("OutputWindow near-edge paging", () => {
       visibleMessageCount: () => snap()?.totalBlocks ?? 0,
       jumpToLatest: async () => {},
       freshness: () => undefined,
-	      hydrateAnchor: async () => {},
         loadAround: async () => {},
         hydrateBlockBody: () => {},
       takeEstimateUpdates: () => [],
@@ -245,7 +242,6 @@ describe("OutputWindow near-edge paging", () => {
       visibleMessageCount: () => snap.totalBlocks,
       jumpToLatest: async () => {},
       freshness: () => undefined,
-      hydrateAnchor: async () => {},
       loadAround: async () => {},
       hydrateBlockBody: () => {},
       takeEstimateUpdates: () => [],
@@ -298,7 +294,6 @@ describe("OutputWindow near-edge paging", () => {
       visibleMessageCount: () => snap()?.totalBlocks ?? 0,
       jumpToLatest: async () => {},
       freshness: () => undefined,
-	      hydrateAnchor: async () => {},
         loadAround: async () => {},
         hydrateBlockBody: () => {},
       takeEstimateUpdates: () => [],
@@ -343,7 +338,6 @@ describe("OutputWindow near-edge paging", () => {
       visibleMessageCount: () => snap()?.totalBlocks ?? 0,
       jumpToLatest: async () => {},
       freshness: () => undefined,
-      hydrateAnchor: async () => {},
       loadAround: async () => {},
       hydrateBlockBody: () => {},
       takeEstimateUpdates: () => [],
@@ -484,7 +478,6 @@ describe("OutputWindow near-edge paging", () => {
       visibleMessageCount: () => state.snap.totalBlocks,
       jumpToLatest: async () => {},
       freshness: () => undefined,
-      hydrateAnchor: async () => {},
       loadAround: async () => {},
       hydrateBlockBody: () => {},
       takeEstimateUpdates: () => [],
@@ -530,7 +523,6 @@ describe("OutputWindow near-edge paging", () => {
       visibleMessageCount: () => snap()?.totalBlocks ?? 0,
       jumpToLatest: async () => {},
       freshness: () => undefined,
-      hydrateAnchor: async () => {},
       loadAround: async () => {},
       hydrateBlockBody: () => {},
       takeEstimateUpdates: () => [],

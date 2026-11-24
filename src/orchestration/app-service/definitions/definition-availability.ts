@@ -31,7 +31,7 @@ import { errorMessage } from "../../../infra/error-message.js"
 import { definitionModuleRequirements, type FirstPartyModule, type ModuleId } from "../../modules.js"
 import { disabledAgentTypes, installedModules } from "../../module-catalog.js"
 import type { RuntimeConfigOwner } from "../../config/runtime-config-owner.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { PersonaRegistryRevision } from "../../../workflows/agents/registry.js"
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"
 import { grantedSubagentTypes } from "../../../workflows/agents/subagent-reachability.js"
@@ -43,7 +43,7 @@ import type { ModuleState } from "../../config/module-descriptor.js"
 import { moduleRequirementsForContribution } from "../../module-requirements.js"
 import { parentRoleId } from "../../config/roles.js"
 
-import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/module-ids.js"
+import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/runtime/module-ids.js"
 const log = Log.create({ service: "definition-availability" })
 
 /** What one definition needs, what it lacks, and how it may be invoked. */

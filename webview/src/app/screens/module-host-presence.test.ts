@@ -3,7 +3,7 @@ import { Layer } from "effect"
 import { Socket } from "effect/socket"
 import { createRoot, createSignal, onCleanup } from "solid-js"
 
-import type { ModuleId } from "../../../../src/protocol/module-ids.js"
+import type { ModuleId } from "../../../../src/protocol/runtime/module-ids.js"
 import type { ClientHost } from "../../host.js"
 import type { WebModule } from "../../web-module.js"
 import { createModuleHostPresence } from "./module-host-presence.js"

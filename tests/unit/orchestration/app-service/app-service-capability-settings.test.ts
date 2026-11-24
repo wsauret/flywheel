@@ -7,10 +7,10 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/pr
 import { createModuleProjection } from "../../../../src/orchestration/app-service/projections/module-projection.js"
 import { startModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js"
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js"
-import type { RuntimeModulesView } from "../../../../src/protocol/module-protocol-types.js"
-import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeModulesView } from "../../../../src/protocol/runtime/module-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
-import { MODULE_IDS } from "../../../../src/protocol/module-ids.js"
+import { MODULE_IDS } from "../../../../src/protocol/runtime/module-ids.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
 describe("FlywheelAppService capability settings", () => {

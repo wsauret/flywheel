@@ -1,19 +1,19 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { ReplayedSession } from "../../session/metadata/schemas.js"
 import type { SessionStore } from "../../session-store/types.js"
 import { type SessionView, toSessionView } from "./session-view.js"
 import { projectSessionView } from "./frontend-projection.js"
 import { readRecordedExecutionCwd } from "../../session/metadata/session-execution-directory.js"
-import type { RuntimeSessionDetailView, RuntimeSessionDetailResult } from "../../../protocol/session-detail-protocol-types.js"
-import type { StatusView } from "../../../protocol/status-protocol-types.js"
+import type { RuntimeSessionDetailView, RuntimeSessionDetailResult } from "../../../protocol/session/session-detail-protocol-types.js"
+import type { StatusView } from "../../../protocol/session/status-protocol-types.js"
 import type { ProcessorClaims } from "../../agent-runtime/tools/bash/execution/processor-claims.js"
 import { hydrateDerivedOutputGroupChildren, hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody, paginateOutputGroupChildren, unavailableHydratedOutputRange } from "./output/transcript-queries.js"
 import { readOutputSequence, type OutputSequence } from "./output/output-sequence.js"
 import { findInTranscript } from "./output/transcript-find.js"
 import type { ShippedOutput } from "./output/shipped-output.js"
 import { indexOutputBlocks } from "../../session/conversation/transcript/branch-history-builder.js"
-import { blockIdentity } from "../../../protocol/block-identity.js"
+import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import type { CommandKeeper } from "../runtime/command-keeper.js"
 import type { TranscriptProjectionCache } from "./output/transcript-projection-cache.js"
 import type {
@@ -26,7 +26,7 @@ import type {
   OutputBlockBodyRequest,
   TranscriptFindRequest,
   TranscriptFindResult,
-} from "../../../protocol/transcript-protocol-types.js"
+} from "../../../protocol/transcript/transcript-protocol-types.js"
 import type { SessionSummaryIndex } from "../../session/metadata/catalog/session-summary-index.js"
 import { durableCatalogRowFromSession, parentIdentity, projectSessionCatalogRow, replaceCatalogTotals, type SessionActionEvidence } from "../../session/control/session-catalog-row.js"
 import { readChildSessionRunEvidence } from "../../session/control/child-session-run-evidence.js"
@@ -40,7 +40,7 @@ import { readReplyWaitViews, toReplyWaitViews, type OpenReplyWaitView } from "..
 import { displayedReplyWait } from "../../../protocol/client/session-controls.js"
 import type { RuntimeSummaryProjection } from "./catalog/runtime-summary-projection.js"
 import { budgetViewFromRuntimeSummary, type RuntimeSummaryView } from "./catalog/runtime-summary-read.js"
-import type { SessionRow } from "../../../protocol/app-service-types.js"
+import type { SessionRow } from "../../../protocol/runtime/app-service-types.js"
 import { workflowRunReader } from "../../module-catalog.js"
 
 export interface SessionDetailProjection {

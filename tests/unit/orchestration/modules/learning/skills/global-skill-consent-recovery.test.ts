@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/store/event-store-types.js";
 import { reconcileGlobalSkillOperations } from "../../../../../../src/orchestration/modules/learning/skills/global-skill-mutation.js";
 import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { openPendingAudit, reconcilePendingAudits } from "../../../../../../src/orchestration/modules/learning/skills/learning-journal.js";

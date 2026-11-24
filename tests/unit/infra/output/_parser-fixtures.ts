@@ -1,6 +1,6 @@
-import type { ContentBlock } from "../../../../src/infra/runtime-content-blocks";
-import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory";
-import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
+import type { ContentBlock } from "../../../../src/infra/runtime-facts/runtime-content-blocks";
+import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory";
+import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
 
 export function makeAssistantEvent(content: ContentBlock[], parentToolUseId?: string, entryId: string = crypto.randomUUID()): RuntimeEvent {
   return {

@@ -5,7 +5,7 @@ import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/s
 import { SubscriptionSpendConsentStaleError, type SubscriptionSpendConsentStore } from "../../../../../src/infra/auth/subscription/subscription-spend-consent-store.js";
 import { createSubscriptionSpendConsentService as createService } from "../../../../../src/orchestration/auth/subscription-spend-consent/subscription-spend-consent-service.js";
 import { createSubscriptionUsageService, type SubscriptionUsagePublishedSnapshot } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
-import { paidModeAwaitsAnswer, subscriptionSpendConsentNeedsReview } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js";
+import { paidModeAwaitsAnswer, subscriptionSpendConsentNeedsReview } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js";
 import { createProfileFixture, definition, registry, report, writeAccounts } from "../provider-observations/_service-fixtures.js";
 
 const profiles = createProfileFixture();

@@ -1,4 +1,4 @@
-import type { ModuleConfigNumberListControl } from "../module-protocol-types.js"
+import type { ModuleConfigNumberListControl } from "../runtime/module-protocol-types.js"
 
 /** The word an empty list reads as: an empty list turns the setting off. */
 const OFF = "Off"

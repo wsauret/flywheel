@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
-import { SubagentSessionRowSchema } from "../../../../../src/protocol/session-catalog-protocol-schemas.js"
+import { SubagentSessionRowSchema } from "../../../../../src/protocol/session/session-catalog-protocol-schemas.js"
 import {
   createFrontendProjection,
   projectSessionView,

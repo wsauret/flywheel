@@ -1,14 +1,14 @@
 import type { LearningReviewRun } from "./request/module-services/review-types.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { AuthContext } from "../../infra/auth/auth-context.js";
-import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js";
+import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/store/event-store-types.js";
 import type { AccessProviderId, ModelUnavailableMissing } from "../../infra/llm/access/access-provider.js";
 import type { ModelFamily } from "../../infra/llm/models/model-family.js";
 import type { ProviderErrorCopy, ProviderRecovery } from "../../infra/llm/errors/provider-error-copy.js";
 import type { UnservedModel } from "./llm/errors.js";
 import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
 import type { UsageEntry } from "../../infra/llm/usage/usage-entry.js";
-import type { RuntimeEvent } from "../../infra/runtime-event-types.js";
+import type { RuntimeEvent } from "../../infra/runtime-facts/runtime-event-types.js";
 import type { ConnectionState } from "../../infra/output-blocks.js";
 import type { WebSearchPort, WebSearchProviderId } from "./web-search/types.js";
 import type { SessionNoticeOperation } from "../../infra/session-notice.js";
@@ -38,16 +38,16 @@ import type { StartModelWorkflow } from "./tools/definitions/workflow-tool.js";
 import type { CapabilityAccess, ToolProfile } from "./tools/types.js";
 import type { ModuleRuntimes } from "../../infra/module-runtime.js";
 import type { AgentLoopMaintenance, AgentLoopPersistence, AgentLoopTerminal, FinalizedCheckpointSwap, RestoredAgentWait } from "./agent-loop-types.js";
-import type { RecallPort } from "../../protocol/conversation-recall.js";
+import type { RecallPort } from "../../protocol/transcript/conversation-recall.js";
 import type { ModuleServices } from "../../infra/module-service.js";
 import type { EnvCaptureResolver } from "../../infra/env-detection.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
-import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js";
-import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
+import type { PersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-manager.js";
+import type { BridgedPersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-bridge.js";
 import type { SkillRegistryRevision } from "../../workflows/skills/skill-schema.js";
 import type { ForegroundBashHoldController } from "./background-work/foreground-bash-hold.js";
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js";
-import type { WorkflowsMode } from "../../protocol/module-protocol-types.js";
+import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js";
 import type { GitAiAttributionService } from "./git-ai-attribution-service.js";
 import type { StreamingEditValidationService } from "./tools/edit/streaming-edit-validation.js";
 import type { ChildSessionAuthority } from "../module-seams.js";
@@ -486,7 +486,7 @@ type StallAttribution =
   | { kind: "unattributed" };
 
 export type AgentFailureReason =
-  | { kind: "local_persistence_error"; error: import("../../infra/event-store-types.js").PersistenceWriteRefused }
+  | { kind: "local_persistence_error"; error: import("../../infra/store/event-store-types.js").PersistenceWriteRefused }
   | { kind: "context_overflow" }
   | { kind: "output_overflow" }
   /** `candidatesExhausted` marks a request that no access provider candidate could serve, which an optional side

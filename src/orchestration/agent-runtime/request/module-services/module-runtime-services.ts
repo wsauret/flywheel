@@ -8,23 +8,23 @@ import type { LearningReviewRun } from "./review-types.js";
  */
 
 import type { AgentDefinition } from "../../../../infra/agent-definition.js";
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/event-store-types.js";
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/store/event-store-types.js";
 import type { ModelFamily } from "../../../../infra/llm/models/model-family.js";
 import type { ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";
 import type { UsageEntry } from "../../../../infra/llm/usage/usage-entry.js";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
 import { NO_MODULE_SERVICES, type ModuleServices } from "../../../../infra/module-service.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
 import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import type { RoleResolver } from "../../../config/roles.js";
 import type { FirstPartyModuleSnapshot } from "../../../modules.js";
 import type { AskUserController } from "../../tools/sessions/ask-user-controller.js";
 import type { ProviderRequestAuditFact } from "../../../session/runtime-facts/provider-request-audit-facts.js";
-import type { RecallPort } from "../../../../protocol/conversation-recall.js"
+import type { RecallPort } from "../../../../protocol/transcript/conversation-recall.js"
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
-import type { WorkflowsMode } from "../../../../protocol/module-protocol-types.js";
+import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js";
 import type { BackgroundExecutionOwner } from "../../background-execution/background-execution-owner.js";
 import type { ForegroundBashHoldController } from "../../background-work/foreground-bash-hold.js";
 import type { CaptureProviderConnection, LLMClientFactory } from "../model-runtime-capture.js";

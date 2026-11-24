@@ -1,15 +1,15 @@
 import { errorDetail, errorMessage } from "../../../../infra/error-message.js"
-import type { StoredFact } from "../../../../infra/event-store-types.js"
-import { Log } from "../../../../infra/log.js"
-import { createStartupTimeline } from "../../../../infra/startup-timeline.js"
-import type { SessionCatalogError } from "../../../../protocol/app-service-types.js"
-import type { RuntimeBackgroundSummaryResult } from "../../../../protocol/runtime-protocol-schemas.js"
+import type { StoredFact } from "../../../../infra/store/event-store-types.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
+import { createStartupTimeline } from "../../../../infra/diagnostics/startup-timeline.js"
+import type { SessionCatalogError } from "../../../../protocol/runtime/app-service-types.js"
+import type { RuntimeBackgroundSummaryResult } from "../../../../protocol/rpc/runtime-protocol-schemas.js"
 import type { SessionPlacements } from "../../../session/metadata/catalog/session-metadata-store.js"
 import { GENERATION_FACT_TYPE, sessionSummaryFactTypes } from "../../../session/metadata/catalog/session-summary-index.js"
 import { isLaunchedDescendantKind } from "../../../session/metadata/catalog/session-summary-index-sql.js"
 import { readySummaryView, type RuntimeSummarySource, type RuntimeSummaryView } from "./runtime-summary-read.js"
 import type { WorkflowPlacements } from "../../../module-seams.js"
-import { workflowAggregateId } from "../../../../workflows/vm/facts/session-facts.js"
+import { workflowAggregateId } from "../../../../workflows/run/run-facts.js"
 
 /** The catalog error families a summary read states. Each complete summary
  *  replaces them for its session; metadata and workflow errors stay with the

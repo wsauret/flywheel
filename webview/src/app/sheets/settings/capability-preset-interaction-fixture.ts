@@ -1,10 +1,10 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
 import { capabilityPreset } from "../../../../../src/protocol/client/capabilities.js"
-import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
-import type { RuntimeModulesView } from "../../../../../src/protocol/module-protocol-types.js"
-import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js"
+import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeModulesView } from "../../../../../src/protocol/runtime/module-protocol-types.js"
+import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js"
 import type { PanelSettings } from "../../../client/session-settings.js"
-import type { GitAiAttributionStatus } from "../../../../../src/protocol/git-ai-attribution-protocol-types.js"
+import type { GitAiAttributionStatus } from "../../../../../src/protocol/git/git-ai-attribution-protocol-types.js"
 import type { ConfirmRequest } from "../../client-context.js"
 import { ConfirmDialog } from "../../dialogs/dialogs.js"
 import { CapabilitiesSheet } from "./capabilities-sheet.js"
@@ -12,7 +12,7 @@ import { SettingsSheet } from "./settings-sheet.js"
 import { createElement, insert, nodes, textContent } from "../../../test-support/render-ownership-host-fixture.js"
 import { createClientActions } from "../../../client/actions.js"
 import { fakeClient, fakeRuntimeSession, fakeViewState } from "../../client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"
 
 /** Mounts either real sheet over the real actions layer; only transport and dialog answers are fakes. */
 export function mountCapabilityPreset(sheet: "settings" | "capabilities") {

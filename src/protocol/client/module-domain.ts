@@ -1,9 +1,9 @@
 import { Schema } from "effect"
-import type { RuntimeClient } from "../app-service-types.js"
+import type { RuntimeClient } from "../runtime/app-service-types.js"
 import { isProtocolModuleDomain, PROTOCOL_MODULE_DOMAINS, protocolDomain, protocolModuleQuery, type ProtocolModuleDomain, type ProtocolModuleDomainName, type ProtocolModuleEntry, type ProtocolModuleView } from "../modules.js"
 import { protocolDomainTable, type AnyProtocolDomain, type DomainReader, type ProtocolDomain, type ProtocolDomainView } from "../protocol-module.js"
-import { sessionDomainCursor, workspaceDomainCursor, type RuntimeCursorIdentity, type RuntimePosition } from "../runtime-ui-protocol-types.js"
-import type { RuntimeDeliveryPolicy } from "../runtime-delivery-policy.js"
+import { sessionDomainCursor, workspaceDomainCursor, type RuntimeCursorIdentity, type RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
+import type { RuntimeDeliveryPolicy } from "../rpc/runtime-delivery-policy.js"
 
 /** A registry entry as a client consumes it: one object whose read, patch
  *  test, and view folds all carry the entry's own types, so an intake built

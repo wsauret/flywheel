@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, on, onCleanup, type Accessor } from "solid-js"
-import type { RuntimeAuthStatusScope, RuntimeAuthStatusSnapshotResult } from "../../../../../src/protocol/auth-status-protocol-types.js"
-import { createAuthMonitor } from "../../../client/auth-monitor.js"
-import { describeFailure } from "../../../client/failure-message.js"
+import type { RuntimeAuthStatusScope, RuntimeAuthStatusSnapshotResult } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
+import { createAuthMonitor } from "../../../client/session/workspace/auth-monitor.js"
+import { describeFailure } from "../../../client/format/failure-message.js"
 import { useClient } from "../../client-context.js"
 
 /** Seeds the scoped local auth cursor before saved reads, then schedules background discovery.

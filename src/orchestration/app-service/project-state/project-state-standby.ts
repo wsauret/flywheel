@@ -1,7 +1,7 @@
-import { createBoundedWorkerSpawner } from "../../../infra/bounded-worker-spawner.js"
+import { createBoundedWorkerSpawner } from "../../../infra/process/workers/bounded-worker-spawner.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
-import { terminateWorker } from "../../../infra/worker-termination.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { terminateWorker } from "../../../infra/process/workers/worker-termination.js"
 
 const log = Log.create({ service: "project-state-standby" })
 

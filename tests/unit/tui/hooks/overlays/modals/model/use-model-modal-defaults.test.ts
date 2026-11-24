@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { createRoot } from "solid-js"
-import type { AttachedRuntimeClient, FrontendMutation } from "../../../../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendMutation } from "../../../../../../../src/protocol/runtime/app-service-types.js"
 import { fakeLanes } from "../../../../../../helpers/fake-lanes.js"
 import { recordedQuery, runtimeDispatch, runtimeQuery } from "../../../../../../helpers/runtime-dispatch.js"
 import { createModalStack } from "../../../../../../../src/tui/components/modal-stack.js"

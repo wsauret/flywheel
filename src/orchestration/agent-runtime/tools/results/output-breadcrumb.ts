@@ -17,7 +17,7 @@
  */
 
 import { errorMessage } from "../../../../infra/error-message.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { redactSecretsWork } from "../../../../infra/redact-secrets.js";
 import { runInTaskSlices } from "../../../../infra/task-scheduling.js";
 import { writeArtifactBreadcrumb } from "../../../session/persistence/storage/session-artifacts.js";

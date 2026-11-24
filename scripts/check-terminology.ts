@@ -70,7 +70,7 @@ const HISTORY_PATHS: readonly string[] = [
   "/legacy-",
   "/migrations/",
   // The view of a run that the step grammar recorded, read for history only.
-  "src/workflows/view/view-history-tree.ts",
+  "src/workflows/vm/recovery/view-history-tree.ts",
   // Recorded calls of the retired step tool.
   "src/infra/tools/displays/step.ts",
 ];
@@ -132,8 +132,8 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   // workflow.compiled v8 to v10.
   "src/workflows/provenance/definition-provenance-facts.ts",
   // The persona and brief identities that recorded runs hash.
-  "src/workflows/vm/facts/definition-identity.ts",
-  "src/workflows/vm/facts/session-facts.ts",
+  "src/workflows/control-facts/definition-identity.ts",
+  "src/workflows/control-facts/family.ts",
   "src/workflows/vm/graph/node-outputs.ts",
   // The stored keys of control v11: `steps[].stepId`, the handoff evidence
   // `stepId`, and the join slot `step_id`.
@@ -142,7 +142,7 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   "src/workflows/definitions/agent-resolution.ts",
   "src/workflows/context-bundle/context.ts",
   // The event search formatter and the decode-only schema of the older usage fact.
-  "src/infra/runtime-fact-types.ts",
+  "src/infra/runtime-facts/runtime-fact-types.ts",
   "src/cli/events/event-search-format.ts",
   "src/orchestration/agent-runtime/request/usage/usage-settlement.ts",
   "src/orchestration/session/runtime-facts/provider-request-audit-facts.ts",
@@ -292,7 +292,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
   // two vocabularies. The glossary records the correction; toolCallId retired.
   // Agent Client Protocol version 1 fixes toolCallId as an external wire field
   // name, so its codecs and the benchmark's ACP client spell it.
-  { pattern: /\btoolCallId\b/, replacement: "toolUseId (stored payload key is canonical)", slice: 9, active: true, allowPaths: ["src/protocol/acp.ts", "src/orchestration/modules/development/benchmark/execution/headless-execution.ts", "src/orchestration/modules/provider-google-antigravity/acp/schema.ts"], allowLines: [/stored spelling/i, /toolCallId: toolUseId/, /toolCallId\?: string/, /tool_call_id/, /LaunchedFrom/, /launchedFrom/] },
+  { pattern: /\btoolCallId\b/, replacement: "toolUseId (stored payload key is canonical)", slice: 9, active: true, allowPaths: ["src/protocol/rpc/acp.ts", "src/orchestration/modules/development/benchmark/execution/headless-execution.ts", "src/orchestration/modules/provider-google-antigravity/acp/schema.ts"], allowLines: [/stored spelling/i, /toolCallId: toolUseId/, /toolCallId\?: string/, /tool_call_id/, /LaunchedFrom/, /launchedFrom/] },
   { pattern: /\bToolInvocation\w*/, replacement: "tool call vocabulary", slice: 9, active: true },
 
   // Slice 10: providers.
@@ -385,10 +385,6 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
     ]],
     [/\bstepBoundary\b/, "divider", [PROTOCOL_VERSION_NOTES]],
     [/\bleafId\b/, "agentNodeId or nodeId", [
-      // The web client reads the agent of a browser history entry that a
-      // build before 2026-10-16 wrote under `leafId`, and its test feeds one.
-      "webview/src/client/workflow-agent.ts",
-      "webview/src/client/workflow-agent.test.ts",
       // The conversation tree names the newest entry of a branch its leaf (ARCH-SESSIONS-047).
       "src/orchestration/session/",
       // Request startup selects the conversation tree's recorded masking epoch.
@@ -397,7 +393,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
     [/\blaneSteps?\b/, "agentParts"],
     [/\bcontentId\b/, "briefId", [
       // A hash key of briefContentSha256 that recorded runs hold.
-      "src/workflows/vm/facts/definition-identity.ts",
+      "src/workflows/control-facts/definition-identity.ts",
       "src/workflows/view/schemas.ts",
       "src/workflows/view/view-facts.ts",
       "src/workflows/provenance/definition-provenance-facts.ts",

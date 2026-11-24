@@ -1,5 +1,5 @@
-import type { SessionCatalogRow } from "../app-service-types.js"
-import type { BudgetView } from "../budget-protocol-types.js"
+import type { SessionCatalogRow } from "../runtime/app-service-types.js"
+import type { BudgetView } from "../session/budget-protocol-types.js"
 
 /** How every client folds a fresh reading of a session's aggregate totals
  *  over the one it holds (PI-INTERACTION-006).

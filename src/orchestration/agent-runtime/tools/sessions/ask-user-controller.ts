@@ -1,6 +1,6 @@
 import type { EmitFn } from "../../../../infra/event-bus.js";
 import type { QuestionEntry } from "../../../../infra/output-blocks.js";
-import { formatAgentInputAnswers, type AgentInputAnswers } from "../../../../protocol/question-protocol-types.js";
+import { formatAgentInputAnswers, type AgentInputAnswers } from "../../../../protocol/session/question-protocol-types.js";
 
 export type AskUserResult =
   | { kind: "answered"; answers: AgentInputAnswers }

@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack, type Accessor } from "solid-js"
 
-import type { LoadedWorkflowView } from "../../../../../src/protocol/workflow-view-protocol-types.js"
+import type { LoadedWorkflowView } from "../../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { formatElapsed } from "../../../../../src/protocol/client/format.js"
 import { activeTimeMs } from "../../../../../src/protocol/client/session-time.js"
 import { workflowCardControls, workflowHoldsFailedAgent, workflowParked, workflowResumeTitle, workflowStateLabel } from "../../../../../src/protocol/client/session-controls.js"

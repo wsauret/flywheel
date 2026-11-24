@@ -1,8 +1,7 @@
 import { Schema } from "effect"
 import { NotificationActionSchema, type NotificationAction, type NotificationSeverity } from "../../infra/notification-episode.js"
-import type { ClientCommand } from "../client/host-contract.js"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, type ModuleRow } from "../protocol-module.js"
-import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 
 /** The workspace-scoped `project_notifications` contract (ARCH-PROTOCOL-044): the
  *  episodes the runtime raised for this project, the fact-shaped patches that
@@ -121,46 +120,6 @@ export function visibleNotifications(episodes: readonly ProjectNotificationEpiso
  *  list as history, but no count of what needs attention includes it. */
 export function unresolvedNotifications(episodes: readonly ProjectNotificationEpisode[], now: number): readonly ProjectNotificationEpisode[] {
   return visibleNotifications(episodes, now).filter((episode) => episode.resolvedAt === undefined)
-}
-
-/** A notice's one action as the web and editor clients offer it: the words
- *  on its button and the client command that opens where it points. The
- *  words name the sheet or surface the command opens, so a button never
- *  names one place and opens another, and both clients land on the same
- *  surface. */
-export interface NotificationActionView {
-  readonly label: string
-  readonly open: Extract<ClientCommand, { readonly type: "openSheet" | "openSurface" }>
-}
-
-/** Builds each command as a literal of the host contract's type, because a
- *  module's protocol home sits below the shared client core and calls none of it. */
-export function notificationAction(action: ProjectNotificationAction): NotificationActionView {
-  switch (action.kind) {
-    case "open-settings":
-      return { label: "Open settings", open: { type: "openSheet", sheet: "settings" } }
-    case "open-usage":
-      // The subscription-usage module's surface. One module home never
-      // imports another, so the id is named here.
-      return { label: "Open usage", open: { type: "openSurface", surface: "usage" } }
-    case "open-auth-provider":
-      return { label: "Open provider", open: { type: "openSheet", sheet: "providers", focus: { kind: "focus-provider", providerId: action.providerId } } }
-    case "open-auth":
-      if (!("providerId" in action)) return { label: "Open providers", open: { type: "openSheet", sheet: "providers" } }
-      return {
-        label: "Open provider",
-        open: {
-          type: "openSheet",
-          sheet: "providers",
-          focus: {
-            kind: "review-paid-use",
-            providerId: action.providerId,
-            accountCorrelationId: action.accountCorrelationId,
-            envelopeId: action.envelopeId,
-          },
-        },
-      }
-  }
 }
 
 function plural(count: number): string {

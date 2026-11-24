@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test"
 import { join } from "node:path"
 
 import { requestAccountModule } from "../../../../src/cli/account-service/account-module-request.js"
-import { encodeAccountAttachResponse } from "../../../../src/protocol/account-attach.js"
+import { encodeAccountAttachResponse } from "../../../../src/protocol/runtime/account-attach.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
 const temporary = temporaryDirectories()

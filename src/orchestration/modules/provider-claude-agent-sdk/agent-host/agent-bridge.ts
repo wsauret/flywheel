@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { Cause, Effect, Queue } from "effect";
 import { awaitWithAbortSignal } from "../../../../infra/abort.js";
 import type { ModelRefusal } from "../../../../infra/auth/provider-models/provider-model-catalog-store.js";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import { isGitRepo } from "../../../../infra/env-detection.js";
 import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access/access-provider.js";
 import type { AnthropicOperations } from "../../../agent-runtime/llm/adapters/anthropic/anthropic.js";

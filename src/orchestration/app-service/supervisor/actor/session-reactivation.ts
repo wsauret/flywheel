@@ -8,7 +8,7 @@ import { createSessionFactWriter } from "../../../session/persistence/session-fa
 import { recordedExecutionCwd } from "../../../session/metadata/session-execution-directory.js"
 import type { ChatSessionView } from "../../projections/session-view.js"
 import { turnInFlight } from "../../../session-store/activity.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { durationMs } from "../../../../infra/operation-log.js"
 import { reactivationShellOptions } from "./reactivation-shell-options.js"
 import type { SessionRuntimeActorContext } from "./session-runtime-actor-types.js"

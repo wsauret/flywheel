@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path"
 
 import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath, accountServeTokenPath } from "../../../src/infra/paths.js"
-import { encodeAccountAttach } from "../../../src/protocol/account-attach.js"
+import { encodeAccountAttach } from "../../../src/protocol/runtime/account-attach.js"
 import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"
 import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account/account-project-registry.js"
 import { seedConfigDefaults } from "../../../src/orchestration/config/writer.js"

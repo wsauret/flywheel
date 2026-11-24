@@ -1,6 +1,6 @@
-import { parseProjectionFact } from "../../../infra/event-projection.js";
-import { hydrateToolContentFact } from "../../../infra/tool-content-hydration.js";
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../../infra/event-store-types.js";
+import { parseProjectionFact } from "../../../infra/projection/event-projection.js";
+import { hydrateToolContentFact } from "../../../infra/store/tool-content-hydration.js";
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../../infra/store/event-store-types.js";
 import type { CommandEvidence, ReadCommandEvidence } from "../../../workflows/output-contract/evidence.js";
 import { tryOpenConversationTree } from "../../session/conversation/tree/conversation-tree-handle.js";
 import { parseSessionRuntimeFact } from "../../session/runtime-facts/session-runtime-event-types.js";

@@ -16,13 +16,13 @@ import type { RowProcessControls } from "../output-blocks/stop-affordance.js"
 import type { TranscriptWindowProjection } from "./output-window-projection.js"
 import { type MountedRowRegistry, projectedTotalRows, recordZeroHeightBlocks, type TranscriptHeightIndexRecord } from "./output-window-scroll.js"
 import { RESIDENT_BLOCK_BUDGET } from "../transcript-store/output-transcript-cache-types.js"
-import { Log } from "@infra/log"
+import { Log } from "@infra/diagnostics/log"
 import { useRowWidth } from "../../context/transcript/row-width.js"
 import { RowGeometryProvider, type RowGeometryChannel } from "../../context/transcript/row-geometry.js"
 import { MutationEvidenceProvider } from "../../context/mutation-evidence.js"
 import { createRowChurnMonitor, type RowChurnHandle } from "./output-window-scroll-anomalies.js"
 import { widenTowards } from "./mount-range.js"
-import type { RoleAssignmentView } from "../../../protocol/role-protocol-types.js"
+import type { RoleAssignmentView } from "../../../protocol/auth/role-protocol-types.js"
 
 const log = Log.create({ service: "output-window-viewport" })
 

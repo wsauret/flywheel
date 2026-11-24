@@ -3,7 +3,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createRoot, createSignal, onCleanup } from "solid-js"
-import type { AttachedRuntimeClient, RuntimeClient } from "../../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient, RuntimeClient } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
 import { createSurfaceOpener } from "../../../../../src/protocol/client/surface-presentation.js"
 import { experimentViewDomain } from "../../../../../src/protocol/modules/experiments.js"

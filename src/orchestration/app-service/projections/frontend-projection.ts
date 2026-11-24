@@ -1,5 +1,5 @@
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { DurableSessionCatalogRow } from "../../session/metadata/catalog/session-catalog-types.js"
 import { recordedExecutionCwd } from "../../session/metadata/session-execution-directory.js"
@@ -14,7 +14,7 @@ import type {
   SessionCatalogSnapshot,
   SessionRow,
   Unsubscribe,
-} from "../../../protocol/app-service-types.js"
+} from "../../../protocol/runtime/app-service-types.js"
 import type { RuntimeSummaryProjection } from "./catalog/runtime-summary-projection.js"
 
 const DEFAULT_MAX_SNAPSHOT_HZ = 20

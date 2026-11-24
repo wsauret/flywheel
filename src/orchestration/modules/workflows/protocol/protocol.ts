@@ -1,15 +1,15 @@
 import { isDeepStrictEqual } from "node:util"
 import { workflowsProtocol, type WorkflowDetail } from "../../../../protocol/modules/workflows.js"
-import type { RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { createWorkflowViewProtocolReader, createWorkflowViewProtocolProjection } from "./view-protocol.js"
 import { readWorkflowLiveView, createWorkflowLiveProtocolProjection } from "./live-protocol.js"
 import type { ModuleBackgroundReaders, ModuleProtocolRuntime, ModuleProtocolServices } from "../../../app-service/module-protocol-host.js"
-import { asAsyncEventReadSurface, type EventReader } from "../../../../infra/event-store-types.js"
+import { asAsyncEventReadSurface, type EventReader } from "../../../../infra/store/event-store-types.js"
 import { readSessionMetadata } from "../../../session/metadata/catalog/session-metadata-store.js"
 import { executeChildSessionDeletionPlan } from "../../../session/control/children/child-session-deletion.js"
 import { attachedRunnerDelivery } from "../../../app-service/supervisor/session-background-notifications.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { WHOLE_WORKFLOW } from "../../../session/conversation/addressed-workflow-messages.js"
 import { EARLIER_AGENT_SESSION_REFUSAL, resolveWorkflowDeliveryAddress } from "../../../workflow-host/workflow-addressing.js"
 import { errorMessage } from "../../../../infra/error-message.js"
@@ -43,7 +43,7 @@ export const workflowProtocolServices: ModuleWorkflowRuns["protocolServices"] = 
     isRunning: input.hosts.isRunning, onHostChanged: input.hosts.onChange,
     projectRoot: input.projectRoot, controller: input.controller, auth: input.auth, authStatus: input.authStatus,
     onAuthChanged(listener: () => void) {
-      const observe = (event: import("../../../../protocol/app-service-types.js").FrontendEvent) => {
+      const observe = (event: import("../../../../protocol/runtime/app-service-types.js").FrontendEvent) => {
         if (event.type === "patch" && event.patch.payload.kind === "auth.changed") listener()
       }
       input.bus.addListener(observe)

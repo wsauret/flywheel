@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import type { ContainedDirectory } from "../../src/infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory } from "../../src/infra/descriptor-directory.js";
 
 /** The prototype that every directory the selected backend opens shares, so a

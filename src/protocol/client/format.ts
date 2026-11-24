@@ -3,7 +3,7 @@
  * client core so every client renders the same figures and activity words.
  */
 
-import type { FrontendActivity } from "../app-service-types.js"
+import type { FrontendActivity } from "../runtime/app-service-types.js"
 
 /** Reads the automatic deletion threshold: zero disables deletion. */
 export function formatAutoDeleteSessionDays(days: number): string {
@@ -102,14 +102,3 @@ export function formatDateTime(ms: number, now = Date.now()): string {
   const clock = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
   return `${SHORT_MONTHS[date.getMonth()]} ${date.getDate()}${year}, ${clock}`
 }
-
-/** System-notice line for a completed compaction. Token counts are the
- *  runtime's heuristic context estimates; paths without a measurement
- *  (failures, no-op compactions, pre-report events) fall back to the
- *  plain notice. */
-export function formatCompactionReport(tokensBefore?: number, tokensAfter?: number): string {
-  if (tokensBefore == null || tokensAfter == null) return "Context compacted"
-  return `Context compacted: ${tokensBefore.toLocaleString("en-US")} → ${tokensAfter.toLocaleString("en-US")} tokens`
-}
-
-

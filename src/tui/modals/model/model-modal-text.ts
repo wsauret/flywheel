@@ -1,9 +1,9 @@
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import type { TuiTheme } from "@tui/context/theme/tui-theme"
 import { displayWidth, truncateToWidth } from "../../terminal/text.js"
-import type { ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort } from "../../../protocol/model-assignment-protocol-types.js"
-import type { RuntimeAuthView } from "../../../protocol/auth-status-protocol-types.js"
-import { isModelTierReference } from "../../../protocol/model-tier-reference.js"
+import type { ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort } from "../../../protocol/auth/model-assignment-protocol-types.js"
+import type { RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
+import { isModelTierReference } from "../../../protocol/auth/model-tier-reference.js"
 import { EFFORT_VALUES } from "../../../infra/workflow-types.js"
 
 export function modelAssignmentText(row: ModelAssignmentRow, selected: boolean, theme: TuiTheme, labelWidth: number, width: number, labelStyle: "plain" | "heading" = "plain", auth?: RuntimeAuthView): StyledText {

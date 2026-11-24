@@ -25,7 +25,7 @@ import { ownBuildId } from "../../infra/update/live-builds.js";
 import { createUpdateAuthority, UPDATE_PROTOCOL_VERSION } from "../../infra/update/update-authority.js";
 import { wrapperDirectory } from "../../infra/update/wrapper-directory.js";
 import { updateRepository } from "../../protocol/installation.js";
-import type { UpdateStatusView } from "../../protocol/update-protocol-types.js";
+import type { UpdateStatusView } from "../../protocol/runtime/update-protocol-types.js";
 import type { RuntimeConfigOwner } from "../config/runtime-config-owner.js";
 import { startReleaseNotice } from "./release-notice.js";
 import { systemUpdateScheduler } from "./update-check.js";

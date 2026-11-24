@@ -23,7 +23,7 @@ import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import * as yaml from "js-yaml";
 
-import { Log } from "../src/infra/log.js";
+import { Log } from "../src/infra/diagnostics/log.js";
 import { isRecord } from "../src/infra/record.js";
 import { renderCapabilityText, type CapabilityCheck } from "../src/infra/capability-text.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";

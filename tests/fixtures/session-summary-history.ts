@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite"
 import { join } from "node:path"
 
-import type { StoredFact } from "../../src/infra/event-store-types.js"
-import { configureSqliteEventStore } from "../../src/infra/sqlite-event-store-core.js"
+import type { StoredFact } from "../../src/infra/store/event-store-types.js"
+import { configureSqliteEventStore } from "../../src/infra/store/sqlite-event-store-core.js"
 import { resolveEventStoreDbFile } from "../../src/infra/paths.js"
 import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state/workspace-state-retirement.js"
 

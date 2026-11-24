@@ -1,11 +1,10 @@
 import { errorMessage } from "../../infra/error-message.js"
 import { fontInstallSummary, fontStatusSummary, getFontStatus, installBundledFont } from "../terminal/font-installer.js"
 import { ownedCommandRunner } from "../../infra/owned-command.js"
-import { createAsyncReporter } from "../hooks/wiring/report-async.js"
-import { mutateRuntimeConfig } from "../hooks/state/create-settings-store.js"
+import { createAsyncReporter } from "../context/toast-presenter.js"
 import type { Keymap } from "../terminal/keymap/keymap.js"
 import type { BuiltInCommandContext, BuiltInCommandDefinition, FontCommandContext } from "./command-types.js"
-import type { BuiltInCommandDescriptor } from "../../protocol/command-catalog-protocol-types.js"
+import type { BuiltInCommandDescriptor } from "../../protocol/commands/command-catalog-protocol-types.js"
 import { bindRuntimeCommandDefinitions } from "./runtime-command-bindings.js"
 import { commandMenuGroups } from "../../protocol/client/command-menu.js"
 
@@ -27,7 +26,7 @@ export async function handleFontCommand(context: FontCommandContext, action: str
         return
       }
       const desired = action === "dismiss"
-      const result = await mutateRuntimeConfig(context.runtimeConfig, context.appService, {
+      const result = await context.runtimeConfig.mutate({
         type: "config.mutate",
         setting: { id: "fontTipDismissed", expected: { kind: "value", value: view.values.fontTipDismissed }, desired },
       })

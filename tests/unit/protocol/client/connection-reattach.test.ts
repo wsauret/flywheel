@@ -6,7 +6,7 @@ import { describe, test } from "node:test"
 
 import { Effect, Layer } from "effect"
 import { Socket } from "effect/socket"
-import { AccountAttachFailedError } from "../../../../src/protocol/app-service-types.js"
+import { AccountAttachFailedError } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createRuntimeConnection } from "../../../../src/protocol/client/connection.js"
 import { RUNTIME_LIVENESS_POLICY } from "../../../../src/protocol/runtime-liveness.js"
 import { heartbeatRuntime, heldBackoff, unixSocketLayer, waitFor } from "./_connection-fixtures.js"

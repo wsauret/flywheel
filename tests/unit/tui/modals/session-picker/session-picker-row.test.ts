@@ -4,7 +4,7 @@ import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme, type ThemeJson } from "../../../../../src/tui/context/theme/resolve.js"
-import type { SessionCatalogRow } from "../../../../../src/protocol/app-service-types.js"
+import type { SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { SessionPickerRow } from "../../../../../src/tui/modals/session-picker/session-picker-row.js"
 import type { PickerCorruptRow, PickerFoundRow, PickerSessionRow } from "../../../../../src/tui/modals/session-picker/picker-types.js"
 

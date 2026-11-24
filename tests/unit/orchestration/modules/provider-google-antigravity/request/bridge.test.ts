@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
+import { Log } from "../../../../../../src/infra/diagnostics/log.js"
 import { ContextLengthExceededError, LlmStreamError, RouteUnavailableError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import type { ConversationMessage, ProviderStreamEvent } from "../../../../../../src/orchestration/agent-runtime/llm/types.js"
 import { AcpConnectionClosed } from "../../../../../../src/orchestration/modules/provider-google-antigravity/acp/connection.js"
@@ -7,6 +8,8 @@ import { createBridge, type BridgeEngine, type BridgeRequest } from "../../../..
 import type { StepGateEvent } from "../../../../../../src/orchestration/modules/provider-google-antigravity/engine/step-gate.js"
 import { createTransportAudit } from "../../../../../../src/orchestration/modules/provider-google-antigravity/request/transport-audit.js"
 import type { ProviderTransportContext } from "../../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
+
+const warn = spyOn(Log.create({ service: "provider-google-antigravity" }), "warn").mockImplementation(() => {})
 
 type Action = { readonly text: string } | { readonly call: string } | { readonly hold: Promise<void> }
 
@@ -49,9 +52,11 @@ const MODELS: AcpConfigOption = { id: "model", name: "Model", currentValue: "gem
 const LEVELS: AcpConfigOption = { id: "thought_level", name: "Thinking", currentValue: "low", options: [{ value: "low", name: "Low" }, { value: "high", name: "High" }] }
 /** The usage of a request that ran no model request. */
 const NO_USAGE = { kind: "usage" as const, final: true, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 }
-/** The aggregate usage of a prompt with `requests` model requests, each of 990 input and 10 output tokens, whose total
- *  each request's occupancy report (`used: 1_000`) states, as agy reports both. */
-const promptUsage = (requests: number) => ({ inputTokens: 990 * requests, outputTokens: 10 * requests, cachedReadTokens: 0, cachedWriteTokens: 0, thoughtTokens: 0, totalTokens: 1_000 * requests })
+/** The usage of each model request, which agy records in its row: 600 input, 390 cached, and 10 output tokens. */
+const ROW = { inputTokens: 600, cacheReadTokens: 390, outputTokens: 10, reasoningTokens: 0 }
+/** The aggregate usage of a prompt with `requests` model requests, whose total each request's occupancy report
+ *  (`used: 1_000`) states, as agy reports both. */
+const promptUsage = (requests: number) => ({ inputTokens: 600 * requests, outputTokens: 10 * requests, cachedReadTokens: 390 * requests, cachedWriteTokens: 0, thoughtTokens: 0, totalTokens: 1_000 * requests })
 
 /**
  * An engine process whose model answers each admitted step with the next scripted response. A step asks the gate
@@ -62,7 +67,7 @@ const promptUsage = (requests: number) => ({ inputTokens: 990 * requests, output
 function fakeEngine(gate: ReturnType<typeof fakeGate>, options: EngineOptions = {}) {
   const log: string[] = []
   const responses: Action[][] = []
-  const sessions = new Map<string, Parameters<BridgeEngine["openSession"]>[0] & { config: AcpConfigOption[]; cancel?: () => void }>()
+  const sessions = new Map<string, Parameters<BridgeEngine["openSession"]>[0] & { config: AcpConfigOption[]; cancel?: () => void; rows: number }>()
   let calls = 0
   let opened = 0
   const record = (line: string, method: AcpConnectionClosed["method"]) => {
@@ -76,6 +81,7 @@ function fakeEngine(gate: ReturnType<typeof fakeGate>, options: EngineOptions = 
       if ((options.hookRuns?.() ?? true) && gate.ask(sessionId) !== "consumed") return { stopReason: "end_turn" }
       const response = responses.shift() ?? [{ text: "reply" }]
       requests += 1
+      session.rows += 1
       // agy reports the occupancy of each model request: before the calls of a response, after its text.
       const usage: AcpSessionUpdate = { sessionUpdate: "usage_update", used: 1_000, size: 250_000 }
       const hasCall = response.some((action) => "call" in action)
@@ -110,7 +116,7 @@ function fakeEngine(gate: ReturnType<typeof fakeGate>, options: EngineOptions = 
     toolNames: new Set(["echo"]),
     async openSession(handlers) {
       const sessionId = `s${String(++opened)}`
-      sessions.set(sessionId, { ...handlers, config: [MODELS, LEVELS] })
+      sessions.set(sessionId, { ...handlers, config: [MODELS, LEVELS], rows: 0 })
       record(handlers.append === undefined ? "open probe" : "open", "session/new")
       return { sessionId, configOptions: [MODELS, LEVELS] }
     },
@@ -125,6 +131,11 @@ function fakeEngine(gate: ReturnType<typeof fakeGate>, options: EngineOptions = 
     async cancel(sessionId) {
       log.push("cancel")
       sessions.get(sessionId)?.cancel?.()
+    },
+    conversationRows(sessionId, afterIdx) {
+      if (options.rows === "missing") return { kind: "unreadable", reason: "no-database", lastIdx: afterIdx }
+      const rows = sessions.get(sessionId)?.rows ?? 0
+      return { kind: "rows", rows: Array.from({ length: Math.max(0, rows - 1 - afterIdx) }, () => ROW), lastIdx: rows - 1 }
     },
     async configure(_method, params) {
       if (!("configId" in params)) throw new Error("the bridge changes the model through set_config_option")
@@ -148,6 +159,8 @@ const projectResult: BridgeRequest["projectResult"] = async (content) => content
 interface EngineOptions {
   readonly hookRuns?: () => boolean
   readonly endsAt?: string
+  /** `missing`: the engine's conversation databases cannot be read. */
+  readonly rows?: "missing"
 }
 
 function rig(options: EngineOptions = {}) {
@@ -228,8 +241,26 @@ describe("Google Antigravity bridge", () => {
     expect(gate.held.size).toBe(0)
   })
 
-  test("requests that settle at calls report their totals as partial usage, the prompt's end reports the rest, and a cancelled prompt adds nothing", async () => {
+  test("each request of a prompt reports the complete usage of its own model requests, which sums to the prompt's aggregate", async () => {
     const { bridge, script } = rig()
+    script([{ call: "a" }], [{ call: "b" }])
+    const complete = { kind: "usage" as const, final: true, inputTokens: 600, outputTokens: 10, cacheReadTokens: 390, cacheCreateTokens: 0, reasoningTokens: 0 }
+    const history: ConversationMessage[] = [user("go")]
+    warn.mockClear()
+    for (const done of ["a", "b", undefined]) {
+      const served = await serve(bridge, history)
+      expect(served.events.filter((event) => event.kind === "usage")).toEqual([complete])
+      expect(served.audit?.notRecorded).not.toContain("usage")
+      if (done === undefined) expect(stops(served)).toEqual(["end_turn"])
+      else history.push(served.assistant, { kind: "toolResult", toolUseId: served.toolUseId!, content: [{ type: "text", text: `${done} done` }] })
+    }
+    // The rows of the prompt match its aggregate, and every request read them.
+    expect(warn).not.toHaveBeenCalled()
+    await bridge.close()
+  })
+
+  test("without readable rows, requests that settle at calls report their totals as partial usage, the prompt's end reports the rest, and a cancelled prompt adds nothing", async () => {
+    const { bridge, script } = rig({ rows: "missing" })
     script([{ call: "a" }], [{ call: "b" }])
     const usage = (served: Served) => served.events.filter((event) => event.kind === "usage")
     const partial = { kind: "usage" as const, final: false, inputTokens: 1_000, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 }
@@ -242,8 +273,8 @@ describe("Google Antigravity bridge", () => {
     }
     const last = await serve(bridge, history)
     expect(stops(last)).toEqual(["end_turn"])
-    // Three requests of 990 input and 10 output tokens: the earlier two reported 2,000 tokens as input.
-    expect(usage(last)).toEqual([{ kind: "usage", final: true, inputTokens: 970, outputTokens: 30, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 }])
+    // Three requests of 1,000 tokens: the earlier two reported 2,000 tokens as input.
+    expect(usage(last)).toEqual([{ kind: "usage", final: true, inputTokens: 0, outputTokens: 30, cacheReadTokens: 970, cacheCreateTokens: 0, reasoningTokens: 0 }])
 
     // A new prompt starts its own sums; its aggregate, which agy reports when the bridge cancels it, has no request left.
     script([{ call: "c" }])

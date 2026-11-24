@@ -10,7 +10,7 @@ import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-
 import type { SkillRegistryRevision, SkillDefinition } from "../../../workflows/skills/skill-schema.js";
 import type { AskUserController } from "./sessions/ask-user-controller.js";
 import type { HandoffToolSchema } from "../../workflow-host/attempt/handoff-tool-schema.js";
-import type { RecallPort } from "../../../protocol/conversation-recall.js"
+import type { RecallPort } from "../../../protocol/transcript/conversation-recall.js"
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
 import type { ForegroundBashHoldController } from "../background-work/foreground-bash-hold.js";
 import type { ShellRuntimeClient } from "./bash/execution/shell-runtime-types.js";

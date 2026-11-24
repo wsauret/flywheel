@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { PROTOCOL_MODULE_MUTATIONS } from "../../../../src/protocol/modules.js"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"

@@ -1,4 +1,4 @@
-import type { BuiltInCommandDescriptor } from "../command-catalog-protocol-types.js"
+import type { BuiltInCommandDescriptor } from "../commands/command-catalog-protocol-types.js"
 
 /** The published commands in command-menu order: the `top`, `chat`, and
  *  `more` groups, each by ascending rank, then every command without a

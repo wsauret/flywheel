@@ -1,14 +1,14 @@
 import { Redacted, type Schema } from "effect"
 import { join } from "node:path"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { startRefusalOf } from "../../../../protocol/serve-handshake.js"
-import { startupPhase, type StartupReached } from "../../../../protocol/startup-steps.js"
+import { startRefusalOf } from "../../../../protocol/runtime/serve-handshake.js"
+import { startupPhase, type StartupReached } from "../../../../protocol/runtime/startup-steps.js"
 import {
   ACCOUNT_ATTACH_LATER_MAX_BYTES,
   createAccountAttachReader,
   encodeAccountAttachResponse,
   type AccountModuleRequest,
-} from "../../../../protocol/account-attach.js"
+} from "../../../../protocol/runtime/account-attach.js"
 import type { SettledControlUiAssetState } from "../web-serving/control-ui-assets.js"
 
 export interface AccountProjectConnection {

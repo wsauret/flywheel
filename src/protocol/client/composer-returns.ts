@@ -1,5 +1,5 @@
-import type { AttachedRuntimeClient, FrontendMutation } from "../app-service-types.js"
-import { returnedInputSubmissionId, type ComposerReturn, type ClaimComposerReturnsResult } from "../composer-returns.js"
+import type { AttachedRuntimeClient, FrontendMutation } from "../runtime/app-service-types.js"
+import { returnedInputSubmissionId, type ComposerReturn, type ClaimComposerReturnsResult } from "../transcript/composer-returns.js"
 import type { TranscriptChange } from "./transcript-store.js"
 import { lostWithLane } from "./connection-failures.js"
 import { adoptedBlocks } from "./chat-submissions.js"

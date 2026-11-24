@@ -1,9 +1,11 @@
-import { createEventProjection, parseProjectionFact, type EventProjection } from "../../../infra/event-projection.js"
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../infra/event-store-types.js"
-import { heldProjection } from "../../../infra/projection-registry.js"
-import { workflowProjectionBoundary } from "../../run/session-fact-source.js"
-import type { CommittedWorkflowControl } from "../facts/committed-control.js"
-import { committedWorkflowEvent, parseWorkflowSessionFact, workflowAggregateId } from "../facts/session-facts.js"
+import { createEventProjection, parseProjectionFact, type EventProjection } from "../../../infra/projection/event-projection.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../infra/store/event-store-types.js"
+import { heldProjection } from "../../../infra/projection/projection-registry.js"
+import { workflowProjectionBoundary } from "../../control-facts/session-fact-source.js"
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
+import { committedWorkflowEvent } from "../../control-facts/family.js"
+import { parseWorkflowSessionFact } from "../facts/session-facts.js"
+import { workflowAggregateId } from "../../run/run-facts.js"
 
 interface StartedConversationsState {
   /** Each attempt's conversations in the order of the commits that started

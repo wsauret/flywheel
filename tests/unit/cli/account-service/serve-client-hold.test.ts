@@ -6,10 +6,10 @@ import * as path from "node:path"
 import { runServe } from "../../../../src/cli/account-service/serve.js"
 import { SERVE_EXIT } from "../../../../src/cli/account-service/serve-contract.js"
 import { ServeLifetime } from "../../../../src/orchestration/app-service/account/serve-lifetime.js"
-import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
+import { createPersistentProcessManager } from "../../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import { serveLaneFor } from "../../../../src/infra/cli-subprocess.js"
 import { accountServeSocketPath, accountServeTokenPath } from "../../../../src/infra/paths.js"
-import { encodeAccountAttach } from "../../../../src/protocol/account-attach.js"
+import { encodeAccountAttach } from "../../../../src/protocol/runtime/account-attach.js"
 import { unprobedLoginShellPath, unusedLauncher, waitFor } from "./_serve-fixtures.js"
 
 // A serve run in this test process serves the lane of this process's executable.

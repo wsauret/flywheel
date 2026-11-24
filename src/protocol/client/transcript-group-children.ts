@@ -1,5 +1,5 @@
-import type { FrontendToolEntry } from "../app-service-types.js"
-import type { OutputGroupChildrenCursor } from "../transcript-protocol-types.js"
+import type { FrontendToolEntry } from "../runtime/app-service-types.js"
+import type { OutputGroupChildrenCursor } from "../transcript/transcript-protocol-types.js"
 import type { RuntimeConnection } from "./connection.js"
 
 /** Reads all children pages while the group remains resident, so a group never shows a first page

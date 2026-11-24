@@ -4,13 +4,13 @@ import { openContainedDirectory, openExistingContainedDirectory } from "../../in
 import { FLYWHEEL_DIR_NAME, type ProjectDirectories } from "../../infra/directory-authorities.js"
 import { acquireProjectStateGeneration, type ProjectStateLease } from "./project-state-lease.js"
 import { resolveEventStoreDbFile } from "../../infra/paths.js"
-import { buildMissingSessionTypeIndex } from "../../infra/sqlite-event-store-core.js"
+import { buildMissingSessionTypeIndex } from "../../infra/store/sqlite-event-store-core.js"
 import { settleWorkspaceGeneration, readGenerationEpoch, WORKSPACE_STATE_EPOCH } from "./workspace-state-retirement.js"
 import { migrateAgentInputAnswers } from "./migrations/agent-input-answer.js"
 import { readFactPassSettlement, recordFactPassSettlement } from "./migrations/engine.js"
 import { excludeStateFromGit } from "./state-git-exclude.js"
-import type { StartupReached } from "../../protocol/startup-steps.js"
-import { observeReleaseMemoryPhase, startReleaseMemorySampler } from "../../infra/startup-trace.js"
+import type { StartupReached } from "../../protocol/runtime/startup-steps.js"
+import { observeReleaseMemoryPhase, startReleaseMemorySampler } from "../../infra/diagnostics/startup-trace.js"
 
 const PRIVATE = { privateDirectories: true } as const
 

@@ -16,8 +16,8 @@ import type { StepGrammarWorkflow, WorkflowStep } from "../../../../../src/workf
 import type { RetiredBinding } from "../../../../../src/workflows/definitions/retired-bindings.js"
 import type { SkillRegistryRevision } from "../../../../../src/workflows/skills/skill-schema.js"
 import { compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js"
-import type { CommittedWorkflowControl } from "../../../../../src/workflows/vm/facts/committed-control.js"
-import { isLegacyDefinitionIdentity, type LegacyDefinitionIdentity, type StepDefinitionIdentity } from "../../../../../src/workflows/vm/facts/definition-identity.js"
+import type { CommittedWorkflowControl } from "../../../../../src/workflows/control-facts/committed-control.js"
+import { isLegacyDefinitionIdentity, type LegacyDefinitionIdentity, type StepDefinitionIdentity } from "../../../../../src/workflows/control-facts/definition-identity.js"
 import { testResolvedAgent, testResolvedAgents } from "../../../../helpers/skill-fixtures.js"
 import { loadedWorkflow } from "../../../../helpers/workflow-files.js"
 

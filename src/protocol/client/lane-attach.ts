@@ -1,5 +1,5 @@
-import type { FrontendMutation, RuntimeQuery } from "../app-service-types.js"
-import type { LaneEndCause, RuntimeClientDiagnostic } from "../runtime-client-diagnostics.js"
+import type { FrontendMutation, RuntimeQuery } from "../runtime/app-service-types.js"
+import type { LaneEndCause, RuntimeClientDiagnostic } from "../runtime/runtime-client-diagnostics.js"
 
 /** Where a call goes when a lane opens. The output watch statement goes
  *  first, because the runtime sends a session's live output only once it is

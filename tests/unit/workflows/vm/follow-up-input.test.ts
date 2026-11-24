@@ -1,10 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
 import { DurableFollowUpInputSchema } from "../../../../src/infra/chat-input-schema.js";
-import { buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
+import { buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact } from "../../../../src/workflows/control-facts/family.js";
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js";
-import type { DecodedWorkflowEvent, WorkflowEvent } from "../../../../src/workflows/vm/facts/events.js";
+import type { DecodedWorkflowEvent, WorkflowEvent } from "../../../../src/workflows/control-facts/events.js";
 import type { WorkflowMachineState } from "../../../../src/workflows/vm/control/control-types.js";
 import { acknowledge, runningControl } from "./_machine-semantics-fixtures.js";
 import { recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures.js";

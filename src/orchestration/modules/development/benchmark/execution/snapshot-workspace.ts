@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ContainedDirectory } from "../../../../../infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../../../infra/descriptor-directory/descriptor-directory-contract.js";
 import { openExistingContainedDirectory } from "../../../../../infra/descriptor-directory.js";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import { runCheckedSandboxCommand, SANDBOX_HOME_DIR } from "../sandbox-command.js";

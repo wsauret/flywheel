@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { Redacted } from "effect";
 import { AuthProfileStore } from "../../../../../src/infra/auth/store/auth-profile-store.js";
 import { writeProviderModelCatalog } from "../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
-import { DebugLog } from "../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log.js";
 import { createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderDefinition } from "../../../../../src/infra/llm/access/access-provider.js";
 import { createModelListingClient } from "../../../../../src/infra/llm/access/model-listing.js";
 import { createModelsClient } from "../../../../../src/infra/llm/models/models.js";

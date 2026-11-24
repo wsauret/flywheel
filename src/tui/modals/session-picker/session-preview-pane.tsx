@@ -4,7 +4,7 @@ import type { Accessor, JSX } from "solid-js"
 import { createEffect, createMemo, createSignal, on, onCleanup, Show, untrack } from "solid-js"
 import type { BoxRenderable, ScrollBoxRenderable } from "@opentui/core"
 import { formatCostSplit, formatDuration, formatTokens } from "../../../protocol/client/format.js"
-import type { SessionCatalogRow } from "../../../protocol/app-service-types.js"
+import type { SessionCatalogRow } from "../../../protocol/runtime/app-service-types.js"
 import type { DiffColorMode } from "../../../orchestration/config/schema/schema.js"
 import { TranscriptRows } from "../../transcript/output-blocks/transcript-rows.js"
 import { useTheme } from "../../context/theme.js"
@@ -13,7 +13,7 @@ import { BlockDisclosureProvider, createBlockDisclosureChannel } from "../../con
 import type { SessionPreviewReader, SessionPreviewState } from "./use-session-preview.js"
 import { createMountedRowRegistry } from "../../transcript/output-window/output-window-scroll.js"
 import { patchScrollBoxLayoutHooks } from "../../components/modal/scroll/scrollbox-layout-hooks.js"
-import { blockIdentity } from "../../../protocol/block-identity.js"
+import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import type { PresentedTerminalRow } from "../../transcript/output-blocks/visible-output-blocks.js"
 
 interface SessionPreviewPaneProps {

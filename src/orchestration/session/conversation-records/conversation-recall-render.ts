@@ -1,5 +1,5 @@
 import type { MessageEntry, ConversationEntry } from "../conversation/conversation-entry-types.js"
-import type { RecallHit } from "../../../protocol/conversation-recall.js"
+import type { RecallHit } from "../../../protocol/transcript/conversation-recall.js"
 
 type PersistedMessage = MessageEntry["message"]
 type PersistedContent = Extract<PersistedMessage, { kind: "user" }>["content"]

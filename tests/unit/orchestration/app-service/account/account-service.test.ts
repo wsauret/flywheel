@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { createAccountService } from "../../../../../src/orchestration/app-service/account/account-service.js"
-import type { StartupReached } from "../../../../../src/protocol/startup-steps.js"
+import type { StartupReached } from "../../../../../src/protocol/runtime/startup-steps.js"
 
 interface Runtime {
   readonly root: string

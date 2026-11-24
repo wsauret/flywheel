@@ -6,7 +6,7 @@ import { runsThroughBun } from "../../../src/infra/cli-subprocess.js"
 import { createCliLauncher } from "../../../src/cli/account-service/runtime-launch.js"
 import { guardianCommand } from "../../../src/infra/process-supervisor.js"
 import { EXECUTABLE_ROLES, internalExecutableRole } from "../../../src/infra/executable-roles.js"
-import type { OwnedProcess } from "../../../src/infra/owned-subprocess.js"
+import type { OwnedProcess } from "../../../src/infra/supervision/launch/owned-subprocess.js"
 
 
 /** A container that records how it ended, so a scope's close is observable
@@ -79,7 +79,7 @@ describe("internal roles", () => {
   // each of them about 14 MB of resident memory before it ran any code.
   // The Antigravity gate hook client starts once per engine model step.
   test("the guardian, command supervisor, and gate hook roles load no Effect Schema when they start", async () => {
-    for (const role of ["process-guardian.ts", "owned-command-supervisor.ts", "antigravity-gate-hook.ts"]) {
+    for (const role of ["supervision/guardian/process-guardian.ts", "supervision/launch/owned-command-supervisor.ts", "antigravity-gate-hook.ts"]) {
       const entry = fileURLToPath(new URL(`../../../src/infra/${role}`, import.meta.url))
       const bundle = await Bun.build({ entrypoints: [entry], target: "bun", metafile: true })
       const inputs = bundle.metafile?.inputs ?? {}

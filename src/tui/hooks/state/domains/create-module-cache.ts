@@ -1,6 +1,6 @@
 import { createSignal, onCleanup } from "solid-js"
-import type { AttachedRuntimeClient } from "../../../../protocol/app-service-types.js"
-import { capabilitiesCursor, type RuntimeModulesView } from "../../../../protocol/module-protocol-types.js"
+import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
+import { capabilitiesCursor, type RuntimeModulesView } from "../../../../protocol/runtime/module-protocol-types.js"
 import { createHeldView } from "../../../../protocol/client/held-view.js"
 
 export interface ModuleCache {

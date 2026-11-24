@@ -13,7 +13,7 @@ export function testCommandContext(overrides: Partial<BuiltInCommandContext> = {
     directories: { accountHome: "/account", userDataRoot: "/account/.flywheel" },
     launcher: refusingLauncher,
     appService: { dispatch: runtimeDispatch({}) },
-    runtimeConfig: { view: () => undefined, settlePublication: async () => false },
+    runtimeConfig: { view: () => undefined, mutate: async () => ({ kind: "disposed", message: "Configuration updates are unavailable." }) },
     showToast: mock(() => {}),
     signals: { sessionInputMode: () => ({ kind: "chat" }), foregroundId: () => "chat-1", commandCatalogRevision: () => 4 },
     startClearedChat: mock(async () => {}),

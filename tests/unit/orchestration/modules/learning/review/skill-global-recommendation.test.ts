@@ -4,8 +4,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type StoredFact } from "../../../../../../src/infra/event-store-types.js";
-import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type StoredFact } from "../../../../../../src/infra/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js";
 import { createSkillManageTool } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { ToolResult, DispatchedToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { ConversationTree } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree.js";

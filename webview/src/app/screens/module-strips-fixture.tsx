@@ -1,6 +1,6 @@
 import { createComponent, createRoot } from "solid-js"
 
-import type { ModuleId } from "../../../../src/protocol/module-ids.js"
+import type { ModuleId } from "../../../../src/protocol/runtime/module-ids.js"
 import type { WebModule } from "../../web-module.js"
 import { ModuleStrips } from "./module-strips.js"
 import { createElement, createTextNode, insert, insertNode, textContent } from "../../test-support/render-ownership-host-fixture.js"

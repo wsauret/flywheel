@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import { FrontendOutputBlockSchema, HydratedOutputBlockBodySchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
+import { FrontendOutputBlockSchema, HydratedOutputBlockBodySchema } from "../../../../src/protocol/transcript/transcript-protocol-schemas.js"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/projections/output/frontend-output-blocks.js"
 import { branchBlocks } from "../../../helpers/branch-blocks.js"
 import { extractDisplayMeta } from "../../../../src/infra/output/projector/structured-event-tool-results.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
-import { SessionChangesQuerySchema } from "../../../../src/protocol/session-changes-protocol-types.js"
+import { SessionChangesQuerySchema } from "../../../../src/protocol/session/session-changes-protocol-types.js"
 import {
   hydrateDerivedOutputBlockBody,
   hydrateDerivedOutputRange,

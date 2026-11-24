@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { ExecutionEvidenceSchema } from "../../../../../protocol/execution-evidence.js";
-import { RuntimeSessionModelPlanResultSchema } from "../../../../../protocol/model-assignment-protocol-schemas.js";
+import { ExecutionEvidenceSchema } from "../../../../../protocol/session/execution-evidence.js";
+import { RuntimeSessionModelPlanResultSchema } from "../../../../../protocol/auth/model-assignment-protocol-schemas.js";
 import { BenchmarkAccountingSchema } from "../accounting/evidence.js";
 
 const ArtifactSchema = Schema.Struct({

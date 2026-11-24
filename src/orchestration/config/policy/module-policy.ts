@@ -14,14 +14,14 @@
  *  and settlement after a later disable. A sibling dispatch, a later resume, a
  *  later automatic review, or an unrelated write asks for a new grant. */
 
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import { selectionPolicyError, type ModuleId } from "../../modules.js";
 import { readConfigAt, type ConfigFileLocation } from "../config-file.js";
 import { defaultModuleState, moduleDescriptor, observeModuleState, type ModuleState } from "../module-descriptor.js";
 import type { ConfigWriteResult } from "../writer.js";
 import { migrateCapabilityModules, updateCapabilityModules } from "./module-selection-writer.js";
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../runtime-config-owner.js";
-import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/module-ids.js";
+import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/runtime/module-ids.js";
 
 /** What one admitted operation may do, fixed at its admission.
  *

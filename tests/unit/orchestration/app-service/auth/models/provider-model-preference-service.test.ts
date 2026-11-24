@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
-import { ProviderModelViewSchema } from "../../../../../../src/protocol/provider-model-preference-protocol-schemas.js"
+import { ProviderModelViewSchema } from "../../../../../../src/protocol/auth/provider-model-preference-protocol-schemas.js"
 import { accessProviderAccountKey } from "../../../../../../src/infra/auth/provider-account.js"
 import { createProviderModelPreferenceService } from "../../../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
 import type { ResolvedProviderModels } from "../../../../../../src/infra/auth/provider-models/provider-model-preferences.js"
 import type { ProviderModelInventoryCandidate, ProviderModelPreferenceServiceDeps } from "../../../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { unusedProviderModelWrites } from "../../../../../helpers/provider-model-writes.js"
 
 function catalog(effective = new Set(["gpt-5"])): ReadonlyMap<string, ResolvedProviderModels> {

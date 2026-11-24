@@ -1,10 +1,10 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createSignal } from "solid-js"
-import type { RuntimeConfigView } from "../../../../../src/protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigView } from "../../../../../src/protocol/settings/runtime-config-protocol-types.js"
 import type { RuntimeConfigCache } from "../../../../../src/tui/hooks/state/runtime/create-runtime-config-cache.js"
 import { useTabsHint } from "../../../../../src/tui/hooks/welcome/use-tabs-hint.js"
 import { configValues } from "../../modals/settings/_settings-modal-fixtures.js"
-import type { FrontendMutation, MutationResult } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, MutationResult } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
 
 type ConfigMutation = Extract<FrontendMutation, { type: "config.mutate" }>

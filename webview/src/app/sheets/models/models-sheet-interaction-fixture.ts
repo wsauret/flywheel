@@ -1,9 +1,9 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
-import type { FrontendEvent } from "../../../../../src/protocol/app-service-types.js"
-import type { EffortOptionRow, ModelOptionRow, ModelSelectionSlot } from "../../../../../src/protocol/model-assignment-protocol-types.js"
+import type { FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { EffortOptionRow, ModelOptionRow, ModelSelectionSlot } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js"
 
 import { fakeClient, fakePanelSettings, fakeSessionSummary, fakeViewState } from "../../client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"
 import type { InlineSettingAction } from "../../../client/settings-actions.js"
 import { createElement, insert, nodes, textContent } from "../../../test-support/render-ownership-host-fixture.js"
 import { ModelsSheet } from "./models-sheet.js"

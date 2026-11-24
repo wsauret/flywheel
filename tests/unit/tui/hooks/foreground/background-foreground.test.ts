@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { FrontendMutation, MutationResult } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, MutationResult } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
 import {
   discardIfTransientForeground,

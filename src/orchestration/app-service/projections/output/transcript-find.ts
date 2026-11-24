@@ -1,11 +1,11 @@
-import { createBoundedWorkerSpawner } from "../../../../infra/bounded-worker-spawner.js"
+import { createBoundedWorkerSpawner } from "../../../../infra/process/workers/bounded-worker-spawner.js"
 import { embeddedEntrySpecifier, runsThroughBun } from "../../../../infra/cli-subprocess.js"
-import { DebugLog } from "../../../../infra/debug-log.js"
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
 import { isAgentInFlight, type AnyBlock } from "../../../../infra/output-blocks.js"
-import { terminateWorker } from "../../../../infra/worker-termination.js"
-import { blockIdentity } from "../../../../protocol/block-identity.js"
-import { compileFind, TRANSCRIPT_FIND_LIMIT } from "../../../../protocol/transcript-find.js"
-import type { TranscriptFindMatch, TranscriptFindRequest, TranscriptFindResult } from "../../../../protocol/transcript-protocol-types.js"
+import { terminateWorker } from "../../../../infra/process/workers/worker-termination.js"
+import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
+import { compileFind, TRANSCRIPT_FIND_LIMIT } from "../../../../protocol/transcript/transcript-find.js"
+import type { TranscriptFindMatch, TranscriptFindRequest, TranscriptFindResult } from "../../../../protocol/transcript/transcript-protocol-types.js"
 import type { IndexedBlockReader } from "../../../session/conversation/transcript/branch-history-builder.js"
 
 /** Blocks read together: the cold rows of one chunk share one batched read. */

@@ -1,12 +1,12 @@
-import type { AsyncEventReadSurface, StoredFact } from "../../../../infra/event-store-types.js"
-import { Log } from "../../../../infra/log.js"
+import type { AsyncEventReadSurface, StoredFact } from "../../../../infra/store/event-store-types.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { createBackgroundLane } from "../../../../infra/ordered-lane.js"
 import { AGENT_INPUT_FACT_TYPES } from "../../../session/agent-input/agent-input-facts.js"
 import { loadAgentInputProjection } from "../../../session/agent-input/agent-input-projection.js"
 import type { SessionStore } from "../../../session-store/types.js"
-import { questionCursor, type PendingQuestionView } from "../../../../protocol/question-protocol-types.js"
+import { questionCursor, type PendingQuestionView } from "../../../../protocol/session/question-protocol-types.js"
 import { createSessionViewPublisher } from "./session-view-projection.js"
-import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 
 const log = Log.create({ service: "question-protocol-projection" })
 

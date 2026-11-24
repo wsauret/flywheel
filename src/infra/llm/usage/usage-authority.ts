@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { Database } from "bun:sqlite";
 import { Schema } from "effect";
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import { applySqliteDurabilityPragmas } from "../../sqlite-durability.js";
 import { subscriptionUsageAuthorityDbFile } from "../../paths.js";
 import { createSubscriptionUsageStore, type SubscriptionUsageAccount, type SubscriptionUsageStore } from "./subscription-usage-store.js";

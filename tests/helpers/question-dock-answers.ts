@@ -5,7 +5,7 @@
  *  labels into the durable discriminated answer the strict fact requires. */
 
 import type { QuestionEntry } from "../../src/infra/output-blocks.js";
-import type { AgentInputAnswer } from "../../src/protocol/question-protocol-types.js";
+import type { AgentInputAnswer } from "../../src/protocol/session/question-protocol-types.js";
 
 type QuestionOption = Extract<QuestionEntry["choices"][number], { kind: "option" }>;
 

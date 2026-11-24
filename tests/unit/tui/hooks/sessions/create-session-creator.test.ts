@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { batch, createComputed, createMemo, createRoot, createSignal } from "solid-js"
-import type { FrontendMutation, MutationResult, SessionCatalogRow } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, MutationResult, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createSessionCreator } from "../../../../../src/tui/hooks/sessions/create-session-creator.js"
 import { createDraftCache, UNBOUND_COMPOSER_DRAFT } from "../../../../../src/tui/components/composer/create-draft-cache.js"
 import { createTabState } from "../../../../../src/tui/hooks/create-tabs.js"

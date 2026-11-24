@@ -1,4 +1,4 @@
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import type { EventBus, Unsubscribe } from "../../../infra/event-bus.js"
 import type { FirstPartyModuleComposition } from "../../modules.js"

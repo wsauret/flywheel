@@ -5,7 +5,7 @@ import { assembleProjectRuntime, type RuntimeComposition, type RuntimeCompositio
 import type { RuntimeOwnership } from "../../runtime/runtime-ownership.js"
 import { runningDisplayBuildId } from "../../runtime-executable.js"
 import { resolveProjectionFoldCacheDbFile } from "../../../../infra/paths.js"
-import { attachProjectionFoldCache, openProjectionFoldCache } from "../../../../infra/projection-fold-cache.js"
+import { attachProjectionFoldCache, openProjectionFoldCache } from "../../../../infra/projection/projection-fold-cache.js"
 
 /** Composes execution over state-worker authority without acquiring its generation.
  * The caller keeps state alive until disposal completes. No startup maintenance

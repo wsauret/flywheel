@@ -1,6 +1,6 @@
 import type { GitAiAttributionService } from "../../../agent-runtime/git-ai-attribution-service.js"
-import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../../../protocol/git-ai-attribution-protocol-types.js"
-import type { RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
+import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../../../protocol/git/git-ai-attribution-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 
 export interface GitAiAttributionProjection {
   view(): GitAiAttributionStatus

@@ -1,5 +1,5 @@
 import { isRecord } from "../../../../infra/record.js"
-import type { EventPayload } from "../../../../infra/event-store-types.js"
+import type { EventPayload } from "../../../../infra/store/event-store-types.js"
 import { parseDefinitionProvenanceFact } from "../../../../workflows/provenance/definition-provenance-facts.js"
 import { parseWorkflowQueueFact } from "../../../../workflows/view/view-facts.js"
 import { migrateFactVersions, unreadableWhenRefused, type FactMigrationResult, type FactUpgrade } from "../../../workspace-state/migrations/engine.js"

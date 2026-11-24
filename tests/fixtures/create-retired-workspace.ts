@@ -24,7 +24,7 @@ import type { ProjectDirectories } from "../../src/infra/directory-authorities.j
 import { FLYWHEEL_DIR_NAME } from "../../src/infra/directory-authorities.js"
 import { resolveEventStoreDbFile } from "../../src/infra/paths.js"
 import { windowsDirectoryIsOwnerOnly } from "../../src/infra/windows-private-directory-acl.js"
-import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../src/infra/store/sqlite-event-store.js"
 import { createSessionManager } from "../../src/orchestration/session/manager.js"
 import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state/workspace-state-retirement.js"
 import { prepareWorkspaceState } from "../../src/orchestration/workspace-state/workspace-state.js"

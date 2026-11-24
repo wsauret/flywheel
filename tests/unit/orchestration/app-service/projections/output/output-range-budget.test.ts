@@ -5,9 +5,9 @@ import { describe, expect, it } from "bun:test"
 import { minOutputRangeRecords, projectRecordsWithinRangeBudget, trimOutputRangeFromTail } from "../../../../../../src/orchestration/app-service/projections/output/output-range-budget.js"
 import { hydrateDerivedOutputRange } from "../../../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
-import { blockIdentity } from "../../../../../../src/protocol/block-identity.js"
+import { blockIdentity } from "../../../../../../src/protocol/transcript/block-identity.js"
 import { Schema } from "effect"
-import { HydratedOutputRangeSchema, OutputRangeRequestSchema } from "../../../../../../src/protocol/transcript-protocol-schemas.js"
+import { HydratedOutputRangeSchema, OutputRangeRequestSchema } from "../../../../../../src/protocol/transcript/transcript-protocol-schemas.js"
 
 interface Raw {
   readonly id: string

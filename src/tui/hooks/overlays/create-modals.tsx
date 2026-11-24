@@ -2,13 +2,13 @@
 
 import type { SignInPage } from "../../terminal-attach.js"
 import { batch, createMemo, createSignal, type Accessor } from "solid-js"
-import type { SessionCatalogRow, AttachedRuntimeClient, RuntimeClient } from "../../../protocol/app-service-types.js"
-import type { RuntimeAuthView } from "../../../protocol/auth-status-protocol-types.js"
-import type { RuntimeAuthProfileScope } from "../../../protocol/auth-profile-selection-protocol-types.js"
+import type { SessionCatalogRow, AttachedRuntimeClient, RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
+import type { RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
+import type { RuntimeAuthProfileScope } from "../../../protocol/auth/auth-profile-selection-protocol-types.js"
 import type { ModuleRow, ModuleRowAction } from "../../../protocol/protocol-module.js"
 import type { AccountDirectories } from "../../../infra/directory-authorities.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { KernelSurfaceTable } from "../../commands/command-surfaces.js"
 import type { CommandSpec } from "../../commands/command-types.js"
 import type { ModalContext } from "../../components/modal-stack.js"
@@ -19,7 +19,7 @@ import type { SettingsOperations, SettingsStore } from "../state/create-settings
 import type { ShellServices, ShellSignals } from "../state/shell-state.js"
 import type { RuntimeConfigCache } from "../state/runtime/create-runtime-config-cache.js"
 import type { AuthModalHook } from "./modals/auth/auth-modal-types.js"
-import { paidModeAwaitsAnswer, subscriptionSpendConsentNeedsReview } from "../../../protocol/subscription-spend-consent-protocol-types.js"
+import { paidModeAwaitsAnswer, subscriptionSpendConsentNeedsReview } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 import { PAID_USE_SETTINGS_LOAD_FAILURE } from "../../../protocol/client/provider-account-copy.js"
 import type { BackgroundModalTarget, useBackgroundModal } from "./modals/use-background-modal.js"
 import type { ModelModalHook } from "./modals/model/use-model-modal.js"
@@ -32,7 +32,7 @@ import type { SessionActivationResult } from "../foreground/session-activation.j
 import type { SessionCreationSettlement } from "../sessions/create-session-creator.js"
 import { settingsPlace, type SettingsDestination } from "../../modals/settings/settings-destination.js"
 import { kernelModalControllers, LazyAuthModal, LazyBackgroundModal, LazyCommandPalette, LazyModalHelp, LazyModelModal, LazyProfileModal, LazySessionChangesModal, LazySessionModal, LazySettingsModal, LazyStatusModal, LazyThemeModal } from "../../modals/lazy-modal-registry.js"
-import { effectiveSessionShortTitle } from "../../../protocol/app-service-types.js"
+import { effectiveSessionShortTitle } from "../../../protocol/runtime/app-service-types.js"
 
 const log = Log.create({ service: "modals" })
 

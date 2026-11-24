@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { DebugLog } from "../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log.js";
 import type { AuthContext } from "../../../../../src/infra/auth/auth-context.js";
 import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../../src/infra/llm/access/access-provider.js";
 import { groupedOfferingIndex, normalizeResolvedCatalogRows, recordUnresolvedModelRelationships, resolveModelCatalog, type CatalogDiscovery, type CatalogSourceRow, type ModelCatalogContribution, type ResolvedModelCatalog } from "../../../../../src/infra/llm/catalog/model-catalog-resolution.js";

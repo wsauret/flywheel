@@ -3,7 +3,7 @@ import { describeReclaimOutcome, previewShowsView, RECLAIM_STORAGE_COMMAND_NAME,
 import { formatStorageBytes, type StorageReclaimPreview } from "../../../../src/protocol/store-reclaim.js"
 import { useClient } from "../../app/client-context.js"
 import { Sheet, SheetEmpty, SheetLoading, SheetRow } from "../../app/sheets/sheet.js"
-import { describeFailure } from "../../client/failure-message.js"
+import { describeFailure } from "../../client/format/failure-message.js"
 import "./sheet.css"
 
 type PreviewRead =

@@ -34,7 +34,7 @@
  */
 
 import { Cause, Effect, Exit } from "effect";
-import type { PersistenceWriteRefused } from "../../../../infra/event-store-types.js";
+import type { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js";
 import type { SettledToolBatch, SettledToolCall, ToolBatchEvent, TurnDispatcher } from "./agent-loop-tools.js";
 import { bridgeExternalPromise } from "../../external-promise-bridge.js";
 import type { ToolResultEntry } from "../turn/agent-state.js";

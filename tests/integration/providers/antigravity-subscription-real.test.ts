@@ -9,6 +9,10 @@
  * test reads no token. Logins are never changed; the reconnect case signs the same account in again in its own place,
  * which agy answers from its stored token without a browser.
  *
+ * The tool-call case also re-qualifies the field numbers of agy's conversation database that the route reads usage
+ * from (`usage/conversation-usage.ts`): every request of a task must report complete usage, with cached reads on a
+ * later one. A bump of agy that moves those fields fails it.
+ *
  * A host whose profile has no Google Antigravity login fails here, and the refusal names the command that adds one.
  * Readiness reports a profile without one as a blocker before it starts the tier.
  */
@@ -16,7 +20,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Effect, Exit, Scope } from "effect";
-import { DebugLog, type DebugLogRecordInput } from "../../../src/infra/debug-log.js";
+import { DebugLog, type DebugLogRecordInput } from "../../../src/infra/diagnostics/debug-log.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js";
 import { streamAssistantTurn } from "../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
 import type { AssistantTurnResult } from "../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js";
@@ -167,13 +171,19 @@ describe(`the bundled Antigravity CLI on the ${LIVE_AUTH_PROFILE} profile`, () =
     });
   }, 180_000);
 
-  test("three tool calls of one task each reach Flywheel, and the model reads every result", async () => {
+  test("three tool calls of one task each reach Flywheel, the model reads every result, and every request reports complete usage", async () => {
     await onLiveRoute("three tool calls reach Flywheel", async (open) => {
       const chat = await open();
       let history: ConversationMessage[] = [user("Call the echo tool three times, one call at a time and in this order, with the texts red, green, and blue. After the third result, reply with only the three results joined by commas.")];
       const calls: string[] = [];
+      const usage: Extract<ProviderStreamEvent, { kind: "usage" }>[][] = [];
+      const stream = (messages: ConversationMessage[]) => {
+        const reported: Extract<ProviderStreamEvent, { kind: "usage" }>[] = [];
+        usage.push(reported);
+        return chat.stream(messages, { systemPrompt: LONG_SYSTEM, onEvent: (event) => { if (event.kind === "usage") reported.push(event); } });
+      };
       for (let request = 0; request < 3; request += 1) {
-        const answer = await chat.stream(history);
+        const answer = await stream(history);
         answered(answer);
         const [call] = answer.turn.toolCalls;
         expect(structuredClone(call)).toMatchObject({ id: expect.any(String), name: "echo", input: { text: expect.any(String) } });
@@ -182,11 +192,18 @@ describe(`the bundled Antigravity CLI on the ${LIVE_AUTH_PROFILE} profile`, () =
         history = [...answer.history, { kind: "toolResult", toolUseId: call?.id ?? "", content: [{ type: "text", text: `${echoed.toUpperCase()}-OK` }] }];
       }
       expect(calls.map((value) => value.toLowerCase())).toEqual(["red", "green", "blue"]);
-      const final = await chat.stream(history);
+      const final = await stream(history);
       answered(final);
       expect(final.turn.toolCalls).toEqual([]);
       for (const word of ["RED-OK", "GREEN-OK", "BLUE-OK"]) expect(text(final)).toContain(word);
       expect(rotations()).toHaveLength(1);
+      // Each request ran its own model request, whose row states its complete usage; the cache serves the later ones.
+      expect(usage.map((reported) => reported.map((event) => event.final))).toEqual([[true], [true], [true], [true]]);
+      for (const [event] of usage) {
+        expect(event?.inputTokens).toBeGreaterThan(0);
+        expect(event?.outputTokens).toBeGreaterThan(0);
+      }
+      expect(usage.slice(1).some(([event]) => (event?.cacheReadTokens ?? 0) > 0)).toBe(true);
     });
   }, 240_000);
 

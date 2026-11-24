@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { Log } from "../../../../../../src/infra/log.js";
-import type { DebugLogRecordInput } from "../../../../../../src/infra/debug-log.js";
+import { Log } from "../../../../../../src/infra/diagnostics/log.js";
+import type { DebugLogRecordInput } from "../../../../../../src/infra/diagnostics/debug-log.js";
 import { captureProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
 import type { AccessProviderCandidate, AccessProviderDefinition, ExternalLoginProblem } from "../../../../../../src/infra/llm/access/access-provider.js";
 import { createAccessProviderSelection } from "../../../../../../src/infra/llm/access/access-provider.js";

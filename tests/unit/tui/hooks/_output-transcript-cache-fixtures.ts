@@ -1,7 +1,7 @@
-import type { AttachedRuntimeClient, FrontendEvent, FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendEvent, FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { threadHistoryRangeIndices } from "../../../../src/orchestration/session/conversation/transcript/branch-history-pagination.js"
 import type {
   HydratedOutputGroupChildrenBatch,
@@ -12,8 +12,8 @@ import type {
   OutputRangeRequest,
   OutputWindowRequest,
   OutputWindowSnapshot,
-} from "../../../../src/protocol/transcript-protocol-types.js"
-import { outputCursor, type OutputDelta, type OutputView } from "../../../../src/protocol/output-protocol-types.js"
+} from "../../../../src/protocol/transcript/transcript-protocol-types.js"
+import { outputCursor, type OutputDelta, type OutputView } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 
 export function deferred<T>() {

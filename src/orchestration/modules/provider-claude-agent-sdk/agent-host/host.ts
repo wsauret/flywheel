@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { Cause, Effect, Exit, Queue } from "effect";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import type { ModelRefusal } from "../../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import { asRecord } from "../../../../infra/record.js";
 import { classifyAnthropicError } from "../../../agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";

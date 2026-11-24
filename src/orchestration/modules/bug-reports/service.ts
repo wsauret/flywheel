@@ -1,6 +1,6 @@
 import { homedir } from "node:os"
 import { Schema } from "effect"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
 import { readAppVersion } from "../../../infra/app-version.js"
 import { redactSecrets } from "../../../infra/redact-secrets.js"

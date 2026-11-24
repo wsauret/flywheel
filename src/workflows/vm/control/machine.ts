@@ -9,11 +9,11 @@ import {
   recover,
   startExecution,
 } from "../transitions/attempt-transitions.js";
-import type { FollowUpIdentity } from "../facts/committed-control.js";
+import type { FollowUpIdentity } from "../../control-facts/committed-control.js";
 import { reopenFailedNodes } from "../transitions/resume-transitions.js";
 import { replayFollowUpRun } from "../transitions/follow-up-history.js";
 import type { WorkflowMachineContext } from "./control-types.js";
-import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "../facts/events.js";
+import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "../../control-facts/events.js";
 import { buildFollowUpTransferredFact, buildWorkflowAbortedFact, buildWorkflowPausedFact, buildWorkflowResumedFact } from "../transitions/fact-drafts.js";
 
 function sameFollowUpIdentity(left: FollowUpIdentity, right: FollowUpIdentity): boolean {

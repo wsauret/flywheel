@@ -4,7 +4,7 @@ import { testRender } from "@opentui/solid"
 import { TextAttributes } from "@opentui/core"
 import { createSignal } from "solid-js"
 import type { AgentGroupBlock } from "../../../../../../src/infra/output-blocks.js"
-import type { RuntimeSessionDetailView } from "../../../../../../src/protocol/session-detail-protocol-types.js"
+import type { RuntimeSessionDetailView } from "../../../../../../src/protocol/session/session-detail-protocol-types.js"
 import type { SubagentControls } from "../../../../../../src/tui/context/subagent-controls.js"
 import { SubagentControlsProvider } from "../../../../../../src/tui/context/subagent-controls.js"
 import { AgentGroupBlock as AgentBlock } from "../../../../../../src/tui/transcript/output-blocks/agents/agent-group-block.js"
@@ -15,7 +15,7 @@ import { NavigationProvider } from "../../../../../../src/tui/context/navigation
 import { resolvedTheme } from "../../../components/composer/frame/prompt-border-fixtures.js"
 import { viewerSurface } from "../../../child-viewer/_child-session-viewer-fixtures.js"
 import { runtimeDispatch } from "../../../../../helpers/runtime-dispatch.js"
-import type { FrontendMutation } from "../../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../../../src/protocol/runtime/app-service-types.js"
 
 const renders: Awaited<ReturnType<typeof testRender>>[] = []
 afterEach(() => { for (const render of renders.splice(0)) render.renderer.destroy() })

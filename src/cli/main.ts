@@ -1,12 +1,12 @@
 import { readAppVersion } from "../infra/app-version.js"
 import type { StartupDirectories } from "../infra/directory-authorities.js"
 import { errorDetail, errorMessage } from "../infra/error-message.js"
-import type { LaunchState } from "../infra/launch-state.js"
-import { Log } from "../infra/log.js"
+import type { LaunchState } from "../infra/distribution/launch-state.js"
+import { Log } from "../infra/diagnostics/log.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
-import { createPersistentProcessManager, type PersistentProcessManager } from "../infra/persistent-process-manager.js"
-import { startupTrace } from "../infra/startup-trace.js"
-import type { createStartupTimeline } from "../infra/startup-timeline.js"
+import { createPersistentProcessManager, type PersistentProcessManager } from "../infra/supervision/persistent/persistent-process-manager.js"
+import { startupTrace } from "../infra/diagnostics/startup-trace.js"
+import type { createStartupTimeline } from "../infra/diagnostics/startup-timeline.js"
 import { HEADLESS_USAGE, hasHeadlessFlag, headlessChatAttaches, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, isHeadlessChat, needsHeadlessUsage } from "./headless-args.js"
 import { createCliLauncher } from "./account-service/runtime-launch.js"
 import type { CliLauncher, TerminalLaunch, TerminalRuntime } from "./account-service/runtime-launch.js"
@@ -120,7 +120,7 @@ async function runCommand(args: readonly string[], subcommand: SubcommandDispatc
     // Headless runs agent turns too: without parent-death detection, a closed
     // terminal or killed CI runner leaves a detached flywheel process spending
     // provider tokens. Exit promptly; the watchdog's SIGKILL clock backstops.
-    const { installProcessWatchdog } = await import("../infra/process-watchdog.js")
+    const { installProcessWatchdog } = await import("../infra/supervision/process-watchdog.js")
     installProcessWatchdog(() => {
       Log.Default.error("parent process died; exiting headless run")
       void Log.closeGlobal().finally(() => process.exit(1))
@@ -189,7 +189,7 @@ async function runHeadlessTaskMode(task: string, args: readonly string[], direct
 async function runTUI(directories: StartupDirectories, launcher: CliLauncher, terminal: TerminalLaunch, handoff: TerminalHandoff, launchState: LaunchState | undefined, timeline?: ReturnType<typeof createStartupTimeline>): Promise<number> {
   startupTrace("runTUI start")
   const endImports = timeline?.begin("client.imports")
-  const { armProcessWatchdog, installProcessWatchdog } = await import("../infra/process-watchdog.js")
+  const { armProcessWatchdog, installProcessWatchdog } = await import("../infra/supervision/process-watchdog.js")
   const { startTUI } = await import("../tui/shell/launcher.js");
   startupTrace("tui launcher imported")
   const { exitTUI, registerPreExitCleanup } = await import("../tui/terminal/exit.js");

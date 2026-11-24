@@ -3,7 +3,7 @@ import type { MessageSessionResult, SessionMessaging } from "../../../session/co
 import type { ReplayedSession } from "../../../session/metadata/schemas.js";
 import type { ContentBlock, ConversationMessage } from "../../llm/types.js";
 import type { AdvertisedTool, RuntimeTool, ToolResult } from "../types.js";
-import { parseWorkflowTargets } from "../../../../protocol/client/workflow-addresses.js";
+import { parseWorkflowTargets } from "./workflow-targets.js";
 
 export const MESSAGE_SESSION_TOOL_NAME = "message_session";
 const ASK_USER_TOOL_NAME = "ask_user";

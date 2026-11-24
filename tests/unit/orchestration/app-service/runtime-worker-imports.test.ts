@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { sep } from "node:path"
 import { Schema } from "effect"
-import { RuntimeBackgroundRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeBackgroundRpc } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 
 describe("runtime server imports", () => {
   test("background RPCs route every request by canonical project root", async () => {
@@ -57,9 +57,9 @@ describe("runtime server imports", () => {
     // Detachment is an ownership decision. Only the owned-process backends and
     // the dedicated persistent-process boundary may request it.
     expect(detachedOwners.toSorted()).toEqual([
-      "src/infra/owned-subprocess-backend.ts",
-      "src/infra/persistent-subprocess.ts",
       "src/infra/process-supervisor.ts",
+      "src/infra/supervision/launch/owned-subprocess-backend.ts",
+      "src/infra/supervision/persistent/persistent-subprocess.ts",
     ])
   })
 })

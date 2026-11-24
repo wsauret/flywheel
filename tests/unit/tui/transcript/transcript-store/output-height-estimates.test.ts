@@ -1,6 +1,6 @@
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../src/infra/output-blocks.js"
 import { describe, expect, it } from "bun:test"
-import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { DEFAULT_ESTIMATE, estimateFrontendOutputBlockRows } from "../../../../../src/tui/transcript/transcript-store/output-height-estimates.js"
 import { buildMutationDiffEvidence } from "../../../../../src/infra/mutation-diff-evidence.js"
 

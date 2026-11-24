@@ -7,9 +7,9 @@ import { hashDefinition } from "../../../../src/workflows/provenance/definition-
 import { replayWorkflowControl, resumesFailedAgents } from "../../../../src/workflows/vm/recovery/fact-fold.js";
 import { attemptScope } from "../../../../src/workflows/vm/transitions/list-transitions.js";
 import { queuedAttempts } from "../../../../src/workflows/vm/graph/structural-admission.js";
-import { CURRENT_PROPOSAL_ENCODING } from "../../../../src/workflows/vm/facts/events.js";
+import { CURRENT_PROPOSAL_ENCODING } from "../../../../src/workflows/control-facts/events.js";
 import { validateWorkflowBootstrap } from "../../../../src/workflows/vm/recovery/bootstrap-validation.js";
-import { failedAgents } from "../../../../src/workflows/run/workflow-completion.js";
+import { failedAgents } from "../../../../src/workflows/vm/recovery/workflow-completion.js";
 import { workflowTree } from "../../../../src/workflows/vm/view/view-tree.js";
 import { attemptOf, FINDINGS_CHECKS, FINDINGS_FILES, FINDINGS_REPORT, FINDINGS_REVIEWS, findingsAnswer, findingsWorkflow, mapSkills, VOTES_CHECKS, VOTES_REPORT, votesAnswer, votesWorkflow } from "./_map-fixtures.js";
 import { mapHost, SqliteVmDriver } from "./_sqlite-vm-driver.js";

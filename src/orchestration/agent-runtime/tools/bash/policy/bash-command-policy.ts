@@ -4,10 +4,10 @@ import { extractShellCommand, type ParsedCommand } from "./bash-command-parts.js
 import { scopeAdmission, shellWriteViolation, type WriteScope } from "./bash-write-targets.js";
 import { resolveShellWrappers } from "./bash-write-wrappers.js";
 import type { CapabilityCheck } from "../../../../../infra/capability-text.js";
-import { DebugLog } from "../../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../../infra/diagnostics/debug-log.js";
 import { WORKTREE_LIFECYCLE_SKILL_ID } from "../../../../../infra/directory-authorities.js";
-import { Log } from "../../../../../infra/log.js";
-import { coalesceRepeats } from "../../../../../infra/repeat-coalescer.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
+import { coalesceRepeats } from "../../../../../infra/diagnostics/repeat-coalescer.js";
 
 interface NumberByUnit {
   [unit: string]: number;

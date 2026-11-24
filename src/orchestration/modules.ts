@@ -8,8 +8,8 @@ import type { ChatModuleHostContribution } from "./chat/chat-module-host.js"
 import type { TerminalRemoteContribution } from "./terminal-remote.js"
 import type { ModuleServiceHandle, ModuleServices } from "../infra/module-service.js"
 import type { NotificationEpisodeInput } from "../infra/notification-episode.js"
-import { canonicalModuleIds, EMPTY_MODULE_IDS, MODULE_IDS, type ModuleId as WireModuleId } from "../protocol/module-ids.js"
-import type { ModuleProtocolRow, ModuleProviderSetting, ModuleSetting, ModuleSettingControl, WorkflowsMode } from "../protocol/module-protocol-types.js"
+import { canonicalModuleIds, EMPTY_MODULE_IDS, MODULE_IDS, type ModuleId as WireModuleId } from "../protocol/runtime/module-ids.js"
+import type { ModuleProtocolRow, ModuleProviderSetting, ModuleSetting, ModuleSettingControl, WorkflowsMode } from "../protocol/runtime/module-protocol-types.js"
 import { credentialSlotClassifier } from "./auth/credential-slot-classifier.js"
 import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
 import type { RuntimeTool } from "./agent-runtime/tools/types.js"
@@ -20,7 +20,7 @@ import type { CredentialSlotClassifier } from "../infra/auth/store/auth-store-ty
 import type { WebProviderDefinition } from "../infra/auth/web-providers.js"
 import type { SubscriptionUsageReader } from "../infra/llm/usage/subscription-usage.js"
 import type { WebSearchProvider, WebSearchProviderId } from "./agent-runtime/web-search/types.js"
-import type { CommandMenuPosition, CommandOutcome, CommandReading, CommandSurfaceTarget } from "../protocol/command-catalog-protocol-types.js"
+import type { CommandMenuPosition, CommandOutcome, CommandReading, CommandSurfaceTarget } from "../protocol/commands/command-catalog-protocol-types.js"
 import type { ModuleHealthCheck } from "./module-health.js"
 import type { CliNounContribution } from "./cli-contribution.js"
 import type { CommandHost } from "./app-service/definitions/commands/command-host.js"
@@ -30,7 +30,7 @@ import type { ModuleConfigSection } from "./config/schema/config-section.js"
 import type { DefinitionBundle } from "../workflows/definitions/loader.js"
 import { installedDefinitionBundles, installedModules, publishShippedOtherModules, validateModuleFactPrefixes, type InstalledModuleHistory } from "./module-catalog.js"
 import { CREDENTIAL_PROVIDER_MODULES } from "./credential-provider-modules.js"
-import type { AuthProviderStatus } from "../protocol/auth-status-protocol-types.js"
+import type { AuthProviderStatus } from "../protocol/auth/auth-status-protocol-types.js"
 import { moduleRequirementsForContribution } from "./module-requirements.js"
 import type { DefinitionContribution, DefinitionReconciliationInput, ToolDeclaration, ModuleChildSessionHistory, ModuleDefinitionReconciliation, ModuleMaintenance, ModuleMaintenanceInput, ManagedPackageWrites, MemoryContribution, ModuleChatObserver, ModuleChatObserverContext, ModuleRetainedOperationContribution, ModuleSessionHistory, ModuleSessionAdmission, ModuleSessionDeletion, ModuleChildSession, QuestionDecisionContribution, SessionHistoryRecoveryInput, SessionToolSummaryReader, SkillChildGrantContribution, SupersededFactInvalidationResult, WorkspaceMigration } from "./module-seams.js"
 import type { ModuleRetainedDiagnostics } from "./module-diagnostics.js"
@@ -331,7 +331,7 @@ type CatalogModuleId = (typeof SHIPPED_MODULES)[number]["id"] | (typeof DEVELOPM
  *  make the catalog's own type circular. The proof below keeps both equal. */
 export type ModuleId = WireModuleId
 
-/** Both directions against the wire vocabulary in `protocol/module-ids.ts`,
+/** Both directions against the wire vocabulary in `protocol/runtime/module-ids.ts`,
  *  so a module registered without its id there, and an id there with no module
  *  behind it, are each a compile error at their own source rather than a
  *  decode failure at the first wire frame that carries them. The proof lives
@@ -750,7 +750,7 @@ export function unattendedModuleIds(modules: readonly FirstPartyModule[] = insta
   return MODULE_IDS.filter((id) => !attended.has(id))
 }
 /** Preserve one admission across preparation and the later consent-aware pass. */
-export async function prepareDefinitionReconciliation(input: DefinitionReconciliationInput, modules: readonly FirstPartyModule[] = installedModules()): Promise<(reader?: import("../infra/event-store-types.js").AsyncEventStateReadSurface) => Promise<void>> {
+export async function prepareDefinitionReconciliation(input: DefinitionReconciliationInput, modules: readonly FirstPartyModule[] = installedModules()): Promise<(reader?: import("../infra/store/event-store-types.js").AsyncEventStateReadSurface) => Promise<void>> {
   const prepared = await Promise.allSettled(modules.map(async (module) => module.definitionReconciliation?.prepare(input)))
   const errors = prepared.flatMap((result) => result.status === "rejected" ? [result.reason] : [])
   // The members' messages travel in the message, because a start failure

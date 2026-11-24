@@ -1,10 +1,10 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
-import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeStorageView, StorageReclaimResult } from "../../../../src/protocol/modules/reclaim-storage.js"
 import type { StorageReclaimPreview } from "../../../../src/protocol/store-reclaim.js"
 import { ClientContext } from "../../app/client-context.js"
 import { fakeClient, fakeViewState } from "../../app/client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { ReclaimStorageSheet } from "./sheet.js"
 

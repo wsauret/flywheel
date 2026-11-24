@@ -1,6 +1,6 @@
 import { computeBackoffMs, type BackoffOptions } from "../../infra/backoff.js"
 import { errorMessage } from "../../infra/error-message.js"
-import type { OutputWindowSnapshot, TranscriptUnavailable } from "../transcript-protocol-types.js"
+import type { OutputWindowSnapshot, TranscriptUnavailable } from "../transcript/transcript-protocol-types.js"
 import { lostWithLane } from "./connection-failures.js"
 
 /** Retry one authoritative window read. A lost lane waits for its successor;

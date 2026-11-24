@@ -11,7 +11,7 @@ import {
   type UpdatePolicyStore,
   type UpdateServiceDeps,
 } from "../../../../src/orchestration/update/update-service.js";
-import type { UpdateStatusView } from "../../../../src/protocol/update-protocol-types.js";
+import type { UpdateStatusView } from "../../../../src/protocol/runtime/update-protocol-types.js";
 
 export const ASSET = "flywheel-darwin-arm64.tar.gz";
 

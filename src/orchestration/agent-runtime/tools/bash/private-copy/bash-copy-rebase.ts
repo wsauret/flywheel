@@ -15,8 +15,8 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ContainedPathError } from "../../../../../infra/descriptor-directory-contract.js";
-import { Log } from "../../../../../infra/log.js";
+import { ContainedPathError } from "../../../../../infra/descriptor-directory/descriptor-directory-contract.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import { observeFileState, type ExpectedFileState } from "../../file-edits/file-state.js";
 import { RetainedFileEditAuthority } from "../../file-edits/retained-file-edit-host.js";

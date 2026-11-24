@@ -1,5 +1,5 @@
-import type { SessionRow } from "../../../protocol/app-service-types.js"
-import type { OutputView } from "../../../protocol/output-protocol-types.js"
+import type { SessionRow } from "../../../protocol/runtime/app-service-types.js"
+import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
 
 /** A replaceable new-chat tab has no user-visible transcript content. */
 export function isEmptyNewChat(

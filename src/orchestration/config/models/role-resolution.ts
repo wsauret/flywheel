@@ -8,15 +8,15 @@ import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory, ty
 import { savedProviderModelIds } from "../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import type { AdmittedFailoverPlan, AccessProviderModelEligibility, AccessProviderSelection } from "../../../infra/llm/access/access-provider.js";
 import type { ProviderConnection } from "../../../infra/auth/auth-context.js";
 import type { ModelInfo } from "../../../infra/llm/models/models.js";
 import { EFFORT_VALUES } from "../../../infra/workflow-types.js";
 import { clampReasoningEffort, newestLaterModelVersion } from "../../agent-runtime/llm/model-compat.js";
-import { parseBriefRoleId, briefPersonaRoleId } from "../../../protocol/brief-role-id.js";
+import { parseBriefRoleId, briefPersonaRoleId } from "../../../protocol/auth/brief-role-id.js";
 import { beginTierResolutionOperation, modelPriceTier, resolveModelForTierAcrossFamilies, type TierResolutionOptions } from "./model-tiers.js";
-import { modelTierForReference } from "../../../protocol/model-tier-reference.js";
+import { modelTierForReference } from "../../../protocol/auth/model-tier-reference.js";
 import { ROLE_MODEL_DEFAULTS, reachableRoleModelDefaults, roleModelDefault } from "./role-model-defaults.js";
 import { canonicalRoleId } from "../retired-config-names.js";
 import { DEFAULT_ROLES, parentRoleId, SUBAGENT_SUMMARY_ROLE_ID, TITLE_GENERATION_ROLE_ID, type RoleId, type ResolvedRole, type ResolvedRoles } from "../roles.js";

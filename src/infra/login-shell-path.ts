@@ -5,7 +5,7 @@ import { homedir } from "node:os"
 import path from "node:path"
 
 import { errorMessage } from "./error-message.js"
-import { Log } from "./log.js"
+import { Log } from "./diagnostics/log.js"
 import type { OwnedCommandRunner } from "./owned-command.js"
 
 /** The PATH a person's login shell builds, as the base of every agent

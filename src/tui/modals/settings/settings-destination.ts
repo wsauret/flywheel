@@ -1,4 +1,4 @@
-import type { SurfacePlace } from "../../../protocol/command-catalog-protocol-types.js"
+import type { SurfacePlace } from "../../../protocol/commands/command-catalog-protocol-types.js"
 
 export type SettingsDestination =
   | { readonly kind: "root" }

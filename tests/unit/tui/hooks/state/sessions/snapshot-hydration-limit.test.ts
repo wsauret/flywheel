@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { withSnapshotHydrationLimit } from "../../../../../../src/tui/hooks/state/sessions/snapshot-hydration-limit.js"
-import type { AttachedRuntimeClient } from "../../../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { fakeLanes } from "../../../../../helpers/fake-lanes.js"
 import { runtimeQuery } from "../../../../../helpers/runtime-dispatch.js"
 

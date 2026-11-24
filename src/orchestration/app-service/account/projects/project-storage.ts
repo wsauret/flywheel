@@ -1,6 +1,6 @@
 import type { StartupDirectories } from "../../../../infra/directory-authorities.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { StoreUsage } from "../../../session/persistence/storage/event-store-maintenance.js"
 import type { AccountService } from "../account-service.js"
 import type { MaintenanceQueue } from "../../background/runtime-maintenance-owner.js"

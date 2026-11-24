@@ -3,7 +3,7 @@ import type { SkillDefinition } from "../../../workflows/skills/skill-schema.js"
 import { attendedClosureMembers } from "../../../workflows/skills/skill-closure.js";
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js";
 import { definitionAvailabilityOf } from "../../app-service/definitions/definition-availability.js";
-import { canonicalModuleIds } from "../../../protocol/module-ids.js";
+import { canonicalModuleIds } from "../../../protocol/runtime/module-ids.js";
 import { disabledAgentTypes } from "../../module-catalog.js";
 import { contributedToolIdentities, treeCapabilityCheck } from "./prompt/capability-checks.js";
 import type { CapabilityAccess } from "../tools/types.js";

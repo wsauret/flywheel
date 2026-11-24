@@ -1,6 +1,6 @@
-import type { Log } from "../../../infra/log.js"
+import type { Log } from "../../../infra/diagnostics/log.js"
 import { loggedOperation } from "../../../infra/operation-log.js"
-import type { RecallInput, RecallResult } from "../../../protocol/conversation-recall.js"
+import type { RecallInput, RecallResult } from "../../../protocol/transcript/conversation-recall.js"
 import type { RuntimeBackgroundClient } from "./worker-background-client.js"
 
 export interface RuntimeBackgroundConversationSearch {

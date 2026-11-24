@@ -1,10 +1,10 @@
 import { createChatModuleHosts } from "../chat-module-host.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import { createEmit, type EventBus } from "../../../infra/event-bus.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { ConnectionState } from "../../../infra/output-blocks.js"
 import type { ChatInputLike } from "../../../infra/chat-input.js"
-import { PersistenceWriteRefused, type StoredFact } from "../../../infra/event-store-types.js"
+import { PersistenceWriteRefused, type StoredFact } from "../../../infra/store/event-store-types.js"
 import { wakeInput, type AgentLoopWakeInput, type TurnEndedContext } from "../../../infra/agent-loop-events.js"
 import { randomUUID } from "node:crypto"
 

@@ -1,6 +1,6 @@
 import { afterAll, afterEach, describe, expect, spyOn, test } from "bun:test"
 import { dismissFirstRunModals, selectExecutorPlateau, selectRetainedHeap, submitDraftAfterDeferredModals } from "../../release/scenarios/scenario-context"
-import type { ReleaseMemoryEvidence } from "../../../src/infra/startup-trace.js"
+import type { ReleaseMemoryEvidence } from "../../../src/infra/diagnostics/startup-trace.js"
 
 describe("active executor memory evidence", () => {
   const owner: ReleaseMemoryEvidence = {

@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { PersistenceWriteRefused } from "../../../../infra/event-store-types.js"
+import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { AccessProviderIdSchema } from "../../../../infra/llm/access/access-provider.js"
 import type { ProviderErrorCopy, ProviderRecovery } from "../../../../infra/llm/errors/provider-error-copy.js"

@@ -1,4 +1,4 @@
-import type { AsyncEventAppender, AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend, InFlightRecord, InFlightWrite, StoredFact } from "../../../../infra/event-store-types.js"
+import type { AsyncEventAppender, AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend, InFlightRecord, InFlightWrite, StoredFact } from "../../../../infra/store/event-store-types.js"
 import { runInTaskSlices, runToCompletion, type TaskSliceScheduling } from "../../../../infra/task-scheduling.js"
 import { chatEntriesFacts, parseConversationTreeFact, type ConversationTreeFact } from "../conversation-facts.js"
 import { extractTreeFactContent } from "./conversation-tree-content-extraction.js"
@@ -6,7 +6,7 @@ import { branchVisibleTranscriptWork, createConversationTreeProjection, type Con
 import type { LeafEntry, ConversationEntry } from "../conversation-entry-types.js"
 import { walkBranchWork, type BranchWalkGap } from "./conversation-tree-context.js"
 import { readInterruptedWork, type InterruptedWork } from "./interrupted-turn-summary.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 
 const log = Log.create({ service: "conversation-tree" })
 

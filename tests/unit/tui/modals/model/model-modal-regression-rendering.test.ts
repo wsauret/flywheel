@@ -3,7 +3,7 @@ import { modelAssignmentText, modelLabelColumn, modelText, providerChainText } f
 import { contextLine } from "../../../../../src/tui/modals/model/model-modal-chrome.js";
 import { displayWidth } from "../../../../../src/tui/terminal/text.js";
 import { styledTextContent, theme } from "./_model-modal-fixtures";
-import type { ModelOptionRow } from "../../../../../src/protocol/model-assignment-protocol-types.js";
+import type { ModelOptionRow } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js";
 
 import { roleSlot } from "../../../../../src/orchestration/config/models/role-selection.js";
 import { createSignal } from "solid-js";

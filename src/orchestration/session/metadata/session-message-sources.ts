@@ -1,6 +1,6 @@
-import { createEventProjection } from "../../../infra/event-projection.js"
-import { heldProjection } from "../../../infra/projection-registry.js"
-import { CorruptEventRowError, type AsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../infra/event-store-types.js"
+import { createEventProjection } from "../../../infra/projection/event-projection.js"
+import { heldProjection } from "../../../infra/projection/projection-registry.js"
+import { CorruptEventRowError, type AsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../infra/store/event-store-types.js"
 import type { MessageProducer } from "../../../infra/chat-input.js"
 import { reduceSessionMetadataEvent } from "./session-metadata-projection.js"
 

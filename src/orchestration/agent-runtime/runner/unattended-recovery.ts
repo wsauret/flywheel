@@ -57,10 +57,10 @@
 
 import { abortableSleep, mergeAbortSignals } from "../../../infra/abort.js"
 import type { TurnParkState } from "../../../infra/agent-loop-events.js"
-import { DebugLog } from "../../../infra/debug-log.js"
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import type { CapacityReset, ProviderRecovery } from "../../../infra/llm/errors/provider-error-copy.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { SessionNotice, SessionNoticeOperation } from "../../../infra/session-notice.js"
 import { sleepUntil } from "../../../infra/wall-clock-sleep.js"
 import { capacityWaitNotice, type CapacityWaitAuthority, type CapacityWaitWithdrawal } from "../../session/control/capacity-wait.js"

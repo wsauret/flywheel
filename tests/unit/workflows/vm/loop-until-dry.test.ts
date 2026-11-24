@@ -9,7 +9,7 @@ import type { AccumulatedContext } from "../../../../src/workflows/context-bundl
 import type { WorkflowVmHostDeps } from "../../../../src/workflows/vm/host/host-types.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
 import { workflowTree } from "../../../../src/workflows/vm/view/view-tree.js";
-import type { WorkflowTree } from "../../../../src/protocol/workflow-view-protocol-types.js";
+import type { WorkflowTree } from "../../../../src/protocol/session/workflow-view-protocol-types.js";
 import { attemptOf, DRY_FILES, DRY_LOOP, dryAnswer, dryDefinition, dryFinding, dryRound, dryStage, dryWorkflow, mapSkills, type DryOptions } from "./_map-fixtures.js";
 import { mapHost, SqliteVmDriver } from "./_sqlite-vm-driver.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";

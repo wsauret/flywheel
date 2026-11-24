@@ -1,9 +1,9 @@
 import { Key } from "@solid-primitives/keyed"
 import { createMemo } from "solid-js"
-import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { foldReadRuns } from "../../../../../src/protocol/client/tool-run-category.js"
 import { foldTranscript } from "../../../../../src/protocol/client/transcript-model.js"
-import { rowIdentity, stretchCalls } from "../../../client/tool-runs.js"
+import { rowIdentity, stretchCalls } from "../../../client/session/residents/tool-runs.js"
 import { CompactToolRow } from "./compact-tool-row.js"
 
 /** A card's operations as compact rows with no process controls: the calls of

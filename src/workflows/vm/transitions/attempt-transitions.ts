@@ -1,17 +1,17 @@
 import { authoredContinuation, continuationAttempt, followUpForAttempt, forBodyRemainder, reopenedConversation } from "./attempt-continuation.js";
-import { blockedWork } from "./blocked-work.js";
+import { blockedWork } from "../../output-contract/blocked-work.js";
 import { isNonEmpty, normalizedSignal, whileOutcome } from "../graph/loop-signal.js";
 import type { AttemptExecutionInput } from "../control/commands.js";
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import type { VmLifecycle } from "../control/control-types.js";
-import { CURRENT_PROPOSAL_ENCODING, type WorkflowProposalEvent, type WorkflowProposalEncoding } from "../facts/events.js";
+import { CURRENT_PROPOSAL_ENCODING, type WorkflowProposalEvent, type WorkflowProposalEncoding } from "../../control-facts/events.js";
 import { admitsAnotherAttempt, readyAttempt, refreshFrontier } from "../graph/frontier.js";
-import { attemptIdOf, type Attempt, type LogicalNode } from "../graph/graph-types.js";
+import { attemptIdOf, type Attempt, type LogicalNode } from "../../control-facts/graph-types.js";
 import { replaceNode, withAttemptOrderedAccounting, withNodeState } from "../graph/graph-changes.js";
 import { attemptScope, attemptVote, decideConditions, expandReadyList, needsFailedWork, openReadyContainers, settleContainers, UNFINISHED_NODE_STATES } from "./list-transitions.js";
 import { applyReassessment, failNode, settleNode } from "./reassessment.js";
 import { queuedAttempts } from "../graph/structural-admission.js";
-import type { WorkflowControlFactDraft } from "../facts/session-facts.js";
+import type { WorkflowControlFactDraft } from "../../control-facts/family.js";
 import { buildAttemptBlockedFact, buildAttemptFailedFact, buildAttemptInsertionRejectedFact, buildAttemptResumeCapExceededFact, buildAttemptResumeRecoveredFact, buildAttemptRetryInsertedFact, buildAttemptRevertedFact, buildAttemptStartedFact, buildAttemptSucceededFact, buildForExpandedFact, buildForExpansionRejectedFact, buildWorkflowCompletedFact, buildWorkflowFailedFact, buildWorkflowPausedFact, buildWorkflowReassessedFact } from "./fact-drafts.js";
 
 const RESUME_REVERT_CAP = 3;

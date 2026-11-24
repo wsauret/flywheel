@@ -1,7 +1,7 @@
 import { ReferenceReviewNoticeFields, ReviewNoticeMutationSchema } from "../../../infra/review-notice.js";
 import { Effect, Schema, SchemaGetter, SchemaIssue, SchemaTransformation } from "effect";
 import { LlmToolOutputPartSchema } from "../../../infra/llm/tool-output-part-schema.js";
-import { ToolContentReferencePartSchema } from "../../../infra/tool-content.js";
+import { ToolContentReferencePartSchema } from "../../../infra/runtime-facts/tool-content.js";
 import { AccessProviderIdSchema } from "../../../infra/llm/access/access-provider.js";
 import { ContentRepairSchema } from "../../../infra/llm/content-repair.js";
 import { SessionRelationSchema } from "../../../infra/chat-input-schema.js";

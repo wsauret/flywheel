@@ -1,6 +1,6 @@
 import { errorMessage } from "../../../../infra/error-message.js";
-import { PersistenceWriteRefused } from "../../../../infra/event-store-types.js";
-import { Log } from "../../../../infra/log.js";
+import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { createOrderedLane } from "../../../../infra/ordered-lane.js";
 import { runInTaskSlices } from "../../../../infra/task-scheduling.js";
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";

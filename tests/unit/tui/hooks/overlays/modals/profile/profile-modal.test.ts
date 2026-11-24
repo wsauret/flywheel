@@ -1,10 +1,10 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import { createModalStack } from "../../../../../../../src/tui/components/modal-stack.js"
-import type { MutationResult } from "../../../../../../../src/protocol/app-service-types.js"
+import type { MutationResult } from "../../../../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeDispatch } from "../../../../../../helpers/runtime-dispatch.js"
-import type { RuntimeAuthProfileSelectMutation } from "../../../../../../../src/protocol/auth-profile-selection-protocol-types.js"
-import type { RuntimeAuthView } from "../../../../../../../src/protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthProfileSelectMutation } from "../../../../../../../src/protocol/auth/auth-profile-selection-protocol-types.js"
+import type { RuntimeAuthView } from "../../../../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { useProfileModal, type ProfileModalHook } from "../../../../../../../src/tui/hooks/overlays/modals/profile/use-profile-modal.js"
 import { createAuthProfileSelection } from "../../../../../../../src/tui/hooks/overlays/modals/profile/auth-profile-selection.js"
 

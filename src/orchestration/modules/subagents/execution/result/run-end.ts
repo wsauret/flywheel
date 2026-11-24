@@ -1,4 +1,4 @@
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import type { BackgroundKillSource } from "../../../../agent-runtime/background-work/background-work-types.js";
 import { failureTerminal, type AgentRunTerminal } from "../../../../agent-runtime/types.js";
 import type { TurnInterruption } from "../../../../session/conversation/turn-end-record.js";

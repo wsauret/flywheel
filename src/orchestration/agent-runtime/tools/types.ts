@@ -2,7 +2,7 @@ import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest, ModulePol
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import type { ToolAction } from "../../../infra/workflow-types.js";
 import type { SessionFactWriter } from "../../session/persistence/session-fact-writer.js";
-import type { ToolOutcome } from "../../../infra/tool-outcome.js";
+import type { ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js";
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
 import type { ToolCallIdentity } from "../background-work/background-work-types.js";
 import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
@@ -14,12 +14,12 @@ import type { NestedToolDispatchBatch } from "./dispatch/nested-tool-dispatch.js
 import type { ReadCommandEvidence } from "../../../workflows/output-contract/evidence.js";
 import type { HandoffRejection } from "../../workflow-host/attempt/handoff-tool-schema.js";
 
-import type { PersistentProcessClient } from "../../../infra/persistent-process-manager.js";
-import type { BridgedPersistentProcessClient } from "../../../infra/persistent-process-bridge.js";
+import type { PersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-manager.js";
+import type { BridgedPersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-bridge.js";
 import type { ModuleRuntimes } from "../../../infra/module-runtime.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js";
-import { canonicalModuleIds, MODULE_IDS, type ModuleId } from "../../../protocol/module-ids.js";
+import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js";
+import { canonicalModuleIds, MODULE_IDS, type ModuleId } from "../../../protocol/runtime/module-ids.js";
 type ToolExecutionMode = "foreground" | "background";
 type ToolTraceKind = "tool" | "subagent";
 
@@ -443,7 +443,7 @@ export interface ToolContext {
   /** Exact asynchronous state reads for interactive tool observations. */
   projectionReader?: AsyncEventStateReadSurface;
   /** Applies a fact only after its durable event commits. Restart applies the same stored event. */
-  applyNestedStoredFact?: (event: import("../../../infra/event-store-types.js").StoredFact) => void | Promise<void>;
+  applyNestedStoredFact?: (event: import("../../../infra/store/event-store-types.js").StoredFact) => void | Promise<void>;
   /** Capability boundary for this call (see CapabilityAccess). Present wherever
    *  a host owns a capability policy; a realm that owns none wires none, and a
    *  tool that needs no optional capability never consults it. */

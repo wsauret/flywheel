@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Context, Effect, Layer, ManagedRuntime, Schema, type Scope, Stream } from "effect"
 import { Rpc, RpcClient, type RpcClientError, RpcGroup, RpcServer } from "effect/rpc"
-import { layerMsgPack } from "../../../../../src/protocol/rpc-msgpack.js"
+import { layerMsgPack } from "../../../../../src/protocol/rpc/rpc-msgpack.js"
 import { Socket } from "effect/socket"
 
 import { relaySocketServerLayer } from "../../../../../src/orchestration/modules/remote/relay-socket-server.js"
@@ -11,7 +11,7 @@ import { sealedSocket, type SealedIdentity } from "../../../../../src/protocol/m
 import { asKeyPair, ownedBytes } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 import type { RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import type { RuntimeRemoteView } from "../../../../../src/protocol/modules/remote.js"
-import { stringRequestId } from "../../../../../src/protocol/rpc-request-id.js"
+import { stringRequestId } from "../../../../../src/protocol/rpc/rpc-request-id.js"
 
 /** The handler that receives the accepted device channels of a remote access. */
 type RemoteChannelAccept = Parameters<RemoteAccess["acceptChannels"]>[0]

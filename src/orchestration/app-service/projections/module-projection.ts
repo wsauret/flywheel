@@ -21,8 +21,8 @@ import {
   type ModulePreset,
   type RuntimeModulesView,
   type WorkflowsMode,
-} from "../../../protocol/module-protocol-types.js"
-import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
+} from "../../../protocol/runtime/module-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
 
 const MODULE_WARNING_SOURCE = "runtime:module-warning"

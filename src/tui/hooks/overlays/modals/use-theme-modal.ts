@@ -1,6 +1,6 @@
 import { THEME_NAMES, useTheme } from "@tui/context/theme"
 import { createMemo, createSignal, type Accessor, type JSX } from "solid-js"
-import type { RuntimeClient } from "../../../../protocol/app-service-types.js"
+import type { RuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 import { createListModalKeys } from "../../../components/modal/select/modal-list-keys.js"
 import { filterOptions, flattenWithCategories } from "../../../components/modal/select/modal-select-helpers.js"
 import type { ModalSelectOption, FilteredResult } from "../../../components/modal/select/modal-select-types.js"

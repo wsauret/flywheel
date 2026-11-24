@@ -11,9 +11,9 @@
  */
 
 import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import type { PausedBy } from "../../../infra/output-blocks.js";
-import type { BackgroundCommandRecord } from "../../../infra/runtime-fact-types.js";
+import type { BackgroundCommandRecord } from "../../../infra/runtime-facts/runtime-fact-types.js";
 import { watchEventKey } from "../../../infra/watch-notices.js";
 import {
   createBackgroundNotificationDelivery,

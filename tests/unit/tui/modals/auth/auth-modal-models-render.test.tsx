@@ -4,7 +4,7 @@ import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
 import { ScrollBoxRenderable, TextRenderable, type Renderable } from "@opentui/core"
 import type { AuthView } from "../../../../../src/tui/modals/auth/auth-modal-options.js"
-import type { ProviderModelRow } from "../../../../../src/protocol/provider-model-preference-protocol-types.js"
+import type { ProviderModelRow } from "../../../../../src/protocol/auth/provider-model-preference-protocol-types.js"
 
 const [{ testRender }, { createComponent }, { ThemeProvider }, { AuthModal }] = await Promise.all([
   import("@opentui/solid"),

@@ -37,9 +37,9 @@ import * as fs from "node:fs"
 import { Schema } from "effect"
 import { admitPrivateDatabaseFiles } from "../../../infra/private-path.js"
 import { defineFact } from "../../../infra/event-registry.js"
-import type { EventPayload } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
-import { createSqliteEventInserter, factRowsChanged } from "../../../infra/sqlite-event-store-core.js"
+import type { EventPayload } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { createSqliteEventInserter, factRowsChanged } from "../../../infra/store/sqlite-event-store-core.js"
 
 /** Rows one transaction rewrites. The bound is on the write lock's hold and
  *  the transaction's size, never on how many rows a store may hold. */

@@ -1,6 +1,6 @@
 import { Effect, Fiber, Queue, Stream } from "effect"
 import type { OperationLogger } from "../../../../infra/operation-log.js"
-import type { RuntimeEventFrame } from "../../../../protocol/app-service-types.js"
+import type { RuntimeEventFrame } from "../../../../protocol/runtime/app-service-types.js"
 import type { RuntimeLivenessPolicy } from "../../../../protocol/runtime-liveness.js"
 import type { FlywheelAppService } from "../../app-service.js"
 

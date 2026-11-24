@@ -1,33 +1,24 @@
 import { isDeepStrictEqual } from "node:util"
-import { parseProjectionFact } from "../../../infra/event-projection.js"
-import { CorruptEventRowError, type StoredFact } from "../../../infra/event-store-types.js"
-import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../infra/runtime-fact-types.js"
-import { type CommittedWorkflowControl, parseCommittedWorkflowControl } from "../facts/committed-control.js"
+import { parseProjectionFact } from "../../../infra/projection/event-projection.js"
+import { CorruptEventRowError, type StoredFact } from "../../../infra/store/event-store-types.js"
+import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../infra/runtime-facts/runtime-fact-types.js"
+import { type CommittedWorkflowControl, parseCommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import {
   definitionIdentityMigrationOrder,
   definitionIdentityMismatches,
   isContentOnlyIdentityChange,
   type DefinitionIdentity,
   type DefinitionIdentityMigration,
-} from "../facts/definition-identity.js"
+} from "../../control-facts/definition-identity.js"
 import type { DefinitionIdentityMismatch } from "../../provenance/definition-identity-mismatch.js"
-import {
-  committedWorkflowEvent,
-  parseWorkflowControlFact,
-  parseWorkflowSessionFact,
-  replayComparableFact,
-  workflowRootControl,
-  WORKFLOW_CONTROL_FACT_TYPES,
-  WORKFLOW_SESSION_FACT_DESCRIPTORS,
-  type WorkflowControlFact,
-  type WorkflowSessionFact,
-} from "../facts/session-facts.js"
+import { committedWorkflowEvent, parseWorkflowControlFact, workflowRootControl, WORKFLOW_CONTROL_FACT_TYPES, type WorkflowControlFact } from "../../control-facts/family.js"
+import { parseWorkflowSessionFact, replayComparableFact, WORKFLOW_SESSION_FACT_DESCRIPTORS, type WorkflowSessionFact } from "../facts/session-facts.js"
 import { retriableFailedNodes } from "../transitions/attempt-continuation.js"
-import { CURRENT_PROPOSAL_ENCODING } from "../facts/events.js"
+import { CURRENT_PROPOSAL_ENCODING } from "../../control-facts/events.js"
 import { proposedTransition } from "../control/machine.js"
 import { inheritGraphTopology } from "../graph/graph-topology.js"
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../control/transition.js"
-import { selectNewestWorkflowRoot, workflowFamilyEvents } from "../../run/workflow-root.js"
+import { selectNewestWorkflowRoot, workflowFamilyEvents } from "../../control-facts/workflow-root.js"
 
 const controlFactTypes: ReadonlySet<string> = new Set(WORKFLOW_CONTROL_FACT_TYPES)
 const workflowFamilyTypes: ReadonlySet<string> = new Set(WORKFLOW_SESSION_FACT_DESCRIPTORS.map(({ type }) => type))

@@ -2,10 +2,10 @@ import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import { jest } from "bun:test"
 
-import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
+import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import { createTranscriptStore, type TranscriptChange } from "../../../../src/protocol/client/transcript-store.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { SESSION, textBlock, toolBlock, fakeConnection, deltaPatch, settle, type WindowSpec } from "./_transcript-store-fixtures.js"
 
 // The reader's identities survive recovery; only following or explicit

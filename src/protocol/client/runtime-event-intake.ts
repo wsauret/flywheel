@@ -1,13 +1,13 @@
 import { Schema } from "effect"
 import { isRecord } from "../../infra/record.js"
-import type { RuntimeEventFrame } from "../app-service-types.js"
-import type { RuntimeClientDiagnostic } from "../runtime-client-diagnostics.js"
-import { RuntimeCursorIdentitySchema } from "../runtime-cursor-schemas.js"
+import type { RuntimeEventFrame } from "../runtime/app-service-types.js"
+import type { RuntimeClientDiagnostic } from "../runtime/runtime-client-diagnostics.js"
+import { RuntimeCursorIdentitySchema } from "../rpc/runtime-cursor-schemas.js"
 import {
   RuntimeEventFrameSchema,
   RuntimeUiPatchPayloadSchema,
-} from "../runtime-protocol-schemas.js"
-import { stringDiscriminatorLiterals } from "../schema-union.js"
+} from "../rpc/runtime-protocol-schemas.js"
+import { stringDiscriminatorLiterals } from "../rpc/schema-union.js"
 
 const supportedEventTypes = new Set(stringDiscriminatorLiterals(RuntimeEventFrameSchema, "type"))
 const supportedPayloadKinds = new Set(stringDiscriminatorLiterals(RuntimeUiPatchPayloadSchema, "kind"))

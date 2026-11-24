@@ -2,7 +2,7 @@
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { errorDetail, errorMessage } from "../../infra/error-message.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import type { OwnedCommandRunner } from "../../infra/owned-command.js"
 import { windowsClipboard } from "../../infra/windows-clipboard.js"
 

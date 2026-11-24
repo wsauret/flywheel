@@ -49,16 +49,16 @@ const CONSOLE_ROOTS = ["src", "scripts", "tests", "bench", "bin/flywheel"] as co
 
 /** The only modules allowed to hold a raw platform launch. */
 export const RAW_LAUNCH_AUTHORITY_FILES: ReadonlySet<string> = new Set([
-  "src/infra/owned-subprocess-backend.ts",
-  "src/infra/inherited-command.ts",
-  "src/infra/process-container.ts",
-  "src/infra/owned-command-supervisor.ts",
+  "src/infra/supervision/launch/owned-subprocess-backend.ts",
+  "src/infra/supervision/commands/inherited-command.ts",
+  "src/infra/process/container/process-container.ts",
+  "src/infra/supervision/launch/owned-command-supervisor.ts",
   "src/infra/process-supervisor.ts",
-  "src/infra/persistent-subprocess.ts",
+  "src/infra/supervision/persistent/persistent-subprocess.ts",
   // `CreateProcessW` through FFI, which only the persistent authority imports.
-  "src/infra/windows-breakaway-launch.ts",
+  "src/infra/process/container/windows-breakaway-launch.ts",
   "src/infra/windows-private-directory-acl.ts",
-  "src/infra/foreground-successor.ts",
+  "src/infra/distribution/foreground-successor.ts",
 ]);
 
 /** Exported symbols of the authority modules that build a launcher inside

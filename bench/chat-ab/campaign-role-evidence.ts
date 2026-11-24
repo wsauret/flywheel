@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { campaignCellKey, ResolvedRolesSchema, type CampaignExecutionOutcome, type CampaignRoles, type CampaignTreatmentRecord } from "./campaign-store.js";
 import { readAvailableCampaignArtifact } from "./campaign-artifacts.js";
-import { RuntimeSessionModelPlanResultSchema } from "../../src/protocol/model-assignment-protocol-schemas.js";
+import { RuntimeSessionModelPlanResultSchema } from "../../src/protocol/auth/model-assignment-protocol-schemas.js";
 import { codingRedaction } from "./block-judge.js";
 
 type Roles = typeof ResolvedRolesSchema.Type;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { RGBA } from "@opentui/core"
-import type { SessionCatalogRow } from "../../../../../src/protocol/app-service-types.js"
+import type { SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import {
   buildDiffStatChunks,
   flattenSessionRows,

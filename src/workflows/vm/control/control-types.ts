@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { CommittedWorkflowControlSchema } from "../facts/committed-control.js";
+import { CommittedWorkflowControlSchema } from "../../control-facts/committed-control.js";
 import { WorkflowSessionFactSchema } from "../facts/session-facts.js";
 
 const IdSchema = Schema.NonEmptyString;

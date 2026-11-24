@@ -12,21 +12,21 @@ import type {
   RuntimeQuery,
   RuntimeQueryOptions,
   RuntimeQueryResult,
-} from "../app-service-types.js"
-import type { RuntimeInvalidationReason } from "../runtime-ui-protocol-types.js"
-import { RuntimeProtocolError, RuntimeProtocolRpc, runtimeQueryResultSchema } from "../runtime-protocol-schemas.js"
-import { layerMsgPack } from "../rpc-msgpack.js"
-import { stringRequestId } from "../rpc-request-id.js"
-import { runtimeDispatchResultSchema } from "../runtime-dispatch-result-schemas.js"
+} from "../runtime/app-service-types.js"
+import type { RuntimeInvalidationReason } from "../runtime/runtime-ui-protocol-types.js"
+import { RuntimeProtocolError, RuntimeProtocolRpc, runtimeQueryResultSchema } from "../rpc/runtime-protocol-schemas.js"
+import { layerMsgPack } from "../rpc/rpc-msgpack.js"
+import { stringRequestId } from "../rpc/rpc-request-id.js"
+import { runtimeDispatchResultSchema } from "../rpc/runtime-dispatch-result-schemas.js"
 import { RUNTIME_LIVENESS_POLICY, RUNTIME_PROTOCOL_VERSION, type RuntimeLivenessPolicy } from "../runtime-liveness.js"
-import { applyRuntimeCallPolicy, RuntimeCallTimeout, runtimeCallPolicies, type RuntimeCallPolicy } from "../runtime-client-deadlines.js"
-import { MAX_RECONNECT_ATTEMPT, reconnectBackoffMs } from "../reconnect-backoff.js"
+import { applyRuntimeCallPolicy, RuntimeCallTimeout, runtimeCallPolicies, type RuntimeCallPolicy } from "../rpc/runtime-client-deadlines.js"
+import { MAX_RECONNECT_ATTEMPT, reconnectBackoffMs } from "../runtime/reconnect-backoff.js"
 import { socketProtocolLayer } from "./socket-protocol.js"
 import { laneSchedulerLayer, type LaneHost } from "./lane-scheduler.js"
 import { decodeRuntimeEventFrame } from "./runtime-event-intake.js"
-import type { LaneEndCause, RuntimeClientDiagnostic } from "../runtime-client-diagnostics.js"
+import type { LaneEndCause, RuntimeClientDiagnostic } from "../runtime/runtime-client-diagnostics.js"
 import { LaneAttachTiming, laneBurst, laneCallOf, type LaneCall, type LaneWait } from "./lane-attach.js"
-import type { ServeStartRefusal } from "../serve-handshake.js"
+import type { ServeStartRefusal } from "../runtime/serve-handshake.js"
 import { attachRefusal, foundNothingListening, isClientMismatch, LaneSilence, laneEndCause, lostToCleanClose, lostWithLane, protocolRefusal, RuntimeLaneLost, RuntimeSilent } from "./connection-failures.js"
 
 /** A runtime client over any `Socket` transport.

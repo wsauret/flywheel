@@ -1,12 +1,12 @@
-import { contentEvidence } from "../../../infra/content-evidence.js";
+import { contentEvidence } from "../../../infra/runtime-facts/content-evidence.js";
 import { requireReducer, runReducer } from "../../reducers/registry.js";
-import type { WorkflowTreeJoin } from "../../../protocol/workflow-view-protocol-types.js";
+import type { WorkflowTreeJoin } from "../../../protocol/session/workflow-view-protocol-types.js";
 import type { EarlierRound, HandoffReference, ReducerInput, ReducerInputSlot, ReducerOutput, SourceOutput } from "../../reducers/reducer.js";
 import { ITEM_POSITION_KEY, WORKFLOW_INPUT_SOURCE_ID } from "../../schema/workflow-schema.js";
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import { listJoin } from "./graph-changes.js";
 import { graphTopology } from "./graph-topology.js";
-import { inRound, repeatRun, roundOfNodeId, type Attempt, type ItemNode, type ListNode, type LogicalNode, type NodeCondition, type PhaseNode, type RepeatNode } from "./graph-types.js";
+import { inRound, repeatRun, roundOfNodeId, type Attempt, type ItemNode, type ListNode, type LogicalNode, type NodeCondition, type PhaseNode, type RepeatNode } from "../../control-facts/graph-types.js";
 import { isNonEmpty } from "./loop-signal.js";
 
 // The outputs of the nodes of committed control: the handoff of an agent,

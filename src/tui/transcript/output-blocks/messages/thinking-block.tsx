@@ -6,7 +6,7 @@ import { StyledText, bold as stBold, fg as stFg, italic as stItalic, type TextCh
 import { CollapsibleBox } from "@tui/components/layout/collapsible-box"
 import { useTheme } from "@tui/context/theme"
 import { useBlockDisclosure } from "@tui/context/transcript/block-disclosure.js"
-import { blockIdentity } from "../../../../protocol/block-identity.js"
+import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 import { useBodyToggle, useHeaderToggle } from "@tui/transcript/output-blocks/use-body-toggle.js"
 import { useElapsed } from "@tui/components/activity/use-elapsed"
 import { VerticalBarBorder } from "@tui/transcript/output-blocks/border"

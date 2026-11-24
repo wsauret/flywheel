@@ -13,7 +13,7 @@ import { testBaseTools, admitEveryTool } from "../../../../../helpers/request-to
 import { MAX_FILE_EDIT_BYTES } from "../../../../../../src/orchestration/agent-runtime/tools/file-edits/retained-file-edit-host.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
 import { createRecordingFileMutationStore, makeContext } from "../_fixtures.js";
-import type { InFlightPayload } from "../../../../../../src/infra/event-store-types.js";
+import type { InFlightPayload } from "../../../../../../src/infra/store/event-store-types.js";
 
 // Compose prepare + execute exactly as the agent loop's dispatcher does.
 const runTool = (

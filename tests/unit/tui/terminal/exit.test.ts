@@ -1,6 +1,6 @@
 import { expect, it, mock, spyOn } from "bun:test"
 import { exitTUI, leaveTerminal, registerPreExitCleanup, setExitHandler, setLaunchStateCapture, setRendererHandoff } from "../../../../src/tui/terminal/exit.js"
-import type { LaunchState } from "../../../../src/infra/launch-state.js"
+import type { LaunchState } from "../../../../src/infra/distribution/launch-state.js"
 
 const flush = () => new Promise<void>((resolve) => queueMicrotask(resolve))
 

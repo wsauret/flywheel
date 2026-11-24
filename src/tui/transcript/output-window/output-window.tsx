@@ -14,7 +14,7 @@ import { ImageClipBottomProvider } from "@tui/context/attachment-images.js"
 import { BlockDisclosureProvider } from "@tui/context/transcript/block-disclosure.js"
 import { LandingTargetProvider } from "@tui/context/transcript/landing-highlight.js"
 import { createFindHighlight, findColors, FindHighlightProvider, type FindSpot } from "@tui/context/find/find-highlight.js"
-import type { FindMatcher } from "../../../protocol/transcript-find.js"
+import type { FindMatcher } from "../../../protocol/transcript/transcript-find.js"
 import type { FindLanding } from "./create-find-bar.js"
 import { parseSessionLink } from "../../../protocol/client/session-links.js"
 import { useTheme } from "@tui/context/theme"
@@ -25,7 +25,7 @@ import type { DiffColorMode } from "../../../orchestration/config/schema/schema.
 import { createOutputScrollController, type TranscriptSelectionAutoScroll } from "./create-output-scroll-controller.js"
 import type { WheelProfile } from "./output-window-wheel.js"
 import type { OutputTranscriptView, TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
-import { atTranscriptHead, snapshotSeeded } from "../transcript-store/output-transcript-cache-types.js"
+import { snapshotSeeded } from "../transcript-store/output-transcript-cache-types.js"
 import { BlockRenderer } from "../output-blocks/block-renderer.js"
 import type { RowProcessControls } from "../output-blocks/stop-affordance.js"
 import { createOutputWindowRenderDiagnostics } from "./output-window-diagnostics.js"
@@ -37,8 +37,8 @@ import { undeliveredNotice, type LocalChatSubmission } from "../../../protocol/c
 import { UserMessageBlock } from "../output-blocks/messages/user-message-block.js"
 import { Button } from "../../components/controls/button.js"
 import { returnToLatestLabel, unseenMessageCount } from "../../../protocol/client/return-to-latest.js"
-import type { RoleAssignmentView } from "../../../protocol/role-protocol-types.js"
-import { blockIdentity } from "../../../protocol/block-identity.js"
+import type { RoleAssignmentView } from "../../../protocol/auth/role-protocol-types.js"
+import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 
 export type OutputWindowCommandType = "page-up" | "page-down" | "half-page-up" | "half-page-down" | "top" | "bottom"
 export type OutputWindowCommand =
@@ -87,6 +87,16 @@ const FIND_DISCLOSURE_FACETS = new Map<string, readonly string[]>([
   ["thinking", ["thinking"]],
   ["userMessage", ["initial"]],
 ])
+
+/** The transcript head is visible territory: the hydrated window starts at
+ *  block 0, or the session is empty. While a snapshot is absent or loading (a
+ *  reopened evicted session's round-trip), the head is UNKNOWN - rendering
+ *  head furniture (the session intro card) then would flash it for the load
+ *  duration: the tab-switch "box" flicker. */
+function atTranscriptHead(snapshot: TranscriptSnapshot | undefined): boolean {
+  if (!snapshot || snapshot.status.kind === "loading") return false
+  return snapshot.window.startBlockIndex === 0 || snapshot.totalBlocks === 0
+}
 
 export function OutputWindow(props: OutputWindowProps) {
   const themeCtx = useTheme()
@@ -164,15 +174,11 @@ export function OutputWindow(props: OutputWindowProps) {
     showThinking: () => props.showThinking ?? false,
     slot: layoutSlot,
     onNearEdge: (direction) => props.onNearEdge?.(direction),
-    hydrateAnchor: () => transcript.hydrateAnchor(),
+    transcript,
     updateSelection: (current, x, y) => renderer.updateSelection(current, x, y),
-    takeEstimateUpdates: () => transcript.takeEstimateUpdates(),
-    evictBefore: (blockIndex) => transcript.evictBefore(blockIndex),
     leadingRows: () => (showIntro() ? introRows() : 0),
     unindexedRows,
     mountedRows,
-    visibleMessageCount: transcript.visibleMessageCount,
-    jumpToLatest: transcript.jumpToLatest,
     wheel: untrack(() => props.wheel),
   })
   const unseen = createMemo(() => {
@@ -290,7 +296,7 @@ export function OutputWindow(props: OutputWindowProps) {
   // not starting a worker.
   const seeded = () => snapshotSeeded(snapshot())
   return (
-    <BlockDisclosureProvider value={{ disclosure: transcript.disclosure, setDisclosure: transcript.setDisclosure }}>
+    <BlockDisclosureProvider value={transcript}>
     <RowWidthProvider value={{ width: rowWidth, report: setRowWidth }}>
     <ScrollPreserveProvider value={scroll.preserveScroll}>
     <TranscriptViewportHeightProvider value={transcriptRows}>

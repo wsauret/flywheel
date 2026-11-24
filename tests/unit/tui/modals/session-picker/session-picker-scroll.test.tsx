@@ -8,7 +8,7 @@
 import { testRender } from "@opentui/solid"
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
-import type { SessionCatalogRow } from "../../../../../src/protocol/app-service-types.js"
+import type { SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { PickerRow, PickerSessionRow } from "../../../../../src/tui/modals/session-picker/picker-types.js"
 
 function catalogRow(id: string, title: string): SessionCatalogRow {

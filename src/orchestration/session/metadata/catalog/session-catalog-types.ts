@@ -1,4 +1,4 @@
-import type { SessionDiffStats } from "../../../../protocol/app-service-types.js"
+import type { SessionDiffStats } from "../../../../protocol/runtime/app-service-types.js"
 import type { SessionForkRecord } from "../session-fork-projection.js"
 import type { SessionLifecycleState } from "../types.js"
 import type { ReplayedSession } from "../schemas.js"

@@ -1,10 +1,10 @@
 import { describe, expect, mock, spyOn, test } from "bun:test"
-import { DebugLog } from "../../../../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js"
 import {
   createSessionViewProjection,
   createSessionViewPublisher,
 } from "../../../../../../src/orchestration/app-service/projections/catalog/session-view-projection.js"
-import { budgetCursor, type BudgetView } from "../../../../../../src/protocol/budget-protocol-types.js"
+import { budgetCursor, type BudgetView } from "../../../../../../src/protocol/session/budget-protocol-types.js"
 import { entry, flush, sink, store } from "../../_status-projection-fixtures.js"
 
 // The engine is domain-agnostic; the tests ride the budget domain (its view is

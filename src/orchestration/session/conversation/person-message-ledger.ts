@@ -1,12 +1,12 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPayload } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPayload } from "../../../infra/store/event-store-types.js"
 import { normalizeChatInput, type ChatInputLike } from "../../../infra/chat-input.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { workflowContextRecordsAddendum } from "../../../workflows/context-bundle/context-projection.js"
 import { ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND } from "./addressed-workflow-messages.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, RETAINED_INPUT_GAP_IN_FLIGHT_KIND } from "./queued-user-inputs.js"
 import { conversationHoldsEntries } from "./session-message-entries.js"
 import { owningChat } from "../metadata/session-metadata-projection.js"
-import { returnedInputNoticeId } from "../../../protocol/composer-returns.js"
+import { returnedInputNoticeId } from "../../../protocol/transcript/composer-returns.js"
 
 /** Where the ledger already holds a person's message: an entry of the
  *  conversation, a held cell that the next save point or reader commits,

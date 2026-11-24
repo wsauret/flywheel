@@ -3,15 +3,15 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ManagedRuntime } from "effect"
-import { EventStoreLive } from "../../../../src/infra/event-store-effect.js"
+import { EventStoreLive } from "../../../../src/infra/store/event-store-effect.js"
 import { isVisibleMessageBlock, type AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { NO_CHANGED_TOOLS, type OutputBlockChange, type OutputChangeBatch } from "../../../../src/infra/output/output-block-delta.js"
 import type { SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import { chatEntry, fakeSessionStore } from "./app-service-doubles.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createShippedOutput } from "../../../../src/orchestration/app-service/projections/output/shipped-output.js"
-import type { OutputDelta } from "../../../../src/protocol/output-protocol-types.js"
-import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { OutputDelta } from "../../../../src/protocol/transcript/output-protocol-types.js"
+import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 export const tailRequest = { anchor: { kind: "tail" as const }, maxBlocks: 50, maxBytes: 1024 * 1024 }
 

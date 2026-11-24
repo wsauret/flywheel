@@ -1,13 +1,13 @@
 import { createMemo, createSignal, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
-import type { BuiltInCommandDescriptor } from "../../../../../src/protocol/command-catalog-protocol-types.js"
+import type { BuiltInCommandDescriptor } from "../../../../../src/protocol/commands/command-catalog-protocol-types.js"
 import { usesPerCommand } from "../../../../../src/protocol/client/command-menu.js"
-import { COMMAND_MENU_SECTIONS } from "../../../client/command-choices.js"
+import { COMMAND_MENU_SECTIONS } from "../../../client/commands/command-choices.js"
 import { useClient } from "../../client-context.js"
 import { offeredCommandGroups } from "./surfaces.js"
 import { Sheet, SheetRow } from "../sheet.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/commands/command-names.js"
 
 /** Commands: the whole command menu, readable. The `/` panel keeps the
  *  catalog behind its filter and shows descriptions only on hover, which a

@@ -6,7 +6,7 @@ import { createMemo, createSignal, For, Show, untrack, type Accessor } from "sol
 import { Key } from "@solid-primitives/keyed"
 import { createKeyedListSelection } from "../../hooks/overlays/modals/create-keyed-list-selection.js"
 import { useListSelectionReveal } from "../../components/modal/scroll/use-list-selection-reveal.js"
-import type { RuntimeClient } from "../../../protocol/app-service-types.js"
+import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { dispatchInterrupt, resumeMutation, workflowCardControls, workflowHoldsFailedAgent, workflowParked, workflowStateLabel, type ControlRefusal } from "../../../protocol/client/session-controls.js"
 import { workflowCard, workflowCardChoice, workflowCardNotice, workflowRunName, workflowViewCardStatus, type WorkflowCardChoices } from "../../../protocol/client/workflow-card.js"
 import { workflowOutline } from "../../../protocol/client/workflow-outline.js"

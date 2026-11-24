@@ -1,5 +1,5 @@
 import { antigravityEnginePath } from "../../../infra/antigravity-engine.js"
-import { pinnedAntigravityBytes } from "../../../infra/antigravity-engine-pin.js"
+import { pinnedAntigravityBytes } from "../../../infra/distribution/antigravity-engine-pin.js"
 import type { AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js"

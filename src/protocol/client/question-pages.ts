@@ -1,4 +1,4 @@
-import type { RuntimeClient, SessionRow, Unsubscribe } from "../app-service-types.js"
+import type { RuntimeClient, SessionRow, Unsubscribe } from "../runtime/app-service-types.js"
 
 /** One desktop notice: what an operating-system notification shows. */
 export interface DesktopNotice {

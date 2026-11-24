@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { randomUUID } from "node:crypto"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
 import { emitContextUpdate } from "../../../../../src/orchestration/agent-runtime/runner/emit.js"
 import { assembleRuntimeForTurn } from "../../../../../src/orchestration/agent-runtime/runner/runtime-assembly.js"
 import { resolveRuntimeConversation } from "../../../../../src/orchestration/agent-runtime/request/runtime-conversation.js"

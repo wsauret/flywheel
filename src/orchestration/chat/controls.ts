@@ -1,5 +1,5 @@
 import type { EventBusDrainResult, Unsubscribe } from "../../infra/event-bus.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { chatInputImages, chatInputText, normalizeChatInput, type ChatInput, type ChatInputLike } from "../../infra/chat-input.js"
 import { interruptedLabel, RESUMED_LABEL } from "../../infra/output/run-labels.js"
 import { isRuntimeInterruption, type ControlInterruption, type PlannedCutInterrupt, type RuntimeInterruption, type TurnInterruption } from "../session/conversation/turn-end-record.js"

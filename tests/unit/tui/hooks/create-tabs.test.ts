@@ -5,11 +5,11 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import { createStore } from "solid-js/store"
-import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
+import type { SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createTabState } from "../../../../src/tui/hooks/create-tabs.js"
-import type { OutputView } from "../../../../src/protocol/output-protocol-types.js"
+import type { OutputView } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import type { ForegroundTarget } from "../../../../src/tui/hooks/state/shell-state.js"
-import type { StatusView } from "../../../../src/protocol/status-protocol-types.js"
+import type { StatusView } from "../../../../src/protocol/session/status-protocol-types.js"
 
 type Status = Pick<StatusView, "activity" | "activeSubagentCount" | "waitingOnBackgroundWork">
 interface StatusesById { [id: string]: Status }

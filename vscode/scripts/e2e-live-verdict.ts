@@ -1,6 +1,6 @@
 import type { RuntimeConnection } from "../../src/protocol/client/connection.js"
-import type { FrontendActivity } from "../../src/protocol/app-service-types.js"
-import { blockIdentity, type IdentifiedBlock } from "../../src/protocol/block-identity.js"
+import type { FrontendActivity } from "../../src/protocol/runtime/app-service-types.js"
+import { blockIdentity, type IdentifiedBlock } from "../../src/protocol/transcript/block-identity.js"
 
 export type LiveTransportBlock = IdentifiedBlock & {
   readonly content?: unknown

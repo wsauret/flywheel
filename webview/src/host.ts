@@ -1,10 +1,10 @@
 import type { Layer } from "effect"
 import type { Socket } from "effect/socket"
 
-import type { FrontendMutation } from "../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../src/protocol/runtime/app-service-types.js"
 import type { MachinePicker, MachinePickerSnapshot } from "../../src/protocol/modules/remote/machine-picker.js"
 import type { ChangesReviewTarget, ClientCommand, ClientSummary } from "../../src/protocol/client/host-contract.js"
-import type { InputReloadStorage } from "./client/input-reload-checkpoint.js"
+import type { InputReloadStorage } from "./client/input/input-reload-checkpoint.js"
 
 /** The contract between the web client and whatever hosts it.
  *

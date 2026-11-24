@@ -2,7 +2,7 @@ import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { Schema } from "effect";
-import type { OwnedProcess } from "../../../../../infra/owned-subprocess.js";
+import type { OwnedProcess } from "../../../../../infra/supervision/launch/owned-subprocess.js";
 import type { LauncherScope } from "../../../../../infra/process-supervisor.js";
 import type { Effort } from "../../../../../infra/workflow-types.js";
 import { captureBenchmarkPipe } from "./artifact-capture.js";

@@ -10,16 +10,16 @@
  *  and the pass leaves those ids exactly as recorded. */
 
 import { Schema } from "effect"
-import type { EventPayload } from "../../../../../src/infra/event-store-types.js"
+import type { EventPayload } from "../../../../../src/infra/store/event-store-types.js"
 import { isRecord } from "../../../../../src/infra/record.js"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../../helpers/directories.js"
-import type { CommittedWorkflowControl } from "../../../../../src/workflows/vm/facts/committed-control.js"
-import { DefinitionIdentitySchema, type LegacyDefinitionIdentity } from "../../../../../src/workflows/vm/facts/definition-identity.js"
-import { WorkflowControlV10Schema } from "../../../../../src/workflows/vm/facts/historical-codecs.js"
+import type { CommittedWorkflowControl } from "../../../../../src/workflows/control-facts/committed-control.js"
+import { DefinitionIdentitySchema, type LegacyDefinitionIdentity } from "../../../../../src/workflows/control-facts/definition-identity.js"
+import { WorkflowControlV10Schema } from "../../../../../src/workflows/control-facts/historical-codecs.js"
 import { flattenWorkflowView } from "../../../../../src/workflows/vm/view/view-flatten.js"
-import { normalizeWorkflowControlV10 } from "../../../../../src/workflows/vm/facts/historical-normalization.js"
-import { workflowAggregateId } from "../../../../../src/workflows/vm/facts/session-facts.js"
+import { normalizeWorkflowControlV10 } from "../../../../../src/workflows/control-facts/historical-normalization.js"
+import { workflowAggregateId } from "../../../../../src/workflows/run/run-facts.js"
 import { prePhaseHistory, type PrePhaseControl } from "./_pre-phase-control.js"
 import {
   boundSkills,

@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { AttemptProvenanceSchema } from "../graph/graph-types.js";
+import { AttemptProvenanceSchema } from "../../control-facts/graph-types.js";
 import { RecipientScopeSchema } from "../../context-bundle/context-facts.js";
 import { WorkflowMachineStateSchema } from "./control-types.js";
 import { WorkflowSessionFactSchema } from "../facts/session-facts.js";

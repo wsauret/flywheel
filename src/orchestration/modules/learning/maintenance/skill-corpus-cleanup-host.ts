@@ -1,7 +1,7 @@
 import type { StartupDirectories } from "../../../../infra/directory-authorities.js"
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../../infra/auth/resolve-key.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
 import { AuthProfileManager } from "../../../auth/auth-profile-manager.js"
 import { captureRuntimeConfigRequest } from "../../../agent-runtime/request/request-config.js"
 import { acquireSharedProviderAvailability, disposeSharedProviderAvailability } from "../../../agent-runtime/llm/routing/shared-provider-availability.js"

@@ -1,5 +1,5 @@
 import type { StreamingToolTextOp, ValueEdit } from "../../../../infra/output/output-block-delta.js"
-import type { OutputDelta } from "../../../../protocol/output-protocol-types.js"
+import type { OutputDelta } from "../../../../protocol/transcript/output-protocol-types.js"
 
 /** The wire bytes of one published group of streaming text changes. A large
  *  text change splits into appends of at most this size, so one delta never

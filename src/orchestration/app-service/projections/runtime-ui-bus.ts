@@ -1,10 +1,10 @@
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { createOrderedLane } from "../../../infra/ordered-lane.js"
-import type { FrontendEvent } from "../../../protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../protocol/runtime/app-service-types.js"
 import { createRuntimeUiPatchSequencer, type RuntimeReadAnchor } from "./runtime-ui-patch-sequencer.js"
-import { cursorKey, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
-import { runtimeDeliveryPolicy } from "../../../protocol/runtime-delivery-policy.js"
+import { cursorKey, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
+import { runtimeDeliveryPolicy } from "../../../protocol/rpc/runtime-delivery-policy.js"
 
 
 type Listener = (event: FrontendEvent) => void

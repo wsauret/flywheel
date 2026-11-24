@@ -1,9 +1,9 @@
 import { createSignal, getOwner, onCleanup } from "solid-js"
-import type { AttachedRuntimeClient, RuntimeClient } from "../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient, RuntimeClient } from "../../protocol/runtime/app-service-types.js"
 import { isLaneBreak } from "../../protocol/client/cursor-intake.js"
 import { createHeldSessionDetails } from "../../protocol/client/held-session-details.js"
-import { isGlobalRuntimeInvalidation } from "../../protocol/runtime-invalidation.js"
-import type { RuntimeSessionDetailView } from "../../protocol/session-detail-protocol-types.js"
+import { isGlobalRuntimeInvalidation } from "../../protocol/rpc/runtime-invalidation.js"
+import type { RuntimeSessionDetailView } from "../../protocol/session/session-detail-protocol-types.js"
 
 /** The held detail a surface reads, counted per surface that holds it. */
 export interface SessionDetailCache {

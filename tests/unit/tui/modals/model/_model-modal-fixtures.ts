@@ -1,4 +1,4 @@
-import type { ModelAssignmentRow } from "../../../../../src/protocol/model-assignment-protocol-types.js";
+import type { ModelAssignmentRow } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js";
 import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js";
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" };
 import { RGBA } from "@opentui/core";

@@ -3,7 +3,7 @@
 
 import { basename } from "node:path";
 import type { CapabilityCheck } from "../../infra/capability-text.js";
-import { contentEvidence } from "../../infra/content-evidence.js";
+import { contentEvidence } from "../../infra/runtime-facts/content-evidence.js";
 import { offeredSkillResources, type SkillResourceWindow } from "./skill-context.js";
 import { resolveSkillClosure } from "./skill-closure.js";
 import { renderSkillBody, resolveSkillBody } from "./skill-references.js";

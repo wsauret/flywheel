@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { importBuiltModule } from "../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../test-support/solid-transform.js"
-import type { LoadedWorkflowView } from "../../../../../src/protocol/workflow-view-protocol-types.js"
+import type { LoadedWorkflowView } from "../../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { controlActionKey } from "../../../client/action-key.js"
 
 const build = await Bun.build({

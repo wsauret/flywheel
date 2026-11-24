@@ -6,8 +6,8 @@ import { createContext, createMemo, onCleanup, type JSX, useContext } from "soli
 import { generateSyntax } from "./theme/syntax-rules.js"
 import { subduedTheme } from "./theme/readable-theme.js"
 import { baseSurfacesUseDefaultBackground } from "./theme/terminal-capabilities.js"
-import type { RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
-import { DEFAULT_WRITE_SYNTAX_THEME_ID, getWriteSyntaxColors } from "../../protocol/write-syntax-theme.js"
+import type { RuntimeConfigView } from "../../protocol/settings/runtime-config-protocol-types.js"
+import { DEFAULT_WRITE_SYNTAX_THEME_ID, getWriteSyntaxColors } from "../../protocol/settings/write-syntax-theme.js"
 import { chatSyntaxColors, type SyntaxColors } from "./theme/syntax-colors.js"
 import auraTheme from "./theme/aura.json" with { type: "json" }
 import ayuTheme from "./theme/ayu.json" with { type: "json" }

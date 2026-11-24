@@ -43,8 +43,8 @@
 
 import { Effect, Exit, Fiber, Scope } from "effect";
 import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
-import type { OwnedProcess } from "../../../infra/owned-subprocess.js";
+import { Log } from "../../../infra/diagnostics/log.js";
+import type { OwnedProcess } from "../../../infra/supervision/launch/owned-subprocess.js";
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
 import type { CommandHandoverHost } from "./command-handover.js";
 import { createShellRuntime } from "./shell-runtime.js";

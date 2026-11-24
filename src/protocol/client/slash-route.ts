@@ -1,5 +1,5 @@
 import { withDeadline } from "../../infra/with-deadline.js"
-import { runtimeCallPolicies } from "../runtime-client-deadlines.js"
+import { runtimeCallPolicies } from "../rpc/runtime-client-deadlines.js"
 
 /** A client's hold on the runtime's command catalog, which arrives a moment
  *  after the client connects. */

@@ -3,15 +3,15 @@ import { Duplex } from "node:stream"
 
 import { Effect, FiberSet, Layer, ManagedRuntime, Queue, Schema, Scope, Stream } from "effect"
 import { Rpc, RpcGroup, RpcServer } from "effect/rpc"
-import { layerMsgPack } from "../../../../src/protocol/rpc-msgpack.js"
+import { layerMsgPack } from "../../../../src/protocol/rpc/rpc-msgpack.js"
 import { NetAddress } from "effect/net"
 import { Socket, SocketServer } from "effect/socket"
 import { runtimeProtocolSocketServer } from "../../../../src/orchestration/app-service/account/connections/runtime-protocol-socket-server.js"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { runtimeHandlers, type RuntimeHandlerOptions } from "../../../../src/orchestration/app-service/account/connections/runtime-protocol-handlers.js"
 import { createOutputWatches } from "../../../../src/orchestration/app-service/account/projects/output-watches.js"
-import { RuntimeProtocolError, RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeProtocolError, RuntimeProtocolRpc } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 
 /** The smallest real transport: a unix socket wrapped as an Effect `Socket`.
  *  The connection under test is transport-agnostic, so the test supplies the

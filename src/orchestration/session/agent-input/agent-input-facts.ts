@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineFact } from "../../../infra/event-registry.js"
-import { AgentInputAnswerSchema } from "../../../protocol/question-protocol-types.js"
+import { AgentInputAnswerSchema } from "../../../protocol/session/question-protocol-types.js"
 
 
 const CurrentQuestionChoiceSchema = Schema.Union([

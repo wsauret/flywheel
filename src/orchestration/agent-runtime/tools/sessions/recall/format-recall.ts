@@ -1,4 +1,4 @@
-import type { RecallHit } from "../../../../../protocol/conversation-recall.js";
+import type { RecallHit } from "../../../../../protocol/transcript/conversation-recall.js";
 
 export const formatRecallOutput = (
   entries: readonly RecallHit[],

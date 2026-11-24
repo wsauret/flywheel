@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, Match, on, Show, Switch, untrac
 import { Key } from "@solid-primitives/keyed"
 import { scrollEdges } from "../../controls/scroll-edges.js"
 
-import { applyNamedText, resolveQuestionAnswer, type FrontendQuestionBlock, type FrontendQuestionEntry, type NamedSelectionState, type QuestionAnswer } from "../../../client/question-answer.js"
+import { applyNamedText, resolveQuestionAnswer, type FrontendQuestionBlock, type FrontendQuestionEntry, type NamedSelectionState, type QuestionAnswer } from "../../../client/questions/question-answer.js"
 import { actionKey } from "../../../client/action-key.js"
 import { questionSkip } from "../../../../../src/protocol/client/question-settlement.js"
 import { useClient, type ClientContextValue } from "../../client-context.js"

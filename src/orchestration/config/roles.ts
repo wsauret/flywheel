@@ -1,5 +1,5 @@
 import { familyRole } from "../../infra/agent-definition.js";
-import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
+import { parseBriefRoleId } from "../../protocol/auth/brief-role-id.js";
 import { canonicalRoleId, RETIRED_COMPACTION_ROLE_IDS } from "./retired-config-names.js";
 import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
 import { discoverAgentRoles } from "../../workflows/agents/agent-roles.js";

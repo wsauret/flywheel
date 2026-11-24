@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { contentEvidence } from "../../infra/content-evidence.js"
+import { contentEvidence } from "../../infra/runtime-facts/content-evidence.js"
 import { defineFact } from "../../infra/event-registry.js"
 
 /** The durable record of each agent output: `handoff.written` holds the

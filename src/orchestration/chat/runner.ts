@@ -2,8 +2,8 @@ import { captureModuleRequestSections } from "../agent-runtime/request/request-c
 import { Effect, Exit, Scope } from "effect"
 import { errorMessage as extractErr } from "../../infra/error-message.js"
 import { createEmit, EventBus } from "../../infra/event-bus.js"
-import { Log } from "../../infra/log.js"
-import { EventStoreWriterService, type EventStoreRuntime } from "../../infra/event-store-effect.js"
+import { Log } from "../../infra/diagnostics/log.js"
+import { EventStoreWriterService, type EventStoreRuntime } from "../../infra/store/event-store-effect.js"
 import type { ChatRunner } from "./runner-types.js"
 import type { StartModelWorkflow } from "../agent-runtime/tools/definitions/workflow-tool.js"
 import { createChatSession } from "./session.js"
@@ -27,14 +27,14 @@ import type { CommandHandoverAuthority } from "../agent-runtime/background-execu
 import { ownedCommandRunner } from "../../infra/owned-command.js"
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import type { ChatEntryPatch } from "../session-store/types.js"
-import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
+import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js"
 import type { ModulePolicy } from "../config/policy/module-policy.js"
 import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
 import { unattendedModuleIds } from "../modules.js"
 
-import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
+import type { RecallInput, RecallResult } from "../../protocol/transcript/conversation-recall.js"
 import type { AttachChildSessionProjection } from "../module-seams.js"
-import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
 type ChatUpdateEntryFn = (patch: ChatEntryPatch) => void
 
 export interface ChatRunnerDeps {

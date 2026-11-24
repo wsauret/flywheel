@@ -14,7 +14,7 @@ import { SqliteVmDriver } from "../workflows/vm/_sqlite-vm-driver.js"
 import { DRY_FILES, DRY_LOOP, dryAnswer, dryRound, dryWorkflow, FINDINGS_FILES, findingsAnswer, findingsWorkflow, MAP_GROUP, PLAN, SURVEY_GROUP, TAIL, attemptOf, completePlan, items, mapSkills, mapWorkflow, runPrepared, stage, surveyAnswer, surveyWorkflow } from "../workflows/vm/_map-fixtures.js"
 import { startNext, wideControl } from "../workflows/vm/_tree-fixtures.js"
 import { verifyRecoveredWorkflow } from "../../../src/workflows/vm/compile/verify.js"
-import { buildWorkflowControlCommittedFact } from "../../../src/workflows/vm/facts/session-facts.js"
+import { buildWorkflowControlCommittedFact } from "../../../src/workflows/control-facts/family.js"
 
 /** One prepared project whose installed definitions every file verification reads. */
 const filesRoot = fileTemporaryDirectory("flywheel-workflow-verify-files-")

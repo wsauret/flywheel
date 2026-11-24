@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
 import { join } from "node:path"
-import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store"
-import type { EventStoreAppend, LocalSqliteEventStore } from "../../../src/infra/event-store-types"
+import { createSqliteEventStore } from "../../../src/infra/store/sqlite-event-store"
+import type { EventStoreAppend, LocalSqliteEventStore } from "../../../src/infra/store/event-store-types"
 import { buildSessionContent, type SessionContentNodeRow } from "../../../src/infra/session-content"
 import { temporaryDirectories } from "../../helpers/directories"
 

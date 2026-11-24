@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { buildModelModalItems } from "../../../../../src/tui/modals/model/model-modal-helpers.js"
-import type { ModelAssignmentRow } from "../../../../../src/protocol/model-assignment-protocol-types.js"
+import type { ModelAssignmentRow } from "../../../../../src/protocol/auth/model-assignment-protocol-types.js"
 import { fakeRow } from "./_model-modal-fixtures"
 
 const NONE: ReadonlySet<string> = new Set()

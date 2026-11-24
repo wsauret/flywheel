@@ -4,7 +4,7 @@ import {
   createAccountAttachResponseReader,
   encodeAccountAttach,
   type ClientBundle,
-} from "../../../../src/protocol/account-attach.js"
+} from "../../../../src/protocol/runtime/account-attach.js"
 import type { RuntimeSocketTarget } from "./node-socket.js"
 
 /** A source runtime builds its client on the first request, so the default

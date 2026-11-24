@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import type { StoredFact } from "../../../../../src/infra/event-store-types"
+import type { StoredFact } from "../../../../../src/infra/store/event-store-types"
 import { parsePapercutFact } from "../../../../../src/orchestration/modules/papercuts/facts"
 import { projectPapercutBacklog } from "../../../../../src/orchestration/modules/papercuts/backlog"
 

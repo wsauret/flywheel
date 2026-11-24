@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { newTestRunner } from "../../../helpers/agent-runner.js";
 import { testDirectories } from "../../../helpers/directories.js";
-import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
+import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types";
 import type { AgentOptionsOverride } from "./_runner-options.js";
 import type { ConnectionState } from "../../../../src/infra/output-blocks";

@@ -1,4 +1,4 @@
-import type { ProviderCatalogDiscovery } from "../../../protocol/provider-model-preference-protocol-types.js"
+import type { ProviderCatalogDiscovery } from "../../../protocol/auth/provider-model-preference-protocol-types.js"
 
 function providerCatalogSourceLabel(provenance: Extract<ProviderCatalogDiscovery, { readonly kind: "available" }>["provenance"]): string {
   if (provenance === "first-party") return ""

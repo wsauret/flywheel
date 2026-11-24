@@ -1,7 +1,7 @@
 import { isAgentInFlight, TOOL_PREVIEW_LINE_LIMIT, type SystemWatch } from "../../infra/output-blocks.js"
-import type { FrontendMessageSender, FrontendOutputBlock, FrontendToolEntry } from "../app-service-types.js"
-import { blockIdentity } from "../block-identity.js"
-import type { StatusView } from "../status-protocol-types.js"
+import type { FrontendMessageSender, FrontendOutputBlock, FrontendToolEntry } from "../runtime/app-service-types.js"
+import { blockIdentity } from "../transcript/block-identity.js"
+import type { StatusView } from "../session/status-protocol-types.js"
 import { toolRunCategoryFor } from "./tool-run-category.js"
 
 /** The transcript model every viewer shows. One fold over a window of blocks

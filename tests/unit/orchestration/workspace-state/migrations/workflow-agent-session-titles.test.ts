@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { Database } from "bun:sqlite"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager.js"
 import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js"
 import { recoverSessionMetadata } from "../../../../../src/orchestration/session/metadata/session-metadata-projection.js"

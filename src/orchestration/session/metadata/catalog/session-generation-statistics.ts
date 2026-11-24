@@ -1,5 +1,5 @@
-import type { StoredFact } from "../../../../infra/event-store-types.js"
-import type { GenerationStatistics } from "../../../../protocol/generation-statistics.js"
+import type { StoredFact } from "../../../../infra/store/event-store-types.js"
+import type { GenerationStatistics } from "../../../../protocol/session/generation-statistics.js"
 import { canonicalProviderStreamSummary, readProviderRequestAuditFact } from "../../runtime-facts/provider-request-audit-facts.js"
 import type { GenerationMeasurement } from "../../runtime-facts/provider-request-audit-types.js"
 import { settledUsageMeasurement } from "../../runtime-facts/durable-usage.js"

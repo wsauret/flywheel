@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { createSessionChangesController } from "../../../../src/protocol/client/session-changes.js"
-import type { SessionChangesUndoResult } from "../../../../src/protocol/session-changes-protocol-types.js"
+import type { SessionChangesUndoResult } from "../../../../src/protocol/session/session-changes-protocol-types.js"
 import { deferred, fileA, fileB, fileC, opened, retainedDiff, runtime, settle, waitForDiff } from "./_session-changes-fixtures.js"
 
 test("confirmation holds through lane loss and failed reads, then dispatches the same edit on the current revision", async () => {

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test"
 
-import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory"
-import type { RuntimeEvent } from "../../../src/infra/runtime-event-types"
+import { createRuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-factory"
+import type { RuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-types"
 import { emitToolInputComplete } from "../../../src/orchestration/agent-runtime/runner/emit"
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-fact-mapper"
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-facts/runtime-fact-mapper"
 
 /** Composed at runtime so this test file holds no secret-shaped literal of its
  *  own; the joined value matches the token shape `redactSecrets` masks. */

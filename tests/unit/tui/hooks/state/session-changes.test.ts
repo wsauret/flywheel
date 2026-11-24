@@ -7,7 +7,7 @@ import { useSessionChangesModal } from "../../../../../src/tui/hooks/overlays/mo
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
 import { sessionChangePathLabel, sessionChangesLabel, sessionChangesPromptLabel, undoResultLine } from "../../../../../src/protocol/client/session-changes-copy.js"
 import { deferred, fileA, fileB, fileC, retainedDiff, runtime, settle, waitForDiff } from "../../../protocol/client/_session-changes-fixtures.js"
-import type { SessionChangeDiffResult, SessionChangeSummaryResult } from "../../../../../src/protocol/session-changes-protocol-types.js"
+import type { SessionChangeDiffResult, SessionChangeSummaryResult } from "../../../../../src/protocol/session/session-changes-protocol-types.js"
 
 it("offers Changes as a per-file review without a keyboard override", () => {
   const command = buildCommandDefinitions(() => "", publishedCommands()).find(item => item.spec.id === "changes")

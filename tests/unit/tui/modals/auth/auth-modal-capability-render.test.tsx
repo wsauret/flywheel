@@ -13,7 +13,7 @@ const [{ testRender }, { createComponent }, { createSignal }, { ThemeProvider },
 ])
 const [{ createModal, currentAuthStatuses, setAuthStatuses }, { subscriptionSpendAccountCorrelationId }] = await Promise.all([
   import("./auth-modal-test-harness.js"),
-  import("../../../../../src/protocol/subscription-spend-consent-protocol-types.js"),
+  import("../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"),
 ])
 
 const noOp = (): void => {}

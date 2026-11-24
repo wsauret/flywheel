@@ -5,7 +5,7 @@ import {
   types,
   type StateValue,
 } from "xstate";
-import { parseCommittedWorkflowControl, type CommittedWorkflowControl } from "../facts/committed-control.js";
+import { parseCommittedWorkflowControl, type CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import {
   parseWorkflowCommand,
   type WorkflowMutation,
@@ -27,14 +27,15 @@ import {
   type FollowUpTransferEvent,
   type FollowUpTransferInput,
   type WorkflowProposalEncoding,
-} from "../facts/events.js";
+} from "../../control-facts/events.js";
 import {
   admissibleExecutionInput,
   executionInput,
   lifecycleFor,
 } from "../transitions/attempt-transitions.js";
 import { proposedTransition } from "./machine.js";
-import { buildWorkflowControlCommittedFact, type WorkflowSessionFact } from "../facts/session-facts.js";
+import { buildWorkflowControlCommittedFact } from "../../control-facts/family.js";
+import type { WorkflowSessionFact } from "../facts/session-facts.js";
 import { composeControlRestatement } from "./companions.js";
 import type { WorkflowView } from "../../view/types.js";
 

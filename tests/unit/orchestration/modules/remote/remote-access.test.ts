@@ -20,7 +20,7 @@ import {
   toBase64Url,
 } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 import type { PairedDevice } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { FailedRelaySocket, PendingRelaySocket, startRelayStub, type RelayStub } from "./relay-stub.js"
 import { manualHeartbeatClock } from "../../../../helpers/heartbeat-clock.js"
 import { fromText, pairDevice, pairedNotices, sealDevice, text, viewWhere, waitFor } from "./_remote-device-fixtures.js"

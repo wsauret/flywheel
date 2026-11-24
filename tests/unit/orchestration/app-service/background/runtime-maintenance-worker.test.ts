@@ -1,11 +1,11 @@
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js";
 import { maintainSkillLifecycleIfAdmitted } from "../../../../../src/orchestration/modules/learning/maintenance/maintenance.js";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
-import { createMessagePortProcessEndpoint } from "../../../../../src/infra/internal-process-channel.js";
+import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js";
+import { createMessagePortProcessEndpoint } from "../../../../../src/infra/process/channels/internal-process-channel.js";
 import type { GuardianControl } from "../../../../../src/infra/process-supervisor.js";
 import { createMaintenanceQueue } from "../../../../../src/orchestration/app-service/background/runtime-maintenance-owner.js";
 import { serveProjectStateChannel } from "../../../../../src/orchestration/app-service/project-state/project-state-channel.js";
@@ -14,8 +14,8 @@ import { pruneRetiredFactFamilies, type StoreUsage } from "../../../../../src/or
 import { prepareWorkspaceState } from "../../../../../src/orchestration/workspace-state/workspace-state.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { canonicalTestDirectory } from "../../../../helpers/directories.js";
-import { withEventStore } from "../../../../../src/infra/with-event-store.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
+import { withEventStore } from "../../../../../src/infra/store/with-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types.js";
 import { Database } from "bun:sqlite";
 
 const created: string[] = [];

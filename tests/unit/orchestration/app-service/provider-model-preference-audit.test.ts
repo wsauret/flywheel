@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js"
 import { authStoreRevision } from "../../../../src/infra/auth/store/auth-store.js"
 import { deselectAllProviderModels, providerModelPreferencesRevision, setProviderAutoEnableNewModels, setProviderModelPreference } from "../../../../src/infra/auth/provider-models/provider-model-preference-store.js"

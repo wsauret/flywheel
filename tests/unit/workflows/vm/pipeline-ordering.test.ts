@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types.js";
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js";
-import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store.js";
+import { createWorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js";
 import { createAttemptExecutor } from "../../../../src/workflows/vm/host/attempt-runner.js";
@@ -10,7 +10,7 @@ import { createWorkflowVmHost } from "../../../../src/workflows/vm/host/host.js"
 import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/workflows/vm/host/host-types.js";
 import type { AttemptExecutionInput } from "../../../../src/workflows/vm/control/commands.js";
 import type { AccumulatedContext } from "../../../../src/workflows/context-bundle/context.js";
-import { agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../src/workflows/run/workflow-completion.js";
+import { agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../src/workflows/vm/recovery/workflow-completion.js";
 import { renderWorkflowRequestSection } from "../../../../src/workflows/context-bundle/workflow-request.js";
 import { attemptOf, branch, INPUT_GROUP, INPUT_TAIL, inputBranch, inputMapWorkflow, inputStage, items, MAP_GROUP, mapSkills, mapWorkflow, oneAtATime, PLAN, stage, SURVEY_GROUP, SURVEY_SYNTHESIZE, surveyAnswer, surveyStage, surveyWorkflow, TAIL, type SurveyTarget } from "./_map-fixtures.js";
 import { fourLaneControl, listJoin, targets, wideMapWorkflow } from "./_tree-fixtures.js";
@@ -20,7 +20,7 @@ import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js";
 import { workflowTree } from "../../../../src/workflows/vm/view/view-tree.js";
 import { renderAgentOutput } from "../../../../src/workflows/output-contract/render.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
 import { quietHostDeps } from "./host-test-support.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 

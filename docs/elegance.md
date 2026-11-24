@@ -139,7 +139,7 @@ Deep modules should expose simple interfaces. If a consumer needs internal knowl
 
 Bun is the framework:
 
-- `Bun.spawn()` over `child_process`, and only inside a process-launch authority: ordinary production code starts an external process through `spawnOwned`, `runOwnedCommand`, or `openExternalUrl` (ARCH-TOOLS-022), while explicitly authorized survival uses only `src/infra/persistent-subprocess.ts`; no caller uses a raw launch primitive of its own
+- `Bun.spawn()` over `child_process`, and only inside a process-launch authority: ordinary production code starts an external process through `spawnOwned`, `runOwnedCommand`, or `openExternalUrl` (ARCH-TOOLS-022), while explicitly authorized survival uses only `src/infra/supervision/persistent/persistent-subprocess.ts`; no caller uses a raw launch primitive of its own
 - `Bun.file()` where it fits
 - Bun test runner through `bun run test`
 - Bun bundler/build scripts

@@ -2,11 +2,11 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { createRoot, createSignal } from "solid-js"
 
-import type { SessionLink } from "../../client/session-navigation.js"
+import type { SessionLink } from "../../client/session/navigation/session-navigation.js"
 import { createScreenStack, type ScreenStackNavigation } from "./screen-stack.js"
 import { createWorkflowNavigation } from "../../modules/workflows/navigation.js"
 import { plainAgentTree } from "../../../../tests/helpers/workflow-view.js"
-import type { FrontendAttempt } from "../../../../src/protocol/workflow-view-protocol-types.js"
+import type { FrontendAttempt } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 
 /** Browser history in memory. A deferred one queues each traversal until
  *  `settle`, as a browser delivers its popstate after the tap's own work. A

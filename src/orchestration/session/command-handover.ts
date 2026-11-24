@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightRecord } from "../../infra/event-store-types.js"
-import { Log } from "../../infra/log.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightRecord } from "../../infra/store/event-store-types.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import type { WatchLimiterState } from "../agent-runtime/tools/bash/execution/watch-stream.js"
 import { heldBackgroundNotificationSwap } from "./conversation/queued-background-notifications.js"
 

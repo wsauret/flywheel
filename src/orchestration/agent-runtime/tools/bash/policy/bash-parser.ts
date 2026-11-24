@@ -1,6 +1,6 @@
 import type { Node, Parser } from "web-tree-sitter";
 import { errorDetail, errorMessage } from "../../../../../infra/error-message.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import { loadTreeSitterParser } from "../../../../../infra/tree-sitter-parser.js";
 
 export async function loadBashParser(): Promise<Parser> {

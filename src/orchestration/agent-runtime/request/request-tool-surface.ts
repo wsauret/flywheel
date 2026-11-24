@@ -23,7 +23,7 @@ import type { ToolExposurePlan } from "../tools/dispatch/tool-exposure-planner.j
 import type { KernelToolDeps } from "../tools/kernel-tool-deps.js";
 import type { RuntimeTool } from "../tools/types.js";
 import type { RequestRoleSelection } from "../types.js";
-import { moduleDisabledReason } from "../../../protocol/module-ids.js";
+import { moduleDisabledReason } from "../../../protocol/runtime/module-ids.js";
 import { exposedToolName, toolRegistryFromComposition } from "../tools/dispatch/tool-registry.js";
 import type { ExecutionAdmission } from "../tools/dispatch/tool-dispatch.js";
 import type { AdmittedModelRequest, ModelClient, ModelRequestRoute, ServingAttempt, StreamOptions, ToolPresentation } from "../llm/types.js";

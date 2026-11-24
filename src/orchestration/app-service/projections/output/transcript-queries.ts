@@ -2,7 +2,7 @@ import { truncateUnifiedDiff } from "../../../../infra/mutation-diff.js"
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../infra/output-blocks.js"
 import { getToolDisplay } from "../../../../infra/tools/tool-display-registry.js"
 import { compactGroupChild, projectFrontendOutputBlocks } from "./frontend-output-blocks.js"
-import { frontendOutputBlockBytes } from "../../../../protocol/frontend-output-block-metrics.js"
+import { frontendOutputBlockBytes } from "../../../../protocol/transcript/frontend-output-block-metrics.js"
 import { minOutputRangeRecords, projectRecordsWithinRangeBudget, trimOutputRangeFromTail } from "./output-range-budget.js"
 import { threadHistoryRangeIndices, type BranchHistoryRecord } from "../../../session/conversation/transcript/branch-history-pagination.js"
 import type { IndexedBlockReader } from "../../../session/conversation/transcript/branch-history-builder.js"
@@ -18,7 +18,7 @@ import type {
   OutputRangeAnchor,
   OutputRangeRequest,
   OutputBlockBodyRequest,
-} from "../../../../protocol/transcript-protocol-types.js"
+} from "../../../../protocol/transcript/transcript-protocol-types.js"
 
 export interface DerivedOutputHistory extends IndexedBlockReader {
   readonly consistencyToken: string

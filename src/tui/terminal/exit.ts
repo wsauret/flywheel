@@ -5,9 +5,9 @@
 // the Dependency Inversion rule of docs/elegance.md: when a rule produces indirection without depth, don't.
 
 import { errorDetail, errorMessage } from "../../infra/error-message.js"
-import type { LaunchState } from "../../infra/launch-state.js"
-import { Log } from "../../infra/log.js"
-import { armProcessWatchdog } from "../../infra/process-watchdog.js"
+import type { LaunchState } from "../../infra/distribution/launch-state.js"
+import { Log } from "../../infra/diagnostics/log.js"
+import { armProcessWatchdog } from "../../infra/supervision/process-watchdog.js"
 
 const log = Log.create({ service: "tui-exit" })
 

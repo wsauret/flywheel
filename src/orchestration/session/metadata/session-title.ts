@@ -2,11 +2,11 @@ import { Effect, Fiber } from "effect"
 import type { AuthContext } from "../../../infra/auth/auth-context.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { messageInput } from "../../../infra/agent-loop-events.js"
 import type { Agent, AgentFactory, AgentPurpose } from "../../agent-runtime/types.js"
 import { createAgentGeneration } from "../../agent-runtime/runner/turn-host/host.js"
-import { SHORT_TITLE_MAX_CHARS } from "../../../protocol/app-service-types.js"
+import { SHORT_TITLE_MAX_CHARS } from "../../../protocol/runtime/app-service-types.js"
 import { TITLE_GENERATION_ROLE_ID, type RoleResolver } from "../../config/roles.js"
 
 const log = Log.create({ service: "session-title" })

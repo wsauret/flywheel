@@ -1,12 +1,12 @@
 import type { CredentialProviderId } from "../../../infra/auth/store/auth-store-types.js"
-import type { AuthFileAttention, AuthProviderAccountStatus, AuthProviderAttention, AuthProviderSource, AuthProviderStatus, RuntimeAuthProfileView, RuntimeAuthLoginQuestion } from "../../../protocol/auth-status-protocol-types.js"
+import type { AuthFileAttention, AuthProviderAccountStatus, AuthProviderAttention, AuthProviderSource, AuthProviderStatus, RuntimeAuthProfileView, RuntimeAuthLoginQuestion } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { AuthProfileScopeLabel } from "../../hooks/overlays/modals/profile/auth-profile-selection.js"
-import type { RuntimeAuthProfileWriteScope } from "../../../protocol/auth-profile-selection-protocol-types.js"
-import type { ProviderCatalogDiscovery, ProviderModelRow, ProviderModelTarget, ProviderModelView } from "../../../protocol/provider-model-preference-protocol-types.js"
+import type { RuntimeAuthProfileWriteScope } from "../../../protocol/auth/auth-profile-selection-protocol-types.js"
+import type { ProviderCatalogDiscovery, ProviderModelRow, ProviderModelTarget, ProviderModelView } from "../../../protocol/auth/provider-model-preference-protocol-types.js"
 import { authStatusPresentation } from "./auth-status-presentation.js"
-import type { RuntimeAuthLoginPrompt } from "../../../protocol/auth-login-protocol-types.js"
+import type { RuntimeAuthLoginPrompt } from "../../../protocol/auth/auth-login-protocol-types.js"
 
-import type { SubscriptionSpendConsentView } from "../../../protocol/subscription-spend-consent-protocol-types.js"
+import type { SubscriptionSpendConsentView } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 
 export type SubscriptionCapabilityAccount = Extract<SubscriptionSpendConsentView, { readonly kind: "available" }>["accounts"][number]
 
@@ -64,7 +64,7 @@ export type AuthView =
   | ({ kind: "profile-delete-confirmation"; id: string; label: string; choice: "confirm" | "cancel" } & (
     | { phase: "loading"; preview?: never; successorId?: never; error?: never }
     | { phase: "preview-error"; error: string; preview?: never; successorId?: never }
-    | { phase: "ready"; preview: import("../../../protocol/auth-profile-selection-protocol-types.js").RuntimeAuthProfileDeletionPreview; successorId?: string; error?: string }
+    | { phase: "ready"; preview: import("../../../protocol/auth/auth-profile-selection-protocol-types.js").RuntimeAuthProfileDeletionPreview; successorId?: string; error?: string }
   ))
   /** A question the provider's login flow asks before it starts. */
   | { kind: "login-prompt"; providerId: CredentialProviderId; label: string; prompt: RuntimeAuthLoginPrompt }

@@ -4,14 +4,14 @@ import { expect, it } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createSignal } from "solid-js"
 import { createComponent } from "solid-js/web"
-import type { RuntimeStartupStatus } from "../../../../../src/protocol/app-service-types.js"
+import type { RuntimeStartupStatus } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeFaultCopy } from "../../../../../src/protocol/client/runtime-fault-copy.js"
 import { StartupViewport } from "../../../../../src/tui/components/startup/startup-viewport.js"
 import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js"
 import { BOLD } from "../../../../../src/tui/terminal/text-attributes.js"
-import { startupPhase } from "../../../../../src/protocol/startup-steps.js"
+import { startupPhase } from "../../../../../src/protocol/runtime/startup-steps.js"
 
 it("shows each startup step on one bar and keeps it visible until a pending chat can open", async () => {
   const [status, setStatus] = createSignal<RuntimeStartupStatus | null>({

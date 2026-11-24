@@ -9,7 +9,7 @@ import { createBackgroundExecutionOwner } from "../../../../../src/orchestration
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { capabilityAccessHolding } from "../tools/_fixtures.js";
-import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";
+import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js";
 import { makeDeps as makeSubagentDeps } from "../subagent/_fixtures.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 

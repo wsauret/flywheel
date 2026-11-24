@@ -1,4 +1,4 @@
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { createRuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import { configSection } from "../../../config/schema/config-section.js"
 import { startModulePolicy } from "../../../config/policy/module-policy.js"

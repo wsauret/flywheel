@@ -1,4 +1,4 @@
-import type { AttachedRuntimeClient } from "../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"
 
 /** Watches the live output of `sessionIds` on every lane of `client`, as a
  *  transcript store does for the session it shows: the runtime sends a

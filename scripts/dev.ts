@@ -8,7 +8,7 @@ import {
   verifyNativeAssets,
 } from "./binary-native-assets.js";
 import { runningSourceSnapshot, sourceCheckout } from "../src/infra/cli-subprocess.js";
-import { createProcessTemporaryDirectory } from "../src/infra/process-temporary-directory.js";
+import { createProcessTemporaryDirectory } from "../src/infra/process/process-temporary-directory.js";
 import type { runSourceCli } from "./source-cli.js";
 
 // The checkout this entry belongs to, which holds the native assets whether
@@ -33,7 +33,7 @@ Object.assign(process.env, nativeEnv(nativeDir));
 // loaded (ARCH-DISTRIBUTION-030). An entry that already runs from a snapshot never takes
 // another.
 const entry = runningSourceSnapshot() === undefined
-  ? await (await import("../src/infra/source-snapshot.js")).enterSourceSnapshot(ROOT)
+  ? await (await import("../src/infra/distribution/source-snapshot.js")).enterSourceSnapshot(ROOT)
   : undefined
 
 // The CLI loads after the native environment is staged, from the tree this
@@ -51,7 +51,7 @@ try {
   if (entry !== undefined && entry.kind !== "failed") {
     const [{ SERVE_EXIT, startsServiceProcess }, { refuseFailedServiceStart }, { errorMessage }] = await Promise.all([
       import("../src/cli/account-service/serve-contract.js"),
-      import("../src/infra/source-snapshot.js"),
+      import("../src/infra/distribution/source-snapshot.js"),
       import("../src/infra/error-message.js"),
     ]);
     if (startsServiceProcess(process.argv) && refuseFailedServiceStart(entry, errorMessage(error))) {

@@ -23,13 +23,13 @@
  *  before it answers. So an executor that exits cuts no install, and no
  *  process an install started outlives the outcome the service publishes. */
 
-import { createBoundedWorkerSpawner } from "../../infra/bounded-worker-spawner.js";
-import { DebugLog, parseForwardedLogRecord } from "../../infra/debug-log.js";
+import { createBoundedWorkerSpawner } from "../../infra/process/workers/bounded-worker-spawner.js";
+import { DebugLog, parseForwardedLogRecord } from "../../infra/diagnostics/debug-log.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { serveOwnedProcessBridge, type OwnedProcessBridge } from "../../infra/owned-process-bridge.js";
 import type { GuardianControl } from "../../infra/process-supervisor.js";
-import { terminateWorker } from "../../infra/worker-termination.js";
+import { terminateWorker } from "../../infra/process/workers/worker-termination.js";
 import { buildCollectionPending } from "../../infra/update/build-retention.js";
 import type { UpdateInstaller } from "./update-service.js";
 import { windowsLauncherCollectionPending } from "./windows-install.js";

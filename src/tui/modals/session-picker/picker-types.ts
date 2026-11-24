@@ -1,5 +1,5 @@
-import type { SessionCatalogRow } from "../../../protocol/app-service-types.js"
-import type { FoundChat } from "../../../protocol/transcript-protocol-types.js"
+import type { SessionCatalogRow } from "../../../protocol/runtime/app-service-types.js"
+import type { FoundChat } from "../../../protocol/transcript/transcript-protocol-types.js"
 
 export type PickerRow = PickerHeaderRow | PickerSessionRow | PickerCorruptRow | PickerFoundRow
 

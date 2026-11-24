@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createTranscriptStore } from "../../../../src/protocol/client/transcript-store.js"
 import { deltaPatch, fakeConnection, SESSION, settle, textBlock } from "./_transcript-store-fixtures.js"
 

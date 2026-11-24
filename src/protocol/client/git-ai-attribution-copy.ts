@@ -1,4 +1,4 @@
-import type { GitAiAttributionStatus } from "../git-ai-attribution-protocol-types.js"
+import type { GitAiAttributionStatus } from "../git/git-ai-attribution-protocol-types.js"
 
 /** Why Git AI attribution cannot record now, in the words every client shows. */
 export function gitAiAttributionUnavailableReason(status: GitAiAttributionStatus & { readonly kind: "unavailable" }): string {

@@ -1,6 +1,6 @@
 import { expect, mock, test } from "bun:test"
-import type { FrontendMutation, MutationResult } from "../../../../../src/protocol/app-service-types.js"
-import type { RuntimeConfigView } from "../../../../../src/protocol/runtime-config-protocol-types.js"
+import type { FrontendMutation, MutationResult } from "../../../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeConfigView } from "../../../../../src/protocol/settings/runtime-config-protocol-types.js"
 import { useReleaseNotice } from "../../../../../src/tui/hooks/welcome/use-release-notice.js"
 import { configValues } from "../../modals/settings/_settings-modal-fixtures.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"

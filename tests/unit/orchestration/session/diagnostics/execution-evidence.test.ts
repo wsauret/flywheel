@@ -2,15 +2,15 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Schema } from "effect";
-import { decodeExecutionEvidence, ExecutionEvidenceSchema, type ExecutionEvidence } from "../../../../../src/protocol/execution-evidence.js";
+import { decodeExecutionEvidence, ExecutionEvidenceSchema, type ExecutionEvidence } from "../../../../../src/protocol/session/execution-evidence.js";
 import { subcommandDispatch } from "../../../../../src/cli/subcommands.js";
-import type { LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js";
+import type { LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
-import { createPersistentProcessManager } from "../../../../../src/infra/persistent-process-manager.js";
+import { createPersistentProcessManager } from "../../../../../src/infra/supervision/persistent/persistent-process-manager.js";
 import type { LauncherContext } from "../../../../../src/infra/process-supervisor.js";
-import * as sqliteEventStore from "../../../../../src/infra/sqlite-event-store.js";
+import * as sqliteEventStore from "../../../../../src/infra/store/sqlite-event-store.js";
 import type { UsageEntry } from "../../../../../src/infra/llm/usage/usage-entry.js";
-import { Log } from "../../../../../src/infra/log.js";
+import { Log } from "../../../../../src/infra/diagnostics/log.js";
 import type { CommandProcessResources } from "../../../../../src/orchestration/cli-contribution.js";
 import { hashSystemPrompt, hashToolSurface } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-hash.js";
 import { buildSessionCreatedFact } from "../../../../../src/orchestration/session/metadata/session-metadata-facts.js";
@@ -86,7 +86,7 @@ async function invoke(root: string, sessionId: string): Promise<{ output: string
 describe("durable execution evidence", () => {
   test("the consumer codec bundles for browsers and refuses unknown versions and unsafe identity fields", async () => {
     const bundled = await Bun.build({
-      entrypoints: [fileURLToPath(new URL("../../../../../src/protocol/execution-evidence.ts", import.meta.url))],
+      entrypoints: [fileURLToPath(new URL("../../../../../src/protocol/session/execution-evidence.ts", import.meta.url))],
       target: "browser",
     });
     expect(bundled.success).toBe(true);

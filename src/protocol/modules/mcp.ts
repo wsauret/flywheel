@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, type ModuleRow } from "../protocol-module.js"
-import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 
 /** The workspace-scoped effective MCP registry and its lossless management
  * actions. Credentials belong to the account, not a provider auth profile. */

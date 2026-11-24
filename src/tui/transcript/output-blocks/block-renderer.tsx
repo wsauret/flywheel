@@ -19,7 +19,7 @@ import { visibleBlockIdentity, type PresentedTerminalRow } from "./visible-outpu
 import { FindBlockScope } from "@tui/context/find/find-highlight.js"
 import { useLandingBackground } from "@tui/context/transcript/landing-highlight.js"
 import type { RowProcessControls } from "./stop-affordance.js"
-import type { RoleAssignmentView } from "../../../protocol/role-protocol-types.js"
+import type { RoleAssignmentView } from "../../../protocol/auth/role-protocol-types.js"
 
 interface StreamingToolTextById { readonly [toolUseId: string]: ToolStreamingText }
 export interface BlockRendererProps {

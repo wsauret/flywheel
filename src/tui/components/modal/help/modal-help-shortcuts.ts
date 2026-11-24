@@ -1,6 +1,6 @@
 import { DEFAULT_BINDINGS, type Keymap } from "../../../terminal/keymap/keymap.js"
 import { TEXT_ENTRY_KEY_BINDINGS, type TextEntryAction } from "../../../terminal/keymap/text-entry.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../protocol/commands/command-names.js"
 
 export const HELP_SHORTCUT_SECTIONS = ["Prompt", "Text editing", "Selection", "App navigation"] as const
 type HelpShortcutSection = (typeof HELP_SHORTCUT_SECTIONS)[number]

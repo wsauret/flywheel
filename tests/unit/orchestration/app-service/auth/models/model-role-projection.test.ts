@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { modelRoleAdmission, publishedModelRoles } from "../../../../../../src/orchestration/app-service/auth/models/model-role-projection.js"
 import { definitionAvailabilityOf } from "../../../../../../src/orchestration/app-service/definitions/definition-availability.js"
-import { RuntimeModelRolesResultSchema } from "../../../../../../src/protocol/model-role-protocol-schemas.js"
+import { RuntimeModelRolesResultSchema } from "../../../../../../src/protocol/auth/model-role-protocol-schemas.js"
 import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModuleComposition } from "../../../../../../src/orchestration/modules.js"
 import { repoDefinitions, repoModules } from "../../../../../helpers/project-definitions.js"
 

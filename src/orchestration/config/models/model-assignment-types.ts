@@ -9,7 +9,7 @@ import type { AccessProviderId } from "../../../infra/llm/access/access-provider
 import type { PickerModelEligibility } from "./provider-model-eligibility.js";
 import type { ConfigValidity } from "../writer.js";
 import type { FlywheelConfig } from "../schema/schema.js";
-import type { ModelOptionProvider, ModelSelectionSlot } from "../../../protocol/model-assignment-protocol-types.js";
+import type { ModelOptionProvider, ModelSelectionSlot } from "../../../protocol/auth/model-assignment-protocol-types.js";
 import type { CatalogDataUse } from "../../../infra/model-id.js";
 import type { RoleAssignmentSnapshot } from "../../session/metadata/schemas.js";
 import type { AgentPersonaRoles } from "./role-selection.js";

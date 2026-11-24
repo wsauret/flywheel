@@ -10,7 +10,7 @@ import { canonicalWorkflowRecord } from "../../src/workflows/schema/definition-r
 import { decodeWorkflowFile } from "../../src/workflows/vm/admission/workflow-file.js";
 import { allPhases, namedAgents, WorkflowDefinitionSchema } from "../../src/workflows/schema/workflow-schema.js";
 import { replayWorkflowControl } from "../../src/workflows/vm/recovery/fact-fold.js";
-import { roundOfNodeId } from "../../src/workflows/vm/graph/graph-types.js";
+import { roundOfNodeId } from "../../src/workflows/control-facts/graph-types.js";
 import { REPO_ROOT } from "./harness-paths.js";
 
 const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));

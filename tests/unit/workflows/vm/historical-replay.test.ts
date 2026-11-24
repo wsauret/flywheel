@@ -15,12 +15,13 @@ import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fac
 import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery/recovery.js";
 import { continueWorkflowReplay } from "../../../../src/workflows/vm/host/replay.js";
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js";
-import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact, WorkflowSessionFactSchema } from "../../../../src/workflows/vm/facts/session-facts.js";
-import type { AsyncEventWriter, EventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js";
+import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/control-facts/family.js";
+import { parseWorkflowSessionFact, WorkflowSessionFactSchema } from "../../../../src/workflows/vm/facts/session-facts.js";
+import type { AsyncEventWriter, EventStoreAppend, StoredFact } from "../../../../src/infra/store/event-store-types.js";
 import { retiredFixtureWorkflow } from "../../../helpers/retired-fixture-briefs.js";
 import { retainedDefinitions, retainedProject } from "../../../fixtures/retired-workflows/retained-project.js";
 import { acknowledge, runningControl } from "./_machine-semantics-fixtures.js";
-import { WorkflowDefinitionDriftError } from "../../../../src/workflows/vm/facts/definition-identity.js";
+import { WorkflowDefinitionDriftError } from "../../../../src/workflows/control-facts/definition-identity.js";
 import { recordedWorkflow } from "../../../../src/workflows/definitions/loader.js";
 import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js";
 import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js";
@@ -325,7 +326,7 @@ describe("frozen graph version 3 codecs", () => {
   });
 
   it("imports only types from the current graph, control, and event modules", async () => {
-    const source = await Bun.file(new URL("../../../../src/workflows/vm/facts/historical-codecs.ts", import.meta.url)).text();
+    const source = await Bun.file(new URL("../../../../src/workflows/control-facts/historical-codecs.ts", import.meta.url)).text();
     const current = /from "\.\/(graph-types|committed-control|events)\.js"/;
     const imports = source.split("\n").filter((line) => current.test(line));
     expect(imports.length).toBeGreaterThan(0);

@@ -1,7 +1,7 @@
 import { onCleanup } from "solid-js"
-import type { AttachedRuntimeClient } from "../../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { createFamilyIntake, type FamilyIntake, type FamilyIntakeOptions } from "../../../protocol/client/family-intake.js"
-import type { RuntimeUiPatch } from "../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatch } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 
 export type OrderedPatchReceiver<Scope> = Omit<FamilyIntake<Scope>, "handle" | "lane">
 

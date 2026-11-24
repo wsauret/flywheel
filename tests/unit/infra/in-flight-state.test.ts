@@ -2,9 +2,9 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../src/infra/store/sqlite-event-store.js"
 import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
-import type { LocalSqliteEventStore, EventStoreAppend, InFlightWrite } from "../../../src/infra/event-store-types.js"
+import type { LocalSqliteEventStore, EventStoreAppend, InFlightWrite } from "../../../src/infra/store/event-store-types.js"
 
 const dirs: string[] = []
 const stores: LocalSqliteEventStore[] = []

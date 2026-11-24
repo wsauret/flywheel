@@ -15,9 +15,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/store/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../src/infra/paths.js";
-import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js";
+import { createSqliteEventStore } from "../../../src/infra/store/sqlite-event-store.js";
 import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 
 const ENTRY = join(import.meta.dir, "..", "..", "..", "src", "cli", "index.ts");

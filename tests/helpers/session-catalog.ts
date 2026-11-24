@@ -1,6 +1,6 @@
-import type { AttachedRuntimeClient, FrontendEvent, RuntimeChatDefault, RuntimeExecutorState, RuntimeServiceState, SessionCatalogError, SessionCatalogRow } from "../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendEvent, RuntimeChatDefault, RuntimeExecutorState, RuntimeServiceState, SessionCatalogError, SessionCatalogRow } from "../../src/protocol/runtime/app-service-types.js"
 import { createRuntimeUiPatchSequencer } from "../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
-import type { RuntimeUiSnapshot } from "../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiSnapshot } from "../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { fakeLanes, LANE_BREAK } from "./fake-lanes.js"
 import { runtimeQuery } from "./runtime-dispatch.js"
 

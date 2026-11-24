@@ -4,7 +4,7 @@ import { createModalStack, type ModalContext } from "../../../../../../src/tui/c
 import type { ModuleRowAction } from "../../../../../../src/protocol/protocol-module.js"
 import { statusRows, useStatusModal, type StatusModalHook } from "../../../../../../src/tui/hooks/overlays/modals/use-status-modal.js"
 import type { StatusRow } from "../../../../../../src/tui/modals/status-modal-types.js"
-import type { UpdateAutoInstall, UpdateStatus, UpdateStatusView } from "../../../../../../src/protocol/update-protocol-types.js"
+import type { UpdateAutoInstall, UpdateStatus, UpdateStatusView } from "../../../../../../src/protocol/runtime/update-protocol-types.js"
 
 const ROWS: StatusRow[] = [
   { label: "Session", value: "s1 · chat · active", copy: "s1" },

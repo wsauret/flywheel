@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, mkdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { contentEvidence } from "../../../../../../src/infra/content-evidence.js";
+import { contentEvidence } from "../../../../../../src/infra/runtime-facts/content-evidence.js";
 import { testSkill } from "../../../../../helpers/skill-fixtures.js";
 import { createSkillTool } from "../../../../../../src/orchestration/agent-runtime/tools/definitions/skill.js";
 import { interceptBashCommand } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-command-policy.js";
@@ -15,7 +15,7 @@ import { buildSystemPrompt } from "../../../../../../src/orchestration/agent-run
 import { renderSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { fileTemporaryDirectory, temporaryDirectories } from "../../../../../helpers/directories.js";
 import { promptOptions } from "../../../../../helpers/prompt-capabilities.js";
-import { moduleDisabledReason } from "../../../../../../src/protocol/module-ids.js";
+import { moduleDisabledReason } from "../../../../../../src/protocol/runtime/module-ids.js";
 import { agentCapabilityCheck } from "../../../../../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
 import type { AgentDefinition } from "../../../../../../src/infra/agent-definition.js";

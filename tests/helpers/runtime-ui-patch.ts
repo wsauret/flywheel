@@ -1,6 +1,6 @@
 import { Schema, type SchemaAST } from "effect"
-import { RuntimeEventFrameSchema } from "../../src/protocol/runtime-protocol-schemas.js"
-import type { RuntimeUiPatch } from "../../src/protocol/runtime-ui-protocol-types.js"
+import { RuntimeEventFrameSchema } from "../../src/protocol/rpc/runtime-protocol-schemas.js"
+import type { RuntimeUiPatch } from "../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 /** Decodes `patch` as a client reads it: inside the event frame that carries
  *  it on the wire. Throws when the frame schema refuses the patch. */

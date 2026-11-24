@@ -1,7 +1,7 @@
 import type { QuickPick, QuickPickItem } from "vscode"
 
 import { mentionPath } from "../../../src/protocol/client/mention.js"
-import type { ProjectFileEntry } from "../../../src/protocol/transcript-protocol-types.js"
+import type { ProjectFileEntry } from "../../../src/protocol/transcript/transcript-protocol-types.js"
 
 /** The project file picker. The files come from the runtime, which lists and
  *  ranks them for the client's `@` panel too: there is one list of a

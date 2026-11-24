@@ -10,7 +10,7 @@ import {
   readLockedJsonStore,
   type LockedJsonStoreOptions,
 } from "../../../../../src/infra/auth/store/locked-json-store.js";
-import { ContainedPathError } from "../../../../../src/infra/descriptor-directory-contract.js";
+import { ContainedPathError } from "../../../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import { heldDirectoryPrototype } from "../../../../helpers/contained-directory-spies.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 

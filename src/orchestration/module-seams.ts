@@ -1,31 +1,31 @@
 import type { ProjectDirectories, StartupDirectories } from "../infra/directory-authorities.js"
 import type { LauncherScope } from "../infra/process-supervisor.js"
-import type { AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWriter, EventPayload, EventStoreAppend, GuardedEventStoreAppend, InFlightSwap, StoredFact } from "../infra/event-store-types.js"
+import type { AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWriter, EventPayload, EventStoreAppend, GuardedEventStoreAppend, InFlightSwap, StoredFact } from "../infra/store/event-store-types.js"
 import type { ModuleRuntimes } from "../infra/module-runtime.js"
 import type { RetainedOperationHosts } from "../infra/retained-operation-hosts.js"
 import type { ModuleServices } from "../infra/module-service.js"
 import type { ChildCut } from "./session/control/child-continuation.js"
-import type { ChildRunStatus } from "../protocol/app-service-types.js"
+import type { ChildRunStatus } from "../protocol/runtime/app-service-types.js"
 import type { AgentFailureDisplay, AgentGroupBlock, PausedBy, WorkflowCard } from "../infra/output-blocks.js"
 import type { SkillRegistryRevision } from "../workflows/skills/skill-schema.js"
 import type { AgentLifecycleCallbacks, ChildConversation } from "./agent-runtime/types.js"
-import type { ToolCallEventData } from "../infra/runtime-event-payload-types.js"
+import type { ToolCallEventData } from "../infra/runtime-facts/runtime-event-payload-types.js"
 import type { AskUserToolDeps } from "./agent-runtime/tools/sessions/ask-user.js"
 import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
 import type { ExternalSkillChildGrant } from "./agent-runtime/tools/definitions/skill.js"
 import type { SessionFactWriter } from "./session/persistence/session-fact-writer.js"
 import type { ChatInput } from "../infra/chat-input.js"
-import type { RecallInput, RecallResult } from "../protocol/conversation-recall.js"
+import type { RecallInput, RecallResult } from "../protocol/transcript/conversation-recall.js"
 import type { ReplayedSession, RoleSettings } from "./session/metadata/schemas.js"
 import type { SessionManager } from "./session/manager.js"
 import type { LiveChildControl } from "./session/control/live-session-control.js"
 import type { SessionListState } from "./session/message-disposition.js"
 import type { UnreadSettlement } from "./session/control/messaging/session-input-delivery.js"
 import type { HeldBackgroundNotification } from "./session/conversation/queued-background-notifications.js"
-import type { ModuleId } from "../protocol/module-ids.js"
-import type { RuntimeEvent } from "../infra/runtime-event-types.js"
+import type { ModuleId } from "../protocol/runtime/module-ids.js"
+import type { RuntimeEvent } from "../infra/runtime-facts/runtime-event-types.js"
 import type { FlywheelEvent } from "../infra/events.js"
-import type { RecordedRuntimeInvocation } from "../infra/runtime-fact-types.js"
+import type { RecordedRuntimeInvocation } from "../infra/runtime-facts/runtime-fact-types.js"
 import type { MetricsWriter } from "./session/persistence/create-session-infra.js"
 import type { ActiveBackgroundCommandDescriptor, BackgroundWorkTracking } from "./agent-runtime/background-work/background-work.js"
 import type { RoleResolver } from "./config/roles.js"
@@ -78,7 +78,7 @@ export interface ModuleWorkflowRuns {
     ancestry(event: StoredFact): { readonly owner: string; readonly parent: string } | null
   }
   hosts(input: {
-    readonly runtime: import("../infra/event-store-effect.js").EventStoreRuntime
+    readonly runtime: import("../infra/store/event-store-effect.js").EventStoreRuntime
     readonly projectionReader: AsyncEventStateReadSurface
     readonly attachChildProjection: AttachChildSessionProjection
   }): import("./workflow-host/host-collection.js").WorkflowHosts

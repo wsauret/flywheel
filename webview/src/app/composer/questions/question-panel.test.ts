@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import type { FrontendQuestionBlock } from "../../../client/question-answer.js"
+import type { FrontendQuestionBlock } from "../../../client/questions/question-answer.js"
 import { importBuiltModule } from "../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../test-support/solid-transform.js"
 

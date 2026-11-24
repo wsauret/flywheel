@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import { shownOn } from "../../../../../src/protocol/setting-catalog.js"
+import { shownOn } from "../../../../../src/protocol/settings/setting-catalog.js"
 import type { SettingsRow } from "../../../../../src/tui/modals/settings/settings-modal-types.js"
 import { inPlaceSettingCatalogRows, settingCatalogRows } from "../../../../helpers/setting-catalog-rows.js"
 import { activate, clearMocks, configValues, createModal, indexOf, rowIds, rowOf } from "./_settings-modal-fixtures.js"

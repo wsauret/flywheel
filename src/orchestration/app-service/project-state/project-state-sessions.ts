@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { RuntimeWorkflowInvocationPayloadSchema } from "../../../infra/runtime-fact-types.js"
+import { RuntimeWorkflowInvocationPayloadSchema } from "../../../infra/runtime-facts/runtime-fact-types.js"
 import type { SessionManager, SessionMetadataChange } from "../../session/manager.js"
 import { ReplayedSessionSchema } from "../../session/metadata/schemas.js"
 import { WorkflowMembershipSchema } from "../../../infra/session-workflow-membership.js"

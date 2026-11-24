@@ -20,7 +20,7 @@ import type { ModelsClient } from "../models/models.js";
 import { providerRequestHeaders } from "../provider-request-identity.js";
 import type { LauncherScope } from "../../process-supervisor.js";
 import { fillCatalogRouteModelInfos, sharedModelInfos } from "../catalog/provider-model-info.js";
-import { DebugLog } from "../../debug-log.js";
+import { DebugLog } from "../../diagnostics/debug-log.js";
 import { type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../auth/provider-account.js";
 
 const REQUEST_TIMEOUT_MS = 10_000;

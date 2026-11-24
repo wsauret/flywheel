@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { safeParse } from "../../../helpers/schema-assertions.js";
-import { QuestionBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas.js";
+import { QuestionBlockSchema } from "../../../../src/protocol/transcript/transcript-protocol-schemas.js";
 import type { QuestionBlock } from "../../../../src/infra/output-blocks";
 import { adaptQuestionHistoryRows } from "../../../../src/tui/transcript/output-blocks/tools/question-history-format.js";
 

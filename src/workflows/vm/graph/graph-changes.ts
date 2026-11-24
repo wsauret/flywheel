@@ -1,6 +1,6 @@
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import { graphTopology, inheritGraphTopology, keepsStructure } from "./graph-topology.js";
-import { attemptIdOf, type Attempt, type CollectAllJoin, type GraphNodeState, type LogicalNode, type WorkflowGraph } from "./graph-types.js";
+import { attemptIdOf, type Attempt, type CollectAllJoin, type GraphNodeState, type LogicalNode, type WorkflowGraph } from "../../control-facts/graph-types.js";
 
 /** The node with a new state. Each arm keeps its own kind, so the union stays
  *  discriminated. */

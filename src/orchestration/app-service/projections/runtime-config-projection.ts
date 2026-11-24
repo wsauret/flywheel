@@ -2,11 +2,11 @@ import { CONFIG_VALUE_ABSENT, type ConfigMutationResult, type RuntimeConfigOwner
 import { PROJECT_SHOW_BUILD_DEFAULT, isPresentedSettingId } from "../../config/schema/setting-definitions.js"
 import { installedModuleConfigSettings, installedProviderSettings } from "../../modules.js"
 import { Schema } from "effect"
-import type { ModuleConfigNumberListControl, ModuleConfigSectionBooleanControl, ModuleProviderSetting } from "../../../protocol/module-protocol-types.js"
-import { Log } from "../../../infra/log.js"
+import type { ModuleConfigNumberListControl, ModuleConfigSectionBooleanControl, ModuleProviderSetting } from "../../../protocol/runtime/module-protocol-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { FlywheelConfig } from "../../config/schema/schema.js"
-import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
-import { runtimeConfigCursor, type RuntimeConfigDiagnostic, type RuntimeConfigMutation, type RuntimeConfigMutationResult, type RuntimeConfigStatusView, type RuntimeConfigView, type RuntimeConfigValues } from "../../../protocol/runtime-config-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
+import { runtimeConfigCursor, type RuntimeConfigDiagnostic, type RuntimeConfigMutation, type RuntimeConfigMutationResult, type RuntimeConfigStatusView, type RuntimeConfigView, type RuntimeConfigValues } from "../../../protocol/settings/runtime-config-protocol-types.js"
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
 
 const NORMALIZED_WARNING = { code: "config-normalized", message: "Some configuration values were ignored or normalized." } as const

@@ -1,7 +1,7 @@
 import { createEffect, createSignal, For, on, onCleanup, Show } from "solid-js"
 import { scrollEdges } from "../../controls/scroll-edges.js"
 
-import type { ProjectFileEntry } from "../../../../../src/protocol/transcript-protocol-types.js"
+import type { ProjectFileEntry } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import type { ClientContextValue } from "../../client-context.js"
 import type { MentionToken } from "../../../../../src/protocol/client/mention.js"
 

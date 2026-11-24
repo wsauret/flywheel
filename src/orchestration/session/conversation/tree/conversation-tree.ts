@@ -5,7 +5,7 @@ import { decodeQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND, queuedInputDro
 import { decodeQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, queuedBackgroundNotificationDrops, queuedBackgroundNotificationMessage, type QueuedBackgroundNotification } from "../queued-background-notifications.js";
 import { replyWaitRetirements } from "../reply-wait-cells.js";
 import type { ConversationInputCapture, ConversationTreeStorage } from "./conversation-tree-storage.js";
-import { InFlightSwapConflictError, type EventStoreAppend, type GuardedEventStoreAppend, type InFlightWrite } from "../../../../infra/event-store-types.js";
+import { InFlightSwapConflictError, type EventStoreAppend, type GuardedEventStoreAppend, type InFlightWrite } from "../../../../infra/store/event-store-types.js";
 import { runInTaskSlices, type TaskSliceScheduling } from "../../../../infra/task-scheduling.js";
 import { InvariantViolation } from "../../../../infra/invariant.js";
 import type { ConversationTreeProjectionState, ConversationTreeTranscriptEntry } from "../conversation-projection.js";

@@ -2,6 +2,11 @@ import { Schema } from "effect"
 import { defineFact, factTypes } from "../../infra/event-registry.js"
 import { RoleAssignmentSnapshotSchema } from "../../infra/role-settings.js"
 
+/** The one aggregate that holds a workflow run's control and run facts. */
+export function workflowAggregateId(sessionId: string): string {
+  return `workflow:${sessionId}`
+}
+
 export const WorkflowLaunchBindingSchema = Schema.Struct({
   parentSessionId: Schema.NonEmptyString,
   conversationId: Schema.NonEmptyString,

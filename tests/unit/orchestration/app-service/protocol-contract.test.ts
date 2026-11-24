@@ -1,25 +1,25 @@
 import { describe, expect, test } from "bun:test"
 import { Redacted, Schema } from "effect"
-import { cursorKey, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import { FrontendMutationSchema, RuntimeProtocolRpc, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { cursorKey, type RuntimeUiPatch } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
+import { FrontendMutationSchema, RuntimeProtocolRpc, runtimeQueryResultSchema } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
-import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/runtime-cursor-schemas.js"
-import { ProviderModelViewSchema, RuntimeProviderModelsQuerySchema, RuntimeSetProviderModelMutationSchema } from "../../../../src/protocol/provider-model-preference-protocol-schemas.js"
-import { runtimeDispatchResultSchema } from "../../../../src/protocol/runtime-dispatch-result-schemas.js"
+import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/rpc/runtime-cursor-schemas.js"
+import { ProviderModelViewSchema, RuntimeProviderModelsQuerySchema, RuntimeSetProviderModelMutationSchema } from "../../../../src/protocol/auth/provider-model-preference-protocol-schemas.js"
+import { runtimeDispatchResultSchema } from "../../../../src/protocol/rpc/runtime-dispatch-result-schemas.js"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 
 const contractFiles = [
-  "src/protocol/app-service-types.ts", "src/protocol/runtime-ui-protocol-types.ts",
-  "src/protocol/runtime-config-protocol-types.ts", "src/protocol/output-protocol-types.ts",
-  "src/protocol/runtime-protocol-schemas.ts", "src/protocol/session-detail-protocol-schemas.ts", "src/protocol/runtime-cursor-schemas.ts", "src/protocol/auth-status-protocol-types.ts",
-  "src/protocol/auth-profile-selection-protocol-types.ts", "src/protocol/provider-model-preference-protocol-types.ts",
-  "src/protocol/provider-model-preference-protocol-schemas.ts", "src/protocol/status-protocol-types.ts",
-  "src/protocol/budget-protocol-types.ts", "src/protocol/workflow-view-protocol-types.ts", "src/protocol/modules/experiments.ts",
+  "src/protocol/runtime/app-service-types.ts", "src/protocol/runtime/runtime-ui-protocol-types.ts",
+  "src/protocol/settings/runtime-config-protocol-types.ts", "src/protocol/transcript/output-protocol-types.ts",
+  "src/protocol/rpc/runtime-protocol-schemas.ts", "src/protocol/session/session-detail-protocol-schemas.ts", "src/protocol/rpc/runtime-cursor-schemas.ts", "src/protocol/auth/auth-status-protocol-types.ts",
+  "src/protocol/auth/auth-profile-selection-protocol-types.ts", "src/protocol/auth/provider-model-preference-protocol-types.ts",
+  "src/protocol/auth/provider-model-preference-protocol-schemas.ts", "src/protocol/session/status-protocol-types.ts",
+  "src/protocol/session/budget-protocol-types.ts", "src/protocol/session/workflow-view-protocol-types.ts", "src/protocol/modules/experiments.ts",
   "src/protocol/protocol-module.ts", "src/protocol/modules.ts", "src/protocol/client/module-domain.ts",
-  "src/protocol/question-protocol-types.ts", "src/protocol/update-protocol-types.ts",
-  "src/protocol/module-protocol-types.ts", "src/protocol/modules/definition-overrides.ts",
-  "src/protocol/modules/papercuts.ts", "src/protocol/modules/subagents.ts", "src/protocol/modules/subscription-usage.ts", "src/protocol/schema-union.ts"]
+  "src/protocol/session/question-protocol-types.ts", "src/protocol/runtime/update-protocol-types.ts",
+  "src/protocol/runtime/module-protocol-types.ts", "src/protocol/modules/definition-overrides.ts",
+  "src/protocol/modules/papercuts.ts", "src/protocol/modules/subagents.ts", "src/protocol/modules/subscription-usage.ts", "src/protocol/rpc/schema-union.ts"]
 
 const forbiddenImports = [
   "../session-store/types", "../workflow-host/runner-types",
@@ -302,8 +302,8 @@ describe("runtime protocol contract", () => {
   })
 
   test("session summaries and output patches do not carry migrated telemetry, usage, workflow state, or TUI drafts", async () => {
-    const appTypes = await Bun.file("src/protocol/app-service-types.ts").text()
-    const outputTypes = await Bun.file("src/protocol/output-protocol-types.ts").text()
+    const appTypes = await Bun.file("src/protocol/runtime/app-service-types.ts").text()
+    const outputTypes = await Bun.file("src/protocol/transcript/output-protocol-types.ts").text()
     const sessionStoreTypes = await Bun.file("src/orchestration/session-store/types.ts").text()
 
     expect(appTypes).not.toContain("readonly metrics")
@@ -323,11 +323,11 @@ describe("runtime protocol contract", () => {
   })
 
   test("migrated telemetry and workflow state have single protocol owners", async () => {
-    const statusTypes = await Bun.file("src/protocol/status-protocol-types.ts").text()
-    const budgetTypes = await Bun.file("src/protocol/budget-protocol-types.ts").text()
-    const queueTypes = await Bun.file("src/protocol/workflow-view-protocol-types.ts").text()
-    const questionTypes = await Bun.file("src/protocol/question-protocol-types.ts").text()
-    const authTypes = await Bun.file("src/protocol/auth-status-protocol-types.ts").text()
+    const statusTypes = await Bun.file("src/protocol/session/status-protocol-types.ts").text()
+    const budgetTypes = await Bun.file("src/protocol/session/budget-protocol-types.ts").text()
+    const queueTypes = await Bun.file("src/protocol/session/workflow-view-protocol-types.ts").text()
+    const questionTypes = await Bun.file("src/protocol/session/question-protocol-types.ts").text()
+    const authTypes = await Bun.file("src/protocol/auth/auth-status-protocol-types.ts").text()
 
     expect(statusTypes).toContain("activity")
     expect(statusTypes).not.toContain("contextPercent")

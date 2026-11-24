@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { createRecallTool } from "../../../../../../../src/orchestration/agent-runtime/tools/sessions/recall.js";
-import type { RecallPort } from "../../../../../../../src/protocol/conversation-recall.js";
+import type { RecallPort } from "../../../../../../../src/protocol/transcript/conversation-recall.js";
 import { makeContext } from "../../_fixtures.js";
 
 const ctx = makeContext();

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { pack } from "msgpackr"
-import { createReattachableProcessEndpoint } from "../../../../../src/infra/reattachable-process-endpoint.js"
+import { createReattachableProcessEndpoint } from "../../../../../src/infra/process/channels/reattachable-process-endpoint.js"
 import {
   connectProjectExecutionChannel,
   ProjectExecutionStopping,
@@ -11,7 +11,7 @@ import type {
   MutationResult,
   RuntimeQuery,
   RuntimeQueryResult,
-} from "../../../../../src/protocol/app-service-types.js"
+} from "../../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeUiPatchFixtures } from "../../../protocol/runtime-ui-patch-fixtures.js"
 import { deferred, endpointPair, markerEvent, markerPosition, requestFrame, responseFrame, runtimeHarness } from "../project-execution-channel-fixtures.js"
 import { recordedDispatch, recordedQuery, runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"

@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import type { ExecutionEvidence } from "../../src/protocol/execution-evidence.js";
+import type { ExecutionEvidence } from "../../src/protocol/session/execution-evidence.js";
 import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/diagnostics/provider-request-audit-projection.js";
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../src/orchestration/modules.js";
 import { DEVELOPMENT_MODULES } from "../../src/orchestration/development-modules.js";

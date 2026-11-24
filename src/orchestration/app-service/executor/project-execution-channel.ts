@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto"
 import { Schema } from "effect"
 import { pack, unpack } from "msgpackr"
 import { errorMessage } from "../../../infra/error-message.js"
-import { trackLoopSpan } from "../../../infra/event-loop-lag.js"
-import type { InternalProcessEndpoint } from "../../../infra/internal-process-channel.js"
-import { Log } from "../../../infra/log.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
-import type { ReattachableProcessEndpoint } from "../../../infra/reattachable-process-endpoint.js"
+import { trackLoopSpan } from "../../../infra/diagnostics/event-loop-lag.js"
+import type { InternalProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
+import type { ReattachableProcessEndpoint } from "../../../infra/process/channels/reattachable-process-endpoint.js"
 import type {
   FrontendEvent,
   FrontendMutation,
@@ -15,15 +15,15 @@ import type {
   RuntimeQuery,
   RuntimeQueryOptions,
   RuntimeQueryResult,
-} from "../../../protocol/app-service-types.js"
-import { RuntimeCallTimeout, runtimeCallPolicies } from "../../../protocol/runtime-client-deadlines.js"
+} from "../../../protocol/runtime/app-service-types.js"
+import { RuntimeCallTimeout, runtimeCallPolicies } from "../../../protocol/rpc/runtime-client-deadlines.js"
 import { decodeRuntimeEventFrame } from "../../../protocol/client/runtime-event-intake.js"
 import {
   FrontendMutationSchema,
   RuntimeQuerySchema,
   runtimeQueryResultSchema,
-} from "../../../protocol/runtime-protocol-schemas.js"
-import { runtimeDispatchResultSchema } from "../../../protocol/runtime-dispatch-result-schemas.js"
+} from "../../../protocol/rpc/runtime-protocol-schemas.js"
+import { runtimeDispatchResultSchema } from "../../../protocol/rpc/runtime-dispatch-result-schemas.js"
 
 const CorrelationIdSchema = Schema.String.check(Schema.isMinLength(1))
 // Every envelope, and the query, mutation, or result it carries, refuses a key

@@ -1,9 +1,9 @@
 import type { Socket as BunSocket } from "bun"
 import { Effect, Layer, Scope } from "effect"
 import { Socket } from "effect/socket"
-import { ACCOUNT_ATTACH_LATER_MAX_BYTES, createAccountAttachResponseReader } from "../../../../protocol/account-attach.js"
-import type { RuntimeStartupPhase } from "../../../../protocol/app-service-types.js"
-import { AccountAttachFailedError } from "../../../../protocol/app-service-types.js"
+import { ACCOUNT_ATTACH_LATER_MAX_BYTES, createAccountAttachResponseReader } from "../../../../protocol/runtime/account-attach.js"
+import type { RuntimeStartupPhase } from "../../../../protocol/runtime/app-service-types.js"
+import { AccountAttachFailedError } from "../../../../protocol/runtime/app-service-types.js"
 
 /** The accepted client handle Bun hands each handler. Held as a map key and
  *  never inspected, but named so the release path states what it owns. */

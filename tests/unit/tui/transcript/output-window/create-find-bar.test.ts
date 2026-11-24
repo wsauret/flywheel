@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "bun:test"
 import { createRoot } from "solid-js"
-import type { TranscriptFindMatch, TranscriptFindRequest, TranscriptFindResult } from "../../../../../src/protocol/transcript-protocol-types.js"
+import type { TranscriptFindMatch, TranscriptFindRequest, TranscriptFindResult } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { createFindBar } from "../../../../../src/tui/transcript/output-window/create-find-bar.js"
 import { createOutputTranscriptCache } from "../../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { fakeRuntimeClient, liveView, textBlock } from "../../hooks/_output-transcript-cache-fixtures.js"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { TranscriptSnapshot } from "../../../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"
 import { createTranscriptWindowProjector, targetTimelineBlockIndex } from "../../../../../src/tui/transcript/output-window/output-window-projection.js"
 

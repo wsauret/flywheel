@@ -1,7 +1,7 @@
 import { parseSchema } from "../../../helpers/schema-assertions.js";
 import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
-import { RuntimeModelOptionRowSchema } from "../../../../src/protocol/model-assignment-protocol-schemas.js";
+import { RuntimeModelOptionRowSchema } from "../../../../src/protocol/auth/model-assignment-protocol-schemas.js";
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
 import type { AccessProviderId } from "../../../../src/infra/llm/access/access-provider.js";
 import { detectModelFamily, type ModelFamily } from "../../../../src/infra/llm/models/model-family.js";

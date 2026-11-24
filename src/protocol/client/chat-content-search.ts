@@ -1,4 +1,4 @@
-import type { ChatSearchRequest, ChatSearchResult, FoundChat } from "../transcript-protocol-types.js"
+import type { ChatSearchRequest, ChatSearchResult, FoundChat } from "../transcript/transcript-protocol-types.js"
 
 /** The pause in typing after which a session list asks for chats by what was said in them. */
 const CONTENT_SEARCH_DELAY_MS = 200

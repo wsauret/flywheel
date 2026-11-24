@@ -1,4 +1,4 @@
-import type { RuntimeExecutorState, RuntimeHealth, RuntimeServiceState, RuntimeTransportHealth } from "../app-service-types.js"
+import type { RuntimeExecutorState, RuntimeHealth, RuntimeServiceState, RuntimeTransportHealth } from "../runtime/app-service-types.js"
 
 /** The one runtime condition a surface renders, from the connection's own
  *  health and the `service` and `executor` states the runtime last published,

@@ -4,10 +4,10 @@ import { chatInputContent } from "../../../src/infra/chat-input.js"
 import { Schema } from "effect"
 import { ChatInputObjectSchema } from "../../../src/infra/chat-input-schema.js"
 import { messageInput } from "../../../src/infra/agent-loop-events.js"
-import { FrontendMutationSchema } from "../../../src/protocol/runtime-protocol-schemas.js"
+import { FrontendMutationSchema } from "../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { decodeRuntimeUiPatch } from "../../helpers/runtime-ui-patch.js"
-import type { FrontendMutation } from "../../../src/protocol/app-service-types.js"
-import type { RuntimeUiPatch } from "../../../src/protocol/runtime-ui-protocol-types.js"
+import type { FrontendMutation } from "../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeUiPatch } from "../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 describe("chatInputContent", () => {
   it("preserves submission correlation through input decoding without adding it to model content", () => {

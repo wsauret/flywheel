@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
-import type { RuntimeCursorIdentity, RuntimeUiPatch, RuntimeUiPatchPayload } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeCursorIdentity, RuntimeUiPatch, RuntimeUiPatchPayload } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { RUNTIME_UI_PATCH_FIXTURES } from "../../../protocol/runtime-ui-patch-fixtures.js"
 
 function payload(): RuntimeUiPatchPayload {

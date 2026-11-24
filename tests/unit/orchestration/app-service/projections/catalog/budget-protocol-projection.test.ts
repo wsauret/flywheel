@@ -3,8 +3,8 @@ import { Schema } from "effect"
 import { createBudgetProtocolProjection } from "../../../../../../src/orchestration/app-service/projections/catalog/budget-protocol-projection.js"
 import { createRuntimeSummaryProjection } from "../../../../../../src/orchestration/app-service/projections/catalog/runtime-summary-projection.js"
 import type { RuntimeSummaryView } from "../../../../../../src/orchestration/app-service/projections/catalog/runtime-summary-read.js"
-import { runtimeQueryResultSchema, RuntimeUiPatchPayloadSchema } from "../../../../../../src/protocol/runtime-protocol-schemas.js"
-import type { SessionCatalogRow } from "../../../../../../src/protocol/app-service-types.js"
+import { runtimeQueryResultSchema, RuntimeUiPatchPayloadSchema } from "../../../../../../src/protocol/rpc/runtime-protocol-schemas.js"
+import type { SessionCatalogRow } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { chatEntry, fakeSessionStore } from "../../_frontend-projection-fixtures.js"
 
 function row(tokens: number): Extract<SessionCatalogRow, { readonly totalsLoading: false }> {

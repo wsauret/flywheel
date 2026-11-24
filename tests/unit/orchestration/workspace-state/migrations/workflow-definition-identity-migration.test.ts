@@ -3,13 +3,13 @@ import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
 import { migrateWorkflowDefinitionIdentityContext } from "../../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity.js"
 import { migrateWorkflowDefinitionIdentityGraph } from "../../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity-graph.js"
 
 import { createProjectDefinitionRegistry } from "../../../../../src/workflows/definitions/definition-registry.js"
 import { resolveWorkflowAgents } from "../../../../../src/workflows/definitions/agent-resolution.js"
-import { retiredStepIdentity, retiredStepView } from "../../../../../src/workflows/vm/facts/retired-step-identity.js"
+import { retiredStepIdentity, retiredStepView } from "../../../../../src/workflows/control-facts/retired-step-grammar/retired-step-identity.js"
 import type { StepGrammarWorkflow } from "../../../../../src/workflows/schema/retired-step-grammar/schema.js"
 import { prePhaseControl } from "./_pre-phase-control.js"
 import {
@@ -18,10 +18,10 @@ import {
   isLegacyDefinitionIdentity,
   type DefinitionIdentity,
   type LegacyDefinitionIdentity,
-} from "../../../../../src/workflows/vm/facts/definition-identity.js"
+} from "../../../../../src/workflows/control-facts/definition-identity.js"
 import { LEGACY_HANDOFF_CONTRACTS, legacyCaptureOf, legacyIdentityOf } from "./_pre-cutover-control.js"
 import { replayWorkflowControl } from "../../../../../src/workflows/vm/recovery/fact-fold.js"
-import { workflowAggregateId } from "../../../../../src/workflows/vm/facts/session-facts.js"
+import { workflowAggregateId } from "../../../../../src/workflows/run/run-facts.js"
 import { testDirectories } from "../../../../helpers/directories.js"
 import { Schema } from "effect"
 import { hashDefinition } from "../../../../../src/workflows/provenance/definition-hash.js"

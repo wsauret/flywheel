@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { createSessionChangesController } from "../../../../src/protocol/client/session-changes.js"
-import type { SessionChangeSummaryResult } from "../../../../src/protocol/session-changes-protocol-types.js"
+import type { SessionChangeSummaryResult } from "../../../../src/protocol/session/session-changes-protocol-types.js"
 import { deferred, fileA, fileB, fileC, list, listQueries, opened, runtime, settle } from "./_session-changes-fixtures.js"
 // When the review's reads begin, coalesce, void, and follow one another: the
 // read lane of the session changes controller (ARCH-PROTOCOL-014, ARCH-PROTOCOL-045).

@@ -15,7 +15,7 @@ import { POSIX_FAILURE_STAGING } from "../../../helpers/posix-failure-staging.js
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { Log } from "../../../../src/infra/log.js";
+import { Log } from "../../../../src/infra/diagnostics/log.js";
 import { liveBuildsDir, updateAuthorityDbFile, versionsDir } from "../../../../src/infra/paths.js";
 import { buildCollectionPending, collectBuildTrees } from "../../../../src/infra/update/build-retention.js";
 import { buildExecutable } from "../../../../src/infra/update/build-identity.js";

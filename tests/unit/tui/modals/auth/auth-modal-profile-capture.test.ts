@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import type { RuntimeAuthLoginResult } from "../../../../../src/protocol/auth-login-protocol-types.js"
+import type { RuntimeAuthLoginResult } from "../../../../../src/protocol/auth/auth-login-protocol-types.js"
 import { clearMocks, createModal, flush, rowIndexOf, runtimeLogin } from "./auth-modal-test-harness.js"
 
 describe("auth modal profile capture", () => {

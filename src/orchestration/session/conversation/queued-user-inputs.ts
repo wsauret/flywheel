@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightWrite } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightWrite } from "../../../infra/store/event-store-types.js"
 import { SESSION_RELATIONS } from "../../../infra/chat-input-schema.js"
 import { chatInputContent, normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike, type ChatInvocation, type SessionMessageEnvelope, type UserInputProducer } from "../../../infra/chat-input.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
 import { recoverSessionMessageProducer, sessionMessageSources, type SessionMessageSources } from "../metadata/session-message-sources.js"
 

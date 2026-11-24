@@ -7,7 +7,7 @@ import {
   createWindowsPrivateDirectoryAclPort,
 } from "../../../src/infra/windows-private-directory-acl.js";
 import { ensurePrivateRootDirectory, ensurePrivateRootDirectoryAsync } from "../../../src/infra/private-path.js";
-import { createWin32ContainedDirectoryBackend } from "../../../src/infra/descriptor-directory-win32.js";
+import { createWin32ContainedDirectoryBackend } from "../../../src/infra/descriptor-directory/descriptor-directory-win32.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();

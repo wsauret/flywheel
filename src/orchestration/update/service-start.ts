@@ -44,13 +44,13 @@
  *  latest cause, until it serves its own minute (PI-INTERACTION-047). One stop that
  *  recovers reports nothing. */
 
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { shutdownSignals, type ShutdownSignal } from "../../infra/shutdown-signals.js";
 import type { BuildRef } from "../../infra/update/build-identity.js";
 import { ownBuild } from "../../infra/update/live-builds.js";
 import { countServiceStart, recordServiceListened, recordServiceServed, recordServiceStartFailure, type StartCauseKind, uncountServiceStart } from "../../infra/update/service-start-record.js";
-import type { RuntimeServiceState } from "../../protocol/app-service-types.js";
-import { decodeServeStartRefusal, type ServeStartRefusal } from "../../protocol/serve-handshake.js";
+import type { RuntimeServiceState } from "../../protocol/runtime/app-service-types.js";
+import { decodeServeStartRefusal, type ServeStartRefusal } from "../../protocol/runtime/serve-handshake.js";
 
 const log = Log.create({ service: "service-start-record" });
 

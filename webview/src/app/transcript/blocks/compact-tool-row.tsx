@@ -1,11 +1,11 @@
 import { createMemo, Show, useContext } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
-import type { FrontendToolEntry } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { rowPresentation } from "../../../../../src/protocol/client/file-change-body.js"
 import { readRowLabel, readRowPath, type RunRow } from "../../../../../src/protocol/client/tool-run-category.js"
 import { RowTime, TranscriptClock } from "../reading/row-time.js"
-import { blockIdentity } from "../../../../../src/protocol/block-identity.js"
+import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"
 
 /** What a tool row says it acted on. A read names its file by basename in
  *  every row it can appear in, alone with a disclosure, compact inside a

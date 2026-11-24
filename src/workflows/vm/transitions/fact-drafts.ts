@@ -1,14 +1,14 @@
 import { Schema } from "effect";
-import { CURRENT_PROPOSAL_ENCODING, type DecodedWorkflowProposalEvent, type ReassessmentChange, type WorkflowProposalEncoding } from "../facts/events.js";
+import { CURRENT_PROPOSAL_ENCODING, type DecodedWorkflowProposalEvent, type ReassessmentChange, type WorkflowProposalEncoding } from "../../control-facts/events.js";
 import type { GraphChange } from "../graph/graph-changes.js";
-import type { ExpansionChange } from "../graph/graph-types.js";
-import { GraphChangeV5Schema } from "../facts/historical-codecs.js";
-import { encodeExpansionChangeV8 } from "../facts/historical-normalization.js";
-import { FollowUpRequestedFactSchema, FollowUpTransferredFactSchema, type WorkflowControlFactDraft } from "../facts/session-facts.js";
+import type { ExpansionChange } from "../../control-facts/graph-types.js";
+import { GraphChangeV5Schema } from "../../control-facts/historical-codecs.js";
+import { encodeExpansionChangeV8 } from "../../control-facts/historical-normalization.js";
+import { FollowUpRequestedFactSchema, FollowUpTransferredFactSchema, type WorkflowControlFactDraft } from "../../control-facts/family.js";
 
 // The facts that a proposal drafts, each at the version of the proposal's
 // encoding, so strict replay of a stored run re-derives exactly the fact
-// that the run recorded. The control commits each draft; `session-facts.ts`
+// that the run recorded. The control commits each draft; `control-facts/family.ts`
 // holds the schemas that decode them.
 
 type Draft<T extends WorkflowControlFactDraft["type"]> = Extract<WorkflowControlFactDraft, { type: T }>;

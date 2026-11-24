@@ -24,10 +24,10 @@
  * keeps them in memory.
  */
 
-import { DebugLog } from "../../../infra/debug-log.js"
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { capacityWaitReasonText, type CapacityWaitReason, type SessionNotice } from "../../../infra/session-notice.js"
 import {
   authorizePlannedSessionContinuation,

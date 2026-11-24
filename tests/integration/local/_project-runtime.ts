@@ -5,7 +5,7 @@ import { isRuntimeListening } from "../../../src/cli/account-service/runtime-att
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import type { StartupDirectories } from "../../../src/infra/directory-authorities.js"
 import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/paths.js"
-import type { AttachedRuntimeClient } from "../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"
 import { createIsolatedAccountRuntimeAttach, joinIsolatedAccountService } from "./_account-service.js"
 
 // The isolated account service is started through this process's bun, so it serves this process's lane.

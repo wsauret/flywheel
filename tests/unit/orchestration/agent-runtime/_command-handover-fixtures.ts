@@ -1,9 +1,9 @@
 import { join } from "node:path"
 
-import type { CommandHandover } from "../../../../src/infra/command-handover"
-import { asAsyncEventReadSurface, type AsyncEventWriter, type EventStoreReadSurface } from "../../../../src/infra/event-store-types"
-import type { OwnedProcess, OwnedProcessExit } from "../../../../src/infra/owned-subprocess"
-import type { HandedOverCommand } from "../../../../src/infra/owned-command-control"
+import type { CommandHandover } from "../../../../src/infra/supervision/launch/command-handover"
+import { asAsyncEventReadSurface, type AsyncEventWriter, type EventStoreReadSurface } from "../../../../src/infra/store/event-store-types"
+import type { OwnedProcess, OwnedProcessExit } from "../../../../src/infra/supervision/launch/owned-subprocess"
+import type { HandedOverCommand } from "../../../../src/infra/supervision/launch/owned-command-control"
 import type { LauncherScope } from "../../../../src/infra/process-supervisor"
 import type { CommandHandoverAuthority } from "../../../../src/orchestration/agent-runtime/background-execution/command-handover"
 import type { CommandHandoverRow } from "../../../../src/orchestration/session/command-handover"

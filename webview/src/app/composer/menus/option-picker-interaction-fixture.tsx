@@ -1,6 +1,6 @@
 import { createRoot } from "solid-js"
 import { fakeClient, fakeClientActions, fakeViewState } from "../../client-context-fixture.js"
-import type { ProjectFileEntry } from "../../../../../src/protocol/transcript-protocol-types.js"
+import type { ProjectFileEntry } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { FindBar } from "../../transcript/reading/find-bar.js"
 import { createMentionPanel } from "./mention-panel.js"
 import { createElement, insert, nodes } from "../../../test-support/render-ownership-host-fixture.js"

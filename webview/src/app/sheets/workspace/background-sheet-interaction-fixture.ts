@@ -1,6 +1,6 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
-import type { FrontendEvent } from "../../../../../src/protocol/app-service-types.js"
-import { backgroundCursor, type BackgroundPatchPayload, type BackgroundWorkRow, type BackgroundWorkTarget } from "../../../../../src/protocol/background-index-protocol-types.js"
+import type { FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
+import { backgroundCursor, type BackgroundPatchPayload, type BackgroundWorkRow, type BackgroundWorkTarget } from "../../../../../src/protocol/session/background-index-protocol-types.js"
 import { backgroundIndexState, createBackgroundIndexReadings, type HeldBackgroundIndex } from "../../../../../src/protocol/client/background-index.js"
 import { ClientExtensionsProvider } from "../../client-extensions.js"
 import type { WebModuleClient } from "../../../web-module-client.js"
@@ -8,7 +8,7 @@ import type { WebModuleClient } from "../../../web-module-client.js"
 import { createElement, insert, nodes, textContent } from "../../../test-support/render-ownership-host-fixture.js"
 import { BackgroundSheet } from "./background-sheet.js"
 import { fakeClient, fakeClientActions, fakeViewState } from "../../client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"
 import { fakeLanes } from "../../../../../tests/helpers/fake-lanes.js"
 
 const tick = async (): Promise<void> => {

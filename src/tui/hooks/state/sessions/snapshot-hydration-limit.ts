@@ -1,4 +1,4 @@
-import type { AttachedRuntimeClient } from "../../../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 
 /** Per-session cache hydration (status, budget, queue, question snapshots) can
  *  fan out to every catalog row at startup - dozens of RPCs at once. The worker

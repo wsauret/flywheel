@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js";
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../../../src/infra/store/event-store-types.js";
 import type { SessionNoticeOperation } from "../../../../../../src/infra/session-notice.js";
 import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
 import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evidence-schema.js";
@@ -16,7 +16,7 @@ import type { CapabilityGrant } from "../../../../../../src/orchestration/config
 import { composeFirstPartyModules, composeRealmModuleSnapshot, type ModuleId } from "../../../../../../src/orchestration/modules.js";
 import { testKernelToolDeps, admitEveryTool, requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
-import { moduleDisabledReason } from "../../../../../../src/protocol/module-ids"
+import { moduleDisabledReason } from "../../../../../../src/protocol/runtime/module-ids"
 import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 

@@ -1,4 +1,4 @@
-import { KERNEL_COMMAND_NAMES } from "../command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../commands/command-names.js"
 
 /** The one name of each client action that a host also offers as its own
  *  command, keyed by the host command id. The command menu shows the name,

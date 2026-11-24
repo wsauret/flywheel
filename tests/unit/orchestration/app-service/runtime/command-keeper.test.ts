@@ -2,10 +2,10 @@ import { afterAll, afterEach, describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
 import * as path from "node:path"
 
-import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type AsyncEventWriter } from "../../../../../src/infra/event-store-types.js"
-import { readOutcomeRecord, writeOutcomeRecord } from "../../../../../src/infra/command-handover.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type AsyncEventWriter } from "../../../../../src/infra/store/event-store-types.js"
+import { readOutcomeRecord, writeOutcomeRecord } from "../../../../../src/infra/supervision/launch/command-handover.js"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js"
 import { createCommandKeeper, type CommandKeeper, type KeptOutputChange } from "../../../../../src/orchestration/app-service/runtime/command-keeper.js"
@@ -21,7 +21,7 @@ import { readOutputSequence } from "../../../../../src/orchestration/app-service
 import { chatEntry } from "../_frontend-projection-fixtures.js"
 import { createKeptOutputProjection } from "../../../../../src/orchestration/app-service/projections/output/kept-output-projection.js"
 import { createShippedOutput } from "../../../../../src/orchestration/app-service/projections/output/shipped-output.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 const temporaryDirectory = temporaryDirectories()
 const jobs = createPrivateCopyJobs()

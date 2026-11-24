@@ -7,7 +7,7 @@ import { Socket } from "effect/socket"
 
 import { importLegacyRemotePlacements, mutateRemotePairingStore, mutateRemotePushStore, readRemotePairingStore, readRemotePushStore, onRemoteStoresWritten, watchRemotePushStore, type PairedDevice, type RemotePairingStore, type StoredKeyPair } from "./remote-pairing-store.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { HeartbeatTiming, RelayChannelSocket, RelayChannelStreams } from "../../../protocol/modules/remote/relay-channel.js"
 import { sealedSocket } from "../../../protocol/modules/remote/sealed-socket.js"
 import {
@@ -19,7 +19,7 @@ import {
 } from "../../../protocol/modules/remote/relay-protocol.js"
 import { remoteCursor, remoteProtocol, type RemotePairingWindowView, type RemotePushSubscription, type RuntimeRemoteView } from "../../../protocol/modules/remote.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../protocol/runtime-liveness.js"
-import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
 import type { AccountProjectRegistry } from "../../app-service/account/account-project-registry.js"
 import { createMutationAdmission } from "../../app-service/mutations/mutation-admission.js"

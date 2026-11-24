@@ -4,7 +4,6 @@ import { isDeliveryConfirmationText } from "../../../../infra/delivery-confirmat
 import { isProgressUpdate } from "../../../../infra/llm/anthropic-narration.js";
 import { isAgentInFlight, messageSenderOf, type AgentGroupBlock, type AnyBlock, type DegradedBlock, type QuestionBlock, type ToolEntry } from "../../../../infra/output-blocks.js";
 import { deferredAgentMeta } from "../../../../infra/output/projector/deferred-agent-meta.js";
-import { formatCompactionReport } from "../../../../protocol/client/format.js";
 import { blockedStatusLine, formatAgentFailureDisplay, launderToolError, resolveAgentFailureDisplay } from "../../../../infra/output/output-formatter.js";
 import { extractFilePath } from "../../../../infra/output/projector/structured-event-tool-materializer.js";
 import { agentResultSummary, selectToolResultContent } from "../../../../infra/output/projector/structured-event-tool-results.js";
@@ -20,16 +19,25 @@ import { mutationEvidenceSummaryDisplayPaths, provisionalDiffDisplayPaths } from
 import { resetFailedFileChange } from "../../../../infra/output/projector/file-change-settlement.js";
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
 import type { AgentInputEntry } from "../../agent-input/agent-input-projection.js";
-import { formatAgentInputAnswers } from "../../../../protocol/question-protocol-types.js";
+import { formatAgentInputAnswers } from "../../../../protocol/session/question-protocol-types.js";
 import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, RESUMED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../../infra/output/run-labels.js";
 import { isContextResetRecord, isHistoricalCompletionEntry, isVisibleTurnEnd, turnEndOfEntry } from "../turn-end-record.js";
 import { isBriefEntry } from "../tree/brief-entry.js";
-import { rawToolUseId } from "../../../../protocol/block-identity.js";
+import { rawToolUseId } from "../../../../protocol/transcript/block-identity.js";
 import { sessionMessageRecoveryNotice } from "../../../../infra/chat-input.js";
 import { watchNoticeRow } from "../../../../infra/watch-notices.js";
 import { CONTINUATION_MESSAGES } from "../../../agent-runtime/request/prompt/continuation-messages.js";
 import { assignSubagentCards, childCall, ownsSubagentCard, ownSubagentCard, type SubagentCardAssignment } from "./subagent-card-ownership.js";
 import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js";
+
+/** System-notice line for a completed compaction. Token counts are the
+ *  runtime's heuristic context estimates; paths without a measurement
+ *  (failures, no-op compactions, pre-report events) fall back to the
+ *  plain notice. */
+export function formatCompactionReport(tokensBefore?: number, tokensAfter?: number): string {
+  if (tokensBefore == null || tokensAfter == null) return "Context compacted";
+  return `Context compacted: ${tokensBefore.toLocaleString("en-US")} → ${tokensAfter.toLocaleString("en-US")} tokens`;
+}
 
 type PersistedContent = Extract<MessageEntry["message"], { kind: "user" }>["content"];
 type ToolUsePart = Extract<Exclude<PersistedContent, string>[number], { type: "tool_use" }>;

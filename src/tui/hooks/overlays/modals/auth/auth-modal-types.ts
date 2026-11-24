@@ -1,6 +1,6 @@
 import type { Accessor, JSX } from "solid-js"
-import type { RuntimeAuthProfileView, RuntimeAuthView } from "../../../../../protocol/auth-status-protocol-types.js"
-import type { AttachedRuntimeClient } from "../../../../../protocol/app-service-types.js"
+import type { RuntimeAuthProfileView, RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
+import type { AttachedRuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
 import type { ExternalUrlOpener } from "../../../../../infra/open-external-url.js"
 import type { ModalContext } from "../../../../components/modal-stack.js"
 import type { Clipboard } from "../../../../terminal/clipboard.js"
@@ -11,7 +11,7 @@ import type { DisconnectTarget } from "./auth-modal-disconnect.js"
 import type { SubscriptionSpendConsentControl } from "./use-subscription-spend-consent-control.js"
 import type { TextEditorPresentation } from "../../../../terminal/keymap/text-entry.js"
 import type { SignInPage } from "../../../../terminal-attach.js"
-import type { ProviderModelTarget } from "../../../../../protocol/provider-model-preference-protocol-types.js"
+import type { ProviderModelTarget } from "../../../../../protocol/auth/provider-model-preference-protocol-types.js"
 
 /** One subscription account, named as a provider-model view names it. */
 export type SubscriptionAccountTarget = Omit<Extract<ProviderModelTarget, { kind: "subscription" }>, "kind">

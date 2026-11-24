@@ -1,5 +1,5 @@
 import { createSignal, onCleanup } from "solid-js"
-import type { AttachedRuntimeClient, RuntimeStartupStatus } from "../../../../protocol/app-service-types.js"
+import type { AttachedRuntimeClient, RuntimeStartupStatus } from "../../../../protocol/runtime/app-service-types.js"
 
 /**
  * The load screen's view of blocking runtime startup work. Anything that

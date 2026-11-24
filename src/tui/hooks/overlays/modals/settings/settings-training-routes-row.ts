@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 import type { SettingsStore } from "../../../state/create-settings-store.js"
-import type { SettingCatalogRow } from "../../../../../protocol/setting-catalog.js"
+import type { SettingCatalogRow } from "../../../../../protocol/settings/setting-catalog.js"
 import { cycleRowActions, type SettingsRow } from "../../../../modals/settings/settings-modal-types.js"
 
 interface TrainingRoutesRowInput {

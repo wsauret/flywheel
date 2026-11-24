@@ -2,7 +2,7 @@ import { Schema } from "effect";
 import { InvariantViolation } from "../../infra/invariant.js";
 import { selectionReport } from "../reducers/list-selection.js";
 import { compareCodeUnits } from "../reducers/reducer.js";
-import { attemptNodeIdOf, roundOfNodeId } from "../vm/graph/graph-types.js";
+import { attemptNodeIdOf, roundOfNodeId } from "../control-facts/graph-types.js";
 import { ArtifactContractSchema, USER_REQUEST_ARTIFACT_ID } from "../schema/artifact-contracts.js";
 import { AddressedAddendumSchema, HandoffEntrySchema, RequestAddendumSchema, type AddressedAddendum, type HandoffEntry, type ItemScope, type RecipientScope, type RequestAddendum } from "./context-facts.js";
 import { WorkflowInputValueSchema, type WorkflowInputValue } from "../output-contract/compile.js";

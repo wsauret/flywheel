@@ -3,10 +3,10 @@ import { RpcMessage, RpcSerialization, RpcServer } from "effect/rpc"
 import type { Socket } from "effect/socket"
 import { SocketServer } from "effect/socket"
 
-import { Log } from "../../../../infra/log.js"
-import { MutationFilesQuerySchema, MutationFilesResultSchema, MutationPatchWindowQuerySchema, MutationPatchWindowResultSchema } from "../../../../protocol/mutation-evidence-protocol-types.js"
-import { fitMutationEvidenceWindow } from "../../../../protocol/mutation-evidence-window.js"
-import { SessionChangesQuerySchema, SessionChangesResultSchema } from "../../../../protocol/session-changes-protocol-types.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
+import { MutationFilesQuerySchema, MutationFilesResultSchema, MutationPatchWindowQuerySchema, MutationPatchWindowResultSchema } from "../../../../protocol/session/mutation-evidence-protocol-types.js"
+import { fitMutationEvidenceWindow } from "../../../../protocol/session/mutation-evidence-window.js"
+import { SessionChangesQuerySchema, SessionChangesResultSchema } from "../../../../protocol/session/session-changes-protocol-types.js"
 import { SESSION_CONTENT_WINDOW_BYTES } from "../../../../infra/session-content-schema.js"
 
 type FromServerEncoded = RpcMessage.FromServerEncoded

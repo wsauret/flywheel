@@ -21,8 +21,8 @@ import type { SkillManageToolDeps } from "../../../../../../src/orchestration/mo
 import type { WorkflowToolDeps } from "../../../../../../src/orchestration/agent-runtime/tools/definitions/workflow-tool.js";
 import { learningModule } from "../../../../../../src/orchestration/modules/learning.js";
 import { workflowsModule } from "../../../../../../src/orchestration/modules/workflows.js";
-import type { WorkflowsMode } from "../../../../../../src/protocol/module-protocol-types.js";
-import type { ModuleId } from "../../../../../../src/protocol/module-ids.js";
+import type { WorkflowsMode } from "../../../../../../src/protocol/runtime/module-protocol-types.js";
+import type { ModuleId } from "../../../../../../src/protocol/runtime/module-ids.js";
 import { createRecordingFileMutationStore, makeContext } from "../_fixtures.js";
 import { ALL_CAPABILITIES, askUserController, plan, skillRevision, subagentsRuntime, userDataRoot } from "./_planner-fixtures.js";
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../../src/orchestration/modules.js";

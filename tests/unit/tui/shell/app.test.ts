@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from "bun:test"
 import { NativeSession } from "@opentui/core"
-import type { AttachedRuntimeClient } from "../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../../../../src/protocol/runtime/app-service-types.js"
 import { startTUI, type TUIOptions } from "../../../../src/tui/shell/app.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"

@@ -3,7 +3,7 @@ import type {
   GraphNodeState,
   LogicalNode,
   WorkflowGraph,
-} from "../../../../../src/workflows/vm/graph/graph-types.js";
+} from "../../../../../src/workflows/control-facts/graph-types.js";
 import { calculateFrontier, findDependencyCycles } from "../../../../../src/workflows/vm/graph/frontier.js";
 import { replaceNode, withNodeState } from "../../../../../src/workflows/vm/graph/graph-changes.js";
 

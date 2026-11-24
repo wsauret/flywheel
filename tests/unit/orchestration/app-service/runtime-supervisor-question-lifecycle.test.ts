@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import { createChatTurnDurability } from "../../../../src/orchestration/chat/runner-completion.js"
 import { createAskUserController } from "../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller.js"

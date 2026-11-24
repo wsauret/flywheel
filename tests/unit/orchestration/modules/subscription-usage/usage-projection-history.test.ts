@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import type { UsageHourlySpend } from "../../../../../src/infra/llm/usage/usage-authority.js"
 import { projectUsageHistory, projectUsageSpend, type CurrentUsageObservationSet, type MeteredUsageSource } from "../../../../../src/orchestration/modules/subscription-usage/usage-projection.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 
 /** History carries spend by hour for every source the ledger attributed, so a
  *  metered key, which has no provider window to sample, still has a history. */

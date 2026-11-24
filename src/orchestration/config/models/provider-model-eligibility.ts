@@ -1,5 +1,5 @@
 import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderModelEligibility } from "../../../infra/llm/access/access-provider.js";
-import type { ProviderCatalogDiscovery } from "../../../protocol/provider-model-preference-protocol-types.js";
+import type { ProviderCatalogDiscovery } from "../../../protocol/auth/provider-model-preference-protocol-types.js";
 import { offeringTransport } from "../../../infra/model-catalog-rows.js";
 import type { CatalogModelOffering, OfferingTransport } from "../../../infra/catalog-model-offering.js";
 import type { IdleFreePlanMark } from "../../../infra/llm/access/free-plan-accounts.js";

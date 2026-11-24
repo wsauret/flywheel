@@ -5,7 +5,7 @@ import { makeEntry } from "./_context-accumulator-fixtures.js";
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js";
 import { initializedWorkflowRoot, recoveredWorkflowRoot, storedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js";
 import { InvariantViolation } from "../../../../src/infra/invariant.js";
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types.js";
 
 /** The context of `events` as a cold read of the held projection finds it. */
 async function storedContext(events: readonly StoredFact[]) {

@@ -1,5 +1,5 @@
 import type { AnyBlock, ToolEntry } from "../../../../infra/output-blocks.js"
-import type { FrontendOutputBlock } from "../../../../protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../protocol/runtime/app-service-types.js"
 import { fileChangeDetail, isShellMutationEntry } from "../../../../protocol/client/file-change-body.js"
 
 /** The largest live tool body a row carries inline. A larger body leaves the

@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileS
 import { join } from "node:path";
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
-import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import { heldDirectoryPrototype } from "../../../helpers/contained-directory-spies.js";
 import { authDir } from "../../../../src/infra/paths.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";

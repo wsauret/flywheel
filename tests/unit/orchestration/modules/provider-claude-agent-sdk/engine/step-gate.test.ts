@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { DebugLog } from "../../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js";
 import { createStepGate, serveStepGate, type StepAsk } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/step-gate.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { forwardDiagnostics, payloads } from "../_bridge-harness.js";

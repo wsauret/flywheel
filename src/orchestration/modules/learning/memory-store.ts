@@ -29,15 +29,15 @@
 import { Schema } from "effect";
 import { basename, dirname, join, resolve } from "node:path";
 import { FLYWHEEL_DIR_NAME } from "../../../infra/directory-authorities.js";
-import { contentEvidence } from "../../../infra/content-evidence.js";
+import { contentEvidence } from "../../../infra/runtime-facts/content-evidence.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import type { LearningScope } from "../../../infra/learning-scope.js";
 import { buildMutationDiff, type MutationDiff, type MutationDiffTarget } from "../../../infra/mutation-diff.js";
-import { acquireLockIn, releaseLockIn } from "../../../infra/ownership-file-lock.js";
+import { acquireLockIn, releaseLockIn } from "../../../infra/locks/ownership-file-lock.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
 import { firstThreatMessage, scanForThreats } from "../../../infra/threat-patterns.js";
-import { withMutationQueueKey } from "../../../infra/file-mutation-queue.js";
-import { ContainedPathError, type ContainedDirectory } from "../../../infra/descriptor-directory-contract.js";
+import { withMutationQueueKey } from "../../../infra/locks/file-mutation-queue.js";
+import { ContainedPathError, type ContainedDirectory } from "../../../infra/descriptor-directory/descriptor-directory-contract.js";
 import { withContainedDirectory } from "../../../infra/descriptor-directory.js";
 import {
   directoryComponents,

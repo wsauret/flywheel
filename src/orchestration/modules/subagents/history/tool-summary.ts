@@ -1,5 +1,5 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
-import { Log } from "../../../../infra/log.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { createReadQueue } from "../../../../infra/read-queue.js"
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
 import { formatAgentFailureDisplay } from "../../../../infra/output/output-formatter.js"

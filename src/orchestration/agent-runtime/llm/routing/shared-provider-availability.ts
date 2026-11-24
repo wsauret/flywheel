@@ -7,7 +7,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import {
   AVAILABILITY_PROTOCOL_VERSION,
   createAvailabilityAuthority,

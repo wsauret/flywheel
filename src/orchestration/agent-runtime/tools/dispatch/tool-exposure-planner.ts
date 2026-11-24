@@ -23,7 +23,7 @@ import { exposedToolName, toolRegistryFromComposition, type ToolRegistry } from 
 import type { DeferredToolFactory, RegisteredTool, ToolFactoryResult } from "../../../module-seams.js";
 import type { AdvertisedTool, RuntimeTool, ToolProfile } from "../types.js";
 import { shortFormTool } from "./short-form.js";
-import { canonicalModuleIds, moduleDisabledReason, type ModuleId } from "../../../../protocol/module-ids.js";
+import { canonicalModuleIds, moduleDisabledReason, type ModuleId } from "../../../../protocol/runtime/module-ids.js";
 
 const CONTRACT_MISMATCH_REASON = "not selected by the request file edit contract";
 const NO_GATE_OMISSIONS: ReadonlyMap<string, string> = new Map();

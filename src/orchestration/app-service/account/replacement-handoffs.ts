@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import type { ServeLane } from "../../../infra/cli-subprocess.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { isProcessAlive } from "../../../infra/process-liveness.js"
 import type { ReplacementHandoff, ReplacementHandoffStore } from "./account-project-registry.js"
 import { restartBackoffMs } from "../executor/project-executor-generations.js"

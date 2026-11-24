@@ -7,7 +7,7 @@ import PIN from "../../../scripts/antigravity-engine-pin.json" with { type: "jso
 import { antigravityEnginePath, requireQualifiedAntigravityVersion, separatedAntigravityEnvironment, type AntigravityEngineHost } from "../../../src/infra/antigravity-engine.js"
 import { antigravityEngineFile, buildPlatformArch, checkoutAntigravityEngine } from "../../../src/infra/native-assets.js"
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js"
-import { enterSourceSnapshot } from "../../../src/infra/source-snapshot.js"
+import { enterSourceSnapshot } from "../../../src/infra/distribution/source-snapshot.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { snapshotFixture } from "../../helpers/source-snapshot-fixture.js"
 

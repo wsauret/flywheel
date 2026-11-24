@@ -6,7 +6,7 @@ import { createProviderModelPreferenceService } from "../../../../src/orchestrat
 import { authProviders } from "../../../helpers/auth-context.js";
 import { TEST_CATALOG_LIMITS } from "../../../helpers/model-catalog-fixtures.js";
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
-import { AUTH_NONE } from "../../orchestration/config/_model-listing-fixtures.js";
+import { AUTH_NONE } from "../config/_model-listing-fixtures.js";
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js";
 import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 

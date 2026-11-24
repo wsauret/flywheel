@@ -1,4 +1,4 @@
-import type { RuntimeAuthView } from "../auth-status-protocol-types.js"
+import type { RuntimeAuthView } from "../auth/auth-status-protocol-types.js"
 
 /** One model provider, as the panel needs to show it. */
 export interface ProviderSummary {

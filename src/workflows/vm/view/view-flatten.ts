@@ -1,7 +1,7 @@
 import type { ResolvedAgent } from "../../definitions/agent-resolution.js";
 import type { AttemptRow, MutationLogEntry, WorkflowView } from "../../view/types.js";
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
-import type { Attempt, LogicalNode } from "../graph/graph-types.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
+import type { Attempt, LogicalNode } from "../../control-facts/graph-types.js";
 import { workflowTree } from "./view-tree.js";
 
 function workflowState(status: CommittedWorkflowControl["status"]): WorkflowView["status"] {

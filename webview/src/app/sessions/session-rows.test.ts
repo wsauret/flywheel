@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
-import type { SessionSummary } from "../../client/view-state.js"
+import type { SessionSummary } from "../../client/session/view-state.js"
 import { layoutSessionRows } from "./session-rows.js"
 import { loadBudgetRenderFixture } from "../../test-support/budget-render-test-loader.js"
 

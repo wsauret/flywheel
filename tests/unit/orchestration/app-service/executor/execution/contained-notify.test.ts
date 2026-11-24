@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { containNotifyFailures } from "../../../../../../src/orchestration/app-service/executor/execution/contained-notify.js"
-import { Log } from "../../../../../../src/infra/log.js"
+import { Log } from "../../../../../../src/infra/diagnostics/log.js"
 import type { NotificationEpisodeInput } from "../../../../../../src/infra/notification-episode.js"
 
 const secret = "Reconnect the account named private-account-name."

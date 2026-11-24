@@ -1,7 +1,7 @@
-import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { OutputTranscriptView, TranscriptSnapshot } from "../../../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"
 import type { MutationEvidenceReader } from "../../../../../src/protocol/client/mutation-evidence.js"
-import { blockIdentity } from "../../../../../src/protocol/block-identity.js"
+import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"
 import { mutationEvidenceFixture } from "../../../../fixtures/mutation-evidence-fixture.js"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import type { ManualClock } from "@opentui/core/testing"
@@ -50,7 +50,6 @@ export function makeView(initial: TranscriptSnapshot | undefined) {
     visibleMessageCount: () => snap()?.totalBlocks ?? 0,
     jumpToLatest: async () => {},
     freshness: () => undefined,
-    hydrateAnchor: async () => {},
     loadAround: async () => {},
     takeEstimateUpdates: () => [],
     evictBefore: () => {},
@@ -160,7 +159,6 @@ export function transcriptOf(blocks: readonly FrontendOutputBlock[]): OutputTran
     visibleMessageCount: () => blocks.length,
     jumpToLatest: async () => {},
     freshness: () => undefined,
-    hydrateAnchor: async () => {},
     loadAround: async () => {},
       takeEstimateUpdates: () => [],
       evictBefore: () => {},

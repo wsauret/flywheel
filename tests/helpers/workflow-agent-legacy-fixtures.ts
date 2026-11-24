@@ -1,4 +1,4 @@
-import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../src/infra/store/sqlite-event-store.js"
 import { historicalWorkflowPublicationFacts } from "../release/fixtures/historical-workflow-publication.js"
 import { resolveEventStoreDbFile } from "../../src/infra/paths.js"
 import { isRecord } from "../../src/infra/record.js"

@@ -1,9 +1,9 @@
 import { Socket } from "effect/socket"
 
-import { AccountAttachFailedError, type RuntimeProtocolRefusal } from "../app-service-types.js"
-import type { RuntimeCallTimeout } from "../runtime-client-deadlines.js"
-import type { LaneEndCause } from "../runtime-client-diagnostics.js"
-import { RuntimeProtocolError } from "../runtime-protocol-schemas.js"
+import { AccountAttachFailedError, type RuntimeProtocolRefusal } from "../runtime/app-service-types.js"
+import type { RuntimeCallTimeout } from "../rpc/runtime-client-deadlines.js"
+import type { LaneEndCause } from "../runtime/runtime-client-diagnostics.js"
+import { RuntimeProtocolError } from "../rpc/runtime-protocol-schemas.js"
 
 // How a runtime call or an event lane failed, as the shared connection
 // (`connection.ts`) raises it and every receiver reads it. The connection

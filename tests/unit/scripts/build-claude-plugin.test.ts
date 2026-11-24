@@ -7,7 +7,7 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseFrontmatter } from "../../../src/infra/frontmatter.js";
+import { parseFrontmatter } from "../../../src/infra/yaml/frontmatter.js";
 import { SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
 import { createToolRegistry } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { buildClaudePlugin, writePluginDirectory } from "../../../scripts/build-claude-plugin.js";

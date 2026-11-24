@@ -1,4 +1,4 @@
-import type { KernelSurface } from "../../protocol/command-catalog-protocol-types.js"
+import type { KernelSurface } from "../../protocol/commands/command-catalog-protocol-types.js"
 import type { SurfaceOpening } from "../../protocol/client/surface-presentation.js"
 
 /** What a command hands the surface it opens and, for an opening that waited

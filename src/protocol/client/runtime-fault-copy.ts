@@ -1,7 +1,7 @@
 import type { ServeLane } from "../../infra/cli-subprocess.js"
-import type { RuntimeHealth, RuntimeProtocolRefusal } from "../app-service-types.js"
+import type { RuntimeHealth, RuntimeProtocolRefusal } from "../runtime/app-service-types.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../runtime-liveness.js"
-import type { ServeStartRefusal } from "../serve-handshake.js"
+import type { ServeStartRefusal } from "../runtime/serve-handshake.js"
 
 export interface RuntimeFaultCopy {
   /** A fault needs the person to act; a warning says that Flywheel is already acting. */

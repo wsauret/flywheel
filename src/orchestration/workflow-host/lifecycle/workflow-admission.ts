@@ -20,7 +20,7 @@ import type { WorkflowCapabilityBoundary } from "../../../workflows/run/run-fact
 import type { CapabilityGrant, ModulePolicy } from "../../config/policy/module-policy.js"
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"
 import type { WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"
-import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/module-ids.js"
+import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../../protocol/runtime/module-ids.js"
 import type { WorkflowFileDiagnostic } from "../../../workflows/vm/admission/workflow-file.js"
 
 /** What resolving one operation's definition found: at least the

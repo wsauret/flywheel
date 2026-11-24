@@ -10,11 +10,11 @@ import { SessionPreviewPane } from "./session-preview-pane.js"
 import { useSessionPreview, type SessionPreviewAppService, type SessionPreviewReader } from "./use-session-preview.js"
 import type { SessionModalAction } from "../../hooks/overlays/modals/session/use-session-modal-types.js"
 import type { PickerCorruptRow, SessionPickerResult } from "./picker-types.js"
-import type { StatusView } from "../../../protocol/status-protocol-types.js"
+import type { StatusView } from "../../../protocol/session/status-protocol-types.js"
 import type { DiffColorMode } from "../../../orchestration/config/schema/schema.js"
 import { createMemo, Show, untrack, type Accessor, type JSX } from "solid-js"
 import type { TextEditorPresentation } from "../../terminal/keymap/text-entry.js"
-import { KERNEL_COMMAND_NAMES } from "../../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../protocol/commands/command-names.js"
 
 interface SessionModalProps {
   result: SessionPickerResult

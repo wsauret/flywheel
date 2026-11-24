@@ -1,6 +1,6 @@
 import { isAbsolute } from "node:path"
 
-import { runInheritedCommand } from "../../../../../infra/inherited-command.js"
+import { runInheritedCommand } from "../../../../../infra/supervision/commands/inherited-command.js"
 import { splitGitAlias } from "./bash-git-alias.js"
 import { classifyGitArgv, GIT_MUTATION_REFUSAL } from "./bash-git-policy.js"
 

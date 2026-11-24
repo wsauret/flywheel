@@ -1,5 +1,5 @@
-import { parseProjectionFact, reduceEvents } from "../../infra/event-projection.js"
-import type { StoredFact } from "../../infra/event-store-types.js"
+import { parseProjectionFact, reduceEvents } from "../../infra/projection/event-projection.js"
+import type { StoredFact } from "../../infra/store/event-store-types.js"
 import { parseHandoffFact, type HandoffFact, type HandoffIssue } from "./facts.js"
 
 /** The latest output fact of one attempt, folded from its `handoff.written` and

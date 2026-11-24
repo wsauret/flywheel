@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { DebugLog } from "../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../src/infra/diagnostics/debug-log.js"
 import { inWindow, readDebugLogRecords } from "../../release/lib/debug-log-reader.js"
 
 // The "filters" block creates its workspace while the file loads, so the

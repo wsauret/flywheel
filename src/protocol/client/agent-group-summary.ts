@@ -7,7 +7,7 @@
 
 import { WORKFLOW_GLYPH } from "./glyphs.js"
 import { type AgentGroupBlock, type ContainerKind, isAgentInFlight } from "../../infra/output-blocks.js"
-import { sessionServingLabel, type RoleAssignmentView } from "../role-protocol-types.js"
+import { sessionServingLabel, type RoleAssignmentView } from "../auth/role-protocol-types.js"
 
 /** The glyph a client renders before the row's label, if the kind has one. */
 export function agentGroupGlyph(containerKind: ContainerKind): string | undefined {

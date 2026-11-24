@@ -3,16 +3,16 @@ import { initializedWorkflowFacts } from "../../../helpers/workflow-root-fixture
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
 import { resolveEventStoreDbFile, resolveSessionDir } from "../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
 import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta"
 import {
   createWorkflowController,
   type WorkflowController,
   type WorkflowControllerDeps,
 } from "../../../../src/orchestration/workflow-host/lifecycle/controller"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../src/infra/event-store-types"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../src/infra/store/event-store-types"
 import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../src/infra/retained-operation-hosts"
 import type { HeldRetainedOperation, RetainedOperationAcceptance, RetainedOperationCommitResult } from "../../../../src/orchestration/module-seams"
 import { bindRetainedOperations } from "../../../../src/orchestration/session/control/module-session-operations"
@@ -31,8 +31,8 @@ import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, repoModules } from "../../../h
 import { testDirectories } from "../../../helpers/directories"
 import { testCapabilityModules, testEligibility, testProviderRegistry } from "../../../helpers/provider-authority"
 import { composeRealmModuleSnapshot, type ModuleId } from "../../../../src/orchestration/modules"
-import { MODULE_IDS, moduleDisabledReason } from "../../../../src/protocol/module-ids.js"
-import type { WorkflowsMode } from "../../../../src/protocol/module-protocol-types.js"
+import { MODULE_IDS, moduleDisabledReason } from "../../../../src/protocol/runtime/module-ids.js"
+import type { WorkflowsMode } from "../../../../src/protocol/runtime/module-protocol-types.js"
 import { createDefinitionAvailability, type DefinitionAvailabilityOwner } from "../../../../src/orchestration/app-service/definitions/definition-availability"
 import type { CapabilityRequest, ModulePolicy } from "../../../../src/orchestration/config/policy/module-policy"
 import type { ModuleState } from "../../../../src/orchestration/config/module-descriptor"

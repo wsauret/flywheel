@@ -20,11 +20,11 @@ import { dialRelayDataChannel } from "./relay-data-channel.js"
 import { placementId } from "./remote-access.js"
 import { ensureRemoteIdentity, remoteIdentityFrom, type RemoteIdentity } from "./pairing/remote-identity.js"
 import type { KeepAwake } from "./keep-awake.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
 import { durationMs } from "../../../infra/operation-log.js"
 import { createBackgroundLane } from "../../../infra/ordered-lane.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 
 const log = Log.create({ service: "account-relay" })
 

@@ -1,7 +1,7 @@
 import { effectiveModuleIds, installedRetiredModuleConfig, migrateLegacyCapabilityModules, moduleSelectionFromConfig, selectionPolicyError, workflowsModeOf, type ModuleId } from "../modules.js";
-import type { WorkflowsMode } from "../../protocol/module-protocol-types.js";
+import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js";
 
-import { canonicalModuleIds, MODULE_IDS } from "../../protocol/module-ids.js";
+import { canonicalModuleIds, MODULE_IDS } from "../../protocol/runtime/module-ids.js";
 import type { ConfigReadResult } from "./config-file.js";
 
 interface ParsedHarnessConfig extends UnknownRecord {

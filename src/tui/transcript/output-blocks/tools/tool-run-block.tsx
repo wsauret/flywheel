@@ -19,7 +19,7 @@ import { ToolEntry } from "./tool-entry.js"
 import type { RowProcessControls } from "../stop-affordance.js"
 import type { ToolRun } from "../visible-output-blocks.js"
 import { FindBlockScope } from "@tui/context/find/find-highlight.js"
-import { blockIdentity } from "../../../../protocol/block-identity.js"
+import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 
 // A tool run is a display-only fold of consecutive standalone explore
 // (read/list/search) or exec (shell) tool calls, synthesized per frame by

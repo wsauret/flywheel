@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type { AgentGroupBlock, WorkflowCard } from "../../../../src/infra/output-blocks.js"
 import { workflowCard, workflowCardHeaderParts, workflowCardLines, workflowCardTime, workflowPlanAbsence, workflowViewCardStatus, type WorkflowCardChoices, type WorkflowCardLine } from "../../../../src/protocol/client/workflow-card.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
-import type { LoadedWorkflowView, WorkflowAgentLive, WorkflowTreeNode } from "../../../../src/protocol/workflow-view-protocol-types.js"
+import type { LoadedWorkflowView, WorkflowAgentLive, WorkflowTreeNode } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { FANOUT, FANOUT_COMPLETED, FANOUT_FAILED, fanoutView, REVIEW_KEYS, type FanoutFixture } from "./_workflow-card-fixtures.js"
 
 type Status = AgentGroupBlock["status"]

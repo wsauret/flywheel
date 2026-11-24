@@ -1,7 +1,7 @@
 import { describe, expect, jest, test } from "bun:test"
 import { Schema } from "effect"
-import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/protocol/app-service-types.js"
-import { backgroundCursor, SessionBackgroundWorkResultSchema, type BackgroundPatchPayload, type BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types.js"
+import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
+import { backgroundCursor, SessionBackgroundWorkResultSchema, type BackgroundPatchPayload, type BackgroundWorkRow } from "../../../../src/protocol/session/background-index-protocol-types.js"
 import {
   backgroundIndexEntries,
   backgroundIndexState,

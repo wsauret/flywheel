@@ -1,5 +1,5 @@
 import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import type { SessionMessaging } from "../../session/control/messaging/session-messaging.js";
 import type { AgentLoopOptions, AgentLoopTerminal } from "../agent-loop-types.js";
 import type { AgentPurpose } from "../types.js";

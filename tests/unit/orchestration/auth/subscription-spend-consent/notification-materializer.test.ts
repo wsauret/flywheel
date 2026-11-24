@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { ProjectNotificationEpisode, ProjectNotificationProjection } from "../../../../../src/protocol/modules/project-notifications.js"
-import type { RuntimeAuthView } from "../../../../../src/protocol/auth-status-protocol-types.js"
-import type { SubscriptionSpendConsentView } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import type { RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
+import type { SubscriptionSpendConsentView } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { createProjectNotificationSink } from "../../../../../src/orchestration/modules/project-notifications/sink.js"
 import { createSubscriptionSpendConsentNotificationMaterializer, materializeSubscriptionSpendConsentAuthChange } from "../../../../../src/orchestration/auth/subscription-spend-consent/notification-materializer.js"
 

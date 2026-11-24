@@ -1,13 +1,13 @@
 import { createComponent } from "solid-js"
 import { renderToString } from "solid-js/web"
 
-import type { RuntimeHealth } from "../../../../src/protocol/app-service-types.js"
-import type { ModuleId } from "../../../../src/protocol/module-ids.js"
+import type { RuntimeHealth } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { ModuleId } from "../../../../src/protocol/runtime/module-ids.js"
 import { ClientContext } from "../client-context.js"
 import { ComposerStatus, RuntimeFaultNotice } from "./composer-status.js"
 import { fakeClient, fakePanelSettings, fakeViewState } from "../client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
-import type { ModuleDomainViews } from "../../client/module-domain-views.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
+import type { ModuleDomainViews } from "../../client/domains/module-domain-views.js"
 import { backgroundReads, createReadRetry } from "../../../../src/protocol/client/background-reads.js"
 import type { FaultReach } from "../../../../src/protocol/client/runtime-fault-copy.js"
 

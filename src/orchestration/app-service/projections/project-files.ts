@@ -2,7 +2,7 @@ import fuzzysort from "fuzzysort"
 import { relative, sep } from "node:path"
 
 import type { ListFilesResult } from "../../agent-runtime/tools/files/ripgrep.js"
-import type { ProjectFileEntry, ProjectFilesRequest, ProjectFilesResult } from "../../../protocol/transcript-protocol-types.js"
+import type { ProjectFileEntry, ProjectFilesRequest, ProjectFilesResult } from "../../../protocol/transcript/transcript-protocol-types.js"
 
 /** The project's files and directories, for a person picking one to
  *  mention. The listing is the same walk the agent's list tool makes,

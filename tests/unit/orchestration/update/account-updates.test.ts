@@ -18,7 +18,7 @@ import { ADMISSION_CLOSED_ERROR } from "../../../../src/orchestration/app-servic
 import { createAccountUpdates } from "../../../../src/orchestration/update/account-updates.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
 import { systemUpdateScheduler } from "../../../../src/orchestration/update/update-check.js";
-import type { UpdateStatusView } from "../../../../src/protocol/update-protocol-types.js";
+import type { UpdateStatusView } from "../../../../src/protocol/runtime/update-protocol-types.js";
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-account-updates-"));
 const WORKER_URL = new URL("../../../../src/orchestration/app-service/background/worker-entry.ts", import.meta.url).href;

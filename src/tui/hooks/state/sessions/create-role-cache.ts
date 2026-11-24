@@ -1,5 +1,5 @@
-import type { AttachedRuntimeClient } from "../../../../protocol/app-service-types.js"
-import { isRolePayload, rolesCursor, type RoleAssignmentView } from "../../../../protocol/role-protocol-types.js"
+import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
+import { isRolePayload, rolesCursor, type RoleAssignmentView } from "../../../../protocol/auth/role-protocol-types.js"
 import { createPerSessionCache, type PerSessionCache } from "./create-per-session-cache.js"
 
 export type RoleCache = PerSessionCache<RoleAssignmentView>

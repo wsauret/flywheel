@@ -1,7 +1,7 @@
 import type { Server } from "bun"
 
 import { errnoCode } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { projectWebPort } from "../../../../infra/paths.js"
 import { brandTileSvg } from "../../../../protocol/client/brand.js"
 import { applyControlUiSecurityHeaders } from "./control-ui-csp.js"

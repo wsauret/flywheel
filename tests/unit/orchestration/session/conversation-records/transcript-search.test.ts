@@ -3,10 +3,10 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
 import { createTranscriptSearch, type TranscriptSearchService } from "../../../../../src/orchestration/session/conversation-records/transcript-search.js"
-import { acquireConversationSearchIndex, type ConversationSearchIndex } from "../../../../../src/infra/conversation-fts.js"
+import { acquireConversationSearchIndex, type ConversationSearchIndex } from "../../../../../src/infra/store/conversation-fts.js"
 
 let tmpDir: string
 let store: LocalSqliteEventStore

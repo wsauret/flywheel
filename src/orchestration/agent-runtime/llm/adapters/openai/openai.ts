@@ -5,7 +5,7 @@ import type { OpenAIAuth } from "../../../../../infra/auth/openai/openai-auth-ty
 import type { AccessProviderCandidate, AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
 import { computeUsagePrice } from "../../../../../infra/llm/models/llm-helpers.js";
 import type { ModelInfo } from "../../../../../infra/llm/models/models.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import { LlmStreamError } from "../../errors.js";
 import { parseToolArguments } from "../../../../../infra/llm/json-parse.js";
 import { throwIfLivenessFailure, withStreamAttempt } from "../../stream/stream-attempt.js";

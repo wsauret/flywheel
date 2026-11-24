@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createFrontendProjection, type SessionChange } from "../../../../src/orchestration/app-service/projections/frontend-projection"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"

@@ -1,5 +1,5 @@
 import type { Accessor } from "solid-js"
-import type { RuntimeClient } from "../../../protocol/app-service-types.js"
+import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { mutateRuntimeConfig } from "../state/create-settings-store.js"
 import type { RuntimeConfigCache } from "../state/runtime/create-runtime-config-cache.js"
 

@@ -1,8 +1,8 @@
 import { durableOwnerAggregate } from "../../infra/durable-owner.js"
 import { isDeepStrictEqual } from "node:util"
-import { capturedFacts, CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } from "../../infra/event-store-types.js"
+import { capturedFacts, CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } from "../../infra/store/event-store-types.js"
 import { InvariantViolation } from "../../infra/invariant.js"
-import { heldProjection } from "../../infra/projection-registry.js"
+import { heldProjection } from "../../infra/projection/projection-registry.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
 import { yieldToNextTask } from "../../infra/task-scheduling.js"
 import { workflowRunOwner } from "../module-catalog.js"
@@ -13,8 +13,8 @@ import { countToolCall, initialToolCallCount, TOOL_EXECUTION_FACT_TYPES, type To
 import { workflowMembershipReader } from "../session/metadata/workflow-membership.js"
 import { EPISODE_EVIDENCE_FACT_TYPES } from "../session-store/duration.js"
 import { reduceSessionDurationEvent, SESSION_DURATION_FACT_TYPES } from "../session/runtime-facts/session-duration-projection.js"
-import { Log } from "../../infra/log.js"
-import { coalesceRepeats } from "../../infra/repeat-coalescer.js"
+import { Log } from "../../infra/diagnostics/log.js"
+import { coalesceRepeats } from "../../infra/diagnostics/repeat-coalescer.js"
 
 const log = Log.create({ service: "workflow-member-totals" })
 /** A member's duration row that this build cannot read, such as one that a

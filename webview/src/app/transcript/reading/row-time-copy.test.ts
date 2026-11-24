@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
-import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { importBuiltModule } from "../../../test-support/import-built-module.js"
 import { transformSolidFixture } from "../../../test-support/solid-transform.js"
 

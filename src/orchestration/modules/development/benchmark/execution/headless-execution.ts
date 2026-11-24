@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Schema } from "effect";
 import { canonicalModelId } from "../../../../../infra/model-id.js";
-import type { OwnedProcess } from "../../../../../infra/owned-subprocess.js";
+import type { OwnedProcess } from "../../../../../infra/supervision/launch/owned-subprocess.js";
 import type { LauncherScope } from "../../../../../infra/process-supervisor.js";
 import { applyWindowsPrivateDirectoryAcl } from "../../../../../infra/windows-private-directory-acl.js";
-import { AcpElicitationParamsSchema, AcpSessionMetaSchema, type AcpElicitationParams } from "../../../../../protocol/acp.js";
-import { decodeExecutionEvidence } from "../../../../../protocol/execution-evidence.js";
-import type { ModelSelectionEffort, RuntimeSessionModelPlanResult } from "../../../../../protocol/model-assignment-protocol-types.js";
+import { AcpElicitationParamsSchema, AcpSessionMetaSchema, type AcpElicitationParams } from "../../../../../protocol/rpc/acp.js";
+import { decodeExecutionEvidence } from "../../../../../protocol/session/execution-evidence.js";
+import type { ModelSelectionEffort, RuntimeSessionModelPlanResult } from "../../../../../protocol/auth/model-assignment-protocol-types.js";
 import { createBenchmarkAccounting } from "../accounting/accounting.js";
 import { unavailableBenchmarkAccounting } from "../accounting/evidence.js";
 import type { HeadlessBenchmarkExecution } from "./headless-execution-contract.js";
@@ -18,7 +18,7 @@ interface HeadlessBenchmarkEnvironment {
   readonly [name: string]: string | undefined;
 }
 
-/** The parts of a session result this client reads (protocol/acp.ts): the
+/** The parts of a session result this client reads (protocol/rpc/acp.ts): the
  *  configuration options and the read-only settings under `_meta`. The
  *  subject is an external process, so excess fields are ignored. */
 const SessionSettingsSchema = Schema.Struct({

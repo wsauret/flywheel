@@ -2,13 +2,13 @@ import { batch, untrack } from "solid-js"
 import { createStore, produce, reconcile, unwrap } from "solid-js/store"
 import type { BackoffOptions } from "../../../infra/backoff.js"
 import { probe, probeGauge, probeToolRenderPhase } from "../../../infra/render-probe.js"
-import { Log } from "../../../infra/log.js"
-import { blockIdentity } from "../../../protocol/block-identity.js"
-import type { AttachedRuntimeClient, FrontendOutputBlock } from "../../../protocol/app-service-types.js"
-import type { OutputView } from "../../../protocol/output-protocol-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
+import type { AttachedRuntimeClient, FrontendOutputBlock } from "../../../protocol/runtime/app-service-types.js"
+import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
 import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../../protocol/client/transcript-store.js"
 import type { BlockReplacement, TranscriptView } from "../../../protocol/client/transcript-view.js"
-import type { HydratedOutputBlockBody } from "../../../protocol/transcript-protocol-types.js"
+import type { HydratedOutputBlockBody } from "../../../protocol/transcript/transcript-protocol-types.js"
 import { estimateAppendedBlockRows, estimateFrontendOutputBlockRows, heightEstimatesFromBlocks } from "./output-height-estimates.js"
 import { RESIDENT_BLOCK_BUDGET, type LoadDirection, type LoadPageResult, type OutputTranscriptCache, type OutputTranscriptView, type TranscriptFreshness, type TranscriptSnapshot, type TranscriptStatus } from "./output-transcript-cache-types.js"
 import { transcriptIdentitySample } from "../../../protocol/client/transcript-delta.js"
@@ -613,11 +613,6 @@ export function createOutputTranscriptCache(deps: {
       freshness: () => {
         const id = sessionId()
         return id ? freshness[id] : undefined
-      },
-      // An empty window that leaves the viewport short is read again from the tail.
-      hydrateAnchor: () => {
-        const id = sessionId()
-        return id ? jumpToLatest(id) : Promise.resolve()
       },
       loadAround: (entryId) => {
         const id = sessionId()

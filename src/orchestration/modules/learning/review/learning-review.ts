@@ -18,8 +18,8 @@ import type { LearningScope } from "../../../../infra/learning-scope.js";
 import { runInTaskSlices } from "../../../../infra/task-scheduling.js";
 import { buildMutationEvidence, readMutationEvidenceFiles, type MutationEvidence, type MutationEvidenceEntry } from "../../../../infra/mutation-evidence.js";
 import type { ReadSessionContentNode } from "../../../../infra/session-content.js";
-import { Log } from "../../../../infra/log.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
+import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
 import { skillReviewCompletedFact, type SkillReviewCompletedFact } from "../../../../workflows/skills/skill-facts.js";
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
 import { failureTerminal, type AgentRunResult } from "../../../agent-runtime/types.js";
@@ -32,7 +32,7 @@ import { reviewInstruction, type ReviewHalf } from "./learning-review-prompts.js
 import type { ModuleId, FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../modules.js";
 import { moduleRequirementsForContribution, hasModuleContribution } from "../../../module-requirements.js";
 
-import { canonicalModuleIds } from "../../../../protocol/module-ids.js";
+import { canonicalModuleIds } from "../../../../protocol/runtime/module-ids.js";
 const log = Log.create({ service: "learning-review" });
 
 /** The fork budget: the prompts direct multi-step sequences and

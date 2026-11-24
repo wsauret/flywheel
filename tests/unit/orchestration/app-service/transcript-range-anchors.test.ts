@@ -1,8 +1,8 @@
 import { expect, it } from "bun:test"
 import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import type { OutputRangeRequest } from "../../../../src/protocol/transcript-protocol-types.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
+import type { OutputRangeRequest } from "../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { outputSeamBlocks } from "../session-store/_output-session-fixtures.js"
 
 it("asserts every range anchor against one absolute sequence", async () => {

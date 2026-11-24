@@ -1,4 +1,4 @@
-import { getWriteSyntaxColors, WRITE_SYNTAX_ROLES, type WriteSyntaxThemeId } from "../../../../../../src/protocol/write-syntax-theme.js"
+import { getWriteSyntaxColors, WRITE_SYNTAX_ROLES, type WriteSyntaxThemeId } from "../../../../../../src/protocol/settings/write-syntax-theme.js"
 import type { JSX } from "solid-js"
 
 export interface WriteSyntaxPresentation {

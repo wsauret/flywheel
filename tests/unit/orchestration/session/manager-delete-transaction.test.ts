@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from "bun:test"
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
-import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store"
-import { workflowAggregateId } from "../../../../src/workflows/vm/facts/session-facts"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types"
+import { createWorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view"
+import { workflowAggregateId } from "../../../../src/workflows/run/run-facts"
+import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types"
 import { cleanupTmpRoot, finalizeTestSessionDeletion, makeDeps, makeDepsWithStore, makeTmpDir, publishTestWorkflow } from "./_session-manager-fixtures"
 
 afterEach(() => {

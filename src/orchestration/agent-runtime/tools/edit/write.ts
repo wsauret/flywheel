@@ -7,7 +7,7 @@
  */
 
 import { LineEndingRestorer } from "../../../../infra/file-edit/text-file.js";
-import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
 import { FileEditRefusal } from "../file-edits/file-edit-operation.js";
 import { publishToolFileEdits } from "./file-edit-tool-adapter.js";
 import { RetainedFileEditAuthority } from "../file-edits/retained-file-edit-host.js";

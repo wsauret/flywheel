@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { tmpdir } from "node:os"
-import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/debug-log.js"
+import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/diagnostics/debug-log.js"
 import { runAgentLoop } from "../../../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
 import { streamAssistantTurn } from "../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js"
 import { withStreamAttempt } from "../../../../../../src/orchestration/agent-runtime/llm/stream/stream-attempt.js"

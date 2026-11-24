@@ -14,7 +14,7 @@ import { existsSync, lstatSync } from "node:fs";
 import { readdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import type { MutationGuardKind } from "./bash-mutation-guard.js";
 import { readRepositoryRefs, readReftableStack } from "./bash-copy-refs.js";

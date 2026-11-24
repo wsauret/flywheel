@@ -1,10 +1,10 @@
-import { isSessionHistoryFailure, type AsyncEventReadSurface, type StoredFact } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
+import { isSessionHistoryFailure, type AsyncEventReadSurface, type StoredFact } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { createBackgroundLane } from "../../../infra/ordered-lane.js"
 import { AGENT_INPUT_FACT_TYPES } from "../../session/agent-input/agent-input-facts.js"
 import { loadPendingInputOpenedAt, loadSessionsWithPendingInput } from "../../session/agent-input/agent-input-projection.js"
-import { waitingSessionsCursor, type RuntimeWaitingSessionsSnapshotResult, type WaitingSession } from "../../../protocol/question-protocol-types.js"
-import type { RuntimePosition, RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
+import { waitingSessionsCursor, type RuntimeWaitingSessionsSnapshotResult, type WaitingSession } from "../../../protocol/session/question-protocol-types.js"
+import type { RuntimePosition, RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { RuntimeReadAnchor } from "./runtime-ui-patch-sequencer.js"
 
 const log = Log.create({ service: "waiting-sessions-projection" })

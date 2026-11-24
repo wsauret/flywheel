@@ -3,7 +3,7 @@ import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
 import { adoptedBlocks, createChatSubmissions, undeliveredNotice, type ChatSubmissionResult, type ChatSubmissionsDeps } from "../../../../src/protocol/client/chat-submissions.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { createComposerReturns } from "../../../../src/protocol/client/composer-returns.js"
-import type { ClaimComposerReturnsResult } from "../../../../src/protocol/composer-returns.js"
+import type { ClaimComposerReturnsResult } from "../../../../src/protocol/transcript/composer-returns.js"
 
 const WAITING_RECALL = "Flywheel is still sending this message, so you cannot edit it now. If the connection is down, Flywheel sends it when the connection returns."
 const UNCONFIRMED_COMMAND = "Flywheel did not confirm that the command arrived. Run it again if it does not start."

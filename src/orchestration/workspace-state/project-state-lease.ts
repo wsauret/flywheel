@@ -1,5 +1,5 @@
-import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js"
-import { acquireLockSyncIn, liveSharedHoldersIn, registerSharedHolderIn, releaseLockIn, releaseSharedHolderIn, type LockHold, type SharedHold } from "../../infra/ownership-file-lock.js"
+import type { ContainedDirectory } from "../../infra/descriptor-directory/descriptor-directory-contract.js"
+import { acquireLockSyncIn, liveSharedHoldersIn, registerSharedHolderIn, releaseLockIn, releaseSharedHolderIn, type LockHold, type SharedHold } from "../../infra/locks/ownership-file-lock.js"
 
 /** One project's state generation is the workspace members that belong to one
  *  epoch: the event store, its sidecars, and the session tree. Every process

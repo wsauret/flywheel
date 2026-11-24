@@ -4,7 +4,7 @@ import type { ModelAssignmentItem, ModelModalState } from "./model-modal-types.j
 import { MODAL_BACK_HINT } from "../../components/modal/modal-copy.js"
 import { modalDisclosureAction, modalDisclosureHelp } from "../../components/modal/modal-disclosure.js"
 import { scopeBreadcrumbRoot, scopeContextLine, scopeHelpHint } from "./model-modal-scope.js"
-import { KERNEL_COMMAND_NAMES } from "../../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../protocol/commands/command-names.js"
 
 /** The screen heads with the name of the command that opens it, then whose
  *  models these are; a nested picker names its target after that. */

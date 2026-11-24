@@ -12,7 +12,7 @@ import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "../modal-copy.js"
 import { ModalFooter } from "../modal-footer.js"
 import type { ModalScrollController } from "../scroll/modal-scroll-controller.js"
 import { HELP_SHORTCUT_SECTIONS, helpShortcuts } from "./modal-help-shortcuts.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../protocol/command-names.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../protocol/commands/command-names.js"
 
 interface ModalHelpProps {
   onClose: () => void

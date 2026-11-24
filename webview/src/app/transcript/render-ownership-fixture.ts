@@ -1,7 +1,7 @@
 import { createComponent, createRoot, createSignal, For, Show } from "solid-js"
 
-import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/app-service-types.js"
-import type { HydratedOutputBlockBody } from "../../../../src/protocol/transcript-protocol-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { HydratedOutputBlockBody } from "../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { createBlockDisclosure, type BlockDisclosure } from "./blocks/block-disclosure.js"
 import { Block, TurnFoldBlock } from "./blocks/blocks.js"
 import { ClientExtensionsProvider } from "../client-extensions.js"
@@ -16,19 +16,19 @@ import { createElement, insert, textContent, nodes } from "../../test-support/re
 import { ActivityStatus } from "./activity-status.js"
 import { Transcript } from "./transcript.js"
 import { createTranscriptTiming, RowTime, TranscriptClock } from "./reading/row-time.js"
-import { blockEndTimes } from "../../client/tool-runs.js"
-import { presentedBlock } from "../../client/presented-block-fixture.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
+import { blockEndTimes } from "../../client/session/residents/tool-runs.js"
+import { presentedBlock } from "../../client/session/residents/presented-block-fixture.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { createTurnMutationMetadata, TurnChanges } from "./blocks/turn-changes.js"
-import { turnCalls } from "../../client/turn-folds.js"
+import { turnCalls } from "../../client/session/residents/turn-folds.js"
 import type { MutationEvidenceReader } from "../../../../src/protocol/client/mutation-evidence.js"
-import type { TurnFold } from "../../client/tool-runs.js"
+import type { TurnFold } from "../../client/session/residents/tool-runs.js"
 import { ClientContext, type ClientContextValue } from "../client-context.js"
-import type { ClientViewState } from "../../client/view-state.js"
+import type { ClientViewState } from "../../client/session/view-state.js"
 import { statusView } from "../../../../tests/helpers/runtime-views.js"
 import { fakeClient, fakeClientActions, fakePanelSettings, fakeRuntimeSession, fakeViewState } from "../client-context-fixture.js"
 import type { ReadingState } from "../../../../src/protocol/client/reading-state.js"
-import type { SessionMemory } from "../../client/session-residents.js"
+import type { SessionMemory } from "../../client/session/residents/session-residents.js"
 import { agentGroupClient } from "./blocks/agents/agent-group-fixture.js"
 
 export const reviewWindow = createElement("root").ownerDocument.defaultView
@@ -239,10 +239,10 @@ export function mountTimedRows(initial: readonly FrontendOutputBlock[]) {
 
 interface ActivityFrame {
   readonly sessionId: string | undefined
-  readonly activity: import("../../../../src/protocol/app-service-types.js").FrontendActivity
+  readonly activity: import("../../../../src/protocol/runtime/app-service-types.js").FrontendActivity
   readonly transcriptAvailable: boolean
   readonly atTail: boolean
-  readonly settledOutputPosition: import("../../../../src/protocol/status-protocol-types.js").StatusView["settledOutputPosition"]
+  readonly settledOutputPosition: import("../../../../src/protocol/session/status-protocol-types.js").StatusView["settledOutputPosition"]
   readonly appliedOutputPosition: number | null
   readonly transcriptText: string
   readonly waitingOn?: string
@@ -427,7 +427,7 @@ export function mountAgentGroup(initial: Extract<FrontendOutputBlock, { kind: "a
   return createRoot((dispose) => {
     const [children, setChildren] = createSignal<{ readonly children: readonly FrontendToolEntry[]; readonly total: number } | undefined>()
     const [block, setBlock] = createSignal(initial)
-    const statusListeners = new Map<string, (view: import("../../../../src/protocol/status-protocol-types.js").StatusView | undefined) => void>()
+    const statusListeners = new Map<string, (view: import("../../../../src/protocol/session/status-protocol-types.js").StatusView | undefined) => void>()
     const root = createElement("root")
     let hydrationRequests = 0
     const selectedSessions: string[] = []
@@ -485,7 +485,7 @@ export function mountAgentGroup(initial: Extract<FrontendOutputBlock, { kind: "a
       setChildren,
       setBlock,
       /** Publishes the status of a child that the card watches. */
-      setChildStatus(sessionId: string, status: Pick<import("../../../../src/protocol/status-protocol-types.js").StatusView, "waitingOnBackgroundWork" | "replyWaits" | "activeBackgroundCommands" | "activeForegroundBashToolCallIds">) {
+      setChildStatus(sessionId: string, status: Pick<import("../../../../src/protocol/session/status-protocol-types.js").StatusView, "waitingOnBackgroundWork" | "replyWaits" | "activeBackgroundCommands" | "activeForegroundBashToolCallIds">) {
         statusListeners.get(sessionId)?.({ ...statusView(), ...status })
       },
       open() {

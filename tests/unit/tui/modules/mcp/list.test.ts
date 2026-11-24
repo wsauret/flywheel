@@ -4,7 +4,7 @@ import { mcpDomain, type McpStatusRow } from "../../../../../src/protocol/module
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
 import { createMcpList } from "../../../../../src/tui/modules/mcp/list.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
-import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 
 const disposers: (() => void)[] = []
 afterEach(() => { for (const dispose of disposers.splice(0)) dispose() })

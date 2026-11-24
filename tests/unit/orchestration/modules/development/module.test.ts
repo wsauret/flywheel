@@ -9,7 +9,7 @@ import { composeFirstPartyModules, composeRealmModuleSnapshot, installedCliNouns
 import { createToolRegistry, installedPersonaToolEntries } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { composeModuleServices, NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js";
 import { moduleRequirementsForContribution } from "../../../../../src/orchestration/module-requirements.js";
-import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";
+import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js";
 import { createProjectDefinitionRegistry } from "../../../../../src/workflows/definitions/definition-registry.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { personaToolEntries } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";

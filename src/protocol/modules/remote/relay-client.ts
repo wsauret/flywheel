@@ -1,10 +1,10 @@
 import { Effect, Layer } from "effect"
 import { Socket } from "effect/socket"
 
-import { reconnectBackoffMs } from "../../reconnect-backoff.js"
+import { reconnectBackoffMs } from "../../runtime/reconnect-backoff.js"
 import { attachDeviceChannel, RelayRefusal, watchPresence, type PresenceWatch } from "./relay-channel.js"
 import type { MachinePicker, MachinePickerSnapshot, RemoteCreation, RemotePairing, RemoteRuntimeSummary, RemoteStart } from "./machine-picker.js"
-import { parseRepository } from "../../repository-reference.js"
+import { parseRepository } from "../../git/repository-reference.js"
 import { isMachinePlacement, LEGACY_MACHINE_PLACEMENT_LABEL, requestProjectCreation } from "./project-creation.js"
 import { deviceIdentity, type DeviceStore, type PairedRuntime, type RemoteSelection } from "./relay-device.js"
 import { pairDevice } from "./relay-pairing.js"

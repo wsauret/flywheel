@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Exit, Scope } from "effect";
 
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js";
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js";
 import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import { createTurnDispatcher, type ToolBatchEvent } from "../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-loop-tools.js";

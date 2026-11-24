@@ -3,7 +3,7 @@ import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { applyPatch, parsePatch } from "diff";
 import { tmpdir } from "node:os";
-import type { StoredFact } from "../../../../../src/infra/event-store-types.js";
+import type { StoredFact } from "../../../../../src/infra/store/event-store-types.js";
 import { buildMutationDiff } from "../../../../../src/infra/mutation-diff.js";
 import { buildSessionChildLinkedFact, buildSessionCreatedFact } from "../../../../../src/orchestration/session/metadata/session-metadata-facts.js";
 import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js";

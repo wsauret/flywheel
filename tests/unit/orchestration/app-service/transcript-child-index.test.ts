@@ -1,10 +1,10 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import { createHash } from "node:crypto"
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
 import type { AgentGroupBlock } from "../../../../src/infra/output-blocks.js"
-import { frontendOutputBlockBytes } from "../../../../src/protocol/frontend-output-block-metrics.js"
+import { frontendOutputBlockBytes } from "../../../../src/protocol/transcript/frontend-output-block-metrics.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 

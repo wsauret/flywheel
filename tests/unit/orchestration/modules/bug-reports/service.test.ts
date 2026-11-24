@@ -5,13 +5,13 @@ import { join } from "node:path"
 import { Schema } from "effect"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { composeModuleServices } from "../../../../../src/infra/module-service.js"
-import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js"
+import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js"
 import { bugReportsModule } from "../../../../../src/orchestration/modules/bug-reports/module.js"
 import { bugReportsService, createBugReportsService } from "../../../../../src/orchestration/modules/bug-reports/service.js"
 import { BugReportSchema, type BugReportInput } from "../../../../../src/protocol/modules/bug-reports.js"
 import { composeAccountModuleProtocolRuntimes } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
 import { createRuntimeFaultReporting } from "../../../../../src/orchestration/app-service/executor/runtime-fault-reporting.js"
-import type { RuntimeExecutorState } from "../../../../../src/protocol/app-service-types.js"
+import type { RuntimeExecutorState } from "../../../../../src/protocol/runtime/app-service-types.js"
 
 const temporary = temporaryDirectories()
 const input: BugReportInput = { kind: "crash", error: { name: "TypeError", message: "undefined is not an object", stack: "TypeError\n at render" }, surface: "tui", sessionId: "s1", note: "It stopped while scrolling." }

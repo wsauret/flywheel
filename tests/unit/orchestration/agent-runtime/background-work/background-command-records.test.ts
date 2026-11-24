@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 
-import type { BackgroundCommandRecord } from "../../../../../src/infra/runtime-fact-types.js";
+import type { BackgroundCommandRecord } from "../../../../../src/infra/runtime-facts/runtime-fact-types.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
 import { startManagedCommand } from "../../../../../src/orchestration/agent-runtime/tools/bash/execution/managed-command.js";

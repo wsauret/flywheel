@@ -7,7 +7,7 @@ import { createUsageAuthority } from "../../src/infra/llm/usage/usage-authority.
 import type { MeasuredUsageEntry } from "../../src/infra/llm/usage/usage-entry.js"
 import type { SubscriptionUsageReport, SubscriptionUsageSpendSource } from "../../src/infra/llm/usage/subscription-usage.js"
 import { authDir } from "../../src/infra/paths.js"
-import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../src/infra/store/sqlite-event-store.js"
 import { createSessionManager } from "../../src/orchestration/session/manager.js"
 import { prepareWorkspaceState } from "../../src/orchestration/workspace-state/workspace-state.js"
 

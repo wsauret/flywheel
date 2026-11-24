@@ -1,5 +1,5 @@
 import { createEffect } from "solid-js"
-import { paidModeAwaitsAnswer } from "../../../../protocol/subscription-spend-consent-protocol-types.js"
+import { paidModeAwaitsAnswer } from "../../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 import type { ShellSignals } from "../../state/shell-state.js"
 import { automaticDialogsEnabled } from "./automatic-dialogs.js"
 

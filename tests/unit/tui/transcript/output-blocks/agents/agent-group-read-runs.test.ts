@@ -3,7 +3,7 @@ import type { WorkflowCards } from "../../../../../../src/tui/modules/workflows/
 import { workflowDetail } from "../../../../../helpers/runtime-views.js"
 import type { ToolEntry, AgentGroupBlock as AgentGroupBlockType } from "../../../../../../src/infra/output-blocks.js"
 import { getToolDisplay, resolveToolRowPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js"
-import type { RoleAssignmentView } from "../../../../../../src/protocol/role-protocol-types.js"
+import type { RoleAssignmentView } from "../../../../../../src/protocol/auth/role-protocol-types.js"
 import { createSignal } from "solid-js"
 import { resolvedTheme, sameColor, spanColor } from "../../../components/composer/frame/prompt-border-fixtures.js"
 import { workflowCard as foldWorkflowCard } from "../../../../../../src/protocol/client/workflow-card.js"

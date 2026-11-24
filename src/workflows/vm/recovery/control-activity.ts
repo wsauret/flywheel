@@ -1,9 +1,9 @@
-import { parseProjectionFact } from "../../../infra/event-projection.js"
-import { CorruptEventRowError, type StoredFact } from "../../../infra/event-store-types.js"
+import { parseProjectionFact } from "../../../infra/projection/event-projection.js"
+import { CorruptEventRowError, type StoredFact } from "../../../infra/store/event-store-types.js"
 import { parseWorkflowRunFact } from "../../run/run-facts.js"
-import type { CommittedWorkflowControl } from "../facts/committed-control.js"
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import { foldWorkflowControl } from "./fact-fold.js"
-import { parseWorkflowControlFact, workflowRootControl } from "../facts/session-facts.js"
+import { parseWorkflowControlFact, workflowRootControl } from "../../control-facts/family.js"
 
 /** Where an active interval opened: at the first fact that left the run
  *  working, which is a root or proposal that left control executing or

@@ -1,7 +1,7 @@
 import { safeParse } from "../../helpers/schema-assertions.js";
 import { describe, expect, test } from "bun:test";
 import { isVisibleMessageBlock, type AnyBlock } from "../../../src/infra/output-blocks";
-import { FrontendOutputBlockSchema } from "../../../src/protocol/transcript-protocol-schemas.js";
+import { FrontendOutputBlockSchema } from "../../../src/protocol/transcript/transcript-protocol-schemas.js";
 
 // Regression coverage for Phase 5 Theme 3 t5.4: schema fields the sole writer
 // always sets are now required. Omitting them must fail parsing.

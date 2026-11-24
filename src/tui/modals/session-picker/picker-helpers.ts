@@ -1,5 +1,5 @@
 import { fg as stFg, type RGBA, type TextChunk } from "@opentui/core"
-import type { SessionCatalogRow } from "../../../protocol/app-service-types.js"
+import type { SessionCatalogRow } from "../../../protocol/runtime/app-service-types.js"
 import type { PickerFoundRow, PickerRow, PickerSessionRow } from "./picker-types.js"
 
 export interface DiffStatChunkColors {

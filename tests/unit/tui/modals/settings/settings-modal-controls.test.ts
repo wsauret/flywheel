@@ -11,7 +11,7 @@ import {
   rowOf,
   valueOf,
 } from "./_settings-modal-fixtures.js"
-import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js"
+import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js"
 
 describe("useSettingsModal controls", () => {
   it("uses Right and Enter to advance value controls", () => {

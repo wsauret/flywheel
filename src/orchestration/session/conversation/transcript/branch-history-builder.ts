@@ -5,7 +5,7 @@ import type { IndexedGroupChildren } from "./tool-result-meta.js"
 import type { ToolResultDisplayMeta } from "./tool-result-display-meta.js"
 import type { ToolHistorySummary } from "../../../module-seams.js"
 import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js"
-import { blockEntryKeys, blockIdentity } from "../../../../protocol/block-identity.js"
+import { blockEntryKeys, blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 
 export interface BranchHistory {
   readonly blocks: readonly AnyBlock[]

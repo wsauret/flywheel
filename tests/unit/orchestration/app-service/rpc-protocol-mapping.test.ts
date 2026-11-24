@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { InvariantViolation } from "../../../../src/infra/invariant.js"
-import type { FrontendMutation, RuntimeQueryResult } from "../../../../src/protocol/app-service-types.js"
-import type { RuntimeModuleSnapshotResult } from "../../../../src/protocol/module-protocol-types.js"
+import type { FrontendMutation, RuntimeQueryResult } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeModuleSnapshotResult } from "../../../../src/protocol/runtime/module-protocol-types.js"
 import { papercutsProtocol, type RuntimePapercutCountView } from "../../../../src/protocol/modules/papercuts.js"
 import type { ProjectNotificationEpisode } from "../../../../src/protocol/modules/project-notifications.js"
-import type { OutputWindowSnapshot } from "../../../../src/protocol/transcript-protocol-types.js"
-import { cursorKey, sessionDomainCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import type { RuntimeDomainIntakeBindings } from "../../../../src/protocol/runtime-delivery-policy.js"
+import type { OutputWindowSnapshot } from "../../../../src/protocol/transcript/transcript-protocol-types.js"
+import { cursorKey, sessionDomainCursor } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
+import type { RuntimeDomainIntakeBindings } from "../../../../src/protocol/rpc/runtime-delivery-policy.js"
 import { workflowsProtocol } from "../../../../src/protocol/modules/workflows.js"
 import {
   classifyRuntimeProtocolErrorKind,
@@ -16,11 +16,11 @@ import {
   RuntimeProtocolRpc,
   runtimeQueryResultSchema,
   RuntimeUiPatchPayloadSchema,
-} from "../../../../src/protocol/runtime-protocol-schemas.js"
+} from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
-import { runtimeDispatchResultSchema } from "../../../../src/protocol/runtime-dispatch-result-schemas.js"
-import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/runtime-cursor-schemas.js"
-import { RuntimeAuthStatusSnapshotResultSchema } from "../../../../src/protocol/auth-status-protocol-schemas.js"
+import { runtimeDispatchResultSchema } from "../../../../src/protocol/rpc/runtime-dispatch-result-schemas.js"
+import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/rpc/runtime-cursor-schemas.js"
+import { RuntimeAuthStatusSnapshotResultSchema } from "../../../../src/protocol/auth/auth-status-protocol-schemas.js"
 import { WorkflowRowsSchema, WorkflowTreeSchema, WorkflowTreeV1Schema, WorkflowViewSchema } from "../../../../src/workflows/view/schemas.js"
 import { experimentViewDomain, type FrontendExperimentView } from "../../../../src/protocol/modules/experiments.js"
 

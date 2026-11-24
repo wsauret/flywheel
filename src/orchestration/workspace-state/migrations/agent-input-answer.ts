@@ -1,5 +1,5 @@
 import { Result, Schema } from "effect"
-import type { AgentInputAnswer } from "../../../protocol/question-protocol-types.js"
+import type { AgentInputAnswer } from "../../../protocol/session/question-protocol-types.js"
 import type { AgentInputDecision } from "../../session/agent-input/agent-input-facts.js"
 import { migrateFactVersions, type FactMigrationResult } from "./engine.js"
 

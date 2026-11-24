@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import type { AuthOperationNotice, AuthOperationSettlement, RuntimeAuthStatusScope } from "../../../../../src/protocol/auth-status-protocol-types.js"
+import type { AuthOperationNotice, AuthOperationSettlement, RuntimeAuthStatusScope } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { createAuthSettlementCoordinator } from "../../../../../src/orchestration/app-service/auth/auth-settlement-coordinator.js"
 
 const settlement: AuthOperationSettlement = { kind: "completed", operationId: "op-1", providerId: "openai" }

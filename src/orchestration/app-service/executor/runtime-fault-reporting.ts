@@ -1,4 +1,4 @@
-import type { RuntimeFaultReportOutcome } from "../../../protocol/app-service-types.js"
+import type { RuntimeFaultReportOutcome } from "../../../protocol/runtime/app-service-types.js"
 
 /** A report that was not sent keeps its assembled text for an explicit Copy. */
 type RuntimeFaultReport =

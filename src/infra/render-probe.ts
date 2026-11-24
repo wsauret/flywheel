@@ -6,7 +6,7 @@
  * ~10x per accepted patch, so at ~50k events/step the disabled path must not
  * re-read process.env every call; the captured boolean is a single field load.
  */
-import { DebugLog } from "./debug-log.js"
+import { DebugLog } from "./diagnostics/debug-log.js"
 
 let enabled = !!process.env.FLYWHEEL_RENDER_DEBUG
 

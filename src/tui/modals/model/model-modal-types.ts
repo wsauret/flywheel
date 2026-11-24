@@ -2,8 +2,8 @@ import type {
   ModelAssignmentRow,
   ModelOptionRow,
   ModelSelectionEffort,
-} from "../../../protocol/model-assignment-protocol-types.js"
-import type { RuntimeAuthView } from "../../../protocol/auth-status-protocol-types.js"
+} from "../../../protocol/auth/model-assignment-protocol-types.js"
+import type { RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { ModalDisclosureItem } from "../../components/modal/modal-disclosure.js"
 
 export type ModelAssignmentContent =

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import type { UpdateStatusView } from "../../../../../src/protocol/update-protocol-types.js"
+import type { UpdateStatusView } from "../../../../../src/protocol/runtime/update-protocol-types.js"
 import {
   createComposerBorderLayout,
   createDismissibleUpdateStatus,

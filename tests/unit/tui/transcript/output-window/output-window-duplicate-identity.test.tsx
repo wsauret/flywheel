@@ -3,7 +3,7 @@
 import { testRender } from "@opentui/solid"
 import { describe, expect, it } from "bun:test"
 import { createComponent } from "solid-js/web"
-import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { TranscriptSnapshot, TranscriptStatus } from "../../../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"
 import { heightEstimatesFromBlocks } from "../../../../../src/tui/transcript/transcript-store/output-height-estimates.js"
 import { makeView } from "./_output-window-transcript.js"

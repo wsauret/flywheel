@@ -1,5 +1,5 @@
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { ProviderConnection } from "../../infra/auth/auth-context.js"

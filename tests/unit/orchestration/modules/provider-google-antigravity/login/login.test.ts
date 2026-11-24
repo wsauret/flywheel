@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join, relative } from "node:path"
-import { Log } from "../../../../../../src/infra/log.js"
+import { Log } from "../../../../../../src/infra/diagnostics/log.js"
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js"
 import {
   antigravityAccounts,

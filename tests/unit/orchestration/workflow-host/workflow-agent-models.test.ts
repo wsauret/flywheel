@@ -7,7 +7,7 @@ import { roleCapture } from "../../../helpers/role-capture.js"
 import type { RoleSettings, RoleAssignmentSnapshot } from "../../../../src/orchestration/session/metadata/schemas.js"
 import type { WorkflowLaunchAgentModels } from "../../../../src/infra/workflow-types.js"
 import { createRoleAssignmentReader } from "../../../../src/orchestration/app-service/auth/models/role-assignment-projection.js"
-import { sessionServingSelection } from "../../../../src/protocol/role-protocol-types.js"
+import { sessionServingSelection } from "../../../../src/protocol/auth/role-protocol-types.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** The role reading that the role projection publishes for the member. */

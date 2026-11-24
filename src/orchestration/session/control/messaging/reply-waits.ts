@@ -1,6 +1,6 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { BackgroundWorkRegistry } from "../../../agent-runtime/background-work/background-work.js"
 import type { BackgroundWorkResult } from "../../../agent-runtime/background-work/background-work-types.js"
 import type { WorkReference } from "../../../agent-runtime/background-work/background-work-progress.js"
@@ -11,7 +11,7 @@ import { dropReplyWait, holdReplyWait, isReplyWaitNoticeKey, readReplyWaits, REP
 import { liveSessionControl, liveWorkflowControl, onLiveSessionRemoved, onLiveWorkChanged, type LiveWorkKey } from "../live-session-control.js"
 import type { RecipientState } from "../../message-disposition.js"
 import { sessionDisplayName, type ReplayedSession } from "../../metadata/schemas.js"
-import type { ReplyWaitView } from "../../../../protocol/status-protocol-types.js"
+import type { ReplyWaitView } from "../../../../protocol/session/status-protocol-types.js"
 import type { PausedBy } from "../../../../infra/output-blocks.js"
 
 const log = Log.create({ service: "reply-waits" })

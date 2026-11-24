@@ -1,6 +1,6 @@
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
-import type { WorkflowProposalEncoding } from "../facts/events.js";
-import { attemptIdOf, type AgentNode, type Attempt, type FollowUpV10, type LogicalNode } from "../graph/graph-types.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
+import type { WorkflowProposalEncoding } from "../../control-facts/events.js";
+import { attemptIdOf, type AgentNode, type Attempt, type FollowUpV10, type LogicalNode } from "../../control-facts/graph-types.js";
 import { isContainerNode } from "../graph/graph-changes.js";
 
 export function lastRunAttempt(control: CommittedWorkflowControl, nodeId: string): Attempt | undefined {

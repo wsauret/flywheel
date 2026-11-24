@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { workflowAgentPlace, workflowOutline, workflowPhaseTitle, type WorkflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
-import type { LoadedWorkflowView } from "../../../../src/protocol/workflow-view-protocol-types.js"
+import type { LoadedWorkflowView } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { FINDINGS_CHECKS, FINDINGS_REVIEWS, INPUT_GROUP, MAP_GROUP, attemptOf, dryRound, inputStage, stage } from "../../workflows/vm/_map-fixtures.js"
 import { debugBindings, debugControl, drive, dryBindings, dryControl, failedBranch, findingsBindings, findingsControl, frontendView, interrupt, mapBindings, mapControl, phaseBindings, phaseControl, startNext, wideBindings, wideControl } from "../../workflows/vm/_tree-fixtures.js"
 

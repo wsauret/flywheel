@@ -3,7 +3,7 @@ import { workflowAgentModel, workflowAgentMove, type WorkflowAgentTarget } from 
 import { workflowParked, workflowStateLabel } from "../../../../src/protocol/client/session-controls.js"
 import { LEVEL_KEY, SESSION_KEY, pushedOver, sessionOf, type HistoryEntryState } from "../../app/screens/screen-stack.js"
 import type { WorkflowReading } from "./inspection.js"
-import type { SessionSummary } from "../../client/view-state.js"
+import type { SessionSummary } from "../../client/session/view-state.js"
 
 export type WorkflowAgentViewTarget =
   | ({ readonly kind: "agent"; readonly historySessionId?: string } & WorkflowAgentTarget)

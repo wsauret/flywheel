@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/store/event-store-types.js"
 import type { Activity, AnyBlock, ConnectionState, ToolStreamingText } from "../../../infra/output-blocks.js"
 import type { SessionNotice } from "../../../infra/session-notice.js"
 import { createReadQueue, type ReadQueue } from "../../../infra/read-queue.js"

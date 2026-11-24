@@ -1,4 +1,4 @@
-import type { UpdateStatus } from "../update-protocol-types.js"
+import type { UpdateStatus } from "../runtime/update-protocol-types.js"
 
 /** How many characters of a build identity or a snapshot digest name it. */
 const SHORT_ID_LENGTH = 8

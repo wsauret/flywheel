@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url"
 import { BROWSER_LOGIN_COPY } from "../../../../../src/protocol/client/provider-account-copy.js"
 import { importBuiltModule } from "../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../test-support/solid-transform.js"
-import type { SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import type { SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 
 const build = await Bun.build({
   entrypoints: [fileURLToPath(new URL("providers-sheet-interaction-fixture.ts", import.meta.url))],
@@ -41,7 +41,7 @@ test("closing automatic browser login cancels only its captured question and ope
 })
 
 test("closing before the URL cancels by question and ignores the late answer", async () => {
-  const response = Promise.withResolvers<import("../../../../../src/protocol/auth-login-protocol-types.js").RuntimeAuthLoginResult>()
+  const response = Promise.withResolvers<import("../../../../../src/protocol/auth/auth-login-protocol-types.js").RuntimeAuthLoginResult>()
   const mounted = mountProviderBrowserLogin(undefined, [], { question: recoveryQuestion, response: response.promise })
   await mounted.ready()
   mounted.dispose()
@@ -61,7 +61,7 @@ test("ignored automatic answers are silent and do not cancel on later cleanup", 
 })
 
 test("recovery sends its answer while a manual login is still starting and retains its account lead", async () => {
-  const manual = Promise.withResolvers<import("../../../../../src/protocol/auth-login-protocol-types.js").RuntimeAuthLoginResult>()
+  const manual = Promise.withResolvers<import("../../../../../src/protocol/auth/auth-login-protocol-types.js").RuntimeAuthLoginResult>()
   const mounted = mountProviderBrowserLogin(undefined, undefined, { question: recoveryQuestion, manualResponse: manual.promise })
   try {
     await mounted.ready()
@@ -77,7 +77,7 @@ test("recovery sends its answer while a manual login is still starting and retai
 })
 
 test("a recovery transport failure releases question presentation for a later publication", async () => {
-  const response = Promise.withResolvers<import("../../../../../src/protocol/auth-login-protocol-types.js").RuntimeAuthLoginResult>()
+  const response = Promise.withResolvers<import("../../../../../src/protocol/auth/auth-login-protocol-types.js").RuntimeAuthLoginResult>()
   const mounted = mountProviderBrowserLogin(undefined, [], { question: recoveryQuestion, response: response.promise })
   try {
     response.reject(new Error("transport disconnected"))
@@ -87,7 +87,7 @@ test("a recovery transport failure releases question presentation for a later pu
 })
 
 test("a recovery answer that arrives after Cancel leaves the Authentication list", async () => {
-  const response = Promise.withResolvers<import("../../../../../src/protocol/auth-login-protocol-types.js").RuntimeAuthLoginResult>()
+  const response = Promise.withResolvers<import("../../../../../src/protocol/auth/auth-login-protocol-types.js").RuntimeAuthLoginResult>()
   const mounted = mountProviderBrowserLogin(undefined, [], { question: recoveryQuestion, response: response.promise })
   try {
     await mounted.ready()
@@ -122,7 +122,7 @@ test("profile actions report fulfilled refusals without announcing success", asy
 })
 
 test("profile names save inline on Enter and blur, retain focus while saving, and restore after refusal", async () => {
-  const pending = Promise.withResolvers<import("../../../../../src/protocol/auth-profile-selection-protocol-types.js").RuntimeAuthProfileMutationResult>()
+  const pending = Promise.withResolvers<import("../../../../../src/protocol/auth/auth-profile-selection-protocol-types.js").RuntimeAuthProfileMutationResult>()
   let response = pending.promise
   const mounted = mountProfileDeletion({ kind: "fresh-default", source: { id: "personal", displayName: "Personal" } }, { dispatch: () => response })
   try {
