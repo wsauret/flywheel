@@ -12,7 +12,7 @@ import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/comm
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
-import { failedAgents, agentResults, workflowCompletionContent } from "../../../../src/workflows/output-contract/workflow-completion.js";
+import { failedAgents, agentResults, workflowCompletionContent } from "../../../../src/workflows/workflow-completion.js";
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js";
 
 // A step that fails after its retries fails only itself, and the work that

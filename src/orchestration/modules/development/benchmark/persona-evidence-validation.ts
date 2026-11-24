@@ -2,7 +2,7 @@ import type { ReviewManifest } from "./catalog.js";
 import type { ResearchAnswerKey } from "./research-task.js";
 import type { JudgeVerdict } from "./judge.js";
 import { runKey, type AgentRunRecord, type AttemptRecord, type BenchmarkVariant, type JudgeAttemptRecord, type ScoreRecord } from "./run-store.js";
-import type { BenchmarkPlan } from "./persona-benchmark.js";
+import type { BenchmarkPlan } from "./benchmark-plan.js";
 
 type EvidenceTask =
   | { readonly id: string; readonly answerKey?: ResearchAnswerKey }

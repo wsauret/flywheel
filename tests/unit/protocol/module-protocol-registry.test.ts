@@ -44,7 +44,8 @@ import { runtimeCallPolicies } from "../../../src/protocol/runtime-client-deadli
 import { RuntimeCursorIdentitySchema } from "../../../src/protocol/runtime-cursor-schemas.js"
 import { RuntimeProtocolRpc, runtimeQueryResultSchema } from "../../../src/protocol/runtime-protocol-schemas.js"
 import { decodeRuntimeUiPatch } from "../../helpers/runtime-ui-patch.js"
-import { KERNEL_SESSION_DOMAINS, KERNEL_WORKSPACE_DOMAINS, runtimeDeliveryPolicy, type RuntimeDomainIntakeBindings, type RuntimeUiPatch } from "../../../src/protocol/runtime-ui-protocol-types.js"
+import { KERNEL_SESSION_DOMAINS, KERNEL_WORKSPACE_DOMAINS, type RuntimeUiPatch } from "../../../src/protocol/runtime-ui-protocol-types.js"
+import { runtimeDeliveryPolicy, type RuntimeDomainIntakeBindings } from "../../../src/protocol/runtime-delivery-policy.js"
 import { recursiveUnionMembers, stringDiscriminatorLiterals } from "../../../src/protocol/schema-union.js"
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false

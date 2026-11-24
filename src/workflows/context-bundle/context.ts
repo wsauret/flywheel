@@ -1,10 +1,9 @@
 import { Schema } from "effect";
 import { InvariantViolation } from "../../infra/invariant.js";
-import { USER_REQUEST_ARTIFACT_ID } from "../definition-validation.js";
 import { selectionReport } from "../reducers/list-selection.js";
 import { compareCodeUnits } from "../reducers/reducer.js";
 import { attemptNodeIdOf, roundOfNodeId } from "../vm/graph-types.js";
-import { ArtifactContractSchema } from "../artifact-contracts.js";
+import { ArtifactContractSchema, USER_REQUEST_ARTIFACT_ID } from "../artifact-contracts.js";
 import { AddressedAddendumSchema, HandoffEntrySchema, RequestAddendumSchema, type AddressedAddendum, type HandoffEntry, type ItemScope, type RecipientScope, type RequestAddendum } from "./context-facts.js";
 import { WorkflowInputValueSchema, type WorkflowInputValue } from "../output-contract/compile.js";
 import type { AgentRead } from "../workflow-schema.js";

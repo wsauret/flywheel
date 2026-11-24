@@ -1,5 +1,6 @@
 import type { FrontendEvent } from "../app-service-types.js"
-import { reconnectBackoffMs, type RuntimeConnection } from "./connection.js"
+import type { RuntimeConnection } from "./connection.js"
+import { reconnectBackoffMs } from "../reconnect-backoff.js"
 import { lostWithLane } from "./connection-failures.js"
 import { isLaneBreak } from "./cursor-intake.js"
 

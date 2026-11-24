@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
-import type { JudgeSelection } from "./admission.js";
+import type { JudgeSelection } from "./benchmark-plan.js";
 import { appendCampaignRecords, loadAllCampaignRecords, scoreLine, type CampaignRecords, type CellLine } from "./benchmark-records.js";
 import { benchmarkMode, type BenchmarkCatalog, type ImplementTask, type ResearchTask, type ReviewTask } from "./catalog.js";
 import { scoreImplementTraps } from "./implement-scoring.js";

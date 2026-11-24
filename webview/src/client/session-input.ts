@@ -1,11 +1,11 @@
-import type { FrontendMutation, SessionRow } from "../../../src/protocol/app-service-types.js"
-import { createChatSubmissions, type ChatSubmissionResult, type ChatSubmissions, type LocalChatSubmission, type UnsentChatSubmission } from "../../../src/protocol/client/chat-submissions.js"
+import type { FrontendMutation, ProtocolChatAttachment, SessionRow } from "../../../src/protocol/app-service-types.js"
+import type { AgentInputAnswer } from "../../../src/protocol/question-protocol-types.js"
+import { createChatSubmissions, type ChatSubmissionResult, type ChatSubmissions, type LocalChatSubmission, type LocalRecall, type UnsentChatSubmission } from "../../../src/protocol/client/chat-submissions.js"
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import { lostWithLane } from "../../../src/protocol/client/connection-failures.js"
 import { dispatchInterrupt, resumeMutation, sessionControls, stopMutation } from "../../../src/protocol/client/session-controls.js"
 import { NO_PROVIDER_READY, settledProviderSetup, type ProviderSetup } from "../../../src/protocol/client/provider-setup.js"
 import { describeFailure } from "./failure-message.js"
-import type { RuntimeSession } from "./session.js"
 import type { HoldOutcome } from "../../../src/protocol/client/held-session-details.js"
 
 /** Dispatches input and controls against current admission, not catalog membership.
@@ -25,6 +25,44 @@ const NO_PROVIDER_REFUSAL = `${NO_PROVIDER_READY}. Connect one, then send the me
 
 /** A refused child send leaves its draft in place and needs only the runtime's warning. */
 export class DraftKeptRefusal extends Error {}
+
+/** The input and controls a session dispatches against its open session. */
+export interface SessionInput {
+  /** Sends text and files. Into an open session the message is a local entry
+   *  from this call until the runtime shows it back; a failed send rejects and
+   *  leaves its entry in place, marked as not delivered. */
+  send(text: string, attachments?: readonly ProtocolChatAttachment[]): Promise<void>
+  /** Up and a message's Edit control, by the rule every client shares
+   *  (`ChatSubmissions.recallLocal`): a message that did not go through
+   *  comes back for the composer to edit and send again, and a message that
+   *  waits for the connection stays and says why. With no chat open, that is
+   *  a first message whose new chat failed. Undefined when neither applies. */
+  recallLocal(entryId?: string): LocalRecall | undefined
+  /** Interrupts the open session, whatever its kind: a chat turn, a
+   *  workflow agent, or a child's run. It keeps everything committed, and
+   *  Resume continues it (PI-INTERACTION-043, PI-INTERACTION-103, PI-INTERACTION-044,
+   *  PI-AGENT-020). Workflow targets select items or agents; omitted targets act on the whole workflow. */
+  interrupt(targets?: readonly string[]): Promise<void>
+  /** Continues the open session with no new message, using the same optional workflow targets as Interrupt. */
+  resume(targets?: readonly string[]): Promise<void>
+  /** Stops a session that answers a parent's tool call: the parent's
+   *  `background.terminate` of that call. Cancel ends the call; a canceled
+   *  subagent or workflow admits only an explicit Resume. */
+  stop(sessionId: string): Promise<void>
+  answer(toolUseId: string, answers: { readonly [question: string]: AgentInputAnswer }): Promise<void>
+  /** Withdraws a question the agent asked, letting the turn continue without an
+   *  answer. */
+  cancelQuestion(toolUseId: string): Promise<void>
+  /** Summarises the conversation so far so a long one can keep going. */
+  compact(): Promise<void>
+  /** Stops one background task without interrupting the turn. */
+  terminateBackground(toolUseId: string): Promise<void>
+  /** Releases a foreground bash hold so the turn continues while the command
+   *  keeps running. */
+  detachBash(toolUseId: string): Promise<void>
+  /** The message the runtime is holding for the next turn, if any. */
+  recallQueued(): Promise<string | undefined>
+}
 
 export function createSessionInput(options: {
   readonly connection: RuntimeConnection
@@ -48,7 +86,7 @@ export function createSessionInput(options: {
   /** The messages the page this one replaced sent and the runtime had not
    *  answered. They show queued and go out on the first lane. */
   readonly unsent?: readonly UnsentChatSubmission[]
-}): Pick<RuntimeSession, "send" | "interrupt" | "resume" | "stop" | "recallLocal" | "recallQueued" | "answer" | "cancelQuestion" | "compact" | "terminateBackground" | "detachBash"> & { readonly submissions: ChatSubmissions } {
+}): SessionInput & { readonly submissions: ChatSubmissions } {
   const { connection } = options
   /** Per destination, the handoff of its newest message to the connection.
    *  The next message waits for it, so the messages to one session leave in

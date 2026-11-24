@@ -5,10 +5,9 @@ import { accountSecretFile } from "../paths.js";
 import { isRecord } from "../record.js";
 import type { AuthProfileAccess } from "./auth-profile-store.js";
 import { AccountStorageAccessError, lockedJsonRevision, lockedJsonStorePath, readLockedJsonStore, readLockedJsonStoreRevision, type LockedJsonStoreOptions } from "./locked-json-store.js";
-import { PersistedAuthStoreSchema, createAuthStoreSchema, CredentialInstanceSchema, CredentialSchema, isCredentialCollection, MeteredCredentialRecordSchema, NestedMeteredCredentialRecordSchema, type AuthStore, type Credential, type CredentialCollection, type CredentialInstance, type CredentialLineages, type CredentialSlotClassifier, type PersistedAuthStore } from "./auth-store-types.js";
+import { AUTH_STORE_FILE, PersistedAuthStoreSchema, createAuthStoreSchema, CredentialInstanceSchema, CredentialSchema, isCredentialCollection, MeteredCredentialRecordSchema, NestedMeteredCredentialRecordSchema, type AuthStore, type Credential, type CredentialCollection, type CredentialInstance, type CredentialLineages, type CredentialSlotClassifier, type PersistedAuthStore } from "./auth-store-types.js";
 
 const log = Log.create({ service: "auth-store" });
-export const AUTH_STORE_FILE = "auth.json";
 const MAX_AUTH_STORE_BYTES = 16 * 1024 * 1024;
 
 export type AuthStoreDiagnostic =

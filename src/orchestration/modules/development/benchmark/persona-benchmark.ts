@@ -37,7 +37,7 @@ import { createNativePersonaInvocation } from "./native-persona-invocation.js";
 import { IMPLEMENT_TRANSCRIPT_FILE, retainImplementStore } from "./implement-evidence.js";
 import { createPersonaStore } from "./persona-store.js";
 import { exportCampaignRecords, isScoredAttempt } from "./benchmark-records.js";
-import type { JudgeSelection } from "./admission.js";
+import { campaignJudges, type BenchmarkOperation, type BenchmarkPlan, type JudgeSelection, type PlannedTask } from "./benchmark-plan.js";
 
 /** The scoring contract a campaign was judged under. Reviewer campaigns moved
  *  to persona-v3 when the judge began counting unsupported P1/P2 findings; a
@@ -52,8 +52,6 @@ const JUDGE_IDENTITY_INPUT = {
   implementationQualityRubric: "smallest correct change with functional correctness judged separately",
 };
 
-type BenchmarkOperation = "run" | "resume" | "rescore";
-
 /** What a caller asks for. Every field a stored results directory already
  *  answers is optional here, so a resume names only the directory. */
 export interface BenchmarkOptions {
@@ -66,23 +64,6 @@ export interface BenchmarkOptions {
   /** Pins the judge instead of the profile's judge role. */
   judge?: JudgeSelection;
 }
-
-/** A settled request: every seat, task and path the run will use. */
-export interface BenchmarkPlan {
-  persona: string;
-  mode: BenchmarkMode;
-  variants: readonly (Pick<VariantSpec, "id"> & Partial<Pick<VariantSpec, "model" | "effort">>)[];
-  repeats: number;
-  stamp: string;
-  resultsDir: string;
-  operation: BenchmarkOperation;
-  tasks: readonly PlannedTask[];
-  taskIds?: readonly string[];
-  /** The pinned judge: the request's pin, or the judge a resumed campaign recorded. */
-  judge?: JudgeSelection;
-}
-
-type PlannedTask = ResearchTask | ReviewTask | ImplementTask;
 
 interface BenchmarkCellId {
   variant: string;
@@ -241,13 +222,6 @@ export async function planPersonaBenchmark(options: BenchmarkOptions, catalog: B
     ...(options.taskIds?.length || existing ? { taskIds: options.taskIds ?? existing?.taskIds } : {}),
     ...(judge ? { judge: { model: judge.model, effort: judge.effort } } : {}),
   };
-}
-
-
-/** Whether a campaign calls a judge: every one except a solo research seat
- *  whose tasks have no answer key, which has nothing to compare or score. */
-export function campaignJudges(plan: Pick<BenchmarkPlan, "mode" | "variants" | "tasks">): boolean {
-  return plan.mode !== "research" || plan.variants.length >= 2 || plan.tasks.some((task) => "answerKey" in task && task.answerKey !== undefined);
 }
 
 function isResearchTask(task: PlannedTask): task is ResearchTask {

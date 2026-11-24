@@ -4,7 +4,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
+import { readRuntimeIdentity } from "../../../src/cli/runtime-identity-record.js"
 import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath } from "../../../src/infra/paths.js"
 import { sweepPersistentSpools } from "../../../src/infra/persistent-spool.js"
 import { createProcessTemporaryDirectory, removeProcessTemporaryDirectory } from "../../../src/infra/process-temporary-directory.js"

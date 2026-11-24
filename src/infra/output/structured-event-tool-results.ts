@@ -8,7 +8,7 @@ import { sanitizeExternalText } from "../control-characters.js";
 import { blockedStatusLine, extractErrorText, launderToolError, resolveAgentFailureDisplay } from "./output-formatter.js";
 import { MutationEvidenceSchema } from "../mutation-evidence-schema.js";
 import type { MutationEvidence } from "../mutation-evidence.js";
-import { arrayField, numberField, stringField } from "./json-field.js";
+import { arrayField, numberField, stringField } from "../tools/json-field.js";
 import type { PlacedTool } from "./output-tool-projection-types.js";
 import type { StructuredOutputBuilder } from "./structured-output-builder.js";
 import type { ToolOutcome } from "../tool-outcome.js";

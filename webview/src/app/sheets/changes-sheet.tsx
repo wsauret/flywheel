@@ -2,7 +2,7 @@ import { Show } from "solid-js"
 import { useClient } from "../client-context.js"
 import { ChangesContent } from "../changes-content.js"
 import { SheetEmpty } from "./sheet.js"
-import { WorkspaceSurface } from "../workspace-surface.js"
+import { WorkspaceSurface } from "./workspace-surface.js"
 import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
 
 export function ChangesSheet(props: { readonly docked?: boolean; readonly onClose?: () => void } = {}) {

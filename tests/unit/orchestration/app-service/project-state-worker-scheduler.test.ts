@@ -1,6 +1,7 @@
 import { describe, expect, test, spyOn } from "bun:test"
 import { createProjectStateScheduler } from "../../../../src/orchestration/app-service/project-state-worker.js"
-import type { ProjectStateOperation, ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+import type { ProjectStateOperation } from "../../../../src/orchestration/app-service/project-state-operation.js"
+import type { ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
 import { enqueue, served } from "./_project-state-worker-fixture.js"
 
 describe("project state scheduler queueing", () => {

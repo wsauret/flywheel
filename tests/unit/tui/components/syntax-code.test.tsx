@@ -7,7 +7,7 @@ import { batch, createSignal } from "solid-js"
 import { isServer } from "solid-js/web"
 import { SyntaxCode } from "@tui/components/syntax-code.js"
 import { ThemeProvider, useTheme } from "@tui/context/theme.js"
-import { chatSyntaxColors } from "@tui/adapters/syntax-highlight.js"
+import { chatSyntaxColors } from "@tui/context/theme/syntax-colors.js"
 import { contrastRatio } from "@tui/context/theme/color-contrast.js"
 
 const DIM = createTextAttributes({ dim: true })

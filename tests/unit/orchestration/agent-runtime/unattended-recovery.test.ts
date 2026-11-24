@@ -12,7 +12,7 @@ import { capacityWaitAuthority, registerCapacityWaits, type CapacityWaitAuthorit
 import { EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
-import type { DeliveryOutcome } from "../../../../src/orchestration/session/live-session-control.js"
+import type { DeliveryOutcome } from "../../../../src/orchestration/session/message-disposition.js"
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js"
 import { chain, fakeAvailability, preparedRequest } from "./llm/_provider-chain-harness.js"
 

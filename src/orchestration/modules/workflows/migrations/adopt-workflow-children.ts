@@ -34,15 +34,15 @@ import { createConversationMessageEntry } from "../../../session/conversation/co
 import type { MessageEntry } from "../../../session/conversation/conversation-entry-types.js"
 import { decodeQueuedUserInputCell, queuedInputMessage, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../session/conversation/queued-user-inputs.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../session/conversation/queued-background-notifications.js"
-import { interruptedTurnMessage, turnEndEntryId } from "../../../session/conversation/turn-end-record.js"
+import { historicalCompletionEntryId, interruptedTurnMessage, turnEndEntryId } from "../../../session/conversation/turn-end-record.js"
 import { replayWorkflowControl, resumesFailedAgents, workflowInsertionRefusalReason } from "../../../../workflows/vm/fact-fold.js"
 import { proposeFollowUpTransfer } from "../../../../workflows/vm/transition.js"
 import type { CommittedWorkflowControl } from "../../../../workflows/vm/committed-control.js"
-import { failedAgents, agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../workflows/output-contract/workflow-completion.js"
+import { failedAgents, agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../workflows/workflow-completion.js"
 import { loadQueueFromEvents } from "../../../../workflows/view/view-projection.js"
 import type { WorkflowView } from "../../../../workflows/view/types.js"
 import { workflowFamilyBoundary } from "../../../../workflows/workflow-root.js"
-import { childSessionResultFact, historicalCompletionEntryId, workflowNotificationLabel } from "../../../session/child-session-completion.js"
+import { childSessionResultFact, workflowNotificationLabel } from "../../../session/child-session-completion.js"
 
 const log = Log.create({ service: "workflow-child-adoption" })
 

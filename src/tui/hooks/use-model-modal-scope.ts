@@ -1,4 +1,4 @@
-import type { TuiTheme } from "../context/theme/resolve.js"
+import type { TuiTheme } from "../context/theme/tui-theme.js"
 import type { ModelModalState } from "../modals/model-modal-types.js"
 
 export type ModelModalScope = ModelModalState["scope"]

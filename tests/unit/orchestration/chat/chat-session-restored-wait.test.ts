@@ -20,7 +20,7 @@ import { buildSubagentPaused } from "../../../../src/orchestration/modules/subag
 import { registerTestChildRun } from "../../../helpers/live-child-run.js"
 import { dropReplyWait, holdReplyWait } from "../../../../src/orchestration/session/conversation/reply-wait-cells.js"
 import { readChatTurnEndEvidence } from "../../../../src/orchestration/session/chat-session-run-evidence.js"
-import { messageDisposition } from "../../../../src/orchestration/session/live-session-control.js"
+import { messageDisposition } from "../../../../src/orchestration/session/message-disposition.js"
 import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/reply-nudge.js"
 
 describe("a restored background wait", () => {

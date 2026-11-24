@@ -14,8 +14,7 @@
  *  below it reads the live projection or looks the definition up again. */
 
 import { agentCompositions, type DefinitionAvailabilityOwner, type DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
-import { describeClosureFailure } from "../../workflows/definition-validation.js"
-import { attendedClosureMembers } from "../../workflows/skill-closure.js"
+import { attendedClosureMembers, describeClosureFailure } from "../../workflows/skill-closure.js"
 import { capabilityAccessFor, type CapabilityAccess } from "../agent-runtime/tools/types.js"
 import type { WorkflowCapabilityBoundary } from "../../workflows/run-facts.js"
 import type { CapabilityGrant, ModulePolicy } from "../config/module-policy.js"

@@ -4,9 +4,8 @@ import type { RuntimePosition } from "../../protocol/runtime-ui-protocol-types.j
 import { subscriptionSpendConsentEnvelopeIds, type SubscriptionSpendConsentMutation, type SubscriptionSpendConsentView } from "../../protocol/subscription-spend-consent-protocol-types.js"
 import type { ModalHandle } from "../components/modal-stack.js"
 import { SUBSCRIPTION_SPEND_CONSENT_COPY } from "../components/modal-copy.js"
-import { CONSENT_ACTION_CURSOR, createSubscriptionSpendConsentInput } from "./use-subscription-spend-consent-modal.js"
+import { CONSENT_ACTION_CURSOR, createSubscriptionSpendConsentInput, type AvailableConsentView, type ConsentSurface, type SubscriptionSpendConsentControlState } from "./use-subscription-spend-consent-modal.js"
 
-type AvailableConsentView = Extract<SubscriptionSpendConsentView, { readonly kind: "available" }>
 type ConsentMode = AvailableConsentView["accounts"][number]["modes"][number]
 
 function modeAwaitsAnswer(mode: ConsentMode): boolean {
@@ -26,22 +25,15 @@ function normalizeCursor(modeList: readonly ConsentMode[], surface: ConsentSurfa
   return positions.includes(requested) ? requested : positions[0] ?? CONSENT_ACTION_CURSOR
 }
 
-/** Where the rows are shown. Only the question records an answer when it closes. */
-type ConsentSurface = "settings" | "question"
-
-interface ReviewContext {
-  readonly consent: AvailableConsentView
+/** The evidence a write carries so the service can refuse a decision made on a stale view. */
+interface WriteEvidence {
   readonly canonicalConsent: AvailableConsentView
   readonly snapshotPosition: RuntimePosition
   readonly envelopeIds: readonly string[]
-  readonly surface: ConsentSurface
 }
 
-export type SubscriptionSpendConsentControlState =
-  | { readonly kind: "closed" }
-  | ({ readonly kind: "detail"; readonly cursor: number; readonly savingEnvelopeIds: readonly string[]; readonly feedback?: string } & ReviewContext)
-
-type DetailState = Extract<SubscriptionSpendConsentControlState, { kind: "detail" }>
+type DetailState = Extract<SubscriptionSpendConsentControlState, { kind: "detail" }> & WriteEvidence
+type ControllerState = Extract<SubscriptionSpendConsentControlState, { kind: "closed" }> | DetailState
 
 interface SubscriptionSpendConsentControlDeps {
   dispatch: (mutation: Extract<FrontendMutation, SubscriptionSpendConsentMutation>) => Promise<MutationResult<SubscriptionSpendConsentMutation>>
@@ -69,7 +61,7 @@ export interface SubscriptionSpendConsentControl {
 }
 
 export function useSubscriptionSpendConsentControl(deps: SubscriptionSpendConsentControlDeps): SubscriptionSpendConsentControl {
-  const [state, setState] = createSignal<SubscriptionSpendConsentControlState>({ kind: "closed" })
+  const [state, setState] = createSignal<ControllerState>({ kind: "closed" })
   let owner: ModalHandle | undefined
   let closeRequested = false
 
@@ -128,7 +120,7 @@ export function useSubscriptionSpendConsentControl(deps: SubscriptionSpendConsen
     }
   }
 
-  function mutationBase(current: ReviewContext) {
+  function mutationBase(current: WriteEvidence) {
     return { profileId: current.canonicalConsent.profileId, usageGeneration: current.canonicalConsent.usageGeneration, authorityIncarnation: current.canonicalConsent.authorityIncarnation, authorityRevision: current.canonicalConsent.authorityRevision, clientSnapshotPosition: current.snapshotPosition, envelopeIds: current.envelopeIds }
   }
 

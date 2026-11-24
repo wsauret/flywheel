@@ -4,15 +4,7 @@ import { canonicalCatalogModelId, canonicalModelId, preferredWireModelId, type C
 import type { ModelFamily } from "./model-family.js";
 import type { ModelInfo } from "./models.js";
 import { capContextWindow, enrichProviderModelInfo, providerModelInfo } from "./provider-model-info.js";
-export interface CatalogModelOffering {
-  readonly wireModelId: string;
-  readonly metadata: CatalogJsonValue;
-  readonly dataUse: CatalogDataUse;
-  readonly routeKind?: "free";
-  readonly resolvedMetadata?: ModelInfo;
-  readonly transport?: OfferingTransport;
-}
-
+import type { CatalogJsonValue, CatalogModelOffering, OfferingTransport } from "./catalog-model-offering.js";
 export interface CatalogCanonicalRow {
   readonly modelId: string;
   readonly offerings: readonly CatalogModelOffering[];
@@ -55,10 +47,6 @@ export interface CatalogWireIdentity {
   readonly dataUse?: CatalogDataUse;
   readonly routeKind?: "free";
 }
-
-export type CatalogJsonValue = string | number | boolean | null | readonly CatalogJsonValue[] | { readonly [key: string]: CatalogJsonValue };
-
-export type OfferingTransport = "anthropic-messages" | "openai-responses" | "chat-completions" | "google";
 
 const UNRESOLVED_RELATIONSHIP_IDS_BYTES = 1024;
 const CANONICAL_COLLISIONS_BYTES = 1024;

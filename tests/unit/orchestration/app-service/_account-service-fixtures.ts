@@ -3,7 +3,8 @@
  *  installation fake the tests of its callers share. */
 import { expect } from "bun:test"
 
-import { accountServiceRegistrationControl, createAccountServiceInstallation, type AccountServiceInstallation, type AccountServicePlatform } from "../../../../src/orchestration/app-service/account-service-installation.js"
+import { accountServiceRegistrationControl, createAccountServiceInstallation } from "../../../../src/orchestration/app-service/account-service-installation.js"
+import type { AccountServiceInstallation, AccountServicePlatform } from "../../../../src/orchestration/app-service/account-service-platform.js"
 import { SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
 
 export const retired = { launchdLabel: "sh.flywl.flywheel.remote-host", systemdUnit: "flywheel-remote-host.service", windowsTask: "Flywheel Remote Host" }

@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createSignal } from "solid-js"
 import type { RuntimeConfigView } from "../../../../src/protocol/runtime-config-protocol-types.js"
-import type { RuntimeConfigCache } from "../../../../src/tui/hooks/shell-state.js"
+import type { RuntimeConfigCache } from "../../../../src/tui/hooks/create-runtime-config-cache.js"
 import { useTabsHint } from "../../../../src/tui/hooks/use-tabs-hint.js"
 import { configValues } from "../modals/_settings-modal-fixtures.js"
 import type { FrontendMutation, MutationResult } from "../../../../src/protocol/app-service-types.js"

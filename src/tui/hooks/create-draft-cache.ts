@@ -1,39 +1,14 @@
-import type { ChatAttachment } from "../../infra/chat-input.js"
-import { mergeComposerDrafts } from "./composer-draft-merge.js"
+import { normalizeChatInput, type ChatInputLike } from "../../infra/chat-input.js"
+import { attachmentMarker, nextAttachmentOrdinal } from "../../protocol/client/attachments.js"
+import { draftMarkers, mergeComposerDrafts, replaceDraftMarker, type ComposerDraft } from "./composer-draft.js"
+import type { QuestionFormDraft, QuestionFormDrafts } from "../question-dock-form.js"
 
 /** The prompt draft while no session or pending tab owns it. */
 export const UNBOUND_COMPOSER_DRAFT = "composer:unbound"
 
-export interface ComposerDraftPaste {
-  readonly start: number
-  readonly end: number
-  readonly text: string
-}
-
-export type ComposerDraftAttachment = ChatAttachment
-
-export interface ComposerDraft {
-  readonly text: string
-  readonly pastes: readonly ComposerDraftPaste[]
-  readonly attachments: readonly ComposerDraftAttachment[]
-  /** Where the caret stood when the draft was written; absent means the end. */
-  readonly caret?: number
-}
-
-export interface QuestionFormDraft {
-  readonly tab: number
-  readonly cursor: number
-  readonly answers: readonly {
-    readonly picked: readonly number[]
-    readonly freeformPicked: boolean
-  }[]
-  readonly editorText: readonly (readonly string[])[]
-}
-
-export interface QuestionDraftNamespace {
-  get(sessionId: string, toolUseId: string): QuestionFormDraft | undefined
-  set(sessionId: string, toolUseId: string, draft: QuestionFormDraft): void
-  clear(sessionId: string, toolUseId: string): void
+/** The question form drafts of the cache, with the composer handoff that
+ *  only the cache can do because it also owns the prompt drafts. */
+interface QuestionDraftNamespace extends QuestionFormDrafts {
   /** Removes the form and appends the text typed into its fields to the
    *  session's prompt draft, one field per paragraph. Returns whether any
    *  text moved. */
@@ -131,4 +106,28 @@ export function createDraftCache(seed?: DraftCacheSnapshot): DraftCache {
     sessionDrafts.delete(toolUseId)
     if (sessionDrafts.size === 0) questionDrafts.delete(sessionId)
   }
+}
+
+/** Moves ready and pending attachments together when a new chat adopts an existing session. */
+export function adoptDraftAttachments(
+  cache: DraftCache,
+  from: string,
+  to: string,
+  adoptPending: (from: string, to: string, occupied: readonly string[]) => ReadonlyMap<string, string>,
+): void {
+  const source = cache.get(from)
+  const reserved = draftMarkers(cache.get(to))
+  const next = nextAttachmentOrdinal(reserved)
+  const occupied = [...reserved, ...source.attachments.map((_, index) => attachmentMarker("image", next + index))]
+  let renamed = source
+  for (const [oldMarker, newMarker] of adoptPending(from, to, occupied)) renamed = replaceDraftMarker(renamed, oldMarker, newMarker)
+  cache.set(from, renamed)
+  cache.adopt(from, to)
+}
+
+/** Merges a chat input that left the prompt back into its owner's cached
+ *  draft, after anything the person typed there since. */
+export function mergeInputIntoDraft(cache: DraftCache, ownerId: string, input: ChatInputLike): void {
+  const normalized = normalizeChatInput(input)
+  cache.set(ownerId, mergeComposerDrafts(cache.get(ownerId), { text: normalized.text, pastes: [], attachments: normalized.attachments ?? [] }))
 }

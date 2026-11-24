@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
-import type { CatalogModelOffering } from "../../../../src/infra/llm/model-catalog-resolution.js";
+import type { CatalogModelOffering } from "../../../../src/infra/llm/catalog-model-offering.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js";
 import { authProviders } from "../../../helpers/auth-context.js";

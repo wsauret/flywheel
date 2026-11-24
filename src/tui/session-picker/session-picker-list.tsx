@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { ScrollBoxRenderable } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve"
+import type { TuiTheme } from "@tui/context/theme/tui-theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
 import { BOLD } from "@tui/utils/text-attributes.js"
 import { createMemo, createSignal, Show, type JSX } from "solid-js"

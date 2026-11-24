@@ -6,11 +6,11 @@ import { Log } from "../../infra/log.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import type { AttachedRuntimeClient, FrontendOutputBlock } from "../../protocol/app-service-types.js"
 import type { OutputView } from "../../protocol/output-protocol-types.js"
-import { createTranscriptStore, type BlockReplacement, type TranscriptChange, type TranscriptStore, type TranscriptView } from "../../protocol/client/transcript-store.js"
+import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../protocol/client/transcript-store.js"
+import type { BlockReplacement, TranscriptView } from "../../protocol/client/transcript-view.js"
 import type { HydratedOutputBlockBody } from "../../protocol/transcript-protocol-types.js"
-import { estimateAppendedBlockRows, estimateFrontendOutputBlockRows, heightEstimatesFromBlocks } from "../hooks/output-height-estimates.js"
-import { RESIDENT_BLOCK_BUDGET } from "../output-window/output-window-scroll.js"
-import type { LoadDirection, LoadPageResult, OutputTranscriptCache, TranscriptFreshness, TranscriptSnapshot, TranscriptStatus } from "./output-transcript-cache-types.js"
+import { estimateAppendedBlockRows, estimateFrontendOutputBlockRows, heightEstimatesFromBlocks } from "./output-height-estimates.js"
+import { RESIDENT_BLOCK_BUDGET, type LoadDirection, type LoadPageResult, type OutputTranscriptCache, type TranscriptFreshness, type TranscriptSnapshot, type TranscriptStatus } from "./output-transcript-cache-types.js"
 import { transcriptIdentitySample } from "../../protocol/client/transcript-delta.js"
 import { adoptedBlocks, type ChatSubmissionWindow } from "../../protocol/client/chat-submissions.js"
 import { createResidency, type ResidentLanes } from "../../protocol/client/residency.js"
@@ -39,7 +39,7 @@ const FRAME_MS = 16
 /** A resident session: the shared store that holds its window and the
  *  presentation stamps this client derives from what the store reports. */
 interface Resident {
-  reader?: import("../../protocol/client/transcript-store.js").TranscriptReader
+  reader?: import("../../protocol/client/transcript-view.js").TranscriptReader
   readonly store: TranscriptStore
   unsubscribe: () => void
   /** Identity of the resident block-index space; see TranscriptSnapshot.generation. */

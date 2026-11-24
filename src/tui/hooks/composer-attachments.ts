@@ -9,7 +9,7 @@ import { unescapeShellPath } from "../../orchestration/agent-runtime/tools/tool-
 import { ATTACHMENT_LIMITS, attachmentKind, attachmentMarker, attachmentRefusalMessage, base64ByteLength, nextAttachmentOrdinal } from "../../protocol/client/attachments.js"
 import type { Clipboard } from "../utils/clipboard.js"
 import { readFileAttachment, type PendingAttachment, type ReadAttachment } from "../utils/file-attachments.js"
-import type { ComposerDraftAttachment } from "./create-draft-cache.js"
+import type { ComposerDraftAttachment } from "./composer-draft.js"
 
 const IMAGE_PATH = /\.(?:png|jpe?g|gif|webp|bmp|heic|heif|avif|tiff?)$/i
 

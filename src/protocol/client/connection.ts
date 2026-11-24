@@ -20,6 +20,7 @@ import { stringRequestId } from "../rpc-request-id.js"
 import { runtimeDispatchResultSchema } from "../runtime-dispatch-result-schemas.js"
 import { RUNTIME_LIVENESS_POLICY, RUNTIME_PROTOCOL_VERSION, type RuntimeLivenessPolicy } from "../runtime-liveness.js"
 import { applyRuntimeCallPolicy, RuntimeCallTimeout, runtimeCallPolicies, type RuntimeCallPolicy } from "../runtime-client-deadlines.js"
+import { MAX_RECONNECT_ATTEMPT, reconnectBackoffMs } from "../reconnect-backoff.js"
 import { socketProtocolLayer } from "./socket-protocol.js"
 import { laneSchedulerLayer, type LaneHost } from "./lane-scheduler.js"
 import { decodeRuntimeEventFrame } from "./runtime-event-intake.js"
@@ -66,23 +67,11 @@ type ProtocolClient = RpcClient.RpcClient<
   RpcClientError.RpcClientError
 >
 
-const RECONNECT_BASE_MS = 250
-const RECONNECT_MAX_MS = 30_000
-export const MAX_RECONNECT_ATTEMPT = 16
 /** How long recovery may keep failing before the connection reports a fault.
  *  A service restart and a cold project open both finish well inside it, so
  *  what a person sees of a drop that heals is nothing at all. Attach evidence
  *  decides the fault once the window ends, never the backoff (`armFault`). */
 const FAULT_AFTER_MS = 10_000
-
-/** Exponential backoff with jitter, so several clients recovering from one
- *  runtime restart do not arrive together. The runtime's relay control channel
- *  waits by the same rule, so a relay outage sees one retry shape from both
- *  sides. */
-export function reconnectBackoffMs(attempt: number, random: () => number = Math.random): number {
-  const grown = Math.min(RECONNECT_BASE_MS * 2 ** attempt, RECONNECT_MAX_MS)
-  return grown * (0.5 + random() * 0.5)
-}
 
 /** The round trip `resume` uses to prove a fresh-looking lane. The cheapest
  *  read the runtime serves: a synchronous in-memory view, answered on every

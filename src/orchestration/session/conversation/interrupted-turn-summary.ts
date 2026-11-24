@@ -208,3 +208,20 @@ function summarize(values: readonly string[]): string {
   const remaining = values.length - SUMMARY_LIMIT
   return remaining > 0 ? `${shown}, and ${remaining} more` : shown
 }
+
+const RECOVERED_RESULT_ENTRY_ID_PREFIX = "ftr-"
+
+/** Whether a conversation entry is a result that finalized-result recovery
+ *  committed for a turn whose owner died, rather than one the turn committed
+ *  itself. */
+export function isRecoveredToolResultEntryId(entryId: string): boolean {
+  return entryId.startsWith(RECOVERED_RESULT_ENTRY_ID_PREFIX)
+}
+
+/** The entry id of the result that finalized-result recovery commits for `toolUseId`. */
+export function recoveredToolResultEntryId(conversationId: string, toolUseId: string): string {
+  return RECOVERED_RESULT_ENTRY_ID_PREFIX + new Bun.CryptoHasher("sha256")
+    .update(`finalized-tool-result:${conversationId}:${toolUseId}`)
+    .digest("hex")
+    .slice(0, 8)
+}

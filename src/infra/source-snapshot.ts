@@ -44,7 +44,7 @@ import * as fs from "node:fs"
 import { join, relative } from "node:path"
 import { Schema } from "effect"
 
-import type { AntigravityPinnedBytes } from "./antigravity-engine.js"
+import type { AntigravityPinnedBytes } from "./antigravity-engine-pin.js"
 import { isSourceSnapshotDigest, runningSourceSnapshot, sourceSnapshotHome, type SourceSnapshotLocation } from "./cli-subprocess.js"
 import { ContainedPathError, type ContainedDirectory } from "./descriptor-directory-contract.js"
 import { openContainedDirectory, openExistingContainedDirectory } from "./descriptor-directory.js"

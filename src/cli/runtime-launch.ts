@@ -8,7 +8,8 @@ import type { AttachedRuntimeClient } from "../protocol/app-service-types.js"
 import type { RuntimeIdentity as DisplayedRuntimeIdentity } from "../protocol/client/runtime-identity.js"
 import type { RemoteAttach } from "../orchestration/terminal-remote.js"
 import type { TerminalAttach } from "../tui/terminal-attach.js"
-import type { AccountRuntimeAttach, RuntimeIdentity } from "./runtime-attach.js"
+import type { AccountRuntimeAttach } from "./runtime-attach.js"
+import type { RuntimeIdentity } from "./runtime-identity-record.js"
 
 const log = Log.create({ service: "runtime-launch" })
 

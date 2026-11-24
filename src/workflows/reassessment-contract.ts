@@ -1,6 +1,6 @@
-import { compileOutput, type CompiledOutput } from "../output-contract/compile.js";
-import type { Field, OutputObject } from "../output-contract/grammar.js";
-import type { PayloadOf } from "../output-contract/types.js";
+import { compileOutput, type CompiledOutput } from "./output-contract/compile.js";
+import type { Field, OutputObject } from "./output-contract/grammar.js";
+import type { PayloadOf } from "./output-contract/types.js";
 
 /** The output contract of the agent of a repeat's `reassess` phase. The VM
  *  owns it: the brief declares no output, and the compiler fills the item

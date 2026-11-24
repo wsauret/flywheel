@@ -4,8 +4,8 @@ import {
   buildStatus,
   initialAnimationState,
   statusEquals,
-  type AnimationState,
 } from "../../../../src/tui/hooks/spinner-status-animation.js"
+import type { AnimationState } from "../../../../src/tui/hooks/spinner-status-model.js"
 
 const baseLive = {
   terminalWidth: 120,

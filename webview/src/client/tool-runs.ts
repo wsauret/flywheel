@@ -3,7 +3,6 @@ import { blockIdentity } from "../../../src/protocol/block-identity.js"
 import { isShellMutationEntry, presentsAsFileChange } from "../../../src/protocol/client/file-change-body.js"
 import type { ReadRun } from "../../../src/protocol/client/tool-run-category.js"
 import type { StretchMember, ToolStretch, TranscriptModel } from "../../../src/protocol/client/transcript-model.js"
-import type { TurnFold } from "./turn-folds.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
 import { blockEnd, foldTranscript, runEnd, toolActivity, toolProcess } from "../../../src/protocol/client/transcript-model.js"
 import { agentGroupClockRuns } from "../../../src/protocol/client/agent-group-summary.js"
@@ -63,6 +62,17 @@ export interface ToolGroup {
   readonly members: readonly (StretchMember & PresentedWebBlock)[]
   readonly timestamp: number
   readonly endTimestamp?: number | undefined
+}
+
+/** A settled turn as one row: its work folds under one line until it opens. */
+export interface TurnFold {
+  readonly kind: "turnFold"
+  readonly id: string
+  readonly rows: readonly TranscriptViewRow[]
+  readonly open: boolean
+  readonly timestamp: number
+  readonly duration: number
+  readonly answerId: string
 }
 
 export type TranscriptViewRow = FrontendOutputBlock | ToolGroup | TurnFold

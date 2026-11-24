@@ -2,7 +2,8 @@ import type { CommandUse } from "../../../src/protocol/command-usage-protocol-ty
 import type { PendingQuestionView } from "../../../src/protocol/question-protocol-types.js"
 import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../../src/protocol/command-catalog-protocol-types.js"
 import { effectiveSessionShortTitle, type FrontendActivity, type FrontendOutputBlock, type FrontendToolEntry, type FrontendToolStreamingText, type RuntimeHealth, type SessionCatalogError, type SessionRow } from "../../../src/protocol/app-service-types.js"
-import type { TranscriptStatus, TranscriptStore } from "../../../src/protocol/client/transcript-store.js"
+import type { TranscriptStore } from "../../../src/protocol/client/transcript-store.js"
+import type { TranscriptStatus } from "../../../src/protocol/client/transcript-view.js"
 import type { ProcessStatus } from "../../../src/protocol/client/transcript-model.js"
 import { undeliveredNotice, type LocalChatSubmission } from "../../../src/protocol/client/chat-submissions.js"
 import type { HydratedOutputBlockBody } from "../../../src/protocol/transcript-protocol-types.js"
@@ -20,7 +21,7 @@ import type { DesktopPermission } from "./desktop-notifier.js"
 import type { BudgetSummary } from "../../../src/protocol/client/host-contract.js"
 import type { ProviderSummary } from "../../../src/protocol/client/provider-summary.js"
 import type { ModuleDomainViews } from "./module-domain-views.js"
-import type { RuntimeSession, SessionNoticeSummary } from "./session.js"
+import type { SessionNoticeSummary, SessionState } from "./session-state.js"
 
 /** One frame of everything the client renders.
  *
@@ -69,7 +70,7 @@ export interface ClientViewState {
   readonly parentSessionId?: string
   readonly unavailable?: string
   readonly sessionId?: string
-  /** The selection's root chat, as `RuntimeSession.rootSessionId` states it. */
+  /** The selection's root chat, as `SessionState.rootSessionId` states it. */
   readonly rootSessionId?: string
   readonly executionCwd?: string
   /** The catalog: every session the lists draw. */
@@ -242,12 +243,12 @@ export function offeredControls(state: Pick<ClientViewState, "interruptible" | "
   return offered.primary === "resume" && !state.windowCurrent ? { ...offered, primary: null } : offered
 }
 
-export function createViewProjection(): (session: RuntimeSession) => ClientViewState {
+export function createViewProjection(): (session: SessionState) => ClientViewState {
   const held = new Map<string, { readonly row: SessionRow; readonly reading: SessionReading; readonly summary: SessionSummary }>()
   let sessions: readonly SessionSummary[] = []
   let children: readonly SessionSummary[] = []
 
-  function summarize(session: RuntimeSession): SessionSummaryLists {
+  function summarize(session: SessionState): SessionSummaryLists {
     const seen = new Set<string>()
     const listed = summarizeRows(session, session.sessions, seen)
     const opened = summarizeRows(session, session.children, seen)
@@ -259,7 +260,7 @@ export function createViewProjection(): (session: RuntimeSession) => ClientViewS
 
   /** Summaries for one list of rows, or undefined when every summary and its
    *  place are what the list already holds. */
-  function summarizeRows(session: RuntimeSession, rows: readonly SessionRow[], seen: Set<string>): readonly SessionSummary[] | undefined {
+  function summarizeRows(session: SessionState, rows: readonly SessionRow[], seen: Set<string>): readonly SessionSummary[] | undefined {
     let changed = false
     const next = rows.map((row) => {
       seen.add(row.id)
@@ -294,7 +295,7 @@ function outputPositionsOf(sessionId: string | undefined, transcript: Transcript
   }
 }
 
-function buildViewState(session: RuntimeSession, lists: SessionSummaryLists): ClientViewState {
+function buildViewState(session: SessionState, lists: SessionSummaryLists): ClientViewState {
   const transcript = session.transcript
   const status = session.sessionId === undefined ? undefined : session.statuses.get(session.sessionId)
   // Starting means there is nothing to show yet, not that the socket is down
@@ -387,7 +388,7 @@ function waitingOnOf(status: StatusView | undefined, parentSessionId: string | u
 
 /** The name and parent of the place the pane shows: the selected session's
  *  own, else what the tap that moved there knew. */
-function destinationOf(session: RuntimeSession, lists: SessionSummaryLists): Pick<ClientViewState, "destinationName" | "parentSessionId"> {
+function destinationOf(session: SessionState, lists: SessionSummaryLists): Pick<ClientViewState, "destinationName" | "parentSessionId"> {
   const selected = summaryOf(lists, session.sessionId)
   const name = selected?.title ?? session.destination.label
   const parent = selected?.parentSessionId ?? session.destination.parentSessionId
@@ -397,7 +398,7 @@ function destinationOf(session: RuntimeSession, lists: SessionSummaryLists): Pic
   }
 }
 
-function paneOpening(session: RuntimeSession): PaneOpening | undefined {
+function paneOpening(session: SessionState): PaneOpening | undefined {
   // The messages sent to a destination that cannot show yet are what the
   // person waits on there, so they show in place of the loading screen. A
   // destination that failed still says why, unless every message there

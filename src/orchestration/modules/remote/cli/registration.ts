@@ -1,30 +1,7 @@
 import type { CliCommandContext, CliNounContribution, CliVerb } from "../../../cli-contribution.js"
+import { REMOTE_USAGE } from "./usage.js"
 
 type RemoteCli = typeof import("./index.js")
-
-export const REMOTE_USAGE = [
-  "Usage: flywheel remote <pair|devices|projects|status|machines> [options]",
-  "",
-  "Pair a phone, or a terminal on another machine, with this machine so it can",
-  "open this account's projects through the relay. Nothing on this machine",
-  "listens: the runtime dials out to the relay, and every frame is sealed end",
-  "to end.",
-  "",
-  "Verbs:",
-  "  pair [--relay <url>]      Show a pairing code. The window stays open until a",
-  "                            device pairs or the code expires.",
-  "  devices [revoke <id>]     List paired devices, or revoke one.",
-  "  projects [forget <root>]  List the projects a phone can start a runtime for,",
-  "                            or stop offering one.",
-  "  status                    Show the relay URL, the paired device count, and",
-  "                            whether remote process initiation is on.",
-  "  machines [add <link>|forget <machine>]",
-  "                            On the terminal of another machine: list the",
-  "                            machines this terminal is paired with and their",
-  "                            projects, pair with the machine whose",
-  "                            `flywheel remote pair` shows <link>, or forget",
-  "                            one. `flywheel --remote` opens their projects.",
-].join("\n")
 
 /** Load command implementations only after the module noun is admitted. */
 function remoteVerb(syntax: string, description: string, run: (cli: RemoteCli, args: readonly string[], context: CliCommandContext) => Promise<void>): CliVerb {

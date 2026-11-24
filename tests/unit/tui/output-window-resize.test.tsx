@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { describe, expect, it } from "bun:test"
-import { heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
+import { heightEstimatesFromBlocks } from "../../../src/tui/transcript-store/output-height-estimates.js"
 import { makeView, renderWindow, snapshot, textBlock, windowOf } from "./_output-window-transcript.js"
 
 describe("OutputWindow resize", () => {

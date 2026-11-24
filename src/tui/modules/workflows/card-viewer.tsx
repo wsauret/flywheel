@@ -22,7 +22,7 @@ import { workflowFullCardRows, type WorkflowCardAction, type WorkflowCardRow, ty
 import { hitsDrawnContent } from "@tui/utils/content-hit.js"
 
 const NO_ROWS: WorkflowFullCardRows = { rows: [], bar: undefined }
-import { bindStyledTextContent } from "@tui/utils/reactive-text.js"
+import { bindStyledTextContent } from "@tui/context/reactive-text.js"
 import { displayWidth, shareWidth, truncateToWidth } from "@tui/utils/text.js"
 import { Button } from "@tui/components/button.js"
 import { ModalFrame, MODAL_FRAME_CLOSE_WIDTH, MODAL_FRAME_HORIZONTAL_INSET, modalFrameBackWidth, sessionViewerBodyHeight, sessionViewerWidth } from "@tui/components/modal-frame.js"

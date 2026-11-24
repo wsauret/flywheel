@@ -3,7 +3,19 @@ import type { MutationEvidenceReader } from "../../protocol/client/mutation-evid
 import type { SessionNotice } from "../../infra/session-notice.js"
 import type { RuntimeTranscriptWindow } from "../../protocol/transcript-protocol-types.js"
 import type { OutputView } from "../../protocol/output-protocol-types.js"
-import type { OutputHeightEstimate } from "../hooks/output-height-estimates.js"
+import type { OutputHeightEstimate } from "./output-height-estimates.js"
+
+/** The resident-block budget: how many timeline blocks the TUI will hold
+ *  mounted-or-resident for one session. One number, two enforcement
+ *  mechanisms. A session whose TOTAL block count fits the budget mounts whole
+ *  once to measure every height and hydrates to the head (then virtualizes to
+ *  the viewport); a larger session virtualizes immediately, pages on demand,
+ *  and far-page eviction sheds residency back under the same budget - so the
+ *  two policies can never fight over one session. Sized ~3x the largest
+ *  observed real session (~350 blocks; events fold heavily into blocks) at
+ *  ~1ms measure cost per block. The over-budget path is insurance against the
+ *  condensation policy changing, not an expected path. */
+export const RESIDENT_BLOCK_BUDGET = 1000
 
 /** Which edge of the loaded window a page request extends. `older` walks toward
  *  block 0, `newer` toward the tail. */
@@ -83,7 +95,7 @@ export interface TranscriptFreshness {
  *  render boundary must not call (open/loadPage/setReady/pin) removed. */
 export interface OutputTranscriptView {
   /** Publish visible block identities before the shared store chooses residency. */
-  protectReader(reader: import("../../protocol/client/transcript-store.js").TranscriptReader): void
+  protectReader(reader: import("../../protocol/client/transcript-view.js").TranscriptReader): void
   /** The resident session's passive evidence reader. Reactive; never opens a session. */
   mutationEvidence(): MutationEvidenceReader | undefined
   /** Record a failed projection with the resident store and rendered window metadata. Rethrows the same error. */
@@ -122,7 +134,7 @@ export interface OutputTranscriptView {
  *  `TranscriptStore` per resident session, projected into the Solid snapshots
  *  the output window renders. */
 export interface OutputTranscriptCache {
-  protectReader(sessionId: string, reader: import("../../protocol/client/transcript-store.js").TranscriptReader): void
+  protectReader(sessionId: string, reader: import("../../protocol/client/transcript-view.js").TranscriptReader): void
   /** Whether the resident window is current on this lane, or its read failed. Reactive. */
   isCurrent(sessionId: string): boolean
   /** The existing resident reader, or undefined before admission or after eviction. Reactive. */

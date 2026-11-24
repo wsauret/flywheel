@@ -1,5 +1,5 @@
 import { deslugify } from "../canonical-name.js";
-import { stringField, type JsonFields } from "../output/json-field.js";
+import { stringField, type JsonFields } from "./json-field.js";
 import { isRecord } from "../record.js";
 import { parseWorkflowYaml } from "../workflow-yaml.js";
 import { isQualifiedSkillId } from "../skill-id.js";

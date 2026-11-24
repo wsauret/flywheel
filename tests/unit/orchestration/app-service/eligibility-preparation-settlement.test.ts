@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
-import type { CatalogModelOffering } from "../../../../src/infra/llm/model-catalog-resolution.js"
+import type { CatalogModelOffering } from "../../../../src/infra/llm/catalog-model-offering.js"
 import type { ResolvedProviderModels } from "../../../../src/infra/llm/provider-model-preferences.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/eligibility-preparation.js"

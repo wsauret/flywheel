@@ -2,7 +2,8 @@ import { existsSync } from "node:fs"
 import { win32 } from "node:path"
 
 import { Log } from "./log.js"
-import { trustedCommandRun, type TrustedCommandResult, type TrustedProbeLaunch } from "./process-container.js"
+import { trustedCommandRun, type TrustedCommandResult } from "./process-container.js"
+import type { TrustedProbeLaunch } from "./trusted-probe-launch.js"
 import { windowsProcessApi, type WindowsProcessHold } from "./windows-process-api.js"
 
 /** A process that WMI starts outside every job of this process.

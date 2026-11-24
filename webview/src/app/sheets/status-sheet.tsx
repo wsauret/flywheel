@@ -14,7 +14,7 @@ import { runtimeFaultCopy } from "../../../../src/protocol/client/runtime-fault-
 import { actionKey } from "../../client/action-key.js"
 import { useClient } from "../client-context.js"
 import { SheetLoading, SheetRow } from "./sheet.js"
-import { WorkspaceSurface } from "../workspace-surface.js"
+import { WorkspaceSurface } from "./workspace-surface.js"
 import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
 
 /** One module row as a sheet row, in Status or Settings: the hint is the

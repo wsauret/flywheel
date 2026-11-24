@@ -1,6 +1,6 @@
 import type { StoredFact } from "./event-store-types.js"
+import type { EventScanFilter } from "./event-scan-filter.js"
 import {
-  type EventScanFilter,
   type EventSearchConnection,
   type EventTypeSummary,
   openEventSearch,

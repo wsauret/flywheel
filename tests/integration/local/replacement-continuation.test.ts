@@ -2,7 +2,7 @@ import { afterAll, afterEach, describe, expect, test } from "bun:test"
 import * as fs from "node:fs"
 import * as path from "node:path"
 
-import { readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
+import { readRuntimeIdentity } from "../../../src/cli/runtime-identity-record.js"
 import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
 import { openContainedDirectory } from "../../../src/infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME } from "../../../src/infra/directory-authorities.js"

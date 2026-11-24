@@ -13,7 +13,7 @@ import type { OutputWindowCommand } from "../../../src/tui/output-window/output-
 import type { TranscriptFollow } from "../../../src/tui/output-window/transcript-follow.js"
 import type { TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
 import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
-import { DEFAULT_ESTIMATE, heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
+import { DEFAULT_ESTIMATE, heightEstimatesFromBlocks } from "../../../src/tui/transcript-store/output-height-estimates.js"
 import { fakeRuntimeClient, liveView } from "./hooks/_output-transcript-cache-fixtures.js"
 import { scrollFrameHook } from "../../helpers/scroll-frame-hook.js"
 

@@ -7,7 +7,7 @@ import { WriteSyntaxThemeIdSchema, type WriteSyntaxThemeId } from "../../protoco
 import type { getFontStatus, fontInstallSummary, installBundledFont } from "../../orchestration/font-installer.js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigStatusView, RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
-import type { RuntimeConfigCache } from "./shell-state.js"
+import type { RuntimeConfigCache } from "./create-runtime-config-cache.js"
 
 type SectionBooleanControl = Extract<ModuleConfigSettingControl, { readonly section: string; readonly control: "config-boolean" }>
 type BooleanControl = ModuleConfigBooleanSettingId | SectionBooleanControl

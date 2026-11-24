@@ -1,6 +1,6 @@
 import { Log } from "../log.js";
 import { loggedOperation } from "../operation-log.js";
-import type { CatalogJsonValue } from "./model-catalog-resolution.js";
+import type { CatalogJsonValue } from "./catalog-model-offering.js";
 import type { ModelPricing } from "./models.js";
 
 const log = Log.create({ service: "openai-pricing" });

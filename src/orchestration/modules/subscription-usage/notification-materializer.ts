@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { SubscriptionUsageAlert } from "../../../infra/llm/subscription-usage-store.js";
+import type { SubscriptionUsageAlert } from "../../../infra/llm/subscription-usage-store-codec.js";
 import type { SubscriptionUsageAccountRef, UsageAuthority } from "../../../infra/llm/usage-authority.js";
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js";
 import { createBackgroundLane } from "../../../infra/ordered-lane.js";

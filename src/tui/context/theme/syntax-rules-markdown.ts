@@ -1,5 +1,6 @@
 // Markdown-specific syntax highlighting rules, split from syntax-rules.ts for file size
-import type { TuiTheme, ThemeStyles } from "./theme/resolve.js"
+import type { ThemeStyles } from "./resolve.js"
+import type { TuiTheme } from "./tui-theme.js"
 
 export function getMarkdownSyntaxRules(theme: TuiTheme, styles: ThemeStyles) {
   return [

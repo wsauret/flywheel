@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { errorMessage } from "../../../infra/error-message.js"
 import { Log } from "../../../infra/log.js"
 import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
-import { MAX_RECONNECT_ATTEMPT, reconnectBackoffMs } from "../../../protocol/client/connection.js"
+import { MAX_RECONNECT_ATTEMPT, reconnectBackoffMs } from "../../../protocol/reconnect-backoff.js"
 import { HEARTBEAT_CLOSE_CODE, HEARTBEAT_CLOSE_REASON, heartbeat, RELAY_HEARTBEAT, type HeartbeatTiming, type RelaySocket } from "../../../protocol/modules/remote/relay-channel.js"
 import {
   ASSET_CHUNK_BYTES,

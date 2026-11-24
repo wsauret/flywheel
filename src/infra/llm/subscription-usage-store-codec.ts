@@ -1,15 +1,61 @@
 import { Schema } from "effect";
 import { SQLiteError } from "bun:sqlite";
 import { errorMessage } from "../error-message.js";
-import type {
-  SubscriptionUsageAccountKey,
-  SubscriptionUsageAlert,
-  SubscriptionUsageFetchLease,
-  SubscriptionUsageHistoryEntry,
-  SubscriptionUsageSnapshot,
-  SubscriptionUsageThreshold,
-} from "./subscription-usage-store.js";
-import { SubscriptionUsageMetricSchema, SubscriptionUsageResetCreditsSchema, SubscriptionUsageSpendSourceSchema } from "./subscription-usage.js";
+import type { SubscriptionAccountIdentity } from "./subscription-account-identity.js";
+import { SubscriptionUsageMetricSchema, SubscriptionUsageResetCreditsSchema, SubscriptionUsageSpendSourceSchema, type SubscriptionUsageResetCredits, type SubscriptionUsageSpendSource } from "./subscription-usage.js";
+
+/** The persisted records of the subscription usage authority: what one
+ *  row of each table decodes to. */
+export type SubscriptionUsageAccountKey = SubscriptionAccountIdentity;
+
+export interface SubscriptionUsageSnapshot extends SubscriptionUsageAccountKey {
+  readonly label?: string;
+  readonly plan?: string;
+  readonly tier?: string;
+  readonly providerStatus: "ok" | "warning" | "exhausted" | "unknown";
+  readonly observedAtMs: number;
+  readonly readerGeneration: number;
+  readonly metrics: readonly typeof SubscriptionUsageMetricSchema.Type[];
+  readonly spendSources: readonly SubscriptionUsageSpendSource[];
+  readonly resetCredits?: SubscriptionUsageResetCredits;
+}
+
+export interface SubscriptionUsageHistoryEntry extends SubscriptionUsageSnapshot {
+  readonly hourStartMs: number;
+}
+
+export interface SubscriptionUsageThreshold extends SubscriptionUsageAccountKey {
+  readonly metricName: string;
+  readonly value: number;
+  readonly cycleKey?: string;
+  readonly lastValue?: number;
+  readonly armed: boolean;
+}
+
+export interface SubscriptionUsageAlert extends SubscriptionUsageAccountKey {
+  readonly id: string;
+  readonly metricName: string;
+  readonly accountLabel?: string;
+  readonly metricLabel?: string;
+  readonly distinctWindow?: boolean;
+  readonly resetAtMs?: number;
+  readonly threshold: number;
+  readonly value: number;
+  readonly observedAtMs: number;
+  readonly cycleKey: string;
+  readonly state: "open" | "claimed" | "delivered";
+  readonly fence: number;
+  readonly claimOwner?: string;
+  readonly claimExpiresAtMs: number;
+  readonly projectRoot?: string;
+}
+
+export interface SubscriptionUsageFetchLease extends SubscriptionUsageAccountKey {
+  readonly owner: string;
+  readonly readerGeneration: number;
+  readonly fence: number;
+  readonly leaseExpiresAtMs: number;
+}
 
 const StoredMetricSchema = SubscriptionUsageMetricSchema;
 export const StoredMetricsSchema = Schema.Array(StoredMetricSchema);
