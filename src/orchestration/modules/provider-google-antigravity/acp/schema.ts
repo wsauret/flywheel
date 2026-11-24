@@ -107,6 +107,11 @@ export interface AcpRequests {
     readonly params: { readonly sessionId: string; readonly modelId: string }
     readonly result: typeof EmptyResultSchema.Type
   }
+  /** Sent only to boot agy's backend at launch; Flywheel reads none of the sessions that it lists. */
+  readonly "session/list": {
+    readonly params: { readonly cwd: string }
+    readonly result: typeof EmptyResultSchema.Type
+  }
 }
 export type AcpMethod = keyof AcpRequests
 
@@ -127,6 +132,7 @@ const RESULT_SCHEMAS: AcpResultDecoders = {
   "session/prompt": PromptResultSchema,
   "session/set_config_option": SetConfigOptionResultSchema,
   "session/set_model": EmptyResultSchema,
+  "session/list": EmptyResultSchema,
 }
 
 /** The result of `method`, or none when it does not have the result's shape. */
