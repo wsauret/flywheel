@@ -22,7 +22,7 @@ import { createHostedAgent, type HostedAgent, type HostedBinding } from "./agent
 import { createHostedAgentEntries } from "./agent-host/engine-text.js";
 import { cliView } from "./cli-view.js";
 import { processAgentHosts } from "./agent-host/host-registry.js";
-import { accessProviderAccountKey } from "../../../infra/llm/access-provider.js";
+import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js";
 
 /** The gate that runs the fake-host self-test of each listed CLI version once per process for the bridge's model. */
 function selfTestedGate(config: SelfTestConfig): InPlaceGate {

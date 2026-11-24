@@ -4,7 +4,8 @@ import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutati
 import type { Credential } from "../../../infra/auth/auth-store-types.js";
 import type { AccessProviderCatalogFetchInput, AccessProviderCatalogFetchResult } from "../../../infra/llm/access-provider.js";
 import { classifyFetchFailure, fetchCatalog } from "../../../infra/llm/model-listing.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
+import { extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { COPILOT_STATIC_HEADERS, copilotTokensToCredential, isCopilotTokenExpired, type CopilotStoredTokens } from "./auth-types.js";
 import { getGitHubCopilotBaseUrl } from "./base-url.js";
 import { CopilotTokenRefreshError, refreshGitHubCopilotToken } from "./token-refresh.js";

@@ -5,7 +5,7 @@ import { createSubscriptionSpendEnvelope, type SubscriptionSpendMode } from "../
 import { appendCredentialInstanceWithReceipt } from "../../src/infra/auth/auth-store-mutations.js"
 import { createUsageAuthority } from "../../src/infra/llm/usage-authority.js"
 import type { SubscriptionUsageReport, SubscriptionUsageSpendSource } from "../../src/infra/llm/subscription-usage.js"
-import { createSubscriptionAccountIdentity } from "../../src/infra/llm/subscription-account-identity.js"
+import { createSubscriptionAccountIdentity } from "../../src/infra/auth/subscription-account-identity.js"
 import { authDir } from "../../src/infra/paths.js"
 
 const userDataRoot = process.argv[2]

@@ -18,7 +18,7 @@ import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../
 import type { RuntimeAuthView } from "../../../../src/protocol/auth-status-protocol-types.js"
 import { LOGIN_ACCOUNTS_DIRECTORY, LOGIN_PROGRAM_LABEL } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js"
 import { appendCredentialInstanceWithReceipt } from "../../../../src/infra/auth/auth-store-mutations.js"
-import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
 import { installedCredentialSlotClassifier } from "../../../../src/orchestration/credential-provider-modules.js"
 import { createProviderModelPreferenceService, type ProviderModelInventoryCandidate } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"

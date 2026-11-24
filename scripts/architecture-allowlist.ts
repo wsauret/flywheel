@@ -64,14 +64,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
       "flywheel::tui::welcome-notice",
     ].join(","),
   },
-  {
-    lint: "module-cycle",
-    reason: "The cheapest tie: `auth` uses `llm` by 34 items, against 43 the other way. Move all of them below both: the access-provider definitions, external-account and profile-conversion shapes (auth-context, auth-profile-normalization, web-providers), catalog row validation, limits and transport (provider-model-catalog-store), preference transitions and canonicalModelId (provider-model-preference-store), and the subscription account identity (subscription-spend-consent and its store).",
-    key: [
-      "flywheel::infra::auth",
-      "flywheel::infra::llm",
-    ].join(","),
-  },
   { lint: "shallow-module", key: "flywheel::orchestration::runner", reason: "AgentGeneration now gives one-shot callers a contract without the chat turn slot of AgentHost, but OutputSession and Runner still show most of their methods. Next cut: move OutputSession to session-store, which drives it (ARCH-SESSIONS-002)." },
   { lint: "shallow-module", key: "flywheel::orchestration::session-store", reason: "SessionStoreReader now gives read-only projections a contract without runner control, but SessionStore still shows 31 methods. Next cut: move toSessionView and createSessionViewLoader (view.ts) to the app-service projections that use them, and give app-service one runner-control interface that keeps the activeEntry rule in the store." },
   { lint: "shallow-module", key: "flywheel::protocol::client", reason: "The shared client core shows about 357 of 555 functions, most of them small helpers that both the terminal and the web client call. Next cut: move the functions that only orchestration calls (workflow address and target parsing, RuntimeConnection ready and fault, decodeRuntimeEventFrame, workflow progress and coverage text) to the orchestration domain that uses them." },

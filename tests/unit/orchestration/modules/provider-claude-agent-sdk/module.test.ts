@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
-import { isExternalLoginDefinition } from "../../../../../src/infra/llm/access-provider.js";
+import { isExternalLoginDefinition } from "../../../../../src/infra/auth/provider-account.js";
 import { cliLaunch } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import { processUsageReadings } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/account-usage.js";

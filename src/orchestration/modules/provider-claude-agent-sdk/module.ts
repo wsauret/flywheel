@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { privateTemporaryRoot } from "../../../infra/private-temporary-root.js";
 import type { ClaudeLoginEngines } from "../../../infra/claude-engine.js";
-import type { AccessProviderDefinition, ExternalAccount, ExternalLoginPorts } from "../../../infra/llm/access-provider.js";
+import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../infra/llm/access-provider.js";
 import type { AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { moduleServiceHandle } from "../../../infra/module-service.js";
 import type { ModuleServiceInstance, PortableModuleServices } from "../../app-service/module-service-host.js";
@@ -18,6 +18,7 @@ import { claudeLoginHealth, loginProblems } from "./login-status.js";
 import { prototypeLoginConversion, replacedSubscriptionConversion } from "./profile-conversions.js";
 import { CLAUDE_AGENT_SDK_CLI_FLAG, CLAUDE_AGENT_SDK_LABEL, CLAUDE_AGENT_SDK_LOGIN_COMMAND, CLAUDE_AGENT_SDK_MODULE_ID, CLAUDE_AGENT_SDK_PROVIDER_ID, LOGIN_PROGRAM_LABEL, TOKEN_LOGIN_VARIABLE } from "./names.js";
 import { claudeUsageReader } from "./usage-reader.js";
+import type { ExternalAccount } from "../../../infra/auth/provider-account.js";
 
 /** The Claude accounts that the CLI holds for one auth profile, through its own login folders or explicit references. An
  *  account whose config names no plan takes the plan that a CLI of this process named for it. */

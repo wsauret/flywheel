@@ -13,11 +13,10 @@ import type { ProviderModelEligibilitySnapshots, ProviderModelEligibilityState, 
 import { idleFreePlanAccounts, type IdleFreePlanMark, type PlanAccount, type PlanEvidence } from "../../infra/llm/free-plan-accounts.js"
 import { createUsageAuthority, type UsageAuthority } from "../../infra/llm/usage-authority.js"
 import type { SubscriptionUsagePublishedSnapshot } from "../auth/provider-observations/subscription-usage-service.js"
-import { deriveProviderModelPreferences } from "../../infra/llm/provider-model-preferences.js"
+import { deriveProviderModelPreferences } from "../../infra/auth/provider-model-preferences.js"
 import type { ResolvedModelCatalog } from "../../infra/llm/model-catalog-resolution.js"
-import type { CatalogJsonValue, CatalogModelOffering } from "../../infra/llm/catalog-model-offering.js"
+import type { CatalogJsonValue, CatalogModelOffering } from "../../infra/catalog-model-offering.js"
 import { LISTING_SETTLEMENT_MS, type ModelDiscoveryMode } from "../../infra/llm/model-listing.js"
-import { accessProviderAccountKey, type AccessProviderAccountIdentity } from "../../infra/llm/access-provider.js"
 import { awaitWithAbortSignal } from "../../infra/abort.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
@@ -28,6 +27,7 @@ import type { ModelRefusalRecord } from "../agent-runtime/llm/client-factory.js"
 import { getSharedModelListingClient } from "../config/llm-clients.js"
 import { providerModelsCanServeRequest } from "../config/provider-model-eligibility.js"
 import { createDiscoveryCadence } from "./discovery-cadence.js"
+import { type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../infra/auth/provider-account.js"
 
 const log = Log.create({ service: "eligibility-preparation" })
 const PROFILE_INPUT_PREPARATION_ATTEMPTS = 2

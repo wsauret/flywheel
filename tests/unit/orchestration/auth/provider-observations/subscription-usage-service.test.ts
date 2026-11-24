@@ -3,8 +3,8 @@ import { join } from "node:path"
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { Redacted } from "effect"
 import type { SubscriptionUsageReader } from "../../../../../src/infra/llm/subscription-usage.js"
-import type { AccessProviderDefinition, ExternalAccount } from "../../../../../src/infra/llm/access-provider.js"
-import { createSubscriptionAccountIdentity } from "../../../../../src/infra/llm/subscription-account-identity.js"
+import type { AccessProviderDefinition } from "../../../../../src/infra/llm/access-provider.js"
+import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription-account-identity.js"
 import { createSubscriptionUsageStore } from "../../../../../src/infra/llm/subscription-usage-store.js"
 import { createSubscriptionUsageService, type SubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { captureCopilotAllowanceAdmission } from "../../../../../src/orchestration/modules/provider-github-copilot/allowance-admission.js"
@@ -13,6 +13,7 @@ import { createRuntimeUsageDeps } from "../../../../../src/orchestration/modules
 import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js"
 import { createProfileFixture, definition, readerFor, registry, report, writeAccounts } from "./_service-fixtures.js"
+import type { ExternalAccount } from "../../../../../src/infra/auth/provider-account.js"
 
 const { profile, cleanup } = createProfileFixture()
 

@@ -7,7 +7,7 @@ import {
   recordProviderCatalogFailure,
   type CatalogDiscoveryDiagnostics,
 } from "../../../../src/infra/llm/model-catalog-diagnostics.js";
-import type { CatalogDataUse } from "../../../../src/infra/llm/model-id.js";
+import type { CatalogDataUse } from "../../../../src/infra/model-id.js";
 
 const ACCOUNT_COUNT = 128;
 const ROW_COUNT = 10_000;

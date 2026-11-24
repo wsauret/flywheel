@@ -1,18 +1,19 @@
 /** Provider model discovery with one first-party then models.dev fallback. */
 import { createHash } from "node:crypto";
 import { Redacted } from "effect";
-import { apiKeyCredential, currentCredentialLineage, type AuthContext, type CapturedSubscriptionCredential, type OAuthPersistencePolicy, type RuntimeCredential, type SubscriptionCredentials } from "../auth/auth-context.js";
+import { apiKeyCredential, currentCredentialLineage, type AuthContext, type CapturedSubscriptionCredential, type OAuthPersistencePolicy, type RuntimeCredential, type SubscriptionCredentials, type ProviderModelAccessSnapshot } from "../auth/auth-context.js";
 import type { CredentialLineages, CredentialSlotClassifier } from "../auth/auth-store-types.js";
-import { deleteProviderModelCatalog, liveModelRefusals, writeProviderModelCatalog, writeProviderModelCandidates, type CatalogProfile, type ModelRefusal, type ProviderModelAccessSnapshot, type SavedModelRefusals } from "../auth/provider-model-catalog-store.js";
+import { deleteProviderModelCatalog, liveModelRefusals, writeProviderModelCatalog, writeProviderModelCandidates, type CatalogProfile, type ModelRefusal, type SavedModelRefusals } from "../auth/provider-model-catalog-store.js";
 import { openExistingAuthProfileDirectory } from "../auth/auth-profile-store.js";
 import { createSavedListingEvidence } from "./model-listing-evidence.js";
 import { accessCandidateRows, assembleAuditedCatalog, readSavedAudit, runAccessAudit, type AccessAuditProgressListener } from "./model-access-audit.js";
 import { BoundedJsonError, readBoundedJson, readBoundedJsonWithByteLength } from "../auth/bounded-json.js";
-import { accessProviderAccountIdentity, accessProviderAccountKey, compareAutomaticSelection, type AccessProviderAccountIdentity, type AccessProviderCandidate, type AccessProviderCatalogFetchResult, type AccessProviderDefinition, type AccessProviderId, type AccessProviderSelection } from "./access-provider.js";
+import { accessProviderAccountIdentity, compareAutomaticSelection, type AccessProviderCandidate, type AccessProviderCatalogFetchResult, type AccessProviderDefinition, type AccessProviderId, type AccessProviderSelection } from "./access-provider.js";
 import { customProviderById } from "./custom-provider-registry.js";
 import { recordCatalogDiscoveryDiagnostics, recordProviderCatalogFailure } from "./model-catalog-diagnostics.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS, membershipFallback, resolveModelCatalog, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogLimits, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
-import type { CatalogJsonValue, CatalogModelOffering } from "./catalog-model-offering.js";
+import { membershipFallback, resolveModelCatalog, type CatalogDiscovery, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogCanonicalRow, type CatalogLimits } from "../model-catalog-rows.js";
+import type { CatalogJsonValue, CatalogModelOffering } from "../catalog-model-offering.js";
 import { catalogRowsToModelMap, decodeDiscoveryRows, joinCatalogRows, modelsDevBaseline, preferredCatalog, reconcileSavedCatalogRows, staticOfferingMap, withModelRefusals, type AccessProviderCandidateModels, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
 import { settleTasks } from "./model-listing-settlement.js";
 import type { ModelsClient } from "./models.js";
@@ -20,6 +21,7 @@ import { providerRequestHeaders } from "./provider-request-identity.js";
 import type { LauncherScope } from "../process-supervisor.js";
 import { fillCatalogRouteModelInfos, sharedModelInfos } from "./provider-model-info.js";
 import { DebugLog } from "../debug-log.js";
+import { type AccessProviderAccountIdentity, accessProviderAccountKey } from "../auth/provider-account.js";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 /** The shared deadline of one listing call. A caller about to route requests waits no longer than this for the

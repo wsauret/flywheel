@@ -1,4 +1,4 @@
-import { canonicalize } from "../canonical-name.js";
+import { canonicalize } from "./canonical-name.js";
 
 // A dash between numbers is a version separator (claude-opus-4-5 is 4.5) unless
 // the number after it is a parameter size: 70b, 1.8b, 2.4t, or 8x22b.

@@ -7,14 +7,15 @@ import { MeteredCredentialRecordSchema, PersistentCredentialInstanceSchema, isCr
 import { decodeAuthStoreWithDiagnostics } from "../../infra/auth/auth-store.js"
 import { replaceCredentialInstance } from "../../infra/auth/auth-store-mutations.js"
 import type { AuthProfileAccess } from "../../infra/auth/auth-profile-store.js"
-import { captureProviderConnection, captureSubscriptionCredentials, oauthCredentialDto, resolveAuthContextFromStore, runtimeCredential, type ProviderConnection } from "../../infra/auth/auth-context.js"
+import { captureProviderConnection, captureSubscriptionCredentials, oauthCredentialDto, resolveAuthContextFromStore, runtimeCredential, type ProviderConnection, type ProviderModelAccessSnapshot } from "../../infra/auth/auth-context.js"
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import { requireAuthProfileName } from "../../infra/paths.js"
-import { accessProviderAccountKey, credentialIdOf, type AccessProviderAccountIdentity, type AccessProviderDefinition, type ExternalTokenLogin } from "../../infra/llm/access-provider.js"
-import { readSavedProviderModels, type ProviderModelAccessSnapshot } from "../../infra/auth/provider-model-catalog-store.js"
+import type { AccessProviderDefinition, ExternalTokenLogin } from "../../infra/llm/access-provider.js"
+import { readSavedProviderModels } from "../../infra/auth/provider-model-catalog-store.js"
 import { Log } from "../../infra/log.js"
 import { AuthProfileManager } from "../auth/auth-profile-manager.js"
 import { installedCredentialProviderIds } from "../credential-provider-modules.js"
+import { credentialIdOf, type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../infra/auth/provider-account.js"
 
 const MAX_BYTES = 64 * 1024
 const STAGE_PREFIX = "flywheel-auth-bundle-"

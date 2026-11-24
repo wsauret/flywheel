@@ -1,15 +1,24 @@
 import { createHash } from "node:crypto";
 import type { AuthProfileAccess } from "./auth-profile-store.js";
 import { authStoreRevision } from "./auth-store.js";
-import { accessProviderAccountKey, type AccessProviderAccountIdentity } from "../llm/access-provider.js";
-import { canonicalModelId } from "../llm/model-id.js";
-import type { GroupedOfferingIndex } from "../llm/model-catalog-resolution.js";
-import { transitionProviderAutoEnableNewModels, type ProviderModelDeltas } from "../llm/provider-model-preferences.js";
+import { accessProviderAccountKey, type AccessProviderAccountIdentity } from "./provider-account.js";
+import { canonicalModelId } from "../model-id.js";
+import { transitionProviderAutoEnableNewModels, type ProviderModelDeltas } from "./provider-model-preferences.js";
 
 export const PROVIDER_MODEL_PREFERENCES_FILE = "model-preferences.json";
 const MAX_BYTES = 1024 * 1024;
 const PROVIDER_ID = /^[a-z][a-z0-9_-]{1,31}$/;
 const MODEL_ID = /^[a-z0-9][a-z0-9._:/-]*$/;
+
+/** The model a provider spelling belongs to, and whether that spelling is one of the model's free routes. */
+export interface GroupedOffering {
+  readonly modelId: string;
+  readonly freeRoute: boolean;
+}
+
+/** Every provider spelling of one provider's catalog, keyed by its canonical spelling. Decoding a saved preference
+ *  reads it to move a delta that names a provider spelling onto the model that the spelling belongs to. */
+export type GroupedOfferingIndex = ReadonlyMap<string, GroupedOffering>;
 
 export type ProviderModelPreferenceState = "default" | "enabled" | "disabled";
 export interface AccountProviderModelPreference extends ProviderModelDeltas {

@@ -1,4 +1,4 @@
-import type { CatalogModelOffering } from "./catalog-model-offering.js";
+import type { CatalogModelOffering } from "../catalog-model-offering.js";
 import { inferModelFamilyFromProvider, type ModelFamily } from "./model-family.js";
 import {
   MAX_MODEL_OUTPUT_TOKENS,

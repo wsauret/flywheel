@@ -1,7 +1,8 @@
 import { Redacted } from "effect";
 import { apiKey } from "../../../infra/auth/auth-context.js";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
+import { canonicalizeIdCatalogRow, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 import { currentOpenAiStandardPricing, openAiPricingFromMetadata, openAiPricingMetadata, refreshOpenAiStandardPricing } from "../../../infra/llm/openai-pricing.js";

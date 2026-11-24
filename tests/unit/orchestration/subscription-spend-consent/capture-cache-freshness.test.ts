@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { createSubscriptionAccountIdentity } from "../../../../src/infra/llm/subscription-account-identity.js"
+import { createSubscriptionAccountIdentity } from "../../../../src/infra/auth/subscription-account-identity.js"
 import type { SubscriptionUsageReader } from "../../../../src/infra/llm/subscription-usage.js"
 import { createSubscriptionSpendEnvelope } from "../../../../src/infra/auth/subscription-spend-consent.js"
 import { createSubscriptionSpendConsentCaptureCache } from "../../../../src/orchestration/subscription-spend-consent/capture-cache.js"

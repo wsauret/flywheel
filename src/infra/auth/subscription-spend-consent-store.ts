@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Database } from "bun:sqlite";
 import type { AuthProfileAccess } from "./auth-profile-store.js";
-import { subscriptionAccountIdentityKey, type SubscriptionAccountIdentity } from "../llm/subscription-account-identity.js";
+import { subscriptionAccountIdentityKey, type SubscriptionAccountIdentity } from "./subscription-account-identity.js";
 import { createSubscriptionSpendEnvelope, isCanonicalSubscriptionSpendEnvelope, type SubscriptionSpendDecision, type SubscriptionSpendEnvelope, type SubscriptionSpendEnvelopeState } from "./subscription-spend-consent.js";
 
 export const SUBSCRIPTION_SPEND_CONSENT_FILE = "subscription-spend-consent-v1.sqlite";

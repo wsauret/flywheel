@@ -5,7 +5,7 @@ import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.
 import { deselectAllProviderModels, loadAndMigrateProviderModelPreferences, providerModelPreferencesRevision, readProviderModelPreferences, setProviderAutoEnableNewModels, setProviderFreeRoutePreference, setProviderModelPreference } from "../../../../src/infra/auth/provider-model-preference-store.js";
 import { authStoreRevision } from "../../../../src/infra/auth/auth-store.js";
 import { authDir } from "../../../../src/infra/paths.js";
-import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 import { groupedOfferingIndex } from "../../../../src/infra/llm/model-catalog-resolution.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 

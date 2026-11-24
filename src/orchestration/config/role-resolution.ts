@@ -1,12 +1,12 @@
 import type { ModelFamily } from "../../infra/llm/model-family.js";
 import { mergeProviderOptions } from "../../infra/llm/provider-options.js";
-import { canonicalCatalogModelId, canonicalModelId } from "../../infra/llm/model-id.js";
+import { canonicalCatalogModelId, canonicalModelId } from "../../infra/model-id.js";
 import { isCustomProviderModel } from "../../infra/llm/custom-provider-registry.js";
 import { installedAccessProviderDefinitions } from "../credential-provider-modules.js";
 import { getSharedModelsClient } from "./llm-clients.js";
 import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../infra/auth/auth-profile-store.js";
 import { savedProviderModelIds } from "../../infra/auth/provider-model-catalog-store.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../infra/llm/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../infra/model-catalog-rows.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 import { Log } from "../../infra/log.js";
 import type { AdmittedFailoverPlan, AccessProviderModelEligibility, AccessProviderSelection } from "../../infra/llm/access-provider.js";

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { isExternalLoginDefinition } from "../../../../../src/infra/llm/access-provider.js"
+import { isExternalLoginDefinition } from "../../../../../src/infra/auth/provider-account.js"
 import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 import { composePortableModuleServices } from "../../../../../src/orchestration/app-service/module-service-host.js"
 import { installedAccessProviderDefinitions } from "../../../../../src/orchestration/credential-provider-modules.js"

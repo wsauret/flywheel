@@ -1,6 +1,7 @@
 import { Redacted } from "effect";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { canonicalizeProviderIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
+import { canonicalizeProviderIdCatalogRow, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { openCodeGoRequestHeaders, providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";

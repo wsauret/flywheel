@@ -4,7 +4,7 @@ import type { KeyResolver } from "../infra/auth/resolve-key.js"
 import type { ExternalUrlOpener } from "../infra/open-external-url.js"
 import type { LauncherScope } from "../infra/process-supervisor.js"
 import type { CredentialProviderId } from "../infra/auth/auth-store-types.js"
-import type { CredentialProviderCli } from "../infra/llm/access-provider.js"
+import type { CredentialProviderCli } from "../infra/auth/provider-account.js"
 import { errorMessage } from "../infra/error-message.js"
 import { keptFreePlanMessage } from "../protocol/client/auth-login.js"
 import {

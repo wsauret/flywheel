@@ -3,7 +3,7 @@ import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../infra/e
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import { authDir } from "../../infra/paths.js"
 import type { ModelAssignmentRow, RuntimeGlobalDefaultRolesResult, RuntimeModelAssignmentScope, RuntimeModelAssignmentWriteScope, RuntimeSessionModelPlanQuery, RuntimeSessionModelPlanResult } from "../../protocol/model-assignment-protocol-types.js"
-import { canonicalModelId } from "../../infra/llm/model-id.js"
+import { canonicalModelId } from "../../infra/model-id.js"
 import { TRAINING_ROUTES_REQUIRED } from "../../protocol/provider-model-preference-protocol-types.js"
 import type { RuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"

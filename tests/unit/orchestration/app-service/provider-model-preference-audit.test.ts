@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
 import { subscriptionSpendAccountCorrelationId } from "../../../../src/protocol/subscription-spend-consent-protocol-types.js"
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"

@@ -24,7 +24,7 @@ import { isProgressUpdate } from "../../../infra/llm/anthropic-narration.js";
 import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { assertNever } from "../../../infra/assert-never.js";
 import { localTokenizerForModel, type LocalTokenizerIdentity } from "../../../infra/local-tokenizer.js";
-import type { ClaudeTokenizerIdentity } from "../../../infra/llm/model-id.js";
+import type { ClaudeTokenizerIdentity } from "../../../infra/model-id.js";
 
 export type TokenCountingPolicyIdentity =
   | `local:${LocalTokenizerIdentity}`

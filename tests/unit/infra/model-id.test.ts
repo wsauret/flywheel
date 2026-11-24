@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { canonicalCatalogModelId, canonicalModelId, dashedModelId, legacyDottedModelId, migrateModelId, preferredWireModelId } from "../../../../src/infra/llm/model-id.js";
+import { canonicalCatalogModelId, canonicalModelId, dashedModelId, legacyDottedModelId, migrateModelId, preferredWireModelId } from "../../../src/infra/model-id.js";
 
 describe("model identity normalization", () => {
   test("uses dotted numeric segments for every model family", () => {

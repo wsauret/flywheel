@@ -6,7 +6,7 @@ import { Effect, Exit, Redacted, Scope } from "effect";
 import { captureProviderConnection, resolveAuthContext } from "../../../../../src/infra/auth/auth-context.js";
 import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
-import { createSubscriptionAccountIdentity } from "../../../../../src/infra/llm/subscription-account-identity.js";
+import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription-account-identity.js";
 import { isAgentRuntimeError } from "../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js";
 import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
 import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";

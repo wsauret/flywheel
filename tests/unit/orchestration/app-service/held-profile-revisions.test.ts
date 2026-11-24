@@ -7,7 +7,7 @@ import { heldAuthStoreLoad } from "../../../../src/orchestration/app-service/hel
 import { authStoreObservedRevision } from "../../../../src/infra/auth/auth-store.js"
 import { createSubscriptionSpendConsentStore } from "../../../../src/infra/auth/subscription-spend-consent-store.js"
 import { createSubscriptionSpendEnvelope } from "../../../../src/infra/auth/subscription-spend-consent.js"
-import { createSubscriptionAccountIdentity } from "../../../../src/infra/llm/subscription-account-identity.js"
+import { createSubscriptionAccountIdentity } from "../../../../src/infra/auth/subscription-account-identity.js"
 import * as containedDirectories from "../../../../src/infra/descriptor-directory.js"
 import { heldDirectoryPrototype } from "../../../helpers/contained-directory-spies.js"
 import { authDir } from "../../../../src/infra/paths.js"

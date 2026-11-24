@@ -1,4 +1,4 @@
-import { canonicalCatalogModelId, canonicalModelId } from "./model-id.js";
+import { canonicalCatalogModelId, canonicalModelId } from "../model-id.js";
 
 export interface RelationshipModel {
   readonly id: string;

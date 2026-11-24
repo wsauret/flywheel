@@ -89,11 +89,6 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/llm/model-id.ts",
-    what: "static model catalog collision evidence",
-    pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
-  },
-  {
     file: "src/infra/render-probe.ts",
     what: "render phase evidence",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,

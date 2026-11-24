@@ -43,7 +43,7 @@ import type { ContinuationTarget, SubagentContext } from "./control-actions.js";
 import type { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch-preparation.js";
 import type { SubagentDispatchDeps } from "./dispatch-deps.js";
 import { resolveChildRole } from "./dispatch-configuration.js";
-import { canonicalModelId } from "../../../../infra/llm/model-id.js";
+import { canonicalModelId } from "../../../../infra/model-id.js";
 import { AssistantPrefillSessionContextError } from "../../../session/conversation/conversation-tree-context.js";
 import { launchAssignmentText, recordedEntryText } from "../../../session/conversation/brief-entry.js";
 import { readRecordedInheritedIntent } from "../../../session/conversation-checkpoint.js";
