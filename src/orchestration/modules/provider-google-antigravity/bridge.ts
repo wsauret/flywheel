@@ -387,17 +387,19 @@ export function createBridge(config: BridgeConfig): Bridge {
     })
   }
 
-  /** Sets the session's model and effort between prompts (`session/set_config_option`). */
+  /** Sets one option of the session (`session/set_config_option`) and records the value that the engine acknowledged. */
+  const configure = async (target: Session, configId: "model" | "thought_level", value: string): Promise<void> => {
+    const from = optionValue(target.config, configId)
+    target.config = (await engineRequest(target.serving.engine.configure("session/set_config_option", { sessionId: target.sessionId, configId, value }))).configOptions
+    DebugLog.record({ type: "provider.antigravity.session.configured", payload: { processId: target.serving.engine.processId, sessionId: target.sessionId, configId, from, to: optionValue(target.config, configId) } })
+  }
+
+  /** Sets the session's model and effort between prompts. */
   const select = async (target: Session, model: string, effort: ReasoningEffort | undefined): Promise<void> => {
-    const { engine } = target.serving
-    if (optionValue(target.config, "model") !== model) {
-      target.config = (await engineRequest(engine.configure("session/set_config_option", { sessionId: target.sessionId, configId: "model", value: model }))).configOptions
-    }
+    if (optionValue(target.config, "model") !== model) await configure(target, "model", model)
     // A family offers only some thought levels; an effort it does not list leaves the family's default.
     const levels = target.config.find((option) => option.id === "thought_level")?.options.map((level) => level.value) ?? []
-    if (effort !== undefined && levels.includes(effort) && optionValue(target.config, "thought_level") !== effort) {
-      target.config = (await engineRequest(engine.configure("session/set_config_option", { sessionId: target.sessionId, configId: "thought_level", value: effort }))).configOptions
-    }
+    if (effort !== undefined && levels.includes(effort) && optionValue(target.config, "thought_level") !== effort) await configure(target, "thought_level", effort)
   }
 
   /** Opens a new session for a rotation: its append, its selection, and its primer, which must reach the gate. */
