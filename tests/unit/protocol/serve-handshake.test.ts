@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createServeStatusReader, decodeServeListeningVersions, decodeServeStartRefusal, decodeServeStatusLine, encodeServeStartFailure, encodeServeStatusRecord, readServeDiagnostic, type ServeStartRefusal, type ServeStatusRecord } from "../../../src/protocol/serve-handshake";
+import { createServeStatusReader, decodeServeListeningVersions, decodeServeStartRefusal, decodeServeStatusLine, encodeServeStartFailure, encodeServeStatusRecord, readServeDiagnostic, ServeStartupFailure, startHeldByHost, type ServeStartRefusal, type ServeStatusRecord } from "../../../src/protocol/serve-handshake";
 import { decodeServeStatusLine as decodeV009StatusLine } from "../../fixtures/serve-handshake-v0-0-9";
 
 describe("serve handshake", () => {
@@ -100,5 +100,17 @@ describe("serve handshake", () => {
     expect(readServeDiagnostic('"log.info"')).toBeUndefined();
     expect(readServeDiagnostic('{"message":"no type"}')).toBeUndefined();
     expect(readServeDiagnostic(encodeServeStatusRecord({ flywheel: "serve.startup.failed", error: "x" }))).toBeUndefined();
+  });
+});
+
+describe("a start failure that the host's state caused, which never refuses the build that started", () => {
+  const held = new ServeStartupFailure("Failed to start server. Is port 41000 in use?", { kind: "port-in-use", port: 41000 })
+  it.each<[string, unknown, boolean]>([
+    ["a hub port another program holds, inside the command runner's error", new Error(held.message, { cause: held }), true],
+    ["a bind that fails directly", Object.assign(new Error("listen EADDRINUSE"), { code: "EADDRINUSE" }), true],
+    ["a refusal of another kind", new ServeStartupFailure("denied", { kind: "address-access", path: "/scratch/serve.sock", code: "EACCES" }), false],
+    ["source that does not build", new SyntaxError("Unexpected end of file"), false],
+  ])("%s", (_name, error, expected) => {
+    expect(startHeldByHost(error)).toBe(expected);
   });
 });

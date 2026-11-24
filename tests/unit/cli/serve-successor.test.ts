@@ -4,6 +4,8 @@ import * as path from "node:path"
 
 import { runServe } from "../../../src/cli/serve.js"
 import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
+import { restartRefusal } from "../../../src/cli/serve-next-service.js"
+import { RESTART_NO_STARTER_REASON, RESTART_TASK_SCHEDULER_REASON, restartLaunchMissingReason } from "../../../src/protocol/client/service-restart-copy.js"
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
 import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/paths.js"
@@ -53,4 +55,24 @@ describe("a resident account service that a newer build retires", () => {
     expect(exitCode).toBe(SERVE_EXIT.restart)
     expect(events).toEqual([...expected])
   }, 15_000)
+})
+
+describe("why a web client's restart would bring no successor", () => {
+  const launches = (): string | undefined => undefined
+  test.each([
+    ["a service its manager started on macOS", { resident: true, startedByManager: true }, "darwin", undefined],
+    ["a service its manager started on Linux", { resident: true, startedByManager: true }, "linux", undefined],
+    ["a service Task Scheduler started, which is not proven to restart it", { resident: true, startedByManager: true }, "win32", RESTART_TASK_SCHEDULER_REASON],
+    ["a resident service no manager started, which starts its own", { resident: true, startedByManager: false }, "win32", undefined],
+    ["a service a client started, which nothing restarts", { resident: false, startedByManager: false }, "darwin", RESTART_NO_STARTER_REASON],
+  ] as const)("%s", (_name, service, platform, expected) => {
+    expect(restartRefusal(service, platform, launches)).toBe(expected)
+  })
+
+  test("a resident service that starts its own successor refuses while the program it would run is missing", () => {
+    const missing = restartLaunchMissingReason("/scratch/flywheel")
+    expect(restartRefusal({ resident: true, startedByManager: false }, "darwin", () => missing)).toBe(missing)
+    // A manager-started service never runs the check: its manager starts the successor.
+    expect(restartRefusal({ resident: true, startedByManager: true }, "darwin", () => missing)).toBeUndefined()
+  })
 })

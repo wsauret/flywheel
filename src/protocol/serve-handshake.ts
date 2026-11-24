@@ -38,6 +38,18 @@ export class ServeStartupFailure extends Error {
   }
 }
 
+/** Whether another program holds a port this start needs, such as a
+ *  predecessor still draining on the hub's fixed port: the host's state,
+ *  not a failure of the build that started. The hub names its port as the
+ *  refusal, and a bind that fails directly carries `EADDRINUSE`. */
+export function startHeldByHost(error: unknown): boolean {
+  if (startRefusalOf(error)?.kind === "port-in-use") return true
+  for (let cause = error; cause instanceof Error; cause = cause.cause) {
+    if ("code" in cause && cause.code === "EADDRINUSE") return true
+  }
+  return false
+}
+
 /** The refusal that a failure or one of its causes named, when any did. A
  *  start failure crosses several owners, and each can wrap it. */
 export function startRefusalOf(error: unknown): ServeStartRefusal | undefined {

@@ -1,8 +1,9 @@
 import { createComponent, createRoot, createSignal, type JSX } from "solid-js"
 
-import type { RuntimeHealth } from "../../../src/protocol/app-service-types.js"
+import type { MutationResult, RuntimeHealth, RuntimeRestartReadiness } from "../../../src/protocol/app-service-types.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import type { BudgetSummary } from "../../../src/protocol/client/host-contract.js"
-import type { UpdateStatus } from "../../../src/protocol/update-protocol-types.js"
+import type { UpdateStatus, UpdateStatusView } from "../../../src/protocol/update-protocol-types.js"
 import type { ClientViewState, SessionSummary } from "../client/view-state.js"
 import { createModuleDomainMonitors, type ModuleDomainViews } from "../client/module-domain-views.js"
 import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"
@@ -426,6 +427,82 @@ export function mountStatusBudget(nullableDetailBudget = false, source: "durable
         return value === undefined ? "" : textContent(value)
       },
       stableControl: () => nodes(root).find((node) => node.tag === "button" && node.properties["aria-label"] === "Close"),
+    }
+  })
+}
+
+type ConnectionState = RuntimeConnection["state"]
+
+/** The Status sheet over a runtime whose restart readiness is `initial`,
+ *  which an error makes unreadable, and then what the case sets with
+ *  `setReadiness`, and whose
+ *  answer to a restart the case releases with `answer`. The case confirms or
+ *  declines the one confirmation through `confirmations`, and moves the
+ *  connection through `setConnection`, as a restart drops it and the
+ *  successor takes it again. */
+export function mountStatusRestart(initial: RuntimeRestartReadiness | Error) {
+  return createRoot((dispose) => {
+    const [current, setCurrent] = createSignal(state(READY_BUDGET))
+    const confirmations: { readonly title: string; readonly detail?: string; readonly confirmLabel: string }[] = []
+    let confirm = true
+    let readiness: RuntimeRestartReadiness | Error = initial
+    let answer = Promise.withResolvers<MutationResult>()
+    let restarts = 0
+    const stateListeners = new Set<(state: ConnectionState) => void>()
+    const connection = fakeRuntimeConnection({
+      queries: { restartReadiness: () => { if (readiness instanceof Error) throw readiness; return readiness } },
+      mutations: { "service.restart": () => { restarts += 1; return answer.promise } },
+    }, {
+      onStateChange(listener) {
+        stateListeners.add(listener)
+        return () => { stateListeners.delete(listener) }
+      },
+    })
+    const root = createElement("root")
+    insert(root, createComponent(ClientContext.Provider, {
+      value: fakeClient({
+        connection,
+        actions: fakeClientActions({}, fakeRuntimeSession(), connection),
+        state: current,
+        confirm: async (request) => { confirmations.push(request); return confirm },
+        prompt: async () => undefined,
+      }),
+      get children() { return createComponent(StatusSheet, {}) },
+    }))
+    const row = () => rowLabelled(root, "Restart")
+    const updatesRow = () => rowLabelled(root, "Updates")
+    const control = (node: ReturnType<typeof createElement>) => node.tag === "button" || node.properties.role === "button"
+    return {
+      dispose,
+      row,
+      updatesRow,
+      /** Every control that holds another control, which a screen reader
+       *  announces as one control named by both. */
+      nestedControls: () => nodes(root).filter((node) => control(node) && nodes(node).slice(1).some(control)),
+      status: () => {
+        const status = withClass(row() ?? root, "sheet-row-restart")
+        return status === undefined ? "" : textContent(status)
+      },
+      statusNode: () => withClass(row() ?? root, "sheet-row-restart"),
+      valueNode: () => withClass(updatesRow() ?? root, "sheet-row-value"),
+      autoUpdateNode: () => withClass(updatesRow() ?? root, "sheet-row-auto-update"),
+      text: (node: ReturnType<typeof createElement>) => textContent(node),
+      setUpdate(update: UpdateStatusView) { setCurrent((previous) => ({ ...previous, update })) },
+      tap() {
+        const click = row()?.properties.onClick
+        if (typeof click !== "function") throw new Error("The Restart row has no tap")
+        click({})
+      },
+      decline() { confirm = false },
+      setReadiness(next: RuntimeRestartReadiness) { readiness = next },
+      confirmations,
+      restarts: () => restarts,
+      answer(result: MutationResult) {
+        answer.resolve(result)
+        answer = Promise.withResolvers<MutationResult>()
+      },
+      setConnection(next: ConnectionState) { for (const listener of stateListeners) listener(next) },
+      settle: async () => { for (let index = 0; index < 12; index += 1) await Promise.resolve() },
     }
   })
 }

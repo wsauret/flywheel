@@ -15,7 +15,7 @@ import { ToolStreamingTextSchema } from "../infra/output-blocks.js"
 import { EffortSchema } from "../infra/workflow-types.js"
 import { AgentInputAnswerSchema } from "./question-protocol-types.js"
 import { ModuleIdSchema } from "./module-ids.js"
-import type { FrontendMutation, RuntimeChatDefault, RuntimeEventFrame, RuntimeExecutorState, RuntimeFaultReportOutcome, RuntimeQuery, RuntimeServiceState } from "./app-service-types.js"
+import type { FrontendMutation, RuntimeChatDefault, RuntimeEventFrame, RuntimeExecutorState, RuntimeFaultReportOutcome, RuntimeQuery, RuntimeRestartReadiness, RuntimeServiceState } from "./app-service-types.js"
 import type { BudgetPatchPayload, RuntimeBudgetSnapshotResult } from "./budget-protocol-types.js"
 import { CommandCatalogPatchPayloadSchema, RuntimeCommandCatalogResultSchema, RuntimeCommandInvocationSchema } from "./command-catalog-protocol-schemas.js"
 import { BinaryModuleIdSchema, MODULE_SETTING_GROUPS, ModulePresetSchema, type ModuleConfigSettingControl, type ModulePatchPayload, type RuntimeModuleSnapshotResult, type RuntimeModulesView } from "./module-protocol-types.js"
@@ -89,6 +89,11 @@ const RuntimeExecutorStateSchema: Schema.Codec<RuntimeExecutorState> = Schema.Un
 const RuntimeServiceStateSchema: Schema.Codec<RuntimeServiceState> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("serving") }),
   Schema.Struct({ kind: Schema.Literal("crash_loop"), cause: Schema.String, report: Schema.optionalKey(RuntimeFaultReportOutcomeSchema) }),
+])
+
+const RuntimeRestartReadinessSchema: Schema.Codec<RuntimeRestartReadiness> = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("ready"), serviceStart: Schema.NonEmptyString }),
+  Schema.Struct({ kind: Schema.Literal("unavailable"), reason: Schema.String, serviceStart: Schema.NonEmptyString }),
 ])
 
 const ConnectionStateSchema = Schema.Union([Schema.Literal("connected"), Schema.Literal("retrying"), Schema.Literal("connecting"), Schema.Literal("reconnecting"), Schema.Literal("down")])
@@ -367,6 +372,7 @@ export const FrontendMutationSchema: Schema.Codec<FrontendMutation, FrontendMuta
   Schema.Struct({ type: Schema.Literal("settings.set_persistent_processes"), expected: Schema.Boolean, enabled: Schema.Boolean }),
   Schema.Struct({ type: Schema.Literal("subscription_spend_consent.save"), ...SubscriptionSpendConsentMutationBaseSchema, reviewedEnvelopeIds: Schema.Array(Schema.NonEmptyString), acceptedEnvelopeIds: Schema.Array(Schema.NonEmptyString) }),
   Schema.Struct({ type: Schema.Literal("settings.set_update_auto_install"), expected: Schema.Boolean, value: Schema.Boolean }),
+  Schema.Struct({ type: Schema.Literal("service.restart") }),
   RuntimeCommandInvocationSchema,
   CommandUsageRecordMutationSchema,
   RuntimeSaveModelEffortMutationSchema.pipe(Schema.fieldsAssign({ type: Schema.Literal("model.save_effort") })),
@@ -403,6 +409,7 @@ export const RuntimeQuerySchema: Schema.Codec<RuntimeQuery> = Schema.Union([
   Schema.Struct({ type: Schema.Literal("authStatusSnapshot"), scope: RuntimeAuthStatusScopeSchema }),
   Schema.Struct({ type: Schema.Literal("authProfileDeletionPreview"), id: Schema.String }),
   Schema.Struct({ type: Schema.Literal("updateSnapshot") }),
+  Schema.Struct({ type: Schema.Literal("restartReadiness") }),
   Schema.Struct({ type: Schema.Literal("moduleSnapshot") }),
   Schema.Struct({ type: Schema.Literal("configSnapshot") }),
   Schema.Struct({ type: Schema.Literal("gitAiAttributionSnapshot") }),
@@ -529,7 +536,7 @@ const RUNTIME_QUERY_RESULT_SCHEMAS = {
   questionSnapshot: RuntimeQuestionSnapshotResultSchema, roleSnapshot: RuntimeRoleSnapshotResultSchema,
   authStatusSnapshot: RuntimeAuthStatusSnapshotResultSchema,
   authProfileDeletionPreview: AuthProfileDeletionPreviewSchema,
-  updateSnapshot: RuntimeUpdateSnapshotResultSchema, moduleSnapshot: RuntimeModuleSnapshotResultSchema, configSnapshot: RuntimeConfigSnapshotResultSchema,
+  updateSnapshot: RuntimeUpdateSnapshotResultSchema, restartReadiness: RuntimeRestartReadinessSchema, moduleSnapshot: RuntimeModuleSnapshotResultSchema, configSnapshot: RuntimeConfigSnapshotResultSchema,
   gitAiAttributionSnapshot: RuntimeGitAiAttributionSnapshotResultSchema, gitSnapshot: RuntimeGitSnapshotResultSchema,
   commandUsageSnapshot: RuntimeCommandUsageSnapshotResultSchema,
   sessionDetail: RuntimeSessionDetailResultSchema, recallQueuedMessage: Schema.NullOr(ProtocolChatInputSchema), commandCatalog: RuntimeCommandCatalogResultSchema,
@@ -558,7 +565,7 @@ export const RUNTIME_READ_DOMAINS = {
   sessionChanges: [], sessionChangeDiff: [], outputRange: [], outputGroupChildren: [], outputBlockBody: [], transcriptSearch: [], transcriptFind: [], chatSearch: [], projectFiles: [],
   mutationFiles: [], mutationPatchWindow: [],
   authProfileDeletionPreview: [], sessionDetail: [], recallQueuedMessage: [], modelAssignments: [], modelOptions: [], effortOptions: [], modelRoles: [], "provider_models.query": [],
-  sessionModelPlan: [], chatSettlement: [],
+  sessionModelPlan: [], chatSettlement: [], restartReadiness: [],
   ...protocolQueryTable(PROTOCOL_MODULE_READS, (read) => PROTOCOL_MODULE_DOMAINS.filter((domain) => domain.snapshot.query === read.query).map((domain) => domain.domain)),
 } satisfies { readonly [Type in RuntimeQuery["type"]]: readonly RuntimeUiDomain[] }
 
