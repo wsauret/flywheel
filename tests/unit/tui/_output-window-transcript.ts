@@ -10,7 +10,7 @@ import { createSignal } from "solid-js"
 import { createComponent } from "solid-js/web"
 import type { OutputWindowCommand } from "../../../src/tui/output-window/output-window.js"
 import type { TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
-import { heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
+import { heightEstimatesFromBlocks } from "../../../src/tui/transcript-store/output-height-estimates.js"
 import type { WheelProfile } from "../../../src/tui/output-window/output-window-wheel.js"
 
 type TranscriptWindow = TranscriptSnapshot["window"]

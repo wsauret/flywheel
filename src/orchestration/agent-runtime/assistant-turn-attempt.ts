@@ -11,7 +11,7 @@ import { durationMs } from "../../infra/operation-log.js";
 import { probeLoopUnit } from "../../infra/event-loop-lag.js";
 import { summarizeProviderError, type ProviderErrorDiagnostic } from "../../infra/llm/provider-error-diagnostic.js";
 import { classifyApiError } from "../../infra/llm/provider-error-copy.js";
-import { type AgentRuntimeError, ApiError, fromStreamError, ProviderAuditSettlementError, StreamStalled } from "./errors.js";
+import { type AgentRuntimeError, ApiError, fromStreamError, ProviderAuditSettlementError, StreamStalled } from "./llm/runtime-errors.js";
 import { ProviderAttemptFailure, type ProviderFailure } from "./llm/provider-failure.js";
 import {
   type ConversationMessage,

@@ -1,5 +1,5 @@
 import { Effect, Exit, Redacted, Scope } from "effect";
-import { ApiError } from "../../agent-runtime/errors.js";
+import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
 import { createAnthropicAdapter, prepareAnthropicRequest, type AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";

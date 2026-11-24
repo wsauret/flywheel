@@ -2,7 +2,8 @@ import { describe, it, expect } from "bun:test"
 
 describe("agent runtime typed errors (T1)", () => {
   it("toFailureReason maps each typed error to the correct AgentFailureReason variant", async () => {
-    const { ContextOverflow, OutputOverflow, ApiError, StreamStalled, AgentAborted, fromStreamError, toFailureReason } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { ContextOverflow, OutputOverflow, ApiError, StreamStalled, AgentAborted, fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js")
+    const { toFailureReason } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
     const { LlmStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/errors.js")
     expect(toFailureReason(new ContextOverflow())).toEqual({ kind: "context_overflow" })
     expect(toFailureReason(new OutputOverflow())).toEqual({ kind: "output_overflow" })
@@ -18,21 +19,21 @@ describe("agent runtime typed errors (T1)", () => {
 describe("agent runtime error mapping (T2)", () => {
   it("fromStreamError maps ContextLengthExceededError to ContextOverflow", async () => {
     const { ContextLengthExceededError } = await import("../../../../../src/orchestration/agent-runtime/llm/errors.js")
-    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js")
     const err = fromStreamError(new ContextLengthExceededError())
     expect(err._tag).toBe("ContextOverflow")
   })
 
   it("fromStreamError maps OutputLengthExceededError to OutputOverflow", async () => {
     const { OutputLengthExceededError } = await import("../../../../../src/orchestration/agent-runtime/llm/errors.js")
-    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js")
     const err = fromStreamError(new OutputLengthExceededError())
     expect(err._tag).toBe("OutputOverflow")
   })
 
   it("fromStreamError maps LlmStreamError kind=overload to ApiOverloaded", async () => {
     const { LlmStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/errors.js")
-    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js")
     const err = fromStreamError(new LlmStreamError("overloaded", "overload"))
     expect(err._tag).toBe("ApiOverloaded")
     expect(err.message).toBe("overloaded")
@@ -40,20 +41,20 @@ describe("agent runtime error mapping (T2)", () => {
 
   it("fromStreamError maps LlmStreamError kind=transient to TransientDisconnect", async () => {
     const { LlmStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/errors.js")
-    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js")
     const err = fromStreamError(new LlmStreamError("stream error", "transient"))
     expect(err._tag).toBe("TransientDisconnect")
   })
 
   it("fromStreamError maps post-start idle timeouts to StreamStalled", async () => {
     const { StreamIdleTimeoutError } = await import("../../../../../src/orchestration/agent-runtime/llm/errors.js")
-    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js")
     const err = fromStreamError(new StreamIdleTimeoutError("stream idle", "idle"))
     expect(err._tag).toBe("StreamStalled")
   })
 
   it("fromStreamError maps unknown Error to ApiError", async () => {
-    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js")
     const err = fromStreamError(new Error("something broke"))
     expect(err._tag).toBe("ApiError")
     expect(err.message).toBe("something broke")
@@ -64,7 +65,8 @@ describe("agent runtime error mapping (T2)", () => {
 describe("agent resilience with typed errors (T3)", () => {
   it("stream stalls stop after one wire invocation", async () => {
     const { runWithResilience } = await import("../../../../../src/orchestration/agent-runtime/agent-resilience.js")
-    const { fromStreamError, toFailureReason } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { fromStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js")
+    const { toFailureReason } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
     const { withStreamAttempt } = await import("../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js")
     const { ThinkingStallError } = await import("../../../../../src/orchestration/agent-runtime/llm/thinking-stall.js")
     const recoveryAttempts: boolean[] = []

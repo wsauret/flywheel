@@ -1,4 +1,4 @@
-import { holdsPinnedAntigravityBytes, QUALIFIED_ANTIGRAVITY_VERSION, type AntigravityPinnedBytes } from "../../../infra/antigravity-engine.js"
+import { holdsPinnedAntigravityBytes, QUALIFIED_ANTIGRAVITY_VERSION, type AntigravityPinnedBytes } from "../../../infra/antigravity-engine-pin.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import type { ExternalAccount, ExternalLoginProblem, ExternalLoginQuestion, LoginWaitAnswer } from "../../../infra/llm/access-provider.js"
 import { Log } from "../../../infra/log.js"

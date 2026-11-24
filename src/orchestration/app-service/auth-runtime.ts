@@ -40,7 +40,7 @@ import type { SubscriptionSpendConsentCapture } from "../subscription-spend-cons
 import { createSubscriptionSpendConsentCaptureCache } from "../subscription-spend-consent/capture-cache.js"
 import { createAuthConditionOwner } from "../auth/auth-condition-owner.js"
 import { captureSubscriptionAdmission } from "../subscription-spend-consent/admission-capture.js"
-import type { CaptureSubscriptionAdmission } from "../agent-runtime/factory.js"
+import type { CaptureSubscriptionAdmission } from "../agent-runtime/model-runtime-capture.js"
 import { createAuthProfileWatcherOwner } from "./auth-profile-watcher-owner.js"
 import { authScopesForProfile, resolveAuthProfileScope, resolveOwnedAuthProfile } from "./auth-profile-scope.js"
 import { createResidentAuthScopes } from "./auth-resident-scopes.js"
@@ -50,7 +50,7 @@ import { createWorkflowAuthOwner, type WorkflowAuthOwner } from "../workflow-hos
 import { workflowRunReader, workflowRunWriter } from "../module-catalog.js"
 import type { WorkflowHosts } from "../workflow-host/host-collection.js"
 import { createProfileRequestService, type ProfileRequestWorkflowPreparation } from "../auth/profile-request-service.js"
-import { createAdmittedModelAssignmentService, createModelAssignmentReadAdmission, type ChatDefaultRefreshOwner } from "./model-assignment-admission.js"
+import { createAdmittedModelAssignmentService, createModelAssignmentReadAdmission, type ChatDefaultRefreshOwner, type ServingModelAssignmentService } from "./model-assignment-admission.js"
 import { createChatDefaultRuntime } from "./chat-default-runtime.js"
 import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
 import { normalizeAuthProfile } from "../../infra/auth/auth-profile-normalization.js"
@@ -114,7 +114,7 @@ export interface AuthRuntime {
   readonly newSessionProfileId: () => string
   readonly authStatusProjection: AuthStatusProjection
   readonly providerModels: Pick<ProfileBoundProviderModelPreferenceService, "query" | "set" | "deselectAll" | "recheck" | "setAutoEnableNewModels" | "setFreeRoutes">
-  readonly modelAssignments: ReturnType<typeof createAdmittedModelAssignmentService>
+  readonly modelAssignments: ServingModelAssignmentService
   readonly chatDefault: ChatDefaultRefreshOwner
   readonly subscriptionUsage: SubscriptionUsageServicePool & {
     acquireScope(scope: RuntimeAuthStatusScope): Promise<SubscriptionUsageServiceLease>

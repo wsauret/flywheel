@@ -7,7 +7,7 @@ import { toolActivity, toolProcess } from "../../protocol/client/transcript-mode
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { createMeasuredWidth } from "@tui/hooks/create-measured-width.js"
-import { bindStyledTextContent } from "@tui/utils/reactive-text.js"
+import { bindStyledTextContent } from "@tui/context/reactive-text.js"
 import { useRowWidth } from "@tui/context/row-width.js"
 import { createMemo, Index, Show } from "solid-js"
 import { BlockFrame, BLOCK_GUTTER_WIDTH } from "./block-frame.js"

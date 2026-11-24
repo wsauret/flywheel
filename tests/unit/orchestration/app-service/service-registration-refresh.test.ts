@@ -5,7 +5,7 @@ import { join } from "node:path"
 
 import type { DarwinExecutable } from "../../../../src/infra/darwin-process-api.js"
 import { Log } from "../../../../src/infra/log.js"
-import type { AccountServiceRegistrationControl } from "../../../../src/orchestration/app-service/account-service-installation.js"
+import type { AccountServiceRegistrationControl } from "../../../../src/orchestration/app-service/account-service-platform.js"
 import { SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
 import { createServiceRegistrationRefresh, registrationReloadGuard, takeManagerStartEnvironment } from "../../../../src/orchestration/app-service/service-registration-refresh.js"
 

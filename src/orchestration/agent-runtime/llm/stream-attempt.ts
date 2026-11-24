@@ -20,6 +20,17 @@ export interface StreamAttempt {
   throwIfStreamTimedOut(): void;
 }
 
+/** Replaces the abort caused by the deadline with its typed timeout error before
+ * provider classification. A caller-initiated abort passes through unchanged. */
+export function throwIfLivenessFailure(
+  err: unknown,
+  attempt: StreamAttempt,
+  signal: AbortSignal | undefined,
+): void {
+  if (signal?.aborted) throw err;
+  attempt.throwIfStreamTimedOut();
+}
+
 type StreamAttemptOptions = Pick<StreamOptions, "signal" | "repetitionGuard">;
 
 /**

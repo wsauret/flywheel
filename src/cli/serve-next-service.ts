@@ -1,7 +1,7 @@
 import type { StartupDirectories } from "../infra/directory-authorities.js"
 import { errorMessage } from "../infra/error-message.js"
 import { Log } from "../infra/log.js"
-import type { AccountServiceInstallation } from "../orchestration/app-service/account-service-installation.js"
+import type { AccountServiceInstallation } from "../orchestration/app-service/account-service-platform.js"
 import { launchAccountRuntime } from "./runtime-attach.js"
 import { SERVE_EXIT } from "./serve-contract.js"
 

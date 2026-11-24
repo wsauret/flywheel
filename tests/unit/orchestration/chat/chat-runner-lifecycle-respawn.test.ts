@@ -8,7 +8,7 @@ import { createChatRunnerLifecycle } from "../../../../src/orchestration/chat/ru
 import { createChatControls } from "../../../../src/orchestration/chat/controls"
 import { ChatSessionState } from "../../../../src/orchestration/chat/types"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
-import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types"
 import type { ProviderRequestOptions } from "../../../../src/infra/llm/provider-options"
 import {
   askUserStub,

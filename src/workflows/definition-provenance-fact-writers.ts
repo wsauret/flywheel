@@ -2,8 +2,7 @@ import { Schema } from "effect"
 import type { ResolvedAgent } from "./agent-resolution.js"
 import { hashContent, hashDefinition, type ContentHash } from "./definition-hash.js"
 import { canonicalAgentPolicy, canonicalWorkflowRecord } from "./definition-records.js"
-import { USER_REQUEST_ARTIFACT_ID } from "./definition-validation.js"
-import type { DefinitionIdentityMismatch } from "./vm/definition-identity.js"
+import { USER_REQUEST_ARTIFACT_ID } from "./artifact-contracts.js"
 import { AttemptRowSchema } from "./view/schemas.js"
 import type { AttemptRow } from "./view/types.js"
 import { renderSkillContext } from "./skill-render.js"
@@ -12,7 +11,6 @@ import { DefinitionProvenanceSchema } from "./definition-provenance.js"
 import {
   parseDefinitionProvenanceFact,
   WORKFLOW_COMPILED_VERSION,
-  type DefinitionDriftRejectedFact,
   type DefinitionKind,
   type DefinitionProvenanceFact,
   type AgentRecord,
@@ -134,20 +132,6 @@ function loadedFact(
   })
 }
 
-export function buildDefinitionDriftRejectedFact(input: {
-  readonly workflowId: string
-  readonly changes: readonly [DefinitionIdentityMismatch, ...DefinitionIdentityMismatch[]]
-  readonly latestSeq: number
-}): DefinitionDriftRejectedFact {
-  const fact = parseDefinitionProvenanceFact({
-    type: "definition.drift_rejected",
-    version: 1,
-    actor: "flywheel",
-    payload: input,
-  })
-  if (fact.type !== "definition.drift_rejected") throw new Error("Definition drift fact parser returned the wrong type")
-  return fact
-}
 function hashRecordedFact(
   kind: DefinitionKind,
   id: string,

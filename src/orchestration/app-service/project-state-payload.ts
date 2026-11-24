@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import type { EventStoreWriteItem, GuardedEventStoreAppend, InFlightWrite } from "../../infra/event-store-types.js"
 import { EventStoreAppendSchema, InFlightSwapSchema, PublishSubagentInputSchema, PublishWorkflowInputSchema, projectStateSessionCommandSchema } from "./project-state-sessions.js"
-import type { ProjectStateControlOperation, ProjectStateOperation } from "./project-state-protocol.js"
+import type { ProjectStateControlOperation, ProjectStateOperation } from "./project-state-operation.js"
 import { SessionContentNodeRowSchema } from "../../infra/session-content.js"
 
 const WireSwap = InFlightSwapSchema.mapFields(({ payload: _payload, payloadJson: _json, ...fields }) => ({ ...fields, payloadJson: Schema.NullOr(Schema.String) }))

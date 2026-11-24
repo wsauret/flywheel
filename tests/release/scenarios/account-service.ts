@@ -213,9 +213,10 @@ export async function runAccountServiceScenario(context: ScenarioContext): Promi
     metrics["accountService.open3Ms"] = open3Ms
     metrics["accountService.warmOpenMedianMs"] = median(openDurations)
 
-    // ARCH-RUNTIME-010, ARCH-RUNTIME-044: the account constructs no providers, and it owns every open
-    // project's startup maintenance: one serialized one-shot Worker per open
-    // project, so the jobs of the latest opens may still wait their turn here.
+    // ARCH-RUNTIME-010, ARCH-RUNTIME-044, ARCH-RUNTIME-083: the account constructs no providers, and it owns every open
+    // project's maintenance: a startup job, then at most one idle reclaim run
+    // within the hour, each in its own serialized one-shot Worker, so the jobs
+    // of the latest opens may still wait their turn here.
     // Each project's executor runs no maintenance and acquires providers
     // lazily, never more than once, writing those records to that project's log.
     const accountRecords = readDebugLogRecords(context.workDir)
@@ -224,8 +225,14 @@ export async function runAccountServiceScenario(context: ScenarioContext): Promi
     if (accountGenerations !== 0) failures.push(`account service created ${accountGenerations} process-resource generations; the executor owns them`)
     const accountMaintenance = accountRecords
       .filter((record) => record.type === "runtime.worker.allocated" && record.payload?.kind === "maintenance").length
-    if (accountMaintenance < 1 || accountMaintenance > projects.length) {
-      failures.push(`account service allocated ${accountMaintenance} maintenance Workers for ${projects.length} open projects; expected between 1 and one per open project`)
+    const queuedJobs = (kind: string): number => accountRecords
+      .filter((record) => record.type === "runtime.maintenance.queued" && record.payload?.kind === kind).length
+    const startupJobs = queuedJobs("startup")
+    const idleReclaimJobs = queuedJobs("idle-reclaim")
+    if (startupJobs < 1 || startupJobs > projects.length) failures.push(`account service queued ${startupJobs} startup maintenance jobs for ${projects.length} open projects; expected between 1 and one per open project`)
+    if (idleReclaimJobs > projects.length) failures.push(`account service queued ${idleReclaimJobs} idle reclaim runs for ${projects.length} open projects; expected at most one per open project within the hour`)
+    if (accountMaintenance < 1 || accountMaintenance > startupJobs + idleReclaimJobs) {
+      failures.push(`account service allocated ${accountMaintenance} maintenance Workers for ${startupJobs + idleReclaimJobs} queued maintenance jobs; expected between 1 and one per job`)
     }
     // Background work on the second project only: two transcript searches,
     // which only that executor's background Worker answers. They run after

@@ -5,7 +5,7 @@ import type { AgentTurnOptions } from "./agent-turn-types.js"
 import { AgentTurnAborted } from "./agent-turn-types.js"
 import { runWithResilience } from "../agent-runtime/agent-resilience.js"
 import { createAgentRunTally } from "../agent-runtime/agent-loop-state.js"
-import { HandoffCorrectionExhausted } from "../agent-runtime/errors.js"
+import { HandoffCorrectionExhausted } from "../agent-runtime/handoff-correction-exhausted.js"
 import { failureTerminal, type Agent, type AgentRunResult } from "../agent-runtime/types.js"
 
 /** Runs one logical turn: its first run and every run that recovery starts.

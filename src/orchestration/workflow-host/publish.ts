@@ -1,6 +1,6 @@
 import { Result, Schema } from "effect"
 import { hashContent } from "../../workflows/definition-hash.js"
-import { describeClosureFailure } from "../../workflows/definition-validation.js"
+import { describeClosureFailure } from "../../workflows/skill-closure.js"
 import { buildContextInputSeededFact } from "../../workflows/context-bundle/context-facts.js"
 import { queueFactsForState } from "../../workflows/view/view-diff.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../workflows/agent-resolution.js"

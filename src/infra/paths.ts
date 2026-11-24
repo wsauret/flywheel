@@ -212,6 +212,13 @@ export const accountProjectsDir = (accountHome: string): string => path.join(acc
 // Project state, under the project root the caller was given.
 export const SESSIONS_DIR = `${FLYWHEEL_DIR_NAME}/sessions`;
 export const LOG_DIR = `${FLYWHEEL_DIR_NAME}/log`;
+const AGENT_OUTPUTS_NAME = "agent-outputs";
+/** The tool-output breadcrumb tree, `.flywheel/agent-outputs/<id>`, whose only writer is `session-artifacts`. */
+export const AGENT_OUTPUTS_DIR = `${FLYWHEEL_DIR_NAME}/${AGENT_OUTPUTS_NAME}`;
+/** Every entry of `.flywheel` that holds session-scoped artifacts, named as the
+ *  entry it is. A caller that stages or deletes a whole state generation names
+ *  these roots from here instead of restating them. */
+export const SESSION_ARTIFACT_ROOTS = [path.basename(SESSIONS_DIR), AGENT_OUTPUTS_NAME, "workflows"] as const;
 const EVENT_STORE_FILE = `${FLYWHEEL_DIR_NAME}/flywheel.sqlite`;
 const PROMPT_HISTORY_FILE = `${FLYWHEEL_DIR_NAME}/prompt_history.json`;
 

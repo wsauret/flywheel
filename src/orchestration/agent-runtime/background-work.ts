@@ -12,7 +12,6 @@
 
 import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
-import type { MutationEvidence } from "../../infra/mutation-evidence.js";
 import type { PausedBy } from "../../infra/output-blocks.js";
 import type { BackgroundCommandRecord } from "../../infra/runtime-fact-types.js";
 import {
@@ -23,91 +22,14 @@ import {
   formatSubagentNotificationBatch,
   type BackgroundNotificationEntry,
 } from "./background-work-notifications.js";
-import { commandIndexRecord, createBackgroundProcessTable, type BackgroundOutputRequest, type BackgroundProcessRecord, type BackgroundWorkOutput, type CommandExit, type LiveProcessTask } from "./background-work-processes.js";
+import { commandIndexRecord, createBackgroundProcessTable, type BackgroundOutputRequest, type BackgroundProcessRecord, type BackgroundWorkOutput, type LiveProcessTask } from "./background-work-processes.js";
 import type { ManagedCommand } from "./tools/managed-command.js";
 import type { BackgroundWorkProgress, WorkReference } from "./background-work-progress.js";
 import { backgroundHandoffBlock, awaitedWork as awaits, type HandoffBlock } from "./background-work-readiness.js";
 import { backgroundWorkOutcome } from "./background-work-outcome.js";
+import type { BackgroundKillSource, BackgroundWorkMeta, BackgroundWorkResult, ChildInterruption, ToolCallIdentity } from "./background-work-types.js";
 
 const log = Log.create({ service: "background-work" });
-
-/** The result of background work, by status. */
-export type BackgroundWorkResult =
-  | BackgroundWorkResultBase & {
-    /** `partial`: the work stopped at its turn budget and `content` is what it
-     *  had, not a completion. The parent decides whether to retask or accept. */
-    /** `stopped`: a person ended the work with Cancel; `cancelled`: the
-     *  requesting agent did. Both end the run for its parent; only an
-     *  explicit Resume of a child runs it again. */
-    status: "completed" | "partial" | "cancelled" | "stopped";
-  }
-  | BackgroundWorkResultBase & {
-    status: "failed";
-    /** Internal retry admission evidence. Present only for a model-run failure. */
-    modelFailure?: true;
-  }
-  | BackgroundWorkResultBase & {
-    /** `interrupted`: a person, the parent agent, or the runtime interrupted a child run. The run
-     *  has not ended: it keeps its parent binding and can resume (ARCH-SESSIONS-018). */
-    status: "interrupted";
-    /** Who interrupted the child run: a person, its parent agent, or the
-     *  runtime. Absent for a planned replacement's cut, which the successor
-     *  resumes without a notice. */
-    interruptedBy?: PausedBy;
-  };
-
-interface BackgroundWorkResultBase {
-  content: string;
-  /** A wait's notice that a route may deliver with the parked tool results it follows (`ConversationMessage`
-   *  `runtimeNotice`): only a reply wait's end without a reply sets it. */
-  runtimeNotice?: true;
-  executionOutputTail?: string;
-  /** A background command has one exactly when its exit was observed. One
-   *  without it ended with no recorded outcome, as in a crash. */
-  exit?: CommandExit;
-  /** What a mutating command published to the project when it exited. The
-   *  registry records it with the settled tail, against the original tool
-   *  call, so that call's row and per-file undo find it. */
-  mutationEvidence?: MutationEvidence;
-  usage?: {
-    totalTokens: number;
-    inputTokens?: number;
-    outputTokens?: number;
-    cacheReadTokens?: number;
-    cacheCreateTokens?: number;
-    reasoningTokens?: number;
-    totalCostUsd?: number;
-    toolUses: number;
-    durationMs: number;
-  };
-}
-
-/** The result of work that ended. An interrupted run has not ended, so it
- *  never records a completion. */
-export type EndedWorkResult = Exclude<BackgroundWorkResult, { readonly status: "interrupted" }>;
-
-/** Identity pair of the originating tool call. Deferred facts written after
- *  dispatch (live output tails, terminal results, background meta) echo the
- *  identity the call's tool.input.completed fact carries so the
- *  tool-execution projection can match them to that call. */
-export interface ToolCallIdentity {
-  parentToolUseId?: string;
-  modelRequestId?: string;
-}
-
-interface BackgroundWorkMetaBase extends ToolCallIdentity {
-  id: string;
-  type: string;
-  description: string;
-  toolUseId?: string;
-  /** The key the completion publishes under, so a repeat of it commits once. */
-  notificationKey?: string;
-}
-
-export type BackgroundWorkMeta = BackgroundWorkMetaBase & (
-  | { model: string; effort?: string; roleSessionId?: string }
-  | { model?: never; effort?: never; roleSessionId?: never }
-);
 
 /** Stable per-id snapshot of a stoppable background task. Every field is
  *  constant for the lifetime of the id, so the id list is the identity. */
@@ -141,30 +63,18 @@ interface TrackHandle {
   rearm: () => void;
 }
 
-/** How a task dies: `run` stops the underlying work. The registry invokes it
- * at most once for targeted termination or host-owned teardown. */
-export type BackgroundKillSource = "agent" | "user" | "runtime";
 
 /** How a request to stop a task was decided: this request began its stop, a
  *  stop of it was already under way, or nothing here can stop it because it
  *  is unknown, settled, or has no kill control. */
 type StopDecision = "requested" | "under_way" | "refused";
 
+/** How a task dies: `run` stops the underlying work. The registry invokes it
+ * at most once for targeted termination or host-owned teardown. */
 interface KillControl {
   run: (source: BackgroundKillSource) => void | Promise<void>;
 }
 
-/** Who interrupted a tracked child now, as the child's own runner reports
- *  it, or nothing while it is not interrupted. A child that its parent agent
- *  or the runtime interrupted is not active work: no wait parks on it, and a
- *  handoff does not wait for it. A child that a person interrupted stays the
- *  parent's active work (PI-AGENT-025). A Resume makes it active work again. */
-export interface ChildInterruption {
-  interruptedBy(): PausedBy | undefined;
-  /** Calls `listener` on each change of `interruptedBy`, until the returned
-   *  function ends the observation. */
-  observe(listener: () => void): () => void;
-}
 
 /** A child's completion that reconciliation holds durably under `key`. */
 interface DurableSubagentNotification {
@@ -253,7 +163,8 @@ interface TaskLifecycle extends BackgroundWorkProgress {
    *  killing it or publishing its completion, for work another owner took
    *  over. False when the task is not live here. */
   detach(processId: string): boolean;
-  /** Every running command a planned replacement's close can hand over. */
+  /** Every running managed command, for a planned replacement's close, which
+   *  hands over the ones this host owns. */
   handoverCandidates(): ManagedCommand[];
   /** Terminates all controllable tasks and waits for every tracked task to settle. */
   terminateAll(): Promise<void>;
@@ -778,7 +689,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     terminate,
     terminateProcess,
     detach,
-    handoverCandidates: () => [...active.values()].flatMap(({ command }) => command?.owned === undefined ? [] : [command]),
+    handoverCandidates: () => [...active.values()].flatMap(({ command }) => command === undefined ? [] : [command]),
     terminateAll,
   };
 

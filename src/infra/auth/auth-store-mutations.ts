@@ -6,8 +6,8 @@ import { isRecord } from "../record.js";
 import { type AuthProfileAccess, openExistingAuthProfileDirectory } from "./auth-profile-store.js";
 import { credentialsEqual } from "./credential-comparison.js";
 import { lockedJsonRevision, lockedJsonStorePath } from "./locked-json-store.js";
-import { isCredentialCollection, PersistedAuthStoreSchema, type AuthStore, type Credential, type CredentialCollection, type CredentialInstance, type CredentialLineages, type CredentialProviderId, type CredentialSlotClassifier, type PersistedAuthStore } from "./auth-store-types.js";
-import { AUTH_STORE_FILE, decodeAuthStoreWithDiagnostics, type AuthStoreCondition, type AuthStoreLoadResult } from "./auth-store.js";
+import { AUTH_STORE_FILE, isCredentialCollection, PersistedAuthStoreSchema, type AuthStore, type Credential, type CredentialCollection, type CredentialInstance, type CredentialLineages, type CredentialProviderId, type CredentialSlotClassifier, type PersistedAuthStore } from "./auth-store-types.js";
+import { decodeAuthStoreWithDiagnostics, type AuthStoreCondition, type AuthStoreLoadResult } from "./auth-store.js";
 
 const MAX_AUTH_STORE_BYTES = 16 * 1024 * 1024;
 

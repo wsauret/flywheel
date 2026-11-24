@@ -8,7 +8,7 @@ import { createListModalKeys } from "../../components/modal-list-keys.js"
 import { firstSelectableRow } from "../../components/modal-select-helpers.js"
 import type { ModalContext, ModalHandle } from "../../components/modal-stack.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY, type TextEditorPresentation } from "../../keymap/text-entry.js"
-import type { ToastOptions } from "../../utils/toast-presenter.js"
+import type { ToastOptions } from "../../context/toast-presenter.js"
 import { createTerminalSettingEdit } from "../../hooks/terminal-setting-edit.js"
 import type { SettingsEditResult } from "../../hooks/settings-modal-types.js"
 

@@ -13,7 +13,7 @@ import type { OutputWindowCommand } from "../../../src/tui/output-window/output-
 import type { TranscriptFollow } from "../../../src/tui/output-window/transcript-follow.js"
 import type { TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
 import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
-import { DEFAULT_ESTIMATE, heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
+import { DEFAULT_ESTIMATE, heightEstimatesFromBlocks } from "../../../src/tui/transcript-store/output-height-estimates.js"
 import { fakeRuntimeClient, liveView } from "./hooks/_output-transcript-cache-fixtures.js"
 import { scrollFrameHook } from "../../helpers/scroll-frame-hook.js"
 
@@ -416,22 +416,7 @@ describe("OutputWindow near-edge paging", () => {
       const estimatesBefore = seeded.heightEstimates
       const generationBefore = seeded.generation
       const [command, setCommand] = createSignal<OutputWindowCommand | undefined>()
-      const view: OutputTranscriptView = {
-        mutationEvidence: () => cache.mutationEvidence(sessionId),
-        protectReader: (reader) => cache.protectReader(sessionId, reader),
-        reportProjectionFailure: (error) => cache.reportProjectionFailure(sessionId, error),
-        visibleRange: () => cache.visibleRange(sessionId),
-        visibleMessageCount: () => cache.visibleMessageCount(sessionId),
-        jumpToLatest: () => cache.jumpToLatest(sessionId),
-        freshness: () => cache.freshness(sessionId),
-        hydrateAnchor: () => cache.hydrateAnchor(sessionId),
-        loadAround: (entryId) => cache.loadAround(sessionId, entryId),
-        hydrateBlockBody: (blockId) => { void cache.hydrateBlockBody(sessionId, blockId) },
-        takeEstimateUpdates: () => cache.takeEstimateUpdates(sessionId),
-        evictBefore: (blockIndex) => { cache.evictBefore(sessionId, blockIndex) },
-        setDisclosure: (key, expanded) => { cache.setDisclosure(sessionId, key, expanded) },
-        disclosure: (key) => cache.disclosure(sessionId, key),
-      }
+      const view: OutputTranscriptView = cache.bindSession(() => sessionId)
       const { scrollbox, result } = await renderWindow(view, () => {}, command)
       try {
         const update = scrollFrameHook(scrollbox)

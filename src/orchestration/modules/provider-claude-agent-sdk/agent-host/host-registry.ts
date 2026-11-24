@@ -8,16 +8,7 @@ import { orderedJson } from "../cli-view.js";
 import { registerHostDrain } from "../live-bridges.js";
 import type { ExtraUsage } from "../extra-usage-guard.js";
 import type { EngineValues } from "../query-engine.js";
-import type { AgentHost } from "./host.js";
-
-/** The values that a host's engine fixes for its coordinator and all its agents: the request values that the engine
- *  sends in every request, and whether the requests state an effort. No model is among them: each agent's definition
- *  states its own model (`AgentHost.definition`), and the host picks its coordinator's model when it opens
- *  (`coordinatorCandidates`). The host's gate states each agent's effort for each step that it admits
- *  (`HostGate.admit`). Each agent's values were prepared for its own model, so agents of different models share a
- *  host whenever their values are equal. Only a model that the engine does not know names itself in them, through
- *  `modelCapabilities`. */
-export type HostValues = Omit<EngineValues, "effort" | "wireModelId" | "contextLimit"> & { readonly statesEffort: boolean };
+import { COORDINATOR_EFFORT, type AgentHost, type Coordinator, type HostValues } from "./host.js";
 
 /** What decides which host serves an agent: the login, the spend mode, the chat tree, the git status of the agent's
  *  directory, and every value that the host's engine fixes. The agent's directory is no part of it: a resumed agent
@@ -33,9 +24,6 @@ export interface HostPlace {
   readonly values: HostValues;
 }
 
-/** The effort of every coordinator step of a host whose requests state an effort, which keeps its calls short. */
-export const COORDINATOR_EFFORT = "low";
-
 /** The place of each Claude model family from the cheapest to the most expensive, which a host's coordinator tries in
  *  this order, whatever the version of each model. */
 const COORDINATOR_FAMILIES = ["haiku", "sonnet", "opus", "fable"];
@@ -44,13 +32,6 @@ const FAMILY = new RegExp(`^claude-(${COORDINATOR_FAMILIES.join("|")})-`, "u");
 /** The values of the host that serves an agent whose requests send `values`. */
 export function hostValues({ effort, wireModelId, contextLimit, ...sent }: EngineValues): HostValues {
   return { ...sent, statesEffort: effort !== undefined };
-}
-
-/** One model on which a host's coordinator can run: its wire id, and its launch model in the engine's spelling
- *  (`engineModelId`). */
-export interface Coordinator {
-  readonly wireModelId: string;
-  readonly model: string;
 }
 
 /**

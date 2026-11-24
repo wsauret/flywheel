@@ -1,7 +1,7 @@
 import { createModuleToolHistoryReader } from "./session/module-tool-history.js"
 import { errorMessage } from "../infra/error-message.js"
 import { remoteModule } from "./modules/remote/module.js"
-import type { RetiredServiceInstallation } from "./app-service/account-service-installation.js"
+import type { RetiredServiceInstallation } from "./app-service/account-service-platform.js"
 import { composeModules, type ModuleDescriptor, type ModuleComposition } from "../infra/module-descriptor.js"
 import type { ModuleRuntimeHandle, ModuleRuntimes } from "../infra/module-runtime.js"
 import type { ChatModuleHostContribution } from "./chat-module-host.js"

@@ -3,10 +3,10 @@
 import { StyledText, bold as stBold, fg as stFg, type TextRenderable } from "@opentui/core"
 import { useKeymap } from "@tui/context/keymap"
 import { useTheme } from "@tui/context/theme"
-import type { TuiTheme } from "@tui/context/theme/resolve.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 import { createEffect, createMemo, Show, type Accessor, untrack } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { displayWidth } from "./utils/text.js"
+import { displayWidth } from "./text.js"
 import { fontTipMessage } from "../orchestration/font-installer.js"
 import { collapseHome } from "../infra/home-path.js"
 import type { ModuleRow } from "../protocol/protocol-module.js"
@@ -15,7 +15,7 @@ import { Button } from "./components/button.js"
 import { startupTrace } from "../infra/startup-trace.js"
 import { NO_PROVIDER_READY } from "../protocol/client/provider-setup.js"
 import type { ReleaseNotice } from "../protocol/update-protocol-types.js"
-import { stLink } from "./utils/text-attributes.js"
+import { stLink } from "./text-attributes.js"
 
 /** The boot-trace phase the release startup gate reads as part of "ready":
  *  the first intro card this process shows with its complete title. */

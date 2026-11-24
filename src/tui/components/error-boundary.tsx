@@ -1,12 +1,12 @@
 /** @jsxImportSource @opentui/solid */
 
 import { useTheme } from "@tui/context/theme"
-import { BOLD } from "@tui/utils/text-attributes"
+import { BOLD } from "@tui/text-attributes"
 import { createSignal, For, Show } from "solid-js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
-import { createTuiErrorReports } from "../modules.js"
+import type { TuiErrorReport, TuiErrorReportProps } from "../tui-module.js"
 import { Button } from "./button.js"
-import type { Clipboard } from "../utils/clipboard.js"
+import type { Clipboard } from "../clipboard.js"
 
 interface ErrorComponentProps {
   error: Error
@@ -17,12 +17,16 @@ interface ErrorComponentProps {
   appService: Pick<RuntimeClient, "dispatch">
   appVersion: string
   sessionId?: string
+  /** Builds the crash reports of the installed modules, so this screen
+   *  depends on no module registry. */
+  createReports: (props: TuiErrorReportProps) => readonly TuiErrorReport[]
 }
 
 export function ErrorComponent(props: ErrorComponentProps) {
   const { theme } = useTheme()
   const [copied, setCopied] = createSignal(false)
-  const reports = createTuiErrorReports({
+  // eslint-disable-next-line solid/reactivity -- createReports is a static factory from the composition root; the reports read the other props through getters
+  const reports = props.createReports({
     get client() { return props.appService },
     get error() { return props.error },
     get version() { return props.appVersion },

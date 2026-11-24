@@ -1,49 +1,16 @@
-import { createHash } from "node:crypto"
-import { createReadStream, existsSync } from "node:fs"
-import { stat } from "node:fs/promises"
+import { existsSync } from "node:fs"
 import { join } from "node:path"
-import pin from "../../scripts/antigravity-engine-pin.json" with { type: "json" }
 import { runningSourceSnapshot, runsThroughBun, sourceCheckout, sourceSnapshotHome } from "./cli-subprocess.js"
 import { readEngineVersion } from "./engine-version.js"
+import { QUALIFIED_ANTIGRAVITY_VERSION } from "./antigravity-engine-pin.js"
 import { antigravityEngineFile, buildPlatformArch, checkoutAntigravityEngine, nativeAssetDir } from "./native-assets.js"
 import type { OsAccount } from "./os-account.js"
 import type { OwnedCommandRunner } from "./owned-command.js"
 
 // The bundled Antigravity CLI (`agy`) is a shared primitive: the Google Antigravity provider runs it for its login,
-// logout, model listing, and serving, and the source snapshot pins it. None of them owns where it lives, which
-// version Flywheel accepts, or how it is kept apart from the person's own Antigravity installation, so all read that
-// here.
-
-/** The one `agy` version that passed Flywheel's qualification: the version that
- *  `scripts/antigravity-engine-pin.json` pins and every build ships. */
-export const QUALIFIED_ANTIGRAVITY_VERSION: string = pin.version
-
-/** The bytes of one platform's pinned `agy`. */
-export interface AntigravityPinnedBytes {
-  readonly size: number
-  readonly sha256: string
-}
-
-const PINNED_TARGETS: { readonly [platformArch: string]: AntigravityPinnedBytes | undefined } = pin.targets
-
-/** The bytes that the pin states for the `agy` of `platformArch`, or nothing for a platform that the pin has no
- *  `agy` for. */
-export function pinnedAntigravityBytes(platformArch: string = buildPlatformArch()): AntigravityPinnedBytes | undefined {
-  return PINNED_TARGETS[platformArch]
-}
-
-/** Whether the file at `path` holds exactly the bytes `pinned`: its size first, then its SHA-256. False also when
- *  there is no such file. The hash reads the whole file off the thread, about 100 ms for the 230 MB of `agy`. */
-export async function holdsPinnedAntigravityBytes(path: string, pinned: AntigravityPinnedBytes): Promise<boolean> {
-  try {
-    if ((await stat(path)).size !== pinned.size) return false
-    const hash = createHash("sha256")
-    for await (const chunk of createReadStream(path)) hash.update(chunk)
-    return hash.digest("hex") === pinned.sha256
-  } catch {
-    return false
-  }
-}
+// logout, model listing, and serving. None of them owns where it lives, which version it must report, or how it is
+// kept apart from the person's own Antigravity installation, so all read that here. Which version and bytes Flywheel
+// accepts is the pin in `antigravity-engine-pin.ts`.
 
 /** The command that places the verified pinned `agy` in a source checkout. */
 const PREPARE_COMMAND = "bun run engine:antigravity:prepare"

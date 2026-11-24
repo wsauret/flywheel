@@ -1,6 +1,6 @@
 import { subagentDisplayLabel } from "../tools/detail-helpers.js";
 import { workflowCallSource, workflowSourceLabel } from "../tools/workflow-call-source.js";
-import { textField, type JsonFields } from "./json-field.js";
+import { textField, type JsonFields } from "../tools/json-field.js";
 import { resolveToolRowPresentation } from "../tools/tool-display-registry.js";
 import type { AgentGroupBlock } from "../output-blocks.js";
 

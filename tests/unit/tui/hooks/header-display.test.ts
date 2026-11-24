@@ -4,7 +4,7 @@ import { createHeaderDisplay as buildHeaderDisplay } from "../../../../src/tui/h
 import type { SessionCatalogRow, ChildSessionRow } from "../../../../src/protocol/app-service-types.js"
 import type { BudgetView } from "../../../../src/protocol/budget-protocol-types.js"
 import { RGBA } from "@opentui/core"
-import { displayWidth } from "../../../../src/tui/utils/text.js"
+import { displayWidth } from "../../../../src/tui/text.js"
 
 const theme = {
   primary: RGBA.fromInts(100, 200, 255, 255),

@@ -4,7 +4,7 @@ import type { AccessProviderCandidateAttribution, AccessProviderDefinition } fro
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { openRouterRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
-import { ApiError } from "../../agent-runtime/errors.js";
+import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { createModelReminders } from "../../agent-runtime/llm/runtime-reminders.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";

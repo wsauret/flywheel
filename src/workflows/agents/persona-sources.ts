@@ -3,7 +3,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { agents as manifestAgents } from "./manifest.js";
+import { agents as manifestAgents } from "../asset-manifest.js";
 
 export interface PersonaSources {
   readonly [path: string]: string;

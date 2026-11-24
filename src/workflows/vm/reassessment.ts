@@ -6,7 +6,7 @@ import { repeatRun, roundOfNodeId, type Attempt, type RepeatNode } from "./graph
 import { initialAttempts, insertNode, replaceNode, withNodeState } from "./graph-changes.js";
 import { allRequiredJoinEdges, normalizeLogicalNodeV3 } from "./historical-normalization.js";
 import { admitStructureChange, queuedAttempts } from "./structural-admission.js";
-import type { ReassessmentPayload, RetiredReassessmentPayload } from "./reassessment-contract.js";
+import type { ReassessmentPayload, RetiredReassessmentPayload } from "../reassessment-contract.js";
 
 interface ReassessmentResult {
   readonly control: CommittedWorkflowControl;

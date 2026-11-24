@@ -2,40 +2,22 @@ import { formatActivity, formatElapsed, formatTokens } from "../../protocol/clie
 import type { ConnectionState, StreamPhase } from "../../infra/output-blocks.js"
 import type { SessionNotice } from "../../infra/session-notice.js"
 import { noticeSpinnerStatus } from "./spinner-status-notice.js"
+import { advanceDisplayActivity, initialDisplayActivityState } from "./spinner-status-display-activity.js"
 import {
-  advanceDisplayActivity,
-  initialDisplayActivityState,
-  type DisplayActivityFields,
-} from "./spinner-status-display-activity.js"
+  composeSegments,
+  type AnimationInput,
+  type AnimationState,
+  type MetadataSegment,
+  type SpinnerColorMode,
+  type SpinnerStatus,
+  type StatusAction,
+} from "./spinner-status-model.js"
 import {
   advanceAnimationInternals,
   THINKING_RAMP_START_MS,
 } from "./spinner-status-animation-advance.js"
 
-type SpinnerColorMode = "normal" | "stalled" | "thinking-long"
-
-interface MetadataSegment {
-  text: string
-  colored: boolean
-  action?: StatusAction
-}
-
-/** A status segment a person can press: the background process list. The
- *  status line never carries session controls; Resume is a prompt key hint
- *  and Interrupt is Escape (PI-INTERACTION-043, PI-INTERACTION-103). */
-type StatusAction = "background"
-
-export interface SpinnerStatus {
-  verb: string
-  segments: MetadataSegment[]
-  colorMode: SpinnerColorMode
-  indicator: "spinner" | "circle"
-  intensity: number
-}
-
-const STATUS_PADDING = 6
 const METADATA_SEP = "──"
-const METADATA_SEPARATOR_WIDTH = " ── ".length
 export const STALL_THRESHOLDS = [10_000, 45_000, 300_000] as const
 export const STALL_THRESHOLD_MS = STALL_THRESHOLDS[0]
 const ACTIVITY_VERB_WIDTH = "Generating".length
@@ -100,50 +82,6 @@ function connectionStatus(state: ConnectionState): SpinnerStatus | null {
   if (state === "retrying") return { verb: "Retrying", segments: [], colorMode: "stalled", intensity: 0.5, indicator: "spinner" }
   if (state === "connecting") return { verb: "Connecting", segments: [], colorMode: "normal", intensity: 0.5, indicator: "spinner" }
   return null
-}
-
-function composeSegments(verb: string, segments: MetadataSegment[], width: number): MetadataSegment[] {
-  const budget = width - verb.length - STATUS_PADDING
-  if (budget <= 0) return []
-
-  const result: MetadataSegment[] = []
-  let totalLen = 0
-  for (const seg of segments) {
-    const addedLen = totalLen > 0 ? METADATA_SEPARATOR_WIDTH + seg.text.length : seg.text.length
-    if (totalLen + addedLen > budget) break
-    result.push(seg)
-    totalLen += addedLen
-  }
-  return result
-}
-
-export interface AnimationState extends DisplayActivityFields {
-  activity: StreamPhase | null
-  agentActive: boolean
-  backgroundWaitActive: boolean
-  connectionState: ConnectionState
-  statusHeld: boolean
-  thinkingStartedAt: number | null
-  completedThinkingMs: number | null
-  thinkingEndedAt: number | null
-  displayedChars: number
-  lastStreamingChars: number
-  lastTokenTime: number
-  timeSinceLastToken: number
-  easedStallIntensity: number
-  easedThinkingIntensity: number
-  lastSampledAt: number
-  lastEaseAt: number
-}
-
-export interface AnimationInput {
-  activity: StreamPhase | null
-  realChars: number
-  agentActive: boolean
-  backgroundWaitActive: boolean
-  connectionState: ConnectionState
-  compacting: boolean
-  notice: SessionNotice | null
 }
 
 interface BuildStatusInputs {

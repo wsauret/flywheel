@@ -32,12 +32,11 @@ import { classifyGoogleError } from "./google-errors.js";
 import { GOOGLE_CACHE_RATES } from "./provider-description.js";
 import { geminiThinkingConfigMode } from "./model-compat.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
-import { withStreamAttempt } from "./stream-attempt.js";
+import { throwIfLivenessFailure, withStreamAttempt } from "./stream-attempt.js";
 import { invokeProviderAttempt } from "./provider-attempt-boundary.js";
 import { googleHistoryTarget, toGoogleGenerativeAiRequest } from "./conversions/google-generative-ai.js";
 import { sanitizeSurrogates } from "./sanitize-unicode.js";
 import { renderSystemPrompt } from "./system-prompt-tiers.js";
-import { throwIfLivenessFailure } from "./stream-liveness.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
 import { FUNCTION_TOOL_PRESENTATION, type CompletedStopReason, type ConnectedClient, type LLMClient, type ProviderStreamEvent, type StreamOptions, type ToolPresentation } from "./types.js";
 

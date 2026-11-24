@@ -13,7 +13,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
 import { LiveAgent } from "../../../../src/orchestration/agent-runtime/runner.js"
-import { ApiError } from "../../../../src/orchestration/agent-runtime/errors.js"
+import { ApiError } from "../../../../src/orchestration/agent-runtime/llm/runtime-errors.js"
 import { createAgentHost } from "../../../../src/orchestration/runner/host.js"
 import { generateSessionTitle, type SessionTitles } from "../../../../src/orchestration/session/session-title.js"
 import { createLearningReviewExecution } from "../../../../src/orchestration/modules/learning/learning-review-runner.js"

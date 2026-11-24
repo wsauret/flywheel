@@ -10,7 +10,7 @@ import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js";
 import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/workflows/vm/host-types.js";
 import type { AttemptExecutionInput } from "../../../../src/workflows/vm/commands.js";
 import type { AccumulatedContext } from "../../../../src/workflows/context-bundle/context.js";
-import { agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../src/workflows/output-contract/workflow-completion.js";
+import { agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../src/workflows/workflow-completion.js";
 import { renderWorkflowRequestSection } from "../../../../src/workflows/context-bundle/workflow-request.js";
 import { attemptOf, branch, INPUT_GROUP, INPUT_TAIL, inputBranch, inputMapWorkflow, inputStage, items, MAP_GROUP, mapSkills, mapWorkflow, oneAtATime, PLAN, stage, SURVEY_GROUP, SURVEY_SYNTHESIZE, surveyAnswer, surveyStage, surveyWorkflow, TAIL, type SurveyTarget } from "./_map-fixtures.js";
 import { fourLaneControl, listJoin, targets, wideMapWorkflow } from "./_tree-fixtures.js";

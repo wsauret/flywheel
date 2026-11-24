@@ -4,7 +4,7 @@ import { consumeAgentLoopMessageInput } from "../../../../src/orchestration/agen
 import { agentLoopTransition, initialAgentLoopState } from "../../../../src/orchestration/agent-runtime/agent-loop-state.js";
 
 import { attemptContextOverflowRecovery } from "../../../../src/orchestration/agent-runtime/compaction/triggers.js";
-import { ApiError } from "../../../../src/orchestration/agent-runtime/errors.js";
+import { ApiError } from "../../../../src/orchestration/agent-runtime/llm/runtime-errors.js";
 import { ContextLengthExceededError, OutputLengthExceededError } from "../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js";

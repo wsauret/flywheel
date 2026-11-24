@@ -10,8 +10,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { reasoningRepetitionDetector, type DegenerateRepetitionError } from "../../../../../src/orchestration/agent-runtime/llm/reasoning-repetition.js";
-import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
-import { throwIfLivenessFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream-liveness.js";
+import { throwIfLivenessFailure, withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
 import type { RepetitionGuard } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 const root = join(import.meta.dir, "../../../../..");

@@ -26,7 +26,7 @@ import { Log } from "../../../infra/log.js";
 import { ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";
 import type { CompletedStopReason } from "./messages.js";
 import { anthropicThinkingMode } from "./model-compat.js";
-import { withStreamAttempt, type StreamAttempt } from "./stream-attempt.js";
+import { throwIfLivenessFailure, withStreamAttempt, type StreamAttempt } from "./stream-attempt.js";
 import { invokeProviderAttempt } from "./provider-attempt-boundary.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { ANTHROPIC_CACHE_RATES } from "./provider-description.js";
@@ -46,7 +46,7 @@ import { anthropicContentRefusal, type PreparedBlockLocation } from "./anthropic
 import type { BlockOrigins } from "./conversions/anthropic-messages.js";
 import { anthropicProviderMetadata } from "./anthropic-provider-metadata.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
-import { STREAM_IDLE_TIMEOUT_PATIENT_MS, throwIfLivenessFailure, type StreamLivenessOptions } from "./stream-liveness.js";
+import { STREAM_IDLE_TIMEOUT_PATIENT_MS, type StreamLivenessOptions } from "./stream-liveness.js";
 import { sendStreamingRequest, timingFetch } from "./request-timing.js";
 import type { ProviderAvailability } from "./provider-availability-types.js";
 import { ensureEventLoopLagSampler } from "../../../infra/event-loop-lag.js";

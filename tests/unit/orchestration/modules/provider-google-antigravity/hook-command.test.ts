@@ -7,9 +7,9 @@ import { gateHookHandler } from "../../../../../src/orchestration/modules/provid
 
 describe("gate hook handler", () => {
   test("runs the running executable's gate role with the address and gate id after it", () => {
-    const handler = gateHookHandler({ address: "/run/fw-agy-501/gate.sock", loginGateId: "gate-1", platform: "linux" })
+    const handler = gateHookHandler({ address: "/run/fw-agy-501/gate.sock", loginGateId: "gate-1" })
 
-    const explicit = gateHookHandler({ address: "/run/fw-agy-501/gate.sock", loginGateId: "gate-1", entry: executableRoleCommand(EXECUTABLE_ROLES.antigravityGate), platform: "linux" })
+    const explicit = gateHookHandler({ address: "/run/fw-agy-501/gate.sock", loginGateId: "gate-1", entry: executableRoleCommand(EXECUTABLE_ROLES.antigravityGate) })
     expect(handler).toEqual({ type: "command", command: explicit.command, timeout: GATE_HOOK_TIMEOUT_SECONDS })
     expect(handler.command).toStartWith(process.execPath)
     expect(handler.command).toEndWith(`${EXECUTABLE_ROLES.antigravityGate} /run/fw-agy-501/gate.sock gate-1`)

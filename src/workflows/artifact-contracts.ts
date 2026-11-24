@@ -1,5 +1,9 @@
 import { Schema, SchemaTransformation } from "effect";
 
+/** The artifact that holds the workflow's launch request. Flywheel writes it
+ *  at launch, so no agent or join may write or supersede it. */
+export const USER_REQUEST_ARTIFACT_ID = "user-request";
+
 const ArtifactIdSchema = Schema.NonEmptyString;
 export const ArtifactIdsSchema = Schema.Array(ArtifactIdSchema);
 

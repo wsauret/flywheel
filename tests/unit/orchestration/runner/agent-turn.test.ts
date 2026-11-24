@@ -4,7 +4,7 @@ import { wakeInput, type AgentLoopWakeInput } from "../../../../src/infra/agent-
 import { runAgentTurn } from "../../../../src/orchestration/runner/agent-turn.js"
 import { AgentTurnAborted } from "../../../../src/orchestration/runner/agent-turn-types.js"
 import type { Agent, AgentRunResult } from "../../../../src/orchestration/agent-runtime/types.js"
-import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/errors.js"
+import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js"
 import { PersistenceWriteRefused } from "../../../../src/infra/event-store-types.js"
 import { applySessionNoticeOperation, type SessionNotice, type SessionNoticeOperation } from "../../../../src/infra/session-notice.js"
 import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"

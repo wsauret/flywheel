@@ -1,13 +1,8 @@
 import { batch, createSignal, onCleanup } from "solid-js"
 import { createStore, produce, reconcile, unwrap } from "solid-js/store"
 import type { RuntimeChatDefault, RuntimeExecutorState, RuntimeServiceState, SessionCatalogError, SessionCatalogRow, AttachedRuntimeClient } from "../../protocol/app-service-types.js"
-import {
-  sessionCursor,
-  workspaceDomainCursor,
-  isRuntimeInvalidationPayload,
-  type RuntimeSnapshotScope,
-  type RuntimeUiPatch,
-} from "../../protocol/runtime-ui-protocol-types.js"
+import { sessionCursor, workspaceDomainCursor, type RuntimeSnapshotScope, type RuntimeUiPatch } from "../../protocol/runtime-ui-protocol-types.js"
+import { isRuntimeInvalidationPayload } from "../../protocol/runtime-invalidation.js"
 import { InvariantViolation } from "../../infra/invariant.js"
 import { createStartupTimeline } from "../../infra/startup-timeline.js"
 import { startupTrace } from "../../infra/startup-trace.js"

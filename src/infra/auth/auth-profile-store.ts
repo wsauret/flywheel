@@ -6,7 +6,7 @@ import { acquireLockIn, releaseLockIn } from "../ownership-file-lock.js";
 import type { ContainedDirectory } from "../descriptor-directory-contract.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "../descriptor-directory.js";
 import { lockedJsonRevision } from "./locked-json-store.js";
-import { AUTH_STORE_FILE } from "./auth-store.js";
+import { AUTH_STORE_FILE } from "./auth-store-types.js";
 import { AUTH_PROFILE_RETIREMENTS_FILE, readAuthProfileRetirements, retireAuthProfile, type AuthProfileRetirements } from "./auth-profile-retirements.js";
 import { ensurePrivateRootDirectory } from "../private-path.js";
 import { isAuthProfileDisplayName, requireAuthProfileDisplayName, requireAuthProfileName } from "../paths.js";

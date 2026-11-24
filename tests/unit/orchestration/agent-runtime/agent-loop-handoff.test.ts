@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { createHandoffTracker } from "../../../../src/orchestration/agent-runtime/agent-loop-handoff.js";
 import type { ToolResultEntry } from "../../../../src/orchestration/agent-runtime/agent-state.js";
-import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/errors.js";
+import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
 import type { ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { toTextParts } from "../../../../src/infra/llm/tool-output-part-schema.js";
 

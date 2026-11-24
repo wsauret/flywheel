@@ -1,4 +1,4 @@
-import { QUALIFIED_ANTIGRAVITY_VERSION } from "../../../infra/antigravity-engine.js"
+import { QUALIFIED_ANTIGRAVITY_VERSION } from "../../../infra/antigravity-engine-pin.js"
 
 /** The context window of one engine model family on this route (plan P9). agy summarizes a session by itself when
  *  the tokens that the previous model response reported reach a fixed threshold of the current model, and no setting

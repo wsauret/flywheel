@@ -1,5 +1,5 @@
 import { escapeXml, formatRuntimeNotification } from "./runtime-notifications.js"
-import type { BackgroundWorkResult } from "./background-work.js"
+import type { BackgroundWorkResult } from "./background-work-types.js"
 
 interface NotificationReceipt {
   readonly promise: Promise<void>

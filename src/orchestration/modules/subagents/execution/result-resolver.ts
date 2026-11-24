@@ -15,7 +15,7 @@ import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
 import { PERSON_STOP_INSTRUCTION } from "../../../../infra/tool-outcome.js";
 import { formatAgentFailure } from "../../../agent-runtime/failure-message.js";
 import { failureTerminal, type AgentFailureReason, type AgentRunResult } from "../../../agent-runtime/types.js";
-import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work.js";
+import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work-types.js";
 import type { SubagentStats, SubagentTextState } from "./stream-filter.js";
 import type { SubagentToolCallRecord } from "./work-log.js";
 import { boundHandoff, boundText, type ResultBudget } from "./result-budget.js";

@@ -14,7 +14,7 @@ import {
 import { actionKey } from "../../client/action-key.js"
 import { useClient } from "../client-context.js"
 import { SheetEmpty, SheetLoading, SheetRow } from "./sheet.js"
-import { WorkspaceSurface } from "../workspace-surface.js"
+import { WorkspaceSurface } from "./workspace-surface.js"
 import { useClientExtensions } from "../client-extensions.js"
 import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
 

@@ -16,6 +16,7 @@ import { createConversationTreeWriter } from "./conversation/conversation-tree-w
 import type { ControlInterruption, PlannedCutInterrupt } from "./conversation/turn-end-record.js"
 import type { PausedBy } from "../../infra/output-blocks.js"
 import type { SessionManager } from "./manager.js"
+import type { SessionMetadataReader } from "./schemas.js"
 import { readSessionMetadata } from "./session-metadata-store.js"
 
 const log = Log.create({ service: "planned-session-continuation" })
@@ -125,7 +126,7 @@ export function capacityContinuations(reader: Pick<AsyncEventStateReadSurface, "
 interface ContinuationEvidence {
   readonly reader: AsyncEventStateReadSurface
   readonly projectionReader: AsyncEventStateReadSurface
-  readonly manager: Pick<SessionManager, "read"> & Partial<Pick<SessionManager, "updateLifecycleState">>
+  readonly manager: SessionMetadataReader & Partial<Pick<SessionManager, "updateLifecycleState">>
 }
 
 /** The run `runId` of the child `sessionId`, read from its run facts. */

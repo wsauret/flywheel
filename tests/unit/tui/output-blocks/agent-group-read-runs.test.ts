@@ -7,7 +7,7 @@ import type { RoleAssignmentView } from "../../../../src/protocol/role-protocol-
 import { createSignal } from "solid-js"
 import { resolvedTheme, sameColor, spanColor } from "../components/prompt-border-fixtures.js"
 import { workflowCard as foldWorkflowCard } from "../../../../src/protocol/client/workflow-card.js"
-import { displayWidth } from "../../../../src/tui/utils/text.js"
+import { displayWidth } from "../../../../src/tui/text.js"
 import type { RowProcessControls } from "../../../../src/tui/output-blocks/stop-affordance.js"
 import { FANOUT, FANOUT_FAILED, timedFanoutOutline, type FanoutFixture } from "../../protocol/client/_workflow-card-fixtures.js"
 import { mutationEvidenceFixture } from "./_mutation-evidence-fixture.js"
@@ -392,11 +392,11 @@ describe("AgentGroupBlock read runs", () => {
 
   // A chat that opens with an interrupted run in it draws the card's
   // header controls from the held row on its first frame.
-  it("draws Resume and Stop on the header of an interrupted card whose row the shell already holds", async () => {
+  it("draws Resume and Cancel on the header of an interrupted card whose row the shell already holds", async () => {
     const row = workflowDetail({ workflowId: "workflow-session", admittedActions: ["workflow.resume", "workflow.stop", "workflow.delete"] })
     const processControls: RowProcessControls = { status: () => undefined, onDetach: () => {}, onStop: () => {}, onStopChild: () => {} }
     const frame = await renderToolGroup(workflowCard("paused", cardOf(FANOUT.reviews, false, "interrupted")), { width: 100, cards: { row: () => row }, processControls })
-    expect(frame).toMatch(/Interrupted · 9m 31s\s+resume\s+stop/)
+    expect(frame).toMatch(/Interrupted · 9m 31s\s+resume\s+cancel/)
     expect(frame).not.toContain("tokens")
   })
 

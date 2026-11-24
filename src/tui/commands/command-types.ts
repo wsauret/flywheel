@@ -3,7 +3,8 @@ import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import type { CaptureSurfaceOpener } from "../../protocol/client/surface-presentation.js"
 import type { AgentViewKind } from "../../protocol/client/slash-route.js"
-import type { RuntimeConfigCache, ShellServices, ShellSignals } from "../hooks/shell-state.js"
+import type { ShellServices, ShellSignals } from "../hooks/shell-state.js"
+import type { RuntimeConfigCache } from "../hooks/create-runtime-config-cache.js"
 import type { OpenSurface } from "./command-surfaces.js"
 
 /** Static identity and presentation of a built-in slash command. */

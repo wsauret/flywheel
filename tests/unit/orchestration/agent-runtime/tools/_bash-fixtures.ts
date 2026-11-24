@@ -3,7 +3,7 @@ import { lstatSync, mkdirSync, rmdirSync, symlinkSync, unlinkSync, writeFileSync
 import type { OwnedProcess } from "../../../../../src/infra/owned-subprocess.js";
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { createForegroundBashHoldController, type ForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
+import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/shell-runtime.js";
 import { executeDispatchedTool } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import { prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";

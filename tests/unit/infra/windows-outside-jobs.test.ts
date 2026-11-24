@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import type { TrustedCommandResult, TrustedProbeLaunch } from "../../../src/infra/process-container.js"
+import type { TrustedCommandResult } from "../../../src/infra/process-container.js"
+import type { TrustedProbeLaunch } from "../../../src/infra/trusted-probe-launch.js"
 import { launchOutsideJobs, OutsideJobsLaunchError, type OutsideJobsLaunchRequest, type OutsideJobsSeams } from "../../../src/infra/windows-outside-jobs.js"
 import type { WindowsProcessHold } from "../../../src/infra/windows-process-api.js"
 

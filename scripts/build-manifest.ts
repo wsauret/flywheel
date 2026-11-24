@@ -1,7 +1,7 @@
 // Manifest writers for the binary build.
 //
 // Two generated manifests carry runtime prompt assets inline:
-//   src/workflows/agents/manifest.ts   persona markdown, skill packages, shared
+//   src/workflows/asset-manifest.ts    persona markdown, skill packages, shared
 //     reference assets, workflow output contract files, and the skill
 //     packages of every shipped module definition bundle
 //   src/infra/agent-assets/manifest.ts the runner-universal system prompt
@@ -114,7 +114,7 @@ export interface GeneratedManifest {
  *  restores them afterwards, including after a failed bundle. */
 export const GENERATED_MANIFESTS: readonly GeneratedManifest[] = [
   {
-    path: join(WORKFLOWS_SRC, "agents", "manifest.ts"),
+    path: join(WORKFLOWS_SRC, "asset-manifest.ts"),
     emptySource: EMPTY_WORKFLOW_MANIFEST_SOURCE,
     write: writeWorkflowManifest,
   },

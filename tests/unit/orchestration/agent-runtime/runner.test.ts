@@ -8,7 +8,7 @@ import { temporaryDirectories, testDirectories } from "../../../helpers/director
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
 import type { AgentOptionsOverride } from "./_runner-options.js"
 import type { ModelClient } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/factory"
+import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/model-runtime-capture"
 import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
 import { asModelClient } from "./_model-client"
 import { makeOptions } from "./_runner-options"

@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { NotificationActionSchema, type NotificationAction, type NotificationSeverity } from "../../infra/notification-episode.js"
-import { openSheetCommand, type ClientCommand } from "../client/host-contract.js"
+import type { ClientCommand } from "../client/host-contract.js"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, type ModuleRow } from "../protocol-module.js"
 import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime-ui-protocol-types.js"
 
@@ -133,26 +133,32 @@ export interface NotificationActionView {
   readonly open: Extract<ClientCommand, { readonly type: "openSheet" | "openSurface" }>
 }
 
+/** Builds each command as a literal of the host contract's type, because a
+ *  module's protocol home sits below the shared client core and calls none of it. */
 export function notificationAction(action: ProjectNotificationAction): NotificationActionView {
   switch (action.kind) {
     case "open-settings":
-      return { label: "Open settings", open: openSheetCommand("settings") }
+      return { label: "Open settings", open: { type: "openSheet", sheet: "settings" } }
     case "open-usage":
       // The subscription-usage module's surface. One module home never
       // imports another, so the id is named here.
       return { label: "Open usage", open: { type: "openSurface", surface: "usage" } }
     case "open-auth-provider":
-      return { label: "Open provider", open: openSheetCommand("providers", { kind: "focus-provider", providerId: action.providerId }) }
+      return { label: "Open provider", open: { type: "openSheet", sheet: "providers", focus: { kind: "focus-provider", providerId: action.providerId } } }
     case "open-auth":
-      if (!("providerId" in action)) return { label: "Open providers", open: openSheetCommand("providers") }
+      if (!("providerId" in action)) return { label: "Open providers", open: { type: "openSheet", sheet: "providers" } }
       return {
         label: "Open provider",
-        open: openSheetCommand("providers", {
-          kind: "review-paid-use",
-          providerId: action.providerId,
-          accountCorrelationId: action.accountCorrelationId,
-          envelopeId: action.envelopeId,
-        }),
+        open: {
+          type: "openSheet",
+          sheet: "providers",
+          focus: {
+            kind: "review-paid-use",
+            providerId: action.providerId,
+            accountCorrelationId: action.accountCorrelationId,
+            envelopeId: action.envelopeId,
+          },
+        },
       }
   }
 }

@@ -7,9 +7,9 @@ import { loadAuthStoreWithDiagnostics } from "../../../infra/auth/auth-store.js"
 import {
   createUsageAuthority,
   type SubscriptionUsageAccount,
-  type SubscriptionUsageSnapshot,
   type UsageAuthority,
 } from "../../../infra/llm/usage-authority.js"
+import type { SubscriptionUsageSnapshot } from "../../../infra/llm/subscription-usage-store-codec.js"
 import type { SubscriptionUsageMetric, SubscriptionUsageOutcome, SubscriptionUsageReader, SubscriptionUsageResetConsumer, SubscriptionUsageResetOutcome, SubscriptionUsageRuntimeAccount } from "../../../infra/llm/subscription-usage.js"
 
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js"

@@ -1,4 +1,4 @@
-import { displayWidth, graphemes, graphemeBoundaryAtOrBefore } from "./utils/text.js"
+import { displayWidth, graphemes, graphemeBoundaryAtOrBefore } from "./text.js"
 import type { TextEntrySelection, TextEntryVisualLine } from "./keymap/text-entry.js"
 
 interface LayoutBoundary {

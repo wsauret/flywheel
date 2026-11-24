@@ -1,11 +1,11 @@
 import { createRuntimeEvent } from "../../../infra/runtime-event-factory.js";
 import { asRecord } from "../../../infra/record.js";
 import type { RuntimeEvent } from "../../../infra/runtime-event-types.js";
-import { textField } from "../../../infra/output/json-field.js";
+import { textField } from "../../../infra/tools/json-field.js";
 import { workflowCallSource, workflowSource, workflowSourceLabel, type WorkflowCallSource, type WorkflowLaunchSource } from "../../../infra/tools/workflow-call-source.js";
 import type { ToolOutcome } from "../../../infra/tool-outcome.js";
 import type { AgentFailureDisplay } from "../../../infra/output-blocks.js";
-import type { BackgroundKillSource, BackgroundWorkResult, ChildInterruption } from "../background-work.js";
+import type { BackgroundKillSource, BackgroundWorkResult, ChildInterruption } from "../background-work-types.js";
 import type { WorkflowsMode } from "../../../protocol/module-protocol-types.js";
 import {
   NO_WORKFLOW_DIRECTORY,

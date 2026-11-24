@@ -1,4 +1,5 @@
-import type { CatalogJsonValue, CatalogSourceRow, CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js";
+import type { CatalogSourceRow, CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js";
+import type { CatalogJsonValue } from "../../../infra/llm/catalog-model-offering.js";
 import { MAX_MODEL_OUTPUT_TOKENS, type ProviderReasoningEffort } from "../../../infra/llm/models.js";
 import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/llm/model-id.js";

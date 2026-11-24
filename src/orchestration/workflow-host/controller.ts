@@ -1,6 +1,6 @@
 import { readAppVersion } from "../../infra/app-version.js"
 import { ownBuildId } from "../../infra/update/live-builds.js"
-import { readCapturedFacts, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../infra/event-store-types.js"
+import { readCapturedFacts } from "../../infra/event-store-types.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { ProjectDirectories } from "../../infra/directory-authorities.js"
 import { chatInputText, type ChatInputLike } from "../../infra/chat-input.js"
@@ -13,32 +13,23 @@ import type { ChildControlAnswer } from "../module-seams.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
 import { Log } from "../../infra/log.js"
 import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js"
-import type { AdmittedWorkflowDeps, WorkflowDeps } from "./deps.js"
-import type { SessionManager } from "../session/manager.js"
+import type { AdmittedWorkflowDeps } from "./deps.js"
 import { recordBackgroundFailure } from "../../infra/operation-log.js"
-import type { SessionLifecycleState } from "../session/types.js"
-import type { SessionAuthAdmission } from "../session/session-auth-profile.js"
-import { recoverSessionHistory, type FirstPartyModuleComposition } from "../modules.js"
+import { recoverSessionHistory } from "../modules.js"
 import { reconcileWorkflowAgentInput } from "./agent-input-recovery.js"
 import { resumedWorkflowConversations } from "../../workflows/view/live-conversations.js"
-import type { WorkflowHosts } from "./host-collection.js"
-import type { SessionStore } from "../session-store/types.js"
 import { prepareWorkflowAgents } from "./publish.js"
 import { bindWorkflowDepsToSession } from "./deps.js"
 import { executionCwdFromSession } from "../session/session-execution-directory.js"
 import { workflowRunOwner, workflowRunReader } from "../module-catalog.js"
-import { buildWorkflowDefinitionLineageFacts } from "./definition-lineage.js"
-import { WorkflowPreflightError, type WorkflowResult, type WorkflowWake } from "./runner-types.js"
+import { WorkflowPreflightError, type WorkflowWake } from "./runner-types.js"
 import { claimAnsweredDecision, inspectAnsweredDecision } from "../session/agent-input-decision.js"
 import { createSessionFactWriter } from "../session/session-fact-writer.js"
 import { resolveWorkflowDeliveryAddress, type WorkflowTargets } from "./workflow-addressing.js"
 import { deliverWorkflowInput } from "../session/session-input-delivery.js"
 import { personMessageKey } from "../session/conversation/queued-user-inputs.js"
 import { recordPersonMessageReceipt, workflowPersonMessage } from "../session/conversation/person-message-ledger.js"
-import type { ChildSessionReconciliation } from "../session/child-session-reconciliation.js"
-import type { CapabilityGrant, ModulePolicy } from "../config/module-policy.js"
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
-import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
 import type { DefinitionAvailabilityOwner } from "../app-service/definition-availability.js"
 import {
   approvalRefusal,
@@ -55,44 +46,22 @@ import { assessWorkflowRecovery, commitWorkflowRecovery } from "./recovery-commi
 import { describeWorkflowRecoveryDegradation } from "../../workflows/vm/recovery.js"
 import { replayWorkflowControl, resumesFailedAgents } from "../../workflows/vm/fact-fold.js"
 import { workflowAggregateId } from "../../workflows/vm/session-facts.js"
-import { createWorkflowLaunchLifecycle } from "./launch-lifecycle.js"
+import { createWorkflowLaunchLifecycle, type WorkflowLaunchLifecycleDeps } from "./launch-lifecycle.js"
 import type { WorkflowLaunchHost } from "./launch-operation-contract.js"
-import { createWorkflowLaunchPipeline, type AdmitWorkflowOperation, type StartWorkflowResult } from "./launch-pipeline.js"
-import type { ChatRunner } from "../chat/runner-types.js"
+import { createWorkflowLaunchPipeline, type AdmitWorkflowOperation, type StartWorkflowResult, type WorkflowLaunchPipelineDeps } from "./launch-pipeline.js"
 
 const log = Log.create({ service: "workflow-controller" })
 
-export interface WorkflowControllerDeps extends ProjectDirectories {
+/** The workflow host's composition. The launch lifecycle and the launch
+ *  pipeline each own the part of it that they read. */
+export interface WorkflowControllerDeps extends ProjectDirectories, WorkflowLaunchLifecycleDeps, WorkflowLaunchPipelineDeps {
   executionCwd?: string
-  workflowHosts: WorkflowHosts
-  sessionStore: SessionStore
-  /** Attaches a launched child's parent chat without starting a turn. */
-  openChatRunner?: (sessionId: string) => Promise<ChatRunner | undefined>
-  manager: SessionManager
   /** Definition owner of the project this controller launches workflows in. */
   definitions: ProjectDefinitionRegistry
-  /** Admission boundary of every new launch and resume. Read under the config
-   *  ownership lock, so a launch is ordered against every settings write. */
-  capabilities: Pick<ModulePolicy, "admit" | "state">
-  /** The modules an admitted launch or resume composes in this host. The host
-   *  composes its own runtime with this same rule, so every worker of a
-   *  workflow composes exactly the modules its host composes. */
-  composeModules: (grant: CapabilityGrant) => FirstPartyModuleComposition
   /** Availability owner each admitted launch captures its definition view from. */
   availability: Pick<DefinitionAvailabilityOwner, "capture">
   /** Live Workflows mode. ASK mediates model-originated launches only. */
   workflowMode: () => WorkflowsMode
-  /** Sole profile-bound runtime authority shared with chat and subagents. */
-  authAdmission: SessionAuthAdmission<WorkflowDeps>
-  buildDefinitionLineageFacts?: typeof buildWorkflowDefinitionLineageFacts
-  onRunnerDone?: (id: string, lifecycleState: SessionLifecycleState, result: WorkflowResult) => void
-  onRunnerError?: (id: string, errorMessage: string) => void | Promise<void>
-  eventReader: AsyncEventStateReadSurface
-  projectionReader: AsyncEventStateReadSurface
-  eventWriter: AsyncEventWriter
-  recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
-  /** Admits a child workflow's completion delivery through its parent chat's actor. */
-  reconcileChildSessionCompletions?: (parentSessionId: string) => Promise<ChildSessionReconciliation>
 }
 
 type ResumeWorkflowResult =

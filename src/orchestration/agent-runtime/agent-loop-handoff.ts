@@ -16,7 +16,7 @@
 
 import type { ToolResultEntry } from "./agent-state.js";
 import type { TurnOutcome } from "./assistant-turn-result.js";
-import { HandoffCorrectionExhausted } from "./errors.js";
+import { HandoffCorrectionExhausted } from "./handoff-correction-exhausted.js";
 import type { ToolCall } from "./llm/types.js";
 import type { LlmToolOutputPart } from "./llm/messages.js";
 import type { HandoffBlock } from "./background-work-readiness.js";

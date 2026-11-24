@@ -1,10 +1,6 @@
 import { describe, it, expect } from "bun:test"
-import {
-  type AgentRuntimeError,
-  fromStreamError,
-  StreamStalled,
-  toFailureReason,
-} from "../../../../src/orchestration/agent-runtime/errors.js"
+import { type AgentRuntimeError, fromStreamError, StreamStalled } from "../../../../src/orchestration/agent-runtime/llm/runtime-errors.js"
+import { toFailureReason } from "../../../../src/orchestration/agent-runtime/errors.js"
 import { ContentRefusedError, ProviderRequestValidationError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js"
 

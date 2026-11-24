@@ -3,9 +3,9 @@
 import type { MouseEvent } from "@opentui/core"
 import type { Accessor } from "solid-js"
 import { For, createEffect, createMemo, createSignal, on, untrack } from "solid-js"
-import { BOLD } from "../utils/text-attributes.js"
+import { BOLD } from "../text-attributes.js"
 import { CellColumn, type CellColumnState, type Gutter } from "./cell-column.js"
-import type { TuiTheme } from "../context/theme/resolve.js"
+import type { TuiTheme } from "../context/theme/tui-theme.js"
 import type { TabInfo } from "../hooks/create-tabs.js"
 
 interface TabsBarProps {

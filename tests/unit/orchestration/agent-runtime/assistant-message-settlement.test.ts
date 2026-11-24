@@ -4,7 +4,7 @@ import { DebugLog, type DebugLogRecordInput } from "../../../../src/infra/debug-
 import { isRecord } from "../../../../src/infra/record.js"
 import { createAssistantMessageSettlement } from "../../../../src/orchestration/agent-runtime/assistant-message-settlement.js"
 import type { AssistantTurnResult, TurnOutcome } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js"
-import { AgentAborted } from "../../../../src/orchestration/agent-runtime/errors.js"
+import { AgentAborted } from "../../../../src/orchestration/agent-runtime/llm/runtime-errors.js"
 import type { ContentBlock } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 
 function turn(outcome: TurnOutcome): AssistantTurnResult {

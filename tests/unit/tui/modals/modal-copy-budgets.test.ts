@@ -1,6 +1,6 @@
 import { usageFooterRows } from "../../../../src/tui/modules/subscription-usage/footer.js"
 import { describe, expect, it } from "bun:test"
-import { displayWidth } from "../../../../src/tui/utils/text.js"
+import { displayWidth } from "../../../../src/tui/text.js"
 import { SETTING_SECTIONS } from "../../../../src/protocol/setting-catalog.js"
 import { settingCatalogRows } from "../../../helpers/setting-catalog-rows.js"
 import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js"

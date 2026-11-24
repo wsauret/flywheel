@@ -8,8 +8,8 @@ import { MarkdownBody } from "@tui/output-blocks/markdown/markdown-body.js"
 import { BlockFrame, BLOCK_GUTTER_WIDTH } from "@tui/output-blocks/block-frame.js"
 import { markdownTextChunk } from "@tui/output-blocks/markdown/format-token.js"
 import { TEXT_SEGMENT_LINES } from "@tui/output-blocks/markdown/line-model.js"
-import { BOLD, ITALIC, UNDERLINE } from "@tui/utils/text-attributes.js"
-import { consumeSelectedText, hasSelectedCells } from "@tui/utils/selection.js"
+import { BOLD, ITALIC, UNDERLINE } from "@tui/text-attributes.js"
+import { consumeSelectedText, hasSelectedCells } from "@tui/selection.js"
 
 const DIM = createTextAttributes({ dim: true })
 

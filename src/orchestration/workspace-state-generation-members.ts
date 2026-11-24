@@ -1,4 +1,4 @@
-import { SESSION_ARTIFACT_ROOTS } from "./session/session-artifacts.js"
+import { SESSION_ARTIFACT_ROOTS } from "../infra/paths.js"
 
 export const EVENT_STORE_MEMBER = "flywheel.sqlite"
 

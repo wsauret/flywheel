@@ -28,7 +28,7 @@ import type { NotificationEpisodeInput } from "../../infra/notification-episode.
 import type { ConversationMessage } from "./llm/types.js";
 import type { AgentRunTally } from "./agent-loop-state.js";
 import type { CommittedTree, ConversationTreeProjectionState } from "../session/conversation/conversation-projection.js";
-import type { CaptureProviderConnection } from "./factory.js";
+import type { CaptureProviderConnection } from "./model-runtime-capture.js";
 import type { BackgroundExecutionOwner } from "./background-execution-owner.js";
 import type { CommandHandoverAuthority } from "./command-handover.js";
 import type { PromptKind } from "./system-prompt.js";
@@ -408,7 +408,7 @@ interface AgentBaseOptions {
   captureProviderConnection?: CaptureProviderConnection;
   /** Captures the owning session's current model-serving revision before each
    *  provider request. Children inherit the same authority from their runner. */
-  captureModelRuntime?: import("./factory.js").CaptureModelRuntime;
+  captureModelRuntime?: import("./model-runtime-capture.js").CaptureModelRuntime;
   /** The provider runtime of the session that this run serves, which outlives the run (`ProviderSession`). Absent:
    *  the run owns its own, which ends with the run. */
   providerSession?: import("./provider-runtime-cache.js").ProviderSession;

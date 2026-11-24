@@ -5,7 +5,7 @@ import { createContext, createEffect, For, Show, type JSX, type ParentProps, unt
 import { createOverlayLayers, type ModalContext, type OverlayLayers } from "./modal-stack.js"
 import { useQuestionInput } from "./question-input.js"
 import { useCopySelection } from "../hooks/use-copy-selection.js"
-import type { Clipboard } from "../utils/clipboard.js"
+import type { Clipboard } from "../clipboard.js"
 import { AttachmentImagesProvider } from "../context/attachment-images.js"
 import { openImageViewer } from "./image-viewer.js"
 import type { UserMessageImage } from "@infra/output-blocks"

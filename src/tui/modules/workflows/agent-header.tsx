@@ -5,8 +5,8 @@ import { workflowAgentHeaderDrops, workflowAgentLine, type WorkflowAgentHeaderDr
 import { useTheme } from "@tui/context/theme.js"
 import { createMeasuredWidth } from "@tui/hooks/create-measured-width.js"
 import { agentStateColor } from "@tui/output-blocks/workflow-palette.js"
-import { bindStyledTextContent } from "@tui/utils/reactive-text.js"
-import { chunksWidth, fitChunks } from "@tui/utils/text.js"
+import { bindStyledTextContent } from "@tui/context/reactive-text.js"
+import { chunksWidth, fitChunks } from "@tui/text.js"
 import { Button } from "@tui/components/button.js"
 
 function agentLineText(line: WorkflowAgentLine, state: WorkflowAgentModel["state"] | undefined, width: number, theme: ReturnType<typeof useTheme>["theme"]): StyledText {

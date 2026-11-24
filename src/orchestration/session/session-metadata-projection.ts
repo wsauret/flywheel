@@ -2,7 +2,7 @@ import { HashMap, Option } from "effect"
 import { errorMessage } from "../../infra/error-message.js"
 import { createEventProjection, parseProjectionFact, type EventProjection, type PositionedEventProjection } from "../../infra/event-projection.js"
 import { heldProjection } from "../../infra/projection-registry.js"
-import { CorruptEventRowError, type AsyncEventReadSurface, type EventReader, type StoredFact } from "../../infra/event-store-types.js"
+import { CorruptEventRowError, type AsyncEventReadSurface, type AsyncEventStateReadSurface, type EventReader, type StoredFact } from "../../infra/event-store-types.js"
 import { Log } from "../../infra/log.js"
 import { canonicalRoleId } from "../config/retired-config-names.js"
 import { normalizeRoleAssignmentSnapshot, normalizeRoleAssignments, recoverRoleAssignmentSnapshot, type ReplayedSession, type RoleAssignmentSnapshot } from "./schemas.js"
@@ -438,3 +438,16 @@ function replayCreatedSession(session: ReplayedSession): ReplayedSession {
     : { ...session, roleAssignments: normalizeRoleAssignmentSnapshot(session.roleAssignments) }
 }
 interface StringMap<T> { [key: string]: T }
+
+/** Resolves the durable owning chat without using a viewer or live runner. */
+export async function owningChat(reader: AsyncEventStateReadSurface, sessionId: string) {
+  const placements = await createSessionPlacementProjection(reader).replay()
+  let id = sessionId
+  let current = sessionMetadataStateOf(placements, sessionId).sessions[sessionId]
+  while (current && (current.kind === "subagent" || current.kind === "workflow-agent")) {
+    const parent = current.launchedFrom.parentSessionId
+    id = parent
+    current = sessionMetadataStateOf(placements, parent).sessions[parent]
+  }
+  return current?.kind === "chat" ? { ...current, id } : undefined
+}
