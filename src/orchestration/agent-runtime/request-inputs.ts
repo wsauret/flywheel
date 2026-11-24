@@ -46,7 +46,7 @@ import { runningDisplayBuildId } from "../app-service/runtime-executable.js";
 import { readModuleMemory, requestSystemPromptOptions } from "./request-system-prompt.js";
 import { isPersonTurn, turnReminders, type TurnReminderState } from "./turn-reminders.js";
 import { budgetStreamIdOf, prepareRuntimeUsage } from "./runtime-usage.js";
-import { ProviderRuntimeCache, providerRuntimeRoutingKey, providerRuntimeServingKey } from "./provider-runtime-cache.js";
+import { ProviderRuntimeCache, providerRuntimeRoutingKey, providerRuntimeServingKey, type ProviderClientCache } from "./provider-runtime-cache.js";
 import { createRuntimeRequestAudit, type RuntimeConversation } from "./runtime-conversation.js";
 import { withTurnRequestScope } from "./turn-request-model-client.js";
 import { modelRequestRoute } from "./active-request-context.js";
@@ -79,7 +79,7 @@ export interface RequestInputsSource {
   loadedBundledSkillIds?: Set<string>;
   captureModelRuntime: CaptureModelRuntime;
   createRunner: (options: RunnableAgentOptions) => Agent;
-  providerRuntimeCache?: ProviderRuntimeCache<ModelClient>;
+  providerRuntimeCache?: Pick<ProviderClientCache<ModelClient>, "resolve">;
   providerSessionLifetime: ProviderSessionLifetime;
   /** The scope that closes when this run ends, when its provider lifetime outlives it (`AgentOptions.providerSession`).
    *  What only the run needs, such as its hold of its chat tree's shared state, ends with it. Absent when the provider

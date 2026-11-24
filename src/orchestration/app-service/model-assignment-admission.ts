@@ -193,12 +193,15 @@ export interface AdmittedModelAssignmentService extends RuntimeModelAssignmentSe
   loadSessionModelPlan(query: RuntimeSessionModelPlanQuery): Promise<RuntimeSessionModelPlanResult>
 }
 
-/** Binds model-assignment reads and writes to one admitted auth profile. */
-export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmissionDeps): AdmittedModelAssignmentService & {
+/** The admitted service that the auth runtime holds, with the check that capacity waits recheck. */
+export interface ServingModelAssignmentService extends AdmittedModelAssignmentService {
   /** Whether `model` can serve the agent of `sessionId` now: a route of the session's current capture offers it and
    *  one of its candidates is ready or waits on a recheck, by the readiness rule of a request's walk. */
   readonly servesNow: CapacityServingCheck
-} {
+}
+
+/** Binds model-assignment reads and writes to one admitted auth profile. */
+export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmissionDeps): ServingModelAssignmentService {
   const admissionStorage = new AsyncLocalStorage<ModelAssignmentAdmission>()
   const service = createRuntimeModelAssignmentService({
     roleCaptureStore: deps.manager,

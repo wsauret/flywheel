@@ -1,5 +1,4 @@
 import type { ToolEntry } from "../output-blocks.js";
-import type { StructuredOutputBuilder } from "./structured-output-builder.js";
 import type { ToolInput } from "./output-projection-events.js";
 
 /** A tool whose row is in the block tree, addressed by where it landed. */
@@ -20,9 +19,16 @@ interface StandaloneToolLocation {
   toolName: string;
 }
 
+/** The one write a standalone handler makes: it adds its row to the block
+ *  tree and gets back the index where the row was inserted. The index is read
+ *  before cap eviction, which can move the row to a lower index. */
+export interface StandaloneToolSink {
+  pushStandaloneToolEntry(tool: ToolEntry): number;
+}
+
 export type StandaloneHandler = (
   input: ToolInput | undefined,
   now: number,
-  builder: StructuredOutputBuilder,
+  sink: StandaloneToolSink,
   toolUseId?: string,
 ) => StandaloneToolLocation | null;

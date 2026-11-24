@@ -24,7 +24,7 @@ import type { StreamingEditValidationService } from "./tools/streaming-edit-vali
 import { requestAdmissionFromCaptures, type SubscriptionAdmissionCapture } from "../subscription-spend-consent/admission-capture.js";
 import type { AuthConditionOwner } from "../auth/auth-condition-owner.js";
 import type { UsageAuthorityGeneration } from "./usage-settlement.js";
-import { accessProviderRegistry } from "./llm/access-provider-registry.js";
+import { accessProviderRegistry, type AccessProviderRegistry } from "./llm/access-provider-registry.js";
 
 /** Builds a client of `model` whose provider resources `providerSessionLifetime` owns. An absent snapshot or
  *  configuration reads the runtime's current one. */
@@ -53,7 +53,7 @@ interface AdmittedRuntime {
  *  below the capture reads the credential store or the model cache again. */
 export interface ProviderConnectionCapture {
   readonly connection: EffectiveProviderConnection;
-  readonly providers: ReturnType<typeof accessProviderRegistry>;
+  readonly providers: AccessProviderRegistry;
   readonly eligibility?: AccessProviderModelEligibility;
   readonly runtimeConfig: RuntimeConfigRequestCapture;
   /** Plans keyed by the model id their caller will ask for. */
@@ -204,7 +204,7 @@ export function createAgentRuntime(deps: {
   };
   // The definition owner names the project this runtime serves, so every client
   // it builds writes provider diagnostics under that root and never resolves one.
-  const admittedClientOptions = (providers: ReturnType<typeof accessProviderRegistry>, connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture, eligibility: AdmittedClientOptions["eligibility"], providerSessionLifetime: AdmittedClientOptions["providerSessionLifetime"]): AdmittedClientOptions => {
+  const admittedClientOptions = (providers: AccessProviderRegistry, connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture, eligibility: AdmittedClientOptions["eligibility"], providerSessionLifetime: AdmittedClientOptions["providerSessionLifetime"]): AdmittedClientOptions => {
     const admission = requestAdmission(connection, runtimeConfig);
     return {
       providers,

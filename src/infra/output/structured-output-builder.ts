@@ -23,6 +23,7 @@ import { appendKeyedDelta } from "./structured-output-grouping.js";
 import { contentKey, definedProps, rebuildBlockIndexes } from "./structured-output-helpers.js";
 import { resetFailedFileChange } from "./file-change-settlement.js";
 import { resolveToolRowPresentation } from "../tools/tool-display-registry.js";
+import type { StandaloneToolSink } from "./output-tool-projection-types.js";
 import {
   type AgentBlockIdentity,
   type CompleteAgentMeta,
@@ -90,7 +91,7 @@ function nextResponsePhase(current: ResponsePhase | null, event: ResponsePhaseEv
   }
 }
 
-export class StructuredOutputBuilder {
+export class StructuredOutputBuilder implements StandaloneToolSink {
   /** `onChange` hears that the blocks changed; with none, the builder neither
    *  notifies nor records changes for drainChanges. `blocksCap` is a test seam:
    *  eviction wiring is identical at any cap, and exceeding the production 20k
