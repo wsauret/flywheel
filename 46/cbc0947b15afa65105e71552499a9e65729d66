@@ -1,0 +1,362 @@
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 362-374
+scripts/build-manifest.ts
+  h_4b47e9e4a8b456 4,117
+src/orchestration/modules/workflows.ts
+  h_4b47e9e4a8b456 31
+src/orchestration/modules/workflows/migrations/adopt-workflow-children.ts
+  h_4b47e9e4a8b456 41
+src/orchestration/session/child-session-reconciliation.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/session/child-workflow-candidate.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/session/child-workflow-result.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/workflow-host/launch-lifecycle.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/workflow-host/publish.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/workflow-host/workflow-admission.ts
+  h_4b47e9e4a8b456 17
+src/tui/adapters/shell-command-highlight.ts
+  h_4b47e9e4a8b456 2
+src/tui/adapters/syntax-highlight.ts
+  h_4b47e9e4a8b456 2
+src/tui/adapters/tool-detail-highlight.ts
+  h_4b47e9e4a8b456 3
+src/tui/app.tsx
+  h_4b47e9e4a8b456 25,31,143
+src/tui/commands/command-types.ts
+  h_4b47e9e4a8b456 6-7
+src/tui/components/border-content.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/components/child-session-viewer.tsx
+  h_4b47e9e4a8b456 16
+src/tui/components/composer-border-labels.tsx
+  h_4b47e9e4a8b456 3,10-11
+src/tui/components/composer-frame.tsx
+  h_4b47e9e4a8b456 8-9
+src/tui/components/composer.tsx
+  h_4b47e9e4a8b456 22-23
+src/tui/components/error-boundary.tsx
+  h_4b47e9e4a8b456 7,20-22,28-29
+src/tui/components/lazy-tui-view.tsx
+  h_4b47e9e4a8b456 4
+src/tui/components/modal-select.tsx
+  h_4b47e9e4a8b456 4
+src/tui/components/slash-suggestions.tsx
+  h_4b47e9e4a8b456 6
+src/tui/components/syntax-code.tsx
+  h_4b47e9e4a8b456 5-6,9-10
+src/tui/components/tabs-bar.tsx
+  h_4b47e9e4a8b456 8
+src/tui/context/find-highlight.ts
+  h_4b47e9e4a8b456 6
+src/tui/context/reactive-text.ts
+  h_4b47e9e4a8b456 3
+src/tui/context/theme.tsx
+  h_4b47e9e4a8b456 6,11,44-45,56
+src/tui/context/theme/readable-theme.ts
+  h_4b47e9e4a8b456 4
+src/tui/context/theme/resolve.ts
+  h_4b47e9e4a8b456 6
+src/tui/context/theme/syntax-colors.ts
+  h_4b47e9e4a8b456 1-32
+src/tui/context/theme/syntax-rules-markdown.ts
+  h_4b47e9e4a8b456 2-3
+src/tui/context/theme/syntax-rules.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/context/theme/system-theme.ts
+  h_4b47e9e4a8b456 7-8
+src/tui/context/theme/terminal-palette.ts
+  h_4b47e9e4a8b456 3
+src/tui/context/theme/tui-theme.ts
+  h_4b47e9e4a8b456 1-84
+src/tui/hooks/composer-attachments.ts
+  h_4b47e9e4a8b456 12
+src/tui/hooks/composer-draft.ts
+  h_4b47e9e4a8b456 1-17,22-26,45
+src/tui/hooks/create-composer-returns.ts
+  h_4b47e9e4a8b456 6
+src/tui/hooks/create-draft-cache.ts
+  h_4b47e9e4a8b456 1-4,9-11,110-133
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 19-20
+src/tui/hooks/create-output-scroll-controller.ts
+  h_4b47e9e4a8b456 25
+src/tui/hooks/create-runtime-config-cache.ts
+  h_4b47e9e4a8b456 1-69
+src/tui/hooks/create-session-creator.ts
+  h_4b47e9e4a8b456 7
+src/tui/hooks/create-settings-store.ts
+  h_4b47e9e4a8b456 10
+src/tui/hooks/create-spinner-status.ts
+  h_4b47e9e4a8b456 8
+src/tui/hooks/paste-collapse.ts
+  h_4b47e9e4a8b456 2
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 19,46,52
+src/tui/hooks/spinner-status-animation-advance.ts
+  h_4b47e9e4a8b456 1
+src/tui/hooks/spinner-status-animation.ts
+  h_4b47e9e4a8b456 5,7-14
+src/tui/hooks/spinner-status-model.ts
+  h_4b47e9e4a8b456 1-72
+src/tui/hooks/spinner-status-notice.ts
+  h_4b47e9e4a8b456 3
+src/tui/hooks/use-model-modal-scope.ts
+  h_4b47e9e4a8b456 1
+src/tui/hooks/use-release-notice.ts
+  h_4b47e9e4a8b456 5
+src/tui/hooks/use-subscription-spend-consent-control.ts
+  h_4b47e9e4a8b456 7,28-29,35-36,64,123
+src/tui/hooks/use-subscription-spend-consent-modal.ts
+  h_4b47e9e4a8b456 2-21
+src/tui/hooks/use-tabs-hint.ts
+  h_4b47e9e4a8b456 4
+src/tui/hooks/use-theme-modal.ts
+  h_4b47e9e4a8b456 9-10
+src/tui/modals/auth-modal.tsx
+  h_4b47e9e4a8b456 5,24
+src/tui/modals/model-modal-cost.ts
+  h_4b47e9e4a8b456 3
+src/tui/modals/model-modal-text.ts
+  h_4b47e9e4a8b456 2
+src/tui/modals/model-modal.tsx
+  h_4b47e9e4a8b456 6
+src/tui/modals/subscription-spend-consent-modal.tsx
+  h_4b47e9e4a8b456 2
+src/tui/modules/experiments/dashboard-lines.ts
+  h_4b47e9e4a8b456 3
+src/tui/modules/mcp/modal.tsx
+  h_4b47e9e4a8b456 12
+src/tui/modules/remote/modal.tsx
+  h_4b47e9e4a8b456 5
+src/tui/modules/workflows/activity-block.tsx
+  h_4b47e9e4a8b456 17
+src/tui/modules/workflows/agent-header.tsx
+  h_4b47e9e4a8b456 8
+src/tui/modules/workflows/agent-viewer.tsx
+  h_4b47e9e4a8b456 22
+src/tui/modules/workflows/card-viewer.tsx
+  h_4b47e9e4a8b456 25
+src/tui/output-blocks/agent-group-block.tsx
+  h_4b47e9e4a8b456 22
+src/tui/output-blocks/diff-preview.tsx
+  h_4b47e9e4a8b456 23
+src/tui/output-blocks/markdown/markdown-body.tsx
+  h_4b47e9e4a8b456 8
+src/tui/output-blocks/markdown/markdown-styles.ts
+  h_4b47e9e4a8b456 2
+src/tui/output-blocks/question-history-block.tsx
+  h_4b47e9e4a8b456 7
+src/tui/output-blocks/stop-affordance.ts
+  h_4b47e9e4a8b456 2
+src/tui/output-blocks/thinking-block.tsx
+  h_4b47e9e4a8b456 13
+src/tui/output-blocks/tool-entry.tsx
+  h_4b47e9e4a8b456 18
+src/tui/output-blocks/tool-row.tsx
+  h_4b47e9e4a8b456 11-12
+src/tui/output-blocks/tool-run-block.tsx
+  h_4b47e9e4a8b456 10
+src/tui/output-blocks/user-message-block.tsx
+  h_4b47e9e4a8b456 7
+src/tui/output-blocks/workflow-card.tsx
+  h_4b47e9e4a8b456 15
+src/tui/output-window/output-window-scroll.ts
+  h_4b47e9e4a8b456 6
+src/tui/output-window/output-window-viewport.tsx
+  h_4b47e9e4a8b456 17-18
+src/tui/question-dock-form.ts
+  h_4b47e9e4a8b456 7-25,34
+src/tui/session-picker/session-picker-list.tsx
+  h_4b47e9e4a8b456 4
+src/tui/session-picker/session-picker-row.tsx
+  h_4b47e9e4a8b456 4
+src/tui/shell-composer.tsx
+  h_4b47e9e4a8b456 30,33-34
+src/tui/shell-header.tsx
+  h_4b47e9e4a8b456 5
+src/tui/shell-overlays.ts
+  h_4b47e9e4a8b456 26-27
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 36-37
+src/tui/transcript-store/create-output-transcript-cache.ts
+  h_4b47e9e4a8b456 11-12
+src/tui/transcript-store/output-transcript-cache-types.ts
+  h_4b47e9e4a8b456 6-18
+src/tui/welcome-notice.tsx
+  h_4b47e9e4a8b456 6
+src/workflows/agents/persona-sources.ts
+  h_4b47e9e4a8b456 6
+src/workflows/agents/registry.ts
+  h_4b47e9e4a8b456 12
+src/workflows/artifact-contracts.ts
+  h_4b47e9e4a8b456 3-6
+src/workflows/brief.ts
+  h_4b47e9e4a8b456 10
+src/workflows/context-bundle/context.ts
+  h_4b47e9e4a8b456 6
+src/workflows/definition-assets.ts
+  h_4b47e9e4a8b456 4
+src/workflows/definition-provenance-fact-writers.ts
+  h_4b47e9e4a8b456 5
+src/workflows/definition-provenance-facts.ts
+  h_4b47e9e4a8b456 6,11,386-400
+src/workflows/definition-registry.ts
+  h_4b47e9e4a8b456 5,9
+src/workflows/definition-validation.ts
+  h_4b47e9e4a8b456 2,6-7
+src/workflows/definitions/bundled-defaults.ts
+  h_4b47e9e4a8b456 7
+src/workflows/definitions/installer.ts
+  h_4b47e9e4a8b456 12
+src/workflows/reassessment-contract.ts
+  h_4b47e9e4a8b456 1-3
+src/workflows/retired-step-grammar/schema.ts
+  h_4b47e9e4a8b456 308
+src/workflows/skill-closure.ts
+  h_4b47e9e4a8b456 1,65-98
+src/workflows/skill-references.ts
+  h_4b47e9e4a8b456 4
+src/workflows/vm/reassessment.ts
+  h_4b47e9e4a8b456 9
+src/workflows/vm/replay.ts
+  h_4b47e9e4a8b456 2
+src/workflows/workflow-completion.ts
+  h_4b47e9e4a8b456 1-21
+tests/helpers/skill-fixtures.ts
+  h_4b47e9e4a8b456 8
+tests/unit/infra/projection-fold-cache-families.test.ts
+  h_4b47e9e4a8b456 16
+tests/unit/orchestration/app-service/session-detail-workflow-controls.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/session/child-reconciliation-work-count.test.ts
+  h_4b47e9e4a8b456 16
+tests/unit/tui/_output-window-transcript.ts
+  h_4b47e9e4a8b456 13
+tests/unit/tui/adapters/shell-command-highlight.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/tui/adapters/syntax-highlight.test.ts
+  h_4b47e9e4a8b456 9-11
+tests/unit/tui/adapters/tool-detail-highlight.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/tui/commands/font-command.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/components/error-boundary.test.tsx
+  h_4b47e9e4a8b456 8,24
+tests/unit/tui/components/prompt-border-fixtures.ts
+  h_4b47e9e4a8b456 6,8-9
+tests/unit/tui/components/prompt-border-layout.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/tui/components/syntax-code.test.tsx
+  h_4b47e9e4a8b456 10
+tests/unit/tui/components/tabs-bar.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/tui/context/theme/theme-contrast.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/context/theme/theme-resolution.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/tui/hooks/cache-invalidation-admission.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/tui/hooks/create-draft-cache.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/tui/hooks/prompt-draft-merge.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/tui/hooks/runtime-config-cache.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/tui/hooks/shell-state-harness.ts
+  h_4b47e9e4a8b456 27
+tests/unit/tui/hooks/shell-state-migrated-signals.test.ts
+  h_4b47e9e4a8b456 14-15
+tests/unit/tui/hooks/spinner-status-animation.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/tui/hooks/use-tabs-hint.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/tui/modals/model-modal-cost.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/tui/output-blocks/diff-preview.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/tui/output-window-bottom-follow.test.tsx
+  h_4b47e9e4a8b456 10
+tests/unit/tui/output-window-duplicate-identity.test.tsx
+  h_4b47e9e4a8b456 8
+tests/unit/tui/output-window-near-edge.test.tsx
+  h_4b47e9e4a8b456 16
+tests/unit/tui/output-window-resize.test.tsx
+  h_4b47e9e4a8b456 4
+tests/unit/tui/output-window-scroll.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/tui/output-window-virtualization.test.tsx
+  h_4b47e9e4a8b456 8
+tests/unit/tui/output-window.test.tsx
+  h_4b47e9e4a8b456 11
+tests/unit/tui/transcript-store/output-height-estimates.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/workflows/definitions/definition-assets.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/workflows/definitions/definition-provenance-store.test.ts
+  h_4b47e9e4a8b456 10-11
+tests/unit/workflows/definitions/definition-validation.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/workflows/definitions/installer.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/workflows/vm/fact-fold.test.ts
+  h_4b47e9e4a8b456 20
+tests/unit/workflows/vm/pipeline-ordering.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/workflows/vm/reassessment-contract.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/workflows/vm/recovery-fold.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/workflows/vm/selecting-joins.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/workflows/vm/step-failure.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/workflows/workflow-authoring-skill.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/workflows/workflow-completion.test.ts
+  h_4b47e9e4a8b456 2-17
+webview/src/app/blocks.tsx
+  h_4b47e9e4a8b456 22-23
+webview/src/app/render-ownership-fixture.ts
+  h_4b47e9e4a8b456 25
+webview/src/app/session-notices.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/sheets/background-sheet.tsx
+  h_4b47e9e4a8b456 17
+webview/src/app/sheets/changes-sheet.tsx
+  h_4b47e9e4a8b456 5
+webview/src/app/sheets/status-sheet.tsx
+  h_4b47e9e4a8b456 17
+webview/src/app/sheets/workspace-surface.tsx
+  h_4b47e9e4a8b456 2-5
+webview/src/app/turn-changes.tsx
+  h_4b47e9e4a8b456 6-7
+webview/src/app/turn-features.test.ts
+  h_4b47e9e4a8b456 6
+webview/src/client/session-input.ts
+  h_4b47e9e4a8b456 1-3,29-66,89
+webview/src/client/session-state.ts
+  h_4b47e9e4a8b456 1-138
+webview/src/client/session.ts
+  h_4b47e9e4a8b456 4,12,21-22,29-30,32-33,36-40,54-59
+webview/src/client/tool-runs.ts
+  h_4b47e9e4a8b456 67-77
+webview/src/client/turn-folds.ts
+  h_4b47e9e4a8b456 2
+webview/src/client/view-state.ts
+  h_4b47e9e4a8b456 23,72,245,250,262,297,390,400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "46cbc0947b15afa65105e71552499a9e65729d66",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
