@@ -213,3 +213,9 @@ Because: An append to a stale leaf drops another writer's entry off the active b
 
 A user turn commits before its provider request begins. Assistant output and tool plumbing accumulate in the writing process and commit as one validated batch at a save point (ARCH-SESSIONS-034). The store append is the durability boundary, and the in-memory projection advances only after it succeeds. Unflushed output is visible only to the writing process, forks and compaction operate on committed history, and ordered disposal performs a final flush.
 Not: Fire-and-forget disposal of the conversation, which loses data.
+
+## ARCH-SESSIONS-050: A pending question ends its conversation until it settles
+
+While the last exchange of a chat's conversation holds an ask whose question is pending, the conversation accepts only results of that exchange. Every other input stays in its durable hold and starts no turn. Settlement appends the ask's result, then the held input in arrival order, and continues the turn through the session's continuation lane. The chat's conversation writer owns this rule and answers it from live session state, for a running loop and for a chat at rest alike.
+Because: An entry after the ask separates the call from its result, so the answer has no place in the model's history.
+Not: Reordering entries when a request is built, or settling the question when other input arrives.
