@@ -1,8 +1,8 @@
 import { useRenderer } from "@opentui/solid"
 import { useToast } from "@tui/context/toast"
 import { errorMessage } from "../../infra/error-message.js"
-import type { Clipboard } from "../clipboard.js"
-import { consumeSelectedText } from "../selection.js"
+import type { Clipboard } from "../terminal/clipboard.js"
+import { consumeSelectedText } from "../terminal/selection.js"
 
 export function useCopySelection(clipboard: Clipboard): () => boolean {
   const renderer = useRenderer()

@@ -1,7 +1,7 @@
 import { createEffect, onCleanup, untrack, type Accessor } from "solid-js"
 import type { WorkflowDetail } from "../../../protocol/modules/workflows.js"
 import type { FrontendWorkflowView, WorkflowAgentLive } from "../../../protocol/workflow-view-protocol-types.js"
-import type { ModuleDomainIntakes } from "../../hooks/create-module-domain-intakes.js"
+import type { ModuleDomainIntakes } from "../../hooks/state/domains/create-module-domain-intakes.js"
 import { workflowSurfaceReads } from "../../../protocol/client/workflow-surface.js"
 
 export interface WorkflowInspection {

@@ -1,9 +1,9 @@
 import type { CredentialProviderId } from "../../../infra/auth/store/auth-store-types.js"
 import type { AuthFileAttention, AuthProviderAccountStatus, AuthProviderAttention, AuthProviderSource, AuthProviderStatus, RuntimeAuthProfileView, RuntimeAuthLoginQuestion } from "../../../protocol/auth-status-protocol-types.js"
-import type { AuthProfileScopeLabel } from "../../hooks/auth-profile-selection.js"
+import type { AuthProfileScopeLabel } from "../../hooks/overlays/modals/profile/auth-profile-selection.js"
 import type { RuntimeAuthProfileWriteScope } from "../../../protocol/auth-profile-selection-protocol-types.js"
 import type { ProviderCatalogDiscovery, ProviderModelRow, ProviderModelTarget, ProviderModelView } from "../../../protocol/provider-model-preference-protocol-types.js"
-import { authStatusPresentation } from "../../auth-status-presentation.js"
+import { authStatusPresentation } from "./auth-status-presentation.js"
 import type { RuntimeAuthLoginPrompt } from "../../../protocol/auth-login-protocol-types.js"
 
 import type { SubscriptionSpendConsentView } from "../../../protocol/subscription-spend-consent-protocol-types.js"

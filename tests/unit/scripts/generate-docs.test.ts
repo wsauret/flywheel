@@ -10,7 +10,7 @@ import { configReference } from "../../../src/orchestration/config/schema/config
 import { installedConfigSchema } from "../../../src/orchestration/config/schema/schema.js";
 import { SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
-import { createKeymap } from "../../../src/tui/keymap/keymap.js";
+import { createKeymap } from "../../../src/tui/terminal/keymap/keymap.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();

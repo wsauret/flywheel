@@ -37,7 +37,7 @@ describe("lazy TUI view boundary", () => {
     expect(bypassesLazyTuiViewRegistry({ sourcePath: home, targetPath: view, dynamic: true }, registered)).toBe(false)
     expect(bypassesLazyTuiViewRegistry({ sourcePath: home, targetPath: "src/tui/modules/experiments/strip.tsx", dynamic: false }, registered)).toBe(false)
     expect(bypassesLazyTuiViewRegistry({ sourcePath: "src/tui/modules.ts", targetPath: home, dynamic: false }, registered)).toBe(false)
-    expect(bypassesLazyTuiViewRegistry({ sourcePath: "src/tui/shell.tsx", targetPath: view, dynamic: false }, registered)).toBe(true)
+    expect(bypassesLazyTuiViewRegistry({ sourcePath: "src/tui/shell/shell.tsx", targetPath: view, dynamic: false }, registered)).toBe(true)
     expect(bypassesLazyTuiViewRegistry({ sourcePath: "src/tui/hooks/example.ts", targetPath: view, dynamic: true }, registered)).toBe(true)
     expect(bypassesLazyTuiViewRegistry({ sourcePath: "src/tui/hooks/example.ts", targetPath: "src/tui/modules/other/view.tsx", dynamic: true }, registered)).toBe(true)
   })
@@ -49,8 +49,8 @@ describe("lazy TUI view boundary", () => {
       dynamic: true,
     }, registeredTargets)).toBe(false)
     expect(bypassesLazyTuiViewRegistry({
-      sourcePath: "src/tui/launcher.ts",
-      targetPath: "src/tui/app.tsx",
+      sourcePath: "src/tui/shell/launcher.ts",
+      targetPath: "src/tui/shell/app.tsx",
       dynamic: true,
     }, registeredTargets)).toBe(false)
     expect(bypassesLazyTuiViewRegistry({

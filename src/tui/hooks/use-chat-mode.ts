@@ -1,7 +1,7 @@
 import type { MutationResult, RuntimeClient } from "../../protocol/app-service-types.js"
 import { dispatchInterrupt } from "../../protocol/client/session-controls.js"
 import type { AgentInputAnswer } from "../../protocol/question-protocol-types.js"
-import type { ShellServices, ShellSignals } from "./shell-state.js"
+import type { ShellServices, ShellSignals } from "./state/shell-state.js"
 
 interface QuestionAnswers {
   [question: string]: AgentInputAnswer

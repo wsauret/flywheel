@@ -182,7 +182,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
     active: true,
     allowPaths: [
       "src/vendor.d.ts",
-      "src/tui/launcher.ts",
+      "src/tui/shell/launcher.ts",
       "src/orchestration/modules/provider-github-copilot/auth-types.ts",
       // The Agent SDK bridge loads an engine plugin through the SDK's `plugins` option.
       "src/orchestration/modules/provider-claude-agent-sdk/",

@@ -99,12 +99,12 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/tui/app.tsx",
+    file: "src/tui/shell/app.tsx",
     what: "render frame summary",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/tui/output-window/output-window-scroll-anomalies.ts",
+    file: "src/tui/transcript/output-window/output-window-scroll-anomalies.ts",
     what: "transcript scroll fights and row mount churn",
     pattern: /"(tui\.(?:scroll\.fight|row\.mount_churn)\.[a-z_]+)"/g,
   },

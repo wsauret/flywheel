@@ -4,12 +4,12 @@ import { buildCommandDefinitions } from "../../../../src/tui/commands/command-de
 import type { BuiltInCommandContext, BuiltInCommandDefinition } from "../../../../src/tui/commands/command-types.js"
 import type { OpenSurface } from "../../../../src/tui/commands/command-surfaces.js"
 import { createCommandDispatch } from "../../../../src/tui/commands/command-dispatch.js"
-import type { CommandDeps } from "../../../../src/tui/hooks/use-commands.js"
-import { useCommands } from "../../../../src/tui/hooks/use-commands.js"
+import type { CommandDeps } from "../../../../src/tui/hooks/composer/use-commands.js"
+import { useCommands } from "../../../../src/tui/hooks/composer/use-commands.js"
 import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
 import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/slash-route.js"
 import { runtimeDispatch, type DispatchAnswers } from "../../../helpers/runtime-dispatch.js"
-import type { ShellServices, ShellSignals } from "../../../../src/tui/hooks/shell-state.js"
+import type { ShellServices, ShellSignals } from "../../../../src/tui/hooks/state/shell-state.js"
 import { createLauncherScope } from "../../../../src/infra/process-supervisor.js"
 
 const BG_COMMAND = { id: "bg", title: "Background work", description: "Manage background commands", aliases: ["tasks"] } as const

@@ -5,7 +5,7 @@ import type { AuthProviderStatus } from "../../../../../src/protocol/auth-status
 import type { RuntimeAuthProfileDeletionPreview } from "../../../../../src/protocol/auth-profile-selection-protocol-types.js"
 import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
-import { useAuthModal } from "../../../../../src/tui/hooks/use-auth-modal.js"
+import { useAuthModal } from "../../../../../src/tui/hooks/overlays/modals/auth/use-auth-modal.js"
 import { fakeLanes } from "../../../../helpers/fake-lanes.js"
 import { recordedDispatch, runtimeDispatch, runtimeQuery, type DispatchAnswer } from "../../../../helpers/runtime-dispatch.js"
 

@@ -4,9 +4,9 @@ import { explainedByConnection } from "../../../protocol/client/connection-failu
 import type { RuntimeAuthStatusScope, RuntimeAuthView } from "../../../protocol/auth-status-protocol-types.js"
 import { type UsageMetadataResult, type UsageAccountsQuery, type UsageAccountsResult, type UsageHistoryQuery, type UsageHistoryRange, type UsageHistoryResult, type UsageApplyResetMutation, type UsageApplyResetResult, type UsageMutationResult, type UsageOpenMutation, type UsageReadFailure, type UsageSpendQuery, type UsageSpendResult, USAGE_HISTORY_RANGES } from "../../../protocol/modules/subscription-usage.js"
 
-import type { ListModalKeyEvent } from "../../components/modal-list-keys.js"
+import type { ListModalKeyEvent } from "../../components/modal/select/modal-list-keys.js"
 import type { ModalContext, ModalHandle } from "../../components/modal-stack.js"
-import { createModalScrollController, type ModalScrollController } from "../../components/modal-scroll-controller.js"
+import { createModalScrollController, type ModalScrollController } from "../../components/modal/scroll/modal-scroll-controller.js"
 
 const USAGE_FRESHNESS_MS = 5 * 60_000
 const USAGE_SUBMIT_KEYS = new Set(["enter", "return"])

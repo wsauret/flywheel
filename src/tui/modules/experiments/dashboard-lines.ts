@@ -1,8 +1,8 @@
 import { bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import type { FrontendExperimentMetric, FrontendExperimentMetricDirection, FrontendExperimentRun, FrontendExperimentView } from "../../../protocol/modules/experiments.js"
 import type { TuiTheme } from "../../context/theme/tui-theme.js"
-import { chunkDisplayWidth, truncateChunks } from "../../output-blocks/tools/tool-row-wrap.js"
-import { displayWidth, truncateToWidth } from "../../text.js"
+import { chunkDisplayWidth, truncateChunks } from "../../transcript/output-blocks/tools/tool-row-wrap.js"
+import { displayWidth, truncateToWidth } from "../../terminal/text.js"
 
 /** One rendered dashboard row: styled chunks that fit one terminal line. */
 export type DashboardLine = readonly TextChunk[]

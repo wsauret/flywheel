@@ -10,7 +10,7 @@ import { fakeRuntimeConnection } from "../../../../client/runtime-connection-fix
 import { fileURLToPath } from "node:url"
 import { importBuiltModule } from "../../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../../test-support/solid-transform.js"
-import { collapsedPreview, mutationEvidenceFixture } from "../../../../../../tests/unit/tui/output-blocks/_mutation-evidence-fixture.js"
+import { collapsedPreview, mutationEvidenceFixture } from "../../../../../../tests/fixtures/mutation-evidence-fixture.js"
 import { mountFileDiff } from "../../render-ownership-loader-fixture.js"
 
 const build = await Bun.build({

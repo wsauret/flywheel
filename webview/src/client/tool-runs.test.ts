@@ -5,7 +5,7 @@ import type { FrontendOutputBlock, FrontendToolEntry } from "../../../src/protoc
 import { blockIdentity } from "../../../src/protocol/block-identity.js"
 import { foldTranscript } from "../../../src/protocol/client/transcript-model.js"
 import { blockEndTimes, createWebTranscript, presentWebTranscript, rowAtIndex, rowIdentity, rowIndex, runningTimeIds, toolGroupSummaryParts, toolWorkCounts } from "./tool-runs.js"
-import { mutationEvidenceFixture } from "../../../tests/unit/tui/output-blocks/_mutation-evidence-fixture.js"
+import { mutationEvidenceFixture } from "../../../tests/fixtures/mutation-evidence-fixture.js"
 
 type Status = FrontendToolEntry["status"]
 

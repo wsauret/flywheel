@@ -8,7 +8,7 @@ import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js"
 import { OutputProjector } from "../../../src/infra/output/projector/output-projector.js"
 import { RuntimeEventProjector } from "../../../src/infra/output/runtime-event-projector.js"
 import { createProvisionalDiffInput } from "../../../src/infra/output/streaming/provisional-diff-input.js"
-import { mutationEvidenceFixture } from "../tui/output-blocks/_mutation-evidence-fixture.js"
+import { mutationEvidenceFixture } from "../../fixtures/mutation-evidence-fixture.js"
 import type { MutationDiff } from "../../../src/infra/mutation-diff.js"
 import type { FileWritePolicy } from "../../../src/protocol/client/file-change-body.js"
 

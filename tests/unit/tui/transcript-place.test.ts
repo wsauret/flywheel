@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
-import { createHeightIndex } from "../../../src/tui/output-window/create-height-index.js"
-import { transcriptPlace, type TranscriptLayoutSlot, type TranscriptScrollState } from "../../../src/tui/output-window/output-window-scroll.js"
-import type { TranscriptFollow } from "../../../src/tui/output-window/transcript-follow.js"
-import type { TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
+import { createHeightIndex } from "../../../src/tui/transcript/output-window/create-height-index.js"
+import { transcriptPlace, type TranscriptLayoutSlot, type TranscriptScrollState } from "../../../src/tui/transcript/output-window/output-window-scroll.js"
+import type { TranscriptFollow } from "../../../src/tui/transcript/output-window/transcript-follow.js"
+import type { TranscriptSnapshot } from "../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"
 
 /** Blocks 10..19 resident of 20, five rows each. */
 function snapshot(hasAfter = false): TranscriptSnapshot {

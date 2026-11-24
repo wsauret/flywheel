@@ -1,7 +1,7 @@
 import type { ModelAssignmentRow } from "../../../protocol/model-assignment-protocol-types.js"
 import { DEFAULT_ROLES, parentRoleId, ROLE_GROUP_ORDER } from "../../../orchestration/config/roles.js"
 import type { ModelAssignmentContent, ModelAssignmentItem } from "./model-modal-types.js"
-import { flattenModalDisclosureTree, type ModalDisclosureNode } from "../../components/modal-disclosure.js"
+import { flattenModalDisclosureTree, type ModalDisclosureNode } from "../../components/modal/modal-disclosure.js"
 
 export function buildModelModalItems(
   assignments: readonly ModelAssignmentRow[],

@@ -7,7 +7,7 @@ import { descriptionLine, modalHelpRows, modalTitle, contextLine } from "../../.
 import type { ModelModalState } from "../../../../../src/tui/modals/model/model-modal-types.js"
 import { authStatusCursor, type RuntimeAuthStatusScope, type RuntimeAuthView } from "../../../../../src/protocol/auth-status-protocol-types.js"
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
-import { useModelModal } from "../../../../../src/tui/hooks/use-model-modal.js"
+import { useModelModal } from "../../../../../src/tui/hooks/overlays/modals/model/use-model-modal.js"
 import {
   scopeChromeColor,
   scopeContextLine,

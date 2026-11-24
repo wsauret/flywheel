@@ -7,8 +7,8 @@ import type { OffCommandDescriptor } from "../../protocol/command-catalog-protoc
 import { lostWithLane } from "../../protocol/client/connection-failures.js"
 import { offCommandRefusal } from "../../protocol/client/off-command.js"
 import { routeSlashToken, UNKNOWN_COMMAND_NOTICE, type CommandCatalogReadiness } from "../../protocol/client/slash-route.js"
-import { createAcceptanceReporter } from "../hooks/report-async.js"
-import type { ShellServices } from "../hooks/shell-state.js"
+import { createAcceptanceReporter } from "../hooks/wiring/report-async.js"
+import type { ShellServices } from "../hooks/state/shell-state.js"
 import type { BuiltInCommandDefinition, CommandSpec } from "./command-types.js"
 
 const SLASH_PATTERN = SLASH_COMMAND_PATTERN

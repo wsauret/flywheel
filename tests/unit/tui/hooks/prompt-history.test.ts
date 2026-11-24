@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, beforeEach } from "bun:test"
-import { createPromptHistory } from "../../../../src/tui/components/create-composer-history.js"
+import { createPromptHistory } from "../../../../src/tui/components/composer/create-composer-history.js"
 
 describe("createPromptHistory", () => {
   let appends: (readonly string[])[]

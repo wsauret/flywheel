@@ -6,7 +6,7 @@ import { createWorkflowCardViewerInput, WorkflowCardViewer, type WorkflowCardVie
 import { ThemeProvider } from "../../../../src/tui/context/theme.js"
 import { TickPoolProvider } from "../../../../src/tui/context/tick-pool-context.js"
 import type { FrontendEvent, FrontendMutation, WorkflowDefinitionDrift, WorkflowSessionAction } from "../../../../src/protocol/app-service-types.js"
-import { createRoleCache } from "../../../../src/tui/hooks/create-role-cache.js"
+import { createRoleCache } from "../../../../src/tui/hooks/state/sessions/create-role-cache.js"
 import { rolesCursor, type RoleAssignmentView } from "../../../../src/protocol/role-protocol-types.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import type { WorkflowAgentTarget } from "../../../../src/protocol/client/workflow-agent.js"
@@ -14,7 +14,7 @@ import type { LoadedWorkflowView } from "../../../../src/protocol/workflow-view-
 import { attemptOf, stage } from "../../workflows/vm/_map-fixtures.js"
 import { drive, frontendView, items, mapBindings, mapControl, mapOutcome, startNext, wideBindings, wideControl } from "../../workflows/vm/_tree-fixtures.js"
 import { workflowDetail } from "../../../helpers/runtime-views.js"
-import { resolvedTheme, sameColor } from "./prompt-border-fixtures.js"
+import { resolvedTheme, sameColor } from "./composer/frame/prompt-border-fixtures.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
 const renders: Awaited<ReturnType<typeof testRender>>[] = []

@@ -3,8 +3,8 @@ import { builtInCommandDeclarations, builtInCommandDescriptor } from "../src/orc
 import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModule } from "../src/orchestration/modules.js";
 import { buildCommandDefinitions } from "../src/tui/commands/command-definitions.js";
 import type { CommandSpec } from "../src/tui/commands/command-types.js";
-import { HELP_SHORTCUT_SECTIONS, helpShortcuts } from "../src/tui/components/modal-help-shortcuts.js";
-import { createKeymap, DEFAULT_BINDINGS } from "../src/tui/keymap/keymap.js";
+import { HELP_SHORTCUT_SECTIONS, helpShortcuts } from "../src/tui/components/modal/help/modal-help-shortcuts.js";
+import { createKeymap, DEFAULT_BINDINGS } from "../src/tui/terminal/keymap/keymap.js";
 import { compareCodePoints } from "./render-config-docs.js";
 
 // Each page renders from the code that defines what it lists, with the
