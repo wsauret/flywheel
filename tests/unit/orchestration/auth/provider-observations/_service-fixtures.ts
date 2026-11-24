@@ -5,8 +5,8 @@ import type { AccessProviderDefinition } from "../../../../../src/infra/llm/acce
 import { composeModules } from "../../../../../src/infra/module-descriptor.js"
 import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/llm/usage/subscription-usage.js"
 
-import { accessProviderRegistry, type AccessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
-import type { AccessProviderFactory } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"
+import { accessProviderRegistry, type AccessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js"
+import type { AccessProviderFactory } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"
 import type { FirstPartyModule } from "../../../../../src/orchestration/modules.js"
 /** Creates isolated profiles. Each test file must register cleanup in its own afterEach hook. */
 export function createProfileFixture() {

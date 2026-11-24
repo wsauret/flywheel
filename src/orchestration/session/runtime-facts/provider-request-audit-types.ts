@@ -3,7 +3,7 @@ import type { AccessProviderCandidate, AccessProviderCatalogProvenance } from ".
 import { Schema } from "effect"
 import { ProviderErrorDiagnosticSchema, type ProviderErrorDiagnostic } from "../../../infra/llm/errors/provider-error-diagnostic.js"
 import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js"
-import type { ModelInteractionProfileId } from "../../agent-runtime/model-interaction-profile.js"
+import type { ModelInteractionProfileId } from "../../agent-runtime/request/prompt/model-interaction-profile.js"
 
 /** Profile ids that only recorded requests hold: builds before 2026-10-30 served gpt-6-luna through them. */
 export const RETIRED_INTERACTION_PROFILE_IDS = Object.freeze(["luna-native-v1", "luna-shell-v1"] as const)

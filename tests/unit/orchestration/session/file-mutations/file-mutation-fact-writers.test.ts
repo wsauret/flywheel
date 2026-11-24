@@ -11,7 +11,7 @@ import { withStore, mutationFacts, context as mutationContext } from "../file-mu
 import type { ContainedFileSnapshot } from "../../../../../src/infra/descriptor-directory-contract.js"
 import { prepareFileMutationOperation, retireFileMutationNotApplied, settleFileMutation } from "../../../../../src/orchestration/session/file-mutations/file-mutation-fact-writers.js"
 import { createGitAiAttributionService } from "../../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
-import { publishFileMutationAttribution, settleFileMutationArtifact } from "../../../../../src/orchestration/agent-runtime/tools/file-mutation-artifact.js"
+import { publishFileMutationAttribution, settleFileMutationArtifact } from "../../../../../src/orchestration/agent-runtime/tools/edit/file-mutation-artifact.js"
 import { createRecordingFileMutationStore } from "../../agent-runtime/tools/_fixtures.js"
 import { readFileMutationOperation, snapshotToFileObjectProof } from "../../../../../src/orchestration/session/file-mutations/file-mutation-operation.js"
 import { mutationSnapshot } from "../file-mutation-proof-fixture.js"

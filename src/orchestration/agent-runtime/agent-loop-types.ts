@@ -10,9 +10,9 @@ import type { CommittedTree } from "../session/conversation/conversation-project
 import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/attempt/handoff-tool-schema.js";
 import type { InputSource, LogicalTurnStartedContext, TurnEndedContext, TurnParkedContext } from "../../infra/agent-loop-events.js";
 import type { ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
-import type { UsageSettlement } from "./usage-settlement.js";
-import type { BackgroundExecutionOwner } from "./background-execution-owner.js";
-import type { AfterToolCallHook } from "./agent-loop-tools.js";
+import type { UsageSettlement } from "./request/usage/usage-settlement.js";
+import type { BackgroundExecutionOwner } from "./background-execution/background-execution-owner.js";
+import type { AfterToolCallHook } from "./loop/tool-calls/agent-loop-tools.js";
 import type {
   CacheRetention,
   ContentBlock,
@@ -22,18 +22,18 @@ import type {
   TurnModelClient,
 } from "./llm/types.js";
 import type { SystemPromptTiers } from "./llm/system-prompt-tiers.js";
-import type { PromptPrefixHold } from "./prompt-prefix-hold.js";
-import type { ModelInteractionProfile } from "./model-interaction-profile.js";
+import type { PromptPrefixHold } from "./loop/turn/prompt-prefix-hold.js";
+import type { ModelInteractionProfile } from "./request/prompt/model-interaction-profile.js";
 import type { ModuleRuntimes } from "../../infra/module-runtime.js";
 import type { CapabilityAccess, ToolAttributionIdentity } from "./tools/types.js";
-import type { RequestToolSurfaceOwner } from "./request-tool-surface.js";
-import type { CurrentTurnInterruption } from "./run-lifecycle.js";
+import type { RequestToolSurfaceOwner } from "./request/request-tool-surface.js";
+import type { CurrentTurnInterruption } from "./loop/turn/run-lifecycle.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
-import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
-import type { AgentRunTally, PersonWait, WaitExpiry } from "./agent-loop-state.js";
+import type { StreamingEditValidationService } from "./tools/edit/streaming-edit-validation.js";
+import type { AgentRunTally, PersonWait, WaitExpiry } from "./loop/agent-loop-state.js";
 
 interface HandoffContent {
   [key: string]: unknown;

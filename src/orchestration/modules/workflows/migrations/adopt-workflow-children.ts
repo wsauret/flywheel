@@ -22,7 +22,7 @@ import { buildRuntimeWorkflowInvocationAppend, prepareChildSessionPublication } 
 import type { RuntimeWorkflowInvocationPayload } from "../../../../infra/runtime-fact-types.js"
 import { CHILD_SESSION_DELETION_IN_FLIGHT_KIND, decodeRetainedChildSessionDeletion } from "../../../session/control/children/child-session-deletion.js"
 import { loadToolExecutionTimelineFromEvents, TOOL_EXECUTION_FACT_TYPES } from "../../../session/runtime-facts/tool-execution-projection.js"
-import { WORKFLOW_RUNTIME_INVOCATION_TOOL } from "../../../agent-runtime/tools/workflow.js"
+import { WORKFLOW_RUNTIME_INVOCATION_TOOL } from "../../../agent-runtime/tools/definitions/workflow.js"
 import type { ToolExecutionEntry } from "../../../session/runtime-facts/tool-execution-types.js"
 import type { ReplayedSession, Session } from "../../../session/metadata/schemas.js"
 import { recordedExecutionCwd } from "../../../session/metadata/session-execution-directory.js"

@@ -2,7 +2,7 @@ import { type BriefDefaultFields, briefDefaultRoleId, briefPersonaRoleId, briefR
 import type { AgentDefinition } from "../../../infra/agent-definition.js"
 import type { ResolvedAgent } from "../../../workflows/definitions/agent-resolution.js"
 import { agentRecords, type AgentRecordKeys, type WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"
-import type { ProviderConnectionCapture } from "../../agent-runtime/model-runtime-capture.js"
+import type { ProviderConnectionCapture } from "../../agent-runtime/request/model-runtime-capture.js"
 import type { RoleSettings } from "../../session/metadata/schemas.js"
 import type { WorkflowLaunchAgentModels } from "../../../infra/workflow-types.js"
 import { resolveSessionRoles } from "./session-role-resolver.js"

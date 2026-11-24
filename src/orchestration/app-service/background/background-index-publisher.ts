@@ -7,7 +7,7 @@ import type { RuntimePosition, RuntimeUiPatchInput } from "../../../protocol/run
 import { workflowAggregateId } from "../../../workflows/vm/facts/session-facts.js"
 import { workflowPlacements } from "../../module-catalog.js"
 import type { WorkflowPlacements } from "../../module-seams.js"
-import type { ActiveBackgroundCommandDescriptor } from "../../agent-runtime/background-work.js"
+import type { ActiveBackgroundCommandDescriptor } from "../../agent-runtime/background-work/background-work.js"
 import type { SessionStore } from "../../session-store/types.js"
 import { installedChildSessionHistory } from "../../session/control/module-session-operations.js"
 import { onReplyWaitsChanged, readReplyWaitViews } from "../../session/control/messaging/reply-waits.js"

@@ -33,12 +33,12 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/agent-runtime/tools/bash-command-policy.ts",
+    file: "src/orchestration/agent-runtime/tools/bash/policy/bash-command-policy.ts",
     what: "static shell write-target refusals",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/agent-runtime/capability-narrowing.ts",
+    file: "src/orchestration/agent-runtime/request/prompt/capability-narrowing.ts",
     what: "narrowing statements of tree-hosted agents",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -53,22 +53,22 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/agent-runtime/agent-resilience.ts",
+    file: "src/orchestration/agent-runtime/runner/agent-resilience.ts",
     what: "local persistence refusal terminal decisions",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/agent-runtime/assistant-turn-attempt.ts",
+    file: "src/orchestration/agent-runtime/loop/turn/assistant-turn-attempt.ts",
     what: "reasoning repetition trips of one wire attempt",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/agent-runtime/llm/openai-helpers.ts",
+    file: "src/orchestration/agent-runtime/llm/adapters/openai/openai-helpers.ts",
     what: "input transformations that an OpenAI Responses service reports for one response",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/agent-runtime/agent-loop-compaction-state.ts",
+    file: "src/orchestration/agent-runtime/loop/agent-loop-compaction-state.ts",
     what: "automatic compaction deferrals of one fresh context",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -164,7 +164,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/agent-runtime/prompt-prefix-hold.ts",
+    file: "src/orchestration/agent-runtime/loop/turn/prompt-prefix-hold.ts",
     what: "prompt prefix hold settlement",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -289,7 +289,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/agent-runtime/unattended-recovery.ts",
+    file: "src/orchestration/agent-runtime/runner/unattended-recovery.ts",
     what: "recovery decisions of an unattended run",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -299,7 +299,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/orchestration/agent-runtime/tools/bash-project-mutation.ts",
+    file: "src/orchestration/agent-runtime/tools/bash/private-copy/bash-project-mutation.ts",
     what: "bash mutation command publication",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },

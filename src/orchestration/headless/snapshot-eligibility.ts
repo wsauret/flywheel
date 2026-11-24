@@ -1,7 +1,7 @@
 import type { ProviderConnection } from "../../infra/auth/auth-context.js"
 import { createModelListingClient } from "../../infra/llm/access/model-listing.js"
 import type { ModelsClient } from "../../infra/llm/models/models.js"
-import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
+import { accessProviderRegistry } from "../agent-runtime/llm/routing/access-provider-registry.js"
 import { credentialSlotClassifier } from "../auth/credential-slot-classifier.js"
 import { resolveProviderModelCatalog } from "../config/models/model-assignment-providers.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"

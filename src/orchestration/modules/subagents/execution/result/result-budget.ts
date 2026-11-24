@@ -15,8 +15,8 @@
 import { displayRelativePath } from "../../../../../infra/tools/detail-helpers.js";
 import { Log } from "../../../../../infra/log.js";
 import { truncateHeadTail } from "../../../../../infra/output/truncate-output.js";
-import { limitOutput } from "../../../../agent-runtime/tools/truncation.js";
-import { saveFullOutput } from "../../../../agent-runtime/tools/output-breadcrumb.js";
+import { limitOutput } from "../../../../agent-runtime/tools/results/truncation.js";
+import { saveFullOutput } from "../../../../agent-runtime/tools/results/output-breadcrumb.js";
 
 interface HandoffContent {
   [key: string]: unknown;

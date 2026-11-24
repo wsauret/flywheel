@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
+import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/llm/routing/runtime-errors.js";
 import { ContentFilteredError, ContentRefusedError, LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
 import { assemblyPinned, RequestToolMap } from "../../../../helpers/request-tool-surface.js";

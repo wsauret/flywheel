@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js"
 import type { OwnedProcess, OwnedProcessExit } from "../../src/infra/owned-subprocess.js"
 import type { LauncherScope } from "../../src/infra/process-supervisor.js"
-import { BunStdioClientTransport } from "../../src/orchestration/agent-runtime/mcp-stdio-client-transport.js"
+import { BunStdioClientTransport } from "../../src/orchestration/agent-runtime/mcp/mcp-stdio-client-transport.js"
 import { createRealProcessFixture, processAlive, unguardedSpawnOwned, type RealProcessFixture } from "../helpers/real-process-fixture.js"
 
 /** A server that ignores SIGTERM and leaves a SIGTERM-resistant descendant in

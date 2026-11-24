@@ -9,7 +9,7 @@ import { readSessionContentRange, type SessionContentNode } from "../../../../..
 import { resolveToolRowPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js";
 import { createSkillManageTool, type SkillManageToolDeps } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { CapabilityAccess, DispatchedToolContext, RuntimeTool } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
 import { capabilityAccessHolding, makeContext as makeToolContext, testGrant } from "../../../agent-runtime/tools/_fixtures.js";
@@ -40,7 +40,7 @@ function registry() {
   return publishSkillRevision(1, load.skills);
 }
 
-function verifiedCandidate(candidate: import("../../../../../../src/orchestration/agent-runtime/review-types.js").PreparedPackage, revision = registry()) {
+function verifiedCandidate(candidate: import("../../../../../../src/orchestration/agent-runtime/request/module-services/review-types.js").PreparedPackage, revision = registry()) {
   return Promise.resolve({
     kind: "verified" as const,
     evidence: {
@@ -231,7 +231,7 @@ describe("skill_manage review-origin facts", () => {
   });
 
   it("supplies the exact prepared candidate before publication", async () => {
-    let candidate: import("../../../../../../src/orchestration/agent-runtime/review-types.js").PreparedPackage | undefined;
+    let candidate: import("../../../../../../src/orchestration/agent-runtime/request/module-services/review-types.js").PreparedPackage | undefined;
     let existedDuringCallback = true;
     const tool = createSkillManageTool({
       origin: { kind: "review", reviewRunId: "rev-9", loadedSkillIds: new Set() },

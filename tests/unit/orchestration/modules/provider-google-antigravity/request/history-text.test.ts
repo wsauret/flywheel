@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { planHistoryLowering } from "../../../../../../src/orchestration/agent-runtime/llm/provider-history.js";
+import { planHistoryLowering } from "../../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js";
 import { renderAppend, textHistoryTarget } from "../../../../../../src/orchestration/modules/provider-google-antigravity/request/history-text.js";
 
 const systemPrompt = { stable: "STABLE", session: "SESSION", conversation: "CONVERSATION" };

@@ -100,4 +100,4 @@ describe("Copilot affordability", () => {
   });
 });
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import type { SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
+import type { SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js";

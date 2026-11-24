@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { isQualifiedSkillId } from "../../../src/infra/skill-id.js";
 import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
 import { loadStandalonePersonaRegistry } from "../../../src/workflows/agents/registry.js";
-import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/skill.js";
+import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/definitions/skill.js";
 import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-resolution.js";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, repoDefinitions, workflowIn } from "../../helpers/project-definitions.js";
 import { loadSkillDefinitions } from "../../../src/workflows/skills/skills.js";

@@ -1,5 +1,5 @@
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
-import { completionWorkIds } from "../../agent-runtime/background-work-notifications.js"
+import { completionWorkIds } from "../../agent-runtime/background-work/background-work-notifications.js"
 import type { ChatRunner } from "../../chat/runner-types.js"
 import { createConversationTreeWriterController } from "../../chat/tree-writer.js"
 import type { SessionEntry, SessionStore } from "../../session-store/types.js"

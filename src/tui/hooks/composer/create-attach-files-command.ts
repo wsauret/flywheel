@@ -2,7 +2,7 @@ import { basename } from "node:path"
 
 import { ownedCommandRunner } from "../../../infra/owned-command.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
-import { resizeImage } from "../../../orchestration/agent-runtime/tools/image-resize.js"
+import { resizeImage } from "../../../orchestration/agent-runtime/tools/read/image-resize.js"
 import { ATTACHMENT_LIMITS, attachmentRefusalMessage } from "../../../protocol/client/attachments.js"
 import type { ShellServices } from "../state/shell-state.js"
 import type { ComposerAttachSlot } from "../../components/composer/attachments/create-composer-attach-slot.js"

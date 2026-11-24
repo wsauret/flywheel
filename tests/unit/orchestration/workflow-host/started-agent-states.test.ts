@@ -4,7 +4,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSu
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { factRowsChanged } from "../../../../src/infra/sqlite-event-store-core.js"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js"
 import { createConversationTreeProjection, releaseConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record.js"

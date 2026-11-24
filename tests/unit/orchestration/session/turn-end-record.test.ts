@@ -16,11 +16,11 @@ import {
   waitsForPerson,
   type TurnEndEntry,
 } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
-import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages.js"
-import { toolResultMessages } from "../../../../src/orchestration/agent-runtime/agent-state.js"
+import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js"
+import { toolResultMessages } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js"
 import { TOOL_OUTCOME_VALUES } from "../../../../src/infra/tool-outcome.js"
-import { DEFAULT_WAIT_SECONDS } from "../../../../src/orchestration/agent-runtime/tools/process.js"
-import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/reply-nudge.js"
+import { DEFAULT_WAIT_SECONDS } from "../../../../src/orchestration/agent-runtime/tools/sessions/process.js"
+import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/loop/reply-nudge.js"
 
 /** The display-only content Escape markers carried before interrupt became resumable. */
 const LEGACY_USER_INTERRUPT_CONTENT = "Interrupted by user."

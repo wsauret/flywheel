@@ -2,7 +2,7 @@ import type { AgentLoopWakeInput } from "../../infra/agent-loop-events.js"
 import type { OutputProjectionEvent } from "../../infra/output/output-projection-events.js"
 import type { Agent, AgentOptions, AgentRunResult, OmitAgentOptions, RunnerToolSurfaces } from "../agent-runtime/types.js"
 import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
-import type { ResilienceDeps } from "../agent-runtime/agent-resilience.js"
+import type { ResilienceDeps } from "../agent-runtime/runner/agent-resilience.js"
 
 export type AgentHostContextOptions = OmitAgentOptions<AgentOptions, "runtimeSurfaces"> & {
   runtimeSurfaces?: RunnerToolSurfaces

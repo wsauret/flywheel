@@ -1,4 +1,4 @@
-import type { PreparedPackage } from "../../../../../../src/orchestration/agent-runtime/review-types.js";
+import type { PreparedPackage } from "../../../../../../src/orchestration/agent-runtime/request/module-services/review-types.js";
 import { describe, expect, it } from "bun:test";
 import { createLearningReviewExecution } from "../../../../../../src/orchestration/modules/learning/review/learning-review-runner.js";
 import { captureProviderConnection as captureAuthProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";

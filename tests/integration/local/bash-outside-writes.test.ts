@@ -3,15 +3,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createCliLauncher } from "../../../src/cli/account-service/runtime-launch.js";
 import { Effect } from "effect";
-import { createBashDefinition } from "../../../src/orchestration/agent-runtime/tools/bash.js";
-import { executeDispatchedTool } from "../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
-import { createToolConcurrencyGate } from "../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
-import { prepareToolCall } from "../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { createBashDefinition } from "../../../src/orchestration/agent-runtime/tools/bash/bash.js";
+import { executeDispatchedTool } from "../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
+import { createToolConcurrencyGate } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";
+import { prepareToolCall } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { admitEveryTool } from "../../helpers/request-tool-surface.js";
-import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash-script.js";
+import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash/bash-script.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js";
-import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/_bash-fixtures.js";
+import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/bash/_bash-fixtures.js";
 
 const directory = temporaryDirectories();
 

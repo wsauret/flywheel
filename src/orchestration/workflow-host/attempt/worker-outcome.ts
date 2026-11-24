@@ -1,6 +1,6 @@
 import type { AgentFailureKind, AgentOutcome } from "../../../workflows/vm/host/agent-outcome.js"
 import type { AgentRunResult } from "../../agent-runtime/types.js"
-import { formatAgentFailure } from "../../agent-runtime/failure-message.js"
+import { formatAgentFailure } from "../../agent-runtime/runner/failure-message.js"
 
 /** Maps the runner's terminal result to workflow completion, preserving typed failures and persistence errors. */
 export function workerOutcome(result: AgentRunResult): AgentOutcome {

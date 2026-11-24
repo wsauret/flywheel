@@ -3,10 +3,10 @@ import { Redacted } from "effect";
 import type { AccessProviderCandidateAttribution } from "../../../../../src/infra/llm/access/access-provider.js";
 import type { CatalogJsonValue } from "../../../../../src/infra/catalog-model-offering.js";
 import { createOpenRouterAffordability } from "../../../../../src/orchestration/modules/provider-openrouter/affordability.js";
-import { streamAssistantTurn } from "../../../../../src/orchestration/agent-runtime/assistant-turn-stream.js";
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { streamAssistantTurn } from "../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import type { PreparedServingRequest, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { RequestAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
+import type { RequestAdmission } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js";
 import { chain, fakeAvailability, fakeClient, textStream } from "./_provider-chain-harness.js";
 
 const candidate = { kind: "singleton", providerId: "openrouter", spendMode: "aggregator" } as const;

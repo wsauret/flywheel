@@ -3,7 +3,7 @@ import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
 import { canonicalRoleId, RETIRED_COMPACTION_ROLE_IDS } from "./retired-config-names.js";
 import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
 import { discoverAgentRoles } from "../../workflows/agents/agent-roles.js";
-import type { ProviderConnectionCapture } from "../agent-runtime/model-runtime-capture.js";
+import type { ProviderConnectionCapture } from "../agent-runtime/request/model-runtime-capture.js";
 import type { RoleSettingEntry } from "../session/metadata/schemas.js";
 
 export type RoleId = string;

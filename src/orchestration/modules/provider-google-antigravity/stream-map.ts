@@ -1,5 +1,5 @@
 import { LlmStreamError, OutputLengthExceededError } from "../../agent-runtime/llm/errors.js";
-import type { StreamLiveness } from "../../agent-runtime/llm/stream-liveness.js";
+import type { StreamLiveness } from "../../agent-runtime/llm/stream/stream-liveness.js";
 import type { CompletedStopReason, ProviderStreamEvent, ToolCall } from "../../agent-runtime/llm/types.js";
 import type { AcpCloseReason } from "./acp/connection.js";
 import type { AcpPromptResult, AcpSessionUpdate, AcpUsage } from "./acp/schema.js";

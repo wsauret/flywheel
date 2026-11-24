@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { rmSync } from "node:fs";
 
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import { childTask, createNotificationCapture, grantOf, makeCapabilityAccess, makeContext, makeDeps, makeMockRunnerFactory, refusedAdmission, settleDispatchedWork, TEST_RATIONALE } from "./_fixtures.js";

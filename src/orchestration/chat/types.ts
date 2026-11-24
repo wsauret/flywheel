@@ -7,11 +7,11 @@ import type { ModelFamily } from "../../infra/llm/models/model-family.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js"
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
-import type { LLMClientFactory } from "../agent-runtime/model-runtime-capture.js"
+import type { LLMClientFactory } from "../agent-runtime/request/model-runtime-capture.js"
 import type { Agent, AgentFactory, AgentOptions, CreateChildConversation } from "../agent-runtime/types.js"
-import type { CommandHandoverAuthority } from "../agent-runtime/command-handover.js"
+import type { CommandHandoverAuthority } from "../agent-runtime/background-execution/command-handover.js"
 import type { CapabilityAccess } from "../agent-runtime/tools/types.js"
-import type { StartModelWorkflow } from "../agent-runtime/tools/workflow-tool.js"
+import type { StartModelWorkflow } from "../agent-runtime/tools/definitions/workflow-tool.js"
 import type { RoleResolver } from "../config/roles.js"
 import type { CapturedModuleConfig } from "../chat-module-host.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
@@ -48,11 +48,11 @@ export interface ChatSessionDeps {
   personas: ReadonlyMap<string, AgentDefinition>
   createAgent: AgentFactory
   /** Prepares the next request of the session's chat and its hosts for their pre-starts (`SessionEngines`). */
-  prepareRequest: import("../agent-runtime/request-preparation.js").RequestPreparer
+  prepareRequest: import("../agent-runtime/loop/turn/request-preparation.js").RequestPreparer
   /** Answers the agent check of the chat's next request for `ChatRunner.capabilities`. */
-  planCapabilities: import("../agent-runtime/request-preparation.js").CapabilityPlanner
+  planCapabilities: import("../agent-runtime/loop/turn/request-preparation.js").CapabilityPlanner
   createLLMClient: LLMClientFactory
-  captureProviderConnection: import("../agent-runtime/model-runtime-capture.js").CaptureProviderConnection
+  captureProviderConnection: import("../agent-runtime/request/model-runtime-capture.js").CaptureProviderConnection
   onNotification?: AgentOptions["onNotification"]
   moduleSelection: FirstPartyModuleSnapshot
   proactiveCompactionThreshold: () => number

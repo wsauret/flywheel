@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Deferred, Effect } from "effect";
-import type { HostEnvironment } from "../../../agent-runtime/llm/runtime-reminders.js";
+import type { HostEnvironment } from "../../../agent-runtime/llm/history/runtime-reminders.js";
 import { cliRewritesImage } from "./cli-images.js";
 import { identityDifference, sameCliValue, type CliMessage, type CliView, type PlacedReminder, type QueryIdentity } from "../cli-view.js";
 import { inPlaceSystemPrompt, type CliFrame, type LaunchedQuery } from "../engine/query-launcher.js";

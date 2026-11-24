@@ -4,8 +4,8 @@ import { canonicalizeProviderIdCatalogRow, extractDataCatalogRows } from "../../
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { openCodeGoRequestHeaders, providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { fetchCatalog } from "../../../infra/llm/access/model-listing.js";
-import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
-import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { createOpenCodeGoUsageReader } from "./usage-reader.js";
@@ -59,7 +59,7 @@ const createClient: AccessProviderFactory = async (build) => {
     if (credential?.type !== "api_key") throw new ApiError({ message: "No OpenCode Go API key in the active auth profile. Run: flywheel auth login --opencode-go", recovery: { kind: "none" } });
     const key = credential.key;
     if (endpoint === "anthropic-messages") {
-      const { createAnthropicAdapter } = await import("../../agent-runtime/llm/anthropic.js");
+      const { createAnthropicAdapter } = await import("../../agent-runtime/llm/adapters/anthropic/anthropic.js");
       return createAnthropicAdapter(key, build.wireModelId, info, {
         baseURL: OPENCODE_GO_API_BASE,
         accessProvider: definition.id,
@@ -69,7 +69,7 @@ const createClient: AccessProviderFactory = async (build) => {
       });
     }
     const [{ default: OpenAI }, { createOpenAIAdapter }, { createChatCompletionsAdapter }] = await Promise.all([
-      import("openai"), import("../../agent-runtime/llm/openai.js"), import("../../agent-runtime/llm/chat-completions.js"),
+      import("openai"), import("../../agent-runtime/llm/adapters/openai/openai.js"), import("../../agent-runtime/llm/adapters/chat-completions/chat-completions.js"),
     ]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: OPENCODE_GO_V1_BASE, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
     if (endpoint === "openai-responses") return createOpenAIAdapter({ kind: "apiKey", apiKey: key }, build.wireModelId, info, {

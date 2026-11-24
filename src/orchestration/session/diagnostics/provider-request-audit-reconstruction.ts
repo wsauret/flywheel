@@ -13,9 +13,9 @@ import { buildSessionContext, walkBranchFromLeaf } from "../conversation/tree/co
 import { maskToolResultsById } from "../../agent-runtime/compaction/stale-tool-result-masker.js"
 import { createConversationTreeProjection } from "../conversation/conversation-projection.js"
 import type { ConversationEntry } from "../conversation/conversation-entry-types.js"
-import { lowerToolHistoryById } from "../../agent-runtime/llm/tool-history-projection.js"
-import { applyContentRepairs } from "../../agent-runtime/llm/content-repair.js"
-import { applyHistoryLowering } from "../../agent-runtime/llm/provider-history.js"
+import { lowerToolHistoryById } from "../../agent-runtime/llm/history/tool-history-projection.js"
+import { applyContentRepairs } from "../../agent-runtime/llm/history/content-repair.js"
+import { applyHistoryLowering } from "../../agent-runtime/llm/history/provider-history.js"
 import { FUNCTION_TOOL_PRESENTATION, presentToolHistory } from "../../agent-runtime/llm/types.js"
 
 /** The prompt of a recorded request, refolded from durable facts and checked

@@ -25,7 +25,7 @@ import { createSessionManager, type SessionManager } from "../../../../src/orche
 import type { WorkflowView } from "../../../../src/workflows/view/types"
 import type { WorkflowCapabilityBoundary } from "../../../../src/workflows/run/run-facts"
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema"
-import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config"
+import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request/request-config"
 import type { WorkflowDeps } from "../../../../src/orchestration/workflow-host/deps"
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, repoModules } from "../../../helpers/project-definitions"
 import { testDirectories } from "../../../helpers/directories"

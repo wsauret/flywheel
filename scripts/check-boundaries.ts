@@ -111,7 +111,7 @@ const rules: BoundaryRule[] = [
     description: "@modelcontextprotocol/sdk imports belong only in the MCP module home, its shared owned transport, the source-only iOS simulator owner, the Agent SDK bridge's tool gate, and the Antigravity tool listener.",
     matches(importRef): boolean {
       if (isUnder(importRef.sourcePath, "src/orchestration/modules/mcp/")) return false;
-      if (importRef.sourcePath === "src/orchestration/agent-runtime/mcp-stdio-client-transport.ts") return false;
+      if (importRef.sourcePath === "src/orchestration/agent-runtime/mcp/mcp-stdio-client-transport.ts") return false;
       if (importRef.sourcePath === "src/orchestration/modules/development/ios-simulator-backend.ts") return false;
       if (importRef.sourcePath === "src/orchestration/modules/provider-claude-agent-sdk/query/tool-gate.ts") return false;
       if (importRef.sourcePath === "src/orchestration/modules/provider-google-antigravity/tools/mcp-server.ts") return false;

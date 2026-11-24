@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
-import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request-tool-surface.js";
-import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
-import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
-import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
+import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
+import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";
+import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import type { McpToolHit } from "../../../../../src/orchestration/modules/mcp/connection.js";
 import type { McpPorts } from "../../../../../src/orchestration/modules/mcp/manager-types.js";
 import { codeModeRuntimeOver, codeModeServices } from "../../../../helpers/code-mode-worker.js";

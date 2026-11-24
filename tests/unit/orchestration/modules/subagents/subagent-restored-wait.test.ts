@@ -9,7 +9,7 @@ import { newTestRunner } from "../../../../helpers/agent-runner.js"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js"
-import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work-types.js"
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types.js"
 
 const createHarness = subagentChildHarnesses()
 

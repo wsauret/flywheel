@@ -3,8 +3,8 @@ import type { SDKAssistantMessageError, SDKMessage, SDKRateLimitInfo } from "@an
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
 import { Effect } from "effect";
 import { ContextLengthExceededError, extendedContextRefusal, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError } from "../../../agent-runtime/llm/errors.js";
-import type { QuotaExhaustionObservation } from "../../../agent-runtime/llm/provider-availability-types.js";
-import { ProviderAuthenticationError } from "../../../agent-runtime/llm/provider-failure.js";
+import type { QuotaExhaustionObservation } from "../../../agent-runtime/llm/routing/provider-availability-types.js";
+import { ProviderAuthenticationError } from "../../../agent-runtime/llm/stream/provider-failure.js";
 import { eventUsageWindows, type UsageWindows } from "../account-usage.js";
 import type { ReplayAcks } from "./in-place.js";
 import { CLAUDE_AGENT_SDK_LOGIN_COMMAND } from "../names.js";

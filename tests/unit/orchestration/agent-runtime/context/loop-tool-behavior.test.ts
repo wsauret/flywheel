@@ -3,15 +3,15 @@ import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 
 import { messageInput } from "../../../../../src/infra/agent-loop-events.js";
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { RequestToolMap, testBaseTools } from "../../../../helpers/request-tool-surface.js";
 import { makeCaptureClient, withSessionNotes } from "./_loop-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { PromptPrefixHold } from "../../../../../src/orchestration/agent-runtime/prompt-prefix-hold.js";
-import type { StreamingEditValidationService } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation.js";
+import { PromptPrefixHold } from "../../../../../src/orchestration/agent-runtime/loop/turn/prompt-prefix-hold.js";
+import type { StreamingEditValidationService } from "../../../../../src/orchestration/agent-runtime/tools/edit/streaming-edit-validation.js";
 
 describe("implicit todo prompting", () => {
   /** One compacting run over a large resumed history, then a short answer. */
@@ -358,7 +358,7 @@ describe("terminate flag on tool result", () => {
 
 describe("interrupt during tool execution", () => {
   test("consumes queued input after interrupt lands during tool execution", async () => {
-    const { RunLifecycle } = await import("../../../../../src/orchestration/agent-runtime/run-lifecycle.js");
+    const { RunLifecycle } = await import("../../../../../src/orchestration/agent-runtime/loop/turn/run-lifecycle.js");
     const currentTurn = new RunLifecycle<void>();
     currentTurn.start((signal) => new Promise<void>((resolve) => {
       signal.addEventListener("abort", () => resolve(), { once: true });

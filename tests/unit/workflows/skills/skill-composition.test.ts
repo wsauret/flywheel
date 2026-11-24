@@ -14,7 +14,7 @@ import type { ResolvedAgent } from "../../../../src/workflows/definitions/agent-
 import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";
 import { buildDefinitionIdentity, definitionIdentityMismatches } from "../../../../src/workflows/vm/facts/definition-identity.js";
 import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js";
-import { createSkillTool } from "../../../../src/orchestration/agent-runtime/tools/skill.js";
+import { createSkillTool } from "../../../../src/orchestration/agent-runtime/tools/definitions/skill.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js";

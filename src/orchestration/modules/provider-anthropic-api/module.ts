@@ -7,9 +7,9 @@ import type { CatalogJsonValue } from "../../../infra/catalog-model-offering.js"
 import { fetchPaginatedCatalog } from "../../../infra/llm/access/model-listing.js";
 import { providerModelInfo } from "../../../infra/llm/catalog/provider-model-info.js";
 import { isRecord } from "../../../infra/record.js";
-import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
-import { createClaudeReminders } from "../../agent-runtime/llm/runtime-reminders.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { createClaudeReminders } from "../../agent-runtime/llm/history/runtime-reminders.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 
@@ -102,7 +102,7 @@ const createClient: AccessProviderFactory = async (build) => {
   }, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Anthropic API key in the active auth profile. Run: flywheel auth login --anthropic", recovery: { kind: "none" } });
-    const { createAnthropicAdapter } = await import("../../agent-runtime/llm/anthropic.js");
+    const { createAnthropicAdapter } = await import("../../agent-runtime/llm/adapters/anthropic/anthropic.js");
     return createAnthropicAdapter(key, build.wireModelId, info, { candidate: build.candidate, availability: build.availability });
   }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };

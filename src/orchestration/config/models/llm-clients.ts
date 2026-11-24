@@ -13,7 +13,7 @@ import { loadAuthStoreWithDiagnostics } from "../../../infra/auth/store/auth-sto
 import { createModelListingClient, type ModelListingClient } from "../../../infra/llm/access/model-listing.js";
 import { createModelsClient, type ModelsClient } from "../../../infra/llm/models/models.js";
 import { modelsSnapshotFile } from "../../../infra/paths.js";
-import { accessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js";
 import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js";
 
 const listingClients = new Map<string, ModelListingClient>();

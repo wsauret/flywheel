@@ -12,7 +12,7 @@ import { subscriptionSpendAccountCorrelationId } from "../../../protocol/subscri
 import { createAuthConditionOwner, type AuthConditionOwner } from "../../auth/auth-condition-owner.js"
 import { accountSecretFile } from "../../../infra/paths.js"
 import { lockedJsonStorePath } from "../../../infra/auth/store/locked-json-store.js"
-import { accessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js"
+import { accessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js"
 import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js"
 
 /** Reads the auth view. A reading has no effect beyond the condition owner's

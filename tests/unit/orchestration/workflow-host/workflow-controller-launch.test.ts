@@ -26,7 +26,7 @@ import {
   seedWorkflowRequest,
   until,
 } from "./_workflow-controller-fixtures"
-import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config"
+import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request/request-config"
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema"
 import type { AgentOptions, AgentPurpose } from "../../../../src/orchestration/agent-runtime/types"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures"

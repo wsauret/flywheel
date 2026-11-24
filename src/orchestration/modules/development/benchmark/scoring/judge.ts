@@ -5,7 +5,7 @@ import { invokeBenchmarkAgent } from "../execution/invocation.js";
 import type { JudgeScoreIdentity, JudgeTerminal } from "./run-store.js";
 import type { BenchmarkAccounting } from "../accounting/evidence.js";
 import { buildResearchPairJudgePrompt } from "../../../../../infra/benchmark-rubrics.js";
-import type { CaptureProviderConnection } from "../../../../agent-runtime/model-runtime-capture.js";
+import type { CaptureProviderConnection } from "../../../../agent-runtime/request/model-runtime-capture.js";
 import { resolveSessionRoles } from "../../../../config/models/session-role-resolver.js";
 import type { ResolvedRole } from "../../../../config/roles.js";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";

@@ -59,32 +59,32 @@ const TOOLS = "src/orchestration/agent-runtime/tools";
  *  contributes a tool has an entry; the drift check keeps the keys and the installed catalog in step, and keeps
  *  every listed source on disk. */
 export const CAPABILITY_PHRASES: CapabilityPhraseTable = {
-  "ask-user": { phrases: [], guards: ["askUserAvailable"], sources: [`${TOOLS}/ask-user.ts`] },
+  "ask-user": { phrases: [], guards: ["askUserAvailable"], sources: [`${TOOLS}/sessions/ask-user.ts`] },
   "background-commands": {
     phrases: [/\bbackground commands?\b/i, /\bbackground(?:=|: )true\b/, /\bpersistent processes\b/i, /\bservers? and services\b/i],
     guards: ["background", "backgroundCommands", "advertisesBackground", "persistence", "persists", "backgroundShellModuleRequirements"],
     // The notices of one managed command, which exist only for a command that runs.
-    sources: [`${TOOLS}/managed-command.ts`],
+    sources: [`${TOOLS}/bash/execution/managed-command.ts`],
   },
   bash: {
     phrases: [/\b(?:in|through|via|with|to|no|use) Bash\b/, /\bBash (?:commands?|results?|scratch)\b/, /\buse bash\b/i],
     // The command-evidence envelope reaches a reader only in the postamble variant that a reader with Bash gets.
-    sources: [`${TOOLS}/bash.ts`, `${TOOLS}/bash-guidance.ts`, `${TOOLS}/bash-command-policy.ts`, "src/workflows/output-contract/envelope.ts"],
+    sources: [`${TOOLS}/bash/bash.ts`, `${TOOLS}/bash/bash-guidance.ts`, `${TOOLS}/bash/policy/bash-command-policy.ts`, "src/workflows/output-contract/envelope.ts"],
   },
-  "code-mode": { phrases: [/\bCode Mode\b/], sources: [`${TOOLS}/nested-tool-dispatch.ts`] },
-  "definition-overrides": { phrases: [], sources: [`${TOOLS}/definition-overrides.ts`] },
+  "code-mode": { phrases: [/\bCode Mode\b/], sources: [`${TOOLS}/dispatch/nested-tool-dispatch.ts`] },
+  "definition-overrides": { phrases: [], sources: [`${TOOLS}/definitions/definition-overrides.ts`] },
   development: { phrases: [], harnesses: ["src/orchestration/modules/development/benchmark", "src/orchestration/modules/development/claude-sdk"] },
-  discovery: { phrases: [], sources: [`${TOOLS}/list.ts`, `${TOOLS}/search.ts`] },
+  discovery: { phrases: [], sources: [`${TOOLS}/search/list.ts`, `${TOOLS}/search/search.ts`] },
   experiments: { phrases: [/(?:^|[\s`(])\/experiment\b/], sources: [`${TOOLS}/experiment-schemas.ts`] },
   "file-tools": {
     phrases: [/\bfile-edit\b/i],
-    sources: [`${TOOLS}/apply-patch.ts`, `${TOOLS}/edit.ts`, `${TOOLS}/read.ts`, `${TOOLS}/write.ts`, `${TOOLS}/streaming-edit-validator.ts`],
+    sources: [`${TOOLS}/edit/apply-patch.ts`, `${TOOLS}/edit/edit.ts`, `${TOOLS}/read/read.ts`, `${TOOLS}/edit/write.ts`, `${TOOLS}/edit/streaming-edit-validator.ts`],
   },
   learning: { phrases: [/\b(?:to|in) memory\b/] },
-  mcp: { phrases: [/\bMCP\b/], sources: ["src/orchestration/agent-runtime/mcp-result.ts", "src/orchestration/agent-runtime/mcp-stdio-client-transport.ts"] },
+  mcp: { phrases: [/\bMCP\b/], sources: ["src/orchestration/agent-runtime/mcp/mcp-result.ts", "src/orchestration/agent-runtime/mcp/mcp-stdio-client-transport.ts"] },
   papercuts: { phrases: [] },
-  recall: { phrases: [/\brecall ids?\b/i], guards: ["recallAvailable"], sources: [`${TOOLS}/recall.ts`] },
-  skills: { phrases: [], sources: [`${TOOLS}/skill.ts`] },
+  recall: { phrases: [/\brecall ids?\b/i], guards: ["recallAvailable"], sources: [`${TOOLS}/sessions/recall.ts`] },
+  skills: { phrases: [], sources: [`${TOOLS}/definitions/skill.ts`] },
   subagents: {
     phrases: [
       /\b(?:dispatch|launch|start|use|delegate to)(?:es|s|ed|ing)? (?:a |an |one |the |parallel |bounded |implementer |explorer |reviewer )*subagents?\b/i,
@@ -103,7 +103,7 @@ export const CAPABILITY_PHRASES: CapabilityPhraseTable = {
       /\bWorkflow Agent default\b/,
     ],
     guards: ["workflowLaunch"],
-    sources: [`${TOOLS}/workflow.ts`, `${TOOLS}/workflow-tool.ts`],
+    sources: [`${TOOLS}/definitions/workflow.ts`, `${TOOLS}/definitions/workflow-tool.ts`],
   },
 };
 

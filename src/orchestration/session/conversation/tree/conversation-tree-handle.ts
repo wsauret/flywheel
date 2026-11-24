@@ -4,7 +4,7 @@ import { isSessionOwnerGone } from "../../pid-lock.js";
 import type { ConversationTreeTranscriptEntry } from "../conversation-projection.js";
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/event-store-types.js";
 import type { ConversationMessage, ContentBlock } from "../../../agent-runtime/llm/types.js";
-import { interruptedToolResult } from "../../../agent-runtime/llm/heal-messages.js";
+import { interruptedToolResult } from "../../../agent-runtime/llm/history/heal-messages.js";
 import type { ConversationEntry } from "../conversation-entry-types.js";
 
 interface OpenConversationTreeOptions {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { McpCallResult } from "../../../../../src/orchestration/agent-runtime/mcp-result.js"
+import type { McpCallResult } from "../../../../../src/orchestration/agent-runtime/mcp/mcp-result.js"
 import type { RuntimeToolInput, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import {
   createIosSimulatorTool,

@@ -8,8 +8,8 @@ import { basename } from "node:path";
 export const BINARY_ENTRIES = [
   "src/cli/index.ts",
   "src/orchestration/app-service/background/worker-entry.ts",
-  "src/orchestration/agent-runtime/tools/streaming-edit-validation-worker.ts",
-  "src/orchestration/agent-runtime/tools/bash-private-copy-worker.ts",
+  "src/orchestration/agent-runtime/tools/edit/streaming-edit-validation-worker.ts",
+  "src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-worker.ts",
   "src/infra/llm/models/models-document-worker.ts",
   "src/orchestration/app-service/projections/output/transcript-find-worker.ts",
   "src/orchestration/modules/code-mode/code-mode-invocation-worker.ts",

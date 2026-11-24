@@ -1,5 +1,5 @@
 import { captureProviderConnection } from "../../src/infra/auth/auth-context.js"
-import type { ProviderConnectionCapture } from "../../src/orchestration/agent-runtime/model-runtime-capture.js"
+import type { ProviderConnectionCapture } from "../../src/orchestration/agent-runtime/request/model-runtime-capture.js"
 import type { FlywheelConfig } from "../../src/orchestration/config/schema/schema.js"
 import { testAuthContext } from "./auth-context.js"
 import { modelInfo } from "./model-tier-fixtures.js"

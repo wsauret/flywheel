@@ -1,4 +1,4 @@
-import type { LearningReviewRun } from "./review-types.js";
+import type { LearningReviewRun } from "./request/module-services/review-types.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { AuthContext } from "../../infra/auth/auth-context.js";
 import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js";
@@ -26,15 +26,15 @@ import type { DurableOwner } from "../../infra/durable-owner.js";
 
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js";
 import type { ConversationMessage } from "./llm/types.js";
-import type { AgentRunTally } from "./agent-loop-state.js";
+import type { AgentRunTally } from "./loop/agent-loop-state.js";
 import type { CommittedTree, ConversationTreeProjectionState } from "../session/conversation/conversation-projection.js";
-import type { CaptureProviderConnection } from "./model-runtime-capture.js";
-import type { BackgroundExecutionOwner } from "./background-execution-owner.js";
-import type { CommandHandoverAuthority } from "./command-handover.js";
-import type { PromptKind } from "./system-prompt.js";
-import type { UsageSettlementAuthorityLease } from "./usage-settlement.js";
-import type { ChildSlotRegistry } from "./child-slot-registry.js";
-import type { StartModelWorkflow } from "./tools/workflow-tool.js";
+import type { CaptureProviderConnection } from "./request/model-runtime-capture.js";
+import type { BackgroundExecutionOwner } from "./background-execution/background-execution-owner.js";
+import type { CommandHandoverAuthority } from "./background-execution/command-handover.js";
+import type { PromptKind } from "./request/prompt/system-prompt.js";
+import type { UsageSettlementAuthorityLease } from "./request/usage/usage-settlement.js";
+import type { ChildSlotRegistry } from "./request/module-services/child-slot-registry.js";
+import type { StartModelWorkflow } from "./tools/definitions/workflow-tool.js";
 import type { CapabilityAccess, ToolProfile } from "./tools/types.js";
 import type { ModuleRuntimes } from "../../infra/module-runtime.js";
 import type { AgentLoopMaintenance, AgentLoopPersistence, AgentLoopTerminal, FinalizedCheckpointSwap, RestoredAgentWait } from "./agent-loop-types.js";
@@ -45,18 +45,18 @@ import type { LauncherScope } from "../../infra/process-supervisor.js";
 import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
 import type { SkillRegistryRevision } from "../../workflows/skills/skill-schema.js";
-import type { ForegroundBashHoldController } from "./foreground-bash-hold.js";
+import type { ForegroundBashHoldController } from "./background-work/foreground-bash-hold.js";
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js";
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js";
 import type { GitAiAttributionService } from "./git-ai-attribution-service.js";
-import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
+import type { StreamingEditValidationService } from "./tools/edit/streaming-edit-validation.js";
 import type { ChildSessionAuthority } from "../module-seams.js";
 import type { SessionContext } from "../session/conversation/tree/conversation-tree-context.js";
-import type { ShellRuntimeClient } from "./tools/shell-runtime-types.js";
+import type { ShellRuntimeClient } from "./tools/bash/execution/shell-runtime-types.js";
 
 import type { SessionMessaging } from "../session/control/messaging/session-messaging.js";
-import type { ExternalSkillChildGrant } from "./tools/skill.js";
-import type { CaptureRuntimeConfig } from "./request-config.js";
+import type { ExternalSkillChildGrant } from "./tools/definitions/skill.js";
+import type { CaptureRuntimeConfig } from "./request/request-config.js";
 
 export interface RequestRoleSelection {
   readonly roleId?: string;
@@ -322,7 +322,7 @@ interface AgentBaseOptions {
   accountHome: string;
   onEvent: (event: RuntimeEvent) => void;
   /** Observes the initial policy read used by this turn. The observer settles before provider preparation. */
-  onRuntimeConfigCapture?: (config: import("./request-config.js").RuntimeConfigRequestCapture) => Promise<void>;
+  onRuntimeConfigCapture?: (config: import("./request/request-config.js").RuntimeConfigRequestCapture) => Promise<void>;
   /** Shared session delivery watermark, inherited by nested producers. */
   waitForEventCapacity?: (signal?: AbortSignal) => void | Promise<void>;
   onSystemMessage?: (message: string, level?: "info" | "error") => void;
@@ -408,10 +408,10 @@ interface AgentBaseOptions {
   captureProviderConnection?: CaptureProviderConnection;
   /** Captures the owning session's current model-serving revision before each
    *  provider request. Children inherit the same authority from their runner. */
-  captureModelRuntime?: import("./model-runtime-capture.js").CaptureModelRuntime;
+  captureModelRuntime?: import("./request/model-runtime-capture.js").CaptureModelRuntime;
   /** The provider runtime of the session that this run serves, which outlives the run (`ProviderSession`). Absent:
    *  the run owns its own, which ends with the run. */
-  providerSession?: import("./provider-runtime-cache.js").ProviderSession;
+  providerSession?: import("./request/provider-runtime-cache.js").ProviderSession;
   /** Render-event sink for background tools. `onEvent` bridges are gated on
    *  turn liveness and drop events once their turn dies; background work
    *  outlives turns, so its dispatch, stream, and terminal events route

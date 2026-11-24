@@ -9,7 +9,7 @@ import { createBackgroundNotificationDelivery } from "../../../../src/orchestrat
 import { readReconciledBranch } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { holdQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications"
 import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/execution/injection-queue"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
 import { temporaryDirectories } from "../../../helpers/directories"
 import { chatEntry } from "../app-service/_frontend-projection-fixtures"
 import { mockRunner } from "../../../fixtures/runtime-supervisor-fixtures.js"

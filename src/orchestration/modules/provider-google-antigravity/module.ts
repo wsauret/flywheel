@@ -3,7 +3,7 @@ import { pinnedAntigravityBytes } from "../../../infra/antigravity-engine-pin.js
 import type { AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js"
-import type { AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js"
+import type { AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js"
 import type { ModuleServiceInstance, PortableModuleServices } from "../../app-service/module-service-host.js"
 import type { FirstPartyModule } from "../../modules.js"
 import { antigravityDynamicCatalog } from "./catalog/catalog.js"
@@ -89,7 +89,7 @@ function createGoogleAntigravityService(services: Pick<PortableModuleServices, "
 const createClient: AccessProviderFactory = async (build) => {
   const runtime = currentEngineRuntime()
   if (runtime === undefined) throw new RouteUnavailableError(`The ${GOOGLE_ANTIGRAVITY_LABEL} engines do not run in this process.`)
-  const [{ createAntigravityClient }, { credentialForCandidate }] = await Promise.all([import("./client.js"), import("../../agent-runtime/llm/client-factory.js")])
+  const [{ createAntigravityClient }, { credentialForCandidate }] = await Promise.all([import("./client.js"), import("../../agent-runtime/llm/routing/client-factory.js")])
   const credential = credentialForCandidate(build.connection, build.candidate)
   if (credential?.type !== "external") throw new RouteUnavailableError(`The ${GOOGLE_ANTIGRAVITY_LABEL} provider requires a Google Antigravity login`)
   return createAntigravityClient(build, { registry: runtime.registry, loginDir: () => credential.configDir, gate: (loginDir) => runtime.gate(loginDir), observations })

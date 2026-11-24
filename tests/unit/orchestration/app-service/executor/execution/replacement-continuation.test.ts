@@ -5,7 +5,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../s
 import { resolveEventStoreDbFile } from "../../../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js"
 import type { FrontendMutation } from "../../../../../../src/protocol/app-service-types.js"
-import { CONTINUATION_MESSAGES } from "../../../../../../src/orchestration/agent-runtime/continuation-messages.js"
+import { CONTINUATION_MESSAGES } from "../../../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js"
 import type { ChatHostAttach } from "../../../../../../src/orchestration/app-service/executor/execution/executor-command-handover.js"
 import { continueAfterReplacement } from "../../../../../../src/orchestration/app-service/executor/execution/replacement-continuation.js"
 import { readChatTurnEnd, readChatTurnEndEvidence } from "../../../../../../src/orchestration/session/control/chat-session-run-evidence.js"

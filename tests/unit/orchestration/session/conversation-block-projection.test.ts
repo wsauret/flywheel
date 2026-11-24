@@ -148,13 +148,13 @@ describe("tree -> output blocks re-projection", () => {
   it("carries the tool's action, so a reopened read folds and abbreviates like a live one", () => {
     const assistant = entry({
       kind: "assistant",
-      content: [{ type: "tool_use", id: "toolu_read", name: "read", input: { path: "src/orchestration/agent-runtime/agent-loop.ts" } }],
+      content: [{ type: "tool_use", id: "toolu_read", name: "read", input: { path: "src/orchestration/agent-runtime/loop/agent-loop.ts" } }],
     })
     const result = entry({ kind: "toolResult", toolUseId: "toolu_read", content: [{ type: "text", text: "export const loop = 1" }] })
     const [tool] = project([assistant, result])
     if (tool?.kind !== "tool") throw new Error("expected tool block")
     expect(tool.action).toBe("file_read")
-    expect(tool.linkUri).toBe(pathToFileURL(resolve(CWD, "src/orchestration/agent-runtime/agent-loop.ts")).href)
+    expect(tool.linkUri).toBe(pathToFileURL(resolve(CWD, "src/orchestration/agent-runtime/loop/agent-loop.ts")).href)
   })
 
   it("settles tool_use parts against their toolResult entries", () => {

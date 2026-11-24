@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { extractErrorText, formatAgentFailureDisplay, launderToolError } from "../../../../src/infra/output/output-formatter.js";
-import { formatToolInputProblems } from "../../../../src/orchestration/agent-runtime/tools/validate-input.js";
+import { formatToolInputProblems } from "../../../../src/orchestration/agent-runtime/tools/input/validate-input.js";
 
 describe("launderToolError", () => {
   test.each([

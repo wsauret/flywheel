@@ -10,11 +10,11 @@ import type { ModuleServiceHandle, ModuleServices } from "../infra/module-servic
 import type { NotificationEpisodeInput } from "../infra/notification-episode.js"
 import { canonicalModuleIds, EMPTY_MODULE_IDS, MODULE_IDS, type ModuleId as WireModuleId } from "../protocol/module-ids.js"
 import type { ModuleProtocolRow, ModuleProviderSetting, ModuleSetting, ModuleSettingControl, WorkflowsMode } from "../protocol/module-protocol-types.js"
-import type { ToolDeclaration } from "./agent-runtime/tools/tool-registry.js"
+import type { ToolDeclaration } from "./agent-runtime/tools/dispatch/tool-registry.js"
 import { credentialSlotClassifier } from "./auth/credential-slot-classifier.js"
 import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
 import type { RuntimeTool } from "./agent-runtime/tools/types.js"
-import type { ModuleRuntimeServices } from "./agent-runtime/module-runtime-services.js"
+import type { ModuleRuntimeServices } from "./agent-runtime/request/module-services/module-runtime-services.js"
 import type { AccessProviderDefinition } from "../infra/llm/access/access-provider.js"
 import type { AuthContext, ProviderConnection } from "../infra/auth/auth-context.js"
 import type { CredentialSlotClassifier } from "../infra/auth/store/auth-store-types.js"
@@ -63,9 +63,9 @@ import { webModule } from "./modules/web.js"
 import { webChatgptModule } from "./modules/web-chatgpt.js"
 import { workflowsModule } from "./modules/workflows.js"
 
-import type { ToolExecutionGate } from "./agent-runtime/tools/tool-dispatch.js"
+import type { ToolExecutionGate } from "./agent-runtime/tools/dispatch/tool-dispatch.js"
 import type { CapabilityCheck } from "../infra/capability-text.js"
-import type { TurnReminderStatement, TurnReminderText } from "./agent-runtime/turn-reminders.js"
+import type { TurnReminderStatement, TurnReminderText } from "./agent-runtime/request/prompt/turn-reminders.js"
 
 /** What a system prompt fragment renders from: the request's kernel facts and
  *  module runtimes, the tools it advertises, the memory bytes it carries, and
@@ -147,7 +147,7 @@ interface FirstPartyContributionMap {
   readonly accountServices: AccountModuleServiceContribution
   readonly agentTasks: ModuleAgentTasks
   readonly providers:
-    { readonly definition: AccessProviderDefinition; readonly createClient: import("./agent-runtime/llm/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../infra/llm/usage/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("./agent-runtime/llm/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("./agent-runtime/llm/provider-availability-types.js").ProviderAllowanceFactory }
+    { readonly definition: AccessProviderDefinition; readonly createClient: import("./agent-runtime/llm/routing/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../infra/llm/usage/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("./agent-runtime/llm/routing/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("./agent-runtime/llm/routing/provider-availability-types.js").ProviderAllowanceFactory }
   readonly tools: { readonly kind: "tool"; readonly name: string; readonly declaration: ToolDeclaration<string>; readonly associatedPromptRosterIds?: readonly PromptRosterContribution["definition"][] }
   readonly promptFragments: PromptFragmentContribution
   readonly turnReminders: TurnReminderContribution
@@ -190,7 +190,7 @@ interface WorkflowObserverContext {
   readonly getContextPercent: () => Promise<number>
 }
 
-type WorkflowObserverFactory = (context: WorkflowObserverContext) => import("./agent-runtime/batch-observers.js").BatchObserver
+type WorkflowObserverFactory = (context: WorkflowObserverContext) => import("./agent-runtime/loop/batch-observers.js").BatchObserver
 
 interface FirstPartyObserverMap {
   readonly workflow: WorkflowObserverFactory

@@ -7,9 +7,9 @@ import type { AgentOptions, AgentRunResult, AgentRunTerminal } from "../../../..
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
 import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
 import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js";
-import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work-types.js";
-import type { CommandHandoverAuthority } from "../../../../../src/orchestration/agent-runtime/command-handover.js";
+import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
+import type { CommandHandoverAuthority } from "../../../../../src/orchestration/agent-runtime/background-execution/command-handover.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter, PersistenceWriteRefused, type AsyncEventStateReadSurface } from "../../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
@@ -17,7 +17,7 @@ import { allCommandHandoversAsync, COMMAND_HANDOVER_IN_FLIGHT_KIND } from "../..
 import { registerCapacityWaits } from "../../../../../src/orchestration/session/control/capacity-wait.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { fakeContainer, handedOverRow, handoverAuthority } from "../_command-handover-fixtures.js";
-import { makeMockOps } from "../tools/_bash-fixtures.js";
+import { makeMockOps } from "../tools/bash/_bash-fixtures.js";
 import { createNotificationCapture, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
 import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 

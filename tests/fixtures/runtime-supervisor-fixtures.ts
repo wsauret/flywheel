@@ -33,7 +33,7 @@ import type { ConversationMessage } from "../../src/orchestration/agent-runtime/
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../src/infra/event-store-types.js"
 import { tryOpenConversationTree } from "../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { unusedChildSessionControl } from "../helpers/child-session-control.js"
-import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js"
+import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work/background-work.js"
 import { planEveryCapability } from "../helpers/attempt-brief.js"
 
 export interface SupervisorTestContext {

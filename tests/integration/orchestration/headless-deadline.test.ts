@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runHeadlessTask } from "../../../src/orchestration/headless/run-headless-task.js";
-import { peekSharedProviderAvailability } from "../../../src/orchestration/agent-runtime/llm/shared-provider-availability.js";
+import { peekSharedProviderAvailability } from "../../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js";
 import type { AgentFactory } from "../../../src/orchestration/agent-runtime/types.js";
 import type { WorkflowDeps } from "../../../src/orchestration/workflow-host/deps.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";

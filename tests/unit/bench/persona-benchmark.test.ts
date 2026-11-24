@@ -18,7 +18,7 @@ import { createPersonaStore as createRunStore } from "../../../src/orchestration
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
 import { loadAllCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
 import type { BenchmarkRuntime } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
-import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
+import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
 import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
 import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";

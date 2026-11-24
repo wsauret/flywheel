@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ReasoningEffort } from "../../../../../src/infra/llm/models/models.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";

@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { openReplyWait } from "../../../../../src/orchestration/session/control/messaging/reply-waits.js";

@@ -3,9 +3,9 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync,
 import { basename, join } from "node:path";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import type { CliMessage, PlacedReminder } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
-import { canonicalShell } from "../../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
+import { canonicalShell } from "../../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import { acquireLockSync } from "../../../../../../src/infra/ownership-file-lock.js";
-import { classifyProviderFailure, isFailoverFailure } from "../../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { classifyProviderFailure, isFailoverFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { processHolders } from "../../../../../../src/infra/process-holder.js";
 import { bridgeSessionId } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/session-id.js";
 import { cliProjectSlug, lockSession, removeTranscript, sweepLeftBehindSessions, transcriptFiles, transcriptRows, writeTranscript, type TranscriptClock } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/transcript.js";

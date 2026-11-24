@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { Effect, Exit, Fiber, Queue, Scope } from "effect";
 import { createBridgeRequests, type BridgeRequestInput } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge-requests.js";
 import { makeBridge } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge/bridge.js";
-import type { AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
+import type { AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { LlmStreamError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { releaseLiveBridges } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/live-bridges.js";

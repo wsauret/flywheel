@@ -29,8 +29,8 @@ import { errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/log.js"
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
 import { AGENT_OUTPUTS_DIR, requireSessionIdComponent, SCRATCH_MUTATION_GIT_DIR, SCRATCH_MUTATIONS_DIR, SESSIONS_DIR, sessionRelativeDir, workflowRelativeDir } from "../../../../infra/paths.js"
-import { mutationGitDirectoryName, mutationGitRuntimeExists } from "../../../agent-runtime/tools/bash-git-wrapper.js"
-import { PRIVATE_COPY_RECORD } from "../../../agent-runtime/tools/bash-private-copy-record.js"
+import { mutationGitDirectoryName, mutationGitRuntimeExists } from "../../../agent-runtime/tools/bash/git/bash-git-wrapper.js"
+import { PRIVATE_COPY_RECORD } from "../../../agent-runtime/tools/bash/private-copy/bash-private-copy-record.js"
 import { directoryComponents, removeTreeUnder, writeFileUnder } from "../../../../infra/write-file-under.js"
 
 const log = Log.create({ service: "session-artifacts" })

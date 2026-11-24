@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access/access-provider.js"
 import type { SubscriptionUsageMetric } from "../../../../../src/infra/llm/usage/subscription-usage.js"
-import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability.js"
+import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js"
 import type { SubscriptionUsagePublishedSnapshot } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { foldSubscriptionUsageIntoAvailability } from "../../../../../src/orchestration/auth/provider-observations/usage-availability-fold.js"
 

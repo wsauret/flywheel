@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
-import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types.js"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types.js"
 import { createChatSession } from "../../../../src/orchestration/chat/session.js"
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox.js"
 import { ChatSessionState } from "../../../../src/orchestration/chat/types.js"

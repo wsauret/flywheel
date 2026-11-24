@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { sharesTreeHost } from "../../../../src/orchestration/agent-runtime/request-kernel.js"
+import { sharesTreeHost } from "../../../../src/orchestration/agent-runtime/request/request-kernel.js"
 
 describe("which sessions share their chat tree's provider process", () => {
   test("a workflow agent and a subagent share it, whatever their grants let them start", () => {

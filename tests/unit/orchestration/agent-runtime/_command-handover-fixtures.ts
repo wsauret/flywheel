@@ -5,7 +5,7 @@ import { asAsyncEventReadSurface, type AsyncEventWriter, type EventStoreReadSurf
 import type { OwnedProcess, OwnedProcessExit } from "../../../../src/infra/owned-subprocess"
 import type { HandedOverCommand } from "../../../../src/infra/owned-command-control"
 import type { LauncherScope } from "../../../../src/infra/process-supervisor"
-import type { CommandHandoverAuthority } from "../../../../src/orchestration/agent-runtime/command-handover"
+import type { CommandHandoverAuthority } from "../../../../src/orchestration/agent-runtime/background-execution/command-handover"
 import type { CommandHandoverRow } from "../../../../src/orchestration/session/command-handover"
 
 export type AdoptionAnswer = Awaited<ReturnType<LauncherScope["adoptOwned"]>>

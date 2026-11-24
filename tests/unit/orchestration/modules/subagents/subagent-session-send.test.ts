@@ -26,7 +26,7 @@ import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orc
 import { interruptLiveChild } from "../../../../helpers/live-child-run"
 import { asModelClient } from "../../agent-runtime/_model-client.js"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js"
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js"
 import { planEveryCapability } from "../../../../helpers/attempt-brief.js"
 
 const contexts: SupervisorTestContext[] = []

@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { providerModelInfo } from "../../../../../../src/infra/llm/catalog/provider-model-info.js";
-import { prepareAnthropicRequest, type AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
+import { prepareAnthropicRequest, type AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type ConversationMessage, type ProviderDemand, type StreamOptions, type ToolPresentation } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { TOOL_MCP_PREFIX } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { cliView } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
@@ -20,7 +20,7 @@ import { releaseLiveBridges, resumeLiveBridges } from "../../../../../../src/orc
 import { hostKey, processAgentHosts, type HostRegistry } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import type { AgentHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
-import { holdSharedTree } from "../../../../../../src/orchestration/agent-runtime/shared-tree.js";
+import { holdSharedTree } from "../../../../../../src/orchestration/agent-runtime/request/shared-tree.js";
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
 import { silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.js";
 

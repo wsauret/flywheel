@@ -8,7 +8,7 @@ import { acquireConversationSearchIndex } from "../../../../../src/infra/convers
 import { resolveConversationSearchDbFile, resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js"
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js"
 import { createSubagentSessionAuthority } from "../../../../../src/orchestration/modules/subagents/execution/session-authority.js"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager.js"

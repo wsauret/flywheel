@@ -9,7 +9,7 @@ import { captureSubscriptionAdmission } from "../../../../../src/orchestration/s
 import { createSubscriptionSpendConsentCaptureCache } from "../../../../../src/orchestration/subscription-spend-consent/capture-cache.js"
 import type { SubscriptionSpendConsentCapture } from "../../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js"
 import { createSubscriptionUsageServicePool } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
-import type { ProviderAllowanceFactory } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js"
+import type { ProviderAllowanceFactory } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js"
 
 const { profile, cleanup } = createProfileFixture()
 afterEach(cleanup)

@@ -3,7 +3,7 @@ import { createBudgetProtocolProjection } from "./catalog/budget-protocol-projec
 import { createFrontendProjection } from "./frontend-projection.js"
 import { createSessionDetailProjection } from "./session-detail-projection.js"
 import { createProjectFiles } from "./project-files.js"
-import { listFiles } from "../../agent-runtime/tools/ripgrep.js"
+import { listFiles } from "../../agent-runtime/tools/files/ripgrep.js"
 import { createOutputProjection } from "./output/output-projection.js"
 import { createKeptOutputProjection } from "./output/kept-output-projection.js"
 import { createShippedOutput } from "./output/shipped-output.js"
@@ -26,7 +26,7 @@ import { workflowPlacements } from "../../module-catalog.js"
 import { awaitsPlannedContinuation, onPlannedContinuationRetired } from "../../session/control/planned-session-continuation.js"
 import { keptCommandsOf } from "../../session/command-handover.js"
 import { readSessionDurationFromReader } from "../../session/runtime-facts/session-duration-projection.js"
-import { sharedProcessorClaims } from "../../agent-runtime/tools/processor-claims.js"
+import { sharedProcessorClaims } from "../../agent-runtime/tools/bash/execution/processor-claims.js"
 
 interface FrontendProjectionDeps {
   readonly sessionStore: ReturnType<typeof createSessionStore>

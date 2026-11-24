@@ -1,4 +1,4 @@
-import { captureModuleRequestSections } from "../../../../src/orchestration/agent-runtime/request-config.js";
+import { captureModuleRequestSections } from "../../../../src/orchestration/agent-runtime/request/request-config.js";
 import { describe, it, expect } from "bun:test";
 import { join } from "node:path";
 import { Redacted } from "effect";
@@ -14,9 +14,9 @@ import { testCapabilityModules } from "../../../helpers/provider-authority.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { asModelClient } from "../agent-runtime/_model-client.js";
 import type { ProviderStreamEvent, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js";
-import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js";
-import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
+import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
 
 type WorkflowDepsOverrides = NonNullable<PrepareWorkflowDepsInput["overrides"]>;
 

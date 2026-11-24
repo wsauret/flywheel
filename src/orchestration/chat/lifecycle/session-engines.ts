@@ -6,8 +6,8 @@ import { recordBackgroundFailure } from "../../../infra/operation-log.js"
 import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
 import type { AgentOptions } from "../../agent-runtime/types.js"
 import type { Claim, ConversationMessage, ProviderDemand } from "../../agent-runtime/llm/types.js"
-import type { RequestPreparer } from "../../agent-runtime/request-preparation.js"
-import { openProviderSession, type HeldProviderSession, type ProviderSession } from "../../agent-runtime/provider-runtime-cache.js"
+import type { RequestPreparer } from "../../agent-runtime/loop/turn/request-preparation.js"
+import { openProviderSession, type HeldProviderSession, type ProviderSession } from "../../agent-runtime/request/provider-runtime-cache.js"
 import type { ResolvedRole, RoleResolver } from "../../config/roles.js"
 
 const log = Log.create({ service: "session-engines" })

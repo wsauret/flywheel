@@ -28,7 +28,7 @@ import {
 } from "../scoring/run-store.js";
 import { failedJudgeCallCount } from "../scoring/judge-attempt-reconciliation.js";
 import { parseVariant, sameVariants, type VariantSpec } from "../variant.js";
-import { personaToolEntries, toolRegistryFromComposition } from "../../../../agent-runtime/tools/tool-registry.js";
+import { personaToolEntries, toolRegistryFromComposition } from "../../../../agent-runtime/tools/dispatch/tool-registry.js";
 import { runGroups } from "../campaign/matrix-runner.js";
 import { benchmarkTaskIdentity, structuredIdentity } from "../campaign/content-identity.js";
 import type { BenchmarkAccounting } from "../accounting/evidence.js";

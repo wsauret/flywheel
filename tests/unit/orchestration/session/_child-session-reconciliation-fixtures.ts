@@ -7,7 +7,7 @@ import { createSessionManager, type SessionManager } from "../../../../src/orche
 import type { WorkflowPublication } from "../../../../src/orchestration/session/control/children/child-session-publication"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record"
-import { redactMessage } from "../../../../src/orchestration/agent-runtime/agent-loop-history"
+import { redactMessage } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history"
 import { initializedWorkflowFacts } from "../../../helpers/workflow-root-fixtures"
 import { WorkflowSessionFactSchema, committedWorkflowEvent, parseWorkflowSessionFact, workflowRootControl } from "../../../../src/workflows/vm/facts/session-facts"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold"

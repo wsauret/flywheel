@@ -4,7 +4,7 @@ import { join } from "node:path"
 import type { RuntimeOAuthCredential } from "../../../../src/infra/auth/auth-context.js"
 import type { AccessProviderDefinition } from "../../../../src/infra/llm/access/access-provider.js"
 import { applyWindowsPrivateDirectoryAcl } from "../../../../src/infra/windows-private-directory-acl.js"
-import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
+import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 
 /** A stage prepared the way the snapshot reader demands: private to this

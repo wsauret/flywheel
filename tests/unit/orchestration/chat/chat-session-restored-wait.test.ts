@@ -1,10 +1,10 @@
 import { describe, expect, it, setSystemTime } from "bun:test"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types"
 import { appendTurnEnd, createStoredChatSession } from "./_chat-session-agent-runtime-fixtures"
-import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types.js"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types.js"
 import { contextResetRecordId, interruptedTurnEnd, type TurnEnd } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree.js"
-import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages.js"
+import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
@@ -21,7 +21,7 @@ import { registerTestChildRun } from "../../../helpers/live-child-run.js"
 import { dropReplyWait, holdReplyWait } from "../../../../src/orchestration/session/conversation/reply-wait-cells.js"
 import { readChatTurnEndEvidence } from "../../../../src/orchestration/session/control/chat-session-run-evidence.js"
 import { messageDisposition } from "../../../../src/orchestration/session/message-disposition.js"
-import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/reply-nudge.js"
+import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/loop/reply-nudge.js"
 
 describe("a restored background wait", () => {
   const temporary = temporaryDirectories()

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory"
 import type { RuntimeEvent } from "../../../src/infra/runtime-event-types"
-import { emitToolInputComplete } from "../../../src/orchestration/agent-runtime/emit"
+import { emitToolInputComplete } from "../../../src/orchestration/agent-runtime/runner/emit"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-fact-mapper"
 
 /** Composed at runtime so this test file holds no secret-shaped literal of its

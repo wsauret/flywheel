@@ -7,12 +7,12 @@ import type { ModelFamily } from "../../infra/llm/models/model-family.js"
 import type { ModelInfo, ModelsClient } from "../../infra/llm/models/models.js"
 import type { AccountDirectories } from "../../infra/directory-authorities.js"
 import { authDir } from "../../infra/paths.js"
-import { createAgentRuntime } from "../agent-runtime/factory.js"
-import type { CaptureProviderConnection, CaptureSubscriptionAdmission, LLMClientFactory } from "../agent-runtime/model-runtime-capture.js"
-import type { EffectiveProviderConnection, RecordModelRefusal } from "../agent-runtime/llm/client-factory.js"
-import type { CaptureRuntimeConfig } from "../agent-runtime/request-config.js"
+import { createAgentRuntime } from "../agent-runtime/runner/factory.js"
+import type { CaptureProviderConnection, CaptureSubscriptionAdmission, LLMClientFactory } from "../agent-runtime/request/model-runtime-capture.js"
+import type { EffectiveProviderConnection, RecordModelRefusal } from "../agent-runtime/llm/routing/client-factory.js"
+import type { CaptureRuntimeConfig } from "../agent-runtime/request/request-config.js"
 import type { AgentFactory, AgentOptions } from "../agent-runtime/types.js"
-import type { CapabilityPlanner, RequestPreparer } from "../agent-runtime/request-preparation.js"
+import type { CapabilityPlanner, RequestPreparer } from "../agent-runtime/loop/turn/request-preparation.js"
 import type { ProjectDefinitionRegistry, ProjectDefinitionRegistryRevision } from "../../workflows/definitions/definition-registry.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
 import { getSharedModelsClient } from "../config/models/llm-clients.js"
@@ -25,17 +25,17 @@ import { installedCredentialProviderIds } from "../credential-provider-modules.j
 
 import type { ModuleServices } from "../../infra/module-service.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
-import type { CommandHandoverAuthority } from "../agent-runtime/command-handover.js"
+import type { CommandHandoverAuthority } from "../agent-runtime/background-execution/command-handover.js"
 import type { ChildSessionControl } from "../session/control/messaging/child-session-control.js"
 import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js"
 import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js"
 import type { GitAiAttributionService } from "../agent-runtime/git-ai-attribution-service.js"
-import type { StreamingEditValidationService } from "../agent-runtime/tools/streaming-edit-validation.js"
+import type { StreamingEditValidationService } from "../agent-runtime/tools/edit/streaming-edit-validation.js"
 import type { AuthConditionOwner } from "../auth/auth-condition-owner.js"
-import type { UsageAuthorityGeneration } from "../agent-runtime/usage-settlement.js"
+import type { UsageAuthorityGeneration } from "../agent-runtime/request/usage/usage-settlement.js"
 
 import { credentialSlotClassifier } from "../auth/credential-slot-classifier.js"
-import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
+import { accessProviderRegistry } from "../agent-runtime/llm/routing/access-provider-registry.js"
 const log = Log.create({ service: "workflow-deps" })
 
 export interface WorkflowDeps extends AccountDirectories {
@@ -194,7 +194,7 @@ export interface PrepareWorkflowDepsInput extends AccountDirectories {
   captureModelAccess?: () => Promise<{ readonly worker: AccessProviderModelEligibility; readonly auth?: AuthContext }>
   /** Captures allowance and consent from one usage service at provider admission. */
   captureSubscriptionAdmission?: CaptureSubscriptionAdmission
-  acquireUsageSettlementAuthority?: (profile: { readonly profileDir: string; readonly profileId: string }) => Promise<import("../agent-runtime/usage-settlement.js").UsageSettlementAuthorityLease>
+  acquireUsageSettlementAuthority?: (profile: { readonly profileDir: string; readonly profileId: string }) => Promise<import("../agent-runtime/request/usage/usage-settlement.js").UsageSettlementAuthorityLease>
   /** Immutable identity of the profile Usage authority admitted for this runtime generation. */
   usageAuthority?: UsageAuthorityGeneration
   persistentProcesses?: PersistentProcessClient | BridgedPersistentProcessClient

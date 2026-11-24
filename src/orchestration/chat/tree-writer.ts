@@ -1,6 +1,6 @@
 import type { ConversationMessage } from "../agent-runtime/llm/types.js"
 import { carriedTurnEndRecord, contextResetRecordId, type TurnInterruption } from "../session/conversation/turn-end-record.js"
-import { redactMessage } from "../agent-runtime/agent-loop-history.js"
+import { redactMessage } from "../agent-runtime/loop/turn/agent-loop-history.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import type { ChatInputLike } from "../../infra/chat-input.js"
 import { chatInputContent, normalizeChatInput } from "../../infra/chat-input.js"

@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test";
 import { compactInput, holdInput, resumeInput } from "../../../../../src/infra/agent-loop-events.js";
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { ContextLengthExceededError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { FUNCTION_TOOL_PRESENTATION, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { assemblyPinned, RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { asModelClient } from "../_model-client.js";
 import { makeCaptureClient, withSessionNotes } from "./_loop-fixtures.js";
-import { handoffDefinition } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
+import { handoffDefinition } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 
 for (const missing of ["checkpoint", "checkpoint_read", "checkpoint_replace", "checkpoint_decide"] as const) {

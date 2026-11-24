@@ -1,6 +1,6 @@
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
 import { asRecord, type UnknownRecord } from "../../../../infra/record.js";
-import { parseAnthropicToolInput } from "../../../agent-runtime/llm/anthropic-tool-input.js";
+import { parseAnthropicToolInput } from "../../../agent-runtime/llm/adapters/anthropic/anthropic-tool-input.js";
 import type { CliBlock, CliMessage } from "../cli-view.js";
 
 /**

@@ -1,6 +1,6 @@
 import { moduleRuntimeHandle } from "../../../infra/module-runtime.js"
-import type { ModuleRuntimeServices } from "../../agent-runtime/module-runtime-services.js"
-import type { DeferredToolFactory } from "../../agent-runtime/tools/tool-registry.js"
+import type { ModuleRuntimeServices } from "../../agent-runtime/request/module-services/module-runtime-services.js"
+import type { DeferredToolFactory } from "../../agent-runtime/tools/dispatch/tool-registry.js"
 import { createCatalogRenderer } from "./catalog.js"
 import { describeCodeModeTools } from "./descriptors.js"
 import { codeModeService } from "./service.js"

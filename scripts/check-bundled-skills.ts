@@ -37,7 +37,7 @@ import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js
 import { installedDefinitionBundles, installModuleCatalog } from "../src/orchestration/module-catalog.js";
 import { composeFirstPartyModules, SHIPPED_OTHER_MODULES } from "../src/orchestration/modules.js";
 import { installedPersonaToolEntries } from "../src/orchestration/tool-catalog.js";
-import { UNATTENDED_CHAT_TERM } from "../src/orchestration/agent-runtime/system-prompt.js";
+import { UNATTENDED_CHAT_TERM } from "../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import { agentTypeOf } from "../src/orchestration/app-service/definitions/definition-availability.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
 

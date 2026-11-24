@@ -1,5 +1,5 @@
 import { moduleRuntimeHandle } from "../../../infra/module-runtime.js"
-import type { ModuleRuntimeServices } from "../../agent-runtime/module-runtime-services.js"
+import type { ModuleRuntimeServices } from "../../agent-runtime/request/module-services/module-runtime-services.js"
 import type { RuntimeTool } from "../../agent-runtime/tools/types.js"
 import { createMcpNestedTool } from "./nested-tool.js"
 import { mcpService } from "./service.js"

@@ -1,5 +1,5 @@
 import { papercutDisposeDefinition, papercutLogDefinition } from "./papercuts/tools.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
+import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
 import { papercutsProtocol } from "../../protocol/modules/papercuts.js"
 import { moduleProtocol } from "../app-service/module-protocol-host.js"
@@ -9,7 +9,7 @@ import { createPapercutsProtocol } from "./papercuts/protocol.js"
 import { PapercutRecordedFactSchemas } from "./papercuts/facts.js"
 import { createPapercutDispositionWriter, papercutDispositionRuntime, papercutDispositionService } from "./papercuts/disposition-writer.js"
 import type { ModuleProcessServices } from "../app-service/module-service-host.js"
-import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-services.js"
+import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js"
 
 function declaration(tool: RuntimeTool, registryOrder: number): ToolDeclaration {
   return {

@@ -3,11 +3,11 @@ import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta
 import { Cause, Deferred, Duration, Effect, Exit, Fiber, Queue, Scope } from "effect";
 import { DebugLog } from "../../../../infra/debug-log.js";
 import { localDate } from "../../../../infra/env-detection.js";
-import type { AnthropicOperations } from "../../../agent-runtime/llm/anthropic.js";
+import type { AnthropicOperations } from "../../../agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { bridgeClosedError as closedError, createBridgeRequests, queryWindow, type AdmittedWindow } from "./bridge-requests.js";
 import { createReservations } from "./bridge-reservation.js";
 import type { BridgeConfig, BridgeState, CliErrorEvidence, EngineInput, Inbox, LiveQuery, OpenRequest, SinkEvent, StartedEngine, StopDecision, StopOptions } from "./bridge-state.js";
-import { classifyAnthropicError } from "../../../agent-runtime/llm/anthropic-adapter-helpers.js";
+import { classifyAnthropicError } from "../../../agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";
 import { LlmStreamError, ModelAccessRefusedError, ProviderRequestValidationError } from "../../../agent-runtime/llm/errors.js";
 import { createAssistantAssembler, type AssistantAssembler } from "./assistant-assembler.js";
 import { cliView, type CliMessage, type CliView, type QueryIdentity } from "../cli-view.js";

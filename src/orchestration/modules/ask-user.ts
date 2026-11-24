@@ -1,5 +1,5 @@
-import { ASK_USER_TOOL_DEFINITION, createAskUserTool, type AskUserToolDeps } from "../agent-runtime/tools/ask-user.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
+import { ASK_USER_TOOL_DEFINITION, createAskUserTool, type AskUserToolDeps } from "../agent-runtime/tools/sessions/ask-user.js"
+import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
 import type { FirstPartyModule } from "../modules.js"
 
 const askUser = {

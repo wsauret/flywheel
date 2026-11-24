@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
 import { createCliLauncher } from "../../../src/cli/account-service/runtime-launch.js"
-import { BunStdioClientTransport } from "../../../src/orchestration/agent-runtime/mcp-stdio-client-transport.js"
+import { BunStdioClientTransport } from "../../../src/orchestration/agent-runtime/mcp/mcp-stdio-client-transport.js"
 import {
   containerHolds,
   createRealProcessFixture,

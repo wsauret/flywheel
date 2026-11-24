@@ -76,16 +76,16 @@ import { loadBundledDefaultCatalog } from "../../../../workflows/definitions/bun
 import { deriveDefinitionStalenessReport } from "../../../../workflows/definitions/override-staleness.js"
 import { createDefinitionOverrideService } from "../../../definition-overrides/override-service.js"
 import { createDefinitionOverrideBaselineOwner } from "../../../../workflows/definitions/override-baselines.js"
-import { acquireSharedProviderAvailability, disposeSharedProviderAvailability } from "../../../agent-runtime/llm/shared-provider-availability.js"
+import { acquireSharedProviderAvailability, disposeSharedProviderAvailability } from "../../../agent-runtime/llm/routing/shared-provider-availability.js"
 import { composeSubscriptionNotifications } from "../../../auth/subscription-notification-composition.js"
 import { composeModuleProcessServices, createNotifySeam } from "../../module-service-host.js"
 import { containNotifyFailures } from "./contained-notify.js"
 import { createGitAiAttributionService } from "../../../agent-runtime/git-ai-attribution-service.js"
 import { createGitAiAttributionProjection } from "../../projections/changes/git-ai-attribution-projection.js"
 import { createCommandUsageProjection } from "../../definitions/commands/command-usage-projection.js"
-import { createStreamingEditValidationService } from "../../../agent-runtime/tools/streaming-edit-validation.js"
+import { createStreamingEditValidationService } from "../../../agent-runtime/tools/edit/streaming-edit-validation.js"
 
-import { accessProviderRegistry } from "../../../agent-runtime/llm/access-provider-registry.js"
+import { accessProviderRegistry } from "../../../agent-runtime/llm/routing/access-provider-registry.js"
 import type { RuntimeChatKernel } from "../../supervisor/runtime-chat-kernel.js"
 import type { NotificationEpisodeInput } from "../../../../infra/notification-episode.js"
 import { createRuntimeWorkSettlement, serveChatSettlement, createSettledRuntimeDispatch, liveWorkSettlementOwners } from "../../supervisor/runtime-work-settlement.js"
@@ -633,7 +633,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     gitAiAttribution,
     commandInvoke,
     runtimeSupervisor,
-    warmTools: async () => { await (await import("../../../agent-runtime/tools/bash-parser.js")).warmBashParser() },
+    warmTools: async () => { await (await import("../../../agent-runtime/tools/bash/policy/bash-parser.js")).warmBashParser() },
     publishReferences: async () => (await import("../../../../workflows/definitions/installer.js")).publishBundledReferences(userDataRoot, definitionCatalog),
     bus,
   } satisfies FlywheelAppServiceDeps

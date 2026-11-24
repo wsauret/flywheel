@@ -8,7 +8,7 @@ import type { HeldBackgroundNotification } from "../session/conversation/queued-
 import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
 import type { HeldRetainedOperation } from "../module-seams.js"
 import type { DeliveryOutcome, LiveRecipientState } from "../session/message-disposition.js"
-import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import type { BackgroundWorkTracking } from "../agent-runtime/background-work/background-work.js"
 import type { ChatTurnEnding } from "./runner-completion.js"
 
 /** What a person's message to a chat came to. `recorded` is a message the

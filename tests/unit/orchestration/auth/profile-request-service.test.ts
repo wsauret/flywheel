@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { join } from "node:path"
 import { createProfileRequestService } from "../../../../src/orchestration/auth/profile-request-service.js"
-import { captureRuntimeConfigRequest, type CaptureRuntimeConfig } from "../../../../src/orchestration/agent-runtime/request-config.js"
+import { captureRuntimeConfigRequest, type CaptureRuntimeConfig } from "../../../../src/orchestration/agent-runtime/request/request-config.js"
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema.js"
 
 function runtimeConfig(profileId: string, allowTrainingRoutes = false): ReturnType<CaptureRuntimeConfig> {

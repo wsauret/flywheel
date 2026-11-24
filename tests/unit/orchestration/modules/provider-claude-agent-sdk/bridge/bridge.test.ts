@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { BetaRefusalStopDetails } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages.js";
 import { ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { classifyProviderFailure } from "../../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { classifyProviderFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";

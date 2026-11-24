@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { lowerProviderHistory } from "../../../../../../src/orchestration/agent-runtime/llm/provider-history.js";
-import { createModelReminders } from "../../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
+import { lowerProviderHistory } from "../../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js";
+import { createModelReminders } from "../../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { textHistoryTarget } from "../../../../../../src/orchestration/modules/provider-google-antigravity/request/history-text.js";
 import { CONTINUATION_PROMPT, planRequest, REPLY_PROMPT, type PlannedRequest, type RequestPlan } from "../../../../../../src/orchestration/modules/provider-google-antigravity/request/request-plan.js";

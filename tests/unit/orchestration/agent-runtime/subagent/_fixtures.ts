@@ -4,13 +4,13 @@ import * as path from "node:path";
 
 import type { SubagentDispatchDeps } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
 import type { ConversationMessage, ModelClient } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
 import type { AgentFailureReason, AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
 import { resolveSessionRoles } from "../../../../../src/orchestration/config/models/session-role-resolver.js";
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
-import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/child-slot-registry.js";
+import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js";
 import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { capabilityAccessFor, type CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
@@ -33,7 +33,7 @@ import { Schema } from "effect";
 import { EffortSchema } from "../../../../../src/infra/workflow-types.js";
 import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js";
 import { subscribeSessionRuntimeFacts } from "../../../../../src/orchestration/session/persistence/create-session-infra.js";
-import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/capability-checks.js";
+import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
 import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 

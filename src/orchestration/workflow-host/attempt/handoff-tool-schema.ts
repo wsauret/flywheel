@@ -5,7 +5,7 @@ import { objectJsonSchema, type CompiledOutput, type JsonSchema } from "../../..
 import type { ReadCommandEvidence } from "../../../workflows/output-contract/evidence.js";
 import { withoutEmptyOptionals } from "../../../workflows/output-contract/leniency.js";
 import type { OutputIssue } from "../../../workflows/output-contract/paths.js";
-import { coerceToolInput } from "../../agent-runtime/tools/coerce-input.js";
+import { coerceToolInput } from "../../agent-runtime/tools/input/coerce-input.js";
 import { createOutputAcceptContext } from "./output-accept-context.js";
 
 /** What one handoff call can reach when it accepts a submission. */

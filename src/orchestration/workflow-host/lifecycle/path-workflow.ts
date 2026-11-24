@@ -28,7 +28,7 @@ import type { DefinitionAssetReader } from "../../../workflows/definitions/defin
 import { hashDefinition } from "../../../workflows/provenance/definition-hash.js"
 import { canonicalWorkflowRecord } from "../../../workflows/schema/definition-records.js"
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"
-import { resolveToolPath } from "../../agent-runtime/tools/tool-paths.js"
+import { resolveToolPath } from "../../agent-runtime/tools/files/tool-paths.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../workflows/definitions/agent-resolution.js"
 import { canonicalStepWorkflowRecord } from "../../../workflows/schema/retired-step-grammar/records.js"
 import { stepGrammarWarning } from "../../../workflows/schema/retired-step-grammar/convert.js"

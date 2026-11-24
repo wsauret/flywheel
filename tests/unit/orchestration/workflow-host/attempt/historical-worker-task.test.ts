@@ -11,7 +11,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, typ
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store"
 import type { AgentFactory, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types"
-import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages"
+import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages"
 import { convertWorkflowAgentSessions } from "../../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions"
 import { workflowMembershipReader } from "../../../../../src/orchestration/session/metadata/workflow-membership"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager"

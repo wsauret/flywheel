@@ -1,8 +1,8 @@
 import type { AgentLoopWakeInput } from "../../infra/agent-loop-events.js"
-import type { ResilienceDeps } from "../agent-runtime/agent-resilience.js"
+import type { ResilienceDeps } from "../agent-runtime/runner/agent-resilience.js"
 import type { Agent, AgentRunResult } from "../agent-runtime/types.js"
 import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
-import type { AgentRunTally } from "../agent-runtime/agent-loop-state.js"
+import type { AgentRunTally } from "../agent-runtime/loop/agent-loop-state.js"
 
 /** Thrown by createContext to signal that the turn is stale and should abort. */
 export class AgentTurnAborted extends Error {

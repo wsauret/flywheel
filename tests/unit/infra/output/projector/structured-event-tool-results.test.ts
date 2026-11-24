@@ -7,7 +7,7 @@ import type { AnyBlock, ToolEntry, AgentGroupBlock } from "../../../../../src/in
 import { extractDisplayMeta, resolveTrackedToolResult as resolveTrackedToolResultAtCwd } from "../../../../../src/infra/output/projector/structured-event-tool-results.js";
 import type { PlacedTool } from "../../../../../src/infra/output/projector/output-tool-projection-types.js";
 import { StructuredOutputBuilder } from "../../../../../src/infra/output/projector/structured-output-builder.js";
-import { formatToolInputProblems } from "../../../../../src/orchestration/agent-runtime/tools/validate-input.js";
+import { formatToolInputProblems } from "../../../../../src/orchestration/agent-runtime/tools/input/validate-input.js";
 import { decodeRuntimeUiPatch, encodeRuntimeUiPatch } from "../../../../helpers/runtime-ui-patch.js";
 import type { ToolOutcome } from "../../../../../src/infra/tool-outcome.js";
 

@@ -4,7 +4,7 @@ import { personaInstructions } from "../../../workflows/agents/persona-instructi
 import { grantedSubagentTypes, personaToolNames, workflowAgentSubagents } from "../../../workflows/agents/subagent-reachability.js"
 import type { CapabilityCheck } from "../../../infra/capability-text.js"
 import type { SkillRegistryRevision } from "../../../workflows/skills/skill-schema.js"
-import { availableToolNames, gitDisciplineRule, isReadOnlyPersona } from "../../agent-runtime/persona-tool-rules.js"
+import { availableToolNames, gitDisciplineRule, isReadOnlyPersona } from "../../agent-runtime/request/prompt/persona-tool-rules.js"
 import type { FirstPartyModuleComposition } from "../../modules.js"
 
 /** How an agent of a workflow whose record names a `persona` runs: as that

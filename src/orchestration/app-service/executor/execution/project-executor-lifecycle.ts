@@ -2,7 +2,7 @@ import type { ReattachableProcessEndpoint } from "../../../../infra/reattachable
 import { errorMessage } from "../../../../infra/error-message.js"
 import type { Log } from "../../../../infra/log.js"
 import type { RuntimeChatDefault } from "../../../../protocol/app-service-types.js"
-import type { ProcessorClaims } from "../../../agent-runtime/tools/processor-claims.js"
+import type { ProcessorClaims } from "../../../agent-runtime/tools/bash/execution/processor-claims.js"
 import type { RuntimeComposition } from "./project-execution-runtime.js"
 import { decodeProjectExecutorCommand, type ProjectExecutorCommand } from "../project-executor-protocol.js"
 

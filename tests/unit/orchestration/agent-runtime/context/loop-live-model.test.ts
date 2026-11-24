@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
-import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request-tool-surface.js";
+import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
 import { testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 
 describe("agent loop live model reassignment", () => {

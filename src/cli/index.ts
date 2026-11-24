@@ -4,7 +4,7 @@ import { EXECUTABLE_ROLES, internalExecutableRole, type ExecutableRole } from ".
 
 const internalRoles = {
   [EXECUTABLE_ROLES.mutationGit]: async () => {
-    const { runMutationGitMain } = await import("../orchestration/agent-runtime/tools/bash-git-main.js")
+    const { runMutationGitMain } = await import("../orchestration/agent-runtime/tools/bash/git/bash-git-main.js")
     await runMutationGitMain()
   },
   [EXECUTABLE_ROLES.projectExecutor]: async () => {

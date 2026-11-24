@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { PreparedPackage } from "../../../../../../src/orchestration/agent-runtime/review-types.js";
+import type { PreparedPackage } from "../../../../../../src/orchestration/agent-runtime/request/module-services/review-types.js";
 import { decodeSkillCorpusCleanupResponse } from "../../../../../../src/orchestration/modules/learning/maintenance/skill-corpus-cleanup-classifier.js";
 import { classifySkillCorpusCleanupWork } from "../../../../../../src/orchestration/modules/learning/maintenance/skill-corpus-cleanup-work.js";
 

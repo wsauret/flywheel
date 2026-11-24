@@ -1,4 +1,4 @@
-import type { PreparedPackage } from "../../../agent-runtime/review-types.js";
+import type { PreparedPackage } from "../../../agent-runtime/request/module-services/review-types.js";
 import { realpathSync } from "node:fs";
 import { sep } from "node:path";
 import { readSkillPackageFiles } from "../../../../workflows/skills/skill-context.js";

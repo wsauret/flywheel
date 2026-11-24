@@ -1,7 +1,7 @@
 import { isProgressUpdate } from "../../../../infra/llm/anthropic-narration.js";
 import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-schema.js";
-import { originOf } from "../../../agent-runtime/llm/block-origin.js";
-import type { ProviderHistoryTarget } from "../../../agent-runtime/llm/provider-history.js";
+import { originOf } from "../../../agent-runtime/llm/history/block-origin.js";
+import type { ProviderHistoryTarget } from "../../../agent-runtime/llm/history/provider-history.js";
 import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR, type SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js";
 import type { ContentBlock, ConversationMessage } from "../../../agent-runtime/llm/types.js";
 

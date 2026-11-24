@@ -7,7 +7,7 @@ import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/module-r
 import type { SessionMetadataReader } from "../metadata/schemas.js"
 import type { SessionStore } from "../../session-store/types.js"
 import type { ChatRunner } from "../../chat/runner-types.js"
-import type { BackgroundWorkTracking } from "../../agent-runtime/background-work.js"
+import type { BackgroundWorkTracking } from "../../agent-runtime/background-work/background-work.js"
 import type { DeliveryOutcome, LiveRecipientState } from "../message-disposition.js"
 
 /** The assembled parent host that owns child execution and tracking. */

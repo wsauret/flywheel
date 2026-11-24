@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import type { QuotaExhaustionObservation } from "./provider-availability-types.js";
+import type { QuotaExhaustionObservation } from "./routing/provider-availability-types.js";
 import type { ProviderErrorCopy, ProviderRecovery } from "../../../infra/llm/errors/provider-error-copy.js";
 import type { ModelRefusal } from "../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import type { RefusedPart } from "../../../infra/llm/content-repair.js";

@@ -1,10 +1,10 @@
 import { Effect, Exit, Redacted, Scope } from "effect";
-import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
-import { createAnthropicAdapter, prepareAnthropicRequest, type AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { createAnthropicAdapter, prepareAnthropicRequest, type AnthropicOperations } from "../../agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
-import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
-import { engineModelId, createClaudeReminders, environmentFacts } from "../../agent-runtime/llm/runtime-reminders.js";
-import { credentialForCandidate, providerAdapter, type AccessProviderBuild } from "../../agent-runtime/llm/client-factory.js";
+import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/stream/provider-failure.js";
+import { engineModelId, createClaudeReminders, environmentFacts } from "../../agent-runtime/llm/history/runtime-reminders.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderBuild } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type ProviderAdapter, type ToolPresentation } from "../../agent-runtime/llm/types.js";
 import { processUsageReadings } from "./account-usage.js";

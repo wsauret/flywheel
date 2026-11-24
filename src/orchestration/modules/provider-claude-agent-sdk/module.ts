@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { privateTemporaryRoot } from "../../../infra/private-temporary-root.js";
 import type { ClaudeLoginEngines } from "../../../infra/claude-engine.js";
 import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../infra/llm/access/access-provider.js";
-import type { AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import type { AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { moduleServiceHandle } from "../../../infra/module-service.js";
 import type { ModuleServiceInstance, PortableModuleServices } from "../../app-service/module-service-host.js";
 import type { FirstPartyModule } from "../../modules.js";

@@ -2,10 +2,10 @@ import { errorDetail, errorMessage } from "../../../infra/error-message.js"
 import { Log } from "../../../infra/log.js"
 import { createSubscriptionUsageService, type SubscriptionUsageProfile } from "./subscription-usage-service.js"
 import { createSubscriptionUsageServicePool, type SubscriptionUsageServicePool } from "./subscription-usage-service-pool.js"
-import { peekSharedProviderAvailability } from "../../agent-runtime/llm/shared-provider-availability.js"
+import { peekSharedProviderAvailability } from "../../agent-runtime/llm/routing/shared-provider-availability.js"
 import { foldSubscriptionUsageIntoAvailability } from "./usage-availability-fold.js"
 
-import type { AccessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js"
+import type { AccessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
 const log = Log.create({ service: "runtime-composition" })
 

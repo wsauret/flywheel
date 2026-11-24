@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 
 import type { AgentRunResult, Agent } from "../../../../../src/orchestration/agent-runtime/types.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
-import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/child-slot-registry.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js";
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
 

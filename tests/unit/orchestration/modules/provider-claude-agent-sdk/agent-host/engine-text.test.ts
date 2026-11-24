@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ModelInfo } from "../../../../../../src/infra/llm/models/models.js";
-import { prepareAnthropicRequest } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
+import { prepareAnthropicRequest } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { cliView, type QueryIdentity } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
 import { CLAUDE_AGENT_SDK_PROVIDER_ID } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
