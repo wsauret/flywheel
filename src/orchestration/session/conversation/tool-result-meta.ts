@@ -1,13 +1,10 @@
 import { createEventProjection, parseProjectionFact } from "../../../infra/event-projection.js"
 import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../../infra/event-store-types.js"
 import { heldProjection } from "../../../infra/projection-registry.js"
-import type { MutationEvidence } from "../../../infra/mutation-evidence.js"
-import type { AgentFailureDisplay, ToolEntry } from "../../../infra/output-blocks.js"
+import type { ToolEntry } from "../../../infra/output-blocks.js"
 import { extractDisplayMeta, resultReadContract, resultStatusMessage, resultTargetName, type ToolResultIdentity } from "../../../infra/output/structured-event-tool-results.js"
 import { hydrateToolContentFact } from "../../../infra/tool-content-hydration.js"
 import type { ContentResolver } from "../../../infra/tool-content.js"
-import type { ToolResultAction } from "../../../infra/tool-result-action.js"
-import type { ToolOutcome } from "../../../infra/tool-outcome.js"
 import { sanitizeExternalText } from "../../../infra/control-characters.js"
 import { asRecord } from "../../../infra/record.js"
 import { canonicalize } from "../../../infra/canonical-name.js"
@@ -19,39 +16,8 @@ import { createMicrotaskBatch } from "../../../infra/microtask-batch.js"
 import { parseSessionRuntimeFact, parseStoredSessionRuntimeFact, type SessionRuntimeFact, type ToolContentReferenceFact } from "../session-runtime-event-types.js"
 import { loadToolExecutionTimelineFromEvents, TOOL_EXECUTION_FACT_TYPES } from "../tool-execution-projection.js"
 import type { ToolExecutionEntry } from "../tool-execution-types.js"
-import { projectHistoricalContainerChild, projectHistoricalExecuteChild } from "../tool-child-presentation.js"
-
-/** Display meta a completed tool's `tool.result.recorded` fact carried.
- *  Edit/replace diffs and filetypes live in the result `details`, not in the
- *  tool_use input the chat tree persists, so derived-history projections read
- *  this map to render the same diffs the live stream did. */
-export interface ToolResultDisplayMeta {
-  /** Terminal outcome from the real execution result. Deferred acknowledgements
-   * in the conversation tree are not terminal evidence. */
-  readonly terminalOutcome?: ToolOutcome
-  /** Full user-facing result body, independent of model-context budgeting. */
-  readonly displayContent?: string
-  readonly diff?: string
-  readonly filetype?: string
-  readonly exitCode?: number
-  readonly background?: boolean
-  readonly executionOutput?: string
-  readonly resultAction?: ToolResultAction
-  readonly agentFailure?: AgentFailureDisplay
-  /** Canonical artifact of the durable mutation the tool published, from its
-   *  result or, for a mutating command that settled later, its settled record. */
-  readonly mutationEvidence?: MutationEvidence
-  /** The display name of the session the call addressed, whatever its outcome. */
-  readonly targetName?: string
-  /** The line of an ok result whose work now waits, such as a held message:
-   *  its row settles as waiting with this line. */
-  readonly statusMessage?: string
-  /** The call read a short-form tool's contract (PI-AGENT-131). */
-  readonly contractRead?: true
-  /** When the background command the call started ended, from its settled
-   *  background index record. */
-  readonly endedAt?: number
-}
+import { projectHistoricalContainerChild, projectHistoricalExecuteChild } from "./tool-child-presentation.js"
+import type { ToolResultDisplayMeta } from "./tool-result-display-meta.js"
 
 const TOOL_RESULT_DISPLAY_META_FACT_TYPES = ["tool.result.recorded", "tool.execution_output.recorded", "tool.background_command.recorded"] as const
 

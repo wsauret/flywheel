@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { join } from "node:path"
 
-import type { AccountServiceInstallation } from "../../../../../src/orchestration/app-service/account-service-installation.js"
+import type { AccountServiceInstallation } from "../../../../../src/orchestration/app-service/account-service-platform.js"
 import { runDevices, runPair, runProjects, runStatus } from "../../../../../src/orchestration/modules/remote/cli/index.js"
 import { mutateRemotePairingStore, readRemotePairingStore } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
 import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../../../../../src/protocol/account-attach.js"

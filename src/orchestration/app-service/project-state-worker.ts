@@ -29,16 +29,15 @@ import {
   PROJECT_STATE_MAX_QUEUED_ITEMS,
   operationUnits,
   type ProjectStateAdmission,
-  type ProjectStateControlOperation,
   type ProjectStateContentRow,
   type ProjectStateLane,
-  type ProjectStateOperation,
   type ProjectStateResponse,
   type ProjectStateResult,
   type ProjectStateServed,
   type ProjectStateSettlement,
   type ProjectStateWorkerInit,
 } from "./project-state-protocol.js"
+import type { ProjectStateControlOperation, ProjectStateOperation } from "./project-state-operation.js"
 import type { WorkerSelf } from "./bun-worker-rpc.js"
 import { retainedOperationKinds } from "../session/module-session-operations.js"
 import { PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND } from "../session/planned-session-continuation.js"

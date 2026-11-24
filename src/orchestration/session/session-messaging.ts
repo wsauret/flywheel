@@ -3,7 +3,8 @@ import { DebugLog } from "../../infra/debug-log.js"
 import { coalesceRepeats } from "../../infra/repeat-coalescer.js"
 import type { SessionRelation } from "../../infra/chat-input-schema.js"
 import { queuedUserInputKey } from "./conversation/queued-user-inputs.js"
-import { liveSessionControls, liveWorkflowControls, messageDisposition, type RecipientState, type DeliveryOutcome } from "./live-session-control.js"
+import { liveSessionControls, liveWorkflowControls } from "./live-session-control.js"
+import { listState, messageDisposition, type DeliveryOutcome, type SessionListState } from "./message-disposition.js"
 import { workflowRunReader } from "../module-catalog.js"
 import { readPlannedSessionContinuationAsync } from "./planned-session-continuation.js"
 import { observeSessionChanged, observeSessionResumed, observeSessionYield, openReplyWait, restoreReplyWaits, sessionNameOf, waitsReach, type ReplyWaitDeps, type ReplyWaitRecipientState, type ReplyWaitTasks, type SessionYield } from "./reply-waits.js"
@@ -33,9 +34,6 @@ export type MessageSessionResult = Addressed & (
   | { readonly status: "refused"; readonly reason: "address"; readonly detail: string }
   | { readonly status: "refused"; readonly reason: "workflow_wait" }
 )
-
-/** How a session reads to a caller of `list_sessions`. */
-export type SessionListState = "running" | "handing_off" | "idle" | "interrupted" | "closed" | "settled"
 
 /** One row of `list_sessions`. */
 export interface SessionListing {
@@ -155,24 +153,6 @@ function sessionRelation(subject: IdentifiedSession, viewer: IdentifiedSession):
 function waitsAllowed(sender: IdentifiedSession, recipient: IdentifiedSession): boolean {
   const relation = sessionRelation(recipient, sender)
   return relation === "parent" || relation === "child"
-}
-
-/** How a session list reads a recipient state, or nothing for a session
- *  that is gone. */
-export function listState(state: RecipientState): SessionListState | undefined {
-  switch (state) {
-    case "running":
-    case "waiting_on_work":
-    case "between_steps":
-    case "planned_cut": return "running"
-    case "handing_off": return "handing_off"
-    case "idle": return "idle"
-    case "interrupted": return "interrupted"
-    case "at_rest": return "closed"
-    case "settled": return "settled"
-    case "deleted":
-    case "not_found": return undefined
-  }
 }
 
 /** Whether a message with this outcome can carry a wait. An interrupt is the

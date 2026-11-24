@@ -20,6 +20,7 @@ import type { RecallInput, RecallResult } from "../protocol/conversation-recall.
 import type { ReplayedSession, RoleSettings } from "./session/schemas.js"
 import type { SessionManager } from "./session/manager.js"
 import type { LiveChildControl } from "./session/live-session-control.js"
+import type { SessionListState } from "./session/message-disposition.js"
 import type { UnreadSettlement } from "./session/session-input-delivery.js"
 import type { HeldBackgroundNotification } from "./session/conversation/queued-background-notifications.js"
 import type { ModuleId } from "../protocol/module-ids.js"
@@ -67,7 +68,7 @@ export interface ModuleWorkflowRuns {
   /** Conversion registration alone does not make a historical result stale. */
   hasExecutionAfter(facts: readonly StoredFact[], position: number): boolean
   readonly work: ModuleWorkControl<WorkflowWorkTarget>
-  state(input: WorkflowWorkTarget): Promise<import("./session/session-messaging.js").SessionListState>
+  state(input: WorkflowWorkTarget): Promise<SessionListState>
   /** Where the workflows of `reader` sit in the session tree. */
   placements(reader: AsyncEventReadSurface): WorkflowPlacements
   readonly accounting: {

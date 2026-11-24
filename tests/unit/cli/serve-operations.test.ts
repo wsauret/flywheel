@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test"
 
 import { runServe } from "../../../src/cli/serve.js"
 import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
-import type { AccountServiceInstallation } from "../../../src/orchestration/app-service/account-service-installation.js"
+import type { AccountServiceInstallation } from "../../../src/orchestration/app-service/account-service-platform.js"
 import { AccountServiceInstallationError } from "../../../src/orchestration/app-service/service-manager-command.js"
 import { installationOf } from "../orchestration/app-service/_account-service-fixtures.js"
 import { unusedLauncher } from "./_serve-fixtures.js"

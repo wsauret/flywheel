@@ -22,16 +22,17 @@ import {
   type QueuedUserInputDestination,
 } from "./conversation/queued-user-inputs.js"
 import { conversationPersonMessage, holdPersonMessageOnce, recordPersonMessageReceipt, workflowPersonMessage, type PersonMessageRecord } from "./conversation/person-message-ledger.js"
-import { liveSessionControl, liveWorkflowControl, messageDisposition, type DeliveryOutcome, type RecipientState, type LiveSessionControl } from "./live-session-control.js"
+import { liveSessionControl, liveWorkflowControl, type LiveSessionControl } from "./live-session-control.js"
+import { messageDisposition, type DeliveryOutcome, type RecipientState } from "./message-disposition.js"
 import { endReplyWaitsByMessage, observeSessionChanged } from "./reply-waits.js"
-import type { ReplayedSession } from "./schemas.js"
+import type { ReplayedSession, SessionMetadataReader } from "./schemas.js"
 import { readToolExecutions } from "./tool-execution-projection.js"
 import { returnUnreadHumanInput } from "./composer-returns.js"
 
 const log = Log.create({ service: "session-input-delivery" })
 
 export interface SessionInputDeliveryDeps {
-  readonly manager: { read(sessionId: string): Promise<ReplayedSession | null> }
+  readonly manager: SessionMetadataReader
   /** The project's event reader, which also keys the live-session registry. */
   readonly projectionReader: AsyncEventStateReadSurface
   readonly eventWriter: AsyncEventWriter

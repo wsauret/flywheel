@@ -1,9 +1,8 @@
 import type { BenchmarkTask, ReviewTask } from "./catalog.js";
 import type { JudgeVerdict } from "./judge.js";
 import type { ReviewScore } from "./scoring.js";
-import type { ResearchScore } from "./research-scoring.js";
 import type { ResearchAnswerKey } from "./research-task.js";
-import type { AgentRunRecord, AttemptRecord, JudgeAttemptRecord } from "./run-store.js";
+import type { AgentRunRecord, AttemptRecord, JudgeAttemptRecord, ResearchScore } from "./run-store.js";
 import type { BenchmarkAccounting } from "./evidence.js";
 import { combineBenchmarkAccounting, formatAccountingObservation, formatOverheadAccounting } from "./report-accounting.js";
 

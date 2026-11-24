@@ -1,7 +1,9 @@
 import { errorMessage } from "../../infra/error-message.js"
 import { startupTrace } from "../../infra/startup-trace.js"
 import type { FrontendMutation, MutationResult } from "../../protocol/app-service-types.js"
-import type { FlywheelAppServiceDeps } from "./app-service.js"
+import type { RuntimeModelCatalogRefreshScope } from "../../protocol/provider-model-preference-protocol-types.js"
+import type { AuthLoginService } from "./auth-login-service.js"
+import type { RuntimeAuthProfileSelectionService } from "./auth-profile-selection-service.js"
 
 /** The auth mutations: profile refresh and settlement, protocol logins, account
  *  disconnect and rename, and profile management. Split from the dispatcher
@@ -10,11 +12,20 @@ import type { FlywheelAppServiceDeps } from "./app-service.js"
  *  Returns nothing for a mutation that is not an auth mutation. */
 export type AuthMutation = Extract<FrontendMutation, { type: `auth.${string}` }>
 
+/** The services the auth mutations run on. */
+export interface AuthMutationDeps {
+  readonly authProfileSelection: Pick<RuntimeAuthProfileSelectionService, "mutate"> & { settle(profileId: string, operationId: string): Promise<void> }
+  /** Every client's provider login, disconnect, and rename, in the runtime
+   *  that owns the credentials. */
+  readonly authLogin: AuthLoginService
+  readonly scheduleCatalogRefresh: (scope: RuntimeModelCatalogRefreshScope) => Promise<void>
+}
+
 export function isAuthMutation(mutation: FrontendMutation): mutation is AuthMutation {
   return mutation.type.startsWith("auth.")
 }
 
-export async function dispatchAuthMutation(deps: Pick<FlywheelAppServiceDeps, "authProfileSelection" | "authLogin" | "scheduleCatalogRefresh">, mutation: AuthMutation): Promise<MutationResult<FrontendMutation>> {
+export async function dispatchAuthMutation(deps: AuthMutationDeps, mutation: AuthMutation): Promise<MutationResult<FrontendMutation>> {
   if (mutation.type === "auth.catalog.refresh") {
     await deps.scheduleCatalogRefresh(mutation.scope)
     return { ok: true }

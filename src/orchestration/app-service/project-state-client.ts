@@ -34,10 +34,7 @@ import {
   encodeProjectStateRequest,
   encodeProjectStateResponse,
   readdressProjectStateResponse,
-  type ProjectStateContentReference,
   type ProjectStateContentRow,
-  type ProjectStateControlOperation,
-  type ProjectStateExecutionOperation,
   type ProjectStateLane,
   type ProjectStateRequest,
   type ProjectStateResponseFrame,
@@ -45,6 +42,7 @@ import {
   type ProjectStateServed,
   type ProjectStateSettlement,
 } from "./project-state-protocol.js"
+import type { ProjectStateContentReference, ProjectStateControlOperation, ProjectStateExecutionOperation } from "./project-state-operation.js"
 
 /** The state Worker is gone or broke its protocol, so no request reaches it.
  *  `cause` is the Worker's own failure when it reported one. */

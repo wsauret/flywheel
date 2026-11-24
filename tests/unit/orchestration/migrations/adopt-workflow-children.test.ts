@@ -23,7 +23,7 @@ import { createConversationMessageEntry } from "../../../../src/orchestration/se
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { chatSessionActions, readChatTurnEnd } from "../../../../src/orchestration/session/chat-session-run-evidence.js"
-import { historicalCompletionEntryId } from "../../../../src/orchestration/session/child-session-completion.js"
+import { historicalCompletionEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { reconcileChildSessionCompletions } from "../../../../src/orchestration/session/child-session-reconciliation.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications.js"
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js"

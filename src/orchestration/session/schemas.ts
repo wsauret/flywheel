@@ -263,6 +263,12 @@ type ReplayedSessionVariant<S> = S extends { readonly kind: string } ? Omit<S, "
 // deletion recovery must read the previous representation before they replace it.
 export type ReplayedSession = ReplayedSessionVariant<Session | typeof WorkflowSessionSchema.Type>
 
+/** The single-session metadata read that the session manager answers. */
+export interface SessionMetadataReader {
+  /** Single-session metadata read for existence checks and narrow field access. */
+  read(id: string): Promise<ReplayedSession | null>
+}
+
 /** The name a session shows to the person, which other sessions read too. */
 export function sessionDisplayName({ id, session }: { readonly id: string; readonly session: Pick<ReplayedSession, "label" | "name"> }): string {
   return session.label || session.name || id
