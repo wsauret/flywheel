@@ -3,6 +3,8 @@ import { test } from "node:test"
 import type { FrontendEvent, SessionCatalogRow } from "../../../src/protocol/app-service-types.js"
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import { createRuntimeSession } from "./session.js"
+import { createViewProjection } from "./view-state.js"
+import { layoutSessionRows } from "../app/session-rows.js"
 import { fakeConnection, settle } from "./session-connection-fixture.js"
 import { statusView } from "../../../tests/helpers/runtime-views.js"
 import { recordedQuery, runtimeQuery } from "../../../tests/helpers/runtime-dispatch.js"
@@ -65,5 +67,38 @@ test("a question patch marks the row as waiting and its removal clears it", asyn
   assert.equal(session.pendingQuestions.has("live"), true)
   connection.deliver({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: "live" }, position: 2, prevPosition: 1, payload: { kind: "question.removed" } } })
   assert.equal(session.pendingQuestions.has("live"), false)
+  session.dispose()
+})
+
+test("a closed chat that waits on a question is in Needs you, from the project's waiting set alone", async () => {
+  const closed: SessionCatalogRow = { ...LIVE_ROW, id: "closed", title: "Closed", lifecycleState: "inactive", activity: "absent", lastUpdated: "2025-12-01T00:00:00.000Z" }
+  const reads = new Map<string, number>()
+  const listeners = new Set<(event: FrontendEvent) => void>()
+  const waiting = [{ sessionId: "closed", openedAt: 1 }, { sessionId: "deleted", openedAt: 2 }]
+  const base = fakeConnection([])
+  const connection: RuntimeConnection = {
+    ...base,
+    query: recordedQuery((request) => { reads.set(request.type, (reads.get(request.type) ?? 0) + 1) }, runtimeQuery({
+      snapshot: async () => ({ rows: [LIVE_ROW, closed], activeRuntimeCount: 1, errors: [], snapshotPosition: 0, projectRoot: "/project", runtimeVersion: "test", runtimeBuildId: null, chatDefault: { kind: "none" }, executor: { kind: "serving" }, service: { kind: "serving" } }),
+      statusSnapshot: async () => ({ snapshotPosition: 0, views: [{ sessionId: "live", view: statusView("generating") }] }),
+      questionSnapshot: async () => ({ snapshotPosition: 0, views: [] }),
+      waitingSessionsSnapshot: async () => ({ snapshotPosition: 0, sessions: waiting }),
+    }, base.query)),
+    subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+  }
+  const session = createRuntimeSession({ connection })
+  await settle()
+  await settle()
+  const project = createViewProjection()
+  const rows = () => layoutSessionRows(project(session).sessions, true, []).map((row) => [row.session.id, row.group])
+  // A session in the set that the catalog does not list, such as a deleted
+  // one or a subagent, shows nowhere.
+  assert.deepEqual(rows(), [["closed", "Needs you"], ["live", "Working"]])
+  assert.equal(session.pendingQuestions.has("closed"), false)
+  // A patch carries the whole set, so the list adopts it without a read.
+  for (const listener of listeners) listener({ type: "patch", patch: { cursor: { scope: "workspace", domain: "waitingSessions" }, position: 1, prevPosition: 0, payload: { kind: "waitingSessions.changed", sessions: [] } } })
+  await settle()
+  assert.deepEqual(rows(), [["live", "Working"], ["closed", "Recent"]])
+  assert.equal(reads.get("waitingSessionsSnapshot"), 1)
   session.dispose()
 })

@@ -19,7 +19,7 @@ import { backgroundReads } from "../../../src/protocol/client/background-reads.j
 import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../tests/helpers/runtime-dispatch.js"
 import { fakeLanes, LANE_BREAK } from "../../../tests/helpers/fake-lanes.js"
 
-test("the open session's pending question and the newest open time follow the question projection's snapshots and patches, across a lane break", async () => {
+test("the open session's pending question follows the question projection's snapshots and patches, across a lane break, and the newest open time follows the waiting set", async () => {
   const base = selectionConnection()
   const snapshot = await base.query({ type: "snapshot" })
   const row = { ...snapshot.rows[0]!, lifecycleState: "active" as const }
@@ -27,35 +27,45 @@ test("the open session's pending question and the newest open time follow the qu
   const first = Promise.withResolvers<RuntimeQuestionSnapshotResult>()
   let current = first.promise
   let questionReads = 0
+  const asked: string[] = []
+  let waiting = [{ sessionId: row.id, openedAt: 100 }, { sessionId: "other", openedAt: 200 }, { sessionId: "unlisted", openedAt: 900 }]
   const listeners = new Set<(event: FrontendEvent) => void>()
   const lanes = fakeLanes()
   const query = runtimeQuery({
     snapshot: async () => ({ ...snapshot, rows, projectRoot: "/scratch/project" }),
-    questionSnapshot: async () => { questionReads++; return current },
+    questionSnapshot: async (request) => { questionReads++; asked.push(...request.sessionIds); return current },
+    waitingSessionsSnapshot: async () => ({ snapshotPosition: 0, sessions: waiting }),
   }, base.query)
   const session = createRuntimeSession({ connection: {
     ...base, ...lanes.client, query,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
   } })
   const publish = (event: FrontendEvent) => { for (const listener of listeners) listener(event) }
+  const waitingChanged = (position: number, sessions: typeof waiting) => publish({ type: "patch", patch: { cursor: { scope: "workspace", domain: "waitingSessions" }, position, prevPosition: position - 1, payload: { kind: "waitingSessions.changed", sessions } } })
   const project = createViewProjection()
   try {
+    assert.equal(project(session).newestQuestionOpenedAt, undefined)
     await settle()
     assert.equal(session.projectRoot, "/scratch/project")
-    assert.equal(project(session).newestQuestionOpenedAt, undefined)
-    first.resolve({ snapshotPosition: 0, views: [
-      { sessionId: row.id, view: { kind: "question", toolUseId: "q", questions: [], timestamp: 100 } },
-      { sessionId: "other", view: { kind: "question", toolUseId: "other-q", questions: [], timestamp: 200 } },
-    ] })
-    await settle()
+    // A listed chat that already waited at attach counts before any question
+    // read answers, so a dismissed push offer reopens for it (PI-REMOTE-031).
+    // A session in the set that no row lists does not count.
     assert.equal(project(session).newestQuestionOpenedAt, 200)
+    first.resolve({ snapshotPosition: 0, views: [{ sessionId: row.id, view: { kind: "question", toolUseId: "q", questions: [], timestamp: 100 } }] })
+    await settle()
     assert.equal(session.sessionId, row.id)
     assert.equal(project(session).pendingQuestion?.toolUseId, "q")
-    assert.equal(project(session).sessions[0]?.awaitingAnswer, true)
-    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: "other" }, position: 1, prevPosition: 0, payload: { kind: "question.removed" } } })
+    assert.equal(project(session).newestQuestionOpenedAt, 200)
+    // The other chat is only listed: its question is never read.
+    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: "other" }, position: 1, prevPosition: 0, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "other-q", questions: [], timestamp: 250 } } } })
+    assert.equal(session.pendingQuestions.has("other"), false)
+    waitingChanged(1, [{ sessionId: row.id, openedAt: 100 }])
     assert.equal(project(session).newestQuestionOpenedAt, 100)
     publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 1, prevPosition: 0, payload: { kind: "question.removed" } } })
     assert.equal(project(session).pendingQuestion, undefined)
+    waiting = []
+    waitingChanged(2, waiting)
+    assert.equal(project(session).newestQuestionOpenedAt, undefined)
     publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 2, prevPosition: 1, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "new", questions: [], timestamp: 300 } } } })
     assert.equal(project(session).newestQuestionOpenedAt, 300)
     publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 3, prevPosition: 2, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "newer", questions: [], timestamp: 400 } } } })
@@ -74,7 +84,6 @@ test("the open session's pending question and the newest open time follow the qu
     reread.resolve({ snapshotPosition: 5, views: [{ sessionId: row.id, view: null }, { sessionId: "other", view: null }] })
     await settle()
     assert.equal(project(session).newestQuestionOpenedAt, undefined)
-    assert.equal(project(session).sessions[0]?.awaitingAnswer, undefined)
     assert.equal(project(session).pendingQuestion, undefined)
     // A read that answers at an older position than a removal that arrived
     // while it was in flight does not bring the question back.
@@ -89,6 +98,7 @@ test("the open session's pending question and the newest open time follow the qu
     stale.resolve({ snapshotPosition: 5, views: [{ sessionId: row.id, view: { kind: "question", toolUseId: "newer", questions: [], timestamp: 400 } }, { sessionId: "other", view: null }] })
     await settle()
     assert.equal(project(session).pendingQuestion, undefined)
+    assert.deepEqual([...new Set(asked)], [row.id], "no question read names a chat that is only listed")
   } finally { session.dispose() }
   rows = []
   const readsBeforeEmpty = questionReads

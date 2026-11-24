@@ -109,6 +109,8 @@ describe("question pager", () => {
     const page = pagerFor("granted", true)
     page.runtime.waiting.set(CHAT, question("waiting"))
     page.readings.reconcile([chatRow])
+    // The page shows the chat, so its dock reads the question that waits.
+    page.readings.select(CHAT)
     await settle()
     assert.equal(page.readings.pendingQuestions.has(CHAT), true)
     assert.equal(page.desktop.shown.length, 0, "a question waiting at attach is a baseline")

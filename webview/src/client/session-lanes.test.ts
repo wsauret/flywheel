@@ -74,7 +74,7 @@ test("the page reads nothing before its first lane, and the first lane reads eac
 
   fake.lanes.open()
   await settle()
-  for (const type of ["snapshot", "updateSnapshot", "commandCatalog", "gitSnapshot", "commandUsageSnapshot"]) assert.equal(fake.count(type), 1, type)
+  for (const type of ["snapshot", "updateSnapshot", "commandCatalog", "gitSnapshot", "commandUsageSnapshot", "waitingSessionsSnapshot"]) assert.equal(fake.count(type), 1, type)
   session.dispose()
 })
 
@@ -268,7 +268,7 @@ test("a page saves the reader's place while it is hidden and forgets it when it 
 test("a workspace read lost with its lane shows no failure", async () => {
   const diagnostics: string[] = []
   const fake = laneConnection({ lose: [
-    "snapshot", "authStatusSnapshot", "updateSnapshot", "commandCatalog", "configSnapshot", "gitSnapshot", "commandUsageSnapshot", "modelAssignments",
+    "snapshot", "authStatusSnapshot", "updateSnapshot", "commandCatalog", "configSnapshot", "gitSnapshot", "commandUsageSnapshot", "waitingSessionsSnapshot", "modelAssignments",
     "moduleSnapshot", "gitAiAttributionSnapshot", "definitionStalenessSnapshot", "mcpStatusSnapshot", "papercutCountSnapshot", "projectNotificationSnapshot", "remoteSnapshot", "storageSnapshot",
   ] })
   const session = createRuntimeSession({ connection: fake.connection, onDiagnostic: (message) => { diagnostics.push(message) } })

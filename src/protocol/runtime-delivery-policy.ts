@@ -74,6 +74,8 @@ const RUNTIME_DELIVERY_POLICY = {
   // A wake with no value and no resident client state: a client that waits
   // on a chat asks `chatSettlement` again on each one.
   settlement: { delivery: "query-only", content: "change" },
+  // One patch carries every session that waits on a question.
+  waitingSessions: collapsible,
 } as const satisfies { readonly [D in RuntimeKernelDomain]: RuntimeDomainDelivery }
 
 export function runtimeDeliveryPolicy(domain: RuntimeUiDomain): RuntimeDeliveryPolicy {

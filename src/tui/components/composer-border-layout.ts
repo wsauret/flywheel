@@ -13,11 +13,18 @@ function composerStatusText(label: ModuleComposerStatus): string {
   return label.suffix ? `${label.text} ${label.suffix.text}` : label.text
 }
 
+/** The label that names how many other chats wait on a question, or none when no other chat waits. */
+export function waitingCountLabel(count: number): string | undefined {
+  return count > 0 ? `? ${count} waiting` : undefined
+}
+
 export interface ComposerBorderLayoutInput {
   terminalWidth: number
   modelLabel: string | undefined
   update: ComposerBorderUpdate | undefined
   composerStatus?: readonly ModuleComposerStatus[]
+  /** How many listed chats other than the one in front wait on a question. */
+  waitingCount?: number
   changesLabel?: string
   /** esc cancel / interrupt / dismiss; dropped only as the last resort. */
   primaryHints: readonly KeyHintSpec[]
@@ -37,6 +44,8 @@ export interface ComposerBorderLayout {
   modelLabel: string | undefined
   update: ComposerBorderUpdate | undefined
   composerStatus?: readonly ModuleComposerStatus[]
+  /** Says how many other chats wait on a question; it opens the Sessions list. */
+  waitingLabel?: string
   changesLabel?: string
   hints: readonly KeyHintSpec[]
   /** When present, the trailing hint becomes the clickable sessions target. */
@@ -67,12 +76,17 @@ export function computeComposerBorderLayout(input: ComposerBorderLayoutInput): C
   // update alert or model. Changes also remains reachable through /changes.
   const used = (update?.label.length ?? 0) + (modelLabel?.length ?? 0) + (update && modelLabel ? 3 : 0)
   let usedWithModules = used
-  const composerStatus = (input.composerStatus ?? []).filter((label) => {
-    const width = (usedWithModules > 0 ? 3 : 0) + composerStatusText(label).length
+  const fits = (text: string): boolean => {
+    const width = (usedWithModules > 0 ? 3 : 0) + text.length
     if (usedWithModules + width > contentWidth) return false
     usedWithModules += width
     return true
-  })
+  }
+  // The waiting count asks for the person's answer, so it takes width before
+  // the module labels, which repeat surface information.
+  const waitingText = waitingCountLabel(input.waitingCount ?? 0)
+  const waitingLabel = waitingText && fits(waitingText) ? waitingText : undefined
+  const composerStatus = (input.composerStatus ?? []).filter((label) => fits(composerStatusText(label)))
   const changesLabel = input.changesLabel && usedWithModules + (usedWithModules > 0 ? 3 : 0) + input.changesLabel.length <= contentWidth ? input.changesLabel : undefined
 
   const tabHint: KeyHintSpec | undefined =
@@ -107,6 +121,7 @@ export function computeComposerBorderLayout(input: ComposerBorderLayoutInput): C
         modelLabel,
         update,
         composerStatus,
+        ...(waitingLabel ? { waitingLabel } : {}),
         changesLabel,
         hints,
         sessionsClickHint: level.sessions && sessionsHint ? sessionsHint : null,
@@ -114,5 +129,5 @@ export function computeComposerBorderLayout(input: ComposerBorderLayoutInput): C
     }
   }
 
-  return { modelLabel, update, composerStatus, changesLabel, hints: [], sessionsClickHint: null }
+  return { modelLabel, update, composerStatus, ...(waitingLabel ? { waitingLabel } : {}), changesLabel, hints: [], sessionsClickHint: null }
 }

@@ -104,6 +104,7 @@ export async function renderPromptLabelsFrame(input: {
   hints: readonly KeyHintSpec[]
   update?: ComposerBorderUpdate
   composerStatus?: readonly ModuleComposerStatus[]
+  waitingLabel?: string
   changesLabel?: string
   width?: number
   onOpenChanges?: () => void
@@ -132,6 +133,7 @@ export async function renderPromptLabelsFrame(input: {
         modelLabel: input.modelLabel,
         update: input.update,
         composerStatus: input.composerStatus,
+        ...(input.waitingLabel ? { waitingLabel: input.waitingLabel } : {}),
         changesLabel: input.changesLabel,
         hints: input.hints,
         sessionsClickHint: input.hints.find((hint) => hint.label.includes("session")) ?? null,

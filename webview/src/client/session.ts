@@ -199,7 +199,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
     for (const listener of listeners) listener()
   }
   const modules = createModuleDomainMonitors({ connection, onChange: emit })
-  const readings = createSessionReadings({ connection, changed: emit })
+  const readings = createSessionReadings({ connection, changed: emit, keeps: (id) => residents.get(id) !== undefined })
   const roles = createHeldRoles({ connection })
   const { refreshStatus } = readings
   const detailListeners = new Map<string, Set<(row: SessionRow | undefined) => void>>()
@@ -552,6 +552,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
     get gitAiAttribution() { return statusViews.gitAiAttribution },
     refreshSettings,
     get pendingQuestions() { return readings.pendingQuestions },
+    get waitingSessions() { return statusViews.waitingSessions },
     get backgroundIndex() { return visible()?.background },
     row: rowOf,
     get modules() { return modules.views(visible()?.modules) },

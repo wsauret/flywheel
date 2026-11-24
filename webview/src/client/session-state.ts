@@ -120,10 +120,15 @@ export interface SessionState {
   readonly activeModel: ActiveModel | undefined
   /** Account-global slash-command use counts, ranked by the runtime. */
   readonly commandUsage: readonly CommandUse[]
-  /** The question each session waits on, by session id, from the durable
-   *  question projection: the dock shows it, and a chat blocked on the user
-   *  says so from the list rather than only from inside its own transcript. */
+  /** The question that the shown session, or a session the page keeps for
+   *  a return, waits on, by its id, from the durable question projection,
+   *  for the dock. A session that is only listed reads no question. */
   readonly pendingQuestions: ReadonlyMap<string, PendingQuestionView>
+  /** Every session of the project that waits on a question, closed ones
+   *  included (ARCH-PROTOCOL-068), with the time its docked question opened.
+   *  Every waiting mark of a listed row reads this set, never a question read
+   *  for the row. */
+  readonly waitingSessions: ReadonlyMap<string, number>
   /** The background index of the shown session, which its resident views
    *  follow, or undefined while no session is shown. */
   readonly backgroundIndex: BackgroundIndexState | undefined

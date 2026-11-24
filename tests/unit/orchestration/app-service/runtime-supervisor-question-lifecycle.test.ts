@@ -214,3 +214,66 @@ test.each(["answer", "dismiss"] as const)("close during recovered question %s ad
     await supervisor.disposeAll()
   }
 })
+
+// A closed chat in Needs you opens from a session list. Opening it shows the
+// question and starts nothing; only the person's answer continues the turn
+// (PI-INTERACTION-009, PI-INTERACTION-184).
+test("activating a closed chat whose question still waits starts no turn, and its answer resumes the chat once", async () => {
+  const sessionId = "question-closed-open"
+  await ctx.manager.createChat({ name: "Waiting Chat", initialState: "inactive", id: sessionId })
+  const session = await ctx.manager.read(sessionId)
+  if (session?.kind !== "chat") throw new Error("missing chat session")
+  const tree = await tryOpenConversationTree({ conversationId: session.conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
+  if (!tree) throw new Error("missing conversation tree")
+  const appended = await tree.appendMessages([
+    { kind: "user", content: "Ask me" },
+    { kind: "assistant", content: [{ type: "tool_use", id: "ask-1", name: "ask_user", input: {} }] },
+  ])
+  await tree.dispose()
+  if (appended.kind !== "committed") throw new Error(`tree append failed: ${appended.kind}`)
+  await ctx.store.append({
+    aggregateId: `session:${sessionId}`, sessionId, type: "agent_input.requested", version: 3, actor: "agent", timestamp: 1,
+    payload: {
+      interactionId: "ask-1", conversationId: session.conversationId, toolUseId: "ask-1",
+      request: [{ question: "Continue?", choices: [{ kind: "option", choiceId: "yes", label: "Yes" }], multiSelect: false }],
+    },
+  })
+  removeOwnerPid(sessionId, ctx.baseDir)
+  const starts: string[] = []
+  let creations = 0
+  const deps = supervisorBaseDeps(ctx)
+  const capabilities = await deps.runnerCapabilities()
+  const supervisor = createRuntimeSupervisor({
+    ...deps,
+    runnerCapabilities: async () => ({
+      ...capabilities,
+      runnerLoader: {
+        ...capabilities.runnerLoader,
+        createRunner: async () => { creations += 1; return mockRunner(sessionId, {
+          send: async () => { starts.push("send"); return "accepted" },
+          deliverCommitted: () => { starts.push("deliverCommitted"); return true },
+          deliverHeldMessage: async () => { starts.push("deliverHeldMessage"); return { status: "held", reason: "no_reader" } },
+          deliverBackgroundNotification: async () => { starts.push("deliverBackgroundNotification"); return true },
+          requestWithContext: () => { starts.push("requestWithContext"); return true },
+          resumeCommitted: () => { starts.push("resumeCommitted"); return true },
+          resume: () => { starts.push("resume"); return false },
+        }) },
+      },
+    }),
+    sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
+  })
+  try {
+    await supervisor.activateSession(sessionId)
+    await Bun.sleep(5)
+    expect(creations).toBe(1)
+    expect(starts).toEqual([])
+    expect((await loadAgentInputProjection(asAsyncEventReadSurface(ctx.store), sessionId)).get("ask-1")?.kind).toBe("pending")
+
+    expect(await supervisor.answerQuestion(sessionId, "ask-1", { "Continue?": { kind: "choice", selections: [{ choiceId: "yes" }], text: "Yes" } })).toEqual({ ok: true })
+    await Bun.sleep(5)
+    expect(starts).toEqual(["resumeCommitted"])
+    expect((await loadAgentInputProjection(asAsyncEventReadSurface(ctx.store), sessionId)).get("ask-1")?.kind).toBe("answered")
+  } finally {
+    await supervisor.disposeAll()
+  }
+})

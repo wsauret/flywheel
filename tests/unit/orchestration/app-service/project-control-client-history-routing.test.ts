@@ -288,4 +288,24 @@ describe("project control client history routing", () => {
     expect(h.historyDetailReads()).toBe(0)
     await h.close()
   })
+
+  test("answers which sessions wait on a question while execution is paused, and never asks the executor", async () => {
+    const f = fixture()
+    const question = (position: number, sessionId: string, type: "agent_input.requested" | "agent_input.answered") => ({
+      id: String(position), position, seq: position - 1, timestamp: position, actor: "agent", aggregateId: `session:${sessionId}`, sessionId, type, version: 3,
+      payload: type === "agent_input.requested"
+        ? { interactionId: "tool-1", conversationId: "conv-1", toolUseId: "tool-1", request: [{ question: "Continue?", choices: [{ kind: "option", choiceId: "yes", label: "Yes" }], multiSelect: false }] }
+        : { interactionId: "tool-1", answers: { "Continue?": { kind: "choice", selections: [{ choiceId: "yes" }], text: "Yes" } } },
+    })
+    f.facts.push(question(1, "closed", "agent_input.requested"))
+    // The executor never answers: a paused project with no restart scheduled.
+    const client = createProjectControlClient({ ...f.options, executionPaused: () => true })
+
+    expect((await client.query({ type: "waitingSessionsSnapshot" })).sessions).toEqual([{ sessionId: "closed", openedAt: 1 }])
+    const answer = question(2, "closed", "agent_input.answered")
+    f.facts.push(answer)
+    f.stored.emit([answer])
+    expect((await client.query({ type: "waitingSessionsSnapshot" })).sessions).toEqual([])
+    await client.close()
+  })
 })

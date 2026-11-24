@@ -174,6 +174,24 @@ describe("computeComposerBorderLayout", () => {
     }
   })
 
+  it("paints the count of other waiting chats in the warning colour before the model, and opens Sessions on a click", async () => {
+    const theme = { ...resolvedTheme, textMuted: RGBA.fromInts(80, 80, 80), warning: RGBA.fromInts(220, 170, 20), border: RGBA.fromInts(230, 230, 230) }
+    let opens = 0
+    const result = await renderPromptLabelsFrame({ theme, modelLabel: "claude-opus-4", waitingLabel: "? 2 waiting", hints: [], onOpenSessions: () => { opens++ } })
+    try {
+      await result.renderOnce()
+      const top = result.captureCharFrame().split("\n")[0]!
+      expect(top).toContain(" ? 2 waiting · claude-opus-4 ")
+      const spans = result.captureSpans()
+      expect(sameColor(spanColor(spans, "? 2 waiting")!, theme.warning)).toBe(true)
+      expect(sameColor(spanColor(spans, "claude-opus-4")!, theme.textMuted)).toBe(true)
+      await result.mockMouse.click(top.indexOf("? 2 waiting"), 0)
+      expect(opens).toBe(1)
+    } finally {
+      result.renderer.destroy()
+    }
+  })
+
   it("retains bottom hint and background labels through hover and routes each control once", async () => {
     const counts = { sessions: 0, resume: 0, new: 0, close: 0, switch: 0, background: 0, parent: 0 }
     const status: SpinnerStatus = {

@@ -12,7 +12,7 @@ import type { RuntimeUpdateSnapshotResult } from "./update-protocol-types.js"
 import type { BinaryModule, ModulePreset, RuntimeModuleSnapshotResult, WorkflowsMode } from "./module-protocol-types.js"
 import type { RuntimeStatusSnapshotResult } from "./status-protocol-types.js"
 import type { ProtocolModuleMutation, ProtocolModuleMutationResult, ProtocolModuleMutationType, ProtocolModuleQuery, ProtocolModuleQueryResult, ProtocolModuleQueryType } from "./modules.js"
-import type { AgentInputAnswer, RuntimeQuestionSnapshotResult } from "./question-protocol-types.js"
+import type { AgentInputAnswer, RuntimeQuestionSnapshotResult, RuntimeWaitingSessionsSnapshotResult } from "./question-protocol-types.js"
 import type { RuntimeSessionDetailQuery, RuntimeSessionDetailResult, RuntimeSessionDetailSnapshotResult } from "./session-detail-protocol-types.js"
 import type { RuntimeRoleSnapshotResult } from "./role-protocol-types.js"
 import type { HydratedOutputGroupChildrenBatch, HydratedOutputRange, HydratedOutputBlockBody, OutputGroupChildrenRequest, OutputRangeRequest, OutputBlockBodyRequest, OutputWindowRequest, OutputWindowSnapshot,
@@ -98,6 +98,7 @@ type RuntimeKernelQuery =
   | { readonly type: "statusSnapshot"; readonly sessionIds: readonly string[] }
   | { readonly type: "budgetSnapshot"; readonly sessionIds: readonly string[] }
   | { readonly type: "questionSnapshot"; readonly sessionIds: readonly string[] }
+  | { readonly type: "waitingSessionsSnapshot" }
   | { readonly type: "roleSnapshot"; readonly sessionIds: readonly string[] }
   | { readonly type: "authStatusSnapshot"; readonly scope: RuntimeAuthStatusScope }
   | { readonly type: "authProfileDeletionPreview"; readonly id: string }
@@ -144,6 +145,7 @@ export type RuntimeQueryResult<Q extends RuntimeQuery> =
             : Q extends { readonly type: "statusSnapshot" } ? RuntimeStatusSnapshotResult
               : Q extends { readonly type: "budgetSnapshot" } ? RuntimeBudgetSnapshotResult
                   : Q extends { readonly type: "questionSnapshot" } ? RuntimeQuestionSnapshotResult
+                  : Q extends { readonly type: "waitingSessionsSnapshot" } ? RuntimeWaitingSessionsSnapshotResult
                   : Q extends { readonly type: "roleSnapshot" } ? RuntimeRoleSnapshotResult
                     : Q extends { readonly type: "authStatusSnapshot" } ? RuntimeAuthStatusSnapshotResult
                     : Q extends { readonly type: "authProfileDeletionPreview" } ? RuntimeAuthProfileDeletionPreview

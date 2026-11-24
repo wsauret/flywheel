@@ -80,7 +80,7 @@ describe("SessionPreviewPane", () => {
               get result() { return catalog() }, cursor: 0, navigationRevision: 0, actions: [],
               appService: { query: ({ request }) => new Promise<HydratedOutputRange>((resolve, reject) => calls.push({ request, resolve, reject })), onLane: lanes.onLane },
               onClose: () => {}, onRowClick: () => {}, filterQuery: "", inputPresentation: presentation,
-              inputPlaceholder: "Search", renaming: false, renamePresentation: () => presentation, statusView: () => undefined, now: 0,
+              inputPlaceholder: "Search", renaming: false, renamePresentation: () => presentation, statusView: () => undefined, waitingSessions: new Set<string>(), now: 0,
             })
           },
         })

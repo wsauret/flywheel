@@ -81,6 +81,8 @@ export function createModal(options: {
   queueViews?: QueueViews
   foregroundId?: string
   now?: () => number
+  /** The project's sessions that wait on a question. */
+  waitingSessions?: ReadonlySet<string>
   activateSession?: (session: SessionCatalogRow) => Promise<SessionActivationResult>
   deleteActiveSession?: (sessionId: string) => Promise<void>
   closeChat?: (sessionId: string) => Promise<void>
@@ -97,6 +99,8 @@ export function createModal(options: {
   const closeChat = mock(options.closeChat ?? (async (_id: string) => {}))
   const signals = createSignals(options.queueViews, options.foregroundId)
   if (options.now) signals.now = options.now
+  const waiting = options.waitingSessions
+  if (waiting) signals.waitingSessions = () => waiting
   const hook = useSessionModal({
     modal: modals,
     renderModal: () => "mock-element",

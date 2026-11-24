@@ -36,6 +36,7 @@ async function renderPickerFrame(field: { result: SessionPickerResult; filterQue
       height={10}
       rowWidth={90}
       statusView={() => undefined}
+      waitingSessions={new Set<string>()}
       now={0}
       inputPlaceholder="Search"
       renaming={field.renaming ?? false}

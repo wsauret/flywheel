@@ -1,6 +1,7 @@
 import { createEventProjection, type EventProjection } from "../../infra/event-projection.js"
 import { heldProjection } from "../../infra/projection-registry.js"
-import type { AsyncEventReadSurface, StoredFact } from "../../infra/event-store-types.js"
+import { CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } from "../../infra/event-store-types.js"
+import { yieldToNextTask } from "../../infra/task-scheduling.js"
 import { InvariantViolation } from "../../infra/invariant.js"
 import type { DegradedBlock, QuestionEntry } from "../../infra/output-blocks.js"
 import type { AgentInputAnswer } from "../../protocol/question-protocol-types.js"
@@ -146,6 +147,63 @@ function createHeldAgentInputProjection(reader: AsyncEventReadSurface, sessionId
 
 export async function loadAgentInputProjection(reader: AsyncEventReadSurface, sessionId: string): Promise<ReadonlyMap<string, AgentInputEntry>> {
   return (await createHeldAgentInputProjection(reader, sessionId).replay()).entries
+}
+
+const SESSION_AGGREGATE_PREFIX = "session:"
+
+/** The project's sessions with a pending question, closed ones included,
+ *  each with the time its question opened, and the sessions whose question
+ *  history could not be folded. */
+export interface PendingInputBaseline {
+  readonly waiting: ReadonlyMap<string, number>
+  readonly unreadable: ReadonlySet<string>
+}
+
+/** One read of every session's question facts through one captured ceiling.
+ *  It folds each session with the reducer that decides the dock, so the two
+ *  never disagree. Damage stays inside its session (ARCH-SUBSTRATE-013): a
+ *  corrupt row or a broken fact order leaves that session out of `waiting`
+ *  and names it in `unreadable`, and every other session keeps its answer.
+ *  A one-shot read: its caller advances the set from later facts. */
+export async function loadSessionsWithPendingInput(reader: AsyncEventReadSurface): Promise<PendingInputBaseline> {
+  const states = new Map<string, AgentInputProjectionState>()
+  const unreadable = new Set<string>()
+  const query = { aggregatePrefix: SESSION_AGGREGATE_PREFIX, types: AGENT_INPUT_FACT_TYPES }
+  const upper = await reader.capturePosition()
+  for (let position = 0; position < upper;) {
+    const page = await reader.readPage(query, upper, position, true, "deferred")
+    for (const fact of page.facts) {
+      if (fact instanceof CorruptEventRowError) {
+        unreadable.add(fact.sessionId)
+        continue
+      }
+      const sessionId = fact.aggregateId.slice(SESSION_AGGREGATE_PREFIX.length)
+      if (unreadable.has(sessionId)) continue
+      try {
+        states.set(sessionId, reduceAgentInputEvent(states.get(sessionId) ?? initialAgentInputState(), fact))
+      } catch (error) {
+        if (!(error instanceof InvariantViolation)) throw error
+        unreadable.add(sessionId)
+      }
+    }
+    if (page.continuationPosition === null) break
+    position = page.continuationPosition
+    await yieldToNextTask()
+  }
+  const waiting = new Map<string, number>()
+  for (const [sessionId, state] of states) {
+    const openedAt = unreadable.has(sessionId) ? undefined : pendingInputOpenedAt(state.entries)
+    if (openedAt !== undefined) waiting.set(sessionId, openedAt)
+  }
+  return { waiting, unreadable }
+}
+
+/** When the question that a session's dock shows opened, or undefined when
+ *  no question waits. The dock serves pending questions in the order the
+ *  agent asked them, and the entries keep that order. */
+export function pendingInputOpenedAt(entries: ReadonlyMap<string, AgentInputEntry>): number | undefined {
+  for (const entry of entries.values()) if (entry.kind === "pending") return entry.openedAt
+  return undefined
 }
 
 /** Incrementally folds one session's question facts for transcript projection. */

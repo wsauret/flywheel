@@ -185,7 +185,7 @@ describe("view state summary identity", () => {
     const notices: SessionCatalogRow["notices"] = [{ id: "error", scope: "session", presentation: "transcript.unavailable", severity: "error", title: "Unavailable", message: "Unavailable", startedAt: 1, updatedAt: 1 }]
     const updated = project(session({
       sessions: [{ ...row("a"), notices, admittedActions: ["chat.resume"] }],
-      pendingQuestions: new Map([["a", { kind: "question", toolUseId: "q", questions: [], timestamp: 100 }]]),
+      waitingSessions: new Map([["a", 1]]),
     })).sessions[0]
     assert.notEqual(updated, second.sessions[0])
     assert.equal(updated?.notices, notices)

@@ -9,13 +9,24 @@ export interface DiffStatChunkColors {
   readonly muted: RGBA
 }
 
+/** The heading of the chats that wait on the person's answer, which lead the list. */
+export const NEEDS_YOU_GROUP = "Needs you"
+
+/** Lists the chats that wait on a question first, newest first, then every
+ *  other chat in its group by the date it started (PI-INTERACTION-184). */
 export function flattenSessionRows(
   rows: readonly SessionCatalogRow[],
   now: Date | number = Date.now(),
+  waiting: ReadonlySet<string> = new Set(),
 ): PickerRow[] {
-  const roots = [...rows].sort(byStartedDesc)
+  const needsYou = rows.filter((row) => waiting.has(row.id)).sort(byUpdatedDesc)
+  const roots = rows.filter((row) => !waiting.has(row.id)).sort(byStartedDesc)
 
   const flattened: PickerRow[] = []
+  if (needsYou.length > 0) {
+    flattened.push({ kind: "header", id: `header:${NEEDS_YOU_GROUP}`, label: NEEDS_YOU_GROUP })
+    for (const row of needsYou) flattened.push(sessionRow(row, NEEDS_YOU_GROUP))
+  }
   let currentCategory = ""
 
   for (const root of roots) {
@@ -81,6 +92,10 @@ export function buildDiffStatChunks(
 
 function byStartedDesc(a: SessionCatalogRow, b: SessionCatalogRow): number {
   return new Date(startedAt(b)).getTime() - new Date(startedAt(a)).getTime()
+}
+
+function byUpdatedDesc(a: SessionCatalogRow, b: SessionCatalogRow): number {
+  return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
 }
 
 function startedAt(session: SessionCatalogRow): string {

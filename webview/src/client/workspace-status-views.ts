@@ -2,6 +2,7 @@ import type { RuntimeConnection } from "../../../src/protocol/client/connection.
 import { createHeldView } from "../../../src/protocol/client/held-view.js"
 import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../../src/protocol/git-ai-attribution-protocol-types.js"
 import { updatesCursor, type UpdateStatusView } from "../../../src/protocol/update-protocol-types.js"
+import { waitingSessionsCursor, type WaitingSessionsView } from "../../../src/protocol/question-protocol-types.js"
 
 /** The workspace status views that read themselves: each one holds its own
  *  cursor, reads its snapshot, and adopts its own patches, so the session
@@ -12,11 +13,16 @@ export interface WorkspaceStatusViews {
   /** Whether Git AI attribution can record in this runtime, or undefined
    *  before the first read. */
   readonly gitAiAttribution: GitAiAttributionStatus | undefined
+  /** Every session of the project that waits on a question, closed ones
+   *  included (ARCH-PROTOCOL-068), with the time its docked question opened,
+   *  empty before the first read. Every waiting mark of a listed row reads
+   *  this set, never a question read for the row. */
+  readonly waitingSessions: ReadonlyMap<string, number>
   dispose(): void
 }
 
 /** The workspace domains these views own. */
-export const WORKSPACE_STATUS_DOMAINS: ReadonlySet<string> = new Set([updatesCursor().domain, gitAiAttributionCursor().domain])
+export const WORKSPACE_STATUS_DOMAINS: ReadonlySet<string> = new Set([updatesCursor().domain, gitAiAttributionCursor().domain, waitingSessionsCursor().domain])
 
 export function createWorkspaceStatusViews(input: {
   readonly connection: RuntimeConnection
@@ -45,12 +51,30 @@ export function createWorkspaceStatusViews(input: {
     changed: input.changed,
     label: "Git AI attribution status",
   })
+  let waitingSessions: ReadonlyMap<string, number> = new Map()
+  // A patch carries the whole set, so it replaces the held one without a read.
+  const waiting = createHeldView<WaitingSessionsView>({
+    client: connection,
+    cursor: waitingSessionsCursor(),
+    read: async () => {
+      const snapshot = await connection.query({ type: "waitingSessionsSnapshot" })
+      return { view: snapshot, position: snapshot.snapshotPosition }
+    },
+    adopt: (payload) => (payload.kind === "waitingSessions.changed" ? payload : undefined),
+    changed: (view) => {
+      waitingSessions = new Map(view.sessions.map((entry) => [entry.sessionId, entry.openedAt]))
+      input.changed()
+    },
+    label: "waiting sessions",
+  })
   return {
     get update() { return updates.view },
     get gitAiAttribution() { return gitAiAttribution.view },
+    get waitingSessions() { return waitingSessions },
     dispose() {
       updates.dispose()
       gitAiAttribution.dispose()
+      waiting.dispose()
     },
   }
 }

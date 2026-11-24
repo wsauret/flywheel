@@ -18,6 +18,9 @@ interface BuildSessionRowChunksInput {
   selected: boolean
   foregroundId?: string
   isWorking: boolean
+  /** The chat waits on the person's answer, so the row carries the mark of a
+   *  tab that waits on a question. */
+  isWaiting: boolean
   blinkOn: boolean
   now: number
   timeAgoWidth: number
@@ -76,7 +79,8 @@ function sessionRowChunks(input: BuildSessionRowChunksInput, row: PickerSessionR
   const leftChunks: TextChunk[] = [rowPrefix(input)]
 
   if (session.id === input.foregroundId) leftChunks.push(stFg(theme.success)("(current) "))
-  if (input.isWorking) leftChunks.push(stBold(stFg(input.blinkOn ? theme.success : theme.textMuted)("● ")))
+  if (input.isWaiting) leftChunks.push(stFg(theme.warning)("? "))
+  else if (input.isWorking) leftChunks.push(stBold(stFg(input.blinkOn ? theme.success : theme.textMuted)("● ")))
   else if (session.lifecycleState === "active") leftChunks.push(stFg(theme.success)("● "))
   else leftChunks.push(stFg(theme.textMuted)("○ "))
 

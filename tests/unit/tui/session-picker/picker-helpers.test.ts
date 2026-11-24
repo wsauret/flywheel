@@ -112,6 +112,28 @@ describe("picker helpers", () => {
     ])
   })
 
+  it("leads with the chats that wait on the person, closed ones included, newest first", () => {
+    const now = new Date(2026, 6, 5, 12)
+    const rows = flattenSessionRows([
+      session("today", new Date(2026, 6, 5, 11).toISOString()),
+      session("waiting-old", new Date(2026, 5, 1, 10).toISOString()),
+      { ...session("waiting-new", new Date(2026, 6, 5, 10).toISOString()), lifecycleState: "active" },
+      session("yesterday", new Date(2026, 6, 4, 10).toISOString()),
+    ], now, new Set(["waiting-old", "waiting-new", "deleted"]))
+
+    expect(rows.map(rowLabel)).toEqual([
+      "header:Needs you",
+      "session:waiting-new",
+      "session:waiting-old",
+      "header:",
+      "header:Today",
+      "session:today",
+      "header:",
+      "header:Yesterday",
+      "session:yesterday",
+    ])
+  })
+
   it("formats compact time ago labels with coarse thresholds", () => {
     const now = 1_000_000_000
     expect(formatCompactTimeAgo(now, now - 30_000)).toBe("1m")

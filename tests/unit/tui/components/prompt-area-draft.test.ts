@@ -171,7 +171,7 @@ describe("Composer draft loading", () => {
         foregroundTarget, foregroundId,
         setForegroundTarget: (target: ForegroundTarget | undefined) => { if (target) setForegroundTarget(target) },
         setForegroundId: (sessionId: string | undefined) => { if (sessionId) setForegroundTarget({ kind: "session", sessionId }) },
-        sessionShortTitle: () => "", statusView: () => undefined, questionView: () => undefined, outputView: () => undefined,
+        sessionShortTitle: () => "", statusView: () => undefined, waitingSessions: () => new Set<string>(), outputView: () => undefined,
       }
       const tabs = createTabState({ signals, sessions: () => [] })
       tabs.openSessionTab("reuse")
@@ -226,7 +226,7 @@ describe("Composer draft loading", () => {
       const signals = {
         foregroundTarget, foregroundId, setForegroundTarget,
         setForegroundId: (sessionId: string | undefined) => setForegroundTarget(sessionId ? { kind: "session", sessionId } : undefined),
-        sessionShortTitle: () => "", statusView: () => undefined, questionView: () => undefined, outputView: () => undefined,
+        sessionShortTitle: () => "", statusView: () => undefined, waitingSessions: () => new Set<string>(), outputView: () => undefined,
       }
       const tabs = createTabState({ signals, sessions: () => [] })
       tabs.openSessionTab("other")

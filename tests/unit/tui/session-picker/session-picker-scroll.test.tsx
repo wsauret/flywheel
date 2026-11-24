@@ -63,6 +63,7 @@ async function renderPicker() {
       height={HEIGHT}
       rowWidth={60}
       statusView={() => undefined}
+      waitingSessions={new Set<string>()}
       now={Date.parse("2026-01-01T00:10:00.000Z")}
       filterQuery={filterQuery()}
       inputPresentation={{ value: filterQuery(), cursor: filterQuery().length, selection: null, preferredVisualColumn: null }}

@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import type { QuestionBlock } from "../infra/output-blocks.js"
-import type { RuntimeSessionCursorIdentity, RuntimeSessionViewsResult, RuntimeUiPatchPayload } from "./runtime-ui-protocol-types.js"
+import type { RuntimePosition, RuntimeSessionCursorIdentity, RuntimeSessionViewsResult, RuntimeUiPatchPayload } from "./runtime-ui-protocol-types.js"
 
 export type PendingQuestionView = QuestionBlock
 
@@ -55,4 +55,30 @@ export function questionCursor(sessionId: string): RuntimeSessionCursorIdentity 
 
 export function isQuestionPayload(payload: RuntimeUiPatchPayload): payload is QuestionPatchPayload {
   return payload.kind === "question.updated" || payload.kind === "question.removed"
+}
+
+/** A session that waits on a question, and when the question that its dock
+ *  shows opened. No question text: a client that lists a session reads no
+ *  question for it. */
+export interface WaitingSession {
+  readonly sessionId: string
+  readonly openedAt: number
+}
+
+/** The sessions of the project that wait on a question, closed ones included
+ *  (ARCH-PROTOCOL-068). A client joins them with the rows it lists, so a
+ *  deleted session, a subagent, or a workflow agent in the set shows nowhere. */
+export interface WaitingSessionsView {
+  readonly sessions: readonly WaitingSession[]
+}
+
+export interface RuntimeWaitingSessionsSnapshotResult extends WaitingSessionsView {
+  readonly snapshotPosition: RuntimePosition
+}
+
+/** One patch carries the whole set, so the newest supersedes any it overtook. */
+export type WaitingSessionsPatchPayload = { readonly kind: "waitingSessions.changed"; readonly sessions: readonly WaitingSession[] }
+
+export function waitingSessionsCursor() {
+  return { scope: "workspace", domain: "waitingSessions" } as const
 }

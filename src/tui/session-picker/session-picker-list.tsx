@@ -33,6 +33,7 @@ interface SessionPickerListProps {
   rowWidth: number
   foregroundId?: string
   statusView: (sessionId: string) => StatusView | undefined
+  waitingSessions: ReadonlySet<string>
   now: number
   confirmDeleteSessionId?: string
   filterQuery: string
@@ -153,6 +154,7 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
                 rowWidth={props.rowWidth}
                 foregroundId={props.foregroundId}
                 statusView={props.statusView}
+                waitingSessions={props.waitingSessions}
                 now={props.now}
                 blinkOn={blinkOn()}
                 timeAgoWidth={props.result.timeAgoWidth}
@@ -183,6 +185,7 @@ function PickerListRow(props: {
   rowWidth: number
   foregroundId?: string
   statusView: (sessionId: string) => StatusView | undefined
+  waitingSessions: ReadonlySet<string>
   now: number
   blinkOn: boolean
   timeAgoWidth: number
@@ -199,6 +202,10 @@ function PickerListRow(props: {
           const current = row()
           return current.kind === "corrupt" ? false : isWorkingStatus(props.statusView(current.session.id))
         }
+        const waiting = () => {
+          const current = row()
+          return current.kind !== "corrupt" && props.waitingSessions.has(current.session.id)
+        }
         return (
           <SessionPickerRow
             row={row()}
@@ -208,6 +215,7 @@ function PickerListRow(props: {
             selected={props.cursor === props.rowIndex}
             foregroundId={props.foregroundId}
             isWorking={working()}
+            isWaiting={waiting()}
             blinkOn={props.blinkOn}
             now={props.now}
             timeAgoWidth={props.timeAgoWidth}

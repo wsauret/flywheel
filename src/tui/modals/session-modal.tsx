@@ -32,6 +32,7 @@ interface SessionModalProps {
   renamePresentation: (field: "title" | "shortTitle") => TextEditorPresentation
   foregroundId?: string
   statusView: (sessionId: string) => StatusView | undefined
+  waitingSessions: ReadonlySet<string>
   now: number
   confirmDeleteSessionId?: string
   showThinking?: boolean
@@ -77,6 +78,7 @@ export function SessionModal(props: SessionModalProps) {
           rowWidth={Math.max(0, layout().listWidth)}
           foregroundId={props.foregroundId}
           statusView={props.statusView}
+          waitingSessions={props.waitingSessions}
           now={props.now}
           confirmDeleteSessionId={props.confirmDeleteSessionId}
           onRowClick={props.onRowClick}

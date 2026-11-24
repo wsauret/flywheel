@@ -7,20 +7,28 @@ import { createSessionReadingFamily, type SessionViewStore } from "../../../src/
 import { isStatusPayload, statusCursor, type StatusView } from "../../../src/protocol/status-protocol-types.js"
 import { isQuestionPayload, questionCursor, type PendingQuestionView } from "../../../src/protocol/question-protocol-types.js"
 
-/** Status, budget, and question readings follow every live catalog row,
- *  every held child, the selection, which no list may name yet, and every
- *  child whose card watches its status. They reach every client whichever
- *  session it shows, so a return to a session shows its known budget in the
- *  tap and reads nothing for it. The shared reading family decides every
- *  read: it reads each followed session once on each lane, reads what it
- *  follows in one batch per domain, orders each read against its live
- *  patches, and keeps the visible readings across a reconnect without
- *  depending on catalog changes. The question reading is the durable question
- *  projection, which every settlement path advances, so the dock never waits
- *  on a transcript patch that may never come (ARCH-PROTOCOL-068). */
+/** Status and budget readings follow every live catalog row, every held
+ *  child, the selection, which no list may name yet, and every child whose
+ *  card watches its status. They reach every client whichever session it
+ *  shows, so a return to a session shows its known budget in the tap and
+ *  reads nothing for it. The shared reading family decides every read: it
+ *  reads each followed session once on each lane, reads what it follows in
+ *  one batch per domain, orders each read against its live patches, and
+ *  keeps the visible readings across a reconnect without depending on
+ *  catalog changes.
+ *
+ *  The question reading follows the sessions whose dock the page shows or
+ *  keeps for a return: the selection and the resident sessions that `keeps`
+ *  names, a bounded few. A listed row reads no question: its waiting mark reads the
+ *  project's waiting set (ARCH-PROTOCOL-068). The question reading is the
+ *  durable question projection, which every settlement path advances, so the
+ *  dock never waits on a transcript patch that may never come. */
 export function createSessionReadings(options: {
   readonly connection: RuntimeConnection
   readonly changed: () => void
+  /** Whether the page keeps a session it does not show for a return, so its
+   *  dock shows the question at once. */
+  readonly keeps?: (sessionId: string) => boolean
 }) {
   const { connection, changed } = options
   let statuses: ReadonlyMap<string, StatusView> = new Map()
@@ -90,18 +98,19 @@ export function createSessionReadings(options: {
     views: budgetViews,
     changed,
   })
+  const docked = (sessionId: string): boolean => !disposed && (sessionId === selected || (options.keeps?.(sessionId) ?? false))
   const question = createSessionReadingFamily({
     domain: "question",
     cursor: questionCursor,
     client: connection,
-    query: (sessionIds) => disposed || !sessionIds.some(follows) ? Promise.resolve({ snapshotPosition: 0, views: [] }) : connection.query({ type: "questionSnapshot", sessionIds: sessionIds.filter(follows) }),
+    query: (sessionIds) => !sessionIds.some(docked) ? Promise.resolve({ snapshotPosition: 0, views: [] }) : connection.query({ type: "questionSnapshot", sessionIds: sessionIds.filter(docked) }),
     isPayload: isQuestionPayload,
     payloadView: (payload) => (payload.kind === "question.updated" ? payload.question : null),
-    admits: follows,
+    admits: docked,
     views: questionViews,
     changed,
   })
-  const families = [status, budget, question]
+  const families = [status, budget]
 
   function follow(sessionIds: readonly string[]): void {
     for (const family of families) family.ensure(sessionIds)
@@ -115,7 +124,7 @@ export function createSessionReadings(options: {
     get statuses() { return statuses },
     /** The known budget of every followed session, by id. */
     get budgets() { return budgets },
-    /** The question each session waits on, by id. */
+    /** The question that each docked session waits on, by its id. */
     get pendingQuestions() { return pendingQuestions },
     /** Admit live rows without re-reading unchanged rows; retire removed owners. */
     reconcile(rows: readonly SessionRow[]): void {
@@ -131,7 +140,11 @@ export function createSessionReadings(options: {
       const left = selected
       selected = sessionId
       if (left !== undefined && left !== sessionId && !follows(left)) retire(left)
-      if (sessionId !== undefined) follow([sessionId])
+      for (const id of question.sessionIds()) if (!docked(id)) question.retire(id)
+      if (sessionId !== undefined) {
+        follow([sessionId])
+        question.ensure([sessionId])
+      }
     },
     /** Follows the status of a session while a card shows it, and tells the
      *  listener each reading. The last release stops following it, unless a
@@ -167,6 +180,7 @@ export function createSessionReadings(options: {
     dispose(): void {
       disposed = true
       for (const family of families) family.dispose()
+      question.dispose()
       watchers.clear()
     },
   }

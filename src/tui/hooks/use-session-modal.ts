@@ -9,7 +9,7 @@ import { contentRows, contentSettled, createContentSearch, type ContentAnswer } 
 import { createListModalKeys, type ListModalKeyEvent } from "../components/modal-list-keys.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY, type TextEditorPresentation } from "../keymap/text-entry.js"
 import { firstSelectableRow, matchAction, MAX_RENDERED_ROWS } from "../components/modal-select-helpers.js"
-import { flattenSessionRows, formatCompactTimeAgo, parseSessionIdQuery, pickerRowLastActive, timeAgoColumnWidth } from "../session-picker/picker-helpers.js"
+import { flattenSessionRows, formatCompactTimeAgo, NEEDS_YOU_GROUP, parseSessionIdQuery, pickerRowLastActive, timeAgoColumnWidth } from "../session-picker/picker-helpers.js"
 import type { PickerCorruptRow, PickerFoundRow, PickerRow, PickerSessionRow, SelectablePickerRow, SessionPickerResult } from "../session-picker/picker-types.js"
 import type { ModalHandle } from "../components/modal-stack.js"
 import type { SessionModalAction, SessionModalDeps, SessionModalHook, SessionRenameState } from "./use-session-modal-types.js"
@@ -53,7 +53,7 @@ export function useSessionModal(deps: SessionModalDeps, contentSearchDelayMs?: n
     if (!deps.modal.stack.some((modal) => modal.element === deps.renderModal)) {
       return { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "" }
     }
-    return pickerRowsFor(deps.sessions(), deps.sessionCatalogErrors(), filterQuery(), nowMinute())
+    return pickerRowsFor(deps.sessions(), deps.sessionCatalogErrors(), filterQuery(), nowMinute(), signals.waitingSessions())
   })
   const titleMatchIds = createMemo(() => titleResult().rows.flatMap((row) => row.kind === "session" ? [row.session.id] : []), [], { equals: sameIds })
   // Chats found by their messages go below every title match, so an answer
@@ -450,9 +450,10 @@ function pickerRowsFor(
   errors: readonly SessionCatalogError[],
   query: string,
   now: number,
+  waiting: ReadonlySet<string>,
 ): PickerRowsResult {
   const corrupt = corruptPickerRows(errors)
-  const sessionRows = allSessionRows(sessionList, now)
+  const sessionRows = allSessionRows(sessionList, now, waiting)
   const knownIds = new Set([...sessionRows.map((row) => row.session.id), ...corrupt.map((row) => row.sessionId)])
   const exactId = parseSessionIdQuery(query, knownIds)
   if (exactId) {
@@ -465,9 +466,9 @@ function pickerRowsFor(
   const activeQuery = query.trim()
   if (activeQuery) return matchingRows(sessionRows, corrupt, activeQuery)
 
-  const rows = withCorruptRows(flattenSessionRows(sessionList, now), corrupt)
+  const rows = withCorruptRows(flattenSessionRows(sessionList, now, waiting), corrupt)
   const totalMatches = rows.filter(isSelectablePickerRow).length
-  const capped = totalMatches > MAX_RENDERED_ROWS
+  const capped = rows.filter(isCappedRow).length > MAX_RENDERED_ROWS
   return {
     rows,
     totalMatches,
@@ -510,33 +511,45 @@ function matchingRows(sessionRows: readonly PickerSessionRow[], corrupt: readonl
   return {
     rows,
     totalMatches: rows.length,
-    capped: rows.length > MAX_RENDERED_ROWS,
+    capped: rows.filter(isCappedRow).length > MAX_RENDERED_ROWS,
     effectiveHighlightQuery: query,
   }
 }
 
-function allSessionRows(sessionList: readonly SessionCatalogRow[], now: number): PickerSessionRow[] {
-  return flattenSessionRows(sessionList, now)
+function allSessionRows(sessionList: readonly SessionCatalogRow[], now: number, waiting: ReadonlySet<string>): PickerSessionRow[] {
+  return flattenSessionRows(sessionList, now, waiting)
     .filter((row): row is PickerSessionRow => row.kind === "session")
 }
 
+/** Whether the 200-row cap counts a row. Every chat that waits on the
+ *  person stays outside the cap, so each one the count names is reachable
+ *  (PI-INTERACTION-184). */
+function isCappedRow(row: PickerRow): row is SelectablePickerRow {
+  return isSelectablePickerRow(row) && !(row.kind === "session" && row.category === NEEDS_YOU_GROUP)
+}
+
+/** Caps the rows that the cap counts at `maxRows`, keeping the selected row. */
 function capSelectableRows(rows: readonly PickerRow[], maxRows: number, selected?: string): PickerRow[] {
-  const selectables = rows.filter(isSelectablePickerRow)
+  const selectables = rows.filter(isCappedRow)
   if (selectables.length <= maxRows) return [...rows]
   const retained = selectables.findIndex((row) => rowSessionId(row) === selected)
   const reserved = retained >= maxRows ? selectables[retained] : undefined
-  const capped: PickerRow[] = []
+  const kept: PickerRow[] = []
   let selectableCount = 0
   for (const row of rows) {
     if (row.kind === "header") {
-      if (selectableCount < maxRows || reserved !== undefined) capped.push(row)
+      if (selectableCount < maxRows || reserved !== undefined) kept.push(row)
       continue
     }
-    if (selectableCount < maxRows - (reserved ? 1 : 0) || row === reserved) capped.push(row)
+    if (!isCappedRow(row)) {
+      kept.push(row)
+      continue
+    }
+    if (selectableCount < maxRows - (reserved ? 1 : 0) || row === reserved) kept.push(row)
     selectableCount += 1
   }
   // A reserved row keeps its source-order heading, not empty groups skipped by the cap.
-  return capped.filter((row, index) => row.kind !== "header" || capped[index + 1]?.kind !== "header" && index < capped.length - 1)
+  return kept.filter((row, index) => row.kind !== "header" || kept[index + 1]?.kind !== "header" && index < kept.length - 1)
 }
 
 function isSelectablePickerRow(row: PickerRow | undefined): row is SelectablePickerRow {

@@ -8,7 +8,7 @@ import type { OutputView } from "../../protocol/output-protocol-types.js"
 import type { OutputTranscriptCache, OutputTranscriptView } from "../transcript-store/output-transcript-cache-types.js"
 import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import type { BudgetView } from "../../protocol/budget-protocol-types.js"
-import type { PendingQuestionView } from "../../protocol/question-protocol-types.js"
+import { waitingSessionsCursor, type PendingQuestionView, type WaitingSessionsView } from "../../protocol/question-protocol-types.js"
 import { noticeText, selectPrimarySessionNotice, sessionNoticeChannel, type SessionNotice } from "../../infra/session-notice.js"
 import { createToastPresenter } from "../context/toast-presenter.js"
 import type { RuntimeChatDefault, SessionCatalogError, SessionCatalogRow, SessionInputMode, SessionRow, AttachedRuntimeClient, RuntimeClient, RuntimeHealth, RuntimeStartupStatus } from "../../protocol/app-service-types.js"
@@ -115,10 +115,10 @@ export interface ShellSignals {
   /** Every module domain in the protocol registry, by domain name. A module's
    *  terminal home reads its own through a `DomainReader`; the shell names none. */
   modules: ModuleDomainIntakes
-  /** The sole blocked-state authority: a resident question is unanswered by the
-   *  server's own filter. This cache never evicts, so background indicators survive
-   *  transcript eviction. */
-  questionView: (sessionId: string) => PendingQuestionView | undefined
+  /** Every session of the project that waits on a question, closed ones
+   *  included: the one source of every waiting mark (ARCH-PROTOCOL-068). A
+   *  list joins it with the rows it shows. */
+  waitingSessions: Accessor<ReadonlySet<string>>
   /** Session role assignments from the ordered roles cache. */
   roleView: (sessionId: string) => RoleAssignmentView | undefined
   /** Starts following ordered role cursors in one batched snapshot. */
@@ -295,6 +295,23 @@ function createGitCache(deps: { appService: Pick<AttachedRuntimeClient, "query" 
   return { view }
 }
 
+function createWaitingSessionsCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
+  const [sessionIds, setSessionIds] = createSignal<ReadonlySet<string>>(new Set())
+  const held = createHeldView<WaitingSessionsView>({
+    client: deps.appService,
+    cursor: waitingSessionsCursor(),
+    read: async () => {
+      const snapshot = await deps.appService.query({ type: "waitingSessionsSnapshot" })
+      return { view: snapshot, position: snapshot.snapshotPosition }
+    },
+    adopt: (payload) => (payload.kind === "waitingSessions.changed" ? payload : undefined),
+    changed: (view) => setSessionIds(new Set(view.sessions.map((waiting) => waiting.sessionId))),
+    label: "waiting sessions",
+  })
+  onCleanup(held.dispose)
+  return { sessionIds }
+}
+
 function createCommandUsageCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
   const [counts, setCounts] = createSignal<ReadonlyMap<string, number>>(new Map())
   const held = createHeldView<CommandUsageView>({
@@ -414,6 +431,7 @@ export function createShellState(deps: {
     chat_default: sessionCatalog,
     executor: sessionCatalog,
     service: sessionCatalog,
+    waitingSessions: createWaitingSessionsCache({ appService: deps.appService }),
     // Only a headless client waits on a chat's settlement; the terminal shows the work itself.
     settlement: "query-only",
     // Every module domain in the protocol registry, bound generically: a new
@@ -480,7 +498,7 @@ export function createShellState(deps: {
   createEffect(() => {
     const rows = sessionCatalog.rows()
     const activeIds = rows.filter((summary) => summary.lifecycleState === "active").map((summary) => summary.id)
-    for (const cache of [statusCache, budgetCache, questionCache, roleCache]) cache.ensureMany(activeIds)
+    for (const cache of [statusCache, budgetCache, roleCache]) cache.ensureMany(activeIds)
     const fgId = foregroundId()
     if (fgId) ensureModuleSessionDomains(moduleIntakes, fgId)
     if (fgId) roleCache.ensure(fgId)
@@ -600,7 +618,7 @@ export function createShellState(deps: {
     statusView: statusCache.view,
     budgetView: budgetCache.view,
     modules: moduleIntakes,
-    questionView: questionCache.view,
+    waitingSessions: intake.waitingSessions.sessionIds,
     roleView: roleCache.view,
     ensureRoleViews: roleCache.ensureMany,
     ensureChildViews: (sessionIds: readonly string[]) => {

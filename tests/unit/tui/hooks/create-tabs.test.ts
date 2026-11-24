@@ -1,11 +1,10 @@
 /** Tests for tab hooks: tab rows come from this shell's open-session ids,
- * while busy comes from the status cache and blocked comes from the question
- * cache -- the sole isBlocked authority (item 20), never the transcript. */
+ * while busy comes from the status cache and blocked comes from the project's
+ * waiting set -- the sole isBlocked authority, never the transcript. */
 
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import { createStore } from "solid-js/store"
-import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
 import { createTabState } from "../../../../src/tui/hooks/create-tabs.js"
 import type { OutputView } from "../../../../src/protocol/output-protocol-types.js"
@@ -13,8 +12,6 @@ import type { ForegroundTarget } from "../../../../src/tui/hooks/shell-state.js"
 import type { StatusView } from "../../../../src/protocol/status-protocol-types.js"
 
 type Status = Pick<StatusView, "activity" | "activeSubagentCount" | "waitingOnBackgroundWork">
-type Question = Extract<AnyBlock, { kind: "question" }>
-interface QuestionsById { [id: string]: Question }
 interface StatusesById { [id: string]: Status }
 
 type LoadingCatalogRow = Extract<SessionCatalogRow, { readonly totalsLoading: true }>
@@ -34,13 +31,13 @@ function catalogRow(overrides: Partial<Omit<LoadingCatalogRow, "totalsLoading">>
 }
 
 function makeSignals(
-  questionView: (id: string) => Question | undefined = () => undefined,
+  waitingSessions: () => ReadonlySet<string> = () => new Set(),
   statusView: (id: string) => Status | undefined = () => undefined,
   outputView: (id: string) => OutputView | undefined = () => undefined,
 ) {
   const [foregroundId, setForegroundId] = createSignal<string | undefined>(undefined)
   const [sessionShortTitle, setSessionShortTitle] = createSignal("")
-  return { foregroundId, setForegroundId, foregroundTarget: () => { const sessionId = foregroundId(); return sessionId ? { kind: "session" as const, sessionId } : undefined }, sessionShortTitle, setSessionShortTitle, questionView, statusView: (id: string): StatusView | undefined => {
+  return { foregroundId, setForegroundId, foregroundTarget: () => { const sessionId = foregroundId(); return sessionId ? { kind: "session" as const, sessionId } : undefined }, sessionShortTitle, setSessionShortTitle, waitingSessions, statusView: (id: string): StatusView | undefined => {
     const status = statusView(id)
     return status ? { activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeBackgroundCommands: [], activeForegroundBashToolCallIds: [], processorHeldToolCallIds: [], startedAt: 0, streamingStartedAt: null, accumulatedActiveMs: 0, compactionStartedAt: null, replyWaits: [], ...status } : undefined
   }, outputView }
@@ -51,16 +48,6 @@ function openTabs(deps: { sessions: () => readonly SessionCatalogRow[]; openSess
   const state = createTabState({ sessions: deps.sessions, signals: deps.signals })
   for (const id of deps.openSessionIds) state.openSessionTab(id)
   return state.tabs
-}
-
-function question(overrides: Partial<Question> = {}): Question {
-  return {
-    kind: "question",
-    toolUseId: "q1",
-    questions: [{ question: "Y/N?", choices: [{ kind: "freeform", label: "Other" }], multiSelect: false }],
-    timestamp: 0,
-    ...overrides,
-  }
 }
 
 describe("createTabState", () => {
@@ -87,17 +74,16 @@ describe("createTabState", () => {
       dispose()
     })
   })
-  it("derives isBusy from status cache and isBlocked from question cache per session", () => {
+  it("derives isBusy from status cache and isBlocked from the waiting set per session", () => {
     createRoot((dispose) => {
-      const [questions, setQuestions] = createStore<QuestionsById>({})
+      const [waiting, setWaiting] = createSignal<ReadonlySet<string>>(new Set(["b"]))
       const [statuses, setStatuses] = createStore<StatusesById>({})
       setStatuses("a", { activity: "generating", activeSubagentCount: 0, waitingOnBackgroundWork: false })
-      setQuestions("b", question())
 
       const tabs = openTabs({
         sessions: () => [catalogRow({ id: "a" }), catalogRow({ id: "b" }), catalogRow({ id: "c" })],
         openSessionIds: ["a", "b", "c"],
-        signals: makeSignals((id) => questions[id], (id) => statuses[id]),
+        signals: makeSignals(waiting, (id) => statuses[id]),
       })
 
       expect(tabs().map((t) => [t.id, t.isBusy, t.isBlocked])).toEqual([
@@ -105,6 +91,8 @@ describe("createTabState", () => {
         ["b", false, true],
         ["c", false, false],
       ])
+      setWaiting(new Set<string>())
+      expect(tabs().find((t) => t.id === "b")?.isBlocked).toBe(false)
       dispose()
     })
   })
@@ -115,7 +103,7 @@ describe("createTabState", () => {
         sessions: () => [catalogRow({ id: "a" })],
         openSessionIds: ["a"],
         signals: makeSignals(
-          () => question(),
+          () => new Set(["a"]),
           () => ({ activity: "awaiting_user", activeSubagentCount: 0, waitingOnBackgroundWork: false }),
         ),
       })
@@ -127,15 +115,13 @@ describe("createTabState", () => {
 
   it("marks busy for active subagents or background work and keeps absent questions unblocked", () => {
     createRoot((dispose) => {
-      // An answered question is never resident in the cache in the first place
-      // (the server publishes `question.removed` the moment it's answered), so
-      // the fixture for "b" models that as an absent questionView entry rather
-      // than a raw answered block for the client to filter.
+      // An answered question leaves the waiting set at once, so "b" is absent
+      // from it rather than an answered block for the client to filter.
       const tabs = openTabs({
         sessions: () => [catalogRow({ id: "a" }), catalogRow({ id: "b" }), catalogRow({ id: "c" })],
         openSessionIds: ["a", "b", "c"],
         signals: makeSignals(
-          () => undefined,
+          () => new Set(),
           (id) => {
             if (id === "a") return { activity: "idle", activeSubagentCount: 1, waitingOnBackgroundWork: false }
             if (id === "c") return { activity: "idle", activeSubagentCount: 0, waitingOnBackgroundWork: true }

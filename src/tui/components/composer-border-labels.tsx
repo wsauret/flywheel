@@ -109,12 +109,13 @@ function createPromptStatusDisplay(props: PromptStatusChunksProps) {
   return display
 }
 
-/** Update alert, module labels and Changes, then the model: the alert leads because it asks
+/** Update alert, the count of other chats that wait, module labels and Changes, then the model: the alert leads because it asks
  *  for an action, and the model sits at the corner where the eye settles. */
 function promptTopRightLabel(theme: TuiTheme, layout: ComposerBorderLayout) {
-  const { update, modelLabel, composerStatus, changesLabel } = layout
+  const { update, modelLabel, composerStatus, waitingLabel, changesLabel } = layout
   const segments: { action?: ComposerControlAction | ModuleRowAction; chunks: TextChunk[] }[] = []
   if (update) segments.push({ action: "update", chunks: [stFg(theme[update.tone])(update.label)] })
+  if (waitingLabel) segments.push({ action: "sessions", chunks: [stFg(theme.warning)(waitingLabel)] })
   const toneColor = (tone: "warning" | "success" | undefined) => tone === "warning" ? theme.warning : tone === "success" ? theme.success : theme.textMuted
   for (const label of composerStatus ?? []) {
     const chunks = [stFg(toneColor(label.tone))(label.text)]

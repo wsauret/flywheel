@@ -7,7 +7,7 @@ import {
   updateBorderStatus,
 } from "../../../../src/tui/hooks/create-composer-border-layout.js"
 import { createKeymap } from "../../../../src/tui/keymap/keymap.js"
-import { createSignals } from "./_session-modal-fixtures.js"
+import { createSignals, session } from "./_session-modal-fixtures.js"
 
 const AUTO_INSTALL_ON = { persisted: true, forcedOff: false, effective: true } as const
 
@@ -67,6 +67,38 @@ describe("composer border hints", () => {
       expect(keys()).toEqual(expect.arrayContaining(["ctrl+t", "ctrl+o"]))
       expect(keys()).not.toContain("ctrl+n")
       expect(keys()).not.toContain("ctrl+s")
+      dispose()
+    })
+  })
+
+  it("counts the listed chats other than the one in front that wait, for as long as they wait", () => {
+    createRoot((dispose) => {
+      const [waiting, setWaiting] = createSignal<ReadonlySet<string>>(new Set())
+      const signals = createSignals({}, "front")
+      signals.waitingSessions = waiting
+      // A deleted session or a subagent in the set is not listed, so it never counts.
+      signals.listedSessions = () => ["front", "closed-a", "closed-b"].map((id) => session({ id }))
+      const { layout } = createComposerBorderLayout({
+        signals,
+        terminalWidth: () => 200,
+        chordFor: (commandId) => createKeymap({}).keymap.chordFor(commandId),
+        resumeOffered: () => false,
+        activeSessionCount: () => 1,
+      })
+
+      setWaiting(new Set(["front"]))
+      expect(layout().waitingLabel).toBeUndefined()
+      setWaiting(new Set(["front", "closed-a", "closed-b", "deleted", "subagent"]))
+      expect(layout().waitingLabel).toBe("? 2 waiting")
+      // Leaving a waiting chat makes it one of the others; the label follows
+      // the foreground without any change to the set.
+      signals.setForegroundId("closed-a")
+      expect(layout().waitingLabel).toBe("? 2 waiting")
+      signals.setForegroundId("closed-b")
+      setWaiting(new Set(["closed-b"]))
+      expect(layout().waitingLabel).toBeUndefined()
+      signals.setForegroundId("front")
+      expect(layout().waitingLabel).toBe("? 1 waiting")
       dispose()
     })
   })

@@ -265,7 +265,7 @@ export function createViewProjection(): (session: SessionState) => ClientViewSta
     const next = rows.map((row) => {
       seen.add(row.id)
       const reading: SessionReading = {
-        awaitingAnswer: session.pendingQuestions.has(row.id),
+        awaitingAnswer: session.waitingSessions.has(row.id),
         working: isWorkingStatus(session.statuses.get(row.id)),
       }
       const current = held.get(row.id)
@@ -334,7 +334,7 @@ function buildViewState(session: SessionState, lists: SessionSummaryLists): Clie
     ...(session.rootSessionId === undefined ? {} : { rootSessionId: session.rootSessionId }),
     ...(session.executionCwd === undefined ? {} : { executionCwd: session.executionCwd }),
     sessions: lists.sessions,
-    newestQuestionOpenedAt: session.pendingQuestions.size > 0 ? Math.max(...[...session.pendingQuestions.values()].map((question) => question.timestamp)) : undefined,
+    newestQuestionOpenedAt: newestQuestionOpenedAt(session, lists.sessions, pendingQuestion),
     ...(pendingQuestion === undefined ? {} : { pendingQuestion }),
     ...(session.backgroundIndex === undefined ? {} : { backgroundIndex: session.backgroundIndex }),
     children: lists.children,
@@ -379,6 +379,19 @@ export function sessionLocationOf(state: Pick<ClientViewState, "executionCwd" | 
   const git = directory === undefined ? undefined : state.git.directories[directory]
   const name = (path: string | undefined) => path?.split(/[\\/]/).filter(Boolean).at(-1)
   return { directory, project: projectLabel ?? name(state.projectRoot), worktree: name(git?.worktreeRoot), branch: git?.branch }
+}
+
+/** When the newest question that waits opened: the docked one, or that of
+ *  a listed chat in the project's waiting set, closed chats included. A push
+ *  offer compares it with when the person last dismissed the offer
+ *  (PI-REMOTE-031). */
+function newestQuestionOpenedAt(session: SessionState, listed: readonly SessionSummary[], docked: PendingQuestionView | undefined): number | undefined {
+  let newest = docked?.timestamp
+  for (const row of listed) {
+    const openedAt = session.waitingSessions.get(row.id)
+    if (openedAt !== undefined && (newest === undefined || openedAt > newest)) newest = openedAt
+  }
+  return newest
 }
 
 function waitingOnOf(status: StatusView | undefined, parentSessionId: string | undefined): Pick<ClientViewState, "waitingOn"> {

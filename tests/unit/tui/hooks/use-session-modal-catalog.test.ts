@@ -25,6 +25,24 @@ describe("useSessionModal catalog lifecycle", () => {
       } finally { dispose() }
     })
   })
+  it("keeps every chat that waits on the person reachable past the 200-row cap", () => {
+    createRoot((dispose) => {
+      try {
+        const rows = Array.from({ length: 450 }, (_, index) => session({ id: `session-${index}`, lastUpdated: new Date(Date.parse("2026-05-22T23:58:00.000Z") - index * 60_000).toISOString() }))
+        // The 210 oldest chats wait, more than the cap holds on its own, and
+        // the 240 others still exceed it.
+        const waiting = new Set(rows.slice(240).map((row) => row.id))
+        const { hook } = createModal({ sessions: rows, waitingSessions: waiting })
+        hook.openSessionsModal()
+        const result = hook.sessionModalResult()
+        const shown = result.rows.flatMap((row) => row.kind === "session" ? [row] : [])
+        expect(shown.filter((row) => row.category === "Needs you").map((row) => row.session.id).sort()).toEqual([...waiting].sort())
+        expect(shown.filter((row) => row.category !== "Needs you")).toHaveLength(200)
+        expect(result.rows[0]).toMatchObject({ kind: "header", label: "Needs you" })
+        expect(result.capped).toBe(true)
+      } finally { dispose() }
+    })
+  })
   it("does not read the full catalog until its own modal opens", () => {
     createRoot((dispose) => {
       try {

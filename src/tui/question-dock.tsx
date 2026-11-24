@@ -16,6 +16,8 @@ import { MarkdownBody } from "./output-blocks/markdown/markdown-body.js"
 import { createQuestionForm } from "./question-dock-form.js"
 import { layoutQuestionDockEditor } from "./question-dock-editor-layout.js"
 import { createModalScrollController } from "./components/modal-scroll-controller.js"
+import { ChromeControl } from "./components/chrome-control.js"
+import { waitingCountLabel } from "./components/composer-border-layout.js"
 
 interface QuestionAnswers {
   [question: string]: AgentInputAnswer
@@ -29,6 +31,12 @@ export interface QuestionDockProps {
   /** False while an overlay covers the dock, so the dock leaves the terminal cursor alone. */
   captureFocus: () => boolean
   escapeHint?: string
+  /** How many listed chats other than this one wait on a question. The dock
+   *  hides the composer border that shows this count, so it shows it at the
+   *  right end of its hint row (PI-INTERACTION-184). */
+  waitingCount: number
+  /** Opens the Sessions list, where the waiting chats lead. */
+  onOpenSessions: () => void
   onAnswer: (answers: QuestionAnswers) => Promise<boolean>
   onCancel: () => Promise<boolean>
   /** Reports whether the dock has measured its content. Until it has, it
@@ -331,7 +339,16 @@ export function QuestionDock(props: QuestionDockProps) {
         </Show>
       </box>
 
-      <text ref={(el: TextRenderable) => { createEffect(() => { el.content = hintsContent() }) }} />
+      <box flexDirection="row">
+        <text flexGrow={1} flexShrink={1} ref={(el: TextRenderable) => { createEffect(() => { el.content = hintsContent() }) }} />
+        <Show when={waitingCountLabel(props.waitingCount)}>
+          {(label) => (
+            <ChromeControl hoverColor={theme.backgroundElement} onPress={() => props.onOpenSessions()}>
+              <text fg={theme.warning} selectable={false} wrapMode="none">{label()}</text>
+            </ChromeControl>
+          )}
+        </Show>
+      </box>
     </box>
   )
   // The dock scrolls only its content. The rail and the fill stay

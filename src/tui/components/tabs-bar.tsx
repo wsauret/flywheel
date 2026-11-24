@@ -14,7 +14,7 @@ export interface TabPresentation {
   isForeground: boolean
   // Runner is currently processing a chat turn.
   isBusy: boolean
-  // Agent has emitted an `ask_user` question and is parked waiting on an answer.
+  // The session waits on a question: the project's waiting set names it.
   isBlocked: boolean
 }
 

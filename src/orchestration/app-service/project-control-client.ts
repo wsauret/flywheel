@@ -31,6 +31,7 @@ import { createSessionDetailPublisher } from "./session-detail-publisher.js"
 import { createBackgroundFollows } from "./background-follows.js"
 import type { AccountUpdates } from "../update/account-updates.js"
 import { createGitProjection } from "./git-projection.js"
+import { createWaitingSessionsProjection } from "./waiting-sessions-projection.js"
 import { replaceOwnedCatalogErrors } from "./catalog-error-ownership.js"
 import { gitCursor } from "../../protocol/git-protocol-types.js"
 
@@ -194,6 +195,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
   // found, and a root chat surface reads it from that row (C5).
   const admissions = new Map<string, SessionRow>()
   const git = createGitProjection({ projectRoot: options.directories.projectRoot, publish: bus.publish })
+  const waitingSessions = createWaitingSessionsProjection({ reader: state, onStored: state.onStored, bus })
   const details = createSessionDetailPublisher({
     state, bus, own, closing: () => closing,
     read: (sessionId) => queryRaw({ type: "sessionDetail", sessionId }),
@@ -562,6 +564,8 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     if (request.type === "gitSnapshot") {
       return { git: git.view(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: gitCursor() }) }
     }
+    // Served here, never by the executor, so it answers while execution is paused.
+    if (request.type === "waitingSessionsSnapshot") return waitingSessions.snapshot()
     if (request.type === "snapshot") {
       await syncCatalog()
       // Admission reads the history, which a failed recovery refuses. It never
@@ -791,6 +795,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       unsubscribeState()
       details.dispose()
       git.dispose()
+      waitingSessions.dispose()
       holds.dispose()
       unsubscribeSummaries()
       summaries.dispose()

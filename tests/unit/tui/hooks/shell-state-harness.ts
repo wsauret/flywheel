@@ -13,6 +13,7 @@ import { createOutputProjection } from "../../../../src/orchestration/app-servic
 import { createShippedOutput } from "../../../../src/orchestration/app-service/shipped-output"
 import { outputCursor } from "../../../../src/protocol/output-protocol-types"
 import { createBudgetProtocolProjection } from "../../../../src/orchestration/app-service/budget-protocol-projection"
+import { createWaitingSessionsProjection } from "../../../../src/orchestration/app-service/waiting-sessions-projection.js"
 import { createQuestionProtocolProjection } from "../../../../src/orchestration/app-service/question-protocol-projection"
 import { composeRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection"
 import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime-ownership"
@@ -257,7 +258,10 @@ export function buildAppService(sessionStore: ReturnType<typeof createSessionSto
     projectRoot: HARNESS_PROJECT_ROOT,
     summaries,
   })
+  // The account answers the waiting set, as it answers Git; the harness has no account.
+  const waiting = createWaitingSessionsProjection({ reader, onStored: eventStore.onStored, bus })
   const query = runtimeQuery({
+    waitingSessionsSnapshot: () => waiting.snapshot(),
     gitSnapshot: async () => ({ git: gitView ?? projections.git.view(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: { scope: "workspace", domain: "git" } }) }),
   }, (request) => service.query(request))
   return { ...service, query }

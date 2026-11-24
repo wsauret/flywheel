@@ -288,8 +288,12 @@
  *  Version 90: the `restartReadiness` query answers whether a restart would
  *  bring the account service back, and the `service.restart` mutation
  *  restarts it from a web client. An older peer rejects both.
+ *  Version 91: the `waitingSessionsSnapshot` query answers which sessions of
+ *  the project wait on a question, closed ones included, each with the time
+ *  its question opened, and the `waitingSessions` workspace domain carries
+ *  `waitingSessions.changed` with the whole set. An older peer rejects the query and the patch.
  */
-export const RUNTIME_PROTOCOL_VERSION = 90
+export const RUNTIME_PROTOCOL_VERSION = 91
 
 const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 

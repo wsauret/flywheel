@@ -21,7 +21,7 @@ import { CommandCatalogPatchPayloadSchema, RuntimeCommandCatalogResultSchema, Ru
 import { BinaryModuleIdSchema, MODULE_SETTING_GROUPS, ModulePresetSchema, type ModuleConfigSettingControl, type ModulePatchPayload, type RuntimeModuleSnapshotResult, type RuntimeModulesView } from "./module-protocol-types.js"
 import type { RoleAssignmentView, RolePatchPayload, RuntimeRoleSnapshotResult } from "./role-protocol-types.js"
 import type { OutputWindowRequest, OutputWindowSnapshot } from "./transcript-protocol-types.js"
-import type { QuestionPatchPayload, RuntimeQuestionSnapshotResult } from "./question-protocol-types.js"
+import type { QuestionPatchPayload, RuntimeQuestionSnapshotResult, RuntimeWaitingSessionsSnapshotResult, WaitingSessionsPatchPayload } from "./question-protocol-types.js"
 import type { RuntimeSessionViewsResult, RuntimeUiDomain, RuntimeUiPatch, RuntimeUiSnapshot } from "./runtime-ui-protocol-types.js"
 import type { ActiveBackgroundCommandView, StatusPatchPayload, RuntimeStatusSnapshotResult } from "./status-protocol-types.js"
 import type { RuntimeAuthLoginMutation } from "./auth-login-protocol-types.js"
@@ -251,6 +251,9 @@ const QuestionPatchPayloadSchema: Schema.Codec<QuestionPatchPayload> = Schema.Un
   Schema.Struct({ kind: Schema.Literal("question.removed") }),
 ])
 const RuntimeQuestionSnapshotResultSchema: Schema.Codec<RuntimeQuestionSnapshotResult> = sessionViewsResultSchema(QuestionBlockSchema)
+const WaitingSessionsSchema = Schema.Array(Schema.Struct({ sessionId: Schema.String, openedAt: Schema.Number }))
+const WaitingSessionsPatchPayloadSchema: Schema.Codec<WaitingSessionsPatchPayload> = Schema.Struct({ kind: Schema.Literal("waitingSessions.changed"), sessions: WaitingSessionsSchema })
+const RuntimeWaitingSessionsSnapshotResultSchema: Schema.Codec<RuntimeWaitingSessionsSnapshotResult> = Schema.Struct({ snapshotPosition: RuntimePositionSchema, sessions: WaitingSessionsSchema })
 export const RoleAssignmentViewSchema: Schema.Codec<RoleAssignmentView> = Schema.Struct({
   assignments: Schema.Record(Schema.String, RuntimeRoleAssignmentEntrySchema),
   serving: Schema.optionalKey(Schema.Struct({
@@ -279,6 +282,7 @@ export const RuntimeUiPatchPayloadSchema = Schema.Union([
   ...recursiveUnionMembers(StatusPatchPayloadSchema),
   ...recursiveUnionMembers(BudgetPatchPayloadSchema),
   ...recursiveUnionMembers(QuestionPatchPayloadSchema),
+  WaitingSessionsPatchPayloadSchema,
   ...recursiveUnionMembers(RolePatchPayloadSchema),
   Schema.Struct({ kind: Schema.Literal("auth.changed"), auth: RuntimeAuthViewSchema }),
   CommandCatalogPatchPayloadSchema,
@@ -404,6 +408,7 @@ export const RuntimeQuerySchema: Schema.Codec<RuntimeQuery> = Schema.Union([
   Schema.Struct({ type: Schema.Literal("statusSnapshot"), sessionIds: Schema.Array(Schema.String) }),
   Schema.Struct({ type: Schema.Literal("budgetSnapshot"), sessionIds: Schema.Array(Schema.String) }),
   Schema.Struct({ type: Schema.Literal("questionSnapshot"), sessionIds: Schema.Array(Schema.String) }),
+  Schema.Struct({ type: Schema.Literal("waitingSessionsSnapshot") }),
   Schema.Struct({ type: Schema.Literal("roleSnapshot"), sessionIds: Schema.Array(Schema.String) }),
   Schema.Struct({ type: Schema.Literal("recallQueuedMessage"), sessionId: Schema.String }),
   Schema.Struct({ type: Schema.Literal("authStatusSnapshot"), scope: RuntimeAuthStatusScopeSchema }),
@@ -534,6 +539,7 @@ const RUNTIME_QUERY_RESULT_SCHEMAS = {
   transcriptSearch: TranscriptSearchResultSchema, transcriptFind: TranscriptFindResultSchema, chatSearch: ChatSearchResultSchema, projectFiles: ProjectFilesResultSchema,
   statusSnapshot: RuntimeStatusSnapshotResultSchema, budgetSnapshot: RuntimeBudgetSnapshotResultSchema,
   questionSnapshot: RuntimeQuestionSnapshotResultSchema, roleSnapshot: RuntimeRoleSnapshotResultSchema,
+  waitingSessionsSnapshot: RuntimeWaitingSessionsSnapshotResultSchema,
   authStatusSnapshot: RuntimeAuthStatusSnapshotResultSchema,
   authProfileDeletionPreview: AuthProfileDeletionPreviewSchema,
   updateSnapshot: RuntimeUpdateSnapshotResultSchema, restartReadiness: RuntimeRestartReadinessSchema, moduleSnapshot: RuntimeModuleSnapshotResultSchema, configSnapshot: RuntimeConfigSnapshotResultSchema,
@@ -558,7 +564,7 @@ export function runtimeQueryResultSchema(type: RuntimeQuery["type"]): Schema.Cod
  *  query seeds that domain. The `satisfies` clause is the completeness gate. */
 export const RUNTIME_READ_DOMAINS = {
   snapshot: ["session", "chat_default", "executor", "service"],
-  statusSnapshot: ["status"], budgetSnapshot: ["budget"], questionSnapshot: ["question"], roleSnapshot: ["roles"],
+  statusSnapshot: ["status"], budgetSnapshot: ["budget"], questionSnapshot: ["question"], roleSnapshot: ["roles"], waitingSessionsSnapshot: ["waitingSessions"],
   sessionDetailSnapshot: ["session_detail"], authStatusSnapshot: ["auth"], updateSnapshot: ["updates"], moduleSnapshot: ["modules"], configSnapshot: ["config"],
   gitAiAttributionSnapshot: ["gitAiAttribution"], gitSnapshot: ["git"], commandUsageSnapshot: ["commandUsage"], commandCatalog: ["commands"],
   outputWindow: ["output"], sessionChangeSummary: ["changes"], sessionBackgroundWork: ["background"],

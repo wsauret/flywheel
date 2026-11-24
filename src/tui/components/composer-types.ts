@@ -57,6 +57,9 @@ export interface ComposerProps {
    *  overlay covers the composer. */
   spinnerSource: SpinnerStatusSource
   promptBorderLayout: Accessor<ComposerBorderLayout>
+  /** How many listed chats other than the one in front wait on a question.
+   *  A docked question hides the border that shows it, so the dock shows it too. */
+  waitingCount: Accessor<number>
   onDismissUpdate: () => void
   onOpenChanges: () => void
   history: PromptHistoryHook

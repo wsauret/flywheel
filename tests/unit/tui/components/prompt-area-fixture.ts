@@ -93,6 +93,7 @@ export async function mountPrompt(options: MountOptions) {
                   promptAttachSlot: { register: () => {}, capture: () => undefined },
                   spinnerSource: options.spinnerSource ?? idleSpinnerSource(),
                   promptBorderLayout: () => ({ modelLabel: undefined, update: undefined, composerStatus: [], hints: [], sessionsClickHint: null }),
+                  waitingCount: () => 0,
                   onDismissUpdate: () => {},
                   onOpenChanges: () => {},
                   history: options.history ?? createHistory(),

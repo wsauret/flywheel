@@ -45,11 +45,11 @@ function pickerRow(rowSession: SessionCatalogRow, overrides: Partial<PickerSessi
   }
 }
 
-type RowInput = Omit<Parameters<typeof SessionPickerRow>[0], "rowIndex" | "onRowClick">
+type RowInput = Omit<Parameters<typeof SessionPickerRow>[0], "rowIndex" | "onRowClick" | "isWaiting"> & { isWaiting?: boolean }
 
 /** The styled chunks that a mounted SessionPickerRow shows. */
 async function rowChunks(input: RowInput): Promise<TextChunk[]> {
-  const result = await testRender(() => createComponent(SessionPickerRow, { ...input, rowIndex: 0, onRowClick: () => {} }), { width: 120, height: 1 })
+  const result = await testRender(() => createComponent(SessionPickerRow, { isWaiting: false, ...input, rowIndex: 0, onRowClick: () => {} }), { width: 120, height: 1 })
   try {
     await result.renderOnce()
     const text = result.renderer.root.getChildren()[0]?.getChildren()[0]
@@ -120,6 +120,22 @@ describe("SessionPickerRow", () => {
     expect(chunks.find((chunk) => chunk.text === glyph)?.fg).toEqual(color)
     expect((chunks.find((chunk) => chunk.text === glyph)?.attributes ?? 0) & createTextAttributes({ bold: true }))
       .toBe(isWorking ? createTextAttributes({ bold: true }) : 0)
+  })
+
+  // A chat that waits on the person carries the steady ? of a tab that waits
+  // on a question, whether it is closed, open, or still marked working
+  // (PI-INTERACTION-184).
+  it.each([
+    { lifecycleState: "inactive", isWorking: false },
+    { lifecycleState: "active", isWorking: false },
+    { lifecycleState: "active", isWorking: true },
+  ] as const)("marks a waiting $lifecycleState chat, working=$isWorking, with the question mark in the warning colour", async ({ lifecycleState, isWorking }) => {
+    const chunks = await rowChunks({ row: pickerRow(session({ lifecycleState })), theme, rowWidth: 80, selected: false, isWorking, isWaiting: true, blinkOn: false, now, timeAgoWidth: 3 })
+    const mark = chunks[1]
+    expect(mark?.text).toBe("? ")
+    expect(mark?.fg).toEqual(theme.warning)
+    expect(chunks.some((chunk) => chunk.text === "● " || chunk.text === "○ ")).toBe(false)
+    expect(chunks.map((chunk) => chunk.text).join("").startsWith("  ? Session")).toBe(true)
   })
 
   it("distinguishes inactive, active idle, and working sessions without shifting titles", async () => {
@@ -203,7 +219,7 @@ describe("SessionPickerRow", () => {
       session: session({ title: "Graph matcher" }),
       found: { sessionId: "session-1", lastActivityAt: now - 2 * 3_600_000, entryId: "e1", snippet: "fix the [kafka]\nconsumer lag", excerpt: { source: "checkpoint", text: "PR 5132 waits on review" } },
     }
-    const result = await testRender(() => createComponent(SessionPickerRow, { row: found, theme, rowWidth: 60, selected: false, isWorking: false, blinkOn: true, now, timeAgoWidth: 3, rowIndex: 0, onRowClick: () => {} }), { width: 60, height: 3 })
+    const result = await testRender(() => createComponent(SessionPickerRow, { row: found, theme, rowWidth: 60, selected: false, isWorking: false, isWaiting: false, blinkOn: true, now, timeAgoWidth: 3, rowIndex: 0, onRowClick: () => {} }), { width: 60, height: 3 })
     try {
       await result.renderOnce()
       const lines = result.renderer.root.getChildren()[0]?.getChildren().map((text) => {

@@ -261,6 +261,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
         return budget ?? null
       })
       case "questionSnapshot": return sessionViews(request.sessionIds, "question", (sessionId) => questionProjection.snapshot(sessionId))
+      case "waitingSessionsSnapshot": throw new Error("The sessions that wait on a question are held through the account service, never through a project executor")
       case "roleSnapshot": return sessionViews(request.sessionIds, "roles", (sessionId) => deps.roleProjection.snapshot(sessionId))
       case "authStatusSnapshot": {
         const snapshotPosition = bus.snapshotPosition({ kind: "cursor", cursor: authStatusCursor(request.scope) })

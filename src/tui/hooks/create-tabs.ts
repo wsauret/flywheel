@@ -11,7 +11,7 @@ export type TabInfo = TabPresentation & ({ readonly kind: "session" } | { readon
 interface TabsDeps {
   sessions: Accessor<readonly SessionCatalogRow[]>
   openSessionIds: Accessor<readonly string[]>
-  signals: Pick<ShellSignals, "foregroundId" | "sessionShortTitle" | "statusView" | "questionView">
+  signals: Pick<ShellSignals, "foregroundId" | "sessionShortTitle" | "statusView" | "waitingSessions">
 }
 
 interface TabStateDeps {
@@ -35,16 +35,14 @@ interface LiveState { isBusy: boolean; isBlocked: boolean }
 function deriveLiveState(deps: TabsDeps, id: string): LiveState {
   const status = deps.signals.statusView(id)
   const isBusy = isWorkingStatus(status)
-  // The non-evicting question cache is authoritative, so a background tab's
-  // blocked indicator survives transcript eviction.
-  const isBlocked = deps.signals.questionView(id) !== undefined
+  const isBlocked = deps.signals.waitingSessions().has(id)
   return { isBusy, isBlocked }
 }
 
 /** Tabs are the sessions this shell instance explicitly opened. The catalog still
  *  supplies titles and live lifecycle metadata, but global runtime
- *  `active` state is not tab membership. Busy and blocked state remain
- *  status/output-domain reads. */
+ *  `active` state is not tab membership. Busy state is a status read, and
+ *  blocked state is a read of the project's waiting set. */
 function createTabs(deps: TabsDeps): Accessor<readonly TabInfo[]> {
   const summariesById = createMemo(() => new Map(deps.sessions().map((session) => [session.id, session])))
 
