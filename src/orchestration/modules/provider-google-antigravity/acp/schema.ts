@@ -49,7 +49,8 @@ const NewSessionResultSchema = Schema.Struct({
 export type AcpNewSessionResult = typeof NewSessionResultSchema.Type
 
 /** Aggregate usage of every model request of one prompt turn, without the
- *  title request. agy reports none when the turn failed or a hook ended it. */
+ *  title request. A cancelled turn also reports it (measured on the live
+ *  engine); agy reports none when the turn failed or a hook ended it. */
 const UsageSchema = Schema.Struct({
   inputTokens: Schema.Number,
   outputTokens: Schema.Number,

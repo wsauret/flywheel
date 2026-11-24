@@ -27,9 +27,19 @@ export interface RequestStreamOptions {
   readonly liveness: Pick<StreamLiveness, "preStream" | "frame" | "begin" | "append" | "complete">;
   /** The request's dispatch observation (`StreamOptions.onDispatch`). */
   readonly onDispatch?: () => void | Promise<void>;
-  /** The context occupancy that agy reports (`usage_update.used`), in tokens. It is no usage of the request. */
+  /** The context occupancy that agy reports (`usage_update.used`), in tokens. */
   readonly onOccupancy: (used: number) => void;
+  /** The tokens that earlier requests of the same agy prompt reported as partial usage (`partialTokens`), which the
+   *  prompt's aggregate at its end already holds. */
+  readonly promptTokensReported: number;
+  /** Whether a model request ran for the request: the gate admitted a step for it, or agy reported a model request's
+   *  occupancy after its release. */
+  readonly modelRequested: () => boolean;
 }
+
+/** The usage of a request that ran no model request, such as one that agy served a later call of a step that an
+ *  earlier request reported. It spent nothing, which is a complete report. */
+export const NO_MODEL_REQUEST_USAGE: ProviderStreamEvent = { kind: "usage", final: true, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 };
 
 /**
  * The events of one Flywheel request on one agy session. The bridge feeds it the session's updates, the MCP call that
@@ -45,9 +55,11 @@ export interface RequestStream {
   promptEnded(result: AcpPromptResult): readonly ProviderStreamEvent[];
   /** The failure of the request when agy's connection ended before it settled. */
   connectionEnded(reason: AcpCloseReason): Error;
-  /** Whether the request reported its usage. A request that settles at a call of an open prompt cannot: agy reports
-   *  one aggregate for the whole prompt, on the request that ends it, and none for a failed prompt. */
+  /** Whether the request reported its usage: partial usage at a call after a model request of its own, or the rest of
+   *  the prompt's aggregate at the prompt's end. */
   readonly usageReported: boolean;
+  /** The tokens that the request reported as partial usage at its call, for the next request of the same prompt. */
+  readonly partialTokens: number;
 }
 
 interface OpenBlock {
@@ -65,6 +77,9 @@ export function createRequestStream(options: RequestStreamOptions): RequestStrea
   let responded = false;
   let settled = false;
   let usageReported = false;
+  let partialTokens = 0;
+  /** The total tokens of the request's own model request (`usage_update.used`), when agy sent one before it settled. */
+  let measuredTokens = 0;
   /** A text chunk of the form of an agy failure notice, not yet decided. It is the failure when the prompt ends
    *  without usage, which agy reports for no failed prompt. It is model text when another model frame follows or the
    *  prompt ends with usage, and only then does it count as a model frame. */
@@ -128,25 +143,48 @@ export function createRequestStream(options: RequestStreamOptions): RequestStrea
       { kind: "tool_input_start", toolUseId, name },
       { kind: "tool_input_delta", toolUseId, partialJson: JSON.stringify(input) },
       { kind: "tool_use", toolCall: { id: toolUseId, name, input } },
+      ...partialUsage(),
       { kind: "done", stopReason: "tool_use" },
     ];
+  };
+
+  /** The usage of a request that settles at a call while its prompt stays open. agy reports usage only for a whole
+   *  prompt, at its end (also a cancelled one), and for each model request only its total (`usage_update.used`,
+   *  measured on agy 1.5.14 to sum to the aggregate's input, cached reads, and output). That total is reported as
+   *  input, a partial report: it prices output and cached reads at the input rate, so its estimate is approximate
+   *  until the request that ends the prompt reports the rest of the aggregate. A request that ran no model request
+   *  reports zero. */
+  const partialUsage = (): ProviderStreamEvent[] => {
+    if (measuredTokens === 0) {
+      if (options.modelRequested()) return [];
+      usageReported = true;
+      return [NO_MODEL_REQUEST_USAGE];
+    }
+    usageReported = true;
+    partialTokens = measuredTokens;
+    return [{ kind: "usage", final: false, inputTokens: measuredTokens, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 }];
   };
 
   const done = (stopReason: CompletedStopReason, usage: AcpUsage | undefined): ProviderStreamEvent[] => {
     const events = [...releaseNotice(), ...closeBlock()];
     if (usage !== undefined) {
       usageReported = true;
-      events.push({
-        kind: "usage",
-        final: true,
-        inputTokens: usage.inputTokens,
-        // agy's `outputTokens` is the Gemini response's total less its prompt, which holds the thought tokens, so it
-        // is Flywheel's output with reasoning included (measured on agy 1.5.14).
-        outputTokens: usage.outputTokens,
-        cacheReadTokens: usage.cachedReadTokens,
-        cacheCreateTokens: usage.cachedWriteTokens,
-        reasoningTokens: usage.thoughtTokens,
-      });
+      // The rest of the prompt's aggregate after the partial reports of its earlier requests. Output and cached reads
+      // keep their reported counts and input takes the remainder, so the prompt's sums are exact; only when the earlier
+      // totals leave less than that does each count shrink in that order, and the prompt's total stays exact.
+      let rest = Math.max(0, usage.inputTokens + usage.cachedReadTokens + usage.cachedWriteTokens + usage.outputTokens - options.promptTokensReported);
+      const take = (reported: number): number => {
+        const taken = Math.min(reported, rest);
+        rest -= taken;
+        return taken;
+      };
+      // agy's `outputTokens` is the Gemini response's total less its prompt, which holds the thought tokens, so it
+      // is Flywheel's output with reasoning included (measured on agy 1.5.14, ARCH-PROVIDERS-076). Reasoning stays within
+      // the output that remains, so pricing never charges it twice or takes it from output's own share.
+      const outputTokens = take(usage.outputTokens);
+      const cacheReadTokens = take(usage.cachedReadTokens);
+      const cacheCreateTokens = take(usage.cachedWriteTokens);
+      events.push({ kind: "usage", final: true, inputTokens: rest, outputTokens, cacheReadTokens, cacheCreateTokens, reasoningTokens: Math.min(usage.thoughtTokens, outputTokens) });
     }
     events.push({ kind: "done", stopReason });
     return events;
@@ -161,6 +199,7 @@ export function createRequestStream(options: RequestStreamOptions): RequestStrea
       // Occupancy belongs to the session, also after the request settled at its call.
       if (update.sessionUpdate === "usage_update") {
         options.onOccupancy(update.used);
+        if (!settled) measuredTokens = update.used;
         return [];
       }
       if (settled) return [];
@@ -214,6 +253,9 @@ export function createRequestStream(options: RequestStreamOptions): RequestStrea
     },
     get usageReported() {
       return usageReported;
+    },
+    get partialTokens() {
+      return partialTokens;
     },
   };
 }
