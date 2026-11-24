@@ -1,6 +1,6 @@
 import { Key } from "@solid-primitives/keyed"
 
-import { pageDomainReader } from "../../client/module-domain-views.js"
+import { pageDomainReader } from "../../client/domains/module-domain-views.js"
 import type { ToolbarBadge, WebModule } from "../../web-module.js"
 import { useClient } from "../client-context.js"
 

@@ -3,13 +3,13 @@ import { Socket } from "effect/socket"
 
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"
-import { fakeRuntimeConnection } from "../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../test-support/runtime-connection-fixture.js"
 import { createClientActions, type ClientActions } from "../client/actions.js"
-import { createReadingPlace } from "../client/reading-place.js"
-import { createRuntimeSession, type RuntimeSession } from "../client/session.js"
+import { createReadingPlace } from "../client/input/reading-place.js"
+import { createRuntimeSession, type RuntimeSession } from "../client/session/session.js"
 import type { PanelSettings } from "../client/session-settings.js"
 import { modulesView } from "../../../tests/helpers/runtime-views.js"
-import { createViewProjection, type ClientViewState, type SessionSummary } from "../client/view-state.js"
+import { createViewProjection, type ClientViewState, type SessionSummary } from "../client/session/view-state.js"
 import type { ClientHost } from "../host.js"
 import type { WebModuleClientHost } from "../web-module-client.js"
 import type { ClientContextValue } from "./client-context.js"
@@ -19,7 +19,7 @@ import { createWebSurfaces } from "./sheets/commands/surfaces.js"
  *  interaction fixtures. Each builder returns a complete value of its type:
  *  defaults come from the real owners where one builds synchronously, and an
  *  override replaces a member whole. The fake connection comes from
- *  `../client/runtime-connection-fixture.js`. */
+ *  `../test-support/runtime-connection-fixture.js`. */
 
 /** The real session over `connection`, with `members` in place of its own.
  *  The real session's own code keeps its own members; the replacements are

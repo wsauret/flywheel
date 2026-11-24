@@ -7,7 +7,7 @@ import type { RuntimeAuthLoginPrompt, RuntimeAuthLoginResult } from "../../../..
 import type { SheetFocus } from "../../../../../src/protocol/client/host-contract.js"
 import type { ConfirmRequest } from "../../client-context.js"
 import { fakeClient, fakeClientActions, fakeViewState } from "../../client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"
 import { ProvidersSheet } from "./providers-sheet.js"
 import { ProfilesSheet } from "./profiles-sheet.js"
 import type { RuntimeAuthProfileDeletionPreview, RuntimeAuthProfileMutationResult } from "../../../../../src/protocol/auth-profile-selection-protocol-types.js"

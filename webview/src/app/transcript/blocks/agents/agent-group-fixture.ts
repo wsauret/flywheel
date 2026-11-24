@@ -2,8 +2,8 @@ import type { ChildSessionRow, FrontendEvent, FrontendMutation } from "../../../
 import type { RuntimeConnection } from "../../../../../../src/protocol/client/connection.js"
 import type { RuntimeSessionDetailSnapshotResult } from "../../../../../../src/protocol/session-detail-protocol-types.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../../../tests/helpers/runtime-dispatch.js"
-import { createRuntimeSession } from "../../../../client/session.js"
-import { selectionConnection } from "../../../../client/session-selection-fixture.js"
+import { createRuntimeSession } from "../../../../client/session/session.js"
+import { selectionConnection } from "../../../../client/session/session-selection-fixture.js"
 import { detailView } from "../../../../../../tests/helpers/runtime-views.js"
 import { fakeClient, fakeClientActions } from "../../../client-context-fixture.js"
 

@@ -1,7 +1,7 @@
 import { createSignal, onCleanup } from "solid-js"
 import { bugReportCopyText, sanitizeBugReportInput, type BugReportInput, type BugReportResult } from "../../../../src/protocol/modules/bug-reports.js"
 import type { ClientContextValue } from "../../app/client-context.js"
-import { describeFailure } from "../../client/failure-message.js"
+import { describeFailure } from "../../client/format/failure-message.js"
 
 /** Captures only the client error and its identity, never conversation or file content. */
 export function reportInput(client: ClientContextValue, report: { readonly kind: "crash"; readonly error: unknown } | { readonly kind: "manual"; readonly note?: string }): BugReportInput {

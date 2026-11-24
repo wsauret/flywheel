@@ -5,7 +5,7 @@ import { formatUsd, generationSpeedLines, type UsageSessionStats, USAGE_SPEND_SU
 import { readRetainedQuery, type QueryReading } from "../../../../src/protocol/client/retained-query.js"
 import { useClient } from "../../app/client-context.js"
 import { Sheet, SheetEmpty, SheetLoading, SheetRow } from "../../app/sheets/sheet.js"
-import { describeFailure } from "../../client/failure-message.js"
+import { describeFailure } from "../../client/format/failure-message.js"
 import { tokenLines } from "./usage-format.js"
 
 /** Session accounting is read only while this sheet is mounted. */

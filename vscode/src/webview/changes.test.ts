@@ -6,10 +6,10 @@ import { join } from "node:path"
 import { afterAll, beforeAll, test, mock } from "bun:test"
 import type { HostMessage, ViewMessage } from "../../../src/protocol/client/editor-host.js"
 import type { ClientSummary } from "../../../src/protocol/client/host-contract.js"
-import { createInputReload } from "../../../webview/src/client/input-reload.js"
-import { editorInputReloadStorage } from "../../../webview/src/client/input-reload-storage.js"
-import type { ComposerCheckpoint } from "../../../webview/src/client/input-reload-checkpoint.js"
-import type { FrontendQuestionBlock } from "../../../webview/src/client/question-answer.js"
+import { createInputReload } from "../../../webview/src/client/input/input-reload.js"
+import { editorInputReloadStorage } from "../../../webview/src/client/input/input-reload-storage.js"
+import type { ComposerCheckpoint } from "../../../webview/src/client/input/input-reload-checkpoint.js"
+import type { FrontendQuestionBlock } from "../../../webview/src/client/questions/question-answer.js"
 
 interface TestComposer {
   type(text: string): void

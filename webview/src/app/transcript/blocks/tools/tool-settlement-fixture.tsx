@@ -3,7 +3,7 @@ import { createRoot, createSignal } from "solid-js"
 import type { FrontendToolEntry } from "../../../../../../src/protocol/app-service-types.js"
 import { createBlockDisclosure } from "../block-disclosure.js"
 import { Block } from "../blocks.js"
-import { presentedBlock } from "../../../../client/presented-block-fixture.js"
+import { presentedBlock } from "../../../../client/session/residents/presented-block-fixture.js"
 import { createElement, insert, nodes, textContent } from "../../../../test-support/render-ownership-host-fixture.js"
 import type { MutationEvidenceReader } from "../../../../../../src/protocol/client/mutation-evidence.js"
 

@@ -12,7 +12,7 @@ import { MODULE_SETTING_GROUPS, type ModuleConfigSettingControl, type ModuleProt
 import { renderSettingEntries, SETTING_SECTIONS, settingCatalogRow, settingGroupHead, shownOn, type InPlaceSettingRowId, type SettingCatalogEntry, type SettingEntryIdOn, type SettingRenderers, type SettingRowId } from "../../../../../src/protocol/setting-catalog.js"
 import { WRITE_SYNTAX_THEME_OPTIONS } from "../../../../../src/protocol/write-syntax-theme.js"
 import { moduleRows } from "../../../../../src/protocol/modules.js"
-import { pageDomainReader } from "../../../client/module-domain-views.js"
+import { pageDomainReader } from "../../../client/domains/module-domain-views.js"
 import { moduleMenuRows } from "../commands/module-menu-rows.js"
 import type { PanelModuleSetting, PanelProviderSetting, PanelSettings } from "../../../client/session-settings.js"
 import { desktopPermissionDetail, desktopSwitchOn, isDesktopNotificationsSetting } from "../../../client/desktop-notifier.js"
