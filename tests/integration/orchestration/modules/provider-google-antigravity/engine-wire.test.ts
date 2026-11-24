@@ -90,6 +90,7 @@ async function openRig(fake: Parameters<typeof openEngineHarness>[1] = {}): Prom
           engineCalls.push("session/cancel")
           return engine.cancel(sessionId)
         },
+        conversationRows: (sessionId, afterIdx) => engine.conversationRows(sessionId, afterIdx),
         configure(method, params) {
           engineCalls.push(`${method} ${configured(params)}`)
           return engine.configure(method, params)
