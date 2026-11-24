@@ -7,11 +7,11 @@ import { useQuestionInput } from "@tui/components/question-input"
 import { OpaqueBox } from "@tui/components/opaque-box"
 import { useTheme } from "@tui/context/theme"
 import { VerticalBarBorder } from "@tui/output-blocks/border"
-import { createMeasuredWidth } from "@tui/hooks/create-measured-width"
+import { createMeasuredWidth } from "@tui/components/create-measured-width"
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, untrack } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import type { AgentInputAnswer } from "../protocol/question-protocol-types.js"
-import type { DraftCache } from "./hooks/create-draft-cache.js"
+import type { DraftCache } from "./components/create-draft-cache.js"
 import { MarkdownBody } from "./output-blocks/markdown/markdown-body.js"
 import { createQuestionForm } from "./question-dock-form.js"
 import { layoutQuestionDockEditor } from "./question-dock-editor-layout.js"
@@ -21,7 +21,7 @@ interface QuestionAnswers {
   [question: string]: AgentInputAnswer
 }
 
-interface QuestionDockProps {
+export interface QuestionDockProps {
   sessionId: string
   question: QuestionBlock
   draftCache: DraftCache

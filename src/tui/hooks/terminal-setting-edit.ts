@@ -2,7 +2,7 @@ import { createSignal, untrack } from "solid-js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { ListModalKeyEvent } from "../components/modal-list-keys.js"
 import type { ControlledTextEditor } from "../keymap/text-entry.js"
-import type { SettingsEditResult, SettingsEditSpec } from "./settings-modal-types.js"
+import type { SettingsEditResult, SettingsEditSpec } from "../modals/settings-modal-types.js"
 
 interface EditTarget {
   readonly id: string

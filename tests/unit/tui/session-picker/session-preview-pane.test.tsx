@@ -12,7 +12,7 @@ import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-ser
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { session as catalogSession } from "../hooks/_session-modal-fixtures.js"
-import type { SessionPickerResult } from "../../../../src/tui/hooks/use-session-modal-types.js"
+import type { SessionPickerResult } from "../../../../src/tui/session-picker/picker-types.js"
 import { scrollFrameHook } from "../../../helpers/scroll-frame-hook.js"
 
 function descendants(node: Renderable): Renderable[] {

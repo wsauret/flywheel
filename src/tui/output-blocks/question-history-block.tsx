@@ -3,7 +3,7 @@
 import type { QuestionBlock } from "@infra/output-blocks"
 import { StyledText, bold as stBold, fg as stFg } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
-import { createMeasuredWidth } from "@tui/hooks/create-measured-width.js"
+import { createMeasuredWidth } from "@tui/components/create-measured-width.js"
 import { bindStyledTextContent } from "@tui/context/reactive-text.js"
 import { useRowWidth } from "@tui/context/row-width.js"
 import { useLandingBackground } from "@tui/context/landing-highlight.js"

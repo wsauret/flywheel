@@ -8,7 +8,7 @@ import { createTextAttributes, TextRenderable, type Renderable } from "@opentui/
 import type { QuestionBlock } from "../../../src/infra/output-blocks.js"
 import { QuestionInputProvider, type QuestionInputContext, useQuestionInput } from "../../../src/tui/components/question-input.js"
 import { ThemeProvider } from "../../../src/tui/context/theme.js"
-import { createDraftCache } from "../../../src/tui/hooks/create-draft-cache.js"
+import { createDraftCache } from "../../../src/tui/components/create-draft-cache.js"
 import { QuestionDock } from "../../../src/tui/question-dock.js"
 import flywheelTheme from "../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../src/tui/context/theme/resolve.js"

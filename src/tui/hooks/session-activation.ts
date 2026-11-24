@@ -3,9 +3,9 @@ import { resolveSessionRoute, type SessionRoute } from "../../protocol/client/he
 import { parseSessionLink } from "../../protocol/client/session-links.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { discardIfTransientForeground } from "./background-foreground.js"
-import type { DraftCache } from "./create-draft-cache.js"
+import type { DraftCache } from "../components/create-draft-cache.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
-import type { ChildPlaces } from "./create-child-viewer-opener.js"
+import type { ChildPlaces } from "../create-child-viewer-opener.js"
 
 interface SessionActivatorDeps {
   signals: Pick<ShellSignals, "foregroundId" | "setForegroundId">

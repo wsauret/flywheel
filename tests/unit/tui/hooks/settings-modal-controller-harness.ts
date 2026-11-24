@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 import { createSettingsModalController } from "../../../../src/tui/hooks/settings-modal-controller.js"
-import type { SettingsEditResult, SettingsRow } from "../../../../src/tui/hooks/settings-modal-types.js"
+import type { SettingsEditResult, SettingsRow } from "../../../../src/tui/modals/settings-modal-types.js"
 
 /** One row of each interactive kind, with controlled write settlement. */
 export function createHarness(options: { blocked?: () => boolean; unavailableReason?: string; activeUnavailableReason?: () => string | undefined; initialDraft?: string; formatDraft?: (draft: string) => string } = {}) {

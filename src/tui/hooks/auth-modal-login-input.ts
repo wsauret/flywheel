@@ -1,6 +1,6 @@
 import type { RuntimeAuthLoginPrompt } from "../../protocol/auth-login-protocol-types.js"
 import type { CredentialProviderId } from "../../infra/auth/auth-store-types.js"
-import type { AuthView } from "./auth-modal-options.js"
+import type { AuthView } from "../modals/auth-modal-options.js"
 
 /** Owns the one outstanding login answer. Leaving its attempt aborts the
  * wait; browser codes are credentials, not settings edits. */

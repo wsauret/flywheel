@@ -3,12 +3,12 @@
 import type { TextRenderable } from "@opentui/core"
 import { StyledText, bold as stBold, fg as stFg } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
-import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
+import { useModalDimensions } from "@tui/components/use-modal-dimensions"
 import { ModalFrame } from "@tui/components/modal-frame"
 import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "@tui/components/modal-copy"
 import { ModalFooter } from "@tui/components/modal-footer"
 import { createEffect, For } from "solid-js"
-import type { StatusRow } from "../hooks/use-status-modal.js"
+import type { StatusRow } from "./status-modal-types.js"
 import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
 
 interface StatusModalProps {

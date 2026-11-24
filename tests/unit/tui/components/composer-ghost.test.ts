@@ -2,7 +2,7 @@ import { expect, it } from "bun:test"
 import { createTextAttributes } from "@opentui/core"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
-import { createDraftCache } from "../../../../src/tui/hooks/create-draft-cache.js"
+import { createDraftCache } from "../../../../src/tui/components/create-draft-cache.js"
 import { mountPrompt } from "./prompt-area-fixture.js"
 
 it("renders ghost completion with readable muted color and no terminal dim", async () => {

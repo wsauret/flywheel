@@ -1,6 +1,6 @@
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import type { ProviderModelTarget } from "../../protocol/provider-model-preference-protocol-types.js"
-import type { AuthView } from "./auth-modal-options.js"
+import type { AuthView } from "../modals/auth-modal-options.js"
 
 type ProviderSettingsView = Extract<AuthView, { readonly kind: "provider-settings" }>
 

@@ -5,9 +5,9 @@ import type { LauncherScope } from "../../infra/process-supervisor.js"
 import { resizeImage } from "../../orchestration/agent-runtime/tools/image-resize.js"
 import { ATTACHMENT_LIMITS, attachmentRefusalMessage } from "../../protocol/client/attachments.js"
 import type { ShellServices } from "./shell-state.js"
-import type { ComposerAttachSlot } from "./create-composer-attach-slot.js"
+import type { ComposerAttachSlot } from "../components/create-composer-attach-slot.js"
 import { chooseFiles } from "./file-chooser.js"
-import { readFileAttachment, type PendingAttachment } from "./file-attachments.js"
+import { readFileAttachment, type PendingAttachment } from "../components/file-attachments.js"
 
 interface AttachFilesDeps {
   readonly launcher: LauncherScope

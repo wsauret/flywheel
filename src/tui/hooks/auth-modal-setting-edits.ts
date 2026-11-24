@@ -1,8 +1,8 @@
 import { createSignal } from "solid-js"
 import type { CredentialProviderId } from "../../infra/auth/auth-store-types.js"
 import type { AuthModalDeps } from "./auth-modal-types.js"
-import { soleAccount, type AuthRow, type AuthView } from "./auth-modal-options.js"
-import type { SettingsEditSpec } from "./settings-modal-types.js"
+import { soleAccount, type AuthRow, type AuthView } from "../modals/auth-modal-options.js"
+import type { SettingsEditSpec } from "../modals/settings-modal-types.js"
 import { createProfileEdit, renameProfileEdit } from "./auth-profile-edits.js"
 import { createTerminalSettingEdit } from "./terminal-setting-edit.js"
 

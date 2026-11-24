@@ -6,7 +6,7 @@ import { providerModuleValue } from "../auth-status-presentation.js"
 import { CAPABILITY_PRESET_LABELS, capabilityPreset, moduleUnavailableReason, stepWorkflowsMode, WORKFLOWS_MODE_LABELS } from "../../protocol/client/capabilities.js"
 import { settingsGroupDescription } from "../components/modal-copy.js"
 import { settingCatalogRow, shownOn } from "../../protocol/setting-catalog.js"
-import { cycleRowActions, type SettingsEditResult, type SettingsRow } from "./settings-modal-types.js"
+import { cycleRowActions, type SettingsEditResult, type SettingsRow } from "../modals/settings-modal-types.js"
 
 type BooleanControl = ModuleConfigBooleanSettingId | Extract<ModuleConfigSettingControl, { readonly section: string; readonly control: "config-boolean" }>
 

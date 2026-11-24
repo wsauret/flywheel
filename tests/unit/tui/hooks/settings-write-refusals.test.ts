@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
 
 import { createWriteRefusals } from "../../../../src/tui/hooks/settings-diagnostic-projection.js"
-import type { SettingsRow } from "../../../../src/tui/hooks/settings-modal-types.js"
+import type { SettingsRow } from "../../../../src/tui/modals/settings-modal-types.js"
 
 const row: SettingsRow = { kind: "cycle", id: "show-thinking", label: "Show thinking", value: () => "NO", onActivate: () => {} }
 const warningOf = (annotated: SettingsRow): string | undefined => annotated.kind === "separator" ? undefined : annotated.warning

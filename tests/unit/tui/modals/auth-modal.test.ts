@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "bun:test"
 import { Redacted } from "effect"
 import { createRoot } from "solid-js"
-import { isConfigured, statusText } from "../../../../src/tui/hooks/auth-modal-options.js"
+import { isConfigured, statusText } from "../../../../src/tui/modals/auth-modal-options.js"
 import { signInPage } from "../../../../src/tui/terminal-attach.js"
 import type { RuntimeAuthLoginResult } from "../../../../src/protocol/auth-login-protocol-types.js"
 import {

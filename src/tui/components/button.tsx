@@ -2,7 +2,7 @@
 
 import { Show } from "solid-js"
 import { useTheme } from "../context/theme.js"
-import { useHoverHighlight } from "../hooks/use-hover-highlight.js"
+import { useHoverHighlight } from "./use-hover-highlight.js"
 import { BOLD } from "../text-attributes.js"
 
 /** A padded action with shared default, hover, and keyboard-focus styling.

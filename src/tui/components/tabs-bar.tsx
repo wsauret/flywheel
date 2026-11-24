@@ -6,10 +6,20 @@ import { For, createEffect, createMemo, createSignal, on, untrack } from "solid-
 import { BOLD } from "../text-attributes.js"
 import { CellColumn, type CellColumnState, type Gutter } from "./cell-column.js"
 import type { TuiTheme } from "../context/theme/tui-theme.js"
-import type { TabInfo } from "../hooks/create-tabs.js"
+
+/** What the tab bar draws for one tab. */
+export interface TabPresentation {
+  id: string
+  title: string
+  isForeground: boolean
+  // Runner is currently processing a chat turn.
+  isBusy: boolean
+  // Agent has emitted an `ask_user` question and is parked waiting on an answer.
+  isBlocked: boolean
+}
 
 interface TabsBarProps {
-  tabs: Accessor<readonly TabInfo[]>
+  tabs: Accessor<readonly TabPresentation[]>
   availableWidth: Accessor<number>
   theme: TuiTheme
   onActivate: (id: string) => void
@@ -43,7 +53,7 @@ const INSERT_GLYPH = "│"
 const DRAG_THRESHOLD = 2
 
 interface TabLayout {
-  tab: TabInfo
+  tab: TabPresentation
   title: string
 }
 
@@ -69,7 +79,7 @@ interface DragState {
   readonly beforeId: string | null
 }
 
-function layoutTabs(tabs: readonly TabInfo[], available: number): Layout {
+function layoutTabs(tabs: readonly TabPresentation[], available: number): Layout {
   if (tabs.length === 0) return { items: [], hasOverflow: false, visibleCount: 0 }
   const labelMax = Math.max(1, TAB_WIDTH - TAB_FRAME - GUTTER_SLOT)
   const items = tabs.map((tab) => ({ tab, title: truncate(tab.title, labelMax) }))
@@ -144,7 +154,7 @@ function tabTextStyle(theme: TuiTheme, isFg: boolean, blocked: boolean, dragging
   }
 }
 
-function tabGutter(tab: TabInfo, dragging: boolean, blocked: boolean): Gutter | undefined {
+function tabGutter(tab: TabPresentation, dragging: boolean, blocked: boolean): Gutter | undefined {
   if (dragging) return { kind: "glyph", char: DRAG_GLYPH }
   if (blocked) return { kind: "glyph", char: BLOCKED_GLYPH }
   return tab.isBusy ? { kind: "spinner" } : undefined

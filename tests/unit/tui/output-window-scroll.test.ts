@@ -1,7 +1,7 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import type { RenderContext } from "@opentui/core"
 import { createRoot, createSignal } from "solid-js"
-import { createHeightIndex, type HeightIndex } from "../../../src/tui/hooks/create-height-index.js"
+import { createHeightIndex, type HeightIndex } from "../../../src/tui/output-window/create-height-index.js"
 import type { TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import { createMountedRowRegistry, createSnapshotHeightIndex, createTranscriptLayoutCache, recordZeroHeightBlocks, seedRevealedBlockEstimates, type TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
 import { DEFAULT_ESTIMATE } from "../../../src/tui/transcript-store/output-height-estimates.js"

@@ -1,6 +1,6 @@
 import type { Accessor, JSX } from "solid-js"
 import type { SessionCatalogError, SessionCatalogRow, RuntimeClient } from "../../protocol/app-service-types.js"
-import type { PickerRow, SelectablePickerRow } from "../session-picker/picker-types.js"
+import type { SelectablePickerRow, SessionPickerResult } from "../session-picker/picker-types.js"
 import type { ModalContext } from "../components/modal-stack.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
 import type { SessionActivationResult } from "./session-activation.js"
@@ -24,16 +24,6 @@ export interface SessionModalDeps {
   /** Close chat, which also removes the tab that shows the chat. */
   closeChat: (sessionId: string) => Promise<void>
   deleteActiveSession: (sessionId: string) => Promise<void>
-}
-
-export interface SessionPickerResult {
-  readonly rows: readonly PickerRow[]
-  readonly totalMatches: number
-  readonly capped: boolean
-  readonly effectiveHighlightQuery: string
-  readonly timeAgoWidth: number
-  /** True while the filter's search of the chats' messages has not answered yet. */
-  readonly searchingMessages: boolean
 }
 
 export interface SessionModalAction {

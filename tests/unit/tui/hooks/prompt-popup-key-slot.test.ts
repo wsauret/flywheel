@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { createComposerPopupKeySlot } from "../../../../src/tui/hooks/create-composer-popup-key-slot.js"
+import { createComposerPopupKeySlot } from "../../../../src/tui/components/create-composer-popup-key-slot.js"
 
 describe("createComposerPopupKeySlot", () => {
   it("reports unhandled without a registration and delegates after one", () => {

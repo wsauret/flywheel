@@ -10,7 +10,7 @@ import type { ModalContext, ModalHandle } from "../../components/modal-stack.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY, type TextEditorPresentation } from "../../keymap/text-entry.js"
 import type { ToastOptions } from "../../context/toast-presenter.js"
 import { createTerminalSettingEdit } from "../../hooks/terminal-setting-edit.js"
-import type { SettingsEditResult } from "../../hooks/settings-modal-types.js"
+import type { SettingsEditResult } from "../../modals/settings-modal-types.js"
 
 /** A device row being renamed in place: which device, and the text so far. */
 export interface RemoteRenameState {

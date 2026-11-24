@@ -2,7 +2,7 @@
 
 import type { Renderable, ScrollBoxRenderable } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
-import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
+import { useModalDimensions } from "@tui/components/use-modal-dimensions"
 import { displayWidth, truncateToWidth } from "@tui/text"
 import { BOLD } from "@tui/text-attributes"
 import { createEffect, createMemo, For, type JSX, on, onCleanup, Show } from "solid-js"

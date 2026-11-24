@@ -7,22 +7,21 @@ import { useTickPool } from "@tui/context/tick-pool-context"
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show, untrack } from "solid-js"
 import { normalizeChatInput, type ChatInput, type ChatInputLike } from "../../infra/chat-input.js"
 import { base64ByteLength } from "../../protocol/client/attachments.js"
-import { createComposerFocus } from "../hooks/create-composer-focus.js"
-import { createComposerQuestionHandoff } from "../hooks/create-composer-question-handoff.js"
-import { createSpinnerStatus, spinnerAnimates } from "../hooks/create-spinner-status.js"
-import { createGhostText } from "../hooks/create-ghost-text.js"
-import { createMentionSuggestions } from "../hooks/create-mention-suggestions.js"
-import { createSlashSuggestions } from "../hooks/create-slash-suggestions.js"
-import { createComposerHistoryPopup } from "../hooks/create-composer-history-popup.js"
-import { classifyComposerPopupKey } from "../hooks/create-composer-popup-key-slot.js"
-import { createPasteBurstController } from "../hooks/paste-burst.js"
-import { createPasteCollapse } from "../hooks/paste-collapse.js"
-import { createPromptAttachments } from "../hooks/composer-attachments.js"
-import { createLiveRenderableRef } from "../hooks/create-live-renderable-ref.js"
-import { adoptDraftAttachments, mergeInputIntoDraft, UNBOUND_COMPOSER_DRAFT } from "../hooks/create-draft-cache.js"
-import { replaceDraftMarker, type ComposerDraftPaste } from "../hooks/composer-draft.js"
+import { createComposerFocus } from "./create-composer-focus.js"
+import { createComposerQuestionHandoff } from "./create-composer-question-handoff.js"
+import { createSpinnerStatus, spinnerAnimates } from "./create-spinner-status.js"
+import { createGhostText } from "./create-ghost-text.js"
+import { createMentionSuggestions } from "./create-mention-suggestions.js"
+import { createSlashSuggestions } from "./create-slash-suggestions.js"
+import { createComposerHistoryPopup } from "./create-composer-history-popup.js"
+import { classifyComposerPopupKey } from "./create-composer-popup-key-slot.js"
+import { createPasteBurstController } from "./paste-burst.js"
+import { createPasteCollapse } from "./paste-collapse.js"
+import { createPromptAttachments } from "./composer-attachments.js"
+import { createLiveRenderableRef } from "./create-live-renderable-ref.js"
+import { adoptDraftAttachments, mergeInputIntoDraft, UNBOUND_COMPOSER_DRAFT } from "./create-draft-cache.js"
+import { replaceDraftMarker, type ComposerDraftPaste } from "./composer-draft.js"
 import { normalizedPrintableText } from "../keymap/text-entry.js"
-import { QuestionDock } from "../question-dock.js"
 import { ComposerBody, ComposerFrame, composerBodyGeometry, PROMPT_LEFT_INSET } from "./composer-frame.js"
 import { SlashSuggestions } from "./slash-suggestions.js"
 import { ComposerHistoryPopup } from "./composer-history-popup.js"
@@ -675,7 +674,7 @@ export function Composer(props: ComposerProps) {
       </Show>
       <Show when={pendingQuestionOwner()}>
         {(pq) => (
-          <QuestionDock
+          <props.questionDock
             sessionId={pq().sessionId}
             question={pq().question}
             draftCache={props.draftCache}

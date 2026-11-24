@@ -1,5 +1,5 @@
 import { RGBA, fg as stFg, type TextChunk } from "@opentui/core"
-import { useSpinnerFrame } from "@tui/hooks/use-spinner-frame"
+import { useSpinnerFrame } from "@tui/components/use-spinner-frame"
 import type { TuiTheme } from "@tui/context/theme/tui-theme"
 import { chunksLength } from "@tui/text-attributes.js"
 import type { Accessor } from "solid-js"
@@ -7,8 +7,8 @@ import { createMemo } from "solid-js"
 import { keyHintPlainText, keyHintSeparatorBefore } from "./key-hint-row-state.js"
 import type { ModuleRowAction } from "../../protocol/protocol-module.js"
 import type { ComposerBorderLayout } from "./composer-border-layout.js"
-import { statusLineParts } from "../hooks/spinner-status-animation.js"
-import type { SpinnerStatus } from "../hooks/spinner-status-model.js"
+import { statusLineParts } from "./spinner-status-animation.js"
+import type { SpinnerStatus } from "./spinner-status-model.js"
 
 function lerpRgba(a: RGBA, b: RGBA, t: number): RGBA {
   const s = 1 - t

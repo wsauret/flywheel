@@ -47,12 +47,14 @@ import { RESIDENT_BLOCK_BUDGET } from "../transcript-store/output-transcript-cac
 import { sessionLoadFailure } from "./session-load-failure.js"
 import { withSnapshotHydrationLimit } from "./snapshot-hydration-limit.js"
 import { createTranscriptVisibilityRefresh } from "./create-transcript-visibility-refresh.js"
-import { createSessionChangesIntake, type SessionChangesView } from "./create-session-changes.js"
+import { createSessionChangesIntake } from "./create-session-changes.js"
+import type { SessionChangesView } from "../modals/session-changes-modal-types.js"
 import { createSettingsStore, type SettingsStore } from "./create-settings-store.js"
 import type { RuntimeConfigCache } from "./create-runtime-config-cache.js"
-import { createSessionDetailCache, createSessionSurface, type SessionDetailCache, type SessionSurface, type SessionSurfaceOptions } from "./create-session-surface.js"
+import { createSessionSurface, type SessionSurface, type SessionSurfaceOptions } from "./create-session-surface.js"
+import { createSessionDetailCache, type SessionDetailCache } from "../session-detail-cache.js"
 import { isEmptyNewChat } from "../session-empty-state.js"
-import type { SpinnerStatusSource } from "./create-spinner-status.js"
+import type { SpinnerStatusSource } from "../components/create-spinner-status.js"
 import { sessionModelLabel } from "./active-model-label.js"
 
 // The terminal-title prefix is a TUI concern with exactly one consumer.

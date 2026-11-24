@@ -24,8 +24,8 @@ import { chunksWidth, displayWidth, shareWidth, truncateToWidth } from "@tui/tex
 import { Button } from "@tui/components/button.js"
 import { ModalFrame, MODAL_FRAME_CLOSE_WIDTH, MODAL_FRAME_HORIZONTAL_INSET, modalFrameBackWidth, sessionViewerBodyHeight, sessionViewerWidth } from "@tui/components/modal-frame.js"
 import { WorkflowAgentHeader } from "./agent-header.js"
-import { ChildSessionBody, type ChildSessionBodyProps } from "@tui/components/child-session-body.js"
-import type { ChildSessionViewerInput } from "@tui/components/child-session-viewer.js"
+import { ChildSessionBody, type ChildSessionBodyProps } from "@tui/child-session-body.js"
+import type { ChildSessionViewerInput } from "@tui/child-session-viewer.js"
 
 /** What an agent viewer opens: an agent, with `follow` once the viewer knows
  *  whether it runs, or the follow-up conversation. A link names an agent

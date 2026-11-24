@@ -2,7 +2,7 @@
 
 import type { TextChunk, TextRenderable } from "@opentui/core"
 import { StyledText } from "@opentui/core"
-import { createMeasuredWidth } from "@tui/hooks/create-measured-width.js"
+import { createMeasuredWidth } from "@tui/components/create-measured-width.js"
 import { BOLD } from "@tui/text-attributes.js"
 import type { Tokens } from "marked"
 import { createEffect, createMemo, Index, Show, type JSX } from "solid-js"

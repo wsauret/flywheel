@@ -1,18 +1,12 @@
 import type { CredentialProviderId } from "../../infra/auth/auth-store-types.js"
 import type { AuthProviderAccountStatus } from "../../protocol/auth-status-protocol-types.js"
 import type { ListModalKeyEvent } from "../components/modal-list-keys.js"
-import { soleAccount, type AuthRow, type ProviderOption } from "./auth-modal-options.js"
+import { soleAccount, type AuthRow, type DisconnectConfirmation, type ProviderOption } from "../modals/auth-modal-options.js"
 
 /** The provider, or the one account of it, that a Disconnect waits on the person to confirm. */
 export interface DisconnectTarget {
   readonly providerId: CredentialProviderId
   readonly instanceId?: string
-}
-
-/** A Disconnect target resolved against the published providers. */
-export interface DisconnectConfirmation {
-  readonly option: ProviderOption
-  readonly account?: AuthProviderAccountStatus
 }
 
 /** The target as the published providers show it now, or undefined when it has left them. */

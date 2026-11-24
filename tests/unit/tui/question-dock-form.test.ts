@@ -2,7 +2,7 @@ import { describe, expect, it, mock } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 
 import type { QuestionBlock } from "../../../src/infra/output-blocks.js"
-import { createDraftCache } from "../../../src/tui/hooks/create-draft-cache.js"
+import { createDraftCache } from "../../../src/tui/components/create-draft-cache.js"
 import { createQuestionForm } from "../../../src/tui/question-dock-form.js"
 
 describe("createQuestionForm", () => {

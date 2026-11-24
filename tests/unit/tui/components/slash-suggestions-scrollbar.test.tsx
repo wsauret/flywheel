@@ -4,7 +4,7 @@ import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import { createSignal } from "solid-js"
 import type { ModalSelectOption } from "../../../../src/tui/components/modal-select-types.js"
-import type { SlashSuggestionsHook } from "../../../../src/tui/hooks/create-slash-suggestions.js"
+import type { SlashSuggestionsHook } from "../../../../src/tui/components/create-slash-suggestions.js"
 
 const WIDTH = 60
 

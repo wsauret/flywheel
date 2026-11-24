@@ -5,7 +5,7 @@ import { RGBA } from "@opentui/core"
 import { ManualClock } from "@opentui/core/testing"
 import { createRoot } from "solid-js"
 import type { FilteredResult } from "../../../../src/tui/components/modal-select-types.js"
-import type { SettingsRow, SettingsView, SettingsVisibleRow } from "../../../../src/tui/hooks/settings-modal-types.js"
+import type { SettingsRow, SettingsView, SettingsVisibleRow } from "../../../../src/tui/modals/settings-modal-types.js"
 import { flattenModalDisclosureTree } from "../../../../src/tui/components/modal-disclosure.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"

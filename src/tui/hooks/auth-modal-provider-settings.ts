@@ -7,7 +7,7 @@ import { paidModeAwaitsAnswer, subscriptionSpendAccountCorrelationId } from "../
 import type { ModalHandle } from "../components/modal-stack.js"
 import type { ShellServices } from "./shell-state.js"
 import type { AuthProfileScopeLabel } from "./auth-profile-selection.js"
-import { buildAuthRows, buildProviderOptions, type AuthView, type ProviderOption, type ProviderSettingsTarget, type SubscriptionCapabilityAccount } from "./auth-modal-options.js"
+import { buildAuthRows, buildProviderOptions, type AuthView, type ProviderOption, type ProviderSettingsTarget, type SubscriptionCapabilityAccount } from "../modals/auth-modal-options.js"
 import type { SubscriptionSpendConsentControl } from "./use-subscription-spend-consent-control.js"
 import type { SubscriptionAccountTarget } from "./auth-modal-types.js"
 import { automaticDialogsEnabled } from "./automatic-dialogs.js"

@@ -12,7 +12,7 @@ import { sessionDomainCursor } from "../../../../src/protocol/runtime-ui-protoco
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import { modalCopyLimit } from "../../../../src/tui/components/modal-copy.js"
 import { createModalScrollController } from "../../../../src/tui/components/modal-scroll-controller.js"
-import { SPINNER_FRAMES } from "../../../../src/tui/components/spinner.js"
+import { SPINNER_FRAMES } from "../../../../src/tui/components/use-spinner-frame.js"
 import { ThemeProvider } from "../../../../src/tui/context/theme.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"

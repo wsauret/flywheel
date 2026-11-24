@@ -1,18 +1,19 @@
 import type { ModuleRowAction } from "../../protocol/protocol-module.js"
 import type { ProjectFileEntry } from "../../protocol/transcript-protocol-types.js"
-import type { Accessor } from "solid-js"
+import type { Accessor, Component } from "solid-js"
 import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
 import type { QuestionBlock } from "../../infra/output-blocks.js"
 import type { AgentInputAnswer } from "../../protocol/question-protocol-types.js"
 import type { LocalRecall } from "../../protocol/client/chat-submissions.js"
-import type { DraftCache } from "../hooks/create-draft-cache.js"
-import type { PromptHistoryHook } from "../hooks/create-composer-history.js"
+import type { DraftCache } from "./create-draft-cache.js"
+import type { PromptHistoryHook } from "./create-composer-history.js"
 import type { Clipboard } from "../clipboard.js"
-import type { ComposerPopupKeySlot } from "../hooks/create-composer-popup-key-slot.js"
-import type { ComposerAttachSlot } from "../hooks/create-composer-attach-slot.js"
-import type { SpinnerStatusSource } from "../hooks/create-spinner-status.js"
+import type { ComposerPopupKeySlot } from "./create-composer-popup-key-slot.js"
+import type { ComposerAttachSlot } from "./create-composer-attach-slot.js"
+import type { SpinnerStatusSource } from "./create-spinner-status.js"
 import type { ModalSelectOption } from "./modal-select-types.js"
 import type { ComposerBorderLayout } from "./composer-border-layout.js"
+import type { QuestionDockProps } from "../question-dock.js"
 
 interface QuestionAnswers {
   [question: string]: AgentInputAnswer
@@ -74,6 +75,10 @@ export interface ComposerProps {
   onRecallLocal?: () => LocalRecall | null
   onAnswerQuestion: (toolUseId: string, answers: QuestionAnswers) => Promise<boolean>
   onCancelQuestion: (toolUseId: string) => Promise<boolean>
+  /** Draws a pending question in place of the input. The shell passes the
+   *  question dock in, because the dock renders transcript markdown, which
+   *  is drawn with the shared components and so cannot sit among them. */
+  questionDock: Component<QuestionDockProps>
   draftCache: DraftCache
   onOpenSessions: () => void
   onModuleAction: (action: ModuleRowAction) => void

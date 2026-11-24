@@ -1,7 +1,7 @@
 import { TextBufferRenderable, type MouseEvent, type Renderable, type ScrollBoxRenderable } from "@opentui/core"
 import { type Accessor, createComputed, createMemo, createRoot, createSignal, on, type Signal, untrack } from "solid-js"
 import { patchScrollBoxLayoutHooks } from "../components/scrollbox-layout-hooks.js"
-import { createHeightIndex, type ExtentCorrection, type HeightIndex, type HeightIndexConfig } from "../hooks/create-height-index.js"
+import { createHeightIndex, type ExtentCorrection, type HeightIndex, type HeightIndexConfig } from "./create-height-index.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { DEFAULT_ESTIMATE } from "../transcript-store/output-height-estimates.js"
 import type { LaunchScroll } from "../../infra/launch-state.js"
@@ -13,9 +13,6 @@ import type { TranscriptFollow } from "./transcript-follow.js"
 // the single source of truth for offset-to-block mapping and measured extents.
 
 export type EdgeDirection = "older" | "newer"
-
-/** Rows mounted and acquired on either side of the viewport before they enter it. */
-export const OVERSCAN_ROWS = 120
 
 /** Near-edge overscan in rows. Paging starts inside this band so the command
  *  layer can load an unhydrated edge before the user reaches the gap. */

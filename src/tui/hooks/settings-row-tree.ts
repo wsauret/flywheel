@@ -1,5 +1,5 @@
 import type { ModalDisclosureItem, ModalDisclosureNode } from "../components/modal-disclosure.js"
-import type { SettingsInteractiveRow, SettingsRow, SettingsVisibleRow } from "./settings-modal-types.js"
+import type { SettingsInteractiveRow, SettingsRow, SettingsVisibleRow } from "../modals/settings-modal-types.js"
 
 export function settingsRowDirectMatchScore(row: SettingsInteractiveRow, query: string): number | undefined {
   const label = row.label.toLowerCase()

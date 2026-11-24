@@ -18,11 +18,11 @@ import { getFiletype } from "@infra/tools/filetype.js"
 import { useTheme } from "@tui/context/theme"
 import { type Accessor, batch, createEffect, createMemo, For, Index, Match, Show, Switch, createSignal, mapArray, on, onCleanup, untrack } from "solid-js"
 import type { DiffColorMode } from "../../orchestration/config/schema.js"
-import { useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
+import { useUnifiedToggle } from "@tui/output-blocks/use-body-toggle.js"
 import { BlankVerticalBarBorder, VerticalBarBorder } from "@tui/output-blocks/border.js"
 import { bindSelectableStyledTextContent } from "@tui/context/reactive-text.js"
 import { Button } from "../components/button.js"
-import { OVERSCAN_ROWS } from "../output-window/output-window-scroll.js"
+import { OVERSCAN_ROWS } from "./visible-output-blocks.js"
 import { PreviewViewport } from "./preview-viewport.js"
 
 /** One unified patch a block discloses. `path` is the heading shown above its

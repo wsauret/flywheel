@@ -8,7 +8,7 @@ import type { ListModalKeyEvent } from "../../components/modal-list-keys.js"
 import { ModalFrame } from "../../components/modal-frame.js"
 import type { ModalHandle } from "../../components/modal-stack.js"
 import { useTheme } from "../../context/theme.js"
-import { useModalDimensions } from "../../hooks/use-modal-dimensions.js"
+import { useModalDimensions } from "../../components/use-modal-dimensions.js"
 import type { TuiControllerHost } from "../../tui-module.js"
 
 type Host = Pick<TuiControllerHost, "client" | "read" | "modal">

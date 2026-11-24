@@ -21,13 +21,14 @@ import { exitTUI } from "./exit.js"
 import { Composer } from "./components/composer.js"
 import type { ComposerHandle } from "./components/composer-types.js"
 import { RuntimeNotice } from "./components/runtime-notice.js"
+import { QuestionDock } from "./question-dock.js"
 import type { OutputWindowCommandType } from "./output-window/output-window.js"
-import { createComposerAttachSlot } from "./hooks/create-composer-attach-slot.js"
+import { createComposerAttachSlot } from "./components/create-composer-attach-slot.js"
 import { createComposerBorderLayout } from "./hooks/create-composer-border-layout.js"
-import { createComposerPopupKeySlot } from "./hooks/create-composer-popup-key-slot.js"
+import { createComposerPopupKeySlot } from "./components/create-composer-popup-key-slot.js"
 import { createTerminalChatSubmissions } from "./hooks/create-chat-submissions.js"
 import { createTerminalComposerReturns } from "./hooks/create-composer-returns.js"
-import { createDraftCache, mergeInputIntoDraft } from "./hooks/create-draft-cache.js"
+import { createDraftCache, mergeInputIntoDraft } from "./components/create-draft-cache.js"
 import { createKeyboardHandler } from "./hooks/create-keyboard-handler.js"
 import { onceWhen } from "./hooks/once-when.js"
 import { useShellState } from "./hooks/shell-state.js"
@@ -39,7 +40,7 @@ import { useSessionControls } from "./hooks/use-session-controls.js"
 import { snapshotSeeded } from "./transcript-store/output-transcript-cache-types.js"
 import type { ShellPlaces } from "./shell-navigation.js"
 import type { ShellOverlays } from "./shell-overlays.js"
-import type { FindBar } from "./hooks/create-find-bar.js"
+import type { FindBar } from "./output-window/create-find-bar.js"
 
 /** What the composer holds before the places that hand it drafts exist: the
  *  draft cache, the chat submissions and the drafts they return, the prompt
@@ -257,6 +258,7 @@ export function ShellComposer(props: {
         }}
         onAnswerQuestion={(toolUseId, answers) => composer.chat.answerQuestion(toolUseId, answers)}
         onCancelQuestion={(toolUseId) => composer.chat.cancelQuestion(toolUseId)}
+        questionDock={QuestionDock}
         draftCache={composer.draftCache}
         onOpenSessions={modals.openSessionsModal}
         onModuleAction={overlays.activateModuleRow}

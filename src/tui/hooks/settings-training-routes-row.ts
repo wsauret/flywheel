@@ -1,7 +1,7 @@
 import type { Accessor } from "solid-js"
 import type { SettingsStore } from "./create-settings-store.js"
 import type { SettingCatalogRow } from "../../protocol/setting-catalog.js"
-import { cycleRowActions, type SettingsRow } from "./settings-modal-types.js"
+import { cycleRowActions, type SettingsRow } from "../modals/settings-modal-types.js"
 
 interface TrainingRoutesRowInput {
   /** The catalog row this row presents. */

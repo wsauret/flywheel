@@ -2,11 +2,8 @@
 
 import type { RGBA, TextRenderable } from "@opentui/core"
 import type { Accessor } from "solid-js"
-import { useSpinnerFrame } from "../hooks/use-spinner-frame.js"
+import { useSpinnerFrame } from "./use-spinner-frame.js"
 import { allowSelectionStartWithoutContent } from "@tui/selection.js"
-
-export const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-export const SPINNER_INTERVAL = 80
 
 interface SpinnerProps {
   color?: RGBA

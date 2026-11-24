@@ -2,7 +2,7 @@ import { onCleanup } from "solid-js";
 import { appendFileEnsuringDir, writeFileAtomic } from "../../infra/atomic-write.js";
 import { resolveComposerHistoryPath } from "../../infra/paths.js";
 import { registerPreExitCleanup } from "../exit.js";
-import { createPromptHistory } from "./create-composer-history.js";
+import { createPromptHistory } from "../components/create-composer-history.js";
 import { loadPromptHistorySync } from "./composer-history-loader.js";
 
 function toJsonLines(entries: readonly string[]): string {

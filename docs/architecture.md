@@ -550,7 +550,7 @@ Workflow host wiring and agent callbacks -> `orchestration/workflow-host/`
 Workflow run configuration, ownership contributions, passive reads, and conversion -> `orchestration/modules/workflows/`; run fact schemas -> `workflows/run-facts.ts`; workflow domains -> `protocol/modules/workflows.ts`
 Workflow membership and atomic member publication -> `orchestration/session/workflow-membership.ts` and `orchestration/session/workflow-publication.ts`; membership shape -> `infra/session-workflow-membership.ts`
 Shared child execution resources and imported legacy-note/scratch resolution -> `orchestration/session/child-execution-resources.ts` and `orchestration/session/conversation-resources.ts`
-Ordinary child conversation body -> `tui/components/child-session-body.tsx` and `webview/src/app/conversation-body.tsx`; workflow header and navigation -> each client's workflows module home
+Ordinary child conversation body -> `tui/child-session-body.tsx` and `webview/src/app/conversation-body.tsx`; workflow header and navigation -> each client's workflows module home
 Runtime session store (runner pool and runtime projection) -> `orchestration/session-store/`
 Durable session facts and projections -> `orchestration/session/`
 Conversation checkpoints, their versioned facts, and legacy-note conversion -> `orchestration/session/conversation-checkpoint.ts`, `orchestration/session/conversation-checkpoint-facts.ts`, and `orchestration/session/checkpoint-note-conversion.ts`

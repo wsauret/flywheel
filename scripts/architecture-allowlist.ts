@@ -51,17 +51,10 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   },
   {
     lint: "module-cycle",
-    reason: "`hooks` holds both the primitive hooks that components use (useHoverHighlight, useSpinnerFrame, createMeasuredWidth, the draft cache) and the shell wiring that renders components, modals, and the output window (shell-state, create-modals); move the primitive hooks below components, then reassess.",
+    reason: "The command context reads the shell (ShellSignals fields, RuntimeConfigCache.view, mutateRuntimeConfig, and the report-async reporters), while the shell wires the commands. The cheapest tie: `hooks` uses `commands` by 3 items (commandsToOptions, CommandDispatch.dispatch, SurfaceRequest.isCurrent), against 7 the other way, but those 3 are the commands' own interface, so cut the 7 instead: give the command context its own contract in commands/command-types.ts that the shell state and the runtime config cache satisfy, and move report-async below both.",
     key: [
       "flywheel::tui::commands",
-      "flywheel::tui::components",
       "flywheel::tui::hooks",
-      "flywheel::tui::modals",
-      "flywheel::tui::output-blocks",
-      "flywheel::tui::output-window",
-      "flywheel::tui::question-dock",
-      "flywheel::tui::session-picker",
-      "flywheel::tui::welcome-notice",
     ].join(","),
   },
   {

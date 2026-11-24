@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { BorderCharacters, Renderable, RGBA } from "@opentui/core"
-import type { ClickToggleHandlers } from "@tui/hooks/use-body-toggle.js"
+import type { ClickToggleHandlers } from "@tui/output-blocks/use-body-toggle.js"
 import type { JSX } from "solid-js"
 import { Show } from "solid-js"
 interface CollapsibleBoxProps {

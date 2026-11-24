@@ -14,7 +14,7 @@ import type { RuntimeAuthProfileMutation, RuntimeAuthProfileMutationResult } fro
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { MODULE_PRESETS, effectiveModuleIds as effectiveSelection, normalizeModuleSelection, moduleProtocolRows, workflowsModeOf, type ModuleId } from "../../../../src/orchestration/modules.js"
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js"
-import type { SettingsRow } from "../../../../src/tui/hooks/settings-modal-types.js"
+import type { SettingsRow } from "../../../../src/tui/modals/settings-modal-types.js"
 import type { SettingsDestination } from "../../../../src/tui/settings-destination.js"
 import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigValues, RuntimeConfigView } from "../../../../src/protocol/runtime-config-protocol-types.js"
 

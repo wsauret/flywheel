@@ -3,7 +3,7 @@
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
 import { ScrollBoxRenderable, TextRenderable, type Renderable } from "@opentui/core"
-import type { AuthView } from "../../../../src/tui/hooks/auth-modal-options.js"
+import type { AuthView } from "../../../../src/tui/modals/auth-modal-options.js"
 import type { ProviderModelRow } from "../../../../src/protocol/provider-model-preference-protocol-types.js"
 
 const [{ testRender }, { createComponent }, { ThemeProvider }, { AuthModal }] = await Promise.all([

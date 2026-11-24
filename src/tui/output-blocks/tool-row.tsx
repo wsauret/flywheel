@@ -13,7 +13,7 @@ import { bindSelectableStyledTextContent, bindStyledTextContent } from "@tui/con
 import { hitsDrawnContent, hitsLabel } from "@tui/content-hit.js"
 import { hasSelectedCells } from "@tui/selection.js"
 import { stStrike } from "@tui/text-attributes.js"
-import { useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
+import { useUnifiedToggle } from "@tui/output-blocks/use-body-toggle.js"
 import { useBlockDisclosure } from "@tui/context/block-disclosure.js"
 import { useLandingBackground } from "@tui/context/landing-highlight.js"
 import { useRenderer } from "@opentui/solid"

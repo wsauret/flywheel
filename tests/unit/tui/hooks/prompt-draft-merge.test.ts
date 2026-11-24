@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { mergeComposerDrafts, replaceDraftMarker, type ComposerDraft } from "../../../../src/tui/hooks/composer-draft.js"
+import { mergeComposerDrafts, replaceDraftMarker, type ComposerDraft } from "../../../../src/tui/components/composer-draft.js"
 
 function draft(text: string, overrides: Partial<ComposerDraft> = {}): ComposerDraft {
   return { text, pastes: [], attachments: [], ...overrides }

@@ -13,7 +13,7 @@ import { TickPoolProvider } from "../../../../src/tui/context/tick-pool-context.
 import { RowWidthProvider } from "../../../../src/tui/context/row-width.js"
 import { NavigationProvider } from "../../../../src/tui/context/navigation.js"
 import { resolvedTheme } from "../components/prompt-border-fixtures.js"
-import { viewerSurface } from "../components/_child-session-viewer-fixtures.js"
+import { viewerSurface } from "../_child-session-viewer-fixtures.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
 

@@ -4,7 +4,8 @@ import type { RuntimePosition } from "../../protocol/runtime-ui-protocol-types.j
 import { subscriptionSpendConsentEnvelopeIds, type SubscriptionSpendConsentMutation, type SubscriptionSpendConsentView } from "../../protocol/subscription-spend-consent-protocol-types.js"
 import type { ModalHandle } from "../components/modal-stack.js"
 import { SUBSCRIPTION_SPEND_CONSENT_COPY } from "../components/modal-copy.js"
-import { CONSENT_ACTION_CURSOR, createSubscriptionSpendConsentInput, type AvailableConsentView, type ConsentSurface, type SubscriptionSpendConsentControlState } from "./use-subscription-spend-consent-modal.js"
+import { createSubscriptionSpendConsentInput } from "./use-subscription-spend-consent-modal.js"
+import { CONSENT_ACTION_CURSOR, type AvailableConsentView, type ConsentSurface, type SubscriptionSpendConsentControlState } from "../modals/subscription-spend-consent-types.js"
 
 type ConsentMode = AvailableConsentView["accounts"][number]["modes"][number]
 

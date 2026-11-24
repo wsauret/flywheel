@@ -1,5 +1,5 @@
 import type { MouseEvent } from "@opentui/core"
-import type { TranscriptSelectionAutoScroll } from "./create-output-scroll-controller.js"
+import type { TranscriptSelectionAutoScroll } from "../output-window/create-output-scroll-controller.js"
 
 interface SelectionStateReader {
   readonly getSelection: () => { readonly isDragging: boolean } | null

@@ -6,7 +6,7 @@ import { disclosureIds, findSettingsRow, rankedSettingsNodes, settingsRowDirectM
 import { filterOptions, firstSelectableRow, flattenWithCategories } from "../components/modal-select-helpers.js"
 import type { ModalSelectOption, FilteredResult, FlatRow } from "../components/modal-select-types.js"
 import type { ModalContext, ModalHandle } from "../components/modal-stack.js"
-import { refusalReason, type SettingsEditSpec, type SettingsInteractiveRow, type SettingsRow, type SettingsSelectionConfirmation, type SettingsView, type SettingsVisibleRow } from "./settings-modal-types.js"
+import { refusalReason, type SettingsEditSpec, type SettingsInteractiveRow, type SettingsRow, type SettingsSelectionConfirmation, type SettingsView, type SettingsVisibleRow } from "../modals/settings-modal-types.js"
 import { createControlledTextEditor, normalizedPrintableText, SINGLE_LINE_TEXT_ENTRY_POLICY, type ControlledTextEditor, type TextEditorPresentation } from "../keymap/text-entry.js"
 
 interface SettingsModalControllerDeps {

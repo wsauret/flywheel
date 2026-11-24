@@ -222,7 +222,7 @@ it("keeps the Cancel of a workflow card that the chat reads from its history", a
     import("../../../../src/tui/context/tick-pool-context.js"),
     import("../../../../src/tui/context/row-width.js"),
     import("../../../../src/tui/modules/workflows/cards.js"),
-    import("../components/_child-session-viewer-fixtures.js"),
+    import("../_child-session-viewer-fixtures.js"),
   ])
   const block: AgentGroupBlockType = {
     kind: "agentGroup", containerKind: "workflow", id: "workflow-card", toolUseId: "workflow-call", totalToolCount: 0,

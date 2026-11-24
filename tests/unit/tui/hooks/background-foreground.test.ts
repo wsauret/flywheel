@@ -4,7 +4,7 @@ import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 import {
   discardIfTransientForeground,
 } from "../../../../src/tui/hooks/background-foreground.js"
-import { createDraftCache } from "../../../../src/tui/hooks/create-draft-cache.js"
+import { createDraftCache } from "../../../../src/tui/components/create-draft-cache.js"
 import { createForegroundSwitcher } from "../../../../src/tui/hooks/create-foreground-switcher.js"
 import type { ForegroundTarget } from "../../../../src/tui/hooks/shell-state.js"
 

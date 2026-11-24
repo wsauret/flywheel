@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { useTheme } from "@tui/context/theme"
-import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
+import { useModalDimensions } from "@tui/components/use-modal-dimensions"
 import { ModalFrame } from "@tui/components/modal-frame"
 import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "@tui/components/modal-copy"
 

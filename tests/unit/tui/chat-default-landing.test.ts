@@ -17,7 +17,7 @@ import { useCommands, type CommandDeps } from "../../../src/tui/hooks/use-comman
 import type { BuiltInCommandDescriptor, OffCommandDescriptor, RuntimeCommandInvocation } from "../../../src/protocol/command-catalog-protocol-types.js"
 import type { ChatInput } from "../../../src/infra/chat-input.js"
 import { createSessionCreator, type SessionCreator } from "../../../src/tui/hooks/create-session-creator.js"
-import { createDraftCache } from "../../../src/tui/hooks/create-draft-cache.js"
+import { createDraftCache } from "../../../src/tui/components/create-draft-cache.js"
 import { createTabState } from "../../../src/tui/hooks/create-tabs.js"
 import type { ForegroundTarget, ShellServices, ShellSignals } from "../../../src/tui/hooks/shell-state.js"
 import type { FrontendMutation, MutationResult } from "../../../src/protocol/app-service-types.js"

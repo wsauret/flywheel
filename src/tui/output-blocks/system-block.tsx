@@ -4,7 +4,7 @@ import type { DividerBlock as DividerBlockType, SystemBlock as SystemBlockType }
 import { blockIdentity } from "../../protocol/block-identity.js"
 import { isReturnedInputNotice } from "../../protocol/composer-returns.js"
 import { StyledText, bold as stBold, fg as stFg, type TextChunk, type TextRenderable } from "@opentui/core"
-import { useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
+import { useUnifiedToggle } from "@tui/output-blocks/use-body-toggle.js"
 import { BlankVerticalBarBorder, VerticalBarBorder } from "@tui/output-blocks/border"
 import { BlockFrame } from "./block-frame.js"
 import { MutationEvidencePreview } from "./diff-preview.js"
