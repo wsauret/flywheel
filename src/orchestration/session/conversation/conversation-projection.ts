@@ -11,7 +11,7 @@ import { admitEntries, chatTreeViolation, entryLink, type AdmissionFrontier, typ
 import { salvageConversationTreeFact, type ConversationTreeFact, type DegradedEntrySource, type ConversationTreeSalvageResult, type InlineConversationTreeFact, type SalvagedConversationEntry } from "./conversation-facts.js"
 import { sessionMessageSources, sessionMessageSourcesSync, recoverSessionMessageProducer, type SessionMessageSources } from "../session-message-sources.js"
 import { ConversationContextIdentities } from "./conversation-context-identities.js"
-import { subagentCompletionRunIds } from "../../agent-runtime/background-work-notifications.js"
+import { subagentCompletionRunIds } from "../../agent-runtime/background-work/background-work-notifications.js"
 
 // `type` (not `interface`) so the shape carries the implicit index signature
 // `createEventProjection` requires of a projection state.

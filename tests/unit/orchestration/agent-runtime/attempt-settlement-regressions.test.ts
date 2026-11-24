@@ -6,12 +6,12 @@ import type { ModelCost } from "../../../../src/infra/llm/models.js";
 import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/llm/usage-entry.js";
 import { AssistantDraftProjector } from "../../../../src/infra/output/assistant-draft-projector.js";
 import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
-import { createAssistantAttempt, type AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/assistant-turn-attempt.js";
-import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream.js";
-import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { createAssistantAttempt, type AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-attempt.js";
+import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
+import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import type { ProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js";
 import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js";
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { chain, fakeAvailability, fakeClient, preparedRequest, subscriptionCandidate } from "./llm/_provider-chain-harness.js";
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 

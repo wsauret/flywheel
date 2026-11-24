@@ -5,7 +5,7 @@ import { join } from "node:path";
 import {
   enforceTurnBudget,
   type TurnBudgetEntry,
-} from "../../../../../src/orchestration/agent-runtime/tools/truncation.js";
+} from "../../../../../src/orchestration/agent-runtime/tools/results/truncation.js";
 import {
   createContextAdmission,
   effectiveProactiveTrigger,
@@ -14,7 +14,7 @@ import {
 } from "../../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js";
 
 import { messageInput } from "../../../../../src/infra/agent-loop-events.js";
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";

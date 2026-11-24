@@ -5,8 +5,8 @@ import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-row
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { apiKey } from "../../../infra/auth/auth-context.js";
-import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { createDeepSeekUsageReader } from "./usage-reader.js";
@@ -49,7 +49,7 @@ const createClient: AccessProviderFactory = async (build) => {
   return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "chat-completions", providerHint: "deepseek", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No DeepSeek API key in the active auth profile. Run: flywheel auth login --deepseek", recovery: { kind: "none" } });
-    const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/chat-completions.js")]);
+    const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/adapters/chat-completions/chat-completions.js")]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: BASE_URL, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
     return createChatCompletionsAdapter(client, build.wireModelId, info, {
       accessProvider: definition.id, candidate: build.candidate,

@@ -10,8 +10,8 @@ import { createHostLauncher } from "../../../../../src/orchestration/modules/pro
 import { processLoginObservations, type LoginKey, type RequestOutcome } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
 import type { ModelRefusal } from "../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js";
-import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js";
-import { turnContextEntry } from "../../../../../src/orchestration/agent-runtime/agent-loop-turn-context.js";
+import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js";
+import { turnContextEntry } from "../../../../../src/orchestration/agent-runtime/request/prompt/agent-loop-turn-context.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { agentLoop, dispatchedIds, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, SYSTEM, textOf, TREE, wireMessages } from "./_agent-host.js";
 import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js";

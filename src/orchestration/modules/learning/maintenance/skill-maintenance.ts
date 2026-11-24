@@ -1,4 +1,4 @@
-import type { PreparedPackage, SkillSemanticAuditResult } from "../../../agent-runtime/review-types.js";
+import type { PreparedPackage, SkillSemanticAuditResult } from "../../../agent-runtime/request/module-services/review-types.js";
 /** One maintenance pass, end to end.
  *
  *  The survey decided the units. This performs them: for each unit it sends only

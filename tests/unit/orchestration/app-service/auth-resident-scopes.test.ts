@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { authDir } from "../../../../src/infra/paths.js"
-import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
+import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js"
 import { createResidentAuthScopes } from "../../../../src/orchestration/app-service/auth-resident-scopes.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import { createSubscriptionUsageService } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"

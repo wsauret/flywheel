@@ -1,4 +1,4 @@
-import type { McpCallResult } from "../../agent-runtime/mcp-result.js"
+import type { McpCallResult } from "../../agent-runtime/mcp/mcp-result.js"
 import type { RuntimeTool, RuntimeToolInput, ToolResult } from "../../agent-runtime/tools/types.js"
 import { IOS_SIMULATOR_POINT_TAP_TOOL } from "./ios-simulator-point-tap.js"
 

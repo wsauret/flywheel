@@ -1,7 +1,7 @@
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
-import { listDefinition } from "../agent-runtime/tools/list.js"
-import { searchDefinition } from "../agent-runtime/tools/search.js"
+import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
+import { listDefinition } from "../agent-runtime/tools/search/list.js"
+import { searchDefinition } from "../agent-runtime/tools/search/search.js"
 import type { FirstPartyModule } from "../modules.js"
 
 /** `summary` gives the tool a short form on an unattended tree, whose agents rarely call it (ARCH-CONTEXT-038). */

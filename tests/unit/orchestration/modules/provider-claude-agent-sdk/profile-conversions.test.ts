@@ -9,7 +9,7 @@ import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/s
 import { createSubscriptionSpendConsentStore } from "../../../../../src/infra/auth/subscription/subscription-spend-consent-store.js";
 import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription/subscription-account-identity.js";
 import { Log } from "../../../../../src/infra/log.js";
-import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { composeFirstPartyModules, type FirstPartyModule } from "../../../../../src/orchestration/modules.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";

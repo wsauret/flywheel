@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Cause, Deferred, Effect, Exit, Fiber } from "effect";
-import type { AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
+import type { AnthropicOperations } from "../../agent-runtime/llm/adapters/anthropic/anthropic.js";
 import type { Claim, TransportContextFrame } from "../../agent-runtime/llm/types.js";
 import type { BlockOrigins } from "../../agent-runtime/llm/conversions/anthropic-messages.js";
 import { LlmStreamError } from "../../agent-runtime/llm/errors.js";

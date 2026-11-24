@@ -4,7 +4,7 @@ import { DebugLog } from "../../../infra/debug-log.js";
 import type { AccessProviderCandidate } from "../../../infra/llm/access-provider.js";
 import type { NotificationOccurrence } from "../../../infra/notification-episode.js";
 import { QuotaExhaustedError } from "../../agent-runtime/llm/errors.js";
-import { SAFE_RECHECK_MS } from "../../agent-runtime/llm/provider-availability.js";
+import { SAFE_RECHECK_MS } from "../../agent-runtime/llm/routing/provider-availability.js";
 import type { UsageWindows } from "./account-usage.js";
 import { quotaFailure, usageLimitRejection, type QuotaMark, type SdkInput, type UsageLimitRejection } from "./sdk-events.js";
 

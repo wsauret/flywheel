@@ -4,8 +4,8 @@ import { join } from "node:path"
 import { DebugLog } from "../../../src/infra/debug-log.js"
 import type { ContainerProbe } from "../../../src/infra/process-container.js"
 import { asRecord } from "../../../src/infra/record.js"
-import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash-parser.js"
-import { createPrivateCopyPool, type PrivateCopyPool } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js"
+import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js"
+import { createPrivateCopyPool, type PrivateCopyPool } from "../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-pool.js"
 import { hostGuard, powerShellWrite, repositoryHarness, type CopyCommand } from "./_bash-mutation-repository.js"
 
 /** A session's consecutive mutating commands against a real Git repository,

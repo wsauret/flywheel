@@ -10,7 +10,7 @@ import type { WorkflowRunner } from "../../../../src/orchestration/workflow-host
 import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta.js"
 import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
 import { projectSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-row.js"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js"
 
 /** A listed session's row; the fixtures here never project a child. */
 export function listedRow(metadata: DurableSessionCatalogRow): SessionCatalogRow {

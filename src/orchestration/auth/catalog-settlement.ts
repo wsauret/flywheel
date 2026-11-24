@@ -7,7 +7,7 @@ import { type FirstPartyModuleSnapshot, webAuthProviderDefinitions } from "../mo
 import { installedCredentialProviderIds } from "../credential-provider-modules.js"
 import type { AccessProviderDefinition } from "../../infra/llm/access-provider.js"
 
-import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
+import { accessProviderRegistry } from "../agent-runtime/llm/routing/access-provider-registry.js"
 import { credentialSlotClassifier } from "./credential-slot-classifier.js"
 import { credentialIdOf, type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../infra/auth/provider-account.js"
 

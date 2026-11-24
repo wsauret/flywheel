@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import { createModelReminders } from "../../../../src/orchestration/agent-runtime/llm/runtime-reminders";
+import { createModelReminders } from "../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders";
 import { ENGINE_INSTRUCTIONS } from "../../../helpers/hosted-engine-text.js";
 import { buildSessionContext } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context";
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";

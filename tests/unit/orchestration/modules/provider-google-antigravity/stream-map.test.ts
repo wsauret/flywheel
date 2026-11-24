@@ -1,13 +1,13 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { Option } from "effect";
 import { Log } from "../../../../../src/infra/log.js";
-import { classifyProviderFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
-import { STREAM_IDLE_TIMEOUT_FAST_MS, STREAM_TTFT_TIMEOUT_MS } from "../../../../../src/orchestration/agent-runtime/llm/stream-liveness.js";
+import { classifyProviderFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
+import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream/stream-attempt.js";
+import { STREAM_IDLE_TIMEOUT_FAST_MS, STREAM_TTFT_TIMEOUT_MS } from "../../../../../src/orchestration/agent-runtime/llm/stream/stream-liveness.js";
 import type { ProviderStreamEvent, StreamTelemetryObservation } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { decodeSessionNotification, type AcpPromptResult, type AcpSessionUpdate } from "../../../../../src/orchestration/modules/provider-google-antigravity/acp/schema.js";
 import { createRequestStream, type McpToolCall, type RequestStream } from "../../../../../src/orchestration/modules/provider-google-antigravity/stream-map.js";
-import { controlledClock } from "../../agent-runtime/llm/_stream-deadline-clock.js";
+import { controlledClock } from "../../agent-runtime/llm/stream/_stream-deadline-clock.js";
 
 spyOn(Log.create({ service: "provider-google-antigravity" }), "warn").mockImplementation(() => {});
 

@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url"
 import { randomUUID } from "node:crypto"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
 import { ownedCommandRunner } from "../../../infra/owned-command.js"
-import type { McpCallResult } from "../../agent-runtime/mcp-result.js"
+import type { McpCallResult } from "../../agent-runtime/mcp/mcp-result.js"
 import type { ModuleProcessServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
 import {
   IOS_SIMULATOR_ACTIONS,

@@ -20,8 +20,8 @@ import { createSessionStore } from "../../../../src/orchestration/session-store/
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session"
 import { createSessionStoreTestContext } from "./_session-store-fixtures"
 import { registerLiveSessionControl } from "../../../../src/orchestration/session/live-session-control.js"
-import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/foreground-bash-hold.js"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
+import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
 
 const { runtime, cleanup } = createSessionStoreTestContext()
 afterAll(cleanup)

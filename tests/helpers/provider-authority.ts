@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { Scope } from "effect";
 import type { ProviderSessionLifetime } from "../../src/orchestration/agent-runtime/llm/types.js";
 
-import { accessProviderRegistry, type AccessProviderRegistry } from "../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry, type AccessProviderRegistry } from "../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 export function testCapabilityModules(): FirstPartyModuleComposition { return composeFirstPartyModules(); }
 
 /** The lifetime of a client that a test builds and never ends: the clients of such tests make only fake network

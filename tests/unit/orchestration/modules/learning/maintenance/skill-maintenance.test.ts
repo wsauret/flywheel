@@ -1,4 +1,4 @@
-import type { PreparedPackage, SkillSemanticAuditResult } from "../../../../../../src/orchestration/agent-runtime/review-types.js";
+import type { PreparedPackage, SkillSemanticAuditResult } from "../../../../../../src/orchestration/agent-runtime/request/module-services/review-types.js";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

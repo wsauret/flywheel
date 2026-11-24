@@ -17,7 +17,7 @@ import {
   providerLoginFlow,
 } from "../../orchestration/auth/auth-actions.js"
 import { AuthProfileManager, type AuthProfileResolution } from "../../orchestration/auth/auth-profile-manager.js"
-import { accessProviderRegistry } from "../../orchestration/agent-runtime/llm/access-provider-registry.js"
+import { accessProviderRegistry } from "../../orchestration/agent-runtime/llm/routing/access-provider-registry.js"
 import { webAuthProviderDefinitions, type FirstPartyModuleComposition } from "../../orchestration/modules.js"
 import { createRuntimeConfigOwner } from "../../orchestration/config/runtime-config-owner.js"
 import { publishCustomProvidersFromConfig } from "../../orchestration/config/custom-providers.js"

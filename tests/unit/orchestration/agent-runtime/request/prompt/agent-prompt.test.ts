@@ -1,0 +1,303 @@
+import { afterAll, describe, expect, test } from "bun:test";
+import { buildSystemPrompt as buildSystemPromptTiers } from "../../../../../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
+import { renderSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+import { detectModelFamily } from "../../../../../../src/infra/llm/model-family.js";
+import { testBaseTools } from "../../../../../helpers/request-tool-surface.js";
+import { bashToolSurface } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash-guidance.js";
+import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines } from "../../../../../../src/orchestration/agent-runtime/request/prompt/global-guidelines.js";
+import { loadSystemPrompt } from "../../../../../../src/infra/agent-assets/system-prompt.js";
+import { testDirectories } from "../../../../../helpers/directories.js";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promptCapabilities, promptOptions, type ToolPromptFields } from "../../../../../helpers/prompt-capabilities.js";
+
+const BASE = testBaseTools();
+// The builder takes the universal prompt as an input: production loads it from
+// the startup-selected overlay roots, so these tests load the same source-tree
+// copy from an empty project realm.
+const promptRealmRoot = mkdtempSync(join(tmpdir(), "prompt-realm-"));
+afterAll(() => rmSync(promptRealmRoot, { recursive: true, force: true }));
+const corePrompt = loadSystemPrompt(testDirectories(promptRealmRoot));
+const buildSystemPrompt = (...args: Parameters<typeof buildSystemPromptTiers>): string =>
+  renderSystemPrompt(buildSystemPromptTiers(...args));
+
+const SUBAGENT_SPEC: ToolPromptFields = {
+  name: "subagent",
+  action: "task_subagent",
+  description: "Delegate investigation or scoped work to specialized subagents",
+  promptGuidelines: [
+    "Write a thorough prompt. Think of each subagent as a productive junior engineer who cannot ask follow-ups once started — if you do not include it, they will not know it. Terse prompts produce shallow results.",
+  ],
+};
+
+function toolByName(name: string): ToolPromptFields {
+  if (name === "subagent") return SUBAGENT_SPEC;
+  const tool = BASE.get(name);
+  if (tool) return tool;
+  throw new Error(`No base tool named '${name}'`);
+}
+
+function specs(...names: string[]): ToolPromptFields[] {
+  return names.map(toolByName);
+}
+
+describe("detectModelFamily", () => {
+  test("detects anthropic family from claude model names", () => {
+    expect(detectModelFamily("claude-sonnet-4-5")).toBe("anthropic");
+    expect(detectModelFamily("claude-opus-4-7")).toBe("anthropic");
+    expect(detectModelFamily("claude-haiku-4-5")).toBe("anthropic");
+  });
+
+  test("detects openai family from gpt/o-series model names", () => {
+    expect(detectModelFamily("gpt-4o")).toBe("openai");
+    expect(detectModelFamily("gpt-4o-mini")).toBe("openai");
+    expect(detectModelFamily("o3")).toBe("openai");
+    expect(detectModelFamily("o1-preview")).toBe("openai");
+    expect(detectModelFamily("codex-mini")).toBe("openai");
+    expect(detectModelFamily("chatgpt-4o-latest")).toBe("openai");
+  });
+
+  test("detects google family from gemini model names", () => {
+    expect(detectModelFamily("gemini-2.5-pro")).toBe("google");
+    expect(detectModelFamily("gemma-3")).toBe("google");
+  });
+
+  test("returns null for unknown models", () => {
+    expect(detectModelFamily("llama-3")).toBeNull();
+  });
+});
+
+describe("buildSystemPrompt — identity and constraints", () => {
+  test("an agent that is not a chat opens with the core prompt's identity and constraints", () => {
+    const prompt = buildSystemPrompt(promptOptions({ promptKind: "subagent", corePrompt, tools: [] }));
+    expect(prompt).toContain("pragmatic software engineering agent");
+    expect(prompt).toContain("Do NOT make assumptions. Prove each claim with the evidence that can settle it");
+  });
+});
+
+describe("buildSystemPrompt — per-tool guidance composition", () => {
+  test("shell prompts preserve Flywheel's live output stream", () => {
+    const expectedGuidance = "Never redirect, suppress, filter, or capture diagnostic output";
+    const bashPrompt = buildSystemPrompt(promptOptions({
+      promptKind: "chat",
+      tools: specs("bash"),
+    }));
+    expect(bashPrompt).toContain(expectedGuidance);
+    expect(bashPrompt).toContain("Read the output of a command in managed execution with process read_output");
+    expect(bashPrompt).toContain("stdout is the requested file artifact");
+  });
+
+  test("bash states the file-work policy for the edit tool that the request offers", () => {
+    const has = (names: readonly string[]) => (name: string) => names.includes(name);
+    const policy = (fileEditTool: "edit" | "apply_patch", tools: readonly string[]) =>
+      bashToolSurface({ fileEditTool, has: has(tools) }).promptGuidelines?.find((line) => line.includes("equal routes"));
+    expect(policy("edit", ["edit", "write"])).toContain("Use `edit` or `write` when a shell edit is fragile");
+    expect(policy("apply_patch", ["edit", "write"])).toContain("Use `apply_patch` or `write` when a shell edit is fragile");
+    expect(policy("edit", [])).toBeUndefined();
+  });
+
+  test("bash mechanics live in the tool description and schema, and the mutation rule only on its field", () => {
+    const bash = BASE.get("bash")!;
+    const prompt = buildSystemPrompt(promptOptions({
+      promptKind: "chat",
+      tools: specs("bash"),
+    }));
+    // Output compression semantics belong to the field that controls them.
+    expect(JSON.stringify(bash.inputSchema)).toContain("The result marks each cut");
+    expect(prompt).not.toContain("The result marks each cut");
+    // Agents pick shell or file tools freely, so nothing steers inspection away from the shell.
+    expect(bash.description).not.toContain("Prefer read, search, and list");
+    expect(prompt).not.toContain("instead of shell commands");
+    // Scripting is licensed, not banned.
+    expect(bash.description).toContain("Scratch scripts are a normal way to work");
+    const mutationGuidance = (fileEditTool: string) => `Git commands that change the repository are refused inside mutates: true; run them as a separate call without mutates. Commands that only read Git, including scripts that only read Git, are allowed. Set mutates: true only when the command's purpose is to change the project files you are working on, so that its changes are recorded like changes from the ${fileEditTool} and write tools. Examples: heredoc and cat > writes, sed -i, Python or Bun scripts that rewrite files, formatters, code generators, and plain mv and rm. Leave it unset when the writes are side effects of running something: installing dependencies or binaries, builds, tests, caches, and servers. Write this field first, before command. Use relative project paths: the command runs in a private copy, and only its changes to file contents land when it exits. Processes it starts can end when it exits, so start servers and watchers in a separate call without mutates. Create files to run, such as scratch scripts, with the write tool; bash only runs them.`;
+    for (const fileEditTool of ["edit", "apply_patch"] as const) {
+      const { description, inputSchema } = bashToolSurface({ fileEditTool });
+      expect(description).not.toContain("Git commands that change the repository");
+      expect(description).toContain("Chain dependent commands with && or ; in one call.");
+      expect(inputSchema.properties).toEqual(expect.objectContaining({
+        mutates: { type: "boolean", description: mutationGuidance(fileEditTool) },
+      }));
+    }
+    expect(bash.description.startsWith("Execute a shell command in a fresh process")).toBe(true);
+    expect(bash.description).toContain("Keep writes inside the project, the .flywheel folders, and registered worktrees");
+    expect(prompt).not.toContain("glob_pattern (not find)");
+    // The prompt keeps only the behavior contract the description does not state.
+    expect(prompt).toContain("Preserve live command output:");
+    expect(prompt).not.toContain("Scratch scripts are a normal way to work");
+  });
+
+  test("a headless shell offers no mutating declaration, and a guard that is off names no write roots", () => {
+    const interactive = bashToolSurface();
+    const headless = bashToolSurface({ mutatingDeclaration: false });
+    expect(Object.keys(headless.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "mutates"));
+    expect(headless.description).not.toMatch(/mutat/);
+    expect(headless.description).toContain("Chain dependent commands with && or ; in one call. A command that reads typed input");
+    expect(headless.description).toBe(interactive.description);
+    // Only the field that the headless schema keeps names the fields that it drops.
+    expect(JSON.stringify(interactive.inputSchema)).toContain("cannot be combined with timeout or mutates.");
+    expect(JSON.stringify(headless.inputSchema)).toContain("cannot be combined with timeout.");
+
+    // The host's platform names its one shell and the search rules that hold there.
+    const posix = bashToolSurface({ platform: "linux" }).description;
+    const windows = bashToolSurface({ platform: "win32" }).description;
+    expect(posix).toContain("Commands run in bash.");
+    expect(posix).toContain("On macOS and Linux,");
+    expect(posix).not.toContain("On Windows");
+    expect(windows).toContain("Commands run in PowerShell.");
+    expect(windows).not.toContain("On macOS and Linux,");
+    expect(windows).toContain("On Windows, search file contents with the search tool");
+
+    const writeRoots = "Keep writes inside the project, the .flywheel folders, and registered worktrees; the shell refuses the writes elsewhere that it recognizes.";
+    const unguarded = bashToolSurface({ writeGuard: false });
+    expect(interactive.description).toContain(writeRoots);
+    expect(unguarded.description).not.toContain(writeRoots);
+    expect(unguarded.description).toBe(interactive.description.replace(` ${writeRoots}`, ""));
+    expect(unguarded.inputSchema).toEqual(interactive.inputSchema);
+  });
+
+  test("a shell without background launches, persistence, or other file tools names none of them", () => {
+    const interactive = bashToolSurface();
+    const foreground = bashToolSurface({ background: false });
+    expect(Object.keys(foreground.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "background" && field !== "persist_after_exit"));
+    expect(foreground.description).not.toMatch(/background|persist_after_exit/);
+    expect(JSON.stringify(foreground.inputSchema)).not.toMatch(/background|persist/i);
+    expect(foreground.description).toContain("Never use shell-level &, nohup, or disown.");
+
+    // Every shell says how to stop a process; only the persist_after_exit field names the way past the runtime's exit.
+    const stopById = "Stop a process by its process-tool id or exact PID, never by a name pattern.";
+    for (const surface of [interactive, foreground]) expect(surface.description).toContain(stopById);
+    expect(interactive.description).toContain("A managed background command ends when its runtime exits.");
+    expect(JSON.stringify(interactive.inputSchema)).toContain("Let this background command outlive the runtime");
+    expect(JSON.stringify(interactive.inputSchema)).toContain("It also binds a background command");
+    const unpersisted = bashToolSurface({ persistence: false });
+    expect(Object.keys(unpersisted.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "persist_after_exit"));
+    expect(JSON.stringify(unpersisted.inputSchema)).not.toMatch(/persist/i);
+    expect(unpersisted.description).toBe(interactive.description);
+
+    const alone = bashToolSurface({ has: () => false });
+    expect(alone.description).not.toMatch(/write tool|edit tool|search tool|edit and write/);
+    expect(JSON.stringify(alone.inputSchema)).toContain("recorded like a file edit.");
+    expect(Object.keys(alone.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}));
+    expect(JSON.stringify(alone.inputSchema)).not.toContain("write tool");
+  });
+
+  test("self-debug guidance advertises only the registered event-search command", () => {
+    const prompt = buildSystemPrompt(promptOptions({ promptKind: "chat", corePrompt, tools: specs("bash"), selfDebug: true }));
+    expect(prompt).toContain("flywheel events search");
+    expect(prompt).toContain("Before you rerun completed background work")
+    expect(prompt).toContain("search its completion facts, its handoff facts, and `chat.entries.appended`")
+    expect(prompt).not.toMatch(/subagent\.completed|handoff\.written/)
+    expect(prompt).toContain("chat.entries.appended")
+    expect(prompt).not.toContain("flywheel trace search");
+    expect(prompt).not.toContain("events:search");
+  });
+
+  test("search guidance is content-only and lives in the description", () => {
+    const prompt = buildSystemPrompt(promptOptions({
+      promptKind: "chat",
+      tools: specs("search"),
+    }));
+    expect(prompt).not.toContain("Use search to list paths");
+    const description = BASE.get("search")!.description;
+    expect(description).toContain("Search file contents");
+    expect(description).toContain("unless path names one");
+    expect(prompt).not.toContain("unless path names one");
+  });
+
+  test("list guidance lives in the description and does not steer away from the shell", () => {
+    const prompt = buildSystemPrompt(promptOptions({
+      promptKind: "chat",
+      tools: specs("list"),
+    }));
+    const description = BASE.get("list")!.description;
+    expect(description).not.toContain("in place of ls");
+    expect(description).toContain("Use search for file contents.");
+    expect(description).toContain("finds matching paths recursively");
+    expect(prompt).not.toContain("ls, find, fd, or locate");
+  });
+
+  test("every kernel file tool instruction has exactly one home", () => {
+    // Mechanics live in the description or the field that controls them; the
+    // per-tool guideline list keeps only behavior contracts the description
+    // cannot state.
+    for (const name of ["read", "search", "list", "edit", "write"]) expect(BASE.get(name)!.promptGuidelines).toBeUndefined();
+    expect(BASE.get("bash")!.promptGuidelines).toEqual([expect.stringContaining("Preserve live command output"), expect.stringContaining("equal routes")]);
+    const searchSchema = JSON.stringify(BASE.get("search")!.inputSchema);
+    expect(searchSchema).toContain("definitions and source files first");
+    expect(searchSchema).toContain("exact match counts per file");
+    expect(searchSchema).toContain("Content mode only.");
+    // A saved-output file is recovered with the tools that the agent has; with none of them the guideline is absent.
+    const savedOutput = (tools: string[]) => renderGlobalGuidelines([GLOBAL_GUIDELINE_ID.savedOutputRecovery], promptCapabilities(tools.map((name) => ({ name }))));
+    expect(savedOutput(["read"])[0]).toContain("names a saved-output file, read or search that file for the part you need");
+    expect(savedOutput(["bash"])[0]).toContain("read or search that file");
+    expect(savedOutput(["search"])[0]).toContain("names a saved-output file, search that file for the part you need");
+    expect(savedOutput([])).toEqual([]);
+    const marker = renderGlobalGuidelines([GLOBAL_GUIDELINE_ID.secretRedactionMarker], promptCapabilities([]))[0];
+    expect(marker).toContain("read the file through a transformed view, such as each line reversed;");
+    expect(marker).not.toContain("sed -n");
+  });
+
+  test("bash guidance is absent when bash is not loaded", () => {
+    const prompt = buildSystemPrompt(promptOptions({
+      promptKind: "chat",
+      tools: specs("read"),
+    }));
+    expect(prompt).not.toContain("raw_output");
+    expect(prompt).not.toContain("2>&1");
+  });
+
+  test("keeps chat communication guidance out of headless prompts", () => {
+    const chat = buildSystemPrompt(promptOptions({ promptKind: "chat", chatHost: { communication: true }, corePrompt, tools: [] }));
+    const headless = buildSystemPrompt(promptOptions({ promptKind: "headless", corePrompt, tools: [] }));
+    const concise = "Give a one-line update before your first tool call";
+    const evidence = "Ground each claim about code, tests, or tools in what you observed";
+
+    expect(chat.split(concise)).toHaveLength(2);
+    expect(chat.split(evidence)).toHaveLength(2);
+    expect(headless).not.toContain(concise);
+    expect(headless).not.toContain(evidence);
+  });
+
+  test("the system prompt lists no tools: the tool definitions are the one catalog", () => {
+    const prompt = buildSystemPrompt(promptOptions({
+      promptKind: "chat",
+      tools: specs("bash", "read", "handoff"),
+    }));
+    expect(prompt).not.toContain("Available tools");
+    expect(prompt).not.toMatch(/^- (bash|read|handoff):/m);
+    expect(prompt).not.toContain("In addition to the tools above");
+  });
+
+  test("handoff guidance is included when tool is loaded, and the input shape lives only in its description", () => {
+    const prompt = buildSystemPrompt(promptOptions({
+      promptKind: "chat",
+      tools: specs("handoff"),
+    }));
+    expect(prompt).toContain("Finish reviews and verification before handoff");
+    expect(BASE.get("handoff")!.description).toContain("Pass each field of your handoff instructions as a top-level key of the input");
+    expect(prompt).not.toContain("as a top-level key of the input");
+  });
+});
+
+
+describe("buildSystemPrompt — subagent subagent", () => {
+  test("includes subagent guidelines when subagent tool is loaded", () => {
+    const prompt = buildSystemPrompt(promptOptions({
+      promptKind: "chat",
+      tools: specs("bash", "read", "subagent"),
+    }));
+    expect(prompt).toContain("Terse prompts produce shallow results");
+    expect(prompt.split("When cwd targets a Git worktree, the parent keeps ownership of integrating and cleaning up that worktree.")).toHaveLength(2);
+  });
+
+  test("excludes subagent guidelines when subagent tool is not loaded", () => {
+    const prompt = buildSystemPrompt(promptOptions({
+      promptKind: "chat",
+      tools: specs("bash", "read"),
+    }));
+    expect(prompt).not.toContain("Terse prompts produce shallow results");
+    expect(prompt).not.toContain("Git worktree");
+  });
+});

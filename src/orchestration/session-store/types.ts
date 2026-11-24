@@ -5,7 +5,7 @@ import type { SessionNotice, SessionNoticeOperation } from "../../infra/session-
 import type { ChatRunner } from "../chat/runner-types.js"
 import type { SessionKind } from "../session/types.js"
 import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
-import type { ActiveBackgroundCommandDescriptor } from "../agent-runtime/background-work.js"
+import type { ActiveBackgroundCommandDescriptor } from "../agent-runtime/background-work/background-work.js"
 import type { AgentInputAnswers } from "../../protocol/question-protocol-types.js"
 import type { ControlInterruption, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
 

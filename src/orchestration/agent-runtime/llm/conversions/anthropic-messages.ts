@@ -1,12 +1,12 @@
 import { imageOmittedPlaceholder } from "../../../../infra/llm/tool-output-part-schema.js";
-import { healConversation } from "../heal-messages.js";
-import { originOf, type BlockOrigin } from "../block-origin.js";
-import { lowerProviderHistory, type ProviderHistoryTarget } from "../provider-history.js";
+import { healConversation } from "../history/heal-messages.js";
+import { originOf, type BlockOrigin } from "../history/block-origin.js";
+import { lowerProviderHistory, type ProviderHistoryTarget } from "../history/provider-history.js";
 import { ProviderRequestValidationError } from "../errors.js";
 import { isSameProviderReplay } from "../messages.js"
 import type { ContentBlock, ConversationMessage } from "../types.js";
 import type { SystemPromptTiers } from "../system-prompt-tiers.js";
-import { sanitizeSurrogates } from "../sanitize-unicode.js";
+import { sanitizeSurrogates } from "../history/sanitize-unicode.js";
 import { assertNever } from "../../../../infra/assert-never.js";
 import { ProviderIdConversionError, ProviderIdNormalizer } from "./provider-id.js";
 

@@ -5,8 +5,8 @@ import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-row
 import { fetchPaginatedCatalog } from "../../../infra/llm/model-listing.js";
 import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 import { isRecord } from "../../../infra/record.js";
-import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 
@@ -83,7 +83,7 @@ const createClient: AccessProviderFactory = async (build) => {
   return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "google", providerHint: "google", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Google API key in the active auth profile. Run: flywheel auth login --google", recovery: { kind: "none" } });
-    const { createGoogleAdapter } = await import("../../agent-runtime/llm/google.js");
+    const { createGoogleAdapter } = await import("../../agent-runtime/llm/adapters/google/google.js");
     return createGoogleAdapter(key, build.wireModelId, info);
   }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };

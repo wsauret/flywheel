@@ -9,7 +9,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSu
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import type { BackgroundCommandRecord } from "../../../../src/infra/runtime-fact-types"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
 import { createBackgroundIndex } from "../../../../src/orchestration/app-service/background-index"
 import { composeBackgroundIndex } from "../../../../src/orchestration/app-service/background-index-publisher"
 import { buildDurableSubagentCreated, buildSubagentCompleted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"

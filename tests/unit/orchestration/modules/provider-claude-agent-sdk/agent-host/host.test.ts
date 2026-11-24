@@ -1,7 +1,7 @@
 import { describe, expect, jest, test } from "bun:test";
 import type { SDKMessage, SDKTaskNotificationMessage, SDKTaskStartedMessage } from "@anthropic-ai/claude-agent-sdk";
 import { Cause, Effect, Queue } from "effect";
-import { classifyAnthropicError } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic-adapter-helpers.js";
+import { classifyAnthropicError } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";
 import { LlmStreamError, ProviderRequestValidationError, QuotaExhaustedError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { AGENT_HOST_PLUGIN } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.js";
 import { openAgentHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js";

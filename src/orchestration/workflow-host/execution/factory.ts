@@ -17,8 +17,8 @@ import type {
   WorkflowVmHost,
   WorkflowVmStartMode,
 } from "../../../workflows/vm/host-types.js"
-import type { BackgroundWorkTracking } from "../../agent-runtime/background-work.js"
-import { createObserverChain } from "../../agent-runtime/batch-observers.js"
+import type { BackgroundWorkTracking } from "../../agent-runtime/background-work/background-work.js"
+import { createObserverChain } from "../../agent-runtime/loop/batch-observers.js"
 import type { RoleResolver } from "../../config/roles.js"
 import type { WorkflowAgentInputs } from "./agent-inputs.js"
 import type { AdmittedWorkflowDeps } from "../deps.js"

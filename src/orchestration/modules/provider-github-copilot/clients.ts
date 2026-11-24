@@ -21,8 +21,8 @@ import {
 import { getGitHubCopilotBaseUrl, rebaseToCopilotHost } from "./base-url.js";
 import { refreshGitHubCopilotToken } from "./token-refresh.js";
 import { Log } from "../../../infra/log.js";
-import { timingFetch } from "../../agent-runtime/llm/request-timing.js";
-import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
+import { timingFetch } from "../../agent-runtime/llm/stream/request-timing.js";
+import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/stream/provider-failure.js";
 
 const log = Log.create({ service: "llm-copilot" });
 

@@ -18,7 +18,7 @@ import { connectProjectNotifyChannel } from "./project-notify-channel.js"
 import { createProjectExecutionRuntime } from "./project-execution-composition.js"
 import type { RuntimeComposition } from "./project-execution-runtime.js"
 import { serveProjectExecutorLifecycle } from "./project-executor-lifecycle.js"
-import { sharedProcessorClaims } from "../agent-runtime/tools/processor-claims.js"
+import { sharedProcessorClaims } from "../agent-runtime/tools/bash/execution/processor-claims.js"
 import { listenForExecutorStopSignals } from "./executor-stop-signals.js"
 import { RUNTIME_SHUTDOWN_HANDSHAKE_TIMEOUT_MS } from "./runtime-shutdown.js"
 import {

@@ -11,7 +11,7 @@ import type { ModelInfo, ModelsClient } from "../../../../src/infra/llm/models.j
 import { admitModelsDocument } from "../../../../src/infra/llm/models-document.js";
 import bundledModelsText from "../../../../src/infra/llm/models-bundled.txt";
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js";
-import { captureAccountConnection } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js";
+import { captureAccountConnection } from "../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { providerLoginFlow } from "../../../../src/orchestration/auth/auth-actions.js";
 import { chatgptModule } from "../../../../src/orchestration/modules/provider-chatgpt/module.js";
 import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/models/model-assignment-providers.js";
@@ -19,7 +19,7 @@ import { providerModelEligibilityDecision } from "../../../../src/orchestration/
 import type { ProviderModelInventoryCandidate } from "../../../../src/orchestration/app-service/provider-model-preference-service.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { installedCredentialProviderIds } from "../../../../src/orchestration/credential-provider-modules.js";
-import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";

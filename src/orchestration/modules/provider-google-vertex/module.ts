@@ -9,10 +9,10 @@ import { Log } from "../../../infra/log.js";
 import { canonicalizeIdCatalogRow, extractDataCatalogRows, type CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/model-id.js";
-import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { LlmStreamError } from "../../agent-runtime/llm/errors.js";
-import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/stream/provider-failure.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 
@@ -176,7 +176,7 @@ const createClient: AccessProviderFactory = async (build) => {
       if (error instanceof VertexDiscoveryError && (error.status === 401 || error.status === 404)) throw new ApiError({ message: error.message, recovery: { kind: "none" } });
       throw normalizeProviderAttemptFailure(error);
     });
-    const { createGoogleAdapter } = await import("../../agent-runtime/llm/google.js");
+    const { createGoogleAdapter } = await import("../../agent-runtime/llm/adapters/google/google.js");
     return createGoogleAdapter(credential.key, build.wireModelId, info, { vertexProject: project });
   }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };

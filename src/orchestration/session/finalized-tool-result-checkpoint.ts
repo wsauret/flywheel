@@ -13,11 +13,11 @@ import {
   type InFlightRecord,
   type InFlightWrite,
 } from "../../infra/event-store-types.js";
-import { toolResultMessages } from "../agent-runtime/agent-state.js";
+import { toolResultMessages } from "../agent-runtime/loop/turn/agent-state.js";
 import type { ConversationTree } from "./conversation/tree/conversation-tree.js";
 import { parseSessionRuntimeFact, type SessionRuntimeFact } from "./session-runtime-event-types.js";
 import { prepareSessionFactAppend, type SessionFactWriter } from "./session-fact-writer.js";
-import { enforceTurnBudget } from "../agent-runtime/tools/truncation.js";
+import { enforceTurnBudget } from "../agent-runtime/tools/results/truncation.js";
 import { turnBudgetChars } from "../agent-runtime/compaction/compaction-policy.js";
 import { openToolExchangeSuffix } from "./conversation/tree/conversation-tree-context.js";
 import { recoveredToolResultEntryId } from "./conversation/tree/interrupted-turn-summary.js";

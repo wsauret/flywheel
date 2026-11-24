@@ -26,7 +26,7 @@ import { isContextResetRecord, isHistoricalCompletionEntry, isVisibleTurnEnd, tu
 import { isBriefEntry } from "../tree/brief-entry.js";
 import { rawToolUseId } from "../../../../protocol/block-identity.js";
 import { sessionMessageRecoveryNotice } from "../../../../infra/chat-input.js";
-import { CONTINUATION_MESSAGES } from "../../../agent-runtime/continuation-messages.js";
+import { CONTINUATION_MESSAGES } from "../../../agent-runtime/request/prompt/continuation-messages.js";
 import { assignSubagentCards, childCall, ownsSubagentCard, ownSubagentCard, type SubagentCardAssignment } from "./subagent-card-ownership.js";
 import type { ToolExecutionEntry } from "../../tool-execution-types.js";
 

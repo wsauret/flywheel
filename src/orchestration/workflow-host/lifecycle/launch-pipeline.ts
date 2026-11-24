@@ -2,7 +2,7 @@ import { canonicalDirectory, resolveExecutionDirectoryInput } from "../../../inf
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
 import { Log } from "../../../infra/log.js"
 import { recordBackgroundFailure } from "../../../infra/operation-log.js"
-import type { PublishedWorkflowLaunch } from "../../agent-runtime/tools/workflow-tool.js"
+import type { PublishedWorkflowLaunch } from "../../agent-runtime/tools/definitions/workflow-tool.js"
 import type { RetainedOperationCell, RetainedOperationCommitResult } from "../../module-seams.js"
 import { WorkflowParentRefusal } from "../../session/child-session-publication.js"
 import { turnEndEntryId } from "../../session/conversation/turn-end-record.js"
@@ -163,7 +163,7 @@ export function createWorkflowLaunchPipeline(
       const auth = await deps.authAdmission.admit(parentSessionId)
       // The admitted set narrows only what the workflow's agents may call: they
       // advertise the tools of their chat tree's module capture (SharedTree in
-      // agent-runtime/shared-tree.ts), because advertising another set would
+      // agent-runtime/request/shared-tree.ts), because advertising another set would
       // start another Claude engine process for the tree.
       const moduleSelection = deps.composeModules(admission.grant)
       const capabilityBoundary = launchCapabilityBoundary(origin.capabilityAccess)

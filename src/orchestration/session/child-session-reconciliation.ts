@@ -1,11 +1,11 @@
 import type { AggregateSeqConflict, AsyncEventStateReadSurface, AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../infra/event-store-types.js"
-import type { BackgroundWorkResult } from "../agent-runtime/background-work-types.js"
+import type { BackgroundWorkResult } from "../agent-runtime/background-work/background-work-types.js"
 import { liveWorkflowControl } from "./live-session-control.js"
 import {
   childSessionBackgroundResult,
   durableSubagentCompletionNotification,
   hasDurableSubagentNotificationEvidence,
-} from "../agent-runtime/background-work-notifications.js"
+} from "../agent-runtime/background-work/background-work-notifications.js"
 import { installedChildSessionHistory } from "./module-session-operations.js"
 import type { ChildSessionRun, ModuleChildSessionHistory } from "../module-seams.js"
 import { readPendingTurnEnds } from "./chat-session-run-evidence.js"

@@ -26,7 +26,7 @@ flow:
   - step: survey
 `
 import { createLazyWorkflowController } from "../../../../src/orchestration/app-service/lazy-workflow-controller.js"
-import { createWorkflowToolCore } from "../../../../src/orchestration/agent-runtime/tools/workflow-tool.js"
+import { createWorkflowToolCore } from "../../../../src/orchestration/agent-runtime/tools/definitions/workflow-tool.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { agentRecords } from "../../../../src/workflows/workflow-schema.js"
 

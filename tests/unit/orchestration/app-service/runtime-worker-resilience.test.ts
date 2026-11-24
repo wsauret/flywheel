@@ -10,7 +10,7 @@ import {
   acquireSharedProviderAvailability,
   disposeSharedProviderAvailability,
   getSharedProviderAvailability,
-} from "../../../../src/orchestration/agent-runtime/llm/shared-provider-availability.js"
+} from "../../../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js"
 import { runAccountShutdownBarrier, runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
 import type { RuntimeShutdownOwner, RuntimeShutdownRequest, RuntimeShutdownResult } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
 import { Cause, Effect, Exit } from "effect"

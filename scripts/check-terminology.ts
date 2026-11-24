@@ -144,7 +144,7 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   // The event search formatter and the decode-only schema of the older usage fact.
   "src/infra/runtime-fact-types.ts",
   "src/cli/events/event-search-format.ts",
-  "src/orchestration/agent-runtime/usage-settlement.ts",
+  "src/orchestration/agent-runtime/request/usage/usage-settlement.ts",
   "src/orchestration/session/provider-request-audit-facts.ts",
   "src/orchestration/session/provider-request-audit-projection.ts",
   PROTOCOL_VERSION_NOTES,
@@ -392,7 +392,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
       // The conversation tree names the newest entry of a branch its leaf (ARCH-SESSIONS-047).
       "src/orchestration/session/",
       // Request startup selects the conversation tree's recorded masking epoch.
-      "src/orchestration/agent-runtime/active-request-context.ts",
+      "src/orchestration/agent-runtime/request/active-request-context.ts",
     ], [/"leafId" in /]],
     [/\blaneSteps?\b/, "agentParts"],
     [/\bcontentId\b/, "briefId", [

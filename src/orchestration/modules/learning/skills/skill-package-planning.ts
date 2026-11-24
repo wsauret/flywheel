@@ -1,4 +1,4 @@
-import type { PreparedFile, PreparedPackage } from "../../../agent-runtime/review-types.js";
+import type { PreparedFile, PreparedPackage } from "../../../agent-runtime/request/module-services/review-types.js";
 import { Buffer } from "node:buffer";
 import { containsSecret } from "../../../../infra/redact-secrets.js";
 import { parseFrontmatter } from "../../../../infra/frontmatter.js";

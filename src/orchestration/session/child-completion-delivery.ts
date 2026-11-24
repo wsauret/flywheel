@@ -1,5 +1,5 @@
 import type { AsyncEventStateReadSurface, InFlightRecord } from "../../infra/event-store-types.js"
-import { completionWorkIds } from "../agent-runtime/background-work-notifications.js"
+import { completionWorkIds } from "../agent-runtime/background-work/background-work-notifications.js"
 import { liveSessionControl } from "./live-session-control.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, decodeQueuedBackgroundNotification, type HeldBackgroundNotification } from "./conversation/queued-background-notifications.js"
 import { retryChildResults } from "./child-reconciliation-fault.js"

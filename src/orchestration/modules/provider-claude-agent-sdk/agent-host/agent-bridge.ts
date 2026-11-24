@@ -7,9 +7,9 @@ import type { ModelRefusal } from "../../../../infra/auth/provider-models/provid
 import { DebugLog } from "../../../../infra/debug-log.js";
 import { isGitRepo } from "../../../../infra/env-detection.js";
 import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access-provider.js";
-import type { AnthropicOperations } from "../../../agent-runtime/llm/anthropic.js";
+import type { AnthropicOperations } from "../../../agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { LlmStreamError, ProviderRequestValidationError } from "../../../agent-runtime/llm/errors.js";
-import { engineModelId } from "../../../agent-runtime/llm/runtime-reminders.js";
+import { engineModelId } from "../../../agent-runtime/llm/history/runtime-reminders.js";
 import type { ProviderDemand, TransportContextFrame } from "../../../agent-runtime/llm/types.js";
 import { bridgeClosedError, type AdmittedWindow } from "../bridge-requests.js";
 import { cliView, type CliView } from "../cli-view.js";
@@ -33,7 +33,7 @@ import { sessionEngineDemand } from "./host-demand.js";
 import type { HostStepItem } from "./host-gate.js";
 import { coordinatorCandidates, hostKey, hostValues, type HostLease, type HostPlace, type HostRegistry } from "./host-registry.js";
 import { openAgentHost, type AgentHost, type StopCause, type TaskEnd } from "./host.js";
-import type { SharedTree } from "../../../agent-runtime/shared-tree.js";
+import type { SharedTree } from "../../../agent-runtime/request/shared-tree.js";
 
 /** What a hosted agent's parked engine takes through its handlers: every result whose rewrite is fixed, and the
  *  request's runtime notices on the last result. */

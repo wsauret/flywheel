@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MessageParam, TextBlockParam } from "@anthropic-ai/sdk/resources/messages.js";
-import { createClaudeReminders, type HostEnvironment } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
+import { createClaudeReminders, type HostEnvironment } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 import {
   A1, A2, answers, forwardDiagnostics, init, MACOS_ENVIRONMENT, openingEnvironmentReminder, parked, payloads, R1, readsFile, request, REQUEST_STEP, send, settle, turnDone, U1, U2, until, withBridge, type Harness, originsOf,

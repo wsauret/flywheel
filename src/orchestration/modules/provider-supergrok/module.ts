@@ -10,8 +10,8 @@ import { classifyFetchFailure, fetchCatalog } from "../../../infra/llm/model-lis
 import { PROVIDER_REASONING_EFFORTS } from "../../../infra/llm/models.js";
 import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 import { isRecord } from "../../../infra/record.js";
-import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
-import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { applyXaiSubscriptionHeaders, XAI_SUBSCRIPTION_BASE_URL } from "./auth-types.js";
@@ -178,7 +178,7 @@ const createClient: AccessProviderFactory = async (build) => {
     const cred = credentialForCandidate(build.connection, build.candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No SuperGrok tokens found. Run: flywheel auth login --supergrok", recovery: { kind: "none" } });
     const seed = storedTokens(cred);
-    const [{ createOpenAIAdapter }, { createXaiOpenAIClient }] = await Promise.all([import("../../agent-runtime/llm/openai.js"), import("./client.js")]);
+    const [{ createOpenAIAdapter }, { createXaiOpenAIClient }] = await Promise.all([import("../../agent-runtime/llm/adapters/openai/openai.js"), import("./client.js")]);
     return createOpenAIAdapter({ kind: "apiKey", apiKey: seed.accessToken }, build.wireModelId, info, {
       client: createXaiOpenAIClient(tokenAccessor(build, seed)),
       accessProvider: definition.id, catalogId: definition.catalogId, candidate: build.candidate,

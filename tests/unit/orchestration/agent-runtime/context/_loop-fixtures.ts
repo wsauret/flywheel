@@ -3,15 +3,15 @@ import type { ToolPromptFields } from "../../../../helpers/prompt-capabilities.j
 import { fixedRequestToolSurface, RequestToolMap, testBaseTools, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
 import type { ConversationCheckpoint } from "../../../../../src/orchestration/session/conversation-checkpoint-facts.js";
-import { createAgentLoopCompactionState } from "../../../../../src/orchestration/agent-runtime/agent-loop-compaction-state.js";
-import { createActiveRequestContext } from "../../../../../src/orchestration/agent-runtime/active-request-context.js";
+import { createAgentLoopCompactionState } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-compaction-state.js";
+import { createActiveRequestContext } from "../../../../../src/orchestration/agent-runtime/request/active-request-context.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { createCheckpointTool } from "../../../../../src/orchestration/agent-runtime/tools/session-checkpoint.js";
+import { createCheckpointTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/session-checkpoint.js";
 import { emptyConversationCheckpoint, type ConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { createRequestToolSurface, type RequestToolSurfaceOwner } from "../../../../../src/orchestration/agent-runtime/request-tool-surface.js";
-import { resolveModelInteractionProfile } from "../../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { createRequestToolSurface, type RequestToolSurfaceOwner } from "../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
+import { resolveModelInteractionProfile } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import type { ProviderRequestAuditWriter } from "../../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js";
 
 export function withSessionNotes(existing: ReadonlyMap<string, RuntimeTool> = new Map(), checkpoint: ConversationCheckpointOwner = {

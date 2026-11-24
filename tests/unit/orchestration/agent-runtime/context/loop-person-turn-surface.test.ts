@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
 import { compactInput, messageInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js"
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js"
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js"

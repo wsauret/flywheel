@@ -8,7 +8,7 @@ import type { OwnedCommandRunner, OwnedCommandResult } from "../../../../../src/
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
 import { resolveSessionDir } from "../../../../../src/infra/paths.js"
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
-import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/module-runtime-services.js"
+import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/request/module-services/module-runtime-services.js"
 import type { CommandHost } from "../../../../../src/orchestration/app-service/command-host.js"
 import { experimentsModule } from "../../../../../src/orchestration/modules/experiments.js"
 import { createExperimentsRuntime, experimentsRuntime, type ExperimentsRuntime } from "../../../../../src/orchestration/modules/experiments/runtime.js"

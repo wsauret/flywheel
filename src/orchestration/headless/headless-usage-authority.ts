@@ -1,5 +1,5 @@
 import { createUsageAuthority, type UsageAuthority } from "../../infra/llm/usage-authority.js"
-import type { UsageSettlementAuthorityLease } from "../agent-runtime/usage-settlement.js"
+import type { UsageSettlementAuthorityLease } from "../agent-runtime/request/usage/usage-settlement.js"
 
 interface HeadlessUsageProfile {
   readonly id: string

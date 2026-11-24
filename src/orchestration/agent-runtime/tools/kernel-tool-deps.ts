@@ -11,19 +11,19 @@ import type { SkillRegistryRevision, SkillDefinition } from "../../../workflows/
 import type { AskUserController } from "../../runner/ask-user-controller.js";
 import type { HandoffToolSchema } from "../../workflow-host/attempt/handoff-tool-schema.js";
 import type { RecallPort } from "../../../protocol/conversation-recall.js"
-import type { BackgroundWorkRegistry } from "../background-work.js";
-import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
-import type { ShellRuntimeClient } from "./shell-runtime-types.js";
-import type { ExternalSkillChildGrant } from "./skill.js";
+import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
+import type { ForegroundBashHoldController } from "../background-work/foreground-bash-hold.js";
+import type { ShellRuntimeClient } from "./bash/execution/shell-runtime-types.js";
+import type { ExternalSkillChildGrant } from "./definitions/skill.js";
 import type { CapabilityAccess } from "./types.js";
 import type { FirstPartyModuleComposition } from "../../modules.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { DefinitionAvailabilitySnapshot } from "../../app-service/definition-availability.js";
-import type { RuntimeConfigRequestCapture } from "../request-config.js";
+import type { RuntimeConfigRequestCapture } from "../request/request-config.js";
 import type { AgentPurpose } from "../types.js";
-import type { ModelInteractionProfile } from "../model-interaction-profile.js";
+import type { ModelInteractionProfile } from "../request/prompt/model-interaction-profile.js";
 import type { SessionMessaging } from "../../session/session-messaging.js";
-import type { CaptureProviderConnection } from "../model-runtime-capture.js";
+import type { CaptureProviderConnection } from "../request/model-runtime-capture.js";
 import type { ConversationCheckpointOwner } from "../../session/conversation-checkpoint.js";
 
 /** The model one request is served with. Per request, because the provider

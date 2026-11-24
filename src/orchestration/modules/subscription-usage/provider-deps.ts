@@ -5,8 +5,8 @@ import type { MeteredUsageSource } from "./usage-projection.js"
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
 import type { FirstPartyModuleComposition } from "../../modules.js"
 
-import { accessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js"
-import { isUsageAttemptLive, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../agent-runtime/usage-settlement.js"
+import { accessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js"
+import { isUsageAttemptLive, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../agent-runtime/request/usage/usage-settlement.js"
 import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js"
 interface RuntimeUsageDepsOptions {
   readonly moduleSelection: () => FirstPartyModuleComposition

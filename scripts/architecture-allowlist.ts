@@ -63,9 +63,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "src/infra/", reason: WIDE },
   { lint: "wide-directory", key: "src/infra/llm/", reason: WIDE },
   { lint: "wide-directory", key: "src/orchestration/", reason: "Its 16 subdirectories are module homes or kernel areas, and AGENTS.md section 7 keeps the registry files modules.ts and credential-provider-modules.ts at the top, so it cannot hold fewer than 18 members. Next cut: move the loose kernel catalog files (definition-catalog, definition-health, module-requirements, tool-catalog, workspace-state, custom-provider-modules, and the rest) into one or two kernel subdirectories, but only when the orchestration module cycle is reworked, because their module keys are members of that cycle." },
-  { lint: "wide-directory", key: "src/orchestration/agent-runtime/", reason: WIDE },
-  { lint: "wide-directory", key: "src/orchestration/agent-runtime/llm/", reason: WIDE },
-  { lint: "wide-directory", key: "src/orchestration/agent-runtime/tools/", reason: WIDE },
   { lint: "wide-directory", key: "src/orchestration/app-service/", reason: WIDE },
   { lint: "wide-directory", key: "src/orchestration/modules/development/benchmark/", reason: WIDE },
   { lint: "wide-directory", key: "src/orchestration/modules/provider-claude-agent-sdk/", reason: WIDE },
@@ -81,7 +78,7 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "webview/src/client/", reason: WIDE },
   {
     lint: "module-cycle",
-    reason: "`module-requirements` (module-requirements.ts:31) and `tool-catalog` read the tool declaration types of agent-runtime/tools/tool-registry.ts while `agent-runtime` calls them; give the tool declaration contract a home below all three, then reassess. `module-catalog` joins because it reads the `DefinitionContribution` union of modules.ts (module-catalog.ts:143) while modules.ts calls installedModules; give the module descriptor and contribution types a home below both.",
+    reason: "`module-requirements` (module-requirements.ts:31) and `tool-catalog` read the tool declaration types of agent-runtime/tools/dispatch/tool-registry.ts while `agent-runtime` calls them; give the tool declaration contract a home below all three, then reassess. `module-catalog` joins because it reads the `DefinitionContribution` union of modules.ts (module-catalog.ts:143) while modules.ts calls installedModules; give the module descriptor and contribution types a home below both.",
     key: [
       "flywheel::orchestration::agent-runtime",
       "flywheel::orchestration::app-service",

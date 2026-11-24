@@ -5,11 +5,11 @@ import { extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolut
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { openRouterRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
-import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { createModelReminders } from "../../agent-runtime/llm/runtime-reminders.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
+import { createModelReminders } from "../../agent-runtime/llm/history/runtime-reminders.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/provider-affordability.js";
+import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/routing/provider-affordability.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { createOpenRouterAffordability } from "./affordability.js";
 import { OPENROUTER_API_BASE, OPENROUTER_API_HOST } from "./api.js";
@@ -63,7 +63,7 @@ const createClient: AccessProviderFactory = async (build) => {
   }, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No OpenRouter API key in the active auth profile. Run: flywheel auth login --openrouter", recovery: { kind: "none" } });
-    const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/chat-completions.js")]);
+    const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/adapters/chat-completions/chat-completions.js")]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: OPENROUTER_API_BASE, defaultHeaders: await openRouterRequestHeaders(), maxRetries: 0 });
     return createChatCompletionsAdapter(client, build.model, info, {
       accessProvider: definition.id, candidate: build.candidate, wireModelId: build.wireModelId,

@@ -6,7 +6,7 @@ import { Redacted } from "effect";
 import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
 import { apiKey, captureProviderConnection } from "../../../../src/infra/auth/auth-context.js";
 import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
-import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogCanonicalRow } from "../../../../src/infra/model-catalog-rows.js";
 import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";

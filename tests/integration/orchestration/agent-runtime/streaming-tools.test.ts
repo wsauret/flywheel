@@ -8,11 +8,11 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js";
 import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
-import { createTurnDispatcher, type ToolBatchEvent } from "../../../../src/orchestration/agent-runtime/agent-loop-tools.js";
+import { createTurnDispatcher, type ToolBatchEvent } from "../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-loop-tools.js";
 import { fixedTurnOutputBound } from "../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js";
-import { toolUseBlock } from "../../../../src/orchestration/agent-runtime/agent-state.js";
-import { settleTurn } from "../../../../src/orchestration/agent-runtime/agent-turn-settlement.js";
-import { emitAssistant, emitToolInputComplete, emitToolInputDelta, emitToolResult, emitToolResultAvailable } from "../../../../src/orchestration/agent-runtime/emit.js";
+import { toolUseBlock } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js";
+import { settleTurn } from "../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-turn-settlement.js";
+import { emitAssistant, emitToolInputComplete, emitToolInputDelta, emitToolResult, emitToolResultAvailable } from "../../../../src/orchestration/agent-runtime/runner/emit.js";
 import type { ConversationMessage, LLMClient, ProviderStreamEvent, ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import type { RuntimeTool, ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js";

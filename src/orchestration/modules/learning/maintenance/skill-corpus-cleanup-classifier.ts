@@ -1,4 +1,4 @@
-import type { PreparedPackage } from "../../../agent-runtime/review-types.js";
+import type { PreparedPackage } from "../../../agent-runtime/request/module-services/review-types.js";
 import type { BundledCorpusIdentity, SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
 import { createHash } from "node:crypto";
 import type { ModelFamily } from "../../../../infra/llm/model-family.js";

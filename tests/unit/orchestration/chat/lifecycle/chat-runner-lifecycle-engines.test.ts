@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 
 import { createChatSession } from "../../../../../src/orchestration/chat/session"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types"
-import type { CapabilityPlanner, RequestPreparer } from "../../../../../src/orchestration/agent-runtime/request-preparation"
+import type { CapabilityPlanner, RequestPreparer } from "../../../../../src/orchestration/agent-runtime/loop/turn/request-preparation"
 import type { ResolvedRoles } from "../../../../../src/orchestration/config/roles"
 import { createTestChatSessionDeps, makeMemoryTreeWriter } from "../_chat-session-agent-runtime-fixtures"
 import { flushMicrotasks } from "./_chat-runner-lifecycle-fixtures"

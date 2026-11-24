@@ -13,7 +13,7 @@ import { normalizeRoleAssignments, type RoleAssignmentEntry, type RoleAssignment
 import { createSingleSessionMetadataProjection } from "../../session/session-metadata-projection.js"
 import { registeredRoleIds, captureRoleResolver, resolveRoleFromModels, type RoleSetting } from "./role-resolution.js"
 import { beginTierResolutionOperation, type TierResolutionOptions } from "./model-tiers.js"
-import type { CaptureProviderConnection, ProviderConnectionCapture } from "../../agent-runtime/model-runtime-capture.js"
+import type { CaptureProviderConnection, ProviderConnectionCapture } from "../../agent-runtime/request/model-runtime-capture.js"
 import { workflowRunOwner } from "../../module-catalog.js"
 import type { AgentPersonaRoles } from "./role-selection.js"
 

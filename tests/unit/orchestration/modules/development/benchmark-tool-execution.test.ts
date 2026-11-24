@@ -17,11 +17,11 @@ import { Redacted } from "effect";
 
 import { captureProviderConnection, type AuthContext } from "../../../../../src/infra/auth/auth-context.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
-import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import type { BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/admission.js";
 import { createPersonaStore as createRunStore } from "../../../../../src/orchestration/modules/development/benchmark/persona-store.js";
-import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import type { RuntimeTool, DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testProviderEligibility } from "../../../../helpers/provider-authority.js";
 import type { Agent, AgentRunResult, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
@@ -35,7 +35,7 @@ import { withRequestAdmission } from "../../agent-runtime/_model-client.js";
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
 import { testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 
-import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
 const { userDataRoot, accountHome } = testDirectories(process.cwd());
 const PERSONA_SOURCE = join(process.cwd(), "src", "workflows", "agents", "personas", "explorer.md");

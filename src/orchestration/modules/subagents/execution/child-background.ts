@@ -1,9 +1,9 @@
 import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
 import { probeLoopUnit, trackLoopSpan } from "../../../../infra/event-loop-lag.js";
-import { createBackgroundExecutionOwner } from "../../../agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry, type ActiveBackgroundCommandDescriptor } from "../../../agent-runtime/background-work.js";
-import type { CommandHandoverScope } from "../../../agent-runtime/command-handover.js";
-import { emitBackgroundCommandRecorded, emitToolExecutionOutput, emitToolExecutionOutputRecorded } from "../../../agent-runtime/emit.js";
+import { createBackgroundExecutionOwner } from "../../../agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry, type ActiveBackgroundCommandDescriptor } from "../../../agent-runtime/background-work/background-work.js";
+import type { CommandHandoverScope } from "../../../agent-runtime/background-execution/command-handover.js";
+import { emitBackgroundCommandRecorded, emitToolExecutionOutput, emitToolExecutionOutputRecorded } from "../../../agent-runtime/runner/emit.js";
 import type { ConversationTreeWriterController } from "../../../chat/tree-writer.js";
 import { createBackgroundNotificationDelivery } from "../../../runner/background-notification-delivery.js";
 import type { WorkflowInjectionQueue } from "../../../workflow-host/execution/injection-queue.js";

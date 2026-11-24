@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { createRoot } from "solid-js"
 import { DebugLog } from "../../../src/infra/debug-log.js"
-import { emitToolResultAvailable } from "../../../src/orchestration/agent-runtime/emit.js"
+import { emitToolResultAvailable } from "../../../src/orchestration/agent-runtime/runner/emit.js"
 import { createOutputSession } from "../../../src/orchestration/runner/output-session.js"
 import {
   markToolResultMounted,

@@ -8,7 +8,7 @@ import { createMutationAdmission } from "../../../../src/orchestration/app-servi
 import { serveProjectExecutorLifecycle } from "../../../../src/orchestration/app-service/project-executor-lifecycle.js"
 import { projectExecutorReattachDelayMs, PROJECT_EXECUTOR_REATTACH_DEADLINE_MS } from "../../../../src/orchestration/app-service/project-executor-protocol.js"
 import { createReplacementReport, type ReplacementBlocker } from "../../../../src/orchestration/app-service/replacement-blockers.js"
-import { makeMockOwnedProcess } from "../agent-runtime/tools/_bash-fixtures.js"
+import { makeMockOwnedProcess } from "../agent-runtime/tools/bash/_bash-fixtures.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { freshProcessorClaims } from "../../../helpers/processor-claims.js"
 

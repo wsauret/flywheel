@@ -19,7 +19,7 @@ import { requireContainedDirectory } from "../../../../infra/write-file-under.js
 import { Log } from "../../../../infra/log.js";
 import type { SkillRecommendationRecordedFact } from "../../../../workflows/skill-facts.js";
 import { ownedSkillStoreDirs } from "../../../../workflows/skills.js";
-import { escapeXml, formatRuntimeNotification } from "../../../agent-runtime/runtime-notifications.js";
+import { escapeXml, formatRuntimeNotification } from "../../../agent-runtime/background-work/runtime-notifications.js";
 import { createConversationTreeProjection, currentContextIdentities } from "../../../session/conversation/conversation-projection.js";
 import type { ContextContentIdentities } from "../../../session/conversation/conversation-context-identities.js";
 import { reconcilePendingAudits } from "../skills/learning-journal.js";

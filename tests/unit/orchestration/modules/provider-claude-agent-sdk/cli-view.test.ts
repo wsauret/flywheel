@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { prepareAnthropicRequest, type PreparedAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { createClaudeReminders, createModelReminders } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
+import { prepareAnthropicRequest, type PreparedAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
+import { createClaudeReminders, createModelReminders } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import { ProviderRequestValidationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";

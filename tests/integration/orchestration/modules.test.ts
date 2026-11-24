@@ -24,13 +24,13 @@ import { moduleProtocolRows, type ModuleId, composeFirstPartyModules, composeRea
 import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
 import { capabilityAccessFor } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
-import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/_bash-fixtures.js";
-import { requestCapabilities, type PlannedRequest } from "../../../src/orchestration/agent-runtime/request-tool-surface.js";
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";
-import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
-import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/tool-registry.js";
+import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/bash/_bash-fixtures.js";
+import { requestCapabilities, type PlannedRequest } from "../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
+import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import type { SkillManageToolDeps } from "../../../src/orchestration/modules/learning/tools/skill-manage.js";
-import type { WorkflowToolDeps } from "../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
+import type { WorkflowToolDeps } from "../../../src/orchestration/agent-runtime/tools/definitions/workflow-tool.js";
 import type { AskUserController } from "../../../src/orchestration/runner/ask-user-controller.js";
 import { createModuleProjection } from "../../../src/orchestration/app-service/module-projection.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
@@ -46,7 +46,7 @@ import { loadWorkflowFile } from "../../../src/workflows/workflow-file.js";
 import { moduleRequirementsForContribution } from "../../../src/orchestration/module-requirements.js";
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
 import { makeContext } from "../../unit/orchestration/agent-runtime/tools/_fixtures.js";
-import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { canonicalModuleIds, missingModuleIds, MODULE_IDS, moduleDisabledReason } from "../../../src/protocol/module-ids.js";
 
 const REPO = join(import.meta.dir, "..", "..", "..");

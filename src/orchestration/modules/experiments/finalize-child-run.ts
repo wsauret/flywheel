@@ -4,7 +4,7 @@ import { join } from "node:path"
 import type { OwnedCommandRunner } from "../../../infra/owned-command.js"
 import { readManifestPackage, readSkillPackageFiles } from "../../../workflows/skill-context.js"
 import type { SkillDefinition } from "../../../workflows/skill-schema.js"
-import type { ExternalSkillChildGrant, ExternalSkillChildRunInput, ExternalSkillChildRunResult } from "../../agent-runtime/tools/skill.js"
+import type { ExternalSkillChildGrant, ExternalSkillChildRunInput, ExternalSkillChildRunResult } from "../../agent-runtime/tools/definitions/skill.js"
 
 const FINALIZE_SKILL_ID = "experiment-finalize"
 const FINALIZE_SCRIPT = "finalize.sh"

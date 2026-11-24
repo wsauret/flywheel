@@ -20,7 +20,7 @@ import { isCredentialCollection, type CredentialSlotClassifier } from "../../../
 import { canonicalSubscriptionAccount, type ProviderConnection } from "../../../infra/auth/auth-context.js";
 import { isRecord } from "../../../infra/record.js";
 import { CHATGPT_BACKEND_API_BASE, credentialToStoredTokens, storedTokensToCredential } from "../../../infra/auth/openai/openai-auth-types.js";
-import { createChatGPTTokenAccessor, getConnectionChatGPTTokenAccessor } from "../llm/openai-chatgpt.js";
+import { createChatGPTTokenAccessor, getConnectionChatGPTTokenAccessor } from "../llm/adapters/openai/openai-chatgpt.js";
 import { postJson } from "./http.js";
 import { WebSearchError, type WebSearchProvider, type WebSearchResponse, type WebSearchResult } from "./types.js";
 

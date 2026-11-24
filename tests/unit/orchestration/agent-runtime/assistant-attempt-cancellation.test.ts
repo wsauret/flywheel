@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream.js";
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { chain, fakeAvailability, fakeClient } from "./llm/_provider-chain-harness.js";
 
 for (const localFailure of [false, true]) {

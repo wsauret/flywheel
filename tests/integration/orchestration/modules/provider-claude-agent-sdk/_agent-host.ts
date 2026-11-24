@@ -3,8 +3,8 @@
  * dispatcher's and the agents' own, and one agent loop that drives a staged client as the production loop does.
  */
 import type { ConversationMessage, StreamOptions, ToolDef } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { applyContentRepairs } from "../../../../../src/orchestration/agent-runtime/llm/content-repair.js";
-import { projectToolHistory } from "../../../../../src/orchestration/agent-runtime/llm/tool-history-projection.js";
+import { applyContentRepairs } from "../../../../../src/orchestration/agent-runtime/llm/history/content-repair.js";
+import { projectToolHistory } from "../../../../../src/orchestration/agent-runtime/llm/history/tool-history-projection.js";
 import type { SystemPromptTiers } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { assistantMessage, type StagedSdkClient, type StreamResult } from "./_claude-sdk-client.js";
 import { declaredTools, type FakeReply, type RecordedRequest } from "./_fake-host.js";

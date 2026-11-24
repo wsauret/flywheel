@@ -1,11 +1,11 @@
 import { isAbsolute, relative, resolve } from "node:path"
-import { refusedShellWrite } from "../../../agent-runtime/tools/bash-command-policy.js"
-import type { ToolExecutionGate, ToolExecutionGateInput } from "../../../agent-runtime/tools/tool-dispatch.js"
+import { refusedShellWrite } from "../../../agent-runtime/tools/bash/policy/bash-command-policy.js"
+import type { ToolExecutionGate, ToolExecutionGateInput } from "../../../agent-runtime/tools/dispatch/tool-dispatch.js"
 import type { ExperimentGuardSnapshot } from "../../../agent-runtime/tools/types.js"
 import { experimentsRuntime } from "../runtime.js"
 import { EXPERIMENT_CHARTER_PATH } from "../charter.js"
 import { charterPathConflict, isCharterPathMatch, physicalCharter } from "./protected-paths.js"
-import { hasKind } from "../../../agent-runtime/tools/tool-paths.js"
+import { hasKind } from "../../../agent-runtime/tools/files/tool-paths.js"
 
 type Decision = { readonly kind: "allow" } | { readonly kind: "veto"; readonly reason: string }
 

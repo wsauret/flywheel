@@ -10,10 +10,10 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { ConversationTreeStorage } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-storage.js";
-import { readStaleMaskSeed } from "../../../../../src/orchestration/agent-runtime/active-request-context.js";
+import { readStaleMaskSeed } from "../../../../../src/orchestration/agent-runtime/request/active-request-context.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { countStateRequests } from "../../../../helpers/state-requests.js";
-import { shortFormTool } from "../../../../../src/orchestration/agent-runtime/tools/short-form.js";
+import { shortFormTool } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/short-form.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 
 interface UnknownRecord {

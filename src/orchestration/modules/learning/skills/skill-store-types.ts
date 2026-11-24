@@ -1,4 +1,4 @@
-import type { PreparedPackage, SkillSemanticAuditEvidence } from "../../../agent-runtime/review-types.js";
+import type { PreparedPackage, SkillSemanticAuditEvidence } from "../../../agent-runtime/request/module-services/review-types.js";
 /** Shared vocabulary of the managed skill write path: who writes, where, what
  *  one mutation asks for, and the exact package a planned mutation produces.
  *  The planner and the store both speak it, so neither owns a private copy. */

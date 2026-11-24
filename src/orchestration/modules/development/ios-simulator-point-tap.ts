@@ -1,6 +1,6 @@
 import { dirname, join } from "node:path"
 import type { OwnedCommandRunner } from "../../../infra/owned-command.js"
-import type { McpCallResult } from "../../agent-runtime/mcp-result.js"
+import type { McpCallResult } from "../../agent-runtime/mcp/mcp-result.js"
 
 const POINT_TAP_TIMEOUT_MS = 30_000
 const POINT_TAP_OUTPUT_BYTES = 65_536

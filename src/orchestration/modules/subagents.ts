@@ -8,7 +8,7 @@ import { createSubagentToolSummaryReader } from "./subagents/history/tool-summar
 import { holdSubagentParentRuns, readSubagentParentReconciliationRuns } from "./subagents/history/subagent-history.js"
 // oxlint-disable-next-line import/no-cycle -- retained history recovery is installed with the module descriptor.
 import { recoverStaleSubagentRuns } from "./subagents/history/subagent-run-recovery.js"
-import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-services.js"
+import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js"
 import type { KernelToolDeps, ServingModel } from "../agent-runtime/tools/kernel-tool-deps.js"
 import { createSubagentTool, createSubagentResume, subagentToolDefinition, subagentToolWith } from "./subagents/tool.js"
 import type { SubagentDispatchDeps } from "./subagents/execution/dispatch/dispatch-deps.js"
@@ -22,7 +22,7 @@ import { subagentChildSession } from "./subagents/execution/control/child-sessio
 import { buildSubagentCompleted, buildSubagentResumed } from "./subagents/history/subagent-run-fact-writers.js"
 import { loadSubagentRunsFromEvents, readSubagentRuns, SUBAGENT_RUN_FACT_TYPES } from "./subagents/history/subagent-run-projection.js"
 import { prepareSessionFactAppend } from "../session/session-fact-writer.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
+import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
 import type { RoleResolver } from "../config/roles.js"
 import type { ModuleId, FirstPartyModule } from "../modules.js"
 import { moduleProtocol, type ModuleProtocolRuntime, type ModuleProtocolServices } from "../app-service/module-protocol-host.js"

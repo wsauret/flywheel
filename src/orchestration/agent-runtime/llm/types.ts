@@ -9,16 +9,16 @@ import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
 import type { ContentRepair } from "../../../infra/llm/content-repair.js";
 export type { CompletedStopReason, LlmStopReason } from "./messages.js";
-import type { StreamAttemptStartEvent } from "./stream-attempt.js";
-import type { FailoverFailure, ProviderFailure } from "./provider-failure.js";
-import type { RequestAdmission } from "./provider-availability-types.js";
+import type { StreamAttemptStartEvent } from "./stream/stream-attempt.js";
+import type { FailoverFailure, ProviderFailure } from "./stream/provider-failure.js";
+import type { RequestAdmission } from "./routing/provider-availability-types.js";
 import type { ClaudeTokenizerIdentity } from "../../../infra/model-id.js";
 import type { ProviderIdentity } from "../../../infra/llm/auth-error.js";
 import type { MessageProducer } from "../../../infra/chat-input.js";
 import type { SystemPromptTiers } from "./system-prompt-tiers.js";
 import type { ProviderTransportContext } from "../../session/provider-request-audit-types.js";
-import type { SharedTree } from "../shared-tree.js";
-import type { ProviderHistoryTarget } from "./provider-history.js";
+import type { SharedTree } from "../request/shared-tree.js";
+import type { ProviderHistoryTarget } from "./history/provider-history.js";
 
 /**
  * Provider-agnostic LLM types.

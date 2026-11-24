@@ -3,7 +3,7 @@ import type { ChildControlAnswer, RetainedOperationCell, RetainedOperationCommit
 import type { ChildCut } from "../../session/child-continuation.js"
 import type { WorkflowLaunchAgentModels } from "../../../infra/workflow-types.js"
 import type { WorkflowDeliveryAddress } from "../../session/conversation/addressed-workflow-messages.js"
-import type { BackgroundWorkTracking } from "../../agent-runtime/background-work.js"
+import type { BackgroundWorkTracking } from "../../agent-runtime/background-work/background-work.js"
 
 /** The in-flight kind of a workflow launch that a parent chat accepted and
  *  has not published yet. */

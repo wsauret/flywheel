@@ -344,7 +344,7 @@ export default defineConfig({
       rules: { "anti-slop-effect/no-test-code-in-src": "off" },
     },
     {
-      files: ["src/orchestration/agent-runtime/agent-loop.ts"],
+      files: ["src/orchestration/agent-runtime/loop/agent-loop.ts"],
       rules: {
         // Turn-boundary state machine: queued-input steering, compaction,
         // budget-exhaust finals, stream outcomes, tool batch finalize, todo

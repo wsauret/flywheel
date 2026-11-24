@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import Anthropic from "@anthropic-ai/sdk";
-import { classifyAnthropicError } from "../../../../../src/orchestration/agent-runtime/llm/anthropic-adapter-helpers.js";
-import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { classifyAnthropicError } from "../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";
+import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { wireFailure } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/service-requests.js";
 import {
   admittedStart, answers, apiErrorLine, forwardDiagnostics, init, logLines, modelRequest, payloads, records, refused, rateLimitReport, request, responseBlock, send, sentBlock, settle,

@@ -5,7 +5,7 @@ import { createRuntimeEvent } from "../../src/infra/runtime-event-factory.js";
 import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js";
 import { providerModelInfo } from "../../src/infra/llm/provider-model-info.js";
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../src/infra/runtime-fact-mapper.js";
-import { createChatCompletionsAdapter } from "../../src/orchestration/agent-runtime/llm/chat-completions.js";
+import { createChatCompletionsAdapter } from "../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions.js";
 import type { LLMClient } from "../../src/orchestration/agent-runtime/llm/types.js";
 import { checkpointFinalizedToolResult } from "../../src/orchestration/session/finalized-tool-result-checkpoint.js";
 import { createSessionFactWriter } from "../../src/orchestration/session/session-fact-writer.js";

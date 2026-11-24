@@ -1,15 +1,15 @@
 import { expect, spyOn, test } from "bun:test";
 import { compactInput } from "../../../../../src/infra/agent-loop-events.js";
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { estimateConversationTokens, tokenCountingPolicy } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import { FUNCTION_TOOL_PRESENTATION, presentToolHistory, type ConversationMessage, type ProviderStreamEvent, type ServingAttempt, type StreamOptions, type StreamEvent, type ToolPresentation } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { lowerToolHistoryById } from "../../../../../src/orchestration/agent-runtime/llm/tool-history-projection.js";
+import { lowerToolHistoryById } from "../../../../../src/orchestration/agent-runtime/llm/history/tool-history-projection.js";
 import { assemblyPinned, RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { asModelClient } from "../_model-client.js";
 import { makeCaptureClient, withSessionNotes } from "./_loop-fixtures.js";
 import { createStaleToolResultMasker } from "../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
-import { createActiveRequestContext } from "../../../../../src/orchestration/agent-runtime/active-request-context.js";
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { createActiveRequestContext } from "../../../../../src/orchestration/agent-runtime/request/active-request-context.js";
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 

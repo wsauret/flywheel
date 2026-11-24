@@ -6,17 +6,17 @@ import type { ProviderRequestOptions } from "../../../../../infra/llm/provider-o
 import type { ModuleId } from "../../../../../protocol/module-ids.js"
 import type { SkillRegistryRevision } from "../../../../../workflows/skill-schema.js"
 import type { Agent, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "../../../../agent-runtime/types.js"
-import type { BackgroundWorkRegistry } from "../../../../agent-runtime/background-work.js"
+import type { BackgroundWorkRegistry } from "../../../../agent-runtime/background-work/background-work.js"
 import type { CapabilityAccess } from "../../../../agent-runtime/tools/types.js"
-import type { ChildSlotRegistry } from "../../../../agent-runtime/child-slot-registry.js"
+import type { ChildSlotRegistry } from "../../../../agent-runtime/request/module-services/child-slot-registry.js"
 import type { SubagentToolCallRecord } from "../result/work-log.js"
 import type { SessionFactWriter } from "../../../../session/session-fact-writer.js"
-import type { PromptKind } from "../../../../agent-runtime/system-prompt.js"
+import type { PromptKind } from "../../../../agent-runtime/request/prompt/system-prompt.js"
 import type { BriefScope } from "../../../../config/models/role-selection.js"
 import type { RoleResolver } from "../../../../config/roles.js"
 import type { ChildSessionAuthority, ChildSessionConversation, ParentNotificationDelivery } from "../../../../module-seams.js"
 import type { DefinitionAvailabilitySnapshot } from "../../../../app-service/definition-availability.js"
-import type { ModuleRuntimeServices } from "../../../../agent-runtime/module-runtime-services.js"
+import type { ModuleRuntimeServices } from "../../../../agent-runtime/request/module-services/module-runtime-services.js"
 
 export interface SubagentDispatchDeps {
   userDataRoot: string
@@ -73,7 +73,7 @@ export interface SubagentDispatchDeps {
   sessionEventStore?: AsyncEventStateReadSurface
   proactiveCompactionThreshold?: () => number
   captureRuntimeConfig: RunnableAgentOptions["captureRuntimeConfig"]
-  captureProviderConnection?: import("../../../../agent-runtime/model-runtime-capture.js").CaptureProviderConnection
+  captureProviderConnection?: import("../../../../agent-runtime/request/model-runtime-capture.js").CaptureProviderConnection
   awaitModelAccessSettled: RunnableAgentOptions["awaitModelAccessSettled"]
   /** The dispatcher's environment resolver: the child states its own directory with it. */
   resolveEnvSnapshot?: RunnableAgentOptions["resolveEnvSnapshot"]

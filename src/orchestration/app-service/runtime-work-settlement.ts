@@ -10,8 +10,8 @@ import type { WorkflowHosts } from "../workflow-host/host-collection.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import { liveSessionControl, liveWorkflowControl, onLiveWorkChanged } from "../session/live-session-control.js"
 import { workProgressesWithout } from "../session/reply-waits.js"
-import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
-import type { WorkReference } from "../agent-runtime/background-work-progress.js"
+import type { BackgroundWorkTracking } from "../agent-runtime/background-work/background-work.js"
+import type { WorkReference } from "../agent-runtime/background-work/background-work-progress.js"
 
 /** Workflows include preflight, acknowledgement, and draining without inventing session rows. */
 export function liveWorkSettlementOwners(hosts: WorkflowHosts, reader: AsyncEventStateReadSurface): Pick<SettlementDeps, "busyWorkflows" | "onWorkflowChange" | "progressesWithout" | "interrupted"> {

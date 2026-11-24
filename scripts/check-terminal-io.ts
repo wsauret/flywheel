@@ -22,7 +22,7 @@ const DIRECT_OUTPUT_FILE_ALLOWLIST = new Set([
   "src/orchestration/headless/run-headless-task.ts",
   // This executable role runs inside a captured command. Its fixed refusal
   // belongs to that command's stderr, not the host renderer or diagnostics.
-  "src/orchestration/agent-runtime/tools/bash-git-main.ts",
+  "src/orchestration/agent-runtime/tools/bash/git/bash-git-main.ts",
 ]);
 
 /** The supervisor of one owned command hands the launcher's own stream handles

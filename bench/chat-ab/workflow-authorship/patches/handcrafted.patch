@@ -1,6 +1,6 @@
-diff --git a/src/orchestration/agent-runtime/tools/workflow.ts b/src/orchestration/agent-runtime/tools/workflow.ts
---- a/src/orchestration/agent-runtime/tools/workflow.ts
-+++ b/src/orchestration/agent-runtime/tools/workflow.ts
+diff --git a/src/orchestration/agent-runtime/tools/definitions/workflow.ts b/src/orchestration/agent-runtime/tools/definitions/workflow.ts
+--- a/src/orchestration/agent-runtime/tools/definitions/workflow.ts
++++ b/src/orchestration/agent-runtime/tools/definitions/workflow.ts
 @@ -8,11 +8,11 @@
  
  const LAUNCH_DESCRIPTION = "Launch a workflow as a background child of this chat. It keeps running when this chat is interrupted, and its completion or Stop delivers one hidden runtime notification.";

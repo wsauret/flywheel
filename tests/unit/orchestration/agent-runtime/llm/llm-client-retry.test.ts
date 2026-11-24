@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { APIUserAbortError } from "openai";
-import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
+import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
+import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream/stream-attempt.js";
 
 type TestEvent = { kind: "text_delta"; text: string };
 

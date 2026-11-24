@@ -18,7 +18,7 @@ import { createDefinitionAvailability } from "../../../../src/orchestration/app-
 import { moduleDescriptor } from "../../../../src/orchestration/config/module-descriptor.js"
 import { MODULE_IDS, moduleDisabledReason, type ModuleId } from "../../../../src/protocol/module-ids.js"
 import { assembleSkillInvocation } from "../../../../src/workflows/skill-invocation.js"
-import { agentCapabilityCheck, contributedToolIdentities } from "../../../../src/orchestration/agent-runtime/capability-checks.js"
+import { agentCapabilityCheck, contributedToolIdentities } from "../../../../src/orchestration/agent-runtime/request/prompt/capability-checks.js"
 import { experimentToolOmissions } from "../../../../src/orchestration/modules/experiments/guards/tool-execution-gate.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { repoDefinitions, repoModules, sourceRunDefinitions } from "../../../helpers/project-definitions.js"

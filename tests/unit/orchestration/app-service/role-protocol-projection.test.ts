@@ -12,7 +12,7 @@ import { sessionServingLabel } from "../../../../src/protocol/role-protocol-type
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
-import type { ProviderConnectionCapture } from "../../../../src/orchestration/agent-runtime/model-runtime-capture.js"
+import type { ProviderConnectionCapture } from "../../../../src/orchestration/agent-runtime/request/model-runtime-capture.js"
 import { buildDurableSubagentCreated } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"

@@ -12,10 +12,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { grep } from "../src/orchestration/agent-runtime/tools/ripgrep.js";
-import { formatContentOutput, MAX_COLUMN_WIDTH } from "../src/orchestration/agent-runtime/tools/search.js";
-import type { RankOptions } from "../src/orchestration/agent-runtime/tools/search-ranking.js";
-import { SEARCH_CPU_LIMIT_SECONDS, SEARCH_WALL_BACKSTOP_SECONDS } from "../src/orchestration/agent-runtime/tools/search-rules.js";
+import { grep } from "../src/orchestration/agent-runtime/tools/files/ripgrep.js";
+import { formatContentOutput, MAX_COLUMN_WIDTH } from "../src/orchestration/agent-runtime/tools/search/search.js";
+import type { RankOptions } from "../src/orchestration/agent-runtime/tools/search/search-ranking.js";
+import { SEARCH_CPU_LIMIT_SECONDS, SEARCH_WALL_BACKSTOP_SECONDS } from "../src/orchestration/agent-runtime/tools/search/search-rules.js";
 import type { ToolContext } from "../src/orchestration/agent-runtime/tools/types.js";
 
 const repoRoot = new URL("..", import.meta.url).pathname.replace(/\/$/, "");

@@ -6,7 +6,7 @@ import { resolveEventStoreDbFile, resolveSessionDir } from "../../../../src/infr
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures.js"
 import type { WorkflowDeps } from "../../../../src/orchestration/workflow-host/deps.js"
-import { createWorkflowToolCore, type PublishedWorkflowLaunch } from "../../../../src/orchestration/agent-runtime/tools/workflow-tool.js"
+import { createWorkflowToolCore, type PublishedWorkflowLaunch } from "../../../../src/orchestration/agent-runtime/tools/definitions/workflow-tool.js"
 import type { WorkflowLaunchRefusal } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
 import { modelWorkflowLaunchOrigin, workflowLaunchTargets } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"

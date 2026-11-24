@@ -103,7 +103,7 @@ async function runScenario(name: string, options: ScenarioOptions): Promise<Scen
     sessionEventWriter: writer,
     readContentNode: read,
     spawnReview: async (spec) => {
-      const audit = (candidate: import("../../../../../../src/orchestration/agent-runtime/review-types.js").PreparedPackage, revision: SkillRegistryRevision) => {
+      const audit = (candidate: import("../../../../../../src/orchestration/agent-runtime/request/module-services/review-types.js").PreparedPackage, revision: SkillRegistryRevision) => {
         if ((options.contextLimit ?? 100_000) <= 1_024) return Promise.resolve({ kind: "uncertain" as const, reason: "the test context limit refuses the audit" });
         childRuns += 1;
         return Promise.resolve(verifySkillSemanticAudit(candidate, revision, options.output));

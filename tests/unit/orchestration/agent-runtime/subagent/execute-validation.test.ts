@@ -4,9 +4,9 @@ import { createSubagentDispatch } from "../../../../../src/orchestration/modules
 import { createSubagentTool } from "../../../../../src/orchestration/modules/subagents/tool.js";
 import { grantOf, makeCapabilityAccess, makeContext, makeDeps, refusedAdmission, TEST_RATIONALE } from "./_fixtures.js";
 import type { CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { validateToolInput } from "../../../../../src/orchestration/agent-runtime/tools/validate-input.js";
+import { validateToolInput } from "../../../../../src/orchestration/agent-runtime/tools/input/validate-input.js";
 import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js";
-import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/capability-checks.js";
+import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 
 describe("subagent tool — execute validation", () => {
     it("does not advertise a per-dispatch model tier", () => {

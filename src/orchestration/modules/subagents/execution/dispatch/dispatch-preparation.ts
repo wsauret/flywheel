@@ -9,13 +9,13 @@ import type { SubagentDispatchDeps } from "./dispatch-deps.js"
 import type { AgentDefinition } from "../../../../../infra/agent-definition.js"
 import type { ProviderRequestOptions } from "../../../../../infra/llm/provider-options.js"
 import type { AgentOptions } from "../../../../agent-runtime/types.js"
-import { cloneInheritedToolNames, toolRegistryFromComposition, toolModuleRequirements } from "../../../../agent-runtime/tools/tool-registry.js"
+import { cloneInheritedToolNames, toolRegistryFromComposition, toolModuleRequirements } from "../../../../agent-runtime/tools/dispatch/tool-registry.js"
 import { dispatchableAgents, grantedSubagentTypes, personaToolNames } from "../../../../../workflows/agents/subagent-reachability.js"
 import { personaInstructions } from "../../../../../workflows/agents/persona-instructions.js"
 import { attendedClosureMembers } from "../../../../../workflows/skill-closure.js"
-import type { PromptKind } from "../../../../agent-runtime/system-prompt.js"
+import type { PromptKind } from "../../../../agent-runtime/request/prompt/system-prompt.js"
 import { CHECKPOINT_TOOL_NAMES } from "../../../../../infra/agent-assets/session-notes.js"
-import { availableToolNames, isReadOnlyPersona } from "../../../../agent-runtime/persona-tool-rules.js"
+import { availableToolNames, isReadOnlyPersona } from "../../../../agent-runtime/request/prompt/persona-tool-rules.js"
 
 interface PreparedDispatch {
   readonly ok: true

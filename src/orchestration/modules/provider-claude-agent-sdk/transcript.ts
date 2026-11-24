@@ -6,7 +6,7 @@ import { DebugLog } from "../../../infra/debug-log.js";
 import { errnoCode } from "../../../infra/error-message.js";
 import { acquireLockSync, releaseLock, tryAcquireLockSync } from "../../../infra/ownership-file-lock.js";
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
-import { canonicalShell, type RuntimeReminder } from "../../agent-runtime/llm/runtime-reminders.js";
+import { canonicalShell, type RuntimeReminder } from "../../agent-runtime/llm/history/runtime-reminders.js";
 import type { CliBlock, CliMessage, PlacedReminder } from "./cli-view.js";
 import { isBridgeSessionId } from "./session-id.js";
 

@@ -5,8 +5,8 @@ import type { LauncherScope } from "../../../infra/process-supervisor.js"
 import {
   BunStdioClientTransport,
   type BunStdioClientTransportOptions,
-} from "../../agent-runtime/mcp-stdio-client-transport.js"
-import { normalizeMcpCallResult, type McpCallResult } from "../../agent-runtime/mcp-result.js"
+} from "../../agent-runtime/mcp/mcp-stdio-client-transport.js"
+import { normalizeMcpCallResult, type McpCallResult } from "../../agent-runtime/mcp/mcp-result.js"
 
 const STARTUP_TIMEOUT_MS = 30_000
 const CALL_TIMEOUT_MS = 120_000

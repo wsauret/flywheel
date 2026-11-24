@@ -4,7 +4,7 @@ import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact 
 import type { CommandEvidence, ReadCommandEvidence } from "../../../workflows/output-contract/evidence.js";
 import { tryOpenConversationTree } from "../../session/conversation/tree/conversation-tree-handle.js";
 import { parseSessionRuntimeFact } from "../../session/session-runtime-event-types.js";
-import { parseBashResultDetails } from "../../agent-runtime/tools/bash.js";
+import { parseBashResultDetails } from "../../agent-runtime/tools/bash/bash.js";
 import { workflowRunReader } from "../../module-catalog.js";
 import { parseFileMutationFact } from "../../session/file-mutation-facts.js";
 import { recordedExecutionCwd } from "../../session/session-execution-directory.js";

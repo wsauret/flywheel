@@ -1,5 +1,5 @@
 import { candidateProviderId, type AccessProviderId, type AdmittedFailoverPlan } from "../../../../infra/llm/access-provider.js";
-import type { CaptureProviderConnection } from "../../../agent-runtime/model-runtime-capture.js";
+import type { CaptureProviderConnection } from "../../../agent-runtime/request/model-runtime-capture.js";
 import { createAgentJudge, type JudgeModel } from "./judge.js";
 import { campaignJudges, type BenchmarkPlan, type JudgeSelection } from "./benchmark-plan.js";
 import type { BenchmarkRuntime } from "./persona-run.js";
@@ -8,10 +8,10 @@ import { resolveSessionRoles } from "../../../config/models/session-role-resolve
 import { resolveCapturedRole } from "../../../config/models/role-resolution.js";
 import type { WorkflowDeps } from "../../../workflow-host/deps.js";
 import type { ResolvedRole } from "../../../config/roles.js";
-import { candidateCredentialLineage } from "../../../agent-runtime/llm/client-factory.js";
-import { candidateReadiness } from "../../../agent-runtime/llm/failover-client.js";
-import { peekSharedProviderAvailability } from "../../../agent-runtime/llm/shared-provider-availability.js";
-import type { ProviderAvailabilityOwner } from "../../../agent-runtime/llm/provider-availability-types.js";
+import { candidateCredentialLineage } from "../../../agent-runtime/llm/routing/client-factory.js";
+import { candidateReadiness } from "../../../agent-runtime/llm/routing/failover-client.js";
+import { peekSharedProviderAvailability } from "../../../agent-runtime/llm/routing/shared-provider-availability.js";
+import type { ProviderAvailabilityOwner } from "../../../agent-runtime/llm/routing/provider-availability-types.js";
 
 const seatKey = (role: BenchmarkRole, model?: string, effort?: string): string => JSON.stringify([role, model, effort]);
 

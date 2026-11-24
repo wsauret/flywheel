@@ -20,7 +20,7 @@ const REVISION_CAPTURE_ALLOWLIST = new Set([
   "src/orchestration/app-service/definition-availability.ts",
   // Each request's tool plan reads the published revision once, so its skill
   // catalog and its capability checks come from one revision.
-  "src/orchestration/agent-runtime/request-inputs.ts",
+  "src/orchestration/agent-runtime/request/request-inputs.ts",
   "src/orchestration/modules/workflows/cli/verify.ts",
   // An Ask approval question of a workflow file reads the file against the
   // revision that a launch would capture, so the question binds the hash

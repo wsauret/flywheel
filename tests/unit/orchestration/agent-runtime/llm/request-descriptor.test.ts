@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { prepareOpenAIResponsesRequest } from "../../../../../src/orchestration/agent-runtime/llm/openai-responses.js";
+import { prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
+import { prepareOpenAIResponsesRequest } from "../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-responses.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { chatCompletionsRequestBody } from "./_wire-fixtures.js";
 

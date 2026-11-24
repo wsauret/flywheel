@@ -5,13 +5,13 @@ import { type StoredTokens, storedTokensToCredential } from "../../../infra/auth
 import { extractDisplayIdentityFromJwt } from "../../../infra/auth/openai/openai-jwt.js";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
-import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
-import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../agent-runtime/llm/provider-failure.js";
-import { ensureFreshChatGPTTokens, getConnectionChatGPTTokenAccessor, rotateChatGPTTokens } from "../../agent-runtime/llm/openai-chatgpt.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../agent-runtime/llm/stream/provider-failure.js";
+import { ensureFreshChatGPTTokens, getConnectionChatGPTTokenAccessor, rotateChatGPTTokens } from "../../agent-runtime/llm/adapters/openai/openai-chatgpt.js";
 import { startBrowserFlow } from "../../auth/openai-oauth.js";
-import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import { retainWebSocketSession } from "../../agent-runtime/llm/chatgpt-adapter/websocket-session.js";
+import { retainWebSocketSession } from "../../agent-runtime/llm/adapters/openai/chatgpt-adapter/websocket-session.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { canonicalizeChatGptRow, CHATGPT_CATALOG, fetchChatGPTModels } from "./catalog.js";
 import { createChatGPTResetConsumer, createChatGPTUsageReader, isModelWindowMetric } from "./usage-reader.js";
@@ -96,7 +96,7 @@ const createClient: AccessProviderFactory = async (build) => {
   return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: "openai", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const cred = credentialForCandidate(build.connection, candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No ChatGPT tokens found. Run: flywheel auth login", recovery: { kind: "none" } });
-    const { createOpenAIAdapter } = await import("../../agent-runtime/llm/openai.js");
+    const { createOpenAIAdapter } = await import("../../agent-runtime/llm/adapters/openai/openai.js");
     return createOpenAIAdapter({ kind: "chatgpt", accessToken: cred.access, refreshToken: cred.refresh, expiresAtMs: cred.expires, ...(cred.accountId === undefined ? {} : { accountId: cred.accountId }) }, build.wireModelId, info, {
       oauthPersistence: build.connection.oauthPersistence,
       tokenAccessor: getConnectionChatGPTTokenAccessor(

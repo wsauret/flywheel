@@ -3,7 +3,7 @@ import { conversationRole, trailingAlternatingMessage, type ContentBlock, type C
 import type { CompactionEntry, MessageEntry, ConversationEntry } from "../conversation-entry-types.js";
 import type { DegradedTranscriptRecord } from "../conversation-projection.js";
 import { repairToolAdjacencyWork } from "./conversation-tool-adjacency.js";
-import { parseRuntimeReminder } from "../../../agent-runtime/llm/runtime-reminders.js";
+import { parseRuntimeReminder } from "../../../agent-runtime/llm/history/runtime-reminders.js";
 import { installedModules } from "../../../module-catalog.js";
 import type { ModuleHistoricalFraming } from "../../../module-seams.js";
 

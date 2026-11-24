@@ -3,7 +3,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { Log } from "../../../../../src/infra/log.js";
 import { DebugLog } from "../../../../../src/infra/debug-log.js";
 import { compactInput, messageInput, type AgentLoopInput, type TurnParkedContext } from "../../../../../src/infra/agent-loop-events.js";
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import type { ConversationMessage, ProviderStreamEvent, StreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { emptyConversationCheckpoint } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
 import type { ConversationCheckpoint } from "../../../../../src/orchestration/session/conversation-checkpoint-facts.js";
@@ -12,7 +12,7 @@ import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { budgetCaptureSurface, makeCaptureClient, resetOpening, withSessionNotes } from "./_loop-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { OutputLengthExceededError, ProviderRequestValidationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 
 const text = (value: string, blockKey: string): ProviderStreamEvent => ({ kind: "text_delta", text: value, blockKey });

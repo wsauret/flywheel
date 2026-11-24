@@ -32,7 +32,7 @@ import {
 } from "./benchmark/persona-benchmark.js";
 import { formatOverheadAccounting } from "./benchmark/report-accounting.js";
 import { variantSeat, type VariantSpec } from "./benchmark/variant.js";
-import type { BackgroundWorkResult } from "../../agent-runtime/background-work-types.js";
+import type { BackgroundWorkResult } from "../../agent-runtime/background-work/background-work-types.js";
 import { toolCallIdentity, type RuntimeTool, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js";
 
 interface BenchmarkInput {

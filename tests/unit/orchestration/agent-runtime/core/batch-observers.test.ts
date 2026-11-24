@@ -5,8 +5,8 @@ import {
   createObserverChain,
   createBudgetAwarenessObserver,
   createContextPressureObserver,
-} from "../../../../../src/orchestration/agent-runtime/batch-observers.js";
-import { createRepetitionGuard } from "../../../../../src/orchestration/agent-runtime/doom-loop.js";
+} from "../../../../../src/orchestration/agent-runtime/loop/batch-observers.js";
+import { createRepetitionGuard } from "../../../../../src/orchestration/agent-runtime/loop/nudges/doom-loop.js";
 
 let callCount = 0;
 function call(name: string, input: ToolCall["input"] = {}): ToolCall {

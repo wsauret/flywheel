@@ -3,7 +3,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/
 import { Log } from "../../../../../src/infra/log";
 import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../../src/infra/retained-operation-hosts";
 import { createLazyWorkflowController } from "../../../../../src/orchestration/app-service/lazy-workflow-controller";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work";
 import { workflowLaunchRetainedOperation } from "../../../../../src/orchestration/modules/workflows/launch-operation";
 import type { ConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import { createConversationTreeWriter } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";

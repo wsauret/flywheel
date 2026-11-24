@@ -1,4 +1,4 @@
-import type { SkillRecommendation } from "../../../agent-runtime/review-types.js";
+import type { SkillRecommendation } from "../../../agent-runtime/request/module-services/review-types.js";
 /** The learning review: the turn-end fork that reads the completed
  * conversation and asks "should any skill or memory be saved or updated?". This
  * module owns the policy gate, counters, prompt selection, spawn bookkeeping,

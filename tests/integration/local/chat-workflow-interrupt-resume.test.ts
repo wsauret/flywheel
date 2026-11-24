@@ -10,7 +10,7 @@ import { createAccountAttachResponseReader, encodeAccountAttach } from "../../..
 import type { FrontendOutputBlock, RuntimeClient } from "../../../src/protocol/app-service-types.js"
 import { defaultRoleSlots } from "../../../src/orchestration/config/models/role-selection.js"
 import { ROLE_MODEL_DEFAULTS } from "../../../src/orchestration/config/models/role-model-defaults.js"
-import { CONTINUATION_MESSAGES } from "../../../src/orchestration/agent-runtime/continuation-messages.js"
+import { CONTINUATION_MESSAGES } from "../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND } from "../../../src/orchestration/session/command-handover.js"
 import { PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND } from "../../../src/orchestration/session/planned-session-continuation.js"
 import { attachAccountProject, joinIsolatedAccountService, startIsolatedAccountService } from "./_account-service.js"

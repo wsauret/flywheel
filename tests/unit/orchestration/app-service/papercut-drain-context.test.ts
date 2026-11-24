@@ -6,7 +6,7 @@ import { buildPapercutDrain } from "../../../../src/orchestration/modules/paperc
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
 import type { ConversationMessage, ProviderStreamEvent, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
+import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox.js"
 import { asModelClient } from "../agent-runtime/_model-client.js"
 import { RequestToolMap } from "../../../helpers/request-tool-surface.js"

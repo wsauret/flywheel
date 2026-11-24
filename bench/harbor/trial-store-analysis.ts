@@ -5,7 +5,7 @@ import { closeSync, constants, fstatSync, openSync, readSync, type Stats } from 
 import type { EventStoreReadSurface, StoredFact } from "../../src/infra/event-store-types.js"
 import { SESSION_RUNTIME_FACT_DEFINITIONS, TOOL_CONTENT_REFERENCE_FACT_DEFINITIONS } from "../../src/infra/runtime-fact-types.js"
 import { createSqliteEventReadSurface } from "../../src/infra/sqlite-event-read-surface.js"
-import { MAX_CONTENT_FILTER_RETRIES } from "../../src/orchestration/agent-runtime/agent-loop-content-filter.js"
+import { MAX_CONTENT_FILTER_RETRIES } from "../../src/orchestration/agent-runtime/loop/turn/agent-loop-content-filter.js"
 import { usageEntriesFromFacts } from "../../src/orchestration/session/durable-usage.js"
 import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/provider-request-audit-projection.js"
 import { reconstructProviderRequestPrompt } from "../../src/orchestration/session/provider-request-audit-reconstruction.js"

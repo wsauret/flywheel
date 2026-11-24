@@ -6,7 +6,7 @@ import { createChatRunnerLifecycle } from "../../../../../../src/orchestration/c
 import { learningChatHost } from "../../../../../../src/orchestration/modules/learning/review/chat-review"
 import { ChatSessionState } from "../../../../../../src/orchestration/chat/types"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../../../src/orchestration/agent-runtime/types"
-import type { SkillRecommendation } from "../../../../../../src/orchestration/agent-runtime/review-types.js"
+import type { SkillRecommendation } from "../../../../../../src/orchestration/agent-runtime/request/module-services/review-types.js"
 import {
   askUserStub,
   createTestChatSessionDeps,

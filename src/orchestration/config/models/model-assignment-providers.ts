@@ -18,7 +18,7 @@ import { composeFirstPartyModules, type FirstPartyModuleSnapshot } from "../../m
 import { installedCredentialProviderIds } from "../../credential-provider-modules.js";
 import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js";
 
-import { accessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import { type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../../infra/auth/provider-account.js";
 interface ProviderModelDeps {

@@ -1,7 +1,7 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Effect } from "effect";
-import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
-import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
+import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
+import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";
 import { boundedStringCodeModeOutput, type RuntimeTool, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createCatalogRenderer } from "../../../../../src/orchestration/modules/code-mode/catalog.js";
 import { describeCodeModeTools } from "../../../../../src/orchestration/modules/code-mode/descriptors.js";
@@ -9,7 +9,7 @@ import type { CodeModeLimits } from "../../../../../src/orchestration/modules/co
 import { codeModeRuntimeOver, codeModeServices, codeToolOver, InProcessInvocationWorker, scriptedWorker, workerLog } from "../../../../helpers/code-mode-worker.js";
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
-import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 import { turnDispatchHarnesses } from "../../agent-runtime/_turn-dispatch.js";

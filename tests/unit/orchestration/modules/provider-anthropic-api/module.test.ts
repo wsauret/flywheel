@@ -1,8 +1,8 @@
 import { Redacted } from "effect";
 import { expect, setSystemTime, test } from "bun:test";
 import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
-import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
-import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
+import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
+import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { anthropicApiModule } from "../../../../../src/orchestration/modules/provider-anthropic-api/module.js";
 import { fakeAvailability } from "../../agent-runtime/llm/_provider-chain-harness.js";

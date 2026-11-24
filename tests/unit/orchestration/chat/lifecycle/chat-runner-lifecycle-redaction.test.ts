@@ -5,7 +5,7 @@ import { chatInputText, type ChatInputLike } from "../../../../../src/infra/chat
 import { createChatRunnerLifecycle } from "../../../../../src/orchestration/chat/lifecycle/runner-lifecycle"
 import { ChatSessionState } from "../../../../../src/orchestration/chat/types"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types"
-import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner"
+import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner"
 import {
   askUserStub,
   createTestChatSessionDeps,

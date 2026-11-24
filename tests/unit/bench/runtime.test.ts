@@ -7,13 +7,13 @@ import {
   type BenchmarkRuntimeComposition,
   type PreparedBenchmarkRuntime,
 } from "../../../bench/shared/runtime.js";
-import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import {
   createForegroundBashHoldController,
   type ForegroundBashHoldController,
-} from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import type { UsageAuthorityGeneration } from "../../../src/orchestration/agent-runtime/usage-settlement.js";
+} from "../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import type { UsageAuthorityGeneration } from "../../../src/orchestration/agent-runtime/request/usage/usage-settlement.js";
 import { createInstalledDefinitionRegistry } from "../../../src/orchestration/definition-catalog.js";
 import { refusingLauncher } from "../../helpers/launcher-fake.js";
 import { makeWorkflowDeps } from "../orchestration/headless/_headless-run-fixtures.js";

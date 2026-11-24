@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { errorDetail } from "../../../../../../src/infra/error-message.js";
 import { summarizeProviderError } from "../../../../../../src/infra/llm/provider-error-diagnostic.js";
 import { Log } from "../../../../../../src/infra/log.js";
-import { classifyProviderFailure, type ProviderFailure } from "../../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { classifyProviderFailure, type ProviderFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { AcpRequestError } from "../../../../../../src/orchestration/modules/provider-google-antigravity/acp/connection.js";
 import {
   AccountVerificationRequiredError,

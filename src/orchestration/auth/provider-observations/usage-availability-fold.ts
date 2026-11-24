@@ -1,7 +1,7 @@
 import type { AccessProviderCandidate } from "../../../infra/llm/access-provider.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import { Log } from "../../../infra/log.js"
-import type { ProviderAvailabilityOwner } from "../../agent-runtime/llm/provider-availability-types.js"
+import type { ProviderAvailabilityOwner } from "../../agent-runtime/llm/routing/provider-availability-types.js"
 import type { SubscriptionUsagePublishedSnapshot } from "./subscription-usage-service.js"
 
 const log = Log.create({ service: "usage-availability-fold" })

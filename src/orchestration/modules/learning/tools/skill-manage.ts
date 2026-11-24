@@ -1,4 +1,4 @@
-import type { SkillRecommendation, SkillSemanticAuditResult } from "../../../agent-runtime/review-types.js";
+import type { SkillRecommendation, SkillSemanticAuditResult } from "../../../agent-runtime/request/module-services/review-types.js";
 /** The `skill_manage` write tool: the write surface of the managed skill
  *  library. A separate sibling of the read-only `skill` loader, so external
  *  packages stay untrusted read-only artifacts while managed packages have
@@ -76,7 +76,7 @@ export interface SkillManageToolDeps {
    *  returns. Absent where no composition observes the skill roots. */
   publishDefinitions?: () => Promise<DefinitionReload | undefined>;
   /** Audits the exact writer-prepared package against the pinned revision. */
-  onCandidate?: (candidate: import("../../../agent-runtime/review-types.js").PreparedPackage, revision: SkillRegistryRevision) => Promise<SkillSemanticAuditResult>;
+  onCandidate?: (candidate: import("../../../agent-runtime/request/module-services/review-types.js").PreparedPackage, revision: SkillRegistryRevision) => Promise<SkillSemanticAuditResult>;
   /** Reports each landed write with its bounded display evidence. */
   onWritten?: (action: { name: string; action: string; reach: LearningScope; mutationEvidence?: MutationEvidence }) => void;
   /** Reports each recorded recommendation; the review delivers it to the

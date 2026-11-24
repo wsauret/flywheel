@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
 import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
-import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
-import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request-tool-surface.js";
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
-import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
+import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
+import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { resolveCapturedRole } from "../../../../../src/orchestration/config/models/role-resolution.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
@@ -11,9 +11,9 @@ import { RequestToolMap, testKernelToolDeps, testRuntimeConfigCapture, plannedRe
 import type { FlywheelConfig } from "../../../../../src/orchestration/config/schema/schema.js";
 import { createModelsTool } from "../../../../../src/orchestration/modules/workflows/models.js";
 import { Effect, Exit, Scope } from "effect";
-import { createTurnDispatcher } from "../../../../../src/orchestration/agent-runtime/agent-loop-tools.js";
+import { createTurnDispatcher } from "../../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-loop-tools.js";
 import { fixedTurnOutputBound } from "../../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js";
-import { settleTurn } from "../../../../../src/orchestration/agent-runtime/agent-turn-settlement.js";
+import { settleTurn } from "../../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-turn-settlement.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import type { StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { join } from "node:path";

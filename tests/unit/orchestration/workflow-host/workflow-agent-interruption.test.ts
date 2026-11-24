@@ -36,7 +36,7 @@ import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 import { readCapturedFacts } from "../../../../src/infra/event-store-types"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold"
 import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/protocol/detail"
-import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages"
+import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages"
 import { readAttemptStarts } from "../../../../src/workflows/vm/attempt-conversations"
 import { chatSessionActions } from "../../../../src/orchestration/session/chat-session-run-evidence"
 

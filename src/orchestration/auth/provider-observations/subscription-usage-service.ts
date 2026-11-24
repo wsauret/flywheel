@@ -15,7 +15,7 @@ import type { SubscriptionUsageMetric, SubscriptionUsageOutcome, SubscriptionUsa
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js"
 import { createSubscriptionAccountIdentity, type SubscriptionAccountIdentity } from "../../../infra/auth/subscription/subscription-account-identity.js"
 import { expiredSignInMessage } from "../../../infra/llm/auth-error.js"
-import type { AccessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js"
+import type { AccessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js"
 import { createOrderedLane } from "../../../infra/ordered-lane.js"
 import { credentialSlotClassifier } from "../credential-slot-classifier.js"
 import type { CredentialSlotClassifier } from "../../../infra/auth/store/auth-store-types.js"

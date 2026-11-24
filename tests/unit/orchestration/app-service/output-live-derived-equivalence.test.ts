@@ -15,7 +15,7 @@ import { readToolResultDisplayMeta } from "../../../../src/orchestration/session
 import { parseSessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types.js"
 import { loadSubagentRunsFromEvents } from "../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import { readSubagentRunsByToolUseId } from "../../../../src/orchestration/modules/subagents/history/subagent-history.js"
-import { enforceTurnBudget } from "../../../../src/orchestration/agent-runtime/tools/truncation.js"
+import { enforceTurnBudget } from "../../../../src/orchestration/agent-runtime/tools/results/truncation.js"
 import { turnBudgetChars } from "../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"

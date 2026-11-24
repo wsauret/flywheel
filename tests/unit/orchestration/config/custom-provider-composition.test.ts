@@ -9,7 +9,7 @@ import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../src/pr
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { installedCredentialProviderIds } from "../../../../src/orchestration/credential-provider-modules.js";
 
-import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { testEligibility } from "../../../helpers/provider-authority.js";

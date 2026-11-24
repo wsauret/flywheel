@@ -18,7 +18,7 @@ const read = (path: string): string => readFileSync(path, "utf8")
 // A patched workflow tool is imported under its own query, so each arm builds
 // the tool that the benchmark runs; an applied patch can still name what the
 // patched source does not define.
-const WORKFLOW_TOOL = "src/orchestration/agent-runtime/tools/workflow.ts"
+const WORKFLOW_TOOL = "src/orchestration/agent-runtime/tools/definitions/workflow.ts"
 const patchedWorkflowTools = new Map<string, string>()
 Bun.plugin({
   name: "patched-workflow-tool",
@@ -101,10 +101,10 @@ describe("frozen workflow authorship benchmark arms", () => {
       const patch = read(resolve(fixtures, "patches", `${name}.patch`))
       const files = parsePatch(patch)
       const sourcePaths = name === "root-workflow-only"
-        ? ["src/orchestration/agent-runtime/tools/tool-exposure-planner.ts"]
+        ? ["src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.ts"]
         : name === "no-learning-review"
           ? ["src/orchestration/modules/learning/config.ts"]
-          : ["src/orchestration/modules/workflows/orchestration.ts", "src/orchestration/agent-runtime/tools/workflow.ts"].slice(0, name === "authored-forced" ? 1 : 2)
+          : ["src/orchestration/modules/workflows/orchestration.ts", "src/orchestration/agent-runtime/tools/definitions/workflow.ts"].slice(0, name === "authored-forced" ? 1 : 2)
       expect(files.map((file) => file.oldFileName).sort()).toEqual(sourcePaths.map((path) => `a/${path}`).sort())
       for (const sourcePath of sourcePaths) {
         const source = read(resolve(root, sourcePath))
@@ -120,7 +120,7 @@ describe("frozen workflow authorship benchmark arms", () => {
         if (typeof patched !== "string") throw new Error(`Cannot apply ${name} to ${sourcePath}`)
         if (sourcePath === WORKFLOW_TOOL) {
           patchedWorkflowTools.set(name, patched)
-          const { createWorkflowTool }: typeof import("../../../src/orchestration/agent-runtime/tools/workflow.js") = await import(`${resolve(root, WORKFLOW_TOOL)}?bench-arm=${name}`)
+          const { createWorkflowTool }: typeof import("../../../src/orchestration/agent-runtime/tools/definitions/workflow.js") = await import(`${resolve(root, WORKFLOW_TOOL)}?bench-arm=${name}`)
           const unused = async (): Promise<never> => { throw new Error("the description check launches no workflow") }
           const deps: Parameters<typeof createWorkflowTool>[0] = {
             startWorkflow: unused, resolveLaunchTarget: unused, onRenderEvent: () => {}, mode: "on", askUserAvailable: true,

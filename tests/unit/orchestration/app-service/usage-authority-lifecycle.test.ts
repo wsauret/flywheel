@@ -4,7 +4,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import type { UsageAuthority } from "../../../../src/infra/llm/usage-authority.js"
 import type { UsageEntry } from "../../../../src/infra/llm/usage-entry.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { createSessionUsageSettlement, type UsageSettlementAuthorityLease, type UsageSettlementDraft } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
+import { createSessionUsageSettlement, type UsageSettlementAuthorityLease, type UsageSettlementDraft } from "../../../../src/orchestration/agent-runtime/request/usage/usage-settlement.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { createSubscriptionUsageServicePool } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
 import { createSubscriptionUsageService, type SubscriptionUsageProfile, type SubscriptionUsageService } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"

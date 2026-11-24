@@ -4,8 +4,8 @@ import { providerRequestHeaders } from "../infra/llm/provider-request-identity.j
 import { customProviderModelInfo } from "../infra/llm/models.js";
 import { customProviderModelUnavailableReason, customProviders, type CustomProviderDefinition } from "../infra/llm/custom-provider-registry.js";
 import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../infra/llm/access-provider.js";
-import { ApiError } from "./agent-runtime/llm/runtime-errors.js";
-import { providerAdapter, type AccessProviderFactory } from "./agent-runtime/llm/client-factory.js";
+import { ApiError } from "./agent-runtime/llm/routing/runtime-errors.js";
+import { providerAdapter, type AccessProviderFactory } from "./agent-runtime/llm/routing/client-factory.js";
 import { describeProvider } from "./agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "./modules.js";
 
@@ -49,7 +49,7 @@ function customProviderModule(entry: CustomProviderDefinition): FirstPartyModule
     }), async () => {
       const key = apiKey(build.connection.auth, entry.id);
       if (!key) throw new ApiError({ message: `No ${entry.displayName} API key in the active auth profile. Run: flywheel auth login --provider ${entry.id}`, recovery: { kind: "none" } });
-      const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("./agent-runtime/llm/chat-completions.js")]);
+      const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("./agent-runtime/llm/adapters/chat-completions/chat-completions.js")]);
       const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: entry.baseUrl, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
       return createChatCompletionsAdapter(client, build.wireModelId, info, {
         accessProvider: entry.id,

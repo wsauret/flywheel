@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
-import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
+import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
+import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js";
 import { shellWriteGuardObserver } from "../../../../../src/orchestration/config/policy/shell-write-guard-policy.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import { bashExecution } from "../../agent-runtime/tools/_bash-fixtures.js";
+import { bashExecution } from "../../agent-runtime/tools/bash/_bash-fixtures.js";
 import { makeContext } from "../../agent-runtime/tools/_fixtures.js";
 
 const temporaryDirectory = temporaryDirectories();

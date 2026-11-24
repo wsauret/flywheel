@@ -8,7 +8,7 @@ import { Log } from "../../../infra/log.js";
 import type { ArtifactWriter } from "../../../workflows/context-bundle/attempt-artifacts.js";
 import { fieldSchema } from "../../../workflows/output-contract/compile.js";
 import { envelope } from "../../../workflows/output-contract/envelope.js";
-import { resolveToolPath } from "../../agent-runtime/tools/tool-paths.js";
+import { resolveToolPath } from "../../agent-runtime/tools/files/tool-paths.js";
 import { readConversationToolUseIds } from "../../session/conversation/session-message-entries.js";
 import type { SessionManager } from "../../session/manager.js";
 import { readLaunchedChildren, type LaunchedChild } from "../../session/module-session-operations.js";

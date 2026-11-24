@@ -3,7 +3,7 @@ import { createRoot } from "solid-js"
 
 import type { QuestionBlock } from "../../../src/infra/output-blocks.js"
 import { normalizeAskUserInput } from "../../../src/infra/tools/displays/ask-user.js"
-import { answeredAskUserResult } from "../../../src/orchestration/agent-runtime/tools/ask-user.js"
+import { answeredAskUserResult } from "../../../src/orchestration/agent-runtime/tools/sessions/ask-user.js"
 import { createQuestionForm } from "../../../src/tui/question-dock-form.js"
 import { adaptQuestionHistoryRows } from "../../../src/tui/output-blocks/tools/question-history-format.js"
 

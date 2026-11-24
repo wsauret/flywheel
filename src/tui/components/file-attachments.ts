@@ -1,6 +1,6 @@
 import { basename } from "node:path"
 
-import type { ImageResizeResult } from "../../orchestration/agent-runtime/tools/image-resize.js"
+import type { ImageResizeResult } from "../../orchestration/agent-runtime/tools/read/image-resize.js"
 import { ATTACHMENT_LIMITS, attachmentKind, decodeUtf8Text, type AttachmentRefusal } from "../../protocol/client/attachments.js"
 
 /** An attachment before the prompt gives it a marker: the bytes, their type,

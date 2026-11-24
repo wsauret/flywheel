@@ -27,7 +27,7 @@ import {
   ProviderTransportContextSchema,
   RETIRED_INTERACTION_PROFILE_IDS,
 } from "./provider-request-audit-types.js"
-import { MODEL_INTERACTION_PROFILE_IDS } from "../agent-runtime/model-interaction-profile.js"
+import { MODEL_INTERACTION_PROFILE_IDS } from "../agent-runtime/request/prompt/model-interaction-profile.js"
 import { AccessProviderCandidateSchema, AccessProviderCatalogProvenanceSchema } from "../../infra/llm/access-provider.js"
 
 

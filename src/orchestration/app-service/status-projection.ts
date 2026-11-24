@@ -11,7 +11,7 @@ import type { RuntimePosition, RuntimeUiPatch, RuntimeUiPatchInput } from "../..
 import type { CommandKeeper } from "./command-keeper.js"
 import { toReplyWaitViews, type OpenReplyWaitView } from "../session/reply-waits.js"
 import { displayedReplyWait } from "../../protocol/client/session-controls.js"
-import type { ProcessorClaims } from "../agent-runtime/tools/processor-claims.js"
+import type { ProcessorClaims } from "../agent-runtime/tools/bash/execution/processor-claims.js"
 
 const log = Log.create({ service: "status-projection" })
 

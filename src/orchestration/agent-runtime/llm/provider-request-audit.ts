@@ -28,8 +28,8 @@ import {
 import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
 import type { ReasoningEffort } from "../../../infra/llm/models.js";
 import type { CacheRetention, ConversationMessage, ProviderRequestAttribution } from "./types.js";
-import type { PromptKind } from "../system-prompt.js";
-import type { ModelInteractionProfileId } from "../model-interaction-profile.js";
+import type { PromptKind } from "../request/prompt/system-prompt.js";
+import type { ModelInteractionProfileId } from "../request/prompt/model-interaction-profile.js";
 import type { SessionFactWriter } from "../../session/session-fact-writer.js";
 import type { DurableOwner } from "../../../infra/durable-owner.js";
 

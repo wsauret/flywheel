@@ -6,7 +6,7 @@ import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-sto
 import type { AccessProviderCandidate } from "../../../src/infra/llm/access-provider.js";
 import { AVAILABILITY_PROTOCOL_VERSION, createAvailabilityAuthority } from "../../../src/infra/llm/availability-store.js";
 import { authDir, availabilityAuthorityDbFile } from "../../../src/infra/paths.js";
-import { createProviderAvailability } from "../../../src/orchestration/agent-runtime/llm/provider-availability.js";
+import { createProviderAvailability } from "../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const NOW = Date.parse("2026-11-11T01:00:00.000Z");

@@ -1,7 +1,7 @@
 import { describe, expect, it, jest, spyOn } from "bun:test";
 import { Effect } from "effect";
 import { DebugLog } from "../../../../../src/infra/debug-log.js";
-import type { NestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
+import type { NestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
 import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { CodeModeInvocation } from "../../../../../src/orchestration/modules/code-mode/invocation-runner.js";
 import { createCodeModeService } from "../../../../../src/orchestration/modules/code-mode/service.js";

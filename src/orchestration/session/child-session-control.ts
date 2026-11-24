@@ -9,7 +9,7 @@ import { readRecipientState, type SessionInputDeliveryDeps } from "./session-inp
 import { listState, type RecipientState, type SessionListState } from "./message-disposition.js"
 import { resolveWorkflowDeliveryAddress } from "../workflow-host/workflow-addressing.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "./conversation/addressed-workflow-messages.js"
-import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import type { BackgroundWorkTracking } from "../agent-runtime/background-work/background-work.js"
 import { workflowRunOwner, workflowRunReader } from "../module-catalog.js"
 
 const log = Log.create({ service: "child-session-control" })

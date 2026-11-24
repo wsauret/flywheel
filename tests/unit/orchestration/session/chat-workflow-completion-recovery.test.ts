@@ -29,8 +29,8 @@ import { initializedWorkflowFacts } from "../../../helpers/workflow-root-fixture
 import { mockRunner, supervisorBaseDeps } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { createBackgroundNotificationDelivery } from "../../../../src/orchestration/runner/background-notification-delivery.js"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
-import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types.js"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types.js"
 import { registerLiveWorkflowControl } from "../../../../src/orchestration/session/live-session-control.js"
 import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/execution/injection-queue.js"
 import {

@@ -1,4 +1,4 @@
-import type { PreparedPackage, SkillSemanticAuditResult } from "../../../agent-runtime/review-types.js";
+import type { PreparedPackage, SkillSemanticAuditResult } from "../../../agent-runtime/request/module-services/review-types.js";
 import { randomUUID } from "node:crypto";
 import { Effect, Exit, Scope } from "effect";
 import { Log } from "../../../../infra/log.js";
@@ -7,14 +7,14 @@ import type { StartupDirectories } from "../../../../infra/directory-authorities
 import type { ProviderRequestOptions } from "../../../../infra/llm/provider-options.js";
 import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
-import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../../agent-runtime/model-interaction-profile.js";
-import type { CaptureProviderConnection } from "../../../agent-runtime/model-runtime-capture.js";
+import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../../agent-runtime/request/prompt/model-interaction-profile.js";
+import type { CaptureProviderConnection } from "../../../agent-runtime/request/model-runtime-capture.js";
 import type { AgentFactory, AgentRunTerminal } from "../../../agent-runtime/types.js";
 import { createAgentGeneration } from "../../../runner/host.js";
 
 import { verifySkillSemanticAudit } from "../skills/skill-semantic-audit.js";
 import type { ServingAttempt } from "../../../agent-runtime/llm/types.js";
-import { ModelUnavailable } from "../../../agent-runtime/llm/runtime-errors.js";
+import { ModelUnavailable } from "../../../agent-runtime/llm/routing/runtime-errors.js";
 import { resolveCapturedRole } from "../../../config/models/role-resolution.js";
 import { resolveSessionRoles } from "../../../config/models/session-role-resolver.js";
 import { LEARNING_REVIEW_ROLE_ID, type RoleResolver, type ResolvedRole } from "../../../config/roles.js";

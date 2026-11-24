@@ -9,7 +9,7 @@ import { createOutputProjection } from "../../../../../src/orchestration/app-ser
 import { createShippedOutput } from "../../../../../src/orchestration/app-service/shipped-output.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import type { RuntimeUiPatch } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
-import { emitContextUpdate, emitToolInputComplete, emitToolResult } from "../../../../../src/orchestration/agent-runtime/emit.js"
+import { emitContextUpdate, emitToolInputComplete, emitToolResult } from "../../../../../src/orchestration/agent-runtime/runner/emit.js"
 
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { resolveSessionDir } from "../../../../../src/infra/paths.js"
