@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { createSlashSuggestions, type SlashSuggestionsHook } from "../../../../src/tui/components/create-slash-suggestions.js"
-import type { ModalSelectOption } from "../../../../src/tui/components/modal-select-types.js"
+import { createSlashSuggestions, type SlashSuggestionsHook } from "../../../../src/tui/components/composer/suggestions/create-slash-suggestions.js"
+import type { ModalSelectOption } from "../../../../src/tui/components/modal/select/modal-select-types.js"
 
 const CATALOG: ModalSelectOption[] = [
   { id: "help", title: "Help", value: "/help", description: "Show help", footer: "/help" },

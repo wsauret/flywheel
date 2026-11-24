@@ -1,7 +1,7 @@
-import { createKeyedListSelection } from "../../hooks/create-keyed-list-selection.js"
+import { createKeyedListSelection } from "../../hooks/overlays/modals/create-keyed-list-selection.js"
 import type { DomainReader } from "../../../protocol/protocol-module.js"
 import { projectNotificationsDomain, type ProjectNotificationAction, type ProjectNotificationEpisode, visibleNotifications } from "../../../protocol/modules/project-notifications.js"
-import type { ListModalKeyEvent } from "../../components/modal-list-keys.js"
+import type { ListModalKeyEvent } from "../../components/modal/select/modal-list-keys.js"
 import type { TuiSurfaceHost } from "../../tui-module.js"
 
 /** The list state the modal and its key handler share: one cursor over the

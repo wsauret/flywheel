@@ -575,14 +575,14 @@ describe("a dev client's source", () => {
   }, 60_000)
 
   test("updates reactive text through the production launcher from a dev snapshot", async () => {
-    fs.writeFileSync(path.join(copy, "src", "cli", "index.ts"), `import { startTUI } from "../tui/launcher.js"
+    fs.writeFileSync(path.join(copy, "src", "cli", "index.ts"), `import { startTUI } from "../tui/shell/launcher.js"
 
 export async function runFlywheelCli(): Promise<void> {
   await startTUI({})
   process.exit(0)
 }
 `)
-    fs.writeFileSync(path.join(copy, "src", "tui", "app.tsx"), `/** @jsxImportSource @opentui/solid */
+    fs.writeFileSync(path.join(copy, "src", "tui", "shell", "app.tsx"), `/** @jsxImportSource @opentui/solid */
 import { testRender } from "@opentui/solid"
 import { createSignal } from "solid-js"
 

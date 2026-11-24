@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { createComposerAttachSlot } from "../../../../src/tui/components/create-composer-attach-slot.js"
+import { createComposerAttachSlot } from "../../../../src/tui/components/composer/attachments/create-composer-attach-slot.js"
 
 const image = { mediaType: "image/png", data: "aW1n" }
 

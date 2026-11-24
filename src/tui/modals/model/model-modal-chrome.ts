@@ -1,8 +1,8 @@
 import { detectModelFamily } from "../../../infra/llm/model-family.js"
 import { slotDescription, slotLabel } from "../../../orchestration/config/models/role-selection.js"
 import type { ModelAssignmentItem, ModelModalState } from "./model-modal-types.js"
-import { MODAL_BACK_HINT } from "../../components/modal-copy.js"
-import { modalDisclosureAction, modalDisclosureHelp } from "../../components/modal-disclosure.js"
+import { MODAL_BACK_HINT } from "../../components/modal/modal-copy.js"
+import { modalDisclosureAction, modalDisclosureHelp } from "../../components/modal/modal-disclosure.js"
 import { scopeBreadcrumbRoot, scopeContextLine, scopeHelpHint } from "./model-modal-scope.js"
 import { KERNEL_COMMAND_NAMES } from "../../../protocol/command-names.js"
 

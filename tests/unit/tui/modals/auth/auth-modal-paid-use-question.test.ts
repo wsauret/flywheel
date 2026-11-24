@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import type { RuntimeAuthView } from "../../../../../src/protocol/auth-status-protocol-types.js"
 import { subscriptionSpendAccountCorrelationId, type SubscriptionSpendConsentMutationResult, type SubscriptionSpendConsentView } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
-import { inspectActiveProfileConsent } from "../../../../../src/tui/hooks/create-modals.js"
-import { usePaidUseQuestion } from "../../../../../src/tui/hooks/use-paid-use-question.js"
+import { inspectActiveProfileConsent } from "../../../../../src/tui/hooks/overlays/create-modals.js"
+import { usePaidUseQuestion } from "../../../../../src/tui/hooks/overlays/questions/use-paid-use-question.js"
 import { clearMocks, createModal, currentAuthStatuses, runtimeAnswer, setAuthStatuses } from "./auth-modal-test-harness.js"
 
 type AvailableConsent = Extract<SubscriptionSpendConsentView, { readonly kind: "available" }>

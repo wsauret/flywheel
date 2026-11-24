@@ -2,9 +2,9 @@ import type { Accessor } from "solid-js"
 import { createMemo, createSignal, mapArray } from "solid-js"
 import { effectiveSessionShortTitle, type SessionCatalogRow } from "../../protocol/app-service-types.js"
 import { isWorkingStatus } from "../../protocol/status-protocol-types.js"
-import { isEmptyNewChat } from "../session-empty-state.js"
-import type { TabPresentation } from "../components/tabs-bar.js"
-import type { ForegroundTarget, ShellSignals } from "./shell-state.js"
+import { isEmptyNewChat } from "./state/session-empty-state.js"
+import type { TabPresentation } from "../components/chrome/tabs-bar.js"
+import type { ForegroundTarget, ShellSignals } from "./state/shell-state.js"
 
 export type TabInfo = TabPresentation & ({ readonly kind: "session" } | { readonly kind: "pending" })
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { modelAssignmentText, modelLabelColumn, modelText, providerChainText } from "../../../../../src/tui/modals/model/model-modal-text.js";
 import { contextLine } from "../../../../../src/tui/modals/model/model-modal-chrome.js";
-import { displayWidth } from "../../../../../src/tui/text.js";
+import { displayWidth } from "../../../../../src/tui/terminal/text.js";
 import { styledTextContent, theme } from "./_model-modal-fixtures";
 import type { ModelOptionRow } from "../../../../../src/protocol/model-assignment-protocol-types.js";
 

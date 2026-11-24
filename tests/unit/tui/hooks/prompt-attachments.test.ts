@@ -4,7 +4,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { PasteEvent } from "@opentui/core"
 
-import { createPromptAttachments } from "../../../../src/tui/components/composer-attachments.js"
+import { createPromptAttachments } from "../../../../src/tui/components/composer/attachments/composer-attachments.js"
 
 function createFakeTextarea(initialText = "") {
   let plainText = initialText

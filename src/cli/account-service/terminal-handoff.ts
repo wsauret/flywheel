@@ -4,7 +4,7 @@ import type { ServeLane } from "../../infra/cli-subprocess.js"
 import type { LaunchState } from "../../infra/launch-state.js"
 import { accountServeDir } from "../../infra/paths.js"
 import { shutdownSignals } from "../../infra/shutdown-signals.js"
-import type { LeftTerminal } from "../../tui/exit.js"
+import type { LeftTerminal } from "../../tui/terminal/exit.js"
 
 type Environment = { readonly [name: string]: string | undefined }
 
@@ -91,7 +91,7 @@ export function createTerminalHandoff(options: TerminalHandoffOptions, seams: Te
     // One failed handoff is the fault the person sees; a reconnect loop that
     // suspended and resumed the renderer on every attempt would be noise.
     if (failure !== undefined) throw new Error(failure.message, { cause: failure })
-    const leaveTerminal = seams.leaveTerminal ?? (await import("../../tui/exit.js")).leaveTerminal
+    const leaveTerminal = seams.leaveTerminal ?? (await import("../../tui/terminal/exit.js")).leaveTerminal
     const left = await leaveTerminal()
     let statePath: string | undefined
     let successorExitCode: number

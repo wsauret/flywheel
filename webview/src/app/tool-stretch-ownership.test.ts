@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../src/protocol/app-service-types.js"
 import { mountToolGroup } from "./render-ownership-loader-fixture.js"
-import { mutationEvidenceFixture } from "../../../tests/unit/tui/output-blocks/_mutation-evidence-fixture.js"
+import { mutationEvidenceFixture } from "../../../tests/fixtures/mutation-evidence-fixture.js"
 
 const call = (id: string, status: "streaming" | "completed"): FrontendToolEntry => ({
   kind: "tool", id, name: "bash", action: "shell_exec", status, timestamp: 0,

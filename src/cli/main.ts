@@ -16,7 +16,7 @@ import type { SubcommandDispatch } from "./subcommands.js"
 import type { HeadlessOutputObserver } from "../orchestration/headless/headless-output.js"
 import type { HeadlessTaskResult } from "../orchestration/headless/run-headless-task.js"
 import { shutdownSignals } from "../infra/shutdown-signals.js"
-import { watchTerminalInput } from "../tui/terminal-input.js"
+import { watchTerminalInput } from "../tui/terminal/terminal-input.js"
 
 type MutationResult = number | undefined | { readonly kind: "task"; result: HeadlessTaskResult }
 
@@ -190,9 +190,9 @@ async function runTUI(directories: StartupDirectories, launcher: CliLauncher, te
   startupTrace("runTUI start")
   const endImports = timeline?.begin("client.imports")
   const { armProcessWatchdog, installProcessWatchdog } = await import("../infra/process-watchdog.js")
-  const { startTUI } = await import("../tui/launcher.js");
+  const { startTUI } = await import("../tui/shell/launcher.js");
   startupTrace("tui launcher imported")
-  const { exitTUI, registerPreExitCleanup } = await import("../tui/exit.js");
+  const { exitTUI, registerPreExitCleanup } = await import("../tui/terminal/exit.js");
   const { RUNTIME_SHUTDOWN_HARD_EXIT_MS } = await import("../orchestration/app-service/runtime-shutdown.js")
   // Parent death without a signal (SIGKILLed shell, crashed terminal emulator)
   // attempts the same graceful path as SIGHUP; the watchdog Worker's hard-exit

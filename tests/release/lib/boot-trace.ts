@@ -36,7 +36,7 @@ export function phaseElapsedMs(phases: readonly BootPhase[], label: string): num
   return phases.find((phase) => phase.label === label)?.elapsedMs
 }
 
-/** Emitted by src/tui/shell.tsx on the first frame the renderer presents after
+/** Emitted by src/tui/shell/shell.tsx on the first frame the renderer presents after
  *  the shell mounted, so the frame shows the shell and not an empty tree. */
 const CONTENT_FRAME_PHASE = "content frame"
 /** The renderer's first frame. On OpenTUI 0.6.8 a terminal capability reply
@@ -44,7 +44,7 @@ const CONTENT_FRAME_PHASE = "content frame"
  *  frame; it stands in only for a baseline that predates the content frame. */
 const OPENTUI_FIRST_FRAME_PHASE = "opentui first frame"
 export const CHAT_INPUT_READY_PHASE = "chat input mode ready"
-/** Emitted by src/tui/welcome-notice.tsx when the first welcome card shows its full title. */
+/** Emitted by src/tui/transcript/welcome-notice.tsx when the first welcome card shows its full title. */
 export const SESSION_INTRO_VISIBLE_PHASE = "session intro visible"
 export const SESSION_LIST_READY_PHASE = "session list ready"
 

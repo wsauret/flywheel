@@ -4,7 +4,7 @@ import type { BuiltInCommandDescriptor } from "../../src/protocol/command-catalo
 import { commandSpecs } from "../../src/tui/commands/command-catalog.js"
 import { buildCommandDefinitions } from "../../src/tui/commands/command-definitions.js"
 import type { CommandSpec } from "../../src/tui/commands/command-types.js"
-import type { Keymap } from "../../src/tui/keymap/keymap.js"
+import type { Keymap } from "../../src/tui/terminal/keymap/keymap.js"
 
 /** The descriptors the runtime catalog publishes for one module composition,
  *  every installed module on by default. */

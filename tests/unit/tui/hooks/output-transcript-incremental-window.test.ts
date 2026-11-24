@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
+import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { fakeRuntimeClient, flushRecovery, liveView, textBlock } from "./_output-transcript-cache-fixtures.js"
 import { asScrollBox, fakeScrollBox, mountController } from "../../../fixtures/output-scroll-harness.js"
-import type { TranscriptLayoutSlot } from "../../../../src/tui/output-window/output-window-scroll.js"
+import type { TranscriptLayoutSlot } from "../../../../src/tui/transcript/output-window/output-window-scroll.js"
 
 /** Item 18a: the 16ms delta path maintains the window incrementally -- the
  *  estimate array is never rebuilt (its identity is the height-index seeding

@@ -4,9 +4,9 @@ import { unwrap } from "solid-js/store"
 import { Log } from "../../../../src/infra/log.js"
 import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
-import { atTranscriptHead } from "../../../../src/tui/transcript-store/output-transcript-cache-types.js"
-import { createTranscriptWindowProjector } from "../../../../src/tui/output-window/output-window-projection.js"
+import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
+import { atTranscriptHead } from "../../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"
+import { createTranscriptWindowProjector } from "../../../../src/tui/transcript/output-window/output-window-projection.js"
 import { INSTANT_BACKOFF, content, fakeRuntimeClient, flushRecovery, gen, liveView, rangeOk, rangeUnavailable, seedComplete, seedTail, textBlock, toolEntry, userMessageBlock, windowTotal } from "./_output-transcript-cache-fixtures.js"
 
 const run = (scenario: (dispose: () => void) => Promise<void>): Promise<void> => createRoot(async (dispose) => { try { await scenario(dispose) } finally { dispose() } })

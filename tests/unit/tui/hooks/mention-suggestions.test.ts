@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import type { ProjectFileEntry } from "../../../../src/protocol/transcript-protocol-types.js"
-import { createMentionSuggestions } from "../../../../src/tui/components/create-mention-suggestions.js"
+import { createMentionSuggestions } from "../../../../src/tui/components/composer/suggestions/create-mention-suggestions.js"
 
 const ENTRIES: ProjectFileEntry[] = [
   { path: "src", directory: true },

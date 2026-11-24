@@ -1,5 +1,5 @@
 import { chatOnlyCommandNotice, type AgentViewKind } from "../../protocol/client/slash-route.js"
-import type { ShellServices } from "../hooks/shell-state.js"
+import type { ShellServices } from "../hooks/state/shell-state.js"
 
 /** The terminal's `close-chat` surface: Close chat on the chat in front, which
  *  ends its work now and removes its tab (PI-INTERACTION-082, PI-INTERACTION-119). An agent's

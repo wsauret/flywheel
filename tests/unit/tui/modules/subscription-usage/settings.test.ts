@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import { activate, clearMocks, createModal, flush, moduleRuntime, rowOf, valueOf } from "../../modals/_settings-modal-fixtures.js"
+import { activate, clearMocks, createModal, flush, moduleRuntime, rowOf, valueOf } from "../../modals/settings/_settings-modal-fixtures.js"
 
 describe("Usage module settings", () => {
   it("edits and validates subscription usage alert thresholds", async () => {

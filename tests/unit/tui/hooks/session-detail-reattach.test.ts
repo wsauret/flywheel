@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
 import { createRuntimeConnection } from "../../../../src/protocol/client/connection.js"
-import { createSessionDetailCache } from "../../../../src/tui/session-detail-cache.js"
+import { createSessionDetailCache } from "../../../../src/tui/adapters/session-detail-cache.js"
 import { heartbeatRuntime, heldBackoff, waitFor } from "../../protocol/client/_connection-fixtures.js"
 
 /** A detail hold over a real connection, across the reattach that the

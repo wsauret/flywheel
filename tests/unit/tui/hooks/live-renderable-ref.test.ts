@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { createLiveRenderableRef } from "../../../../src/tui/components/create-live-renderable-ref.js"
+import { createLiveRenderableRef } from "../../../../src/tui/components/composer/create-live-renderable-ref.js"
 
 interface FakeRenderable {
   once(event: string, listener: () => void): FakeRenderable
