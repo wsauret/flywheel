@@ -1,5 +1,5 @@
 
-import { DebugLog } from "../../debug-log.js";
+import { DebugLog } from "../../diagnostics/debug-log.js";
 import { canonicalCatalogModelId, canonicalModelId, preferredWireModelId, type CatalogDataUse } from "../../model-id.js";
 import type { ModelFamily } from "../models/model-family.js";
 import type { ModelInfo } from "../models/models.js";

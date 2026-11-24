@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { loadAgentInstructions } from "../../../../../../../src/orchestration/agent-runtime/request/prompt/instructions/project-instructions.js";
 import { globalAgentsFile } from "../../../../../../../src/infra/paths.js";
-import { Log } from "../../../../../../../src/infra/log.js";
+import { Log } from "../../../../../../../src/infra/diagnostics/log.js";
 import type { OwnedCommandRunner } from "../../../../../../../src/infra/owned-command.js";
 
 /** The temp directory each case owns. It is both the project root and the

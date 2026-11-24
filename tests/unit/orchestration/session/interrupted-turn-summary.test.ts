@@ -4,7 +4,7 @@ import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, readConversationQueuedUserInputs } fr
 import { chatTurnEndOf, turnEndOfEntry, type TurnEndEntry } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { readChatTurnEnd } from "../../../../src/orchestration/session/control/chat-session-run-evidence.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
 
 function fact(position: number, sessionId: string, type: string, payload: { [key: string]: unknown }): StoredFact {
   return {

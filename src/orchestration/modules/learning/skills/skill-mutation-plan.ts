@@ -17,7 +17,7 @@ import type { SkillSemanticAuditResult } from "../../../agent-runtime/request/mo
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join, sep } from "node:path";
-import { contentEvidence } from "../../../../infra/content-evidence.js";
+import { contentEvidence } from "../../../../infra/runtime-facts/content-evidence.js";
 import type { LearningScope } from "../../../../infra/learning-scope.js";
 import { buildMutationDiff, type MutationDiff, type MutationDiffEndpoint, type MutationDiffTarget } from "../../../../infra/mutation-diff.js";
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
@@ -26,7 +26,7 @@ import { firstThreatMessage } from "../../../../infra/threat-patterns.js";
 import { readSkillPackageFiles } from "../../../../workflows/skills/skill-context.js";
 import { NEW_SKILL_TRIGGER_MAX_CHARS, SKILL_FILE, SKILL_LIMITS, type SkillDefinition, type SkillPackageBinding } from "../../../../workflows/skills/skill-schema.js";
 import { ownedSkillStoreDirs } from "../../../../workflows/skills/skills.js";
-import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
 import type {
   PreparedLocation,
   PreparedMutationOutcome,

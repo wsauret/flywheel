@@ -23,8 +23,8 @@ import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission, type LLMClient, type
 import { resolveSessionRoles } from "../../../../../src/orchestration/config/models/session-role-resolver.js"
 import type { RoleHold } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { capabilityAccessHolding } from "../tools/_fixtures.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js"
 

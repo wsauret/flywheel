@@ -1,6 +1,6 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
-import type { StopHold } from "../../../infra/stop-hold.js";
+import type { StopHold } from "../../../infra/process/container/stop-hold.js";
 
 /** The module's id: its descriptor, its settings row, and its setup all name it. */
 export const CLAUDE_AGENT_SDK_MODULE_ID = "provider-claude-agent-sdk";

@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { decodeAuthStoreWithDiagnostics } from "../../../../src/infra/auth/store/auth-store.js"
-import { Log } from "../../../../src/infra/log.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
 import { createAuthConditionOwner } from "../../../../src/orchestration/auth/auth-condition-owner.js"
 
 const directory = "/profiles/default"

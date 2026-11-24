@@ -1,4 +1,4 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/event-store-types.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/store/event-store-types.js"
 import { isRecord } from "../../infra/record.js"
 import { parseWorkflowSessionFact, workflowAggregateId, type WorkflowRecoveryDegradationReason, type WorkflowSessionFact } from "../vm/facts/session-facts.js"
 import { WORKFLOW_ROOT_FACT_TYPES, workflowFamilyBoundary } from "../run/workflow-root.js"

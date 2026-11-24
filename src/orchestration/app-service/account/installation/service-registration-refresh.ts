@@ -3,9 +3,9 @@ import { join } from "node:path"
 
 import { Schema } from "effect"
 
-import type { DarwinExecutable } from "../../../../infra/darwin-process-api.js"
+import type { DarwinExecutable } from "../../../../infra/process/kernel/darwin-process-api.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { AccountServiceRegistrationControl } from "./account-service-platform.js"
 import { REGISTRATION_FINGERPRINT_ENV, RegistrationReloadRecordSchema, type RegistrationReloadRecord, type ServiceNames } from "./account-service-registration.js"
 

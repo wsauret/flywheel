@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs"
 import { basename, join } from "node:path"
 import { antigravityHomeLayout } from "../../../../infra/antigravity-engine.js"
 import { writeFileAtomic } from "../../../../infra/atomic-write.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
 import { RouteUnavailableError } from "../../../agent-runtime/llm/errors.js"
 

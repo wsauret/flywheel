@@ -16,7 +16,7 @@ import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/w
 import { continueWorkflowReplay } from "../../../../src/workflows/vm/host/replay.js";
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js";
 import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact, WorkflowSessionFactSchema } from "../../../../src/workflows/vm/facts/session-facts.js";
-import type { AsyncEventWriter, EventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js";
+import type { AsyncEventWriter, EventStoreAppend, StoredFact } from "../../../../src/infra/store/event-store-types.js";
 import { retiredFixtureWorkflow } from "../../../helpers/retired-fixture-briefs.js";
 import { retainedDefinitions, retainedProject } from "../../../fixtures/retired-workflows/retained-project.js";
 import { acknowledge, runningControl } from "./_machine-semantics-fixtures.js";

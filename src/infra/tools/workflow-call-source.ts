@@ -1,7 +1,7 @@
 import { deslugify } from "../canonical-name.js";
 import { stringField, type JsonFields } from "./json-field.js";
 import { isRecord } from "../record.js";
-import { parseWorkflowYaml } from "../workflow-yaml.js";
+import { parseWorkflowYaml } from "../yaml/workflow-yaml.js";
 import { isQualifiedSkillId } from "../skill-id.js";
 
 /** The extension of a workflow file that a chat agent launches by path. */

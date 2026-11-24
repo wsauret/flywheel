@@ -1,7 +1,7 @@
 import { messageInput, type AgentLoopInput, type InputWaitReservation, type TurnParkedContext, type TurnParkState } from "../../../infra/agent-loop-events.js";
 import { mergeAbortSignals } from "../../../infra/abort.js";
 import { formatRuntimeNotification } from "../background-work/runtime-notifications.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
 import type { CurrentTurnInterruption } from "./turn/run-lifecycle.js";
 import type { PlannedCompactionOperation } from "../compaction/triggers.js";

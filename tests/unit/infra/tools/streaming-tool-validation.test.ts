@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
-import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js";
-import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js";
+import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory.js";
+import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types.js";
 
 function assistantEvent(content: NonNullable<Extract<RuntimeEvent, { type: "model.assistant_message.recorded" }>["data"]["message"]>["content"]): RuntimeEvent {
   return createRuntimeEvent("model.assistant_message.recorded", {

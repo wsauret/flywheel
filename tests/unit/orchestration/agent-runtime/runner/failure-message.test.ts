@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { exhaustedProvidersCopy } from "../../../../../src/infra/llm/errors/provider-error-copy.js"
 import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "../../../../../src/orchestration/agent-runtime/runner/failure-message.js"
-import { PersistenceWriteRefused, type PersistenceWriteStage } from "../../../../../src/infra/event-store-types.js"
+import { PersistenceWriteRefused, type PersistenceWriteStage } from "../../../../../src/infra/store/event-store-types.js"
 import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/llm/routing/runtime-errors.js"
 import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/runner/errors.js"
 import { ContentRefusedError, ProviderRequestValidationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"

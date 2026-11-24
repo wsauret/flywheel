@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
 import { createFactParser } from "../../../../src/infra/event-registry";
 import { messageInput } from "../../../../src/infra/agent-loop-events";
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/loop/agent-loop";

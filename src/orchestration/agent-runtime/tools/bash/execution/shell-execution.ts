@@ -10,7 +10,7 @@ import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import { errorMessage } from "../../../../../infra/error-message.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import type { BackgroundWorkRegistry } from "../../../background-work/background-work.js";
 import type { ForegroundBashReleaseReason } from "../../../background-work/foreground-bash-hold.js";
 import { settledForegroundResult } from "./bash-output-tail.js";

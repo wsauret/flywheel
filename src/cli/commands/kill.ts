@@ -4,15 +4,15 @@ import * as path from "node:path"
 import type { AccountDirectories } from "../../infra/directory-authorities.js"
 import type { ServeLane } from "../../infra/cli-subprocess.js"
 import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath } from "../../infra/paths.js"
-import { emptyContainers, processContainer, type ManagedContainer } from "../../infra/process-container.js"
+import { emptyContainers, processContainer, type ManagedContainer } from "../../infra/process/container/process-container.js"
 import { errnoCode, errorMessage } from "../../infra/error-message.js"
-import { releaseLock, tryAcquireLockSync, type TriedLock, type TryLockOptions } from "../../infra/ownership-file-lock.js"
-import { processAccountHome, type ProcessAccountHome } from "../../infra/process-account-home.js"
+import { releaseLock, tryAcquireLockSync, type TriedLock, type TryLockOptions } from "../../infra/locks/ownership-file-lock.js"
+import { processAccountHome, type ProcessAccountHome } from "../../infra/process/process-account-home.js"
 import { isProcessAlive } from "../../infra/process-liveness.js"
-import { listProcesses, type ProcessRow } from "../../infra/process-table.js"
+import { listProcesses, type ProcessRow } from "../../infra/process/container/process-table.js"
 import { probeRendezvous, refusesAccess, type RendezvousProbe } from "../account-service/runtime-attach.js"
 import { readRuntimeIdentity } from "../account-service/runtime-identity-record.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 
 const log = Log.create({ service: "kill" })
 
@@ -135,7 +135,9 @@ function isServeLane(word: string): word is ServeLane {
 const SOURCE_ENTRIES: readonly (readonly (string | RegExp)[])[] = [
   ["scripts", "dev.ts"],
   ["src", "cli", "index.ts"],
+  // The module's earlier home, which a supervisor that an older source run started before its lock landed still runs.
   ["src", "infra", "owned-command-supervisor.ts"],
+  ["src", "infra", "supervision", "launch", "owned-command-supervisor.ts"],
   ["node_modules", ".cache", "flywheel", /^owned-command-supervisor-[0-9a-f]+\.js$/],
 ]
 

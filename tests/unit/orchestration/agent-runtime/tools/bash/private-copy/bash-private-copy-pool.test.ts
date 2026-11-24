@@ -6,7 +6,7 @@ import { serialize } from "bun:jsc";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { createBoundedWorkerSpawner } from "../../../../../../../src/infra/bounded-worker-spawner.js";
+import { createBoundedWorkerSpawner } from "../../../../../../../src/infra/process/workers/bounded-worker-spawner.js";
 import type { OwnedCommandRunner } from "../../../../../../../src/infra/owned-command.js";
 import { detectCopyChanges, takePrivateProjectCopy } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy.js";
 import { createPrivateCopyPool } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-pool.js";

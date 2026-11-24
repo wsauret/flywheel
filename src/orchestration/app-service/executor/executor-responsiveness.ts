@@ -1,4 +1,4 @@
-import type { Log } from "../../../infra/log.js"
+import type { Log } from "../../../infra/diagnostics/log.js"
 
 /** Heartbeat periods in a row with no heartbeat that prove an executor
  *  wedged. At the one-second production period, a loaded machine's stalls,

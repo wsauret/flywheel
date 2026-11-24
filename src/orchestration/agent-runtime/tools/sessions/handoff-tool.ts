@@ -1,10 +1,10 @@
 import { errorMessage } from "../../../../infra/error-message.js";
 import { collapsedMarkup, splitCollapsedValue, type CollapsedValue } from "../../../../infra/handoff-normalize.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { describeCommandRunRepair, type CommandRunRepair, type ReadCommandEvidence } from "../../../../workflows/output-contract/evidence.js";
 import type { HandoffRejection, HandoffToolSchema } from "../../../workflow-host/attempt/handoff-tool-schema.js";
 import type { OutputIssue } from "../../../../workflows/output-contract/paths.js";
-import type { ToolOutcome } from "../../../../infra/tool-outcome.js";
+import type { ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js";
 import { coerceToolInput } from "../input/coerce-input.js";
 
 interface HandoffContent {

@@ -1,12 +1,12 @@
 /**
  * The addresses of one workflow: the items of each list, the named agents
  * of each phase, and the agent of each phase of one agent, which a message
- * can name in `targets`. The runtime resolves and refuses targets with
- * {@link resolveWorkflowTargets}, a parent agent reads them as
- * {@link workflowAddressLines}, and the agent view's
- * composer reads its own with {@link workflowAgentAddress}. Each reads the one
- * operational tree of the workflow view through the shared outline and folds
- * no hierarchy of its own.
+ * can name in `targets`. The runtime resolves targets with
+ * {@link resolveWorkflowTargets} and refuses and lists them from
+ * {@link workflowAddresses} (orchestration/workflow-host/workflow-addressing.ts),
+ * and the agent view's composer reads its own with {@link workflowAgentAddress}.
+ * Each reads the one operational tree of the workflow view through the shared
+ * outline and folds no hierarchy of its own.
  */
 
 import type { LoadedWorkflowView, WorkflowTreeNode } from "../workflow-view-protocol-types.js"
@@ -16,15 +16,6 @@ import type { WorkflowAgentModel } from "./workflow-agent.js"
 import type { WorkflowAgentState } from "../../infra/output-blocks.js"
 
 type View = Pick<LoadedWorkflowView, "attempts" | "tree">
-
-/** Normalizes model-supplied targets: missing or empty means whole workflow; null means invalid. */
-export function parseWorkflowTargets(value: unknown): readonly string[] | undefined | null {
-  if (value === undefined) return undefined
-  if (!Array.isArray(value)) return null
-  const targets = value.map((target) => typeof target === "string" ? target.trim() : "")
-  if (targets.some((target) => !target)) return null
-  return targets.length === 0 ? undefined : targets
-}
 
 /** One addressable part of a workflow. */
 export interface WorkflowAddress {
@@ -78,7 +69,7 @@ function addressDetail(agent: WorkflowPhaseAgent, cut: string | undefined): stri
  *  phases in run order, the items of a list in list order with the agents
  *  of every phase of its stream, the named agents of a phase in file order,
  *  and the agent of a phase of one agent by its record id. */
-function workflowAddresses(view: View, cut?: string): readonly WorkflowAddress[] {
+export function workflowAddresses(view: View, cut?: string): readonly WorkflowAddress[] {
   const { byId } = workflowTreeIndex(view.tree)
   const outline = workflowOutline(view, cut)
   const streams = new Set<string>()
@@ -168,71 +159,6 @@ export function resolveWorkflowAgentTarget(view: View, agentNodeId: string, cut?
   const match = addresses.find(({ agentNodeIds }) => agentNodeIds.includes(agentNodeId))
   if (match === undefined) return { ok: false, reason: valid.length === 0 ? "none" : "unknown", target: agentNodeId, valid }
   return match.finished ? { ok: false, reason: "finished", target: match.target, valid } : { ok: true, addresses: [match] }
-}
-
-function shortened(text: string, limit: number): string {
-  return text.length <= limit ? text : `${text.slice(0, limit - 1)}…`
-}
-
-const ITEM_LIMIT = 60
-const DETAIL_LIMIT = 80
-
-function stateWord(address: WorkflowAddress): string {
-  return address.state === "parked" ? "interrupted" : address.state
-}
-
-/** One address as a line of the message targets: its key, its item when the item says
- *  more than the key, its current agent, its state, and its activity. */
-function addressLine(address: WorkflowAddress): string {
-  const item = address.item === undefined || address.item === address.target ? [] : [shortened(address.item, ITEM_LIMIT)]
-  return `- ${[address.target, ...item, address.agent, stateWord(address), shortened(address.detail, DETAIL_LIMIT)].join(" | ")}`
-}
-
-function groupHeading(first: WorkflowAddress, count: number, open: boolean): string {
-  if (first.kind === "item") return `phase ${first.group}: ${count} ${count === 1 ? "item" : "items"}, ${open ? "one line per item" : "all finished"}`
-  if (count === 1) return `phase ${first.group}: one agent${open ? "" : ", finished"}`
-  return `phase ${first.group}: ${count} named agents, ${open ? "one line per agent" : "all finished"}`
-}
-
-/** The message targets of a workflow as a parent agent reads them: for each
- *  list or phase that has not finished, a heading and one line per address,
- *  and for each that finished, its heading alone, because none of its items
- *  or agents takes a message. Empty for a tree with no phase yet. `cut`
- *  is the word of the cut that holds the run, such as `interrupted`: a cut
- *  returns its started agents to pending, so without it they read queued. */
-export function workflowAddressLines(view: View, cut?: string): readonly string[] {
-  const addresses = workflowAddresses(view, cut)
-  if (addresses.length === 0) return []
-  const groups = [...Map.groupBy(addresses, ({ groupId }) => groupId).values()]
-  const open = (rows: readonly WorkflowAddress[]) => rows.some(({ finished }) => !finished)
-  return [
-    ...(groups.some(open) ? ["message targets (name these item keys or agent ids in targets for message_session and process interrupt/resume; omit targets only for the whole workflow):"] : []),
-    ...groups.flatMap((rows) => {
-      const [first] = rows
-      if (first === undefined) return []
-      return open(rows) ? [groupHeading(first, rows.length, true), ...rows.map(addressLine)] : [groupHeading(first, rows.length, false)]
-    }),
-  ]
-}
-
-/** The refusal of a `targets` list, with every target that takes a
- *  message now and its state, so a sender can choose again at once. */
-export function workflowTargetRefusal(resolution: Extract<WorkflowTargetResolution, { ok: false }>): string {
-  const reason = (() => {
-    switch (resolution.reason) {
-      case "none": return "this workflow has no item or agent that takes a message now: a list gets its items when it reads them, and a finished item or agent takes none"
-      case "unknown": return `no item or agent of this workflow has the target "${resolution.target}"`
-      case "ambiguous": return `more than one list or phase of this workflow that has not finished has the target "${resolution.target}"`
-      case "finished": return `"${resolution.target}" has finished and reads no more messages`
-    }
-  })()
-  const lines = resolution.valid.map(addressLine)
-  return [
-    `${reason}.`,
-    ...(lines.length > 0
-      ? ["Valid targets (key | item | agent | state | activity):", ...lines]
-      : resolution.reason === "none" ? ["Send the message without targets to reach the whole workflow."] : ["No item or agent of this workflow takes a message now. Send the message without targets to reach the whole workflow."]),
-  ].join("\n")
 }
 
 /** The item or agent that an agent view's composer addresses: the target it

@@ -760,7 +760,7 @@ export function unattendedModuleIds(modules: readonly FirstPartyModule[] = insta
   return MODULE_IDS.filter((id) => !attended.has(id))
 }
 /** Preserve one admission across preparation and the later consent-aware pass. */
-export async function prepareDefinitionReconciliation(input: DefinitionReconciliationInput, modules: readonly FirstPartyModule[] = installedModules()): Promise<(reader?: import("../infra/event-store-types.js").AsyncEventStateReadSurface) => Promise<void>> {
+export async function prepareDefinitionReconciliation(input: DefinitionReconciliationInput, modules: readonly FirstPartyModule[] = installedModules()): Promise<(reader?: import("../infra/store/event-store-types.js").AsyncEventStateReadSurface) => Promise<void>> {
   const prepared = await Promise.allSettled(modules.map(async (module) => module.definitionReconciliation?.prepare(input)))
   const errors = prepared.flatMap((result) => result.status === "rejected" ? [result.reason] : [])
   // The members' messages travel in the message, because a start failure

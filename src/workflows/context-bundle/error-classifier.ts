@@ -1,6 +1,6 @@
 import { assertNever } from "../../infra/assert-never.js";
 import { InvariantViolation } from "../../infra/invariant.js";
-import { PersistenceWriteRefused } from "../../infra/event-store-types.js";
+import { PersistenceWriteRefused } from "../../infra/store/event-store-types.js";
 import { HandoffInvalidError, HandoffNotProducedError } from "./handoff-errors.js";
 import type { AgentFailureKind } from "../vm/host/agent-outcome.js";
 

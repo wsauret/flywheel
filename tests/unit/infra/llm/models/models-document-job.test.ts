@@ -1,5 +1,5 @@
 import { afterAll, afterEach, expect, spyOn, test } from "bun:test";
-import { DebugLog } from "../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log.js";
 import { admitCurrentModelsDocument } from "../../../../../src/infra/llm/models/models-document.js";
 import { runModelsDocumentJob, type ModelsDocumentAnswer } from "../../../../../src/infra/llm/models/models-document-job.js";
 import { combinedModelsDevJson } from "../../../../helpers/model-catalog-fixtures.js";

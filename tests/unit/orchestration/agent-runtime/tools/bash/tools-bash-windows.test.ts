@@ -7,7 +7,7 @@ import { createForegroundBashHoldController } from "../../../../../../src/orches
 import { backgroundLogPath } from "../../../../../helpers/background-log-path.js";
 import { bashExecution, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext } from "../_fixtures.js";
-import type { PersistentProcessClient, PersistentProcessRecord } from "../../../../../../src/infra/persistent-process-manager.js";
+import type { PersistentProcessClient, PersistentProcessRecord } from "../../../../../../src/infra/supervision/persistent/persistent-process-manager.js";
 
 describe("bash tool: Windows shell execution", () => {
   const availableTools = new Set(["edit", "write"]);

@@ -1,7 +1,7 @@
 import { createEffect, createMemo, type Accessor } from "solid-js"
 import { useOverlay } from "@tui/components/modal/modal"
 import { useKeymap } from "@tui/context/keymap"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
 import { createOpenSessionKeeper } from "../../protocol/client/open-session-keeper.js"
 import { discardIfTransientForeground } from "../hooks/foreground/background-foreground.js"

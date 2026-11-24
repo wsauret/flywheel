@@ -1,5 +1,5 @@
 import { describe, expect, it, spyOn } from "bun:test"
-import type { StoredFact } from "../../../../../src/infra/event-store-types.js"
+import type { StoredFact } from "../../../../../src/infra/store/event-store-types.js"
 import { compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js"
 import { foldWorkflowControl, replayWorkflowControl, replayWorkflowControlFrom } from "../../../../../src/workflows/vm/recovery/fact-fold.js"
 import { composeWorkflowProposal } from "../../../../../src/workflows/vm/control/proposal-composition.js"

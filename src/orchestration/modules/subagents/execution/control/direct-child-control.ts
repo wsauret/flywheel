@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../../infra/store/event-store-types.js"
 import { liveChildRun, whenLiveChildRun, type LiveChildControl } from "../../../../session/control/live-session-control.js"
 import { readUnreadMessages, type QueuedUserInputCell } from "../../../../session/conversation/queued-user-inputs.js"
 import { readConversationBackgroundNotifications } from "../../../../session/conversation/queued-background-notifications.js"
@@ -10,7 +10,7 @@ import { buildSubagentCompleted } from "../../history/subagent-run-fact-writers.
 import { cancelledSubagentContent, stoppedSubagentContent } from "../result/result-resolver.js"
 import { prepareSessionFactAppend } from "../../../../session/persistence/session-fact-writer.js"
 import { reconcileChildSessionCompletions } from "../../../../session/control/children/child-session-reconciliation.js"
-import { Log } from "../../../../../infra/log.js"
+import { Log } from "../../../../../infra/diagnostics/log.js"
 import type { ChildStopAnswer, ParentNotificationDelivery } from "../../../../module-seams.js"
 
 const log = Log.create({ service: "subagent-control" })

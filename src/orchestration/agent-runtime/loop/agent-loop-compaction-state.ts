@@ -15,8 +15,8 @@ import { applyCompaction } from "../compaction/apply.js";
 import { runManualVisibleCompaction, runProactiveCompaction } from "../compaction/triggers.js";
 import type { AssistantTurnResult } from "./turn/assistant-turn-result.js";
 import type { OutgoingContextSnapshot } from "../request/context-token-anchor.js";
-import { Log } from "../../../infra/log.js";
-import { DebugLog } from "../../../infra/debug-log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js";
 import { effectiveProactiveTrigger, proactiveCompactionTriggers } from "../compaction/compaction-policy.js";
 import { renderConversationCheckpoint } from "../../session/conversation-records/conversation-checkpoint.js";
 

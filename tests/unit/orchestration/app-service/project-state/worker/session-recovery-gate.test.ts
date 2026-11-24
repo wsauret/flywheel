@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { EventStoreAppend, EventStoreItemSettlement, EventStoreWriteItem, StoredFact } from "../../../../../../src/infra/event-store-types.js"
-import { createEventStoreWriterLane } from "../../../../../../src/infra/event-store-writer-lane.js"
+import type { EventStoreAppend, EventStoreItemSettlement, EventStoreWriteItem, StoredFact } from "../../../../../../src/infra/store/event-store-types.js"
+import { createEventStoreWriterLane } from "../../../../../../src/infra/store/event-store-writer-lane.js"
 import { buildSessionContent, type SessionContentReference } from "../../../../../../src/infra/session-content.js"
 import { createSessionRecoveryGate, settlingGuardReads, type OwedRecovery } from "../../../../../../src/orchestration/app-service/project-state/worker/session-recovery-gate.js"
 

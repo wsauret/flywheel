@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { createExternalUrlOpener, utf16Argument } from "../../../src/infra/open-external-url.js"
-import type { OwnedProcess } from "../../../src/infra/owned-subprocess.js"
+import type { OwnedProcess } from "../../../src/infra/supervision/launch/owned-subprocess.js"
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js"
 
 /** URLs whose text is a command line on Windows if anything ever parses it.

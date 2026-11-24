@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { firstFrameMs, newChatReadyMs, parseBootTrace, phaseElapsedMs, remoteQuestions, sessionListReadyMs } from "../../release/lib/boot-trace.js"
-import { observeReleaseMemoryPhase, startReleaseMemorySampler, type ReleaseMemoryEvidence } from "../../../src/infra/startup-trace.js"
+import { observeReleaseMemoryPhase, startReleaseMemorySampler, type ReleaseMemoryEvidence } from "../../../src/infra/diagnostics/startup-trace.js"
 import { writeFileSync, utimesSync } from "node:fs"
 import { join } from "node:path"
 import { runInNewContext } from "node:vm"

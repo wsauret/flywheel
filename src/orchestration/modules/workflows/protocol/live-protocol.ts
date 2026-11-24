@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util"
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/event-store-types.js"
-import { Log } from "../../../../infra/log.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/store/event-store-types.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../protocol/runtime-ui-protocol-types.js"
 import type { WorkflowAgentLive, WorkflowLiveView } from "../../../../protocol/workflow-view-protocol-types.js"

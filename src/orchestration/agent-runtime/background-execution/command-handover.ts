@@ -29,12 +29,12 @@
  * key, so a repeat of one commits once.
  */
 
-import { handoverChannelAddress, removeHandoverRemains, type OutcomeRecordRead } from "../../../infra/command-handover.js"
+import { handoverChannelAddress, removeHandoverRemains, type OutcomeRecordRead } from "../../../infra/supervision/launch/command-handover.js"
 import type { ServeLane } from "../../../infra/cli-subprocess.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
-import type { OwnedProcess } from "../../../infra/owned-subprocess.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import type { OwnedProcess } from "../../../infra/supervision/launch/owned-subprocess.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
 import { commandHandoversOfAsync, markCommandKept, retireCommandHandover, writeCommandHandover, type CommandCompletion, type CommandHandoverRow, type StoredCommandHandover } from "../../session/command-handover.js"
 import { createSessionFactWriter } from "../../session/persistence/session-fact-writer.js"

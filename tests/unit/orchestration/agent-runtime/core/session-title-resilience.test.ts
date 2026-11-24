@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect } from "bun:test"
-import type { DebugLogRecordInput } from "../../../../../src/infra/debug-log.js"
-import { Log } from "../../../../../src/infra/log.js"
+import type { DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
 import type { AgentRunResult, Agent, AgentFactory, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { newTestRunner } from "../../../../helpers/agent-runner.js"
 import {

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto"
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
-import type { EventStoreAppend } from "../../../src/infra/event-store-types.js"
+import type { EventStoreAppend } from "../../../src/infra/store/event-store-types.js"
 import type { historicalWorkflowPublicationFacts } from "./historical-workflow-publication.js"
 
 export interface UpgradeWorkload {
@@ -48,12 +48,12 @@ export async function generateUpgradeFixture(directory: string, sourceRoot: stri
   if (revision.exitCode !== 0 || revision.stdout.toString().trim() !== "01612ddbd517c1dc76eea1797ad1f07f06a5ef99") throw new Error("upgrade generation requires the pinned pre-D checkout")
   const load = (path: string) => import(pathToFileURL(join(sourceRoot, path)).href)
   await load("src/orchestration/modules.ts")
-  const { createSqliteEventStore }: typeof import("../../../src/infra/sqlite-event-store.js") = await load("src/infra/sqlite-event-store.ts")
+  const { createSqliteEventStore }: typeof import("../../../src/infra/store/sqlite-event-store.js") = await load("src/infra/sqlite-event-store.ts")
   const { historicalWorkflowPublicationFacts: publication }: { historicalWorkflowPublicationFacts: typeof historicalWorkflowPublicationFacts } = await load("tests/release/fixtures/historical-workflow-publication.ts")
   const { parseWorkflowSessionFact }: typeof import("../../../src/workflows/vm/facts/session-facts.js") = await load("src/workflows/vm/session-facts.ts")
   const { parseConversationTreeFact }: typeof import("../../../src/orchestration/session/conversation/conversation-facts.js") = await load("src/orchestration/session/conversation/conversation-facts.ts")
-  const { createRuntimeEvent }: typeof import("../../../src/infra/runtime-event-factory.js") = await load("src/infra/runtime-event-factory.ts")
-  const { mapRuntimeEventToSessionRuntimeFacts }: typeof import("../../../src/infra/runtime-fact-mapper.js") = await load("src/infra/runtime-fact-mapper.ts")
+  const { createRuntimeEvent }: typeof import("../../../src/infra/runtime-facts/runtime-event-factory.js") = await load("src/infra/runtime-event-factory.ts")
+  const { mapRuntimeEventToSessionRuntimeFacts }: typeof import("../../../src/infra/runtime-facts/runtime-fact-mapper.js") = await load("src/infra/runtime-fact-mapper.ts")
   const { prepareSessionFactAppend }: typeof import("../../../src/orchestration/session/persistence/session-fact-writer.js") = await load("src/orchestration/session/session-fact-writer.ts")
   const { WORKSPACE_STATE_EPOCH }: typeof import("../../../src/orchestration/workspace-state-retirement.js") = await load("src/orchestration/workspace-state-retirement.ts")
   const { buildSessionAuthProfileSelectedFact }: typeof import("../../../src/orchestration/session/metadata/session-metadata-facts.js") = await load("src/orchestration/session/session-metadata-facts.ts")

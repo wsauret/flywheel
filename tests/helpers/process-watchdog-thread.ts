@@ -1,7 +1,7 @@
-import { HARD_EXIT_CLOCK_URL } from "../../src/infra/hard-exit-clock.js"
-import type { ThreadProcessProbe } from "../../src/infra/owned-subprocess-backend.js"
-import { terminationRecordLine } from "../../src/infra/process-container.js"
-import { processWatchdogThread } from "../../src/infra/process-watchdog.js"
+import { HARD_EXIT_CLOCK_URL } from "../../src/infra/process/workers/hard-exit-clock.js"
+import type { ThreadProcessProbe } from "../../src/infra/supervision/launch/owned-subprocess-backend.js"
+import { terminationRecordLine } from "../../src/infra/process/container/process-container.js"
+import { processWatchdogThread } from "../../src/infra/supervision/process-watchdog.js"
 
 /** The process watchdog's Worker body, run on this thread. */
 export interface WatchdogThread {

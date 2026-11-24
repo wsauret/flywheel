@@ -1,7 +1,7 @@
-import { probeLoopUnit, trackLoopSpan } from "../../../../infra/event-loop-lag.js";
-import { Log } from "../../../../infra/log.js";
-import { createRuntimeEvent } from "../../../../infra/runtime-event-factory.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
+import { probeLoopUnit, trackLoopSpan } from "../../../../infra/diagnostics/event-loop-lag.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
+import { createRuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-factory.js";
+import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
 import { createHandoffObserver } from "../../../../workflows/shared/handoff-observer.js";
 import type { Agent, AgentRunResult, OmitAgentOptions, RunnableAgentOptions } from "../../../agent-runtime/types.js";
 import { deriveChildRuntimeSurfaces } from "../../../agent-runtime/tools/dispatch/tool-registry.js";

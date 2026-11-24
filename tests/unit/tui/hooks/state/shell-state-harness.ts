@@ -34,7 +34,7 @@ import type { ChatRunner } from "../../../../../src/orchestration/chat/runner-ty
 import type { SessionStore } from "../../../../../src/orchestration/session-store/types"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
 import { durableCatalogRowFromSession } from "../../../../../src/orchestration/session/control/session-catalog-row.js"
-import { EventStoreLive, EventStoreService, EventReaderService } from "../../../../../src/infra/event-store-effect.js"
+import { EventStoreLive, EventStoreService, EventReaderService } from "../../../../../src/infra/store/event-store-effect.js"
 import { fakeProjections, runtimeSupervisor } from "../../../orchestration/app-service/app-service-doubles.js"
 import { makeWorkflowDeps } from "../../../orchestration/workflow-host/_workflow-controller-fixtures.js"
 import { testAccountHome, testAccountResources } from "../../../../helpers/directories.js"

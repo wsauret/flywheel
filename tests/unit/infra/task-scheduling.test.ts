@@ -1,8 +1,8 @@
 import { describe, expect, it, spyOn } from "bun:test"
 
-import * as eventLoopLag from "../../../src/infra/event-loop-lag.js"
-import { SLOW_UNIT_BUDGET_MS } from "../../../src/infra/event-loop-lag.js"
-import { Log } from "../../../src/infra/log.js"
+import * as eventLoopLag from "../../../src/infra/diagnostics/event-loop-lag.js"
+import { SLOW_UNIT_BUDGET_MS } from "../../../src/infra/diagnostics/event-loop-lag.js"
+import { Log } from "../../../src/infra/diagnostics/log.js"
 import { runInTaskSlices, runInTaskTurn } from "../../../src/infra/task-scheduling.js"
 
 /** Holds the thread for at least `ms` milliseconds, as one synchronous unit does.

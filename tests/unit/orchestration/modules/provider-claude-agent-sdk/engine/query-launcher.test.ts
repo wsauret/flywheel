@@ -5,7 +5,7 @@ import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY, type Options, type SDKControlGetUsageRe
 import { SYSTEM_PROMPT_SEPARATOR } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Effect, Redacted } from "effect";
-import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/debug-log.js";
+import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/diagnostics/debug-log.js";
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { bridgeSessionId } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/session-id.js";

@@ -3,8 +3,8 @@ import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { windowsProcessIdentity } from "../../../src/infra/process-container.js"
-import { launchPersistentSubprocess, type PersistentSubprocess } from "../../../src/infra/persistent-subprocess.js"
+import { windowsProcessIdentity } from "../../../src/infra/process/container/process-container.js"
+import { launchPersistentSubprocess, type PersistentSubprocess } from "../../../src/infra/supervision/persistent/persistent-subprocess.js"
 import { createRealProcessFixture } from "../../helpers/real-process-fixture.js"
 
 const TARGET = fileURLToPath(new URL("../../fixtures/persistent-process-target.ts", import.meta.url))

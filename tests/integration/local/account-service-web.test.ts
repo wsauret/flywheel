@@ -5,7 +5,7 @@ import * as path from "node:path"
 import { Redacted } from "effect"
 
 import type { LauncherContext } from "../../../src/infra/process-supervisor.js"
-import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
+import { createPersistentProcessManager } from "../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account/account-project-registry.js"
 import { createAccountServiceRuntime, type AccountServiceRuntimeOptions } from "../../../src/orchestration/app-service/account/account-service-runtime.js"
 import { createLoginShellPath } from "../../../src/infra/login-shell-path.js"

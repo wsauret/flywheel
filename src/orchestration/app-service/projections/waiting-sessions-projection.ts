@@ -1,5 +1,5 @@
-import { isSessionHistoryFailure, type AsyncEventReadSurface, type StoredFact } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
+import { isSessionHistoryFailure, type AsyncEventReadSurface, type StoredFact } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { createBackgroundLane } from "../../../infra/ordered-lane.js"
 import { AGENT_INPUT_FACT_TYPES } from "../../session/agent-input/agent-input-facts.js"
 import { loadPendingInputOpenedAt, loadSessionsWithPendingInput } from "../../session/agent-input/agent-input-projection.js"

@@ -12,7 +12,7 @@ import type { ProviderStreamEvent } from "../../../../../src/orchestration/agent
 import { asModelClient } from "../_model-client"
 import type { ProviderErrorCopy } from "../../../../../src/infra/llm/errors/provider-error-copy"
 import { describeAgentFailure, formatAgentFailure } from "../../../../../src/orchestration/agent-runtime/runner/failure-message"
-import { PersistenceWriteRefused } from "../../../../../src/infra/event-store-types.js"
+import { PersistenceWriteRefused } from "../../../../../src/infra/store/event-store-types.js"
 
 function makeOptions(overrides?: AgentOptionsOverride): AgentOptions {
   return {

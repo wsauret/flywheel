@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
-import { contentEvidence, previewText, type ContentEvidence } from "../../../infra/content-evidence.js"
-import type { InFlightWrite, StoredFact, InFlightPayload } from "../../../infra/event-store-types.js"
+import { contentEvidence, previewText, type ContentEvidence } from "../../../infra/runtime-facts/content-evidence.js"
+import type { InFlightWrite, StoredFact, InFlightPayload } from "../../../infra/store/event-store-types.js"
 import type { MutationDiff } from "../../../infra/mutation-diff.js"
 import { buildMutationFileEvidence, type MutationFileEvidence } from "../../../infra/mutation-evidence.js"
 import type { StageSessionContentNodes } from "../../../infra/session-content.js"

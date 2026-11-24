@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { InternalProcessEndpoint } from "../../../infra/internal-process-channel.js"
+import type { InternalProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"
 import { NotificationEpisodeInputSchema, type NotificationEpisodeInput } from "../../../infra/notification-episode.js"
 import { withDeadline } from "../../../infra/with-deadline.js"
 

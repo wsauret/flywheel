@@ -12,7 +12,7 @@ import { reclaimStorageTui } from "./modules/reclaim-storage/index.js"
 import type { RuntimeFaultCopy } from "../protocol/client/runtime-fault-copy.js"
 import type { RuntimeHealth, SessionRow } from "../protocol/app-service-types.js"
 import type { BackgroundWorkTarget } from "../protocol/background-index-protocol-types.js"
-import type { LaunchModalRoute } from "../infra/launch-state.js"
+import type { LaunchModalRoute } from "../infra/distribution/launch-state.js"
 import type { JSX } from "solid-js"
 
 /** The terminal client's module registry. The slot host renders strips,

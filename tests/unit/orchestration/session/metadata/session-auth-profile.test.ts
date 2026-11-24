@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { createSessionMetadataProjection, createSingleSessionMetadataProjection, sessionMetadataStateOf } from "../../../../../src/orchestration/session/metadata/session-metadata-projection.js"
 import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js"

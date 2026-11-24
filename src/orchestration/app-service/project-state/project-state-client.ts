@@ -1,4 +1,4 @@
-import { trackLoopSpan } from "../../../infra/event-loop-lag.js"
+import { trackLoopSpan } from "../../../infra/diagnostics/event-loop-lag.js"
 import {
   CorruptEventRowError,
   InFlightSwapConflictError,
@@ -13,12 +13,12 @@ import {
   type GuardedEventStoreAppend,
   storedFact,
   type StoredFact,
-} from "../../../infra/event-store-types.js"
+} from "../../../infra/store/event-store-types.js"
 import { InvariantViolation } from "../../../infra/invariant.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { ContentResolver } from "../../../infra/tool-content.js"
-import { storedToolContentReferences } from "../../../infra/tool-content-hydration.js"
+import type { ContentResolver } from "../../../infra/runtime-facts/tool-content.js"
+import { storedToolContentReferences } from "../../../infra/store/tool-content-hydration.js"
 import type { SessionMetadataChange } from "../../session/manager.js"
 import { createProjectStateSessionManager, type ProjectStateSessionManager } from "./project-state-sessions.js"
 import { createProjectStateCommitWindow } from "./project-state-commit-window.js"

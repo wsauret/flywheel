@@ -1,8 +1,8 @@
 import { mkdirSync, readdirSync } from "node:fs"
 import { join } from "node:path"
-import { scanDebugLogFiles } from "../../../src/infra/debug-log.js"
-import { listenInternalProcessChannel, type InternalProcessEndpoint } from "../../../src/infra/internal-process-channel.js"
-import { Log } from "../../../src/infra/log.js"
+import { scanDebugLogFiles } from "../../../src/infra/diagnostics/debug-log.js"
+import { listenInternalProcessChannel, type InternalProcessEndpoint } from "../../../src/infra/process/channels/internal-process-channel.js"
+import { Log } from "../../../src/infra/diagnostics/log.js"
 import { withDeadline } from "../../../src/infra/with-deadline.js"
 import { decodeProjectStateRequest, decodeProjectStateResponse } from "../../../src/orchestration/app-service/project-state/project-state-protocol.js"
 

@@ -21,7 +21,7 @@ import type { PreparedPackage, SkillSemanticAuditResult } from "../../../agent-r
 
 import { randomUUID } from "node:crypto";
 import type { FactRecorder } from "../../../../infra/fact-recorder.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
 import { SKILL_FILE, type SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { admitSkillMutationPlan, planSkillMutation } from "../skills/skill-mutation-plan.js";

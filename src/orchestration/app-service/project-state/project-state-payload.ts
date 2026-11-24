@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { EventStoreWriteItem, GuardedEventStoreAppend, InFlightWrite } from "../../../infra/event-store-types.js"
+import type { EventStoreWriteItem, GuardedEventStoreAppend, InFlightWrite } from "../../../infra/store/event-store-types.js"
 import { EventStoreAppendSchema, InFlightSwapSchema, PublishSubagentInputSchema, PublishWorkflowInputSchema, projectStateSessionCommandSchema } from "./project-state-sessions.js"
 import type { ProjectStateControlOperation, ProjectStateOperation } from "./project-state-operation.js"
 import { SessionContentNodeRowSchema } from "../../../infra/session-content.js"

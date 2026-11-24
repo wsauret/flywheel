@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { decodeServeStartRefusal, ServeStartupFailure, startRefusalOf } from "../../../protocol/serve-handshake.js"
-import { CorruptEventRowError, InFlightSwapConflictError, PersistenceWriteRefused } from "../../../infra/event-store-types.js"
+import { CorruptEventRowError, InFlightSwapConflictError, PersistenceWriteRefused } from "../../../infra/store/event-store-types.js"
 import { InvariantViolation } from "../../../infra/invariant.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import { ParentPublicationContendedError, SessionForkRefusal } from "../../session/manager.js"

@@ -3,8 +3,8 @@ import { safeParse } from "../../../helpers/schema-assertions.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/metadata/catalog/session-metadata-store";
 import { SessionSchema } from "../../../../src/orchestration/session/metadata/schemas";

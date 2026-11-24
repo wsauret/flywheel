@@ -4,7 +4,7 @@ import type { NotificationEpisodeInput } from "../../infra/notification-episode.
 import type { SessionNoticeOperation } from "../../infra/session-notice.js";
 import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
 import type { ReasoningEffort } from "../../infra/llm/models/models.js";
-import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js";
+import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/store/event-store-types.js";
 import type { SessionFactWriter } from "../session/persistence/session-fact-writer.js";
 import type { CommittedTree } from "../session/conversation/conversation-projection.js";
 import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/attempt/handoff-tool-schema.js";
@@ -29,8 +29,8 @@ import type { CapabilityAccess, ToolAttributionIdentity } from "./tools/types.js
 import type { RequestToolSurfaceOwner } from "./request/request-tool-surface.js";
 import type { CurrentTurnInterruption } from "./loop/turn/run-lifecycle.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
-import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js";
-import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
+import type { PersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-manager.js";
+import type { BridgedPersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-bridge.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
 import type { StreamingEditValidationService } from "./tools/edit/streaming-edit-validation.js";
 import type { AgentRunTally, PersonWait, WaitExpiry } from "./loop/agent-loop-state.js";

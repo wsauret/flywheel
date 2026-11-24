@@ -2,7 +2,7 @@ import { normalizeChatInput, type ChatInputLike } from "../../../../infra/chat-i
 import type { ChatSendResult } from "../../../chat/runner-types.js"
 import { errorDetail, errorMessage } from "../../../../infra/error-message.js"
 import { durationMs } from "../../../../infra/operation-log.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { formatAgentInputAnswers, formatQuestionChoiceAnswer } from "../../../../protocol/question-protocol-types.js"
 import type { OutputProjectionEvent } from "../../../../infra/output/output-projection-events.js"
 import type { AgentInputEntry } from "../../../session/agent-input/agent-input-projection.js"

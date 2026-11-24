@@ -10,7 +10,7 @@
  * which agy answers from its stored token without a browser.
  *
  * The tool-call case also re-qualifies the field numbers of agy's conversation database that the route reads usage
- * from (`engine/conversation-usage.ts`): every request of a task must report complete usage, with cached reads on a
+ * from (`usage/conversation-usage.ts`): every request of a task must report complete usage, with cached reads on a
  * later one. A bump of agy that moves those fields fails it.
  *
  * A host whose profile has no Google Antigravity login fails here, and the refusal names the command that adds one.
@@ -20,7 +20,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Effect, Exit, Scope } from "effect";
-import { DebugLog, type DebugLogRecordInput } from "../../../src/infra/debug-log.js";
+import { DebugLog, type DebugLogRecordInput } from "../../../src/infra/diagnostics/debug-log.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js";
 import { streamAssistantTurn } from "../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
 import type { AssistantTurnResult } from "../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js";

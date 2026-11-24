@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { AuthProfileStore } from "../../../../../../src/infra/auth/store/auth-profile-store.js"
-import { Log } from "../../../../../../src/infra/log.js"
+import { Log } from "../../../../../../src/infra/diagnostics/log.js"
 
 import { createAuthPublicationBaseline, createAuthStatusPublisher, createProviderModelAuthPublisher } from "../../../../../../src/orchestration/app-service/auth/publication/auth-publication.js"
 import { authStatusCursor, type AuthProviderStatus, type RuntimeAuthView } from "../../../../../../src/protocol/auth-status-protocol-types.js"

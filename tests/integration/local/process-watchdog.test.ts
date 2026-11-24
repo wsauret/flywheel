@@ -3,11 +3,11 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { watchContainerTerminations } from "../../../src/infra/process-container.js"
-import { createProcessDiagnosticReader } from "../../../src/infra/process-diagnostic-reader.js"
+import { watchContainerTerminations } from "../../../src/infra/process/container/process-container.js"
+import { createProcessDiagnosticReader } from "../../../src/infra/process/kernel/process-diagnostic-reader.js"
 import { lingerAfter } from "../../helpers/process-linger.js"
 
-const moduleUrl = new URL("../../../src/infra/process-watchdog.ts", import.meta.url).href
+const moduleUrl = new URL("../../../src/infra/supervision/process-watchdog.ts", import.meta.url).href
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-process-watchdog-"))
 
 afterAll(() => {

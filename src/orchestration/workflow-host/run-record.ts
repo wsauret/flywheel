@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../infra/event-store-types.js"
+import type { StoredFact } from "../../infra/store/event-store-types.js"
 import type { DefinitionLineageView } from "../../workflows/run/definition-provenance-projection.js"
 import type { WorkflowCapabilityBoundary, WorkflowLaunchBindingSchema, WorkflowRunSettingsSchema } from "../../workflows/run/run-facts.js"
 import { strongestInterrupt } from "../session/control/child-continuation.js"

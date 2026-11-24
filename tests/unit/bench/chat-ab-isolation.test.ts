@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { cellIsolation, claudeCodeRules, profileKeychainRules, inheritedCellEnvironment, profileCredentialRules } from "../../../bench/chat-ab/isolation.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js";
-import { CONTAINER_MARK_VARIABLE, STRICT_DESCENDANT_SETTLEMENT_VARIABLE } from "../../../src/infra/container-mark.js";
+import { CONTAINER_MARK_VARIABLE, STRICT_DESCENDANT_SETTLEMENT_VARIABLE } from "../../../src/infra/process/container/container-mark.js";
 
 const temporaryDirectory = temporaryDirectories();
 

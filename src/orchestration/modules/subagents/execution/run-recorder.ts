@@ -1,6 +1,6 @@
 import { buildSubagentCompleted } from "../history/subagent-run-fact-writers.js";
 import type { EndedWorkResult } from "../../../agent-runtime/background-work/background-work-types.js";
-import type { InFlightWrite } from "../../../../infra/event-store-types.js";
+import type { InFlightWrite } from "../../../../infra/store/event-store-types.js";
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 
 /** Records the run's completion. `inFlight` retires state the completion

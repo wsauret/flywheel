@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { heapStats } from "bun:jsc"
-import { DebugLog } from "../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../src/infra/diagnostics/debug-log.js"
 import { EventBus, createEmit } from "../../../src/infra/event-bus.js"
 import type { FlywheelEvent } from "../../../src/infra/events.js"
 

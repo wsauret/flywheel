@@ -2,7 +2,7 @@ import { probe, probeToolRenderPhase } from "../../infra/render-probe.js"
 import { RuntimeEventProjector } from "../../infra/output/runtime-event-projector.js"
 import { OutputProjector } from "../../infra/output/projector/output-projector.js"
 import type { AnyBlock, MessageSender, QuestionEntry, SystemMessageOptions, UserMessageBlock, UserMessageImage } from "../../infra/output-blocks.js"
-import type { RuntimeEvent } from "../../infra/runtime-event-types.js"
+import type { RuntimeEvent } from "../../infra/runtime-facts/runtime-event-types.js"
 import type { OutputProjectionEvent } from "../../infra/output/output-projection-events.js"
 import type { SessionEntryBasePatch } from "../session-store/types.js"
 interface QuestionAnswers {

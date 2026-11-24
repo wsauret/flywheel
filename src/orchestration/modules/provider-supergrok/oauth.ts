@@ -1,5 +1,5 @@
 import { Redacted, Schema } from "effect";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import type { ExternalUrlOpener } from "../../../infra/open-external-url.js";
 import type { StoredTokens } from "../../../infra/auth/openai/openai-auth-types.js";
 import { XAI_DEVICE_CODE_URL, XAI_OAUTH_CLIENT_ID, XAI_OAUTH_SCOPES, XAI_TOKEN_URL } from "./auth-types.js";

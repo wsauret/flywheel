@@ -1,5 +1,5 @@
 import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import type { AgentLoopOptions, CompactionAfter, CompactionInstallation } from "../agent-loop-types.js";
 import type { ConversationMessage, StreamEvent } from "../llm/types.js";
 

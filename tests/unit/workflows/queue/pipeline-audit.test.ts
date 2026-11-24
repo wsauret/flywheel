@@ -3,7 +3,7 @@ import { rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types.js";
 import type { AccumulatedContext } from "../../../../src/workflows/context-bundle/context.js";
 import type { AttemptRow } from "../../../../src/workflows/view/types.js";
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution.js";

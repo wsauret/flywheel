@@ -7,7 +7,7 @@
  * it settles (`commandIndexRecord`).
  */
 
-import type { BackgroundCommandRecord } from "../../../infra/runtime-fact-types.js";
+import type { BackgroundCommandRecord } from "../../../infra/runtime-facts/runtime-fact-types.js";
 import type { BackgroundKillSource, BackgroundWorkMeta, BackgroundWorkResult, CommandExit } from "./background-work-types.js";
 import type { ManagedCommand } from "../tools/bash/execution/managed-command.js";
 

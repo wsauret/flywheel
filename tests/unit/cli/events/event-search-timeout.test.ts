@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { runEventSearch } from "../../../../src/cli/events/event-search"
 import { MAX_TIMEOUT_SECONDS } from "../../../../src/cli/events/event-search-args"
-import * as hardExitClock from "../../../../src/infra/hard-exit-clock"
+import * as hardExitClock from "../../../../src/infra/process/workers/hard-exit-clock"
 import { temporaryDirectories } from "../../../helpers/directories"
 
 const temporaryDirectory = temporaryDirectories()

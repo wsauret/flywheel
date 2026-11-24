@@ -1,4 +1,4 @@
-import { contentEvidence } from "../../../../src/infra/content-evidence.js"
+import { contentEvidence } from "../../../../src/infra/runtime-facts/content-evidence.js"
 import type { WorkflowControllerDeps } from "../../../../src/orchestration/workflow-host/lifecycle/controller.js"
 
 /** Seeds the model's launching call with the production workflow tool's identity. */

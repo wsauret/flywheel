@@ -3,20 +3,20 @@ import * as path from "node:path"
 
 import { readAppVersion } from "../../infra/app-version.js"
 import { serveLaneFor, type ServeLane } from "../../infra/cli-subprocess.js"
-import { DebugLog, resolveDebugLogDirectory } from "../../infra/debug-log.js"
+import { DebugLog, resolveDebugLogDirectory } from "../../infra/diagnostics/debug-log.js"
 import type { StartupDirectories } from "../../infra/directory-authorities.js"
 import { errorMessage } from "../../infra/error-message.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { ownedCommandRunner, runOwnedCommand } from "../../infra/owned-command.js"
 import { processLoginShellPath, type LoginShellPath } from "../../infra/login-shell-path.js"
-import type { ServiceSource } from "../../infra/source-snapshot.js"
-import { darwinProcess } from "../../infra/darwin-process-api.js"
+import type { ServiceSource } from "../../infra/distribution/source-snapshot.js"
+import { darwinProcess } from "../../infra/process/kernel/darwin-process-api.js"
 import { accountServeDir, accountServeLauncherExecutablePath, accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath } from "../../infra/paths.js"
-import { acquireLock, LockRefusal, releaseLock, type LockOwnership } from "../../infra/ownership-file-lock.js"
-import { processHolders } from "../../infra/process-holder.js"
+import { acquireLock, LockRefusal, releaseLock, type LockOwnership } from "../../infra/locks/ownership-file-lock.js"
+import { processHolders } from "../../infra/process/process-holder.js"
 import type { LauncherContext, LauncherScope } from "../../infra/process-supervisor.js"
-import type { PersistentProcessManager } from "../../infra/persistent-process-manager.js"
-import { createProcessWatchdog, type ProcessWatchdog } from "../../infra/process-watchdog.js"
+import type { PersistentProcessManager } from "../../infra/supervision/persistent/persistent-process-manager.js"
+import { createProcessWatchdog, type ProcessWatchdog } from "../../infra/supervision/process-watchdog.js"
 import { shutdownSignals } from "../../infra/shutdown-signals.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../protocol/runtime-liveness.js"
 import { encodeServeStartFailure, encodeServeStatusRecord, ServeStartupFailure, startHeldByHost, type ServeStartRefusal } from "../../protocol/serve-handshake.js"
@@ -43,7 +43,7 @@ import { accountHomeWatch, createRegistrationFollower, createRegistrationRetirem
 import { runtimeWorkerUrl } from "./runtime-launch.js"
 import { createAccountRuntimeAttach, probeRendezvous } from "./runtime-attach.js"
 import { readRuntimeIdentity, type RuntimeIdentity } from "./runtime-identity-record.js"
-import { createStartupTimeline } from "../../infra/startup-timeline.js"
+import { createStartupTimeline } from "../../infra/diagnostics/startup-timeline.js"
 
 const log = Log.create({ service: "serve" })
 
@@ -258,7 +258,7 @@ export async function runServe(
   const lane = serveLaneFor(process.execPath)
   // A dev service names the snapshot of its checkout that it runs from
   // (ARCH-DISTRIBUTION-030). An installed service runs its build and loads none of this.
-  const source = (lane === "dev" ? (await import("../../infra/source-snapshot.js")).reportSourceEntry() : undefined) ?? NO_SNAPSHOT
+  const source = (lane === "dev" ? (await import("../../infra/distribution/source-snapshot.js")).reportSourceEntry() : undefined) ?? NO_SNAPSHOT
   // One answer for residency, the registration refresh, and the
   // registration that residency follows, each of which asks only when it
   // needs it.

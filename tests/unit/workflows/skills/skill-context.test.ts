@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { tmpdir } from "node:os";
 import { mkdirSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import type { SkillDirectoryEntries } from "../../../../src/workflows/skills/skill-context.js";
 import { readSkillPackage, readSkillPackageFiles, readSkillResource, withSkillRoot } from "../../../../src/workflows/skills/skill-context.js";
 import { renderSkillClosure, renderSkillContext } from "../../../../src/workflows/skills/skill-render.js";

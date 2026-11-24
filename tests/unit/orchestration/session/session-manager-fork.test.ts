@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { mkdirSync, realpathSync, rmSync } from "node:fs"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore, type GuardedEventStoreAppend } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore, type GuardedEventStoreAppend } from "../../../../src/infra/store/event-store-types"
 import { createSessionManager, SessionForkRefusal } from "../../../../src/orchestration/session/manager"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"

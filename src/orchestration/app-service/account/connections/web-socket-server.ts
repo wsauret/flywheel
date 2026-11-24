@@ -3,7 +3,7 @@ import { Effect, Fiber, FiberSet, Layer, Scope } from "effect"
 import { NetAddress } from "effect/net"
 import { Socket, SocketServer } from "effect/socket"
 
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { isServedOrigin } from "../web-serving/origin-check.js"
 import { authorizeToken } from "../web-serving/token-auth.js"
 

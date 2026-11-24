@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { query, SYSTEM_PROMPT_DYNAMIC_BOUNDARY, USAGE_LIMIT_ERROR_PREFIXES, type EffortLevel, type McpSdkServerConfigWithInstance, type ModelInfo, type Options, type Query, type SDKMessage, type SDKUserMessage, type ThinkingConfig } from "@anthropic-ai/claude-agent-sdk";
 import { Effect, Option, Schedule } from "effect";
 import { awaitWithAbortSignal } from "../../../../infra/abort.js";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import { isProcessAlive } from "../../../../infra/process-liveness.js";
 import type { ClaudeLoginEngine, ClaudeLoginEngineLaunch } from "../../../../infra/claude-engine.js";
 import { engineModelId } from "../../../agent-runtime/llm/history/runtime-reminders.js";

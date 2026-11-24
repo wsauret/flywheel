@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from "node:crypto"
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
-import { sameFileMetadata, sameFileSnapshot, type ContainedDirectory, type ContainedFileMetadata, type ContainedFileSnapshot, type FileMutationAttemptResult } from "../../infra/descriptor-directory-contract.js"
+import { sameFileMetadata, sameFileSnapshot, type ContainedDirectory, type ContainedFileMetadata, type ContainedFileSnapshot, type FileMutationAttemptResult } from "../../infra/descriptor-directory/descriptor-directory-contract.js"
 import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
-import { canonicalMutationPath } from "../../infra/file-mutation-queue.js"
+import { canonicalMutationPath } from "../../infra/locks/file-mutation-queue.js"
 
 /** The identity and size of an admitted target file. */
 export interface AdmittedFileSummary {

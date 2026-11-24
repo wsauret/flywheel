@@ -1,4 +1,4 @@
-import { probeLoopUnit, SLOW_UNIT_BUDGET_MS } from "./event-loop-lag.js"
+import { probeLoopUnit, SLOW_UNIT_BUDGET_MS } from "./diagnostics/event-loop-lag.js"
 
 /** The lag meter kind of every unit that runs on the shared slice clock. The
  *  runner's name follows it, so a stall record names the work behind it. */

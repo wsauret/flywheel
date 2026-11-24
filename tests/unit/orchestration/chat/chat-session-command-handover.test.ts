@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test"
 
 import { EventBus } from "../../../../src/infra/event-bus"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
 import type { ConversationMessage, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
 import type { BackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types"

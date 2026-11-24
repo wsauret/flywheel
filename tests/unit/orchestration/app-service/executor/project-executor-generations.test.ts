@@ -6,7 +6,7 @@ import { claimProjectServing, projectServingPids } from "../../../../../src/orch
 import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account/account-project-registry.js"
 import { createReplacementHandoffs } from "../../../../../src/orchestration/app-service/account/replacement-handoffs.js"
 import { openExistingContainedDirectory } from "../../../../../src/infra/descriptor-directory.js"
-import { acquireLockSyncIn, releaseLockIn } from "../../../../../src/infra/ownership-file-lock.js"
+import { acquireLockSyncIn, releaseLockIn } from "../../../../../src/infra/locks/ownership-file-lock.js"
 import { executionAskerOf } from "../../../../../src/orchestration/app-service/executor/project-executor-generations.js"
 
 afterEach(closeFixtures)

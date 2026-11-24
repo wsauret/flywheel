@@ -19,7 +19,7 @@
 import { realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { errnoCode, errorMessage } from "../../../../../infra/error-message.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import type { LandableCopy, PrivateProjectCopy } from "./bash-private-copy.js";
 

@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test"
 
-import type { DebugLogRecordInput } from "../../../../src/infra/debug-log"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
-import { Log } from "../../../../src/infra/log"
+import type { DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
+import { Log } from "../../../../src/infra/diagnostics/log"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
 import {
   allCommandHandoversAsync,
   COMMAND_HANDOVER_IN_FLIGHT_KIND,

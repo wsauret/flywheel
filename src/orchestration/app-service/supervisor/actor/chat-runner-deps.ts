@@ -1,5 +1,5 @@
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { childSessionProjectionAttachment } from "../../../session-store/child-session-projection.js"
 import { recordGeneratedSessionName } from "../../../session/manager.js"
 import { modelWorkflowLaunchOrigin } from "../../../workflow-host/lifecycle/launch-origin.js"

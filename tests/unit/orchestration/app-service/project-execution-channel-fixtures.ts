@@ -1,5 +1,5 @@
 import { pack } from "msgpackr"
-import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "../../../../src/infra/internal-process-channel.js"
+import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "../../../../src/infra/process/channels/internal-process-channel.js"
 import type { FrontendEvent, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 

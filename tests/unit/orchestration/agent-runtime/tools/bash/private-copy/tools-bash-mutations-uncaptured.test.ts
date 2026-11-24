@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { DebugLog } from "../../../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../../../src/infra/diagnostics/debug-log.js";
 import { createBashDefinition } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import { loadBashParser } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import * as mutationGuard from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-mutation-guard.js";
@@ -10,7 +10,7 @@ import { temporaryDirectories } from "../../../../../../helpers/directories.js";
 import { bashExecution, mutationSpawnProbe, makeMockOps } from "../_bash-fixtures.js";
 import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext } from "../../_fixtures.js";
 import { bashMutationHarness } from "./_bash-mutations-harness.js";
-import { PersistenceWriteRefused } from "../../../../../../../src/infra/event-store-types.js";
+import { PersistenceWriteRefused } from "../../../../../../../src/infra/store/event-store-types.js";
 import { runAgentTurn } from "../../../../../../../src/orchestration/runner/agent-turn.js";
 import { createBackgroundWorkRegistry } from "../../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 

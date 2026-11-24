@@ -21,9 +21,9 @@
  *  the account service's guardian that the service opened for this job and
  *  closes when the job settles. */
 
-import type { DebugLogRecordInput } from "../../infra/debug-log.js";
+import type { DebugLogRecordInput } from "../../infra/diagnostics/debug-log.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { connectOwnedProcessBridge } from "../../infra/owned-process-bridge.js";
 import { updateAuthorityDbFile } from "../../infra/paths.js";
 import type { SelectedRelease } from "../../infra/update/release-manifest.js";

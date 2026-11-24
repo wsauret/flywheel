@@ -7,7 +7,7 @@ import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/
 import type { AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
 import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
 import { Option, Schema } from "effect";
-import { DebugLog } from "../../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../../infra/diagnostics/debug-log.js";
 import { ChatGptAdapterApiError } from "../../chatgpt-adapter-error.js";
 import { ChatGptAdapterTransportError } from "./chatgpt-adapter/types.js";
 import { classifyQuotaError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError, ProviderRequestValidationError, QUOTA_CODES, QuotaCoordinationError, QuotaExhaustedError } from "../../errors.js";

@@ -1,5 +1,5 @@
-import { DebugLog } from "../../../../infra/debug-log.js"
-import { Log } from "../../../../infra/log.js"
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { LlmStreamError } from "../../../agent-runtime/llm/errors.js"
 import { engineFailure } from "../acp/errors.js"
 

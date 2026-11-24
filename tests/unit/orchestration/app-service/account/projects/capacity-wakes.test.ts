@@ -2,7 +2,7 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test"
 
 import type { CapacityWakeStore } from "../../../../../../src/orchestration/app-service/account/account-project-registry.js"
 import { createCapacityWakes } from "../../../../../../src/orchestration/app-service/account/projects/capacity-wakes.js"
-import { DebugLog } from "../../../../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js"
 
 const NOW = Date.parse("2026-10-28T02:00:00.000Z")
 /** A wake that continued every due wait and left none for later. */

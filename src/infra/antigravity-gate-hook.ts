@@ -1,5 +1,5 @@
 import { EXECUTABLE_ROLES } from "./executable-roles.js"
-import { connectInternalProcessChannel, type InternalProcessEndpoint } from "./internal-process-channel.js"
+import { connectInternalProcessChannel, type InternalProcessEndpoint } from "./process/channels/internal-process-channel.js"
 
 // The Antigravity engine's PreInvocation hook runs this client once per model
 // step (ARCH-PROVIDERS-087). It lives outside the provider module's home

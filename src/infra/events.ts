@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { RUNTIME_EVENT_DEFINITIONS, RUNTIME_EVENT_TYPES, type RuntimeEvent } from "./runtime-event-types.js";
+import { RUNTIME_EVENT_DEFINITIONS, RUNTIME_EVENT_TYPES, type RuntimeEvent } from "./runtime-facts/runtime-event-types.js";
 import { ReferenceReviewNoticeFields, ReviewNoticeMutationSchema } from "./review-notice.js";
 import { MessageSenderSchema } from "./output-blocks.js";
 import { CAPACITY_WAIT_REASONS, SESSION_NOTICE_PRESENTATION_IDS } from "./error-presentation.js";

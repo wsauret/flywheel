@@ -9,7 +9,7 @@ import { createBackgroundWorkRegistry } from "../../../../../../src/orchestratio
 import { createBashDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import { capabilityAccessFor } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { startModulePolicy, type ModulePolicy } from "../../../../../../src/orchestration/config/policy/module-policy.js";
-import type { PersistentProcessRecord } from "../../../../../../src/infra/persistent-process-manager.js";
+import type { PersistentProcessRecord } from "../../../../../../src/infra/supervision/persistent/persistent-process-manager.js";
 import { bashExecution, dispatchTool, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext, testGrant } from "../_fixtures.js";
 

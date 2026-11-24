@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages.js";
-import { DebugLog } from "../../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js";
 import { Scope } from "effect";
 import type { ProviderDemand } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { releaseLiveBridges } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/live-bridges.js";

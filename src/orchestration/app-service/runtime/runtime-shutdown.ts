@@ -1,5 +1,5 @@
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { durationMs, logCompletion } from "../../../infra/operation-log.js"
 import { PROCESS_KILL_GRACE_MS } from "../../../infra/process-supervisor.js"
 

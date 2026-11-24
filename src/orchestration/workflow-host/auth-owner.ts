@@ -1,5 +1,5 @@
 import type { AuthProfileManager, AuthProfileResolution } from "../auth/auth-profile-manager.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { MissingAuthProfileError, resolveSessionAuthProfile as resolveSelection } from "../session/metadata/session-auth-profile.js"
 import { resolveSessionAuthProfile } from "../app-service/auth/auth-profile-scope.js"
 import type { WorkflowRunReader, WorkflowRunRecord, WorkflowRunWriter } from "./run-record.js"

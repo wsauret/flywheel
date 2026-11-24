@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedEventStoreAppend } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedEventStoreAppend } from "../../infra/store/event-store-types.js"
 import type { CommittedWorkflowControl } from "../../workflows/vm/facts/committed-control.js"
 import { readWorkflowRecoveryEvidence, type WorkflowRecoveryEvidence } from "../../workflows/vm/recovery/recovery-fold.js"
 import { recoverWorkflowContext, type RecoveredWorkflowContext } from "../../workflows/context-bundle/context-recovery.js"

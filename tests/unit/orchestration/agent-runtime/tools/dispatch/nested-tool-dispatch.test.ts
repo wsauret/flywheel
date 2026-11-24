@@ -6,10 +6,10 @@ import { createNestedToolDispatchBatch, createNestedToolFactPublisher, type Nest
 import { createToolConcurrencyGate } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";
 import type { DispatchedToolContext, RuntimeTool, ToolResult } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
-import type { EventPayload, StoredFact } from "../../../../../../src/infra/event-store-types.js";
+import type { EventPayload, StoredFact } from "../../../../../../src/infra/store/event-store-types.js";
 import { RequestToolMap, requestAdmission } from "../../../../../helpers/request-tool-surface.js";
-import { SLOW_UNIT_BUDGET_MS } from "../../../../../../src/infra/event-loop-lag.js";
-import { Log } from "../../../../../../src/infra/log.js";
+import { SLOW_UNIT_BUDGET_MS } from "../../../../../../src/infra/diagnostics/event-loop-lag.js";
+import { Log } from "../../../../../../src/infra/diagnostics/log.js";
 import { createHandoffTracker } from "../../../../../../src/orchestration/agent-runtime/loop/closure/agent-loop-handoff.js";
 import { largeSecretResult, resultRecordingWriter } from "./_nested-tool-dispatch-fixtures.js";
 import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js";

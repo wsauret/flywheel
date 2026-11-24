@@ -1,4 +1,4 @@
-import { CorruptEventRowError, type StoredFact } from "../../../../infra/event-store-types.js"
+import { CorruptEventRowError, type StoredFact } from "../../../../infra/store/event-store-types.js"
 import { workflowCallLaunched } from "../../../../infra/tools/workflow-call-source.js"
 import { readAdvancingCompletionEvidence, readTerminalHandoff, terminalWorkflow, workflowStartFailureContent, workflowStopContent, type AgentResult, type FailedAgent, type TerminalHandoff } from "../../../../workflows/run/workflow-completion.js"
 import { createReplayingWorkflowView } from "../../../../workflows/view/view-projection.js"

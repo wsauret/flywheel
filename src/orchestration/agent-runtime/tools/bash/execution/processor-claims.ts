@@ -11,7 +11,7 @@
  * time it was held (ARCH-TOOLS-033).
  */
 
-import type { OwnedProcess } from "../../../../../infra/owned-subprocess.js";
+import type { OwnedProcess } from "../../../../../infra/supervision/launch/owned-subprocess.js";
 
 /** One claimed container as the account's governor reads it. `order` is the
  *  launch time in epoch milliseconds, so a container a later build adopts

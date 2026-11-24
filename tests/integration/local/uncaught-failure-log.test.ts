@@ -3,10 +3,10 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
-import { scanDebugLogFiles, type DebugLogRecord } from "../../../src/infra/debug-log.js"
+import { scanDebugLogFiles, type DebugLogRecord } from "../../../src/infra/diagnostics/debug-log.js"
 import { accountServeStartRecordPath } from "../../../src/infra/paths.js"
 
-const LOG_MODULE = new URL("../../../src/infra/log.ts", import.meta.url).href
+const LOG_MODULE = new URL("../../../src/infra/diagnostics/log.ts", import.meta.url).href
 const POLICY_MODULE = new URL("../../../src/infra/crash-policy.ts", import.meta.url).href
 const FATAL_EXIT_MODULE = new URL("../../../src/cli/startup/fatal-exit.ts", import.meta.url).href
 const SERVICE_START_MODULE = new URL("../../../src/orchestration/update/service-start.ts", import.meta.url).href

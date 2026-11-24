@@ -1,7 +1,7 @@
 import type { MutationEvidence } from "../mutation-evidence.js";
 import type { LlmToolOutputPart } from "../llm/tool-output-part-schema.js";
 import type { StreamPhase, QuestionEntry, PausedBy, UserMessageImage, MessageSender, SystemWatch } from "../output-blocks.js";
-import type { ToolOutcome } from "../tool-outcome.js";
+import type { ToolOutcome } from "../runtime-facts/tool-outcome.js";
 
 export interface ToolInput {
   [key: string]: unknown;

@@ -1,4 +1,4 @@
-import { DebugLog } from "../../../../infra/debug-log.js"
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
 import type { RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import type { SessionManager } from "../../../session/manager.js"
 

@@ -19,11 +19,11 @@
 import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { lstatSync, watch } from "node:fs";
-import { withLockIn, acquireLockSyncIn, releaseLockIn, type LockHold } from "../../infra/ownership-file-lock.js";
-import type { ContainedDirectory, ContainedFileSnapshot } from "../../infra/descriptor-directory-contract.js";
+import { withLockIn, acquireLockSyncIn, releaseLockIn, type LockHold } from "../../infra/locks/ownership-file-lock.js";
+import type { ContainedDirectory, ContainedFileSnapshot } from "../../infra/descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/descriptor-directory.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { globalConfigFile } from "../../infra/paths.js";
 import { heldDirectoryDerivation, leaseDirectoryWatch, noteDirectoryChange } from "../../infra/watched-directory-values.js";
 

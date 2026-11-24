@@ -11,7 +11,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../src/infra/debug-log.js"
+import { listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../src/infra/diagnostics/debug-log.js"
 
 const ENTRY = join(import.meta.dir, "..", "..", "fixtures", "owned-launch-entry.ts")
 

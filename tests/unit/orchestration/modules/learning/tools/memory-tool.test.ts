@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js";
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../../../src/infra/store/event-store-types.js";
 import type { SessionNoticeOperation } from "../../../../../../src/infra/session-notice.js";
 import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
 import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evidence-schema.js";

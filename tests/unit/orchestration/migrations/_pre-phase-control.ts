@@ -8,7 +8,7 @@
  *  passes that these fixtures serve. */
 
 import { Schema } from "effect"
-import type { EventPayload } from "../../../../src/infra/event-store-types.js"
+import type { EventPayload } from "../../../../src/infra/store/event-store-types.js"
 import { WorkflowControlV10Schema } from "../../../../src/workflows/vm/facts/historical-codecs.js"
 import { normalizeWorkflowControlV10 } from "../../../../src/workflows/vm/facts/historical-normalization.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js"

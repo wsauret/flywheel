@@ -1,6 +1,6 @@
 import * as fs from "node:fs"
 import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 
 const log = Log.create({ service: "composer-history" })
 

@@ -1,5 +1,5 @@
 import { errorMessage } from "../../infra/error-message.js"
-import { PersistenceWriteRefused } from "../../infra/event-store-types.js"
+import { PersistenceWriteRefused } from "../../infra/store/event-store-types.js"
 import { isAbortError } from "../../infra/abort.js"
 import type { AgentTurnOptions } from "./agent-turn-types.js"
 import { AgentTurnAborted } from "./agent-turn-types.js"

@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../infra/event-store-types.js"
+import { asAsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../infra/store/event-store-types.js"
 import { readProviderRequestAuditFact } from "../runtime-facts/provider-request-audit-facts.js"
 import { hashAgentPrompt, hashSystemPrompt, hashToolSurface } from "./provider-request-audit-hash.js"
 import {

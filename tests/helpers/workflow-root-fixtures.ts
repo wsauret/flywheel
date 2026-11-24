@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../src/infra/event-store-types.js"
+import type { StoredFact } from "../../src/infra/store/event-store-types.js"
 import { compileWorkflowControl } from "../../src/workflows/vm/compile/compile.js"
 import type { CommittedWorkflowControl } from "../../src/workflows/vm/facts/committed-control.js"
 import { buildContextInputSeededFact } from "../../src/workflows/context-bundle/context-facts.js"

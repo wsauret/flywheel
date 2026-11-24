@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
 import { createHash } from "node:crypto"
 import { isAgentInFlight, isVisibleMessageBlock, type AnyBlock } from "../../../../infra/output-blocks.js"
 import { blockIdentity, rawToolUseId } from "../../../../protocol/block-identity.js"

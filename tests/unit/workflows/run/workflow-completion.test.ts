@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { readWorkflowCompletionEvidence, terminalWorkflow, workflowCompletionContent } from "../../../../src/workflows/run/workflow-completion.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"

@@ -13,7 +13,7 @@ import { appendFileSync, existsSync, readFileSync, writeSync } from "node:fs"
 import { join } from "node:path"
 
 import { keepServiceErrorLogBounded } from "../../../src/cli/account-service/service-error-log.js"
-import { Log } from "../../../src/infra/log.js"
+import { Log } from "../../../src/infra/diagnostics/log.js"
 
 const [errorLog, markers] = process.argv.slice(2)
 if (errorLog === undefined || markers === undefined) throw new Error("usage: _launchd-error-log-job.ts <error log> <markers directory>")

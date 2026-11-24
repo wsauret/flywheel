@@ -1,5 +1,5 @@
 import { describe, expect, it, spyOn } from "bun:test"
-import { Log } from "../../../../src/infra/log.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import { createWorkflowRunWriter } from "../../../../src/orchestration/modules/workflows/run-facts.js"
 import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/runs/run-record.js"

@@ -38,14 +38,14 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { writeFileAtomic } from "../../../../infra/atomic-write.js";
-import { contentEvidence } from "../../../../infra/content-evidence.js";
-import type { AsyncEventReadSurface } from "../../../../infra/event-store-types.js";
-import { createEventProjection, parseProjectionFact } from "../../../../infra/event-projection.js";
-import { heldProjection } from "../../../../infra/projection-registry.js";
-import { Log } from "../../../../infra/log.js";
+import { contentEvidence } from "../../../../infra/runtime-facts/content-evidence.js";
+import type { AsyncEventReadSurface } from "../../../../infra/store/event-store-types.js";
+import { createEventProjection, parseProjectionFact } from "../../../../infra/projection/event-projection.js";
+import { heldProjection } from "../../../../infra/projection/projection-registry.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { MemoryWrittenFact } from "../../../../workflows/learning/memory/memory-facts.js";
 import type { SkillOperationTransitionedFact, SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
-import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
 import { ensurePrivateDirectoryUnder, ensurePrivateRootDirectory, PRIVATE_FILE_MODE } from "../../../../infra/private-path.js";
 import { readFileUnder, requireContainedDirectory } from "../../../../infra/write-file-under.js";
 import { parseSessionFact } from "../../../session/persistence/session-fact-registry.js";
@@ -77,7 +77,7 @@ export interface PendingAudit {
 }
 
 export interface AuditWriter {
-  record(fact: AuditFact): Promise<import("../../../../infra/event-store-types.js").StoredFact | null>;
+  record(fact: AuditFact): Promise<import("../../../../infra/store/event-store-types.js").StoredFact | null>;
 }
 
 export interface OpenPendingAuditInput {

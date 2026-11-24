@@ -1,4 +1,4 @@
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { parseRepositoryIdentity } from "../../infra/update/release-manifest.js"
 import { compareReleaseVersions, parseReleaseVersion } from "../../infra/update/version-order.js"
 import type { ReleaseNotice } from "../../protocol/update-protocol-types.js"

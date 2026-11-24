@@ -46,7 +46,7 @@
 import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
-import { CONTAINER_MARK_VARIABLE, STRICT_DESCENDANT_SETTLEMENT_VARIABLE } from "../../src/infra/container-mark.js";
+import { CONTAINER_MARK_VARIABLE, STRICT_DESCENDANT_SETTLEMENT_VARIABLE } from "../../src/infra/process/container/container-mark.js";
 import { authDir, globalAgentsFile, sharedAgentsDir } from "../../src/infra/paths.js";
 
 const SANDBOX_EXEC = "/usr/bin/sandbox-exec";

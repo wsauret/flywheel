@@ -3,12 +3,12 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { selectStartupDirectories } from "../../../../src/infra/directory-authorities.js"
-import { Log } from "../../../../src/infra/log.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { runMaintain } from "../../../../src/cli/events/event-maintain.js"
 import { openExistingContainedDirectory } from "../../../../src/infra/descriptor-directory.js"
-import { registerSharedHolderIn, releaseSharedHolderIn } from "../../../../src/infra/ownership-file-lock.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { registerSharedHolderIn, releaseSharedHolderIn } from "../../../../src/infra/locks/ownership-file-lock.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 
 const created: string[] = []
 

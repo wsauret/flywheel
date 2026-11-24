@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { Schema } from "effect";
-import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../../src/infra/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../../src/infra/store/event-store-types.js";
 import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
 import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evidence-schema.js";
 import { readSessionContentRange } from "../../../../../../src/infra/session-content.js";

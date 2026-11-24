@@ -2,7 +2,7 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, symlinkSync, unlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
 import {
   acquireLock,
@@ -19,9 +19,9 @@ import {
   tryAcquireLockSync,
   type LockDirectory,
   type LockOwnership,
-} from "../../../../src/infra/ownership-file-lock.js";
-import { Log } from "../../../../src/infra/log.js";
-import { processHolders } from "../../../../src/infra/process-holder.js";
+} from "../../../../src/infra/locks/ownership-file-lock.js";
+import { Log } from "../../../../src/infra/diagnostics/log.js";
+import { processHolders } from "../../../../src/infra/process/process-holder.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { hostKernel, processHoldersOver } from "../../../helpers/process-holders.js";
 

@@ -11,8 +11,8 @@
 import { basename, dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import { Schema } from "effect";
-import { acquireLockIn, releaseLockIn, type LockHold } from "../../ownership-file-lock.js";
-import { ContainedPathError } from "../../descriptor-directory-contract.js";
+import { acquireLockIn, releaseLockIn, type LockHold } from "../../locks/ownership-file-lock.js";
+import { ContainedPathError } from "../../descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory } from "../../descriptor-directory.js";
 import { ensurePrivateRootDirectory } from "../../private-path.js";
 import { directoryComponents, readFileUnder, type ContainedFileLocation } from "../../write-file-under.js";

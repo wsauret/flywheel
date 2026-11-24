@@ -4,7 +4,7 @@ import { isAbortError } from "../../../infra/abort.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { InvariantViolation } from "../../../infra/invariant.js";
 import { Result, Schema } from "effect";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import type { UnknownRecord } from "../../../infra/record.js";
 import { classifyError, type ErrorType, WorkerFailedError } from "../../context-bundle/error-classifier.js";
 import { HandoffError, HandoffNotProducedError } from "../../context-bundle/handoff-errors.js";

@@ -1,9 +1,9 @@
 import { availableParallelism } from "node:os"
-import { containerProcessor, type ContainerProcessor } from "../../../infra/container-processor.js"
-import { DebugLog } from "../../../infra/debug-log.js"
-import type { ContainerRef } from "../../../infra/process-container.js"
+import { containerProcessor, type ContainerProcessor } from "../../../infra/process/container/container-processor.js"
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
+import type { ContainerRef } from "../../../infra/process/container/process-container.js"
 import { heldContainers } from "../../../infra/processor-admission.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 import type { ProjectExecutorCommand, ProjectExecutorEvent } from "./project-executor-protocol.js"
 
 /** One executor generation's complete set of shell containers. */

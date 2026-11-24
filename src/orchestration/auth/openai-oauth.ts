@@ -6,7 +6,7 @@ import { extractAccountId, extractDisplayIdentityFromJwt } from "../../infra/aut
 import { generatePKCE, generateState } from "../../infra/auth/openai/openai-pkce.js";
 import { readBoundedJson } from "../../infra/auth/bounded-json.js";
 import { oauthExpiryFromLifetimeSeconds } from "../../infra/auth/oauth-expiry.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import type { BrowserLoginPorts } from "../../infra/llm/access/access-provider.js";
 
 /** ChatGPT OAuth: the browser login that yields an account's tokens, and

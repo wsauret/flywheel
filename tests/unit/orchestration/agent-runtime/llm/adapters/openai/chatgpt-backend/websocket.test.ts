@@ -13,7 +13,7 @@ import type { ConversationMessage } from "../../../../../../../../src/orchestrat
 import type { ModelInfo } from "../../../../../../../../src/infra/llm/models/models.js";
 import { prepareOpenAIResponsesRequest } from "../../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-responses.js";
 import { stableSystemPrompt } from "../../../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { Log } from "../../../../../../../../src/infra/log.js";
+import { Log } from "../../../../../../../../src/infra/diagnostics/log.js";
 import * as windowsAcl from "../../../../../../../../src/infra/windows-private-directory-acl.js";
 
 interface UnknownRecord {

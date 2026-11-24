@@ -56,12 +56,12 @@ import { cpSync, closeSync, existsSync, fsyncSync, openSync, readdirSync, readFi
 import { randomBytes } from "node:crypto";
 import * as path from "node:path";
 import { Schema } from "effect";
-import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../infra/descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/descriptor-directory.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import type { OwnedCommandRunner } from "../../infra/owned-command.js";
-import { listProcesses, type ProcessRow } from "../../infra/process-table.js";
+import { listProcesses, type ProcessRow } from "../../infra/process/container/process-table.js";
 import { CURRENT_BUILD_LINK, updateAuthorityDbFile, versionsDir } from "../../infra/paths.js";
 import { ActivationError, openActiveBuild, publishActivation } from "../../infra/update/active-build.js";
 import { assertInstallLocation, BUILD_METADATA_FILE, buildExecutable, type BuildIdentity, buildInstallDir, type BuildRef, computeBuildId, decodeBuildMetadata, NATIVE_DIR } from "../../infra/update/build-identity.js";

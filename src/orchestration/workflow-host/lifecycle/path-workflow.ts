@@ -17,9 +17,9 @@
 import { createHash, randomBytes } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
-import { ContainedFileTooLargeError, ContainedPathError, type ContainedDirectory } from "../../../infra/descriptor-directory-contract.js"
+import { ContainedFileTooLargeError, ContainedPathError, type ContainedDirectory } from "../../../infra/descriptor-directory/descriptor-directory-contract.js"
 import { openContainedDirectory, openExistingContainedDirectory } from "../../../infra/descriptor-directory.js"
-import { DebugLog } from "../../../infra/debug-log.js"
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
 import { errnoCode, errorMessage } from "../../../infra/error-message.js"
 import { sessionScratchDir } from "../../../infra/paths.js"
 import { WORKFLOW_FILE_EXTENSION, workflowContentFileName, type WorkflowCallSource } from "../../../infra/tools/workflow-call-source.js"
@@ -43,7 +43,7 @@ import {
   workflowPhaseLocations,
   type WorkflowFileDiagnostic,
 } from "../../../workflows/vm/admission/workflow-file.js"
-import { WORKFLOW_FILE_MAX_BYTES } from "../../../infra/workflow-yaml.js"
+import { WORKFLOW_FILE_MAX_BYTES } from "../../../infra/yaml/workflow-yaml.js"
 import { agentLabel, agentRecords, DEFAULT_COUNTED_LIST_MAX, dotFreeSlugIssue, namedAgents, phaseLabel, walkPhases, type AgentRecordKeys, type AuthoredWorkflow, type WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"
 import type { WorkflowDefinitionRefusal, WorkflowDefinitionResolution } from "./workflow-admission.js"
 

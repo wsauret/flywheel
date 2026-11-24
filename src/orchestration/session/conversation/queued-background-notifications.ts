@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightSwap, InFlightWrite } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightSwap, InFlightWrite } from "../../../infra/store/event-store-types.js"
 import { redactMessage } from "../../agent-runtime/loop/turn/agent-loop-history.js"
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
 import type { QueuedUserInputDestination } from "./queued-user-inputs.js"

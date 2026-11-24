@@ -3,7 +3,7 @@ import { pathToFileURL } from "node:url";
 import { join, resolve } from "node:path";
 import { OutputProjector } from "../../../../../src/infra/output/projector/output-projector";
 import { RuntimeEventProjector } from "../../../../../src/infra/output/runtime-event-projector";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types";
+import type { RuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-types";
 import type { ToolEntry } from "../../../../../src/infra/output-blocks";
 import { buildMutationDiffEvidence, buildMutationDiffEntries } from "../../../../../src/infra/mutation-diff-evidence";
 import { buildMutationEvidence, readMutationEvidenceFiles } from "../../../../../src/infra/mutation-evidence";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { Database } from "bun:sqlite"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types"
 import { transcriptFixture, transcriptStores } from "./_transcript-projection-fixtures"
 import {
   createToolResultDisplayMetaCursorReader,

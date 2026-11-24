@@ -2,10 +2,10 @@ import { describe, it, expect, afterEach } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import type { DebugLogRecordInput } from "../../../../src/infra/debug-log";
-import { Log } from "../../../../src/infra/log";
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
+import type { DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log";
+import { Log } from "../../../../src/infra/diagnostics/log";
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createSessionManager, type SessionMetadataChange } from "../../../../src/orchestration/session/manager";
 import { readStoredSession } from "./_session-metadata-test-helpers";

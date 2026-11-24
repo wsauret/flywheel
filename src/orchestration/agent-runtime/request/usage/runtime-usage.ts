@@ -4,7 +4,7 @@ import { createTurnUsageTracker, type TurnUsageTracker } from "./turn-usage-trac
 import type { AgentDurableFacts, AgentOptions } from "../../types.js";
 import { createProcessUsageSettlement, createSessionUsageSettlement, recoverSessionUsageSettlements, type UsageSettlement } from "./usage-settlement.js";
 import type { DurableOwner } from "../../../../infra/durable-owner.js";
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
+import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js";
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 
 type RuntimeUsageOptions = Pick<AgentOptions, "onEvent" | "usageObserver" | "usageProfile"> & AgentDurableFacts;

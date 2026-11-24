@@ -1,4 +1,4 @@
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import { loggedOperation } from "../../operation-log.js";
 import type { CatalogJsonValue } from "../../catalog-model-offering.js";
 import type { ModelPricing } from "./models.js";

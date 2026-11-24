@@ -1,5 +1,5 @@
 import type { CommittedWorkflowControl } from "../facts/committed-control.js"
-import { CorruptEventRowError } from "../../../infra/event-store-types.js"
+import { CorruptEventRowError } from "../../../infra/store/event-store-types.js"
 import { isUnknownWorkflowFamilyType, replayWorkflowControl, replayWorkflowControlFrom } from "./fact-fold.js"
 import { parseWorkflowSessionFact, workflowRootControl, WORKFLOW_CONTROL_FACT_TYPES, WORKFLOW_SESSION_FACT_DESCRIPTORS, type WorkflowRecoveryDegradationReason } from "../facts/session-facts.js"
 import { selectNewestWorkflowRoot } from "../../run/workflow-root.js"

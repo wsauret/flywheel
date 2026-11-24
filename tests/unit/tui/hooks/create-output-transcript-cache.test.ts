@@ -1,7 +1,7 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import { createEffect, createMemo, createRoot, createSignal } from "solid-js"
 import { unwrap } from "solid-js/store"
-import { Log } from "../../../../src/infra/log.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
 import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"

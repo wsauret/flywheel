@@ -16,7 +16,7 @@ import { basename } from "node:path";
 import { mergeAbortSignals } from "../../../infra/abort.js";
 import { stripControlCharacters } from "../../../infra/control-characters.js";
 import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import { EFFORT_VALUES } from "../../../infra/workflow-types.js";
 import { admitBenchmark, benchmarkModelSeats, benchmarkPreflightReport, personaCampaignJudge, type BenchmarkAdmission, type BenchmarkAdmissionDeps, type ProviderPlanReport } from "./benchmark/persona/admission.js";
 import type { BenchmarkPlan, JudgeSelection } from "./benchmark/persona/benchmark-plan.js";

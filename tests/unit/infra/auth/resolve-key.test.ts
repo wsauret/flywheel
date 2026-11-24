@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { Redacted } from "effect";
 import type { OwnedSecretResult } from "../../../../src/infra/owned-command.js";
-import type { OwnedProcess, OwnedProcessExit } from "../../../../src/infra/owned-subprocess.js";
-import type { OwnedLaunchOptions } from "../../../../src/infra/owned-subprocess-backend.js";
+import type { OwnedProcess, OwnedProcessExit } from "../../../../src/infra/supervision/launch/owned-subprocess.js";
+import type { OwnedLaunchOptions } from "../../../../src/infra/supervision/launch/owned-subprocess-backend.js";
 import {
   createKeyResolver,
   createOwnedCredentialCommandRunner,

@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { basename, dirname, join } from "node:path";
-import type { OwnedProcess, OwnedProcessExit } from "../../../../../../../src/infra/owned-subprocess.js";
+import type { OwnedProcess, OwnedProcessExit } from "../../../../../../../src/infra/supervision/launch/owned-subprocess.js";
 import type { LauncherScope } from "../../../../../../../src/infra/process-supervisor.js";
 import { acpQuestionForm } from "../../../../../../../src/protocol/acp.js";
 import type { PendingQuestionView } from "../../../../../../../src/protocol/question-protocol-types.js";

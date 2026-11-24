@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { canonicalMutationPath } from "../../../../../../src/infra/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../../../src/infra/locks/file-mutation-queue.js";
 import { createToolConcurrencyGate, type GateAdmission } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";
 import { preparedToolAdmission, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { admitEveryTool } from "../../../../../helpers/request-tool-surface.js";

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { LlmToolOutputPart } from "../../llm/tool-output-part-schema.js";
 import { canonicalize } from "../../canonical-name.js";
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import type { AgentGroupBlock, AnyBlock, ToolEntry } from "../../output-blocks.js";
 import { toFileUri } from "../../paths.js";
 import { getToolDisplay, isHiddenFromTranscript, resolveToolRowPresentation } from "../../tools/tool-display-registry.js";
@@ -22,7 +22,7 @@ import {
 } from "./structured-event-tool-materializer.js";
 import { isBackgroundResult, resolveTrackedToolResult, type SettledExecution } from "./structured-event-tool-results.js";
 import type { StructuredOutputBuilder } from "./structured-output-builder.js";
-import type { ToolOutcome } from "../../tool-outcome.js";
+import type { ToolOutcome } from "../../runtime-facts/tool-outcome.js";
 import { createProvisionalDiffInput } from "../streaming/provisional-diff-input.js";
 import { mutationEvidenceSummaryDisplayPaths, provisionalDiffDisplayPaths } from "../display-paths.js";
 import { interruptedLabel } from "../run-labels.js";

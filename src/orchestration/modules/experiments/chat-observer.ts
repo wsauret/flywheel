@@ -1,5 +1,5 @@
 import { formatRuntimeNotification } from "../../agent-runtime/background-work/runtime-notifications.js"
-import type { ToolCallEventData } from "../../../infra/runtime-event-payload-types.js"
+import type { ToolCallEventData } from "../../../infra/runtime-facts/runtime-event-payload-types.js"
 import type { ExperimentFact } from "./state/facts.js"
 import type { ExperimentSnapshot } from "./state/projection.js"
 import { autoResumeStopReasonFor } from "./guards/auto-resume-guards.js"

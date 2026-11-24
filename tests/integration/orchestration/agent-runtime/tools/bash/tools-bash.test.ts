@@ -7,7 +7,7 @@ import { createBashDefinition } from "../../../../../../src/orchestration/agent-
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { makeContext } from "../../../../../unit/orchestration/agent-runtime/tools/_fixtures.js";
 import { bashExecution } from "../../../../../unit/orchestration/agent-runtime/tools/bash/_bash-fixtures.js";
-import { createPersistentProcessManager } from "../../../../../../src/infra/persistent-process-manager.js";
+import { createPersistentProcessManager } from "../../../../../../src/infra/supervision/persistent/persistent-process-manager.js";
 
 const bashDefinition = createBashDefinition(bashExecution());
 

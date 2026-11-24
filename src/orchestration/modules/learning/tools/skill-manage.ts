@@ -8,14 +8,14 @@ import type { SkillRecommendation, SkillSemanticAuditResult } from "../../../age
 import type { LearningScope } from "../../../../infra/learning-scope.js";
 import type { MutationEvidence } from "../../../../infra/mutation-evidence.js";
 import { buildMutationDiffEvidence } from "../../../../infra/mutation-diff-evidence.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { ToolResultAction } from "../../../../infra/tool-result-action.js";
 import { normalizeSkillId } from "../../../../infra/skill-id.js";
 import { errorMessage } from "../../../../infra/error-message.js";
 import type { DefinitionReload } from "../../../../workflows/definitions/definition-registry.js";
 import { NEW_SKILL_TRIGGER_MAX_CHARS, type SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { skillRecommendationRecordedFact } from "../../../../workflows/skills/skill-facts.js";
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
+import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js";
 import { discardPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../skills/learning-journal.js";
 import { readConsentClaims, reconcileGlobalSkillOperations } from "../skills/global-skill-mutation.js";
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";

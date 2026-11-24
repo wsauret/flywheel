@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import { existsSync, mkdirSync, rmSync } from "node:fs"
 
-import { sweepPersistentSpools, type PersistentSpool } from "../../../src/infra/persistent-spool.js"
-import { launchPersistentSubprocess } from "../../../src/infra/persistent-subprocess.js"
+import { sweepPersistentSpools, type PersistentSpool } from "../../../src/infra/supervision/persistent/persistent-spool.js"
+import { launchPersistentSubprocess } from "../../../src/infra/supervision/persistent/persistent-subprocess.js"
 import { lingerAfter, sourceModule } from "../../helpers/process-linger.js"
 import { createRealProcessFixture, processAlive, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 
@@ -112,7 +112,7 @@ describe("persistent subprocess host contract", () => {
   test("a stop holds its launcher's process open no longer than the stop", async () => {
     const scratch = fixture("persistent-stop-linger")
     const setup = [
-      `import { launchPersistentSubprocess } from ${JSON.stringify(sourceModule("infra/persistent-subprocess.ts"))}`,
+      `import { launchPersistentSubprocess } from ${JSON.stringify(sourceModule("infra/supervision/persistent/persistent-subprocess.ts"))}`,
       // The launcher is the payload's owner, so nothing the launch starts outlives it.
       `const child = await launchPersistentSubprocess([process.execPath, ${JSON.stringify(TARGET)}, "payload", ${JSON.stringify(scratch.dir)}, String(process.pid)])`,
     ].join("\n")

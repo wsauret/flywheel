@@ -1,7 +1,7 @@
 import type { OwnedCommandRunner } from "../../../infra/owned-command.js"
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
 import type { ModuleServiceInstance } from "../../app-service/module-service-host.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 
 const log = Log.create({ service: "development-bug-reports" })
 const sourceId = "development:bug-report-triage"

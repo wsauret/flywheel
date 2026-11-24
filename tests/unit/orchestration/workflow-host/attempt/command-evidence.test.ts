@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js";
 interface FactPayload { [key: string]: unknown }
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { createConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";

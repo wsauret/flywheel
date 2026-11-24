@@ -2,8 +2,8 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { posix } from "node:path";
 
-import { DebugLog } from "../../../../../../../src/infra/debug-log.js";
-import { Log } from "../../../../../../../src/infra/log.js";
+import { DebugLog } from "../../../../../../../src/infra/diagnostics/debug-log.js";
+import { Log } from "../../../../../../../src/infra/diagnostics/log.js";
 import * as writeRoots from "../../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-write-roots.js";
 import { ShellState } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-write-state.js";
 import { interceptBashCommand } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-command-policy.js";

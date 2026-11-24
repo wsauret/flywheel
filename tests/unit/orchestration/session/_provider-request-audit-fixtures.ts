@@ -1,4 +1,4 @@
-import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
+import type { LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types.js"
 import {
   recordProviderRequest,
   type ConversationDedup,

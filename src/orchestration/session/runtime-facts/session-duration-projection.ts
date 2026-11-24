@@ -1,5 +1,5 @@
-import { parseProjectionFact, reduceEvents } from "../../../infra/event-projection.js"
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../infra/event-store-types.js"
+import { parseProjectionFact, reduceEvents } from "../../../infra/projection/event-projection.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../infra/store/event-store-types.js"
 import { parseSessionRuntimeFact } from "./session-runtime-event-types.js"
 
 export type SessionDurationProjectionState = {

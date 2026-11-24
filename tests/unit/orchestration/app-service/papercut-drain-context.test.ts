@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { join } from "node:path"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import { buildPapercutDrain } from "../../../../src/orchestration/modules/papercuts/drain.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 

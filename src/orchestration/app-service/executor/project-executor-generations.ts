@@ -1,6 +1,6 @@
 import { errorMessage } from "../../../infra/error-message.js"
 import { createRuntimeFaultReporting } from "./runtime-fault-reporting.js"
-import type { Log } from "../../../infra/log.js"
+import type { Log } from "../../../infra/diagnostics/log.js"
 import type { FrontendMutation, RuntimeExecutorState, RuntimeQuery } from "../../../protocol/app-service-types.js"
 import { ExecutorNotRunningError } from "../../../protocol/runtime-protocol-schemas.js"
 import { workspaceDomainCursor } from "../../../protocol/runtime-ui-protocol-types.js"
