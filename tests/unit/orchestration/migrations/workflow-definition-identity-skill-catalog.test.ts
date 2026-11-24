@@ -10,12 +10,12 @@ import { migrateWorkflowDefinitionIdentityContext } from "../../../../src/orches
 import {
   DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID,
   definitionIdentityMismatches,
-} from "../../../../src/workflows/vm/definition-identity.js"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { workflowAggregateId } from "../../../../src/workflows/vm/session-facts.js"
+} from "../../../../src/workflows/vm/facts/definition-identity.js"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
+import { workflowAggregateId } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
-import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
+import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flatten.js"
 import {
   SPEC_CREATE_SKILL_ID,
   STEP_IDS,
@@ -36,7 +36,7 @@ import {
 } from "./_legacy-workflow-aggregate.js"
 import { stagedControl } from "./_pre-phase-control.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import { ownedSkillStoreDirs } from "../../../../src/workflows/skills.js"
+import { ownedSkillStoreDirs } from "../../../../src/workflows/skills/skills.js"
 
 const tmpRoot = path.join(os.tmpdir(), `flywheel-catalog-identity-${process.pid}-${Date.now()}`)
 const MIGRATED_TYPE = "workflow.definition_identity.migrated"

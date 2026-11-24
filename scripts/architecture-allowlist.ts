@@ -39,13 +39,12 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   },
   {
     lint: "module-cycle",
-    reason: "vm folds the facts that workflow-root, session-fact-source, and context-bundle write, while they decode facts through vm's parseWorkflowSessionFact and workflowAggregateId, and view reads vm's recovery; src/orchestration imports both from vm, so moving them below vm also changes those imports. Give workflowAggregateId a home below vm, give each lower module a parser of its own fact family, and pass the historical-tree function into queueFromProjection, then reassess.",
+    reason: "vm uses run's root selectors (run/workflow-root) and projection boundary (run/session-fact-source), composes the run-facts codecs, and folds the facts that context-bundle writes, while run/workflow-root, run/session-fact-source, and context-bundle decode facts through vm's parseWorkflowSessionFact and workflowAggregateId, and view reads vm's recovery; run/workflow-completion also reads the view and the context of a finished run; src/orchestration imports both from vm, so moving them below vm also changes those imports. Give workflowAggregateId a home below vm, give each lower module a parser of its own fact family, and pass the historical-tree function into queueFromProjection, then reassess.",
     key: [
       "flywheel::workflows::context-bundle",
-      "flywheel::workflows::session-fact-source",
+      "flywheel::workflows::run",
       "flywheel::workflows::view",
       "flywheel::workflows::vm",
-      "flywheel::workflows::workflow-root",
     ].join(","),
   },
   {
@@ -75,8 +74,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "src/tui/", reason: WIDE },
   { lint: "wide-directory", key: "src/tui/components/", reason: WIDE },
   { lint: "wide-directory", key: "src/tui/hooks/", reason: WIDE },
-  { lint: "wide-directory", key: "src/workflows/", reason: WIDE },
-  { lint: "wide-directory", key: "src/workflows/vm/", reason: WIDE },
   { lint: "wide-directory", key: "webview/src/app/", reason: WIDE },
   { lint: "wide-directory", key: "webview/src/client/", reason: WIDE },
   {

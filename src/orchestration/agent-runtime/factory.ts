@@ -13,7 +13,7 @@ import type { LauncherScope } from "../../infra/process-supervisor.js";
 import type { CommandHandoverAuthority } from "./command-handover.js";
 import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
-import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js";
+import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js";
 import { createBreadcrumbMaintenance } from "../session/session-artifacts.js";
 import { createWebSearch } from "./web-search/select.js";
 import type { WebSearchProviderId } from "./web-search/types.js";

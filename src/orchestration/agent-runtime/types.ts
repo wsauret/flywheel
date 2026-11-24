@@ -44,7 +44,7 @@ import type { EnvCaptureResolver } from "../../infra/env-detection.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
-import type { SkillRegistryRevision } from "../../workflows/skill-schema.js";
+import type { SkillRegistryRevision } from "../../workflows/skills/skill-schema.js";
 import type { ForegroundBashHoldController } from "./foreground-bash-hold.js";
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js";
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js";

@@ -1,4 +1,4 @@
-import type { WorkflowDefinition } from "../../workflows/workflow-schema.js"
+import type { WorkflowDefinition } from "../../workflows/schema/workflow-schema.js"
 import type { WorkflowView } from "../../workflows/view/types.js"
 import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
 import type { SessionManager } from "../session/manager.js"

@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";
 import { loadWorkflowDefinitions } from "../../../helpers/workflow-files.js";
-import { decodeWorkflowFile } from "../../../../src/workflows/workflow-file.js";
-import type { LoadedBrief } from "../../../../src/workflows/brief.js";
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
+import { decodeWorkflowFile } from "../../../../src/workflows/vm/admission/workflow-file.js";
+import type { LoadedBrief } from "../../../../src/workflows/definitions/brief.js";
+import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js";
 import { fileTemporaryDirectory } from "../../../helpers/directories.js";
 
 const TMP = fileTemporaryDirectory("flywheel-def-loader-test-");

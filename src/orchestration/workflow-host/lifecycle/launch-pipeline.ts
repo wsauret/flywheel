@@ -22,7 +22,7 @@ import type { WorkflowLaunchLifecycle } from "./launch-lifecycle.js"
 import type { WorkflowLaunchOperation } from "./launch-operation-contract.js"
 import type { ModelWorkflowLaunchOrigin, ModelWorkflowLaunchRequest, WorkflowApprovalBinding, WorkflowLaunchRefusal } from "./launch-origin.js"
 import { prepareWorkflowLaunch, publishWorkflow, WorkflowInputRejectedError } from "./publish.js"
-import type { WorkflowCapabilityBoundary } from "../../../workflows/run-facts.js"
+import type { WorkflowCapabilityBoundary } from "../../../workflows/run/run-facts.js"
 import {
   launchCapabilityBoundary,
   workflowCapabilityAccess,
@@ -34,8 +34,8 @@ import {
 import { describeDefinitionRefusal, launchStructureRefusal, launchWarningLines, loadPathWorkflow, WORKFLOW_FILE_RECOVERY, workflowFileName, type PathWorkflowLaunch } from "./path-workflow.js"
 import type { WorkflowLaunchApprovalSource } from "../../session/agent-input-facts.js"
 import { resolveSessionDir } from "../../../infra/paths.js"
-import { WorkflowStructureRejectedError } from "../../../workflows/vm/structural-admission.js"
-import type { WorkflowDefinition } from "../../../workflows/workflow-schema.js"
+import { WorkflowStructureRejectedError } from "../../../workflows/vm/graph/structural-admission.js"
+import type { WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"
 import { readInheritedCheckpointIntent } from "../../session/conversation-checkpoint.js"
 
 const log = Log.create({ service: "workflow-controller" })

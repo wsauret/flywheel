@@ -13,13 +13,13 @@ import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import type { WorkflowView, AttemptRow } from "../../../../src/workflows/view/types.js"
 import { QueueV9Schema, type WorkflowPlanSchema } from "../../../../src/workflows/view/schemas.js"
 import { Schema } from "effect"
-import type { WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
+import type { WorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { makeQueueStores } from "./_persistence-fixtures.js"
 import { initializedWorkflowRoot } from "../../../helpers/workflow-root-fixtures.js"
 import { plainAgentTree } from "../../../helpers/workflow-view.js"
-import { buildWorkflowControlCommittedFact } from "../../../../src/workflows/vm/session-facts.js"
+import { buildWorkflowControlCommittedFact } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
 
 /** The version each queue fact type is registered at. A fact literal in this
  *  suite carries the registered version rather than a pinned number, so a fact

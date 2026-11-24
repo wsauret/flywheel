@@ -43,7 +43,7 @@ import type { DefinitionOverrideOperations } from "../src/workflows/definitions/
 import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
 import type { WorkflowsMode } from "../src/protocol/module-protocol-types.js";
 import { workflowLaunchTargets } from "../src/orchestration/workflow-host/lifecycle/launch-origin.js";
-import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definition-registry.js";
+import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definitions/definition-registry.js";
 import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/session-messaging.js";
 
 /** What every request of one assembly shares: its roots, its definitions, its configuration, and the module

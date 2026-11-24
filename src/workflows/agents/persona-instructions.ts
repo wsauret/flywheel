@@ -1,7 +1,7 @@
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import { renderCapabilityText, type CapabilityCheck } from "../../infra/capability-text.js";
-import { renderSkillClosure } from "../skill-render.js";
-import type { SkillRegistryRevision } from "../skill-schema.js";
+import { renderSkillClosure } from "../skills/skill-render.js";
+import type { SkillRegistryRevision } from "../skills/skill-schema.js";
 
 /** The instructions that one persona brings to every run of it: the context
  *  of its required skills, in declaration order, then its own system prompt.

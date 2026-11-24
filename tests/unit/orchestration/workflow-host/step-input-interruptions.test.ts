@@ -3,8 +3,8 @@ import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types
 import { createWorkflowAgentInputs } from "../../../../src/orchestration/workflow-host/execution/agent-inputs"
 import type { WorkflowWake } from "../../../../src/orchestration/workflow-host/runner-types"
 import { WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
-import { startedAgents } from "../../../../src/workflows/vm/host-commit-controller"
-import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten"
+import { startedAgents } from "../../../../src/workflows/vm/host/host-commit-controller"
+import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flatten"
 import { startNext, wideControl, wideBindings } from "../../workflows/vm/_tree-fixtures"
 import { createMemoryStore } from "../../workflows/vm/host-test-support"
 

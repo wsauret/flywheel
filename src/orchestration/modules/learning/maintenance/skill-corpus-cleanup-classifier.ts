@@ -1,5 +1,5 @@
 import type { PreparedPackage } from "../../../agent-runtime/review-types.js";
-import type { BundledCorpusIdentity, SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
+import type { BundledCorpusIdentity, SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { createHash } from "node:crypto";
 import type { ModelFamily } from "../../../../infra/llm/model-family.js";
 import { estimateMessageTokens, imageTokensForModel } from "../../../agent-runtime/compaction/token-counter.js";

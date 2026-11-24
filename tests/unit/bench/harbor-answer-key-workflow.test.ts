@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
-import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js";
-import { verifyAuthoredWorkflow } from "../../../src/workflows/vm/verify.js";
-import { loadWorkflowFile } from "../../../src/workflows/workflow-file.js";
+import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-resolution.js";
+import { verifyAuthoredWorkflow } from "../../../src/workflows/vm/compile/verify.js";
+import { loadWorkflowFile } from "../../../src/workflows/vm/admission/workflow-file.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
 
 describe("answer-key review workflow", () => {

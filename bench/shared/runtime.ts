@@ -36,7 +36,7 @@ import { ownedCommandRunner, type OwnedCommandRunner } from "../../src/infra/own
 import { accessProviderRegistry } from "../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
 import { composePortableModuleServices, type ComposedModuleServices } from "../../src/orchestration/app-service/module-service-host.js";
 import { installedModules } from "../../src/orchestration/module-catalog.js";
-import type { ProjectDefinitionRegistry } from "../../src/workflows/definition-registry.js";
+import type { ProjectDefinitionRegistry } from "../../src/workflows/definitions/definition-registry.js";
 export interface OwnedBenchmarkRuntime extends AsyncDisposable {
   readonly deps: WorkflowDeps;
   readonly profileId: string;

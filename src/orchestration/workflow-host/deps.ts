@@ -13,7 +13,7 @@ import type { EffectiveProviderConnection, RecordModelRefusal } from "../agent-r
 import type { CaptureRuntimeConfig } from "../agent-runtime/request-config.js"
 import type { AgentFactory, AgentOptions } from "../agent-runtime/types.js"
 import type { CapabilityPlanner, RequestPreparer } from "../agent-runtime/request-preparation.js"
-import type { ProjectDefinitionRegistry, ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js"
+import type { ProjectDefinitionRegistry, ProjectDefinitionRegistryRevision } from "../../workflows/definitions/definition-registry.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
 import { getSharedModelsClient } from "../config/models/llm-clients.js"
 import { resolveEnabledProviderModelCatalog } from "../config/models/model-assignment-providers.js"

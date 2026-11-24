@@ -10,14 +10,14 @@
 
 import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
 import type { ToolScoping } from "../../../../src/infra/workflow-types.js"
-import { hashContent, hashDefinition } from "../../../../src/workflows/definition-hash.js"
-import { renderSkillContext } from "../../../../src/workflows/skill-render.js"
-import type { StepGrammarWorkflow, WorkflowStep } from "../../../../src/workflows/retired-step-grammar/schema.js"
-import type { RetiredBinding } from "../../../../src/workflows/retired-bindings.js"
-import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js"
-import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js"
-import { isLegacyDefinitionIdentity, type LegacyDefinitionIdentity, type StepDefinitionIdentity } from "../../../../src/workflows/vm/definition-identity.js"
+import { hashContent, hashDefinition } from "../../../../src/workflows/provenance/definition-hash.js"
+import { renderSkillContext } from "../../../../src/workflows/skills/skill-render.js"
+import type { StepGrammarWorkflow, WorkflowStep } from "../../../../src/workflows/schema/retired-step-grammar/schema.js"
+import type { RetiredBinding } from "../../../../src/workflows/definitions/retired-bindings.js"
+import type { SkillRegistryRevision } from "../../../../src/workflows/skills/skill-schema.js"
+import { compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile.js"
+import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js"
+import { isLegacyDefinitionIdentity, type LegacyDefinitionIdentity, type StepDefinitionIdentity } from "../../../../src/workflows/vm/facts/definition-identity.js"
 import { testResolvedAgent, testResolvedAgents } from "../../../helpers/skill-fixtures.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
@@ -30,7 +30,7 @@ import { loadedWorkflow } from "../../../helpers/workflow-files.js"
  *  history: the values are fixed as that build produced them, and a later edit
  *  to a step or an output contract must not move them.
  *
- *  Both hashes come from `hashDefinition` in `src/workflows/definition-hash.ts`:
+ *  Both hashes come from `hashDefinition` in `src/workflows/provenance/definition-hash.ts`:
  *  SHA-256 in lowercase hex over canonical JSON, where object keys sort by
  *  `localeCompare`, an `undefined` member drops, and arrays keep their order.
  *  A binding hash covers the canonical binding record, which is the authored

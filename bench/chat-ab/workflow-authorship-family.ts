@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { Schema } from "effect";
 import { operatorAccountHome } from "./isolation.js";
-import { loadSkillDefinitions, skillStoreRoots } from "../../src/workflows/skills.js";
+import { loadSkillDefinitions, skillStoreRoots } from "../../src/workflows/skills/skills.js";
 import { bytesIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
 import type { CampaignDesign, CampaignFamily } from "./campaign-runner.js";

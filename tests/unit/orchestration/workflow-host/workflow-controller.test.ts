@@ -6,7 +6,7 @@ import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog"
 import { workflowParentBinding } from "../../../helpers/workflow-parent"
-import { parseWorkflowSessionFact, workflowRootControl } from "../../../../src/workflows/vm/session-facts"
+import { parseWorkflowSessionFact, workflowRootControl } from "../../../../src/workflows/vm/facts/session-facts"
 import {
   cleanupProjectRoots,
   createDeps,

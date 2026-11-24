@@ -6,7 +6,7 @@ import * as path from "node:path"
 import type { EventPayload } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { migrateDefinitionLoadedHandoffFilename } from "../../../../src/orchestration/modules/workflows/migrations/definition-loaded-handoff-filename.js"
-import { parseDefinitionProvenanceFact } from "../../../../src/workflows/definition-provenance-facts.js"
+import { parseDefinitionProvenanceFact } from "../../../../src/workflows/provenance/definition-provenance-facts.js"
 
 const tmpRoot = path.join(os.tmpdir(), `flywheel-definition-loaded-migration-${process.pid}-${Date.now()}`)
 

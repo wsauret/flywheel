@@ -4,7 +4,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store"
-import { workflowAggregateId } from "../../../../src/workflows/vm/session-facts"
+import { workflowAggregateId } from "../../../../src/workflows/vm/facts/session-facts"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types"
 import { cleanupTmpRoot, finalizeTestSessionDeletion, makeDeps, makeDepsWithStore, makeTmpDir, publishTestWorkflow } from "./_session-manager-fixtures"
 

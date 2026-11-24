@@ -12,7 +12,7 @@ import { RESEARCH_SNAPSHOT } from "../../../src/orchestration/modules/developmen
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import type { AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
 import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
-import { publishSkillRevision } from "../../../src/workflows/skill-schema.js";
+import { publishSkillRevision } from "../../../src/workflows/skills/skill-schema.js";
 import { dryRunBenchmarkAdmission, dryRunBenchmarkRuntime } from "../../helpers/benchmark-admission.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readSkillResource } from "../../../src/workflows/skill-context.js";
+import { readSkillResource } from "../../../src/workflows/skills/skill-context.js";
 import { bodyFor, bundled } from "./_bundled-skills.js";
 
 describe("capability branches of bundled skill packages", () => {

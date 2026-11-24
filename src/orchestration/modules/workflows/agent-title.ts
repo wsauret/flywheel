@@ -1,6 +1,6 @@
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
 import { workflowAgentTitle } from "../../../protocol/client/workflow-agent.js"
-import { attemptNodeIdOf } from "../../../workflows/vm/graph-types.js"
+import { attemptNodeIdOf } from "../../../workflows/vm/graph/graph-types.js"
 import type { WorkflowView } from "../../../workflows/view/types.js"
 import { createReplayingWorkflowView } from "../../../workflows/view/view-projection.js"
 

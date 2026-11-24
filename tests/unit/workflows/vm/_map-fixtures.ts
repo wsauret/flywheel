@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
-import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js"
+import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js"
+import type { SkillRegistryRevision } from "../../../../src/workflows/skills/skill-schema.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import type { SqliteVmDriver } from "./_sqlite-vm-driver.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"

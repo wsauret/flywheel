@@ -14,8 +14,8 @@ import { executePreparedTool, prepareToolCall, preparedToolAdmission, selectedTo
 import type { RuntimeTool, RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createSkillTool } from "../../../../../src/orchestration/agent-runtime/tools/skill.js";
-import type { SkillDefinition } from "../../../../../src/workflows/skill-schema.js";
-import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js";
+import type { SkillDefinition } from "../../../../../src/workflows/skills/skill-schema.js";
+import { publishSkillRevision } from "../../../../../src/workflows/skills/skill-schema.js";
 import { admitEveryTool, requestAdmission, testBaseTools } from "../../../../helpers/request-tool-surface.js";
 import { capabilityAccessHolding, makeContext } from "./_fixtures.js";
 import { bashExecution } from "./_bash-fixtures.js";

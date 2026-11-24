@@ -64,7 +64,7 @@ const WORKFLOW_PATHS: readonly RegExp[] = [
  *  definitions, the dated conversions, and the store migrations. A retired
  *  spelling there is the spelling that they convert. */
 const HISTORY_PATHS: readonly string[] = [
-  "src/workflows/retired-step-grammar/",
+  "src/workflows/schema/retired-step-grammar/",
   "/retired-",
   "/historical-",
   "/legacy-",
@@ -124,22 +124,22 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   // The context v1 to v5 decoders.
   "src/workflows/context-bundle/context-facts.ts",
   // The improvement v1 decoder.
-  "src/workflows/improvements/improvement-facts.ts",
+  "src/workflows/learning/improvements/improvement-facts.ts",
   // The attempt facts of view v1.
   "src/workflows/view/view-facts.ts",
   // The view tree v3 and the rows v9.
   "src/workflows/view/schemas.ts",
   // workflow.compiled v8 to v10.
-  "src/workflows/definition-provenance-facts.ts",
+  "src/workflows/provenance/definition-provenance-facts.ts",
   // The persona and brief identities that recorded runs hash.
-  "src/workflows/vm/definition-identity.ts",
-  "src/workflows/vm/session-facts.ts",
-  "src/workflows/vm/node-outputs.ts",
+  "src/workflows/vm/facts/definition-identity.ts",
+  "src/workflows/vm/facts/session-facts.ts",
+  "src/workflows/vm/graph/node-outputs.ts",
   // The stored keys of control v11: `steps[].stepId`, the handoff evidence
   // `stepId`, and the join slot `step_id`.
   "src/workflows/reducers/reducer.ts",
   // Readers of the view that the step grammar recorded.
-  "src/workflows/agent-resolution.ts",
+  "src/workflows/definitions/agent-resolution.ts",
   "src/workflows/context-bundle/context.ts",
   // The event search formatter and the decode-only schema of the older usage fact.
   "src/infra/runtime-fact-types.ts",
@@ -397,10 +397,10 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
     [/\blaneSteps?\b/, "agentParts"],
     [/\bcontentId\b/, "briefId", [
       // A hash key of briefContentSha256 that recorded runs hold.
-      "src/workflows/vm/definition-identity.ts",
+      "src/workflows/vm/facts/definition-identity.ts",
       "src/workflows/view/schemas.ts",
       "src/workflows/view/view-facts.ts",
-      "src/workflows/definition-provenance-facts.ts",
+      "src/workflows/provenance/definition-provenance-facts.ts",
       PROTOCOL_VERSION_NOTES,
     ]],
     [/\bfan-?out\b/i, "parallel dispatch, or a phase over a list; fan-out is not a noun (glossary join)"],
@@ -410,7 +410,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
     // The view tree v3 stores `stages` and `stageIds`.
     [/\bstages?\b/i, "a phase of a stream", ["src/workflows/view/schemas.ts"]],
     // An improvement lane is a proposal route, not the agents of one item.
-    [/\blanes?\b/i, "item, or the agents of one item", ["src/workflows/improvements/"]],
+    [/\blanes?\b/i, "item, or the agents of one item", ["src/workflows/learning/improvements/"]],
     [/\bmap (entry|over)\b/i, "a phase over a list"],
     [/\bleaf\b/i, "agent"],
     [/\bconcurrent span\b/i, "a phase of named agents, or a stream"],

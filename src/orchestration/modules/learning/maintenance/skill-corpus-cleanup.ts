@@ -1,7 +1,7 @@
 import type { FactRecorder } from "../../../../infra/fact-recorder.js";
 import { resolveSkillSpecializationCanonical } from "../skills/skill-semantic-audit.js";
-import type { SkillWrittenFact } from "../../../../workflows/skill-facts.js";
-import type { BundledCorpusIdentity, SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
+import type { SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
+import type { BundledCorpusIdentity, SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { decodeSkillCorpusCleanupResponse, isSkillCorpusCleanupRequestFor, type CoreSkillCleanupClassification, type SkillCorpusCleanupCandidate, type SkillCorpusCleanupRequest } from "./skill-corpus-cleanup-classifier.js";
 import { SKILL_CORPUS_CLEANUP_LEASE_MS, type CoreManifest, type SkillCorpusCleanupState } from "./skill-corpus-cleanup-state.js";
 import { eligibleLearnedSkill, eligibleLearnedSkills } from "../skills/learned-skill-eligibility.js";

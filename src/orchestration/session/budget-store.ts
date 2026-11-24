@@ -1,5 +1,5 @@
 import type { StoredFact } from "../../infra/event-store-types.js"
-import { budgetExhaustionReason, type BudgetLimits } from "../../workflows/budget.js"
+import { budgetExhaustionReason, type BudgetLimits } from "../../workflows/run/budget.js"
 import {
   budgetMetricsFromProjection,
   contextUtilizationFromProjection,

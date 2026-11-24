@@ -11,7 +11,7 @@ import { composeFirstPartyModules } from "../../../../src/orchestration/modules.
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { createWorkerCallback } from "../../../../src/orchestration/workflow-host/execution/agent-callback"
-import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution"
+import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution"
 import type { AttemptRow } from "../../../../src/workflows/view/types"
 import { planEveryCapability } from "../../../helpers/attempt-brief"
 import { testAuthContext } from "../../../helpers/auth-context"

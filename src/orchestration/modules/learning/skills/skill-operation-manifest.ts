@@ -27,9 +27,9 @@ import { readFileUnder } from "../../../../infra/write-file-under.js";
 import { LearningScopeSchema } from "../../../../infra/learning-scope.js";
 import { Log } from "../../../../infra/log.js";
 import { MutationDiffSchema } from "../../../../infra/mutation-diff.js";
-import { readManifestPackage } from "../../../../workflows/skill-context.js";
+import { readManifestPackage } from "../../../../workflows/skills/skill-context.js";
 import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
-import { packagePathRefusal } from "../../../../workflows/skill-package-path.js";
+import { packagePathRefusal } from "../../../../workflows/skills/skill-package-path.js";
 import { proposalIdentityOfPlan } from "./skill-mutation-plan.js";
 import type { SkillMutationPlan } from "./skill-store-types.js";
 

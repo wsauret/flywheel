@@ -5,7 +5,7 @@ import { asAsyncEventReadSurface, type AsyncEventReadSurface } from "../../../..
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createSessionBudgetStore } from "../../../../src/orchestration/session/budget-store";
 import type { EmitFn } from "../../../../src/infra/event-bus";
-import { skillLoadedFact } from "../../../../src/workflows/skill-facts";
+import { skillLoadedFact } from "../../../../src/workflows/skills/skill-facts";
 import { countStateRequests } from "../../../helpers/state-requests";
 
 import {

@@ -8,7 +8,7 @@ import {
   createSkillCorpusCleanupState,
   SKILL_CORPUS_CLEANUP_LEASE_MS,
 } from "../../../../../../src/orchestration/modules/learning/maintenance/skill-corpus-cleanup-state.js";
-import { skillPackageManifestIdentity } from "../../../../../../src/workflows/skill-schema.js";
+import { skillPackageManifestIdentity } from "../../../../../../src/workflows/skills/skill-schema.js";
 
 /** The durable aggregate that holds the cleanup completions. */
 const CLEANUP_AGGREGATE_ID = "project:skill-core-cleanup:v2";

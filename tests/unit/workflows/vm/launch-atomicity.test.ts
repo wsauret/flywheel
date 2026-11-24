@@ -9,7 +9,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { prepareWorkflowLaunch, WorkflowInputRejectedError } from "../../../../src/orchestration/workflow-host/lifecycle/publish.js"
 import { INPUT_GROUP, inputBranch, inputMapWorkflow, itemList, items } from "./_map-fixtures.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
-import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { cleanupProjectRoots, composeModules, createCapabilities, createFixtureLaunchPort, createMockSessionStore, fixtureSource, FULL_AVAILABILITY, launchingController, makeWorkflowDeps, noConversationRecall, until } from "../../orchestration/workflow-host/_workflow-controller-fixtures.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { modelWorkflowLaunchOrigin } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"

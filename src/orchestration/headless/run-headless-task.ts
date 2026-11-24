@@ -41,7 +41,7 @@ import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
 import { shellWriteGuardObserver } from "../config/policy/shell-write-guard-policy.js"
 import { createHeadlessProfileRuntime, resolveHeadlessAuth } from "./headless-profile-runtime.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
-import { personaRoleIds } from "../../workflows/definition-registry.js"
+import { personaRoleIds } from "../../workflows/definitions/definition-registry.js"
 export interface RunHeadlessTaskOptions {
   directories: StartupDirectories
   launcher: LauncherScope

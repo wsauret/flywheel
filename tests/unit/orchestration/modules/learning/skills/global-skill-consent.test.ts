@@ -13,8 +13,8 @@ import type { DispatchedToolContext } from "../../../../../../src/orchestration/
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
 import { loadAgentInputProjection } from "../../../../../../src/orchestration/session/agent-input-projection.js";
 import type { SkillWriteOrigin } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
+import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
 import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js";
 
 const TMP = fileTemporaryDirectory("flywheel-global-consent-test-");

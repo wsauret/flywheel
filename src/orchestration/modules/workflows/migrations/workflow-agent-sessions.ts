@@ -10,7 +10,7 @@ import { checkedThrough, headPosition, recordChecked, recordMigration } from "..
 import { recoverSessionMetadata } from "../../../session/session-metadata-projection.js"
 import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact, buildSessionCreatedFact, recoverWorkflowCreationRequest } from "../../../session/session-metadata-facts.js"
 import { buildSessionMetadataAppend } from "../../../session/session-metadata-store.js"
-import { parseWorkflowRunFact } from "../../../../workflows/run-facts.js"
+import { parseWorkflowRunFact } from "../../../../workflows/run/run-facts.js"
 import { workflowConversionDeletionTargets } from "./adopt-workflow-children.js"
 import { workflowAgentGenerationPlan } from "./workflow-agent-generation-plan.js"
 import { transferWorkflowAgentHistory } from "./workflow-agent-transfer.js"

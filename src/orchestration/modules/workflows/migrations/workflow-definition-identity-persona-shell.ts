@@ -3,12 +3,12 @@ import * as fs from "node:fs"
 import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
 import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
 import { createSqliteEventReadSurface } from "../../../../infra/sqlite-event-read-surface.js"
-import { replayWorkflowControl } from "../../../../workflows/vm/fact-fold.js"
+import { replayWorkflowControl } from "../../../../workflows/vm/recovery/fact-fold.js"
 import {
   DEFINITION_IDENTITY_PERSONA_SHELL_MIGRATION_ID,
   type DefinitionIdentity,
-} from "../../../../workflows/vm/definition-identity.js"
-import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/session-facts.js"
+} from "../../../../workflows/vm/facts/definition-identity.js"
+import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/facts/session-facts.js"
 import { checkedThrough, headPosition, recordChecked, tableExists } from "../../../migrations/engine.js"
 import { MIGRATED_FACT_TYPE, recordSkippedWorkflowMigrationCandidate } from "./workflow-identity-chain.js"
 

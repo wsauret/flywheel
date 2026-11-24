@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import { shippedDefinitionBundles } from "../../../src/orchestration/modules.js";
-import type { DefinitionBundle } from "../../../src/workflows/loader.js";
-import { renderSkillBody } from "../../../src/workflows/skill-references.js";
-import type { SkillDefinition } from "../../../src/workflows/skill-schema.js";
-import { BUNDLED_SKILL_DIR } from "../../../src/workflows/skill-source-inventory.js";
-import { loadSkillDefinitions } from "../../../src/workflows/skills.js";
+import type { DefinitionBundle } from "../../../src/workflows/definitions/loader.js";
+import { renderSkillBody } from "../../../src/workflows/skills/skill-references.js";
+import type { SkillDefinition } from "../../../src/workflows/skills/skill-schema.js";
+import { BUNDLED_SKILL_DIR } from "../../../src/workflows/skills/skill-source-inventory.js";
+import { loadSkillDefinitions } from "../../../src/workflows/skills/skills.js";
 
 /** The skill roots of the given definition bundles. */
 export const bundleRoots = (bundles: readonly DefinitionBundle[]) => bundles.map(({ id, root }) => ({ authority: "bundled" as const, dir: join(root, "skills"), reach: "global" as const, sourceKind: "module" as const, bundle: id }));

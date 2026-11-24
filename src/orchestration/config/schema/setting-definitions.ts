@@ -3,7 +3,7 @@ import { parseReleaseVersion } from "../../../infra/update/version-order.js";
 import { isAuthProfileName } from "../../../infra/paths.js";
 import { TierConfigSchema } from "../../../infra/workflow-types.js";
 import { CacheRetentionPolicySchema } from "../../../infra/llm/provider-options.js";
-import { DEFAULT_BUDGET } from "../../../workflows/budget.js";
+import { DEFAULT_BUDGET } from "../../../workflows/run/budget.js";
 import { MODULE_IDS } from "../../../protocol/module-ids.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { installedModules } from "../../module-catalog.js";

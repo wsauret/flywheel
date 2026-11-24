@@ -1,7 +1,7 @@
 // Manifest writers for the binary build.
 //
 // Two generated manifests carry runtime prompt assets inline:
-//   src/workflows/asset-manifest.ts    persona markdown, skill packages, shared
+//   src/workflows/provenance/asset-manifest.ts    persona markdown, skill packages, shared
 //     reference assets, workflow output contract files, and the skill
 //     packages of every shipped module definition bundle
 //   src/infra/agent-assets/manifest.ts the runner-universal system prompt
@@ -12,8 +12,8 @@
 import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { DEFINITION_ASSET_EXTENSIONS } from "../src/workflows/definition-assets.js";
-import { BUNDLED_REFERENCE_DIR, BUNDLED_SKILL_DIR } from "../src/workflows/skill-source-inventory.js";
+import { DEFINITION_ASSET_EXTENSIONS } from "../src/workflows/definitions/definition-assets.js";
+import { BUNDLED_REFERENCE_DIR, BUNDLED_SKILL_DIR } from "../src/workflows/skills/skill-source-inventory.js";
 
 const ROOT = join(import.meta.dir, "..");
 const WORKFLOWS_SRC = join(ROOT, "src", "workflows");
@@ -114,7 +114,7 @@ export interface GeneratedManifest {
  *  restores them afterwards, including after a failed bundle. */
 export const GENERATED_MANIFESTS: readonly GeneratedManifest[] = [
   {
-    path: join(WORKFLOWS_SRC, "asset-manifest.ts"),
+    path: join(WORKFLOWS_SRC, "provenance", "asset-manifest.ts"),
     emptySource: EMPTY_WORKFLOW_MANIFEST_SOURCE,
     write: writeWorkflowManifest,
   },

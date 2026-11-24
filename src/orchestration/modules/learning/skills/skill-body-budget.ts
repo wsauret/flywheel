@@ -1,5 +1,5 @@
 import { parseFrontmatter } from "../../../../infra/frontmatter.js";
-import { SKILL_BODY_BUDGET_CHARS, SKILL_BODY_HEADROOM_CHARS, SKILL_FILE } from "../../../../workflows/skill-schema.js";
+import { SKILL_BODY_BUDGET_CHARS, SKILL_BODY_HEADROOM_CHARS, SKILL_FILE } from "../../../../workflows/skills/skill-schema.js";
 import type { SkillMutationPlan, SkillStoreConfig } from "./skill-store-types.js";
 
 /** The `SKILL.md` body a plan produces, or undefined when the plan writes no package. */

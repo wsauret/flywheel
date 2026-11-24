@@ -1,4 +1,4 @@
-import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry, type ProjectDefinitionRegistryOptions } from "../workflows/definition-registry.js"
+import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry, type ProjectDefinitionRegistryOptions } from "../workflows/definitions/definition-registry.js"
 import { installedDefinitionBundles } from "./module-catalog.js"
 import { installedPersonaToolEntries } from "./tool-catalog.js"
 

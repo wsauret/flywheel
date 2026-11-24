@@ -12,7 +12,7 @@
 import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { availableAgentTypes, grantedAgentTypes, type DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js";
 import type { FirstPartyModuleComposition } from "../modules.js";
-import { resolveSkillClosure } from "../../workflows/skill-closure.js";
+import { resolveSkillClosure } from "../../workflows/skills/skill-closure.js";
 import { toolRegistryFromComposition } from "./tools/tool-registry.js";
 
 const SKILL_TERM = "skill:";

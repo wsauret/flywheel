@@ -1,18 +1,18 @@
 import { describe, expect, it } from "bun:test";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
-import { initializeWorkflow, replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
+import { initializeWorkflow, replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js";
 import { acknowledge, runningControl, startPreparedAttempt, success } from "./_machine-semantics-fixtures.js";
 import { createMemoryStore, initialFacts, sequentialWorkflow, testHost, waitFor } from "./host-test-support.js";
-import { replayWorkflowControl, resumesFailedAgents, resumesFailedAgentsWith, resumesLiveFailedAgents } from "../../../../src/workflows/vm/fact-fold.js";
-import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
-import { buildWorkflowControlInitializedFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
-import { CURRENT_PROPOSAL_ENCODING } from "../../../../src/workflows/vm/events.js";
-import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js";
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
+import { replayWorkflowControl, resumesFailedAgents, resumesFailedAgentsWith, resumesLiveFailedAgents } from "../../../../src/workflows/vm/recovery/fact-fold.js";
+import { compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile.js";
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";
+import { buildWorkflowControlInitializedFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
+import { CURRENT_PROPOSAL_ENCODING } from "../../../../src/workflows/vm/facts/events.js";
+import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/control/commands.js";
+import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
-import { failedAgents, agentResults, workflowCompletionContent } from "../../../../src/workflows/workflow-completion.js";
+import { failedAgents, agentResults, workflowCompletionContent } from "../../../../src/workflows/run/workflow-completion.js";
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js";
 
 // A step that fails after its retries fails only itself, and the work that

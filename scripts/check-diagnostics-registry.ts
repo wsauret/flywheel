@@ -274,12 +274,12 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/workflows/vm/host-commit-controller.ts",
+    file: "src/workflows/vm/host/host-commit-controller.ts",
     what: "workflow request addendum commits",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/workflows/vm/host.ts",
+    file: "src/workflows/vm/host/host.ts",
     what: "workflow attempt admission batches",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
