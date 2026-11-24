@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs"
 
 import type { ServeLane } from "../../infra/cli-subprocess.js"
-import type { LaunchState } from "../../infra/launch-state.js"
+import type { LaunchState } from "../../infra/distribution/launch-state.js"
 import { accountServeDir } from "../../infra/paths.js"
 import { shutdownSignals } from "../../infra/shutdown-signals.js"
 import type { LeftTerminal } from "../../tui/terminal/exit.js"
@@ -98,7 +98,7 @@ export function createTerminalHandoff(options: TerminalHandoffOptions, seams: Te
     let restoreSignals = (): void => {}
     try {
       const state = left.state ?? options.incoming
-      const { writeLaunchState } = await import("../../infra/launch-state.js")
+      const { writeLaunchState } = await import("../../infra/distribution/launch-state.js")
       if (state !== undefined) statePath = writeLaunchState(accountServeDir(options.userDataRoot, options.lane), state)
       // Only arguments the successor parses; the place rides the environment.
       // `--remote` is newer than some builds, but a relay terminal's
@@ -124,7 +124,7 @@ export function createTerminalHandoff(options: TerminalHandoffOptions, seams: Te
       // reach it as well; this process only waits to hand its status back,
       // and releases what it owns once the successor has ended.
       restoreSignals = holdShutdownSignals()
-      const { runForegroundSuccessor } = await import("../../infra/foreground-successor.js")
+      const { runForegroundSuccessor } = await import("../../infra/distribution/foreground-successor.js")
       successorExitCode = await (seams.runSuccessor ?? runForegroundSuccessor)(command, env)
       for (const step of releases) await step()
     } catch (error) {

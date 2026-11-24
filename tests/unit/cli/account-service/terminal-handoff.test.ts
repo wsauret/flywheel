@@ -5,7 +5,7 @@ import { join } from "node:path"
 
 import { createTerminalHandoff, LAUNCH_STATE_ENV, REMOTE_HANDOFF_ENV, type TerminalHandoffOptions } from "../../../../src/cli/account-service/terminal-handoff.js"
 import type { ServingBuild } from "../../../../src/cli/account-service/serving-build.js"
-import { takeLaunchState, type LaunchState } from "../../../../src/infra/launch-state.js"
+import { takeLaunchState, type LaunchState } from "../../../../src/infra/distribution/launch-state.js"
 import { accountServeDir } from "../../../../src/infra/paths.js"
 
 const roots: string[] = []

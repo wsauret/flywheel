@@ -30,7 +30,7 @@
  *    response"; OpenAI errors on unmatched function/tool calls.
  */
 
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { ConversationMessage } from "../types.js";
 
 const log = Log.create({ service: "heal-messages" });

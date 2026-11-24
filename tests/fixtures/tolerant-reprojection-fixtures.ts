@@ -1,6 +1,6 @@
 import { resolve } from "node:path"
 import { factDescriptors } from "../../src/infra/event-registry.js"
-import type { EventStoreAppend } from "../../src/infra/event-store-types.js"
+import type { EventStoreAppend } from "../../src/infra/store/event-store-types.js"
 import { SessionMetadataFactSchemas } from "../../src/orchestration/session/metadata/session-metadata-facts.js"
 import { SessionRuntimeFactSchemas } from "../../src/orchestration/session/runtime-facts/session-runtime-event-types.js"
 import { SubagentRunFactSchemas } from "../../src/orchestration/modules/subagents/facts.js"

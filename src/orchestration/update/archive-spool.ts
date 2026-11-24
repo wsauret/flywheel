@@ -17,8 +17,8 @@ import * as path from "node:path";
 import { Readable } from "node:stream";
 import { createGunzip } from "node:zlib";
 import { Schema } from "effect";
-import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
-import { Log } from "../../infra/log.js";
+import type { ContainedDirectory } from "../../infra/descriptor-directory/descriptor-directory-contract.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { BUILD_METADATA_FILE } from "../../infra/update/build-identity.js";
 
 const log = Log.create({ service: "update-install" });

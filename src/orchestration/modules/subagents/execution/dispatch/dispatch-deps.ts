@@ -1,5 +1,5 @@
 import type { AgentDefinition } from "../../../../../infra/agent-definition.js"
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../../../infra/store/event-store-types.js"
 import type { ModelFamily } from "../../../../../infra/llm/models/model-family.js"
 import type { ModelInfo, ModelsClient } from "../../../../../infra/llm/models/models.js"
 import type { ProviderRequestOptions } from "../../../../../infra/llm/access/provider-options.js"
@@ -42,8 +42,8 @@ export interface SubagentDispatchDeps {
   parentPromptKind: PromptKind
   resolveRoles: RoleResolver
   briefScope?: BriefScope
-  onRenderEvent: (event: import("../../../../../infra/runtime-event-types.js").RuntimeEvent) => void
-  onChildRenderEvent: (childSessionId: string, event: import("../../../../../infra/runtime-event-types.js").RuntimeEvent) => void
+  onRenderEvent: (event: import("../../../../../infra/runtime-facts/runtime-event-types.js").RuntimeEvent) => void
+  onChildRenderEvent: (childSessionId: string, event: import("../../../../../infra/runtime-facts/runtime-event-types.js").RuntimeEvent) => void
   backgroundTasks: BackgroundWorkRegistry
   deliverParentNotification?: ParentNotificationDelivery
   failureSummarizerForChild?: (child: {

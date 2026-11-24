@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js";
+import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js";
 import { readWorkflowLaunchedAt } from "./session-fact-source.js";
 
 /** Workflow budget limits. Flywheel checks them before each attempt starts

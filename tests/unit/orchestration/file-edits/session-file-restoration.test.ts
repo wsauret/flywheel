@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { chmodSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
 import { publishFileEdits } from "../../../../src/orchestration/file-edits/file-edit-operation.js"
 import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-edits/retained-file-edit-host.js"
 import { reconstructOriginal } from "../../../../src/orchestration/file-edits/session-file-restoration.js"

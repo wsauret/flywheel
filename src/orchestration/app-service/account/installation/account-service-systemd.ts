@@ -1,6 +1,6 @@
 import { dirname, posix } from "node:path"
 
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { AccountServicePlatform, AccountServiceRegistrationControl, ServiceManager } from "./account-service-platform.js"
 import { systemdUnit } from "./account-service-registration.js"
 import { answered, assertOk, failure, type ServiceCommandOutput, type ServiceCommandRunner } from "./service-manager-command.js"

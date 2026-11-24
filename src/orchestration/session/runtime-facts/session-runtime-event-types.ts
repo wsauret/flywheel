@@ -5,5 +5,5 @@ export {
   StoredSessionRuntimeFactSchemas,
   ToolContentReferenceFactSchemas,
   type SessionRuntimeFact,
-} from "../../../infra/runtime-fact-parser.js"
-export type { ToolContentReferenceFact } from "../../../infra/runtime-fact-types.js"
+} from "../../../infra/runtime-facts/runtime-fact-parser.js"
+export type { ToolContentReferenceFact } from "../../../infra/runtime-facts/runtime-fact-types.js"

@@ -1,6 +1,6 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { BackgroundWorkRegistry } from "../../../agent-runtime/background-work/background-work.js"
 import type { BackgroundWorkResult } from "../../../agent-runtime/background-work/background-work-types.js"
 import type { WorkReference } from "../../../agent-runtime/background-work/background-work-progress.js"

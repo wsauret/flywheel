@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, type Dirent } from "node:fs";
 import { basename, isAbsolute, join, relative, sep } from "node:path";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import { errorMessage } from "../../../../infra/error-message.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { osAccount } from "../../../../infra/os-account.js";
 import type { ExternalLoginPorts } from "../../../../infra/llm/access/access-provider.js";
 import { runOwnedCommand } from "../../../../infra/owned-command.js";

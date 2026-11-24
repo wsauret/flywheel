@@ -5,9 +5,9 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 
-import { contentEvidence } from "../../../../../../src/infra/content-evidence.js";
-import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventReader, type LocalSqliteEventStore } from "../../../../../../src/infra/event-store-types.js";
+import { contentEvidence } from "../../../../../../src/infra/runtime-facts/content-evidence.js";
+import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type EventReader, type LocalSqliteEventStore } from "../../../../../../src/infra/store/event-store-types.js";
 import {
   openPendingAudit,
   reconcilePendingAudits,
@@ -21,7 +21,7 @@ import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflow
 import { planSkillMutation } from "../../../../../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import { runOperation } from "../../../../../../src/orchestration/modules/learning/skills/global-skill-mutation-protocol.js";
 import { operationIdentity, writeOperationManifest } from "../../../../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
-import { canonicalMutationPath } from "../../../../../../src/infra/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../../../src/infra/locks/file-mutation-queue.js";
 import { countStateRequests, factsRead } from "../../../../../helpers/state-requests.js";
 
 type AuditFact = PendingAudit["fact"];

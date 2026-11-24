@@ -1,4 +1,4 @@
-import { DebugLog } from "../../../infra/debug-log.js"
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
 import { parseProviderRequestAuditFact, PROVIDER_REQUEST_DIAGNOSTIC_TYPES, type ProviderRequestAuditFact } from "../runtime-facts/provider-request-audit-facts.js"
 import { hashAgentPrompt, hashSystemPrompt, hashToolSurface } from "./provider-request-audit-hash.js"
 import type {

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname, join, posix } from "node:path";
 import { Schema } from "effect";
-import { parseFrontmatter } from "../../src/infra/frontmatter.js";
+import { parseFrontmatter } from "../../src/infra/yaml/frontmatter.js";
 import { loadBriefs, loadWorkflowInputContract, type LoadedBrief } from "../../src/workflows/definitions/brief.js";
 import { definitionAssets, resolveAssetRef, type AssetLocation } from "../../src/workflows/definitions/definition-assets.js";
 import { decodeWorkflowFile } from "../../src/workflows/vm/admission/workflow-file.js";

@@ -1,8 +1,8 @@
 import { awaitWithAbortSignal } from "../../abort.js";
-import { createBoundedWorkerSpawner } from "../../bounded-worker-spawner.js";
+import { createBoundedWorkerSpawner } from "../../process/workers/bounded-worker-spawner.js";
 import { embeddedEntrySpecifier, runsThroughBun } from "../../cli-subprocess.js";
-import { DebugLog } from "../../debug-log.js";
-import { terminateWorker } from "../../worker-termination.js";
+import { DebugLog } from "../../diagnostics/debug-log.js";
+import { terminateWorker } from "../../process/workers/worker-termination.js";
 import type { AdmittedModelsDocument } from "./models-document.js";
 
 export type ModelsDocumentAnswer =

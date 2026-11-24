@@ -8,7 +8,7 @@
  * command, before the run completes, that the command ends with the run, and
  * can launch it again to persist. A command named once is not named again.
  */
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { BackgroundProcessRecord } from "../../background-work/background-work-processes.js";
 
 const log = Log.create({ service: "agent-loop" });

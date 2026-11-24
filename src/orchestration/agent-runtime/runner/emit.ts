@@ -1,12 +1,12 @@
-import { createRuntimeEvent } from "../../../infra/runtime-event-factory.js";
-import { redactDurableToolInput } from "../../../infra/durable-tool-input.js";
+import { createRuntimeEvent } from "../../../infra/runtime-facts/runtime-event-factory.js";
+import { redactDurableToolInput } from "../../../infra/runtime-facts/durable-tool-input.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
-import type { ContentBlock } from "../../../infra/runtime-content-blocks.js";
+import type { ContentBlock } from "../../../infra/runtime-facts/runtime-content-blocks.js";
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
-import type { BackgroundCommandRecord } from "../../../infra/runtime-fact-types.js";
-import type { RuntimeEvent, UsageData } from "../../../infra/runtime-event-types.js";
+import type { BackgroundCommandRecord } from "../../../infra/runtime-facts/runtime-fact-types.js";
+import type { RuntimeEvent, UsageData } from "../../../infra/runtime-facts/runtime-event-types.js";
 import type { LlmToolOutputPart } from "../llm/messages.js";
-import { toolOutcomeToProviderIsError, type ToolOutcome } from "../../../infra/tool-outcome.js";
+import { toolOutcomeToProviderIsError, type ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js";
 import type { RuntimeToolExecution } from "../tools/types.js";
 import { probeToolRenderPhase } from "../../../infra/render-probe.js";
 import { sanitizeExternalText } from "../../../infra/control-characters.js";

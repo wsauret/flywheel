@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 
-import { servePersistentProcessBridge } from "../../../src/infra/persistent-process-bridge.js"
-import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
-import type { PersistentSubprocess } from "../../../src/infra/persistent-subprocess.js"
+import { servePersistentProcessBridge } from "../../../src/infra/supervision/persistent/persistent-process-bridge.js"
+import { createPersistentProcessManager } from "../../../src/infra/supervision/persistent/persistent-process-manager.js"
+import type { PersistentSubprocess } from "../../../src/infra/supervision/persistent/persistent-subprocess.js"
 
 function persistentRecord(pid: number, command: readonly string[]): PersistentSubprocess {
   return {

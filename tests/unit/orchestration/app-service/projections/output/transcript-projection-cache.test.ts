@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createTranscriptProjectionCache } from "../../../../../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js"
-import { asAsyncEventReadSurface } from "../../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../../src/infra/store/event-store-types.js"
 import { indexOutputBlocks } from "../../../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { entryRuntimeDefaults } from "../../../../../../src/orchestration/session-store/entry-defaults.js"
 import type { ChatSessionEntry } from "../../../../../helpers/session-entries.js"

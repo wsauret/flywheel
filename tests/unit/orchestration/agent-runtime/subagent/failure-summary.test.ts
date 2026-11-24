@@ -14,14 +14,14 @@ import { rmSync } from "node:fs";
 
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { createSubagentTool } from "../../../../../src/orchestration/modules/subagents/tool.js";
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
+import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
 import type { AgentRunResult, AgentRunTerminal, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createNotificationCapture, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
 import { asModelClient } from "../_model-client.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js";
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";

@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
 import { tryOpenConversationTree } from "../../conversation/tree/conversation-tree-handle.js"
 
 /** Opens a completion's parent tree. An absent tree returns null. A tree

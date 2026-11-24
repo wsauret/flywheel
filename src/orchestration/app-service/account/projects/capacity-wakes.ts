@@ -1,6 +1,6 @@
 import type { ServeLane } from "../../../../infra/cli-subprocess.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { sleepUntil, systemWallClock, type WallClock } from "../../../../infra/wall-clock-sleep.js"
 import { recordCapacityWait } from "../../../session/control/capacity-wait.js"
 import type { CapacityWakeStore } from "../account-project-registry.js"

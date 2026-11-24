@@ -1,7 +1,7 @@
 import { isAbortError } from "./abort.js"
 import { errorDetail, errorMessage, type ErrorDetail } from "./error-message.js"
-import type { Log } from "./log.js"
-import { coalesceRepeats } from "./repeat-coalescer.js"
+import type { Log } from "./diagnostics/log.js"
+import { coalesceRepeats } from "./diagnostics/repeat-coalescer.js"
 
 /** What a process does with a failure that no code awaits (ARCH-RUNTIME-030).
  *

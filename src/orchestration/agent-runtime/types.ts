@@ -1,14 +1,14 @@
 import type { LearningReviewRun } from "./request/module-services/review-types.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { AuthContext } from "../../infra/auth/auth-context.js";
-import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js";
+import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/store/event-store-types.js";
 import type { AccessProviderId, ModelUnavailableMissing } from "../../infra/llm/access/access-provider.js";
 import type { ModelFamily } from "../../infra/llm/models/model-family.js";
 import type { ProviderErrorCopy, ProviderRecovery } from "../../infra/llm/errors/provider-error-copy.js";
 import type { UnservedModel } from "./llm/errors.js";
 import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
 import type { UsageEntry } from "../../infra/llm/usage/usage-entry.js";
-import type { RuntimeEvent } from "../../infra/runtime-event-types.js";
+import type { RuntimeEvent } from "../../infra/runtime-facts/runtime-event-types.js";
 import type { ConnectionState } from "../../infra/output-blocks.js";
 import type { WebSearchPort, WebSearchProviderId } from "./web-search/types.js";
 import type { SessionNoticeOperation } from "../../infra/session-notice.js";
@@ -42,8 +42,8 @@ import type { RecallPort } from "../../protocol/conversation-recall.js";
 import type { ModuleServices } from "../../infra/module-service.js";
 import type { EnvCaptureResolver } from "../../infra/env-detection.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
-import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js";
-import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
+import type { PersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-manager.js";
+import type { BridgedPersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-bridge.js";
 import type { SkillRegistryRevision } from "../../workflows/skills/skill-schema.js";
 import type { ForegroundBashHoldController } from "./background-work/foreground-bash-hold.js";
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js";
@@ -486,7 +486,7 @@ type StallAttribution =
   | { kind: "unattributed" };
 
 export type AgentFailureReason =
-  | { kind: "local_persistence_error"; error: import("../../infra/event-store-types.js").PersistenceWriteRefused }
+  | { kind: "local_persistence_error"; error: import("../../infra/store/event-store-types.js").PersistenceWriteRefused }
   | { kind: "context_overflow" }
   | { kind: "output_overflow" }
   /** `candidatesExhausted` marks a request that no access provider candidate could serve, which an optional side

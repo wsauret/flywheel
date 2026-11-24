@@ -1,6 +1,6 @@
 import { Result, Schema } from "effect"
-import { isSessionHistoryFailure, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreAppend, type InFlightRecord } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
+import { isSessionHistoryFailure, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreAppend, type InFlightRecord } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { CAPACITY_WAIT_REASONS } from "../../../infra/error-presentation.js"
 import type { CapacityWaitReason } from "../../../infra/session-notice.js"
 import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"

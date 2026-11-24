@@ -1,4 +1,4 @@
-import { readCapturedFacts, type AsyncEventAppender, type AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import { readCapturedFacts, type AsyncEventAppender, type AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
 import { parsePapercutFact, type PapercutDisposition } from "./facts.js"
 import { PAPERCUT_FACT_TYPES, projectPapercutBacklog } from "./backlog.js"
 import { moduleRuntimeHandle } from "../../../infra/module-runtime.js"

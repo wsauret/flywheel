@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test"
 import type { TurnParkedContext } from "../../../../src/infra/agent-loop-events.js"
 import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
 import { FLYWHEEL_EVENT_TYPES, type FlywheelEvent } from "../../../../src/infra/events.js"
-import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
+import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory.js"
 import { createRunnerBusBridge } from "../../../../src/orchestration/runner/bus-bridge.js"
 
 function harness(isLive?: () => boolean) {

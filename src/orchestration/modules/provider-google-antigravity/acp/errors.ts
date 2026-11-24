@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { ContextLengthExceededError, LlmStreamError, RouteUnavailableError } from "../../../agent-runtime/llm/errors.js";
 import { classifyGoogleError } from "../../../agent-runtime/llm/adapters/google/google-errors.js";
 import { ProviderAuthenticationError } from "../../../agent-runtime/llm/stream/provider-failure.js";

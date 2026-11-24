@@ -1,6 +1,6 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPayload } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPayload } from "../../../infra/store/event-store-types.js"
 import { normalizeChatInput, type ChatInputLike } from "../../../infra/chat-input.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { workflowContextRecordsAddendum } from "../../../workflows/context-bundle/context-projection.js"
 import { ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND } from "./addressed-workflow-messages.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, RETAINED_INPUT_GAP_IN_FLIGHT_KIND } from "./queued-user-inputs.js"

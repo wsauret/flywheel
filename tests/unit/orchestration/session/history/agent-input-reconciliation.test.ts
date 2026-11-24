@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { InvariantViolation } from "../../../../../src/infra/invariant.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types.js"
 import { answeredAskUserResult } from "../../../../../src/orchestration/agent-runtime/tools/sessions/ask-user.js"
 import { ASK_USER_CANCELLED_RESULT } from "../../../../../src/infra/tools/displays/ask-user.js"
 import type { AgentInputAnswer, AgentInputAnswers } from "../../../../../src/protocol/question-protocol-types.js"

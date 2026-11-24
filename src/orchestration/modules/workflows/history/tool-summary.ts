@@ -1,6 +1,6 @@
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
 import { formatAgentFailureDisplay } from "../../../../infra/output/output-formatter.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { containSessionReads } from "../../../../infra/session-read-containment.js"
 import { createReadQueue } from "../../../../infra/read-queue.js"
 import type { StoppedBy } from "../../../../protocol/app-service-types.js"

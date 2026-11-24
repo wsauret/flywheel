@@ -10,7 +10,7 @@
  *  A caller performing several operations on one target directory holds it open
  *  instead of walking to it again for each one. */
 
-import { validateComponent, type ContainedDirectoryOptions, type ContainedFileSnapshot } from "./descriptor-directory-contract.js";
+import { validateComponent, type ContainedDirectoryOptions, type ContainedFileSnapshot } from "./descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "./descriptor-directory.js";
 
 export interface ContainedFileLocation {

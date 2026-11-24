@@ -3,7 +3,7 @@ import { PROJECT_SHOW_BUILD_DEFAULT, isPresentedSettingId } from "../../config/s
 import { installedModuleConfigSettings, installedProviderSettings } from "../../modules.js"
 import { Schema } from "effect"
 import type { ModuleConfigNumberListControl, ModuleConfigSectionBooleanControl, ModuleProviderSetting } from "../../../protocol/module-protocol-types.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { FlywheelConfig } from "../../config/schema/schema.js"
 import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
 import { runtimeConfigCursor, type RuntimeConfigDiagnostic, type RuntimeConfigMutation, type RuntimeConfigMutationResult, type RuntimeConfigStatusView, type RuntimeConfigView, type RuntimeConfigValues } from "../../../protocol/runtime-config-protocol-types.js"

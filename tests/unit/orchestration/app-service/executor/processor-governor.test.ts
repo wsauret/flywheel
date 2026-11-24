@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { ContainerProcessor } from "../../../../../src/infra/container-processor.js"
+import type { ContainerProcessor } from "../../../../../src/infra/process/container/container-processor.js"
 import { createProcessorGovernor, type ProcessorGovernor } from "../../../../../src/orchestration/app-service/executor/processor-governor.js"
 
 type ProcessorHolds = Parameters<Parameters<ProcessorGovernor["join"]>[0]["send"]>[0]

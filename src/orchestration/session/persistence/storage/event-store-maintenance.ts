@@ -1,10 +1,10 @@
 import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import { Schema } from "effect"
-import { declaredFactRetentionTypes, factRetention } from "../../../../infra/fact-retention-registry.js"
+import { declaredFactRetentionTypes, factRetention } from "../../../../infra/store/fact-retention-registry.js"
 import { isRecord } from "../../../../infra/record.js"
-import { ToolContentReferenceSchema } from "../../../../infra/tool-content.js"
-import { createToolContentTable, factRowsChanged } from "../../../../infra/sqlite-event-store-core.js"
+import { ToolContentReferenceSchema } from "../../../../infra/runtime-facts/tool-content.js"
+import { createToolContentTable, factRowsChanged } from "../../../../infra/store/sqlite-event-store-core.js"
 
 /** Rows one prune statement deletes. Bounded so the cross-process write lock
  *  is held for milliseconds: a live runtime's append waits out one chunk, never

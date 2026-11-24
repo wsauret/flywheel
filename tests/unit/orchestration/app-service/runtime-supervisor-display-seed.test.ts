@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { FULL_RESYNC_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta.js"
-import { asAsyncEventReadSurface, type EventStoreAppend } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type EventStoreAppend } from "../../../../src/infra/store/event-store-types.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
 import { mockRunner, createDeferred, createSupervisorTestContext, disposeSupervisorTestContext, supervisorBaseDeps, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"

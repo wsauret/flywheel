@@ -1,5 +1,5 @@
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { DurableSessionCatalogRow } from "../../session/metadata/catalog/session-catalog-types.js"
 import { recordedExecutionCwd } from "../../session/metadata/session-execution-directory.js"

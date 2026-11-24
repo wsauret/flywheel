@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { interruptedLabel } from "../../../../infra/output/run-labels.js";
-import { createPersistentProcessManager } from "../../../../infra/persistent-process-manager.js";
+import { createPersistentProcessManager } from "../../../../infra/supervision/persistent/persistent-process-manager.js";
 import { isProcessAlive } from "../../../../infra/process-liveness.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
 import { isWorkingStatus, type StatusView } from "../../../../protocol/status-protocol-types.js";

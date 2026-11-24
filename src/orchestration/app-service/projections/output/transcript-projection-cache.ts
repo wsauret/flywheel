@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
 import { createSessionToolSummaryReader } from "../../../modules.js"
 import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../../module-seams.js"
 import {
@@ -23,7 +23,7 @@ import { readSessionDurationFromReader } from "../../../session/runtime-facts/se
 import { assignSubagentCards, ownSubagentCard, type SubagentCardAssignment } from "../../../session/conversation/transcript/subagent-card-ownership.js"
 import { releaseConversationTreeProjection } from "../../../session/conversation/conversation-projection.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
 import { messageSessionLabel, messageSessionTypeLabel } from "../../../../protocol/client/message-sender.js"
 

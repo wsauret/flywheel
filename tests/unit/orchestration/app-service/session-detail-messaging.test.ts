@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
 import { createProjectControlClient } from "../../../../src/orchestration/app-service/account/projects/project-control-client.js"
 import { chatEntriesFacts } from "../../../../src/orchestration/session/conversation/conversation-facts.js"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"

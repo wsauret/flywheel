@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../../../infra/event-store-types.js"
+import type { StoredFact } from "../../../../infra/store/event-store-types.js"
 import type { ChildExecutionMetrics } from "../../../module-diagnostics.js"
 import { loadSubagentRunsFromEvents } from "./subagent-run-projection.js"
 

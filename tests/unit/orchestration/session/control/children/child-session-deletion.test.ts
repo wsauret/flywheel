@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
-import { asAsyncEventWriter } from "../../../../../../src/infra/event-store-types"
-import { Log } from "../../../../../../src/infra/log"
+import { asAsyncEventWriter } from "../../../../../../src/infra/store/event-store-types"
+import { Log } from "../../../../../../src/infra/diagnostics/log"
 import { openProjectState, recoverOwedSessions, recoverProject } from "../../../../../helpers/project-recovery"
 import {
   decodeRetainedChildSessionDeletion,
@@ -9,7 +9,7 @@ import {
 import { createSessionManager } from "../../../../../../src/orchestration/session/manager"
 import { advanceTestWorkflow, cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } from "../../_session-manager-fixtures"
 import { testDirectories } from "../../../../../helpers/directories"
-import { contentEvidence } from "../../../../../../src/infra/content-evidence"
+import { contentEvidence } from "../../../../../../src/infra/runtime-facts/content-evidence"
 import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer"
 import { readToolExecution } from "../../../../../../src/orchestration/session/runtime-facts/tool-execution-projection"
 import { ConversationTreeStorage } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-storage"

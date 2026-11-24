@@ -1,6 +1,6 @@
-import type { CommandHandover } from "../../../../../infra/command-handover.js";
+import type { CommandHandover } from "../../../../../infra/supervision/launch/command-handover.js";
 import { createStreamingSanitizer } from "../../../../../infra/control-characters.js";
-import type { HandoverAnswer, OwnedProcess } from "../../../../../infra/owned-subprocess.js";
+import type { HandoverAnswer, OwnedProcess } from "../../../../../infra/supervision/launch/owned-subprocess.js";
 import { formatDuration } from "../../../../../protocol/client/format.js";
 import { formatNotAppliedFiles } from "../../../../../infra/not-applied-files.js";
 import type { BackgroundWorkRegistry, SettledProjectMutation } from "../../../background-work/background-work.js";
@@ -9,7 +9,7 @@ import { boundedExecutionOutputTail, createShellOutputAccumulator, createTailEmi
 import type { PrivateCopy, ProjectMutationLanding } from "./shell-runtime-types.js";
 import { createStderrTail, drainStderr, silentFailureStderr } from "./shell-stderr.js";
 import { armUnheldDeadline, NEVER_HELD, type HeldTime } from "./processor-claims.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import { watchEndKey } from "../../../../../infra/watch-notices.js";
 import { formatWatchEnded } from "../../../background-work/background-work-notifications.js";
 import { createWatchStream, type WatchLimiterState, type WatchOverLimit } from "./watch-stream.js";

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
 import { Cause, Deferred, Duration, Effect, Exit, Fiber, Queue, Scope } from "effect";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import { localDate } from "../../../../infra/env-detection.js";
 import type { AnthropicOperations } from "../../../agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { bridgeClosedError as closedError, createBridgeRequests, queryWindow, type AdmittedWindow } from "./bridge-requests.js";

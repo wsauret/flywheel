@@ -5,7 +5,7 @@
  * - A successful handoff terminates regardless of other results in the batch.
  * - Otherwise, all tools must return terminate:true without errors for the batch to terminate.
  */
-import type { ToolOutcome } from "../../../../infra/tool-outcome.js";
+import type { ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js";
 
 interface ToolBatchEntry {
   name: string;

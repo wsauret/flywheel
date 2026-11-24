@@ -1,11 +1,11 @@
 import * as fs from "node:fs"
 
 import type { ServeLane } from "../../../../infra/cli-subprocess.js"
-import type { ContainedDirectory } from "../../../../infra/descriptor-directory-contract.js"
+import type { ContainedDirectory } from "../../../../infra/descriptor-directory/descriptor-directory-contract.js"
 import { openContainedDirectory, openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME } from "../../../../infra/directory-authorities.js"
-import { Log } from "../../../../infra/log.js"
-import { registerSharedHolderIn, releaseSharedHolderIn, sharedHoldersIn, withLockIn, type SharedHold } from "../../../../infra/ownership-file-lock.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
+import { registerSharedHolderIn, releaseSharedHolderIn, sharedHoldersIn, withLockIn, type SharedHold } from "../../../../infra/locks/ownership-file-lock.js"
 import { ACCOUNT_DRAIN_HARD_EXIT_MS } from "../../runtime/runtime-shutdown.js"
 
 const log = Log.create({ service: "project-serving-lane" })

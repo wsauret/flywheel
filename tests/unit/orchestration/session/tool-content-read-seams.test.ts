@@ -3,10 +3,10 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { contentEvidence } from "../../../../src/infra/content-evidence"
-import { asAsyncEventReadSurface, type AsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import type { ContentResolver, ToolContentRow } from "../../../../src/infra/tool-content"
+import { contentEvidence } from "../../../../src/infra/runtime-facts/content-evidence"
+import { asAsyncEventReadSurface, type AsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
+import type { ContentResolver, ToolContentRow } from "../../../../src/infra/runtime-facts/tool-content"
 import { createToolResultDisplayMetaCursorReader, readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta"
 import {
   createToolExecutionProjection,

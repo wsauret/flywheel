@@ -1,6 +1,6 @@
 import { deepFreeze } from "../../infra/deep-freeze.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { createOrderedLane } from "../../infra/ordered-lane.js";
 import type { FlywheelConfig } from "./schema/schema.js";
 import { CONFIG_DEFAULTS } from "./schema/schema.js";

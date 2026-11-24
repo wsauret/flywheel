@@ -13,7 +13,7 @@ import { canObserveSqliteLocks, sqliteLocksSeenByOtherProcesses } from "../../he
 import { chmodSync, chownSync, closeSync, constants, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { constants as osConstants, tmpdir } from "node:os";
 import { join } from "node:path";
-import { ContainedPathError, type ContainedDirectory } from "../../../src/infra/descriptor-directory-contract.js";
+import { ContainedPathError, type ContainedDirectory } from "../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory, openExistingContainedDirectory, withContainedDirectory } from "../../../src/infra/descriptor-directory.js";
 import { openAt } from "../../../src/infra/open-at.js";
 

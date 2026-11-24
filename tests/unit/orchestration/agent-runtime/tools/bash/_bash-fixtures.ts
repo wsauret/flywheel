@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { lstatSync, mkdirSync, rmdirSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
-import type { OwnedProcess } from "../../../../../../src/infra/owned-subprocess.js";
+import type { OwnedProcess } from "../../../../../../src/infra/supervision/launch/owned-subprocess.js";
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import { createForegroundBashHoldController, type ForegroundBashHoldController } from "../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
 import { createShellRuntime } from "../../../../../../src/orchestration/agent-runtime/background-execution/shell-runtime.js";

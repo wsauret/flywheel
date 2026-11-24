@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
-import type { DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
-import { Log } from "../../../../../src/infra/log.js";
+import type { DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js";
+import { Log } from "../../../../../src/infra/diagnostics/log.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
@@ -140,7 +140,7 @@ describe("shell runtime host generation", () => {
     const runtime = createShellRuntime(tasks);
     const owned = makeMockOwnedProcess({
       stdout: streamOf(""),
-      stderr: streamOf("error: Unexpected export\n    at src/infra/process-container.ts:308:1\n"),
+      stderr: streamOf("error: Unexpected export\n    at src/infra/process/container/process-container.ts:308:1\n"),
       exited: Promise.resolve({ code: 1, signal: null, statusOf: "payload", ownership: "surrendered" }),
     });
     const result = await runtime.client.run({

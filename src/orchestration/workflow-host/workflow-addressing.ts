@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
 import { resolveWorkflowAgentTarget, resolveWorkflowTargets, workflowAddressLines, workflowTargetRefusal, type WorkflowAddress, type WorkflowTargetResolution } from "../../protocol/client/workflow-addresses.js"
 import { workflowTreeIndex } from "../../protocol/client/workflow-outline.js"
 import type { LoadedWorkflowView } from "../../protocol/workflow-view-protocol-types.js"

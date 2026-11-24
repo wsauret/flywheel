@@ -2,14 +2,14 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { rmSync, mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store"
 import { buildContextAccumulatedFact, buildContextInputSeededFact, type WorkflowContextFact } from "../../../../src/workflows/context-bundle/context-facts"
 import type { AccumulatorState } from "../../../../src/workflows/context-bundle/context"
 import { makeQueueStores } from "./_persistence-fixtures.js"
 import { initializedWorkflowRoot } from "../../../helpers/workflow-root-fixtures.js"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
 
 let root: string
 

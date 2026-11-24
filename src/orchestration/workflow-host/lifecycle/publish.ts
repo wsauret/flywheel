@@ -23,7 +23,7 @@ import {
 import { bindWorkflowAgentModels, type WorkflowAgentModels } from "../../config/models/workflow-agent-models.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { RuntimeWorkflowInvocation, WorkflowLaunchBinding } from "../../session/control/children/child-session-publication.js"
-import type { InFlightSwap } from "../../../infra/event-store-types.js"
+import type { InFlightSwap } from "../../../infra/store/event-store-types.js"
 import type { WorkflowCapabilityBoundary } from "../../../workflows/run/run-facts.js"
 import type { RoleSettings } from "../../session/metadata/schemas.js"
 import { buildWorkflowDefinitionLineageFacts } from "./definition-lineage.js"

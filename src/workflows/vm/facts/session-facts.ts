@@ -6,8 +6,8 @@ import { MemoryFactSchemas } from "../../learning/memory/memory-facts.js";
 import { WorkflowContextFactSchemas } from "../../context-bundle/context-facts.js";
 import { WorkflowQueueFactSchemas } from "../../view/view-facts.js";
 import { WorkflowRunFactSchemas } from "../../run/run-facts.js";
-import { SessionRuntimeFactSchemas } from "../../../infra/runtime-fact-parser.js";
-import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../infra/runtime-fact-types.js";
+import { SessionRuntimeFactSchemas } from "../../../infra/runtime-facts/runtime-fact-parser.js";
+import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../infra/runtime-facts/runtime-fact-types.js";
 import { ImprovementFactSchemas } from "../../learning/improvements/improvement-facts.js";
 import {
   CommittedWorkflowControlSchema,

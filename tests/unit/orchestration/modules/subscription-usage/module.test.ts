@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
 import { subscriptionUsageModule } from "../../../../../src/orchestration/modules/subscription-usage/module.js"
 import { subscriptionUsageProtocol, subscriptionUsageStatusRows } from "../../../../../src/protocol/modules/subscription-usage.js"
 import { createSubscriptionUsageProtocol } from "../../../../../src/orchestration/modules/subscription-usage/protocol.js"

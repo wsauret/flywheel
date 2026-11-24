@@ -5,7 +5,7 @@
  * home and the stream module stays focused on request/response identity.
  */
 
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { toolUseBlock } from "./agent-state.js";
 import type { AgentRuntimeError, ContextOverflow, OutputOverflow } from "../../llm/routing/runtime-errors.js";
 import { assertNever } from "../../../../infra/assert-never.js";

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type InFlightSwap } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type InFlightSwap } from "../../../../src/infra/store/event-store-types";
 import { resolveSessionDir } from "../../../../src/infra/paths";
 import { chatSessionActions, readChatTurnEnd } from "../../../../src/orchestration/session/control/chat-session-run-evidence";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";

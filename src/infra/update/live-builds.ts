@@ -25,10 +25,10 @@
 
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
-import type { ContainedDirectory } from "../descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "../descriptor-directory.js";
 import { errorMessage } from "../error-message.js";
-import { Log } from "../log.js";
+import { Log } from "../diagnostics/log.js";
 import { liveBuildsDir, versionsDir } from "../paths.js";
 import { isProcessAlive } from "../process-liveness.js";
 import { assertInstallLocation, BUILD_METADATA_FILE, type BuildRef, decodeBuildMetadata } from "./build-identity.js";

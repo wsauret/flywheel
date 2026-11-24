@@ -38,7 +38,7 @@ import { keptFreePlanMessage } from "../../protocol/client/auth-login.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { apiKeyRejectionReason, type AccessProviderDefinition, type BrowserLoginPorts, type DeviceCodeLoginPorts, type ExternalLoginDefinition, type OAuthLoginResult } from "../../infra/llm/access/access-provider.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { customProviderRejections } from "../../infra/llm/custom-provider-registry.js";
 // Auth reads the credential provider registry alone: a login loads the
 // provider definitions it needs and never a tool or another module. Each read

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
-import { Log } from "../../../../src/infra/log"
+import { Log } from "../../../../src/infra/diagnostics/log"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
 import { readUnreadSessionMessages } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
 import { createOrderedLane } from "../../../../src/infra/ordered-lane"

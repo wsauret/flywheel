@@ -1,5 +1,5 @@
 import { Exit } from "effect"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { hasAssistantOutput } from "./assistant-output.js"
 import { toolUseBlock } from "./agent-state.js"
 import type { AssistantTurnResult } from "./assistant-turn-result.js"

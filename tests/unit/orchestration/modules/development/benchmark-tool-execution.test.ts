@@ -16,7 +16,7 @@ import { join } from "node:path";
 import { Redacted } from "effect";
 
 import { captureProviderConnection, type AuthContext } from "../../../../../src/infra/auth/auth-context.js";
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
+import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import type { BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/persona/admission.js";

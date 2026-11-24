@@ -1,7 +1,7 @@
 import type { TurnParkState } from "../../infra/agent-loop-events.js"
 import type { AgentLoopMaintenance } from "../agent-runtime/agent-loop-types.js"
 import { errorMessage } from "../../infra/error-message.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import type { AgentHost, AgentHostTurnLease } from "../runner/types.js"
 import type { LiveRecipientState } from "../session/message-disposition.js"
 import { isRuntimeInterruption, type ControlInterruption, type TurnInterruption } from "../session/conversation/turn-end-record.js"

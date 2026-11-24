@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStoreAppend } from "../../../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStoreAppend } from "../../../../../../src/infra/store/event-store-types"
 import type { ChatInput, SessionInputProducer } from "../../../../../../src/infra/chat-input"
 import { buildSubagentCompleted } from "../../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import { holdQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, readWorkflowBackgroundNotifications, readConversationBackgroundNotifications } from "../../../../../../src/orchestration/session/conversation/queued-background-notifications"

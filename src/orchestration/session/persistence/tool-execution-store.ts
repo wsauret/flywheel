@@ -1,12 +1,12 @@
 import type { EmitFn } from "../../../infra/event-bus.js"
-import type { AsyncEventReadSurface, StoredFact } from "../../../infra/event-store-types.js"
+import type { AsyncEventReadSurface, StoredFact } from "../../../infra/store/event-store-types.js"
 import { truncateField } from "../../../infra/truncate-field.js"
 import {
   createToolExecutionProjection,
   TOOL_EXECUTION_FACT_TYPES,
   toolExecutionTimelineFromProjection,
 } from "../runtime-facts/tool-execution-projection.js"
-import type { EventProjection } from "../../../infra/event-projection.js"
+import type { EventProjection } from "../../../infra/projection/event-projection.js"
 import type { SessionRuntimeFact } from "../runtime-facts/session-runtime-event-types.js"
 import type { SessionToolExecutionStore, ToolExecutionEntry, ToolExecutionState } from "../runtime-facts/tool-execution-types.js"
 import type { SessionFactWriter } from "./session-fact-writer.js"

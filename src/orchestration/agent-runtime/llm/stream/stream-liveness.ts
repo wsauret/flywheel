@@ -2,7 +2,7 @@
  *  transport events and report frames to it; it owns the deadline, the
  *  thinking-stall policy, and the classification of a timeout. */
 
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { StreamIdleTimeoutError } from "../errors.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { ThinkingStallError } from "./thinking-stall.js";

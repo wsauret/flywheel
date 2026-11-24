@@ -13,8 +13,8 @@
  * behind FLYWHEEL_RENDER_DEBUG: it writes a record per frame.
  */
 import type { ScrollBoxRenderable } from "@opentui/core"
-import { DebugLog } from "../../../infra/debug-log.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import type { MountedRowRegistry, TranscriptHeightIndexRecord, TranscriptScrollState } from "./output-window-scroll.js"
 

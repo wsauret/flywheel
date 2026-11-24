@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from "bun:test"
 
-import { Log } from "../../../src/infra/log.js"
+import { Log } from "../../../src/infra/diagnostics/log.js"
 import { createProcessSupervisor } from "../../../src/infra/process-supervisor.js"
 import { stubGuardian } from "../../helpers/stub-guardian.js"
 

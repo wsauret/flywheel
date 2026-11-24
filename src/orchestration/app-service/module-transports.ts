@@ -1,6 +1,6 @@
 import type { Layer } from "effect"
 import type { SocketServer } from "effect/socket"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 
 /** A module supplies the transport adapter. The kernel serves the same RPC
  *  handlers over every adapter and counts every accepted client. */

@@ -6,8 +6,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { buildSubagentTask } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
+import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
+import type { RuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-types.js";
 import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";

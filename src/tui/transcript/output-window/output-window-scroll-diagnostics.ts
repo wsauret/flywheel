@@ -7,7 +7,7 @@
  * no-ops otherwise.
  */
 import type { ScrollBoxRenderable } from "@opentui/core"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { renderProbeEnabled } from "../../../infra/render-probe.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { maxScrollTop, type ScrollAnchor } from "./output-window-scroll.js"

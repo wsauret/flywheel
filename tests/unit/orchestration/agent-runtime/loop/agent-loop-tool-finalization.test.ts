@@ -17,7 +17,7 @@ import type { RuntimeTool, ToolContext, ToolResult } from "../../../../../src/or
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js"
-import { PersistenceWriteRefused } from "../../../../../src/infra/event-store-types.js"
+import { PersistenceWriteRefused } from "../../../../../src/infra/store/event-store-types.js"
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { makeCaptureClient } from "../context/_loop-fixtures.js"

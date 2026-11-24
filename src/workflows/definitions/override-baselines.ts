@@ -2,11 +2,11 @@ import { createHash, randomUUID } from "node:crypto"
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync } from "node:fs"
 import { dirname, join } from "node:path"
 
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { isRecord, type UnknownRecord } from "../../infra/record.js"
 import { writeFileAtomic, fsyncDirectory } from "../../infra/atomic-write.js"
 import type { DefinitionFamily, DefinitionResolution } from "../../infra/definition-resolution.js"
-import { acquireLock, releaseLock } from "../../infra/ownership-file-lock.js"
+import { acquireLock, releaseLock } from "../../infra/locks/ownership-file-lock.js"
 import type { BundledDefaultCatalog } from "./bundled-defaults.js"
 
 const MANIFEST_NAME = "definition-override-baselines.json"

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter } from "../../../../src/infra/store/event-store-types.js"
 import type { WorkflowRuntimeEvent } from "../../../../src/workflows/vm/host/host-types.js"
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host/host.js"
 import { WorkflowDefinitionSchema } from "../../../../src/workflows/schema/workflow-schema.js"

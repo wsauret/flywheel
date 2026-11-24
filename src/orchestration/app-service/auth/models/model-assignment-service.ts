@@ -9,7 +9,7 @@ import type { FlywheelConfig } from "../../../config/schema/schema.js"
 import { EffortSchema } from "../../../../infra/workflow-types.js"
 import { Schema } from "effect"
 import { errorMessage } from "../../../../infra/error-message.js"
-import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
+import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
 import {
   createModelAssignmentController,
   loadGlobalDefaultRoles,

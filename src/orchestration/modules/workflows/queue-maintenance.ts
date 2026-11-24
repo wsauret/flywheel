@@ -1,5 +1,5 @@
 import { factDescriptors, factTypes } from "../../../infra/event-registry.js"
-import { factRowsChanged } from "../../../infra/sqlite-event-store-core.js"
+import { factRowsChanged } from "../../../infra/store/sqlite-event-store-core.js"
 import { WorkflowQueueFactSchemas } from "../../../workflows/view/view-facts.js"
 import type { SupersededFactInvalidationResult } from "../../module-seams.js"
 import { openMaintenanceDb } from "../../session/persistence/storage/event-store-maintenance.js"

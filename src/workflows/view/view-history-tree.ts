@@ -1,5 +1,5 @@
-import { parseProjectionFact } from "../../infra/event-projection.js"
-import { CorruptEventRowError, type StoredFact } from "../../infra/event-store-types.js"
+import { parseProjectionFact } from "../../infra/projection/event-projection.js"
+import { CorruptEventRowError, type StoredFact } from "../../infra/store/event-store-types.js"
 import { InvariantViolation } from "../../infra/invariant.js"
 import type { WorkflowTree, WorkflowTreeAgent, WorkflowTreeDisposition, WorkflowTreeLoop, WorkflowTreeNode, WorkflowTreePhase } from "../../protocol/workflow-view-protocol-types.js"
 import { attemptNodeIdOf, type LogicalNode } from "../vm/graph/graph-types.js"

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
-import { DebugLog } from "../../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js";
 import type { ToolEntry } from "../../../../../../src/infra/output-blocks.js";
 import {
   probeToolRenderPhase,

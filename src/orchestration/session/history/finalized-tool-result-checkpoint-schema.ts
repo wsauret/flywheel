@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { LlmToolOutputPartSchema } from "../../../infra/llm/tool-output-part-schema.js";
-import { MutationEvidenceResultDetailsSchema } from "../../../infra/runtime-mutation-evidence.js";
-import { TOOL_OUTCOME_VALUES } from "../../../infra/tool-outcome.js";
+import { MutationEvidenceResultDetailsSchema } from "../../../infra/runtime-facts/runtime-mutation-evidence.js";
+import { TOOL_OUTCOME_VALUES } from "../../../infra/runtime-facts/tool-outcome.js";
 
 /** Inline mutation evidence written before 2026-10-16 is normalized at the family recovery boundary. Remove this conversion after 2027-04-16. */
 export const UnversionedFinalizedToolResultCheckpointSchema = Schema.Struct({

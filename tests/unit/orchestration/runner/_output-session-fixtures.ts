@@ -1,8 +1,8 @@
 import { mock } from "bun:test"
-import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types"
+import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types"
 import type { SessionEntryBasePatch } from "../../../../src/orchestration/session-store/types"
 import type { AnyBlock } from "../../../../src/infra/output-blocks"
-import type { ContentBlock } from "../../../../src/infra/runtime-content-blocks"
+import type { ContentBlock } from "../../../../src/infra/runtime-facts/runtime-content-blocks"
 
 /** Flush pending store syncs (time-gated via setTimeout). */
 export const flushMicrotasks = () => new Promise<void>(r => setTimeout(r, 20))

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { join } from "node:path"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import { personaToolEntries } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js"
 import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js"
 import { migrateWorkflowDefinitionIdentityPersonaShell } from "../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity-persona-shell.js"

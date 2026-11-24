@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { apiKey, captureSubscriptionCredentials, resolveAuthContext } from "../../../../src/infra/auth/auth-context.js";
 import { normalizeAuthProfile } from "../../../../src/infra/auth/auth-profile-normalization.js";
 import { createKeyResolver } from "../../../../src/infra/auth/resolve-key.js";
-import { Log } from "../../../../src/infra/log.js";
+import { Log } from "../../../../src/infra/diagnostics/log.js";
 import { authDir as profileAuthDirectory } from "../../../../src/infra/paths.js";
 import { createAuthConditionOwner } from "../../../../src/orchestration/auth/auth-condition-owner.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";

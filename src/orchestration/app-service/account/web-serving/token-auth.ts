@@ -2,7 +2,7 @@ import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto"
 import { readdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 
-import { acquireLock, releaseLock } from "../../../../infra/ownership-file-lock.js"
+import { acquireLock, releaseLock } from "../../../../infra/locks/ownership-file-lock.js"
 import { ensurePrivateRootDirectoryAsync, PRIVATE_FILE_MODE } from "../../../../infra/private-path.js"
 import { renameThroughSharing } from "../../../../infra/windows-file-replacement.js"
 

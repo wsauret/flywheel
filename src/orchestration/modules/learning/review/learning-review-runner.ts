@@ -1,11 +1,11 @@
 import type { PreparedPackage, SkillSemanticAuditResult } from "../../../agent-runtime/request/module-services/review-types.js";
 import { randomUUID } from "node:crypto";
 import { Effect, Exit, Scope } from "effect";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { errorMessage } from "../../../../infra/error-message.js";
 import type { StartupDirectories } from "../../../../infra/directory-authorities.js";
 import type { ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../../agent-runtime/request/prompt/model-interaction-profile.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/request/model-runtime-capture.js";

@@ -5,7 +5,7 @@ import type { CredentialSlotClassifier } from "../../../infra/auth/store/auth-st
 import type { AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js";
 import { awaitWithAbortSignal } from "../../../infra/abort.js";
 import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import { canonicalizeIdCatalogRow, extractDataCatalogRows, type CatalogWireIdentity } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/model-id.js";

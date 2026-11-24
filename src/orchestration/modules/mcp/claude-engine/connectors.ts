@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ClaudeLoginEngine, ClaudeLoginHost } from "../../../../infra/claude-engine.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { createOrderedLane } from "../../../../infra/ordered-lane.js";
 import { callThroughEngine, engineToolPart, toolsOf } from "./claude-engine.js";
 import { claudeEngineControl, type ClaudeEngineControl, type EngineServerStatus } from "./claude-engine-session.js";

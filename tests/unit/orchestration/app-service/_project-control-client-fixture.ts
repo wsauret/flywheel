@@ -10,7 +10,7 @@ import { durableRow, durableSessionFromCatalogRow, storedEvents } from "./_front
 import { servingAccountService } from "../../../helpers/account-service-state.js"
 import { idleAccountUpdates } from "../../../helpers/account-updates.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
 
 export const never = <T>(): Promise<T> => new Promise(() => {})
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { OutputProjector } from "../../../../src/infra/output/projector/output-projector";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector";
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper";
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-facts/runtime-fact-mapper";
 
 function setup() {
   const output = new OutputProjector({ executionCwd: "/workspace" });

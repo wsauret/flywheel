@@ -1,4 +1,4 @@
-import { isSessionHistoryFailure } from "./event-store-types.js"
+import { isSessionHistoryFailure } from "./store/event-store-types.js"
 import { recordBackgroundFailure, type OperationLogger } from "./operation-log.js"
 
 export interface SessionReadContainment {

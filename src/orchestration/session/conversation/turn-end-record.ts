@@ -1,5 +1,5 @@
 import type { PausedBy } from "../../../infra/output-blocks.js"
-import { toolOutcomeFromProvider } from "../../../infra/tool-outcome.js"
+import { toolOutcomeFromProvider } from "../../../infra/runtime-facts/tool-outcome.js"
 import { CONTINUATION_MESSAGES } from "../../agent-runtime/request/prompt/continuation-messages.js"
 import { DEFAULT_WAIT_SECONDS } from "../../agent-runtime/tools/sessions/process.js"
 import { MESSAGE_SESSION_TOOL_NAME } from "../../agent-runtime/tools/sessions/message-session.js"

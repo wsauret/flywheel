@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { ContainedFileMetadata } from "../../../infra/descriptor-directory-contract.js"
+import type { ContainedFileMetadata } from "../../../infra/descriptor-directory/descriptor-directory-contract.js"
 
 export const FileAccessProofSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("posix"), mode: Schema.Number.check(Schema.makeFilter(mode => Number.isInteger(mode) && mode >= 0)) }),

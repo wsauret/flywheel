@@ -37,13 +37,13 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
-import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../infra/descriptor-directory/descriptor-directory-contract.js";
 import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { WINDOWS_LAUNCHER_EXECUTABLE, WINDOWS_SERVICE_LAUNCHER_EXECUTABLE } from "../../infra/native-assets.js";
 import { isProcessAlive } from "../../infra/process-liveness.js";
-import type { ProcessRow } from "../../infra/process-table.js";
+import type { ProcessRow } from "../../infra/process/container/process-table.js";
 import { activeBuildDir } from "../../infra/update/active-build.js";
 import { NATIVE_DIR } from "../../infra/update/build-identity.js";
 import { WINDOWS_LAUNCHER_NAME, WINDOWS_SERVICE_LAUNCHER_NAME } from "../../infra/update/wrapper-directory.js";

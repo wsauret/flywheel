@@ -3,12 +3,12 @@
  *  repeated reads proportional to new activity. Consumers are the maintenance
  *  CLI, lifecycle pruner, and learning review context. */
 
-import { capturedFacts, type AsyncEventWriter, type AsyncEventStateReadSurface, type StoredFact } from "../../../../infra/event-store-types.js";
+import { capturedFacts, type AsyncEventWriter, type AsyncEventStateReadSurface, type StoredFact } from "../../../../infra/store/event-store-types.js";
 import type { CapabilityCheck } from "../../../../infra/capability-text.js";
 import type { LearningScope } from "../../../../infra/learning-scope.js";
 import { createOrderedLane, type OrderedLane } from "../../../../infra/ordered-lane.js";
-import { createEventProjection, parseProjectionFact } from "../../../../infra/event-projection.js";
-import { heldProjection } from "../../../../infra/projection-registry.js";
+import { createEventProjection, parseProjectionFact } from "../../../../infra/projection/event-projection.js";
+import { heldProjection } from "../../../../infra/projection/projection-registry.js";
 import { skillLoadsSnapshottedFact, type SkillLoadedFact, type SkillLoadsSnapshottedFact, type SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 import { parseSessionFact } from "../../../session/persistence/session-fact-registry.js";

@@ -18,7 +18,7 @@ import { RpcTest } from "effect/rpc"
 import { runtimeHandlers } from "../../../../src/orchestration/app-service/account/connections/runtime-protocol-handlers.js"
 import { createOutputWatches } from "../../../../src/orchestration/app-service/account/projects/output-watches.js"
 import { RuntimeProtocolError, RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
-import { diagnosticTier, isRegisteredDiagnostic } from "../../../../src/infra/diagnostics-registry.js"
+import { diagnosticTier, isRegisteredDiagnostic } from "../../../../src/infra/diagnostics/diagnostics-registry.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
 /** An owner whose interruption request and settlement the case drives by hand,

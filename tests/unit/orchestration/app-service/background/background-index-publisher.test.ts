@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../../src/infra/store/event-store-types"
 import type { ActiveBackgroundCommandDescriptor } from "../../../../../src/orchestration/agent-runtime/background-work/background-work"
 import type { SessionStore } from "../../../../../src/orchestration/session-store/types"
 import { markCommandKept, writeCommandHandover } from "../../../../../src/orchestration/session/command-handover"

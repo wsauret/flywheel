@@ -12,7 +12,7 @@
 import { describe, expect, test } from "bun:test";
 import { Effect, Redacted } from "effect";
 import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
-import type { ToolOutcome } from "../../../../../src/infra/tool-outcome.js";
+import type { ToolOutcome } from "../../../../../src/infra/runtime-facts/tool-outcome.js";
 import { toolResultMessages } from "../../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js";
 import { formatSubagentNotificationBatch } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-notifications.js";
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js";

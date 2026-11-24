@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js";
 import { authDir } from "../../../../src/infra/paths.js";
 import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definitions/definition-availability.js";
 import { createRuntimeModelAssignmentService } from "../../../../src/orchestration/app-service/auth/models/model-assignment-service.js";

@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import {
   CorruptEventRowError, type AsyncEventStateReadSurface, type AsyncEventWriter,
   type InFlightRecord, type StoredFact,
-} from "../../../infra/event-store-types.js"
+} from "../../../infra/store/event-store-types.js"
 import { asRecord } from "../../../infra/record.js"
 import { MutationDiffSchema, type MutationDiff } from "../../../infra/mutation-diff.js"
 import { buildMutationDiffEntries } from "../../../infra/mutation-diff-evidence.js"
@@ -10,8 +10,8 @@ import { buildMutationEvidence, type MutationEvidenceEntry, type MutationFileEvi
 import type { StageSessionContentNodes } from "../../../infra/session-content.js"
 import { ReviewNoticeMutationSchema } from "../../../infra/review-notice.js"
 import { AgentSystemMessageV1DataSchema, AgentSystemMessageV2DataSchema } from "../../../infra/events.js"
-import { parseStoredSessionRuntimeFact } from "../../../infra/runtime-fact-parser.js"
-import { MutationEvidenceResultDetailsSchema } from "../../../infra/runtime-mutation-evidence.js"
+import { parseStoredSessionRuntimeFact } from "../../../infra/runtime-facts/runtime-fact-parser.js"
+import { MutationEvidenceResultDetailsSchema } from "../../../infra/runtime-facts/runtime-mutation-evidence.js"
 import { parseConversationTreeFact } from "../conversation/conversation-facts.js"
 import { parseFileMutationFact } from "../file-mutations/file-mutation-facts.js"
 import { parseFileMutationOperationCell, parseFileMutationOperationHeader, stageFileMutationOperation, type FileMutationOperationHeader } from "../file-mutations/file-mutation-operation.js"

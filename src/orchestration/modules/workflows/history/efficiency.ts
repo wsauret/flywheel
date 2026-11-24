@@ -1,5 +1,5 @@
-import { parseProjectionFact } from "../../../../infra/event-projection.js"
-import type { StoredFact } from "../../../../infra/event-store-types.js"
+import { parseProjectionFact } from "../../../../infra/projection/event-projection.js"
+import type { StoredFact } from "../../../../infra/store/event-store-types.js"
 import { attemptIdOf, parseWorkflowQueueFact } from "../../../../workflows/view/view-facts.js"
 import { loadQueueFromEvents } from "../../../../workflows/view/view-projection.js"
 import type { AttemptExecutionHistory, ConversationAttemptStart } from "../../../module-diagnostics.js"

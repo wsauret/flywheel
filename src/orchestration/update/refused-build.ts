@@ -13,10 +13,10 @@
 import { randomBytes } from "node:crypto";
 import * as path from "node:path";
 import { Schema } from "effect";
-import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../infra/descriptor-directory/descriptor-directory-contract.js";
 import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { type BuildRef, BuildRefSchema } from "../../infra/update/build-identity.js";
 
 const log = Log.create({ service: "refused-build" });

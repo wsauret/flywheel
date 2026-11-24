@@ -1,5 +1,5 @@
 import { Cause, Effect, Exit, Queue, Scope } from "effect";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import type { Claim } from "../../../agent-runtime/llm/types.js";
 import type { AdmittedWindow } from "./bridge-requests.js";
 import type { BridgeConfig, BridgeState, EngineInput, Inbox, LiveQuery, Reservation, StartedEngine } from "./bridge-state.js";

@@ -22,7 +22,7 @@ import { computeUsagePrice } from "../../../../../infra/llm/models/llm-helpers.j
 import { providerRequestHeaders } from "../../../../../infra/llm/provider-request-identity.js";
 import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
 import { ANTHROPIC_RESERVED_BODY_KEYS, applyProviderExtraBody, type AnthropicThinkingDisplay } from "../../../../../infra/llm/access/provider-options.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import { ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "../../errors.js";
 import type { CompletedStopReason } from "../../messages.js";
 import { anthropicThinkingMode } from "../../model-compat.js";
@@ -49,7 +49,7 @@ import { observeProviderTelemetry } from "../../stream/stream-observe.js";
 import { STREAM_IDLE_TIMEOUT_PATIENT_MS, type StreamLivenessOptions } from "../../stream/stream-liveness.js";
 import { sendStreamingRequest, timingFetch } from "../../stream/request-timing.js";
 import type { ProviderAvailability } from "../../routing/provider-availability-types.js";
-import { ensureEventLoopLagSampler } from "../../../../../infra/event-loop-lag.js";
+import { ensureEventLoopLagSampler } from "../../../../../infra/diagnostics/event-loop-lag.js";
 import type { RawContentBlockDelta, ThinkingDelta } from "@anthropic-ai/sdk/resources/messages.js";
 import { anthropicThinkingBudget, anthropicThinkingDisplay, mapAnthropicAdaptiveEffort } from "./anthropic-options.js";
 import { parseAnthropicToolInput } from "./anthropic-tool-input.js";

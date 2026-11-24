@@ -1,5 +1,5 @@
 import { errorMessage } from "../../../../infra/error-message.js"
-import { PersistenceWriteRefused } from "../../../../infra/event-store-types.js"
+import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js"
 import { buildMutationDiff, type MutationDiffEndpoint, truncateUnifiedDiff } from "../../../../infra/mutation-diff.js"
 import { buildMutationEvidence, type MutationEvidenceEntry } from "../../../../infra/mutation-evidence.js"
 import { formatFileSamples, summarizeFileSamples } from "../../../../infra/not-applied-files.js"

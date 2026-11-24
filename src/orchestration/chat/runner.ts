@@ -2,8 +2,8 @@ import { captureModuleRequestSections } from "../agent-runtime/request/request-c
 import { Effect, Exit, Scope } from "effect"
 import { errorMessage as extractErr } from "../../infra/error-message.js"
 import { createEmit, EventBus } from "../../infra/event-bus.js"
-import { Log } from "../../infra/log.js"
-import { EventStoreWriterService, type EventStoreRuntime } from "../../infra/event-store-effect.js"
+import { Log } from "../../infra/diagnostics/log.js"
+import { EventStoreWriterService, type EventStoreRuntime } from "../../infra/store/event-store-effect.js"
 import type { ChatRunner } from "./runner-types.js"
 import type { StartModelWorkflow } from "../agent-runtime/tools/definitions/workflow-tool.js"
 import { createChatSession } from "./session.js"
@@ -34,7 +34,7 @@ import { unattendedModuleIds } from "../modules.js"
 
 import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
 import type { AttachChildSessionProjection } from "../module-seams.js"
-import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
 type ChatUpdateEntryFn = (patch: ChatEntryPatch) => void
 
 export interface ChatRunnerDeps {

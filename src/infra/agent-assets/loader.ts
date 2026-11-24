@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { resolveDefinitionCandidates, shouldLogDefinitionMasking, type DefinitionCandidate, type DefinitionResolution } from "../definition-resolution.js";
-import { Log } from "../log.js";
+import { Log } from "../diagnostics/log.js";
 
 const log = Log.create({ service: "agent-asset-loader" });
 export interface AgentAssetRoot {

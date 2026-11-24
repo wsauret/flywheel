@@ -4,7 +4,7 @@ import type { CredentialSlotClassifier } from "./store/auth-store-types.js";
 import type { AuthProfileConversion, AuthProfileConversionInput, CredentialProvider } from "./provider-account.js";
 import { adoptPreviousProviderModelCatalogs } from "./provider-models/provider-model-catalog-store.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../model-catalog-rows.js";
-import { Log } from "../log.js";
+import { Log } from "../diagnostics/log.js";
 import type { NotificationOccurrence } from "../notification-episode.js";
 
 const log = Log.create({ service: "auth-profile-normalization" });

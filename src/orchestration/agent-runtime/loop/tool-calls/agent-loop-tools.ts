@@ -16,9 +16,9 @@
  */
 
 import { Cause, Deferred, Effect, Exit, Fiber, Schema, type Scope } from "effect";
-import { PersistenceWriteRefused } from "../../../../infra/event-store-types.js";
+import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js";
 import { errorDetail, errorMessage } from "../../../../infra/error-message.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { BackgroundExecutionOwner } from "../../background-execution/background-execution-owner.js";
 import { shouldTerminateToolBatch } from "../../tools/dispatch/tool-batch-termination.js";
 import { createToolConcurrencyGate } from "../../tools/dispatch/tool-concurrency-gate.js";
@@ -36,7 +36,7 @@ import { createNestedToolDispatchBatch, createNestedToolFactPublisher, executeDi
 import { runtimeToolExecution, type RuntimeTool, type ToolAttributionIdentity, type ToolContext, type ToolDispatchContext, type ToolResult } from "../../tools/types.js";
 import { writeToolLifecycleDiagnostic } from "../../tools/dispatch/tool-lifecycle-diagnostics.js";
 import { assertNever } from "../../../../infra/assert-never.js";
-import type { ToolOutcome } from "../../../../infra/tool-outcome.js";
+import type { ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js";
 import { publishFileMutationAttribution } from "../../tools/edit/file-mutation-artifact.js";
 import { redactDeep, redactSecrets } from "../../../../infra/redact-secrets.js";
 import { truncateUtf8Prefix } from "../../../../infra/output/truncate-output.js";

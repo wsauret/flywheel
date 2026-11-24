@@ -1,4 +1,4 @@
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { PausedBy } from "../../../../infra/output-blocks.js"
 import type { ChildControlAnswer, ChildStopAnswer, ChildSessionPorts, ChildSessionTarget, WorkflowWorkTarget } from "../../../module-seams.js"
 import type { ChildCut } from "../child-continuation.js"

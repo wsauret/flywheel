@@ -1,6 +1,6 @@
 import { dlopen, FFIType, ptr, type Pointer } from "bun:ffi"
 
-import { Log } from "./log.js"
+import { Log } from "./diagnostics/log.js"
 import { runOwnedCommand } from "./owned-command.js"
 import type { LauncherScope } from "./process-supervisor.js"
 

@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test"
 import { createEmit } from "../../../../src/infra/event-bus"
-import { asAsyncEventWriter } from "../../../../src/infra/event-store-types"
+import { asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
 import { registerCapacityWaits } from "../../../../src/orchestration/session/control/capacity-wait"
 import { readChatTurnEnd } from "../../../../src/orchestration/session/control/chat-session-run-evidence"
 import { liveSessionControl } from "../../../../src/orchestration/session/control/live-session-control"

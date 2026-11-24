@@ -3,7 +3,7 @@
 import { invalidateSupersededModuleFacts } from "../../orchestration/modules.js"
 import type { SupersededFactInvalidationResult } from "../../orchestration/module-seams.js"
 import { errorMessage } from "../../infra/error-message.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { resolveEventStoreDbFile } from "../../infra/paths.js"
 import {
   pruneRetiredFactFamilies,

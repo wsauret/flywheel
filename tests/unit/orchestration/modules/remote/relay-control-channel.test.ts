@@ -3,7 +3,7 @@ import type { RemoteIdentity } from "../../../../../src/orchestration/modules/re
 import { RELAY_PING, RELAY_PROTOCOL_VERSION, runtimeAttachSigningBytes, toBase64Url } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 import { ControlSocket, fixture, identity, turn } from "./_relay-control-fixtures.js"
 import { manualHeartbeatClock } from "../../../../helpers/heartbeat-clock.js"
-import { Log } from "../../../../../src/infra/log.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
 
 describe("relay control ownership", () => {
   test("disposal joins deferred identity without dialing after it resolves", async () => {

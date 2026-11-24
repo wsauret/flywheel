@@ -4,7 +4,7 @@ import { dirname, join, posix, relative, win32 } from "node:path"
 
 import { serveLaneFor, type ServeLane } from "../../../../infra/cli-subprocess.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { osAccount } from "../../../../infra/os-account.js"
 import { nativeAssetDir, MACOS_LAUNCHER_BUNDLE } from "../../../../infra/native-assets.js"
 import { accountServeErrorLogPath, accountServeLauncherExecutablePath, accountServeLauncherPath } from "../../../../infra/paths.js"

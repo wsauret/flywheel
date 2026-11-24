@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { roleCapture } from "../../../../helpers/role-capture.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types.js"
 import { composeModuleServices } from "../../../../../src/infra/module-service.js"
 import { composeModuleProtocolRuntimes } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
 import { createRuntimeUiBus } from "../../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"

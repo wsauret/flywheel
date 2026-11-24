@@ -2,7 +2,7 @@
 import { Effect, Exit, Scope } from "effect";
 import { mergeAbortSignals } from "../../../infra/abort.js";
 import type { AgentLoopInput } from "../../../infra/agent-loop-events.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import { runBudgetExhaustionTurn } from "./budget-exhaust.js";
 import { createBudgetNudge } from "./nudges/budget-nudge.js";
 import { attemptContextOverflowRecovery, type PlannedCompactionOperation } from "../compaction/triggers.js";
@@ -10,7 +10,7 @@ import { captureForkMessages, recordInterruptedTurn, seedAgentLoopTurn } from ".
 import { createPendingWorkNudge } from "./nudges/pending-work-nudge.js";
 import { agentLoopTransition as loopTransition, createAgentRunTally, initialAgentLoopState as initialLoopState, openWaitFor, OUTPUT_OVERFLOW_CONTINUATION_LIMIT, tallyToolResults } from "./agent-loop-state.js";
 import { createHandoffTracker, HANDOFF_OWED_NOTICE } from "./closure/agent-loop-handoff.js";
-import type { PersistenceWriteRefused } from "../../../infra/event-store-types.js";
+import type { PersistenceWriteRefused } from "../../../infra/store/event-store-types.js";
 import { createContentFilterRecovery } from "./turn/agent-loop-content-filter.js";
 import { createAgentLoopToolContext } from "./tool-calls/agent-loop-tool-context.js";
 import { hasAssistantOutput } from "./turn/assistant-output.js";

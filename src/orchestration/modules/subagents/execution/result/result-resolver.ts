@@ -10,9 +10,9 @@
  */
 
 import { errorMessage } from "../../../../../infra/error-message.js";
-import { Log } from "../../../../../infra/log.js";
-import type { RuntimeEvent } from "../../../../../infra/runtime-event-types.js";
-import { PERSON_STOP_INSTRUCTION } from "../../../../../infra/tool-outcome.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
+import type { RuntimeEvent } from "../../../../../infra/runtime-facts/runtime-event-types.js";
+import { PERSON_STOP_INSTRUCTION } from "../../../../../infra/runtime-facts/tool-outcome.js";
 import { formatAgentFailure } from "../../../../agent-runtime/runner/failure-message.js";
 import { failureTerminal, type AgentFailureReason, type AgentRunResult } from "../../../../agent-runtime/types.js";
 import type { BackgroundWorkResult, EndedWorkResult } from "../../../../agent-runtime/background-work/background-work-types.js";

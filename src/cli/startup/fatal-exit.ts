@@ -1,6 +1,6 @@
 import { installCrashPolicy, type UncaughtKind } from "../../infra/crash-policy.js"
 import { errorDetail, errorMessage } from "../../infra/error-message.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 
 /** The entry's one fatal path (ARCH-RUNTIME-030). A failure thrown to the entry's
  *  catch, and an uncaught failure of the account service's thread that its
@@ -104,7 +104,7 @@ async function returnedToProvedSource(message: string): Promise<boolean> {
     const [{ runningSourceSnapshot }, { startsServiceProcess }] = await Promise.all([import("../../infra/cli-subprocess.js"), import("../account-service/serve-contract.js")])
     const snapshot = runningSourceSnapshot()
     if (snapshot === undefined || !startsServiceProcess(process.argv)) return false
-    const { refuseFailedServiceStart } = await import("../../infra/source-snapshot.js")
+    const { refuseFailedServiceStart } = await import("../../infra/distribution/source-snapshot.js")
     return refuseFailedServiceStart(snapshot, message)
   } catch (error) {
     Log.Default.warn("the dev service failed to start and its snapshot could not be refused", { error: errorMessage(error) })

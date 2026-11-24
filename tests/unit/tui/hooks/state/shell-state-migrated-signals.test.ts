@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "bun:test"
 import { createRoot } from "solid-js"
 import { createSessionStore } from "../../../../../src/orchestration/session-store/store"
-import { EventReaderService } from "../../../../../src/infra/event-store-effect.js"
+import { EventReaderService } from "../../../../../src/infra/store/event-store-effect.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import type { AttachedRuntimeClient, FrontendEvent } from "../../../../../src/protocol/app-service-types.js"
 import { commandCatalogCursor } from "../../../../../src/protocol/command-catalog-protocol-types.js"

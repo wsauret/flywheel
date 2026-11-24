@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { contentEvidence } from "../../../../src/infra/content-evidence.js"
+import { contentEvidence } from "../../../../src/infra/runtime-facts/content-evidence.js"
 import { createWorkflowController } from "../../../../src/orchestration/workflow-host/lifecycle/controller.js"
 import { cleanupProjectRoots, createDeps, fixtureSource, seedWorkflowQueue } from "./_workflow-controller-fixtures.js"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures.js"

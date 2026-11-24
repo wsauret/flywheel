@@ -1,4 +1,4 @@
-import { capturedFacts, type AsyncEventReadSurface, type AsyncEventAppender, type StoredFact } from "../../../infra/event-store-types.js"
+import { capturedFacts, type AsyncEventReadSurface, type AsyncEventAppender, type StoredFact } from "../../../infra/store/event-store-types.js"
 import type { NotificationOccurrence } from "../../../infra/notification-episode.js"
 import type { ProjectNotificationEpisode, ProjectNotificationProjection } from "../../../protocol/modules/project-notifications.js"
 import {

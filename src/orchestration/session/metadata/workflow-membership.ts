@@ -1,6 +1,6 @@
-import { createEventProjection } from "../../../infra/event-projection.js"
-import type { AsyncEventReadSurface } from "../../../infra/event-store-types.js"
-import { heldProjection } from "../../../infra/projection-registry.js"
+import { createEventProjection } from "../../../infra/projection/event-projection.js"
+import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js"
+import { heldProjection } from "../../../infra/projection/projection-registry.js"
 import { reduceSessionMetadataEvent } from "./session-metadata-projection.js"
 import type { WorkflowMembership } from "../../../infra/session-workflow-membership.js"
 

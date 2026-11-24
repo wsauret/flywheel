@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { fileURLToPath } from "node:url"
 
-import type { OwnedProcess, OwnedProcessExit } from "../../../src/infra/owned-subprocess.js"
-import { watchContainerTerminations, type TerminationDecision } from "../../../src/infra/process-container.js"
-import { createProcessDiagnosticReader } from "../../../src/infra/process-diagnostic-reader.js"
+import type { OwnedProcess, OwnedProcessExit } from "../../../src/infra/supervision/launch/owned-subprocess.js"
+import { watchContainerTerminations, type TerminationDecision } from "../../../src/infra/process/container/process-container.js"
+import { createProcessDiagnosticReader } from "../../../src/infra/process/kernel/process-diagnostic-reader.js"
 import { createRealProcessFixture, unguardedSpawnOwned, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 
 const TARGET = fileURLToPath(new URL("../../fixtures/owned-process-target.ts", import.meta.url))

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
 import { createBackgroundNotificationDelivery as createSessionBackgroundNotificationDelivery } from "../../../../src/orchestration/app-service/supervisor/session-background-notifications"
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
 import { createBackgroundNotificationDelivery } from "../../../../src/orchestration/runner/background-notification-delivery"
