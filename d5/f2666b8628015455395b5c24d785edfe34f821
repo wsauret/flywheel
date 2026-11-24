@@ -1,0 +1,130 @@
+src/infra/output-blocks.ts
+  h_4b47e9e4a8b456 378-389,397-398,558,560
+src/infra/output/output-projection-events.ts
+  h_4b47e9e4a8b456 3,34
+src/infra/output/projector/output-projector.ts
+  h_4b47e9e4a8b456 117
+src/infra/output/runtime-event-projector.ts
+  h_4b47e9e4a8b456 4,64-68,173-185
+src/infra/runtime-event-payload-types.ts
+  h_4b47e9e4a8b456 200
+src/infra/runtime-fact-types.ts
+  h_4b47e9e4a8b456 604-607
+src/infra/watch-notices.ts
+  h_4b47e9e4a8b456 1-87
+src/orchestration/agent-runtime/agent-loop-types.ts
+  h_4b47e9e4a8b456 274
+src/orchestration/agent-runtime/background-work/background-work-notifications.ts
+  h_4b47e9e4a8b456 2,137-193
+src/orchestration/agent-runtime/background-work/background-work-processes.ts
+  h_4b47e9e4a8b456 54
+src/orchestration/agent-runtime/background-work/background-work-types.ts
+  h_4b47e9e4a8b456 82-84
+src/orchestration/agent-runtime/background-work/background-work.ts
+  h_4b47e9e4a8b456 22,178-179,251-255,662,710,712-714
+src/orchestration/agent-runtime/background-execution/command-handover.ts
+  h_4b47e9e4a8b456 132,160,181,345
+src/orchestration/agent-runtime/runner/emit.ts
+  h_4b47e9e4a8b456 78,86
+src/orchestration/agent-runtime/tools/bash/bash-guidance.ts
+  h_4b47e9e4a8b456 7-9,18-29,37,134
+src/orchestration/agent-runtime/tools/bash/bash.ts
+  h_4b47e9e4a8b456 143,235,304,330-333,338,340
+src/orchestration/agent-runtime/tools/bash/execution/managed-command.ts
+  h_4b47e9e4a8b456 15-32,78-80,119,133-137,175-203,238,251-272,274-312,324,328-329,340-345,395-453,462-472,499-502,517-521,537-545,569,591
+src/orchestration/agent-runtime/tools/bash/execution/shell-execution.ts
+  h_4b47e9e4a8b456 24,123,129-130,184-186,190
+src/orchestration/agent-runtime/tools/bash/execution/shell-runtime-types.ts
+  h_4b47e9e4a8b456 42-44
+src/orchestration/agent-runtime/tools/bash/execution/watch-stream.ts
+  h_4b47e9e4a8b456 1-6,8-261
+src/orchestration/agent-runtime/runner/unattended-recovery.ts
+  h_4b47e9e4a8b456 126-127,373
+src/orchestration/app-service/background/background-index.ts
+  h_4b47e9e4a8b456 450
+src/orchestration/app-service/runtime/command-keeper.ts
+  h_4b47e9e4a8b456 214-217
+src/orchestration/chat/lifecycle/chat-background.ts
+  h_4b47e9e4a8b456 24,49
+src/orchestration/chat/lifecycle/runner-lifecycle.ts
+  h_4b47e9e4a8b456 31,69,103-107,557-568
+src/orchestration/chat/runner-wait-state.ts
+  h_4b47e9e4a8b456 74-80,127-145,157,176,184-187,192-197
+src/orchestration/session/command-handover.ts
+  h_4b47e9e4a8b456 53-59,71,213,218,244,248-284
+src/orchestration/session/conversation/transcript/conversation-block-projection.ts
+  h_4b47e9e4a8b456 29,321-328
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 33,351-352
+src/protocol/background-index-protocol-types.ts
+  h_4b47e9e4a8b456 61-62
+src/protocol/client/background-index.ts
+  h_4b47e9e4a8b456 127-128,137
+src/protocol/client/transcript-model.ts
+  h_4b47e9e4a8b456 1,19-39
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 296-297
+src/protocol/transcript-protocol-schemas.ts
+  h_4b47e9e4a8b456 3,153
+src/tui/transcript/output-blocks/system-block.tsx
+  h_4b47e9e4a8b456 34-42,47-64
+src/tui/transcript/transcript-store/output-height-estimates.ts
+  h_4b47e9e4a8b456 26-30,44-46
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 39
+tests/unit/infra/output/projector/output-projection.test.ts
+  h_4b47e9e4a8b456 339-353
+tests/unit/orchestration/agent-runtime/request/prompt/agent-prompt.test.ts
+  h_4b47e9e4a8b456 160,163
+tests/unit/orchestration/agent-runtime/background-work/background-task-registry.test.ts
+  h_4b47e9e4a8b456 588,600-603,605-606,611-612
+tests/unit/orchestration/agent-runtime/tools/bash/private-copy/_bash-mutations-harness.ts
+  h_4b47e9e4a8b456 77
+tests/unit/orchestration/agent-runtime/tools/bash/private-copy/tools-bash-mutations.test.ts
+  h_4b47e9e4a8b456 621-633
+tests/unit/orchestration/agent-runtime/tools/bash/tools-bash-watch.test.ts
+  h_4b47e9e4a8b456 1-5,15,17-333
+tests/unit/orchestration/agent-runtime/tools/bash/execution/watch-stream.test.ts
+  h_4b47e9e4a8b456 1,3-183
+tests/unit/orchestration/agent-runtime/runner/unattended-recovery.test.ts
+  h_4b47e9e4a8b456 153,174,177-178,183
+tests/unit/orchestration/app-service/background/background-index.test.ts
+  h_4b47e9e4a8b456 68-80
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 220,222
+tests/unit/orchestration/chat/chat-session-agent-runtime-background-notification.test.ts
+  h_4b47e9e4a8b456 12,13-17,281-337,339-344,346-356,358-404,406-436,439-445,447-457
+tests/unit/orchestration/session/command-handover.test.ts
+  h_4b47e9e4a8b456 82-99
+tests/unit/orchestration/session/conversation-block-projection.test.ts
+  h_4b47e9e4a8b456 113-124
+tests/unit/protocol/client/background-index.test.ts
+  h_4b47e9e4a8b456 74
+tests/unit/tui/hooks/overlays/modals/background-modal.test.ts
+  h_4b47e9e4a8b456 237,247
+tests/unit/tui/transcript/output-blocks/system-block.test.ts
+  h_4b47e9e4a8b456 160-194
+tests/unit/tui/transcript/transcript-store/output-height-estimates.test.ts
+  h_4b47e9e4a8b456 101-109
+webview/src/app/sheets/workspace/background-sheet-interaction.test.ts
+  h_4b47e9e4a8b456 33,45
+webview/src/app/transcript/blocks/blocks-render.test.ts
+  h_4b47e9e4a8b456 14,19-37
+webview/src/app/transcript/blocks/blocks.tsx
+  h_4b47e9e4a8b456 174-177,255-272
+webview/src/client/turn-folds.test.ts
+  h_4b47e9e4a8b456 69,73,75,82
+webview/src/styles/blocks.css
+  h_4b47e9e4a8b456 169-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d5f2666b8628015455395b5c24d785edfe34f821",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
