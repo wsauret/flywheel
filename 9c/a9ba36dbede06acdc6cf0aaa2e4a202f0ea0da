@@ -1,0 +1,52 @@
+.github/workflows/ci.yml
+  h_4b47e9e4a8b456 128-132
+AGENTS.md
+  h_4b47e9e4a8b456 122
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 56
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 9-12
+docs/architecture.md
+  h_4b47e9e4a8b456 530
+package.json
+  h_4b47e9e4a8b456 28,100,106
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 1-1008
+scripts/architecture/build-model.ts
+  h_4b47e9e4a8b456 1-380
+scripts/architecture/field-access.ts
+  h_4b47e9e4a8b456 1-497
+scripts/architecture/graph.ts
+  h_4b47e9e4a8b456 1-292
+scripts/architecture/known-findings.ts
+  h_4b47e9e4a8b456 1-30
+scripts/architecture/layout.ts
+  h_4b47e9e4a8b456 1-226
+scripts/architecture/model.ts
+  h_4b47e9e4a8b456 1-146
+scripts/architecture/render.ts
+  h_4b47e9e4a8b456 1-78
+scripts/architecture/rules.ts
+  h_4b47e9e4a8b456 1-395
+scripts/architecture/syntax.ts
+  h_4b47e9e4a8b456 1-121
+scripts/architecture/tsconfig.json
+  h_4b47e9e4a8b456 1-13
+scripts/check-architecture.ts
+  h_4b47e9e4a8b456 1-47
+tests/integration/scripts/check-architecture.test.ts
+  h_4b47e9e4a8b456 1-74
+tests/unit/scripts/check-architecture.test.ts
+  h_4b47e9e4a8b456 1-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9ca9ba36dbede06acdc6cf0aaa2e4a202f0ea0da",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
