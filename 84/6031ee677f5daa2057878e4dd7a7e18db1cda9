@@ -1,0 +1,440 @@
+docs/architecture.md
+  h_4b47e9e4a8b456 510
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 50,55
+src/orchestration/agent-runtime/tools/sessions/message-session.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/agent-runtime/tools/sessions/process.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/agent-runtime/tools/sessions/workflow-targets.ts
+  h_4b47e9e4a8b456 1-8
+src/orchestration/app-service/projections/output/transcript-projection-cache.ts
+  h_4b47e9e4a8b456 28-35
+src/orchestration/modules/development/definitions/skills/webview-rendering/references/rules.md
+  h_4b47e9e4a8b456 68,70,238
+src/orchestration/modules/provider-google-antigravity/engine/engine-process.ts
+  h_4b47e9e4a8b456 22-23,92-93,498
+src/orchestration/modules/provider-google-antigravity/engine/session-files.ts
+  h_4b47e9e4a8b456 37-41
+src/orchestration/modules/provider-google-antigravity/request/bridge.ts
+  h_4b47e9e4a8b456 10,27,126,128-129,309,428,496,499,548
+src/orchestration/modules/provider-google-antigravity/stream-map.ts
+  h_4b47e9e4a8b456 7,33-34,39-41,62-63,65-66,84,150,155-169,173-175,177,181-201,205-208,278-279
+src/orchestration/modules/provider-google-antigravity/usage/conversation-usage.ts
+  h_4b47e9e4a8b456 1-215
+src/orchestration/session-store/event-adapter.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/session/conversation/transcript/conversation-block-projection.ts
+  h_4b47e9e4a8b456 33-41
+src/orchestration/workflow-host/workflow-addressing.ts
+  h_4b47e9e4a8b456 2,25-91
+src/protocol/client/host-contract.ts
+  h_4b47e9e4a8b456 7,131-169
+src/protocol/client/workflow-addresses.ts
+  h_4b47e9e4a8b456 4-9,72
+src/tui/commands/command-definitions.ts
+  h_4b47e9e4a8b456 4,29
+src/tui/commands/command-dispatch.ts
+  h_4b47e9e4a8b456 10
+src/tui/commands/command-types.ts
+  h_4b47e9e4a8b456 3-5,8,33-47,51,57-58
+src/tui/context/toast-presenter.ts
+  h_4b47e9e4a8b456 3,69-95
+src/tui/hooks/composer/use-commands.ts
+  h_4b47e9e4a8b456 4
+src/tui/shell/create-keyboard-handler.ts
+  h_4b47e9e4a8b456 9
+src/tui/shell/shell-composer-core.ts
+  h_4b47e9e4a8b456 1-77
+src/tui/shell/shell-composer.tsx
+  h_4b47e9e4a8b456 2-3,12,26,29-30,61-62
+src/tui/shell/shell-header.tsx
+  h_4b47e9e4a8b456 11
+src/tui/shell/shell-navigation.ts
+  h_4b47e9e4a8b456 13,15-16
+src/tui/shell/shell-overlays.ts
+  h_4b47e9e4a8b456 14,30-31
+src/tui/shell/shell-places.ts
+  h_4b47e9e4a8b456 1-100
+src/tui/shell/shell.tsx
+  h_4b47e9e4a8b456 41-42,44-45
+tests/helpers/command-context.ts
+  h_4b47e9e4a8b456 16
+tests/integration/orchestration/modules/provider-google-antigravity/engine-wire.test.ts
+  h_4b47e9e4a8b456 93
+tests/integration/providers/antigravity-subscription-real.test.ts
+  h_4b47e9e4a8b456 12-15,174,179-184,186,195,200-206
+tests/unit/orchestration/modules/provider-google-antigravity/module.test.ts
+  h_4b47e9e4a8b456 36
+tests/unit/orchestration/modules/provider-google-antigravity/request/bridge.test.ts
+  h_4b47e9e4a8b456 1-2,12-13,55-59,70,84,119,135-139,162-163,244,247-264,276-277
+tests/unit/orchestration/modules/provider-google-antigravity/stream-map.test.ts
+  h_4b47e9e4a8b456 8-10,32-35,37,41-51,120-141,151,154,164,168,184,231
+tests/unit/orchestration/modules/provider-google-antigravity/usage/conversation-usage.test.ts
+  h_4b47e9e4a8b456 1-170
+tests/unit/orchestration/workflow-host/workflow-addressing.test.ts
+  h_4b47e9e4a8b456 1-162
+tests/unit/protocol/client/workflow-addresses.test.ts
+  h_4b47e9e4a8b456 2,4,13
+tests/unit/tui/commands/command-dispatch.test.ts
+  h_4b47e9e4a8b456 48
+tests/unit/tui/commands/font-command.test.ts
+  h_4b47e9e4a8b456 4-6,10-13,16,30,32-33,39-41,49
+tests/unit/webview/local-route.test.ts
+  h_4b47e9e4a8b456 11-14
+vscode/scripts/e2e-live.ts
+  h_4b47e9e4a8b456 31
+vscode/src/providers/auth-notification-coordinator.test.ts
+  h_4b47e9e4a8b456 7-8
+vscode/src/providers/auth-notification-coordinator.ts
+  h_4b47e9e4a8b456 5
+vscode/src/webview/changes.test.ts
+  h_4b47e9e4a8b456 9-12
+webview/editor/client-replacement.test.ts
+  h_4b47e9e4a8b456 3
+webview/editor/client-replacement.ts
+  h_4b47e9e4a8b456 3
+webview/editor/main.tsx
+  h_4b47e9e4a8b456 7-8
+webview/phone/placement-client.test.ts
+  h_4b47e9e4a8b456 5
+webview/src/app/action-owner-fixture.ts
+  h_4b47e9e4a8b456 2
+webview/src/app/app-readiness-fixture.tsx
+  h_4b47e9e4a8b456 5,7
+webview/src/app/app.tsx
+  h_4b47e9e4a8b456 10-13,18,55
+webview/src/app/client-context-fixture.ts
+  h_4b47e9e4a8b456 6,8-9,12,22
+webview/src/app/client-context.ts
+  h_4b47e9e4a8b456 6-8
+webview/src/app/composer/composer-history.ts
+  h_4b47e9e4a8b456 1
+webview/src/app/composer/composer-submission-fixture.tsx
+  h_4b47e9e4a8b456 4-5,8-10,16,18
+webview/src/app/composer/composer.tsx
+  h_4b47e9e4a8b456 4,7,22,27,30,32-33
+webview/src/app/composer/drafts/composer-drafts.ts
+  h_4b47e9e4a8b456 1-2
+webview/src/app/composer/drafts/composer-session-drafts.test.ts
+  h_4b47e9e4a8b456 3-5
+webview/src/app/composer/drafts/composer-session-drafts.ts
+  h_4b47e9e4a8b456 2-4
+webview/src/app/composer/menus/command-panel-controls-fixture.tsx
+  h_4b47e9e4a8b456 8-9,12-13
+webview/src/app/composer/menus/command-panel.tsx
+  h_4b47e9e4a8b456 9,11
+webview/src/app/composer/questions/question-panel-fixture.tsx
+  h_4b47e9e4a8b456 3
+webview/src/app/composer/questions/question-panel.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/app/composer/questions/question-panel.tsx
+  h_4b47e9e4a8b456 5
+webview/src/app/screens/screen-stack.test.ts
+  h_4b47e9e4a8b456 5
+webview/src/app/screens/screen-stack.ts
+  h_4b47e9e4a8b456 3
+webview/src/app/sessions/session-actions.ts
+  h_4b47e9e4a8b456 1-2
+webview/src/app/sessions/session-copy-interaction-fixture.ts
+  h_4b47e9e4a8b456 3
+webview/src/app/sessions/session-list.tsx
+  h_4b47e9e4a8b456 9-10
+webview/src/app/sessions/session-notices.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/sessions/session-rows.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/app/sessions/session-rows.ts
+  h_4b47e9e4a8b456 1
+webview/src/app/sheets/commands/commands-sheet.tsx
+  h_4b47e9e4a8b456 6
+webview/src/app/sheets/commands/surfaces.ts
+  h_4b47e9e4a8b456 8-9
+webview/src/app/sheets/models/model-catalog.ts
+  h_4b47e9e4a8b456 3-4
+webview/src/app/sheets/models/model-roles.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/app/sheets/models/model-roles.ts
+  h_4b47e9e4a8b456 1
+webview/src/app/sheets/models/model-sheet.tsx
+  h_4b47e9e4a8b456 3,5,9
+webview/src/app/sheets/models/models-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 6
+webview/src/app/sheets/models/models-sheet.tsx
+  h_4b47e9e4a8b456 7-8
+webview/src/app/sheets/providers/profiles-sheet.tsx
+  h_4b47e9e4a8b456 7
+webview/src/app/sheets/providers/provider-models-sheet.tsx
+  h_4b47e9e4a8b456 7
+webview/src/app/sheets/providers/provider-view-model.test.ts
+  h_4b47e9e4a8b456 4-5
+webview/src/app/sheets/providers/provider-view-model.ts
+  h_4b47e9e4a8b456 1-4
+webview/src/app/sheets/providers/providers-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 10
+webview/src/app/sheets/providers/providers-sheet.tsx
+  h_4b47e9e4a8b456 9-10
+webview/src/app/sheets/settings/capability-preset-interaction-fixture.ts
+  h_4b47e9e4a8b456 15
+webview/src/app/sheets/settings/capability-preset.ts
+  h_4b47e9e4a8b456 2
+webview/src/app/sheets/settings/setting-rows.tsx
+  h_4b47e9e4a8b456 15
+webview/src/app/sheets/workspace/background-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 11
+webview/src/app/sheets/workspace/changes-content.tsx
+  h_4b47e9e4a8b456 7
+webview/src/app/sheets/workspace/service-restart.test.ts
+  h_4b47e9e4a8b456 4-6
+webview/src/app/sheets/workspace/service-restart.ts
+  h_4b47e9e4a8b456 1-2
+webview/src/app/sheets/workspace/status-sheet.tsx
+  h_4b47e9e4a8b456 6,10,14
+webview/src/app/toolbar/composer-status-fixture.ts
+  h_4b47e9e4a8b456 9-10
+webview/src/app/toolbar/composer-status.tsx
+  h_4b47e9e4a8b456 5
+webview/src/app/toolbar/context-gauge.test.ts
+  h_4b47e9e4a8b456 3
+webview/src/app/toolbar/toolbar-badges-fixture.ts
+  h_4b47e9e4a8b456 5
+webview/src/app/toolbar/toolbar-badges.tsx
+  h_4b47e9e4a8b456 3
+webview/src/app/toolbar/toolbar.tsx
+  h_4b47e9e4a8b456 6,9
+webview/src/app/transcript/activity-status.tsx
+  h_4b47e9e4a8b456 5
+webview/src/app/transcript/blocks/agents/agent-group-fixture.ts
+  h_4b47e9e4a8b456 5-6
+webview/src/app/transcript/blocks/agents/agent-group.tsx
+  h_4b47e9e4a8b456 9
+webview/src/app/transcript/blocks/blocks.test.ts
+  h_4b47e9e4a8b456 5
+webview/src/app/transcript/blocks/blocks.tsx
+  h_4b47e9e4a8b456 19,22-23,28
+webview/src/app/transcript/blocks/compact-tool-rows.tsx
+  h_4b47e9e4a8b456 6
+webview/src/app/transcript/blocks/text/file-diff.test.ts
+  h_4b47e9e4a8b456 9
+webview/src/app/transcript/blocks/tools/tool-group.tsx
+  h_4b47e9e4a8b456 8
+webview/src/app/transcript/blocks/tools/tool-settlement-fixture.tsx
+  h_4b47e9e4a8b456 6
+webview/src/app/transcript/blocks/turn-changes.tsx
+  h_4b47e9e4a8b456 6-7
+webview/src/app/transcript/blocks/turn-features.test.ts
+  h_4b47e9e4a8b456 6
+webview/src/app/transcript/intro-card.tsx
+  h_4b47e9e4a8b456 5
+webview/src/app/transcript/reading/find-bar.tsx
+  h_4b47e9e4a8b456 4
+webview/src/app/transcript/reading/row-time.tsx
+  h_4b47e9e4a8b456 5
+webview/src/app/transcript/render-continuity.test.ts
+  h_4b47e9e4a8b456 17-18
+webview/src/app/transcript/render-ownership-fixture.ts
+  h_4b47e9e4a8b456 19-20,23,25,27,31
+webview/src/app/transcript/transcript-scroll.test.ts
+  h_4b47e9e4a8b456 6
+webview/src/app/transcript/transcript-scroll.ts
+  h_4b47e9e4a8b456 2
+webview/src/app/transcript/transcript.tsx
+  h_4b47e9e4a8b456 9-10,12
+webview/src/client/actions.test.ts
+  h_4b47e9e4a8b456 9-10,12
+webview/src/client/actions.ts
+  h_4b47e9e4a8b456 14-16,18
+webview/src/client/commands/command-choices.ts
+  h_4b47e9e4a8b456 1-2
+webview/src/client/commands/session-commands.test.ts
+  h_4b47e9e4a8b456 4-10
+webview/src/client/domains/module-domain-monitor.test.ts
+  h_4b47e9e4a8b456 4-9,11-14
+webview/src/client/domains/module-domain-monitor.ts
+  h_4b47e9e4a8b456 1-4
+webview/src/client/domains/module-domain-views.test.ts
+  h_4b47e9e4a8b456 4-5
+webview/src/client/domains/module-domain-views.ts
+  h_4b47e9e4a8b456 1-5
+webview/src/client/domains/workflow-monitor.test.ts
+  h_4b47e9e4a8b456 4-8,10-12
+webview/src/client/format/changes-label.ts
+  h_4b47e9e4a8b456 1
+webview/src/client/input/input-diagnostics.test.ts
+  h_4b47e9e4a8b456 3
+webview/src/client/input/input-diagnostics.ts
+  h_4b47e9e4a8b456 1
+webview/src/client/input/input-reload-checkpoint.ts
+  h_4b47e9e4a8b456 2-4
+webview/src/client/input/input-reload.test.ts
+  h_4b47e9e4a8b456 6-7
+webview/src/client/input/reading-place.ts
+  h_4b47e9e4a8b456 1
+webview/src/client/questions/question-answer.ts
+  h_4b47e9e4a8b456 1-3
+webview/src/client/questions/question-pager.test.ts
+  h_4b47e9e4a8b456 5-9,11-14
+webview/src/client/questions/question-pager.ts
+  h_4b47e9e4a8b456 2-5
+webview/src/client/session-settings.test.ts
+  h_4b47e9e4a8b456 6,12
+webview/src/client/session/navigation/session-navigation-fixture.ts
+  h_4b47e9e4a8b456 1-6
+webview/src/client/session/navigation/session-navigation.test.ts
+  h_4b47e9e4a8b456 4-6,9-10
+webview/src/client/session/navigation/session-navigation.ts
+  h_4b47e9e4a8b456 1-3
+webview/src/client/session/navigation/session-selection.test.ts
+  h_4b47e9e4a8b456 4-6,9-10
+webview/src/client/session/navigation/session-stopped-workflow.test.ts
+  h_4b47e9e4a8b456 4-11
+webview/src/client/session/residents/active-model.ts
+  h_4b47e9e4a8b456 1
+webview/src/client/session/residents/presented-block-fixture.ts
+  h_4b47e9e4a8b456 1-2
+webview/src/client/session/residents/session-holds.ts
+  h_4b47e9e4a8b456 1-5
+webview/src/client/session/residents/session-residency.test.ts
+  h_4b47e9e4a8b456 5-14
+webview/src/client/session/residents/session-residents.ts
+  h_4b47e9e4a8b456 1-8,10,54
+webview/src/client/session/residents/session-roles.test.ts
+  h_4b47e9e4a8b456 4-5,7-9
+webview/src/client/session/residents/session-roles.ts
+  h_4b47e9e4a8b456 1-6
+webview/src/client/session/residents/session-seat.ts
+  h_4b47e9e4a8b456 1-3,5
+webview/src/client/session/residents/tool-runs.test.ts
+  h_4b47e9e4a8b456 4-6,8
+webview/src/client/session/residents/tool-runs.ts
+  h_4b47e9e4a8b456 1-10
+webview/src/client/session/residents/turn-folds.test.ts
+  h_4b47e9e4a8b456 4-7,10-11
+webview/src/client/session/residents/turn-folds.ts
+  h_4b47e9e4a8b456 1,3-8
+webview/src/client/session/session-input.test.ts
+  h_4b47e9e4a8b456 4-5,7-9,11-12
+webview/src/client/session/session-input.ts
+  h_4b47e9e4a8b456 1-9
+webview/src/client/session/session-readings.test.ts
+  h_4b47e9e4a8b456 3-10,12,15-18
+webview/src/client/session/session-readings.ts
+  h_4b47e9e4a8b456 1-8
+webview/src/client/session/session-selection-fixture.ts
+  h_4b47e9e4a8b456 1-4,6-9
+webview/src/client/session/session-send.test.ts
+  h_4b47e9e4a8b456 5-7,9-11
+webview/src/client/session/session-state.ts
+  h_4b47e9e4a8b456 1-22
+webview/src/client/session/session.test.ts
+  h_4b47e9e4a8b456 6-13,15,17-20
+webview/src/client/session/session.ts
+  h_4b47e9e4a8b456 1-18,20-23,25-28,31-34,62,157
+webview/src/client/session/view-state.test.ts
+  h_4b47e9e4a8b456 4-11
+webview/src/client/session/view-state.ts
+  h_4b47e9e4a8b456 1-23
+webview/src/client/session/workspace/auth-monitor.ts
+  h_4b47e9e4a8b456 1-5
+webview/src/client/session/workspace/session-auth.test.ts
+  h_4b47e9e4a8b456 3-8
+webview/src/client/session/workspace/session-catalog.test.ts
+  h_4b47e9e4a8b456 4-7
+webview/src/client/session/workspace/session-catalog.ts
+  h_4b47e9e4a8b456 1-5
+webview/src/client/session/workspace/session-lanes.test.ts
+  h_4b47e9e4a8b456 3-6,8,11-16
+webview/src/client/session/workspace/session-live-patches.test.ts
+  h_4b47e9e4a8b456 3-10
+webview/src/client/session/workspace/session-updates.test.ts
+  h_4b47e9e4a8b456 4-8
+webview/src/client/session/workspace/session-workspace.ts
+  h_4b47e9e4a8b456 1-2
+webview/src/client/session/workspace/workspace-status-views.ts
+  h_4b47e9e4a8b456 1-5
+webview/src/client/settings-actions.test.ts
+  h_4b47e9e4a8b456 10
+webview/src/host-commands.test.ts
+  h_4b47e9e4a8b456 7
+webview/src/host.ts
+  h_4b47e9e4a8b456 7
+webview/src/index.ts
+  h_4b47e9e4a8b456 11-14,19-23
+webview/src/modules/bug-reports/report.ts
+  h_4b47e9e4a8b456 4
+webview/src/modules/bug-reports/surfaces-fixture.ts
+  h_4b47e9e4a8b456 6
+webview/src/modules/bug-reports/surfaces.tsx
+  h_4b47e9e4a8b456 8
+webview/src/modules/mcp/sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 6
+webview/src/modules/project-notifications/sheet-fixture.ts
+  h_4b47e9e4a8b456 3-4
+webview/src/modules/project-notifications/sheet.tsx
+  h_4b47e9e4a8b456 5-6,8
+webview/src/modules/reclaim-storage/sheet-fixture.ts
+  h_4b47e9e4a8b456 7
+webview/src/modules/reclaim-storage/sheet.tsx
+  h_4b47e9e4a8b456 6
+webview/src/modules/remote/menu.test.ts
+  h_4b47e9e4a8b456 6-7
+webview/src/modules/remote/push-actions.test.ts
+  h_4b47e9e4a8b456 5
+webview/src/modules/remote/push-registration.test.ts
+  h_4b47e9e4a8b456 4-5
+webview/src/modules/remote/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 3
+webview/src/modules/remote/sheet.tsx
+  h_4b47e9e4a8b456 8
+webview/src/modules/side-question/sheet-fixture.ts
+  h_4b47e9e4a8b456 4
+webview/src/modules/side-question/sheet.tsx
+  h_4b47e9e4a8b456 3
+webview/src/modules/subscription-usage/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 2
+webview/src/modules/subscription-usage/sheet.tsx
+  h_4b47e9e4a8b456 9
+webview/src/modules/subscription-usage/stats-sheet.tsx
+  h_4b47e9e4a8b456 8
+webview/src/modules/workflows/index.tsx
+  h_4b47e9e4a8b456 5
+webview/src/modules/workflows/inspection.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/modules/workflows/inspection.ts
+  h_4b47e9e4a8b456 6
+webview/src/modules/workflows/navigation.ts
+  h_4b47e9e4a8b456 6
+webview/src/modules/workflows/screen/agent-header-fixture.tsx
+  h_4b47e9e4a8b456 6,9
+webview/src/modules/workflows/screen/agent-header.tsx
+  h_4b47e9e4a8b456 8
+webview/src/modules/workflows/stability-fixture.tsx
+  h_4b47e9e4a8b456 7-9
+webview/src/modules/workflows/workflow-agent.test.ts
+  h_4b47e9e4a8b456 4-6
+webview/src/session-host-loader-fixture.ts
+  h_4b47e9e4a8b456 4-7,13
+webview/src/test-support/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 7-8,10
+webview/src/test-support/module-rows-fixture.ts
+  h_4b47e9e4a8b456 7
+webview/src/test-support/semantic-rows-fixture.tsx
+  h_4b47e9e4a8b456 6-8
+webview/src/test-support/stability.test.ts
+  h_4b47e9e4a8b456 7
+webview/src/web-module-client.ts
+  h_4b47e9e4a8b456 4,6
+webview/test-support/web-blocks-render.ts
+  h_4b47e9e4a8b456 10,14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "846031ee677f5daa2057878e4dd7a7e18db1cda9",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
