@@ -107,10 +107,8 @@ export function mountController(slot: TranscriptLayoutSlot, snapshot: () => Tran
     snapshot,
     projection: () => emptyProjection,
     showThinking: () => false,
-    hydrateAnchor: () => Promise.resolve(),
+    transcript: { visibleMessageCount: () => 0, jumpToLatest: () => Promise.resolve(), takeEstimateUpdates: () => [], evictBefore: () => {} },
     updateSelection: () => {},
-    visibleMessageCount: () => 0,
-    jumpToLatest: () => Promise.resolve(),
     slot,
     // Pinned so a wheel report is one row on every host: the wheel tests count
     // rows, and Windows Terminal reports notches.

@@ -614,11 +614,6 @@ export function createOutputTranscriptCache(deps: {
         const id = sessionId()
         return id ? freshness[id] : undefined
       },
-      // An empty window that leaves the viewport short is read again from the tail.
-      hydrateAnchor: () => {
-        const id = sessionId()
-        return id ? jumpToLatest(id) : Promise.resolve()
-      },
       loadAround: (entryId) => {
         const id = sessionId()
         return id && residents.get(id) ? ensureResident(id).store.openAround(entryId).then(() => undefined) : Promise.resolve()

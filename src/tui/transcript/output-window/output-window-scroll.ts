@@ -556,7 +556,7 @@ function nearEdge(input: NearEdgeInput): EdgeDirection | null {
 
 /** Underfill: the hydrated window is shorter than the viewport, so even pinned to
  *  the bottom there is empty space. An empty window is repaired by ONE
- *  hydrateAnchor (the cold-open seed); a resident window's deficit is above it
+ *  tail read (the cold-open seed); a resident window's deficit is above it
  *  (underfill implies hasBefore) and repairs through an older page. Returns the
  *  row deficit, or 0 when the window fills the viewport. */
 function underfillRows(windowRows: number, viewportRows: number, hasBefore: boolean): number {
@@ -565,7 +565,7 @@ function underfillRows(windowRows: number, viewportRows: number, hasBefore: bool
 }
 
 /** The paging signals for one scrolled frame: which unhydrated edge the viewport
- *  approaches, and the underfill deficit that warrants a hydrateAnchor. Pure
+ *  approaches, and the underfill deficit that warrants a tail read. Pure
  *  window math over the extent index; the scroll controller acts on the result. */
 export function frameEdgeSignals(
   el: ScrollGeometryElement,
