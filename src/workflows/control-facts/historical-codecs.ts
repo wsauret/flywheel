@@ -1,9 +1,9 @@
 import { Schema } from "effect";
-import { DurableFollowUpInputSchema } from "../../../infra/chat-input-schema.js";
+import { DurableFollowUpInputSchema } from "../../infra/chat-input-schema.js";
 import { DefinitionIdentityV1Schema, DefinitionIdentityV2Schema } from "./historical-identity-codecs.js";
 import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "./events.js";
-import { ArtifactContractSchema } from "../../schema/artifact-contracts.js";
-import { FieldMapSchema } from "../../output-contract/grammar.js";
+import { ArtifactContractSchema } from "../schema/artifact-contracts.js";
+import { FieldMapSchema } from "../output-contract/grammar.js";
 
 // Frozen wire contracts. Nothing in this file derives from the current graph,
 // control, event, or definition identity schemas, so a change to those

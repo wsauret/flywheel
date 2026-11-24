@@ -8,7 +8,7 @@ import { WORKFLOW_FILE_MAX_BYTES } from "../../../src/infra/workflow-yaml.js"
 import { readPathWorkflow } from "../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import { JOIN_EXPANSION_CAP_BYTES } from "../../../src/workflows/context-bundle/context.js"
 import { envelopeKeys } from "../../../src/workflows/output-contract/grammar.js"
-import { workflowCompletionContent } from "../../../src/workflows/run/workflow-completion.js"
+import { workflowCompletionContent } from "../../../src/workflows/vm/recovery/workflow-completion.js"
 import { REGISTERED_REDUCERS } from "../../../src/workflows/reducers/registry.js"
 import { decodeWorkflowFile } from "../../../src/workflows/vm/admission/workflow-file.js"
 import {

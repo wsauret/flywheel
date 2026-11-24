@@ -14,7 +14,7 @@ import type { RuntimeUiPatchInput } from "../../../../../../src/protocol/runtime
 import type { WorkflowLiveView } from "../../../../../../src/protocol/workflow-view-protocol-types.js"
 import { MODULE_DOMAIN_BINDINGS } from "../../../../../../src/protocol/client/module-domain.js"
 import { recoverWorkflowControl } from "../../../../../../src/workflows/vm/recovery/recovery.js"
-import { WORKFLOW_ROOT_FACT_TYPES } from "../../../../../../src/workflows/run/workflow-root.js"
+import { WORKFLOW_ROOT_FACT_TYPES } from "../../../../../../src/workflows/control-facts/workflow-root.js"
 import { temporaryDirectories } from "../../../../../helpers/directories.js"
 import { countStateRequests } from "../../../../../helpers/state-requests.js"
 import { commitWorkflowEvent, publishWorkerAttempt } from "../../../workflow-host/_workflow-host-fixtures.js"

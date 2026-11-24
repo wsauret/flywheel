@@ -3,7 +3,7 @@ import { extractToolContentFact, type ExtractedToolContentFact } from "../../../
 import { contentEvidence } from "../../../../infra/content-evidence.js"
 import { stringField } from "../../../../infra/tools/json-field.js"
 import type { ToolOutcome } from "../../../../infra/tool-outcome.js"
-import { readTerminalHandoff, workflowStartFailureContent, workflowStopContent } from "../../../../workflows/run/workflow-completion.js"
+import { readTerminalHandoff, workflowStartFailureContent, workflowStopContent } from "../../../../workflows/vm/recovery/workflow-completion.js"
 import { childSessionResultFact, workflowNotificationLabel } from "./child-session-completion.js"
 import { prepareSessionFactAppend } from "../../persistence/session-fact-writer.js"
 import { holdsInterruptedGuess, readToolExecution } from "../../runtime-facts/tool-execution-projection.js"

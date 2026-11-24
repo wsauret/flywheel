@@ -9,7 +9,7 @@ import { createSessionFactWriter, type SessionFactWriter } from "../../../../src
 import { acquireSessionResources } from "../../../../src/orchestration/session/persistence/session-resources-service.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { createContextAccumulator } from "../../../../src/workflows/context-bundle/context.js"
-import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store.js"
+import { createWorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import { createAttemptExecutor, type AttemptRunOutcome } from "../../../../src/workflows/vm/host/attempt-runner.js"
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host/host.js"
 import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/workflows/vm/host/host-types.js"

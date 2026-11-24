@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import { WorkflowProposalEventV4Schema } from "../../../../src/workflows/vm/facts/historical-codecs.js"
+import { WorkflowProposalEventV4Schema } from "../../../../src/workflows/control-facts/historical-codecs.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
-import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
+import { loadQueueFromEvents } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js"
 import {
   proposeFollowUpTransfer,

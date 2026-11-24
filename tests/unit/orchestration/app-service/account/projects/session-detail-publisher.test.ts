@@ -22,7 +22,7 @@ import { durableRow, storedEvents, workflowEntry } from "../../_frontend-project
 import { phaseBindings, phaseControl } from "../../../../workflows/vm/_tree-fixtures.js"
 import { flattenWorkflowView } from "../../../../../../src/workflows/vm/view/view-flatten.js"
 import { queueFactsForState } from "../../../../../../src/workflows/view/view-diff.js"
-import { buildWorkflowControlInitializedFact } from "../../../../../../src/workflows/vm/facts/session-facts.js"
+import { buildWorkflowControlInitializedFact } from "../../../../../../src/workflows/control-facts/family.js"
 import { buildContextInputSeededFact } from "../../../../../../src/workflows/context-bundle/context-facts.js"
 import { isInterruptible } from "../../../../../../src/protocol/client/session-controls.js"
 import { createSessionManager } from "../../../../../../src/orchestration/session/manager.js"

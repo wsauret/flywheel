@@ -9,7 +9,7 @@ import {
   type AttemptRunOutcome,
 } from "../../../../../src/workflows/vm/host/attempt-runner.js";
 import { testResolvedAgent } from "../../../../helpers/skill-fixtures.js";
-import type { CommittedWorkflowControl } from "../../../../../src/workflows/vm/facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../../src/workflows/control-facts/committed-control.js";
 import {
   attempt,
   binding,

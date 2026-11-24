@@ -13,7 +13,7 @@ import { parseSessionRuntimeFact } from "../../../../src/orchestration/session/r
 import { extractToolContentFact } from "../../../../src/infra/tool-content-extraction"
 import { TOOL_CONTENT_INLINE_MAX_BYTES } from "../../../../src/infra/tool-content"
 import { buildHandoffWrittenFact } from "../../../../src/workflows/output-contract/facts"
-import { readTerminalHandoff } from "../../../../src/workflows/run/workflow-completion"
+import { readTerminalHandoff } from "../../../../src/workflows/vm/recovery/workflow-completion"
 import { parseWorkflowRunFact } from "../../../../src/workflows/run/run-facts"
 import { readWorkflowControl } from "../../../../src/workflows/vm/recovery/recovery-fold"
 import { temporaryDirectories } from "../../../helpers/directories"

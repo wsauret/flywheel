@@ -26,7 +26,7 @@ import type {
   AttemptFailure,
   AttemptOutcome,
   ReassessmentProposal,
-} from "../facts/events.js";
+} from "../../control-facts/events.js";
 import { reassessesRetiredFor, reassessmentIssues, reassessmentProposal, type ReassessmentControl, type ReassessmentHandoff } from "../transitions/reassessment.js";
 import type { AgentOutput } from "./agent-outcome.js";
 

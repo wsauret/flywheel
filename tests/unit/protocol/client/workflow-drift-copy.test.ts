@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { workflowDriftExplanation } from "../../../../src/protocol/client/workflow-drift-copy.js"
 import { parseDefinitionProvenanceFact } from "../../../../src/workflows/provenance/definition-provenance-facts.js"
-import { publishedDefinitionDrift } from "../../../../src/workflows/vm/facts/definition-identity.js"
+import { publishedDefinitionDrift } from "../../../../src/workflows/control-facts/definition-identity.js"
 import { currentDefinitionDriftRejection } from "../../../../src/workflows/vm/recovery/recovery.js"
 
 describe("workflow drift copy", () => {

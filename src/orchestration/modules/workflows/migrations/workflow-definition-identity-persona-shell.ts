@@ -7,8 +7,8 @@ import { replayWorkflowControl } from "../../../../workflows/vm/recovery/fact-fo
 import {
   DEFINITION_IDENTITY_PERSONA_SHELL_MIGRATION_ID,
   type DefinitionIdentity,
-} from "../../../../workflows/vm/facts/definition-identity.js"
-import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/facts/session-facts.js"
+} from "../../../../workflows/control-facts/definition-identity.js"
+import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/control-facts/family.js"
 import { checkedThrough, headPosition, recordChecked, tableExists } from "../../../migrations/engine.js"
 import { MIGRATED_FACT_TYPE, recordSkippedWorkflowMigrationCandidate } from "./workflow-identity-chain.js"
 

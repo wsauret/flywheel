@@ -23,7 +23,7 @@ import type { SessionBudgetStore } from "../../../../src/orchestration/session/r
 import type { SessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import type { SessionToolExecutionStore } from "../../../../src/orchestration/session/runtime-facts/tool-execution-types.js"
 import type { WorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
-import type { WorkflowViewStore } from "../../../../src/workflows/view/view-store.js"
+import type { WorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import { acquireChildExecutionResources } from "../../../../src/orchestration/session/control/children/child-execution-resources.js"
 import { readBackgroundCommands } from "../../../../src/orchestration/session/runtime-facts/background-index-projection.js"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"

@@ -2,7 +2,7 @@ import { CorruptEventRowError, StateRequestNotServedError, type AsyncEventStateR
 import { parseProjectionFact } from "../../../infra/event-projection.js"
 import type { ChatSessionAction, StoppedBy, WorkflowSessionAction } from "../../../protocol/app-service-types.js"
 import type { WorkflowView } from "../../../workflows/view/types.js"
-import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { parseConversationTreeFact, type ConversationTreeFact } from "../conversation/conversation-facts.js"
 import { chatTurnEndEvidenceOf, isPlannedCut, isProducedInput, isResumableTurnEnd, isSkippedByWalk, pendingTurnEndEntry, restoredWaitReadsOlder, turnEndOfEntry, waitsAtRuntimeInterrupt, waitsForPerson, type ChatTurnEnd, type TurnEnd, type TurnEndEntry } from "../conversation/turn-end-record.js"
 import { isWorkflowResumeCandidate } from "../metadata/resumable.js"

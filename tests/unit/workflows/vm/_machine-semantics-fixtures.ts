@@ -1,7 +1,7 @@
 import { expect } from "bun:test";
 import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/control/commands.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
-import type { FollowUpV10 } from "../../../../src/workflows/vm/graph/graph-types.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
+import type { FollowUpV10 } from "../../../../src/workflows/control-facts/graph-types.js";
 import {
   replayDecodedWorkflow,
   transitionDecodedWorkflow,

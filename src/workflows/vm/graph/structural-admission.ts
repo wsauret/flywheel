@@ -1,10 +1,10 @@
 import { isDeepStrictEqual } from "node:util";
 import { Schema } from "effect";
 import { DEFAULT_COUNTED_LIST_MAX, MAX_ATTEMPTS_CEILING } from "../../schema/workflow-schema.js";
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import { findDependencyCycles } from "./frontier.js";
 import { isContainerNode, listJoin, rerunSupersededIds } from "./graph-changes.js";
-import { inRound, listAgentCount, repeatRun, roundOfNodeId, type ListNode, type LogicalNode, type RepeatNode, type WorkflowGraph, type WorkflowOwnership } from "./graph-types.js";
+import { inRound, listAgentCount, repeatRun, roundOfNodeId, type ListNode, type LogicalNode, type RepeatNode, type WorkflowGraph, type WorkflowOwnership } from "../../control-facts/graph-types.js";
 import type { WorkflowVerificationFinding } from "../compile/verify-types.js";
 
 /** The control that structural admission reads. It never reads node or

@@ -3,7 +3,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedAppendResult,
 import type { WorkflowView } from "../../view/types.js"
 import type { WorkflowContextStore } from "../../context-bundle/context-store.js"
 import type { AddressedAddendum, RequestAddendumMessage } from "../../context-bundle/context-facts.js"
-import type { WorkflowViewStore } from "../../view/view-store.js"
+import type { WorkflowViewStore } from "../recovery/workflow-view.js"
 import type { ProjectDefinitionRegistryRevision } from "../../definitions/definition-registry.js"
 import type { WorkflowDefinition } from "../../schema/workflow-schema.js"
 import type { AttemptExecutor } from "./attempt-runner.js"

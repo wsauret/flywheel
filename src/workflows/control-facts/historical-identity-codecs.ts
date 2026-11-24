@@ -1,5 +1,5 @@
 import { Schema, SchemaTransformation } from "effect";
-import { Sha256Schema } from "../../provenance/definition-hash.js";
+import { Sha256Schema } from "../provenance/definition-hash.js";
 
 // Frozen definition identity codecs, which the frozen control roots of
 // `historical-codecs.ts` hold. Nothing here derives from the current

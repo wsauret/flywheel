@@ -1,5 +1,5 @@
 import { describe, expect, it, spyOn } from "bun:test"
-import * as committedControl from "../../../../../src/workflows/vm/facts/committed-control.js"
+import * as committedControl from "../../../../../src/workflows/control-facts/committed-control.js"
 import { asAsyncEventReadSurface, CorruptEventRowError, type StoredFact } from "../../../../../src/infra/event-store-types.js"
 import { buildContextInputSeededFact } from "../../../../../src/workflows/context-bundle/context-facts.js"
 import { buildDefinitionDriftRejectedFact } from "../../../../../src/workflows/provenance/definition-provenance-facts.js"

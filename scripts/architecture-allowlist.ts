@@ -37,16 +37,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   },
   {
     lint: "module-cycle",
-    reason: "vm uses run's root selectors (run/workflow-root) and projection boundary (run/session-fact-source), composes the run-facts codecs, and folds the facts that context-bundle writes, while run/workflow-root, run/session-fact-source, and context-bundle decode facts through vm's parseWorkflowSessionFact and workflowAggregateId, and view reads vm's recovery; run/workflow-completion also reads the view and the context of a finished run; src/orchestration imports both from vm, so moving them below vm also changes those imports. Give workflowAggregateId a home below vm, give each lower module a parser of its own fact family, and pass the historical-tree function into queueFromProjection, then reassess.",
-    key: [
-      "flywheel::workflows::context-bundle",
-      "flywheel::workflows::run",
-      "flywheel::workflows::view",
-      "flywheel::workflows::vm",
-    ].join(","),
-  },
-  {
-    lint: "module-cycle",
     reason: "The command context reads the shell (ShellSignals fields, RuntimeConfigCache.view, mutateRuntimeConfig, and the report-async reporters), while the shell wires the commands. The cheapest tie: `hooks` uses `commands` by 3 items (commandsToOptions, CommandDispatch.dispatch, SurfaceRequest.isCurrent), against 7 the other way, but those 3 are the commands' own interface, so cut the 7 instead: give the command context its own contract in commands/command-types.ts that the shell state and the runtime config cache satisfy, and move report-async below both.",
     key: [
       "flywheel::tui::commands",

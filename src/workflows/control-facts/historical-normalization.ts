@@ -1,13 +1,13 @@
 import { Array as Arr } from "effect";
 import type { CommittedWorkflowControl } from "./committed-control.js";
-import type { Attempt, ExpansionChange, LogicalNode, RetryControl, WorkflowOwnership } from "../graph/graph-types.js";
+import type { Attempt, ExpansionChange, LogicalNode, RetryControl, WorkflowOwnership } from "./graph-types.js";
 import type {
   AllRequiredJoinV3, AttemptV3, AttemptV8, ControlV10, ControlV3, ControlV4, ControlV5, ControlV6, ControlV7, ControlV8, ControlV9,
   ExpansionChangeV8, GraphChangeV5, GraphV3, GraphV4, GraphV8, HistoricalWorkflowControlV2, LogicalNodeV3, LogicalNodeV8, OwnershipV3, OwnershipV8,
 } from "./historical-codecs.js";
-import { collectOutput } from "../../reducers/collect.js";
-import { coverageOutput } from "../../reducers/coverage.js";
-import type { FieldMap } from "../../output-contract/grammar.js";
+import { collectOutput } from "../reducers/collect.js";
+import { coverageOutput } from "../reducers/coverage.js";
+import type { FieldMap } from "../output-contract/grammar.js";
 
 // The one pure normalization of each strictly decoded historical control to
 // control version 11. Every graph before version 8 first maps to

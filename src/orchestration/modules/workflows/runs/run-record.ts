@@ -10,7 +10,7 @@ import { readWorkflowInputSeed } from "../../../../workflows/context-bundle/cont
 import { parseWorkflowRunFact, WorkflowRunFactSchemas, type WorkflowCapabilityBoundary } from "../../../../workflows/run/run-facts.js"
 import { nextRunCut, type WorkflowRunCut, type WorkflowRunReader, type WorkflowRunRecord } from "../../../workflow-host/run-record.js"
 import { readWorkflowRecovery } from "../../../../workflows/vm/recovery/recovery-fold.js"
-import type { Attempt } from "../../../../workflows/vm/graph/graph-types.js"
+import type { Attempt } from "../../../../workflows/control-facts/graph-types.js"
 import { readAttemptStarts, servedAttempts } from "../../../../workflows/vm/host/attempt-conversations.js"
 
 interface RunRegistration {

@@ -9,7 +9,7 @@ const IMPLEMENT = `${MAP_GROUP}:phase:1`;
 const REVIEW = `${MAP_GROUP}:phase:2`;
 import { drive, interrupt, mapBindings, mapControl, mapOutcome, phaseControl, startNext, wideControl } from "./_tree-fixtures.js";
 import { completeAttempt, failAttempt, prepareExecution, startExecution } from "../../../../src/workflows/vm/transitions/attempt-transitions.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js";

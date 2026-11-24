@@ -10,8 +10,8 @@ import {
   DEFINITION_IDENTITY_GRAPH_MIGRATION_ID,
   DefinitionIdentitySchema,
   type DefinitionIdentity,
-} from "../../../../workflows/vm/facts/definition-identity.js"
-import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/facts/session-facts.js"
+} from "../../../../workflows/control-facts/definition-identity.js"
+import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/control-facts/family.js"
 import { MIGRATED_FACT_TYPE } from "./workflow-identity-chain.js"
 import { tableExists } from "../../../migrations/engine.js"
 

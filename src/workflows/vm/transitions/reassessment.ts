@@ -1,10 +1,10 @@
 import { assertNever } from "../../../infra/assert-never.js";
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import type { HandoffIssue } from "../../output-contract/facts.js";
-import type { ReassessmentChange, ReassessmentProposal } from "../facts/events.js";
-import { repeatRun, roundOfNodeId, type Attempt, type RepeatNode } from "../graph/graph-types.js";
+import type { ReassessmentChange, ReassessmentProposal } from "../../control-facts/events.js";
+import { repeatRun, roundOfNodeId, type Attempt, type RepeatNode } from "../../control-facts/graph-types.js";
 import { initialAttempts, insertNode, replaceNode, withNodeState } from "../graph/graph-changes.js";
-import { allRequiredJoinEdges, normalizeLogicalNodeV3 } from "../facts/historical-normalization.js";
+import { allRequiredJoinEdges, normalizeLogicalNodeV3 } from "../../control-facts/historical-normalization.js";
 import { admitStructureChange, queuedAttempts } from "../graph/structural-admission.js";
 import type { ReassessmentPayload, RetiredReassessmentPayload } from "../../definitions/reassessment-contract.js";
 

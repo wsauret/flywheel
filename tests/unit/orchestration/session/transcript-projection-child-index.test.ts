@@ -23,7 +23,7 @@ import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app
 import type { AnyBlock } from "../../../../src/infra/output-blocks"
 import { turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages"
-import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection"
+import { loadQueueFromEvents } from "../../../../src/workflows/vm/recovery/workflow-view"
 import { publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold"
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition"

@@ -3,7 +3,7 @@ import { isSessionHistoryFailure, type AsyncEventStateReadSurface, type AsyncEve
 import { Log } from "../../../infra/log.js"
 import { CAPACITY_WAIT_REASONS } from "../../../infra/error-presentation.js"
 import type { CapacityWaitReason } from "../../../infra/session-notice.js"
-import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { startedAgents } from "../../../workflows/vm/host/host-commit-controller.js"
 import { addressReachesAgent } from "../../../workflows/context-bundle/context-facts.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../conversation/addressed-workflow-messages.js"

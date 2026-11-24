@@ -49,7 +49,7 @@ import type { AttachChildSessionProjection, ChildSessionAuthority } from "../../
 import type { SessionMessaging } from "../../session/control/messaging/session-messaging.js"
 import type { CommandEvidenceSource } from "../attempt/command-evidence.js"
 import type { WorkflowAgentInput, WorkflowAgentInputs } from "./agent-inputs.js"
-import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { startedAgents } from "../../../workflows/vm/host/host-commit-controller.js"
 import { historicalWorkerTaskRootId } from "../attempt/historical-worker-task.js"
 import { awaitPlannedChildResumes } from "../../session/control/planned-session-continuation.js"

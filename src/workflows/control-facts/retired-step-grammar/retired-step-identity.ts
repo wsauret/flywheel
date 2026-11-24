@@ -29,9 +29,9 @@ import {
   type DefinitionIdentity,
   type DefinitionIdentityOptions,
   type StepDefinitionIdentity,
-} from "./definition-identity.js";
+} from "../definition-identity.js";
 import type { DefinitionIdentityMismatch } from "../../provenance/definition-identity-mismatch.js";
-import { reachedByExactGrants } from "./persona-identity-proofs.js";
+import { reachedByExactGrants } from "../persona-identity-proofs.js";
 import { retiredBuiltInDefinition } from "./retired-built-in-definitions.js";
 import { retiredOutputContractPairs } from "./retired-output-contracts.js";
 

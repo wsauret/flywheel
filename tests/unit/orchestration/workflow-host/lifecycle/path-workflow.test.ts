@@ -16,7 +16,7 @@ import { resolveWorkflowAgents } from "../../../../../src/workflows/definitions/
 import { decodeWorkflowFile, loadWorkflowFile } from "../../../../../src/workflows/vm/admission/workflow-file.js"
 import { compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js"
 import type { WorkflowDefinition, WorkflowPhase } from "../../../../../src/workflows/schema/workflow-schema.js"
-import { buildDefinitionIdentity } from "../../../../../src/workflows/vm/facts/definition-identity.js"
+import { buildDefinitionIdentity } from "../../../../../src/workflows/control-facts/definition-identity.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { fullAuthority } from "../../../../helpers/launch-authority.js"
 import { pathWorkflowFixtures, revision, write } from "../_path-workflow-fixtures.js"

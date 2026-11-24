@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
-import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/facts/session-facts.js";
+import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/control-facts/family.js";
 import {
   replayDecodedWorkflow,
   transitionDecodedWorkflow,

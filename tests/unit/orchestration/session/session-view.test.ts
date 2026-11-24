@@ -12,7 +12,7 @@ import { createSessionViewLoader, toSessionView } from "../../../../src/orchestr
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import type { SessionEntry } from "../../../../src/orchestration/session-store/types"
 import { createStoredSession } from "./_session-metadata-test-helpers"
-import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store"
+import { loadQueueSnapshotFromReader } from "../../../../src/workflows/vm/recovery/workflow-view"
 import { publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults"
 

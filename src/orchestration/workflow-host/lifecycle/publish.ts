@@ -15,11 +15,8 @@ import type { ProjectDefinitionRegistryRevision } from "../../../workflows/defin
 import { compileWorkflowControl, launchGuardrailLimits } from "../../../workflows/vm/compile/compile.js"
 import { worstCaseAttempts } from "../../../workflows/vm/graph/structural-admission.js"
 import { flattenWorkflowView } from "../../../workflows/vm/view/view-flatten.js"
-import {
-  buildWorkflowControlInitializedFact,
-  parseWorkflowSessionFact,
-  type WorkflowSessionFact,
-} from "../../../workflows/vm/facts/session-facts.js"
+import { buildWorkflowControlInitializedFact } from "../../../workflows/control-facts/family.js"
+import { parseWorkflowSessionFact, type WorkflowSessionFact } from "../../../workflows/vm/facts/session-facts.js"
 import { bindWorkflowAgentModels, type WorkflowAgentModels } from "../../config/models/workflow-agent-models.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { RuntimeWorkflowInvocation, WorkflowLaunchBinding } from "../../session/control/children/child-session-publication.js"
@@ -28,7 +25,7 @@ import type { WorkflowCapabilityBoundary } from "../../../workflows/run/run-fact
 import type { RoleSettings } from "../../session/metadata/schemas.js"
 import { buildWorkflowDefinitionLineageFacts } from "./definition-lineage.js"
 import type { WorkflowDeps } from "../deps.js"
-import type { CommittedWorkflowControl } from "../../../workflows/vm/facts/committed-control.js"
+import type { CommittedWorkflowControl } from "../../../workflows/control-facts/committed-control.js"
 import type { WorkflowLaunchAgentModels } from "../../../infra/workflow-types.js"
 
 /** A launch whose agents require a package the captured registry revision does

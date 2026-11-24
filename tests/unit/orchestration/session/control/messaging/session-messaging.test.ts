@@ -20,10 +20,11 @@ import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestSubagent, pub
 import { unusedChildSessionControl } from "../../../../../helpers/child-session-control.js"
 import { ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, readAddressedWorkflowMessages } from "../../../../../../src/orchestration/session/conversation/addressed-workflow-messages"
 import { addressReachesStartedAgent } from "../../../../../../src/orchestration/workflow-host/workflow-addressing"
-import { loadQueueSnapshotFromReader } from "../../../../../../src/workflows/view/view-store"
+import { loadQueueSnapshotFromReader } from "../../../../../../src/workflows/vm/recovery/workflow-view"
 import { queueFactsForState } from "../../../../../../src/workflows/view/view-diff"
 import { flattenWorkflowView } from "../../../../../../src/workflows/vm/view/view-flatten"
-import { buildWorkflowControlInitializedFact, workflowAggregateId } from "../../../../../../src/workflows/vm/facts/session-facts"
+import { buildWorkflowControlInitializedFact } from "../../../../../../src/workflows/control-facts/family"
+import { workflowAggregateId } from "../../../../../../src/workflows/run/run-facts"
 import { fourLaneControl, wideBindings } from "../../../../workflows/vm/_tree-fixtures"
 import { countStateRequests, factsRead } from "../../../../../helpers/state-requests"
 import { openAIResponsesTarget } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";

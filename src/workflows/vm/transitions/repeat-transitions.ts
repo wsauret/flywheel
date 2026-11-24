@@ -1,7 +1,7 @@
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
-import type { WorkflowProposalEncoding } from "../facts/events.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
+import type { WorkflowProposalEncoding } from "../../control-facts/events.js";
 import { applyGraphChanges, listJoin, replaceNode, withNodeState, type GraphChange } from "../graph/graph-changes.js";
-import { inRound, repeatRun, roundOfNodeId, type Attempt, type LogicalNode, type RepeatNode } from "../graph/graph-types.js";
+import { inRound, repeatRun, roundOfNodeId, type Attempt, type LogicalNode, type RepeatNode } from "../../control-facts/graph-types.js";
 import { isNonEmpty, normalizedSignal } from "../graph/loop-signal.js";
 import { WORKFLOW_INPUT_SOURCE_ID } from "../../schema/workflow-schema.js";
 import { isJoinNode, joinOf, nodeById, nodeOutput, outputAsRead, requireItem, TERMINAL } from "../graph/node-outputs.js";

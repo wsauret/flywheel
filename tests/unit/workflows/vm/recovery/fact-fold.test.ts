@@ -3,16 +3,17 @@ import type { StoredFact } from "../../../../../src/infra/event-store-types.js"
 import { compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js"
 import { foldWorkflowControl, replayWorkflowControl, replayWorkflowControlFrom } from "../../../../../src/workflows/vm/recovery/fact-fold.js"
 import { composeWorkflowProposal } from "../../../../../src/workflows/vm/control/proposal-composition.js"
-import { buildDefinitionIdentityAdoptedFact, buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, buildDefinitionIdentityMigratedFact, parseWorkflowSessionFact, type WorkflowSessionFact } from "../../../../../src/workflows/vm/facts/session-facts.js"
+import { buildDefinitionIdentityAdoptedFact, buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, buildDefinitionIdentityMigratedFact } from "../../../../../src/workflows/control-facts/family.js"
+import { parseWorkflowSessionFact, type WorkflowSessionFact } from "../../../../../src/workflows/vm/facts/session-facts.js"
 import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../../src/workflows/vm/control/transition.js"
 import {
   DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID,
   DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID,
   type DefinitionIdentity,
-} from "../../../../../src/workflows/vm/facts/definition-identity.js"
-import * as committedControl from "../../../../../src/workflows/vm/facts/committed-control.js"
+} from "../../../../../src/workflows/control-facts/definition-identity.js"
+import * as committedControl from "../../../../../src/workflows/control-facts/committed-control.js"
 import { historicalAttemptRecoveredFact, recoveredWorkflowRoot } from "../../../../helpers/workflow-root-fixtures.js"
-import { selectNewestWorkflowRoot } from "../../../../../src/workflows/run/workflow-root.js"
+import { selectNewestWorkflowRoot } from "../../../../../src/workflows/control-facts/workflow-root.js"
 import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../../src/workflows/vm/recovery/recovery.js"
 import { resolveWorkflowAgents } from "../../../../../src/workflows/definitions/agent-resolution.js"
 import { testSkill, testSkillRevision } from "../../../../helpers/skill-fixtures.js"

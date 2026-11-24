@@ -12,7 +12,7 @@ import {
 import type { AttemptExecutionInput } from "../../../../src/workflows/vm/control/commands.js";
 import { testResolvedAgent, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
 
 interface HandoffContent {
   [key: string]: unknown;

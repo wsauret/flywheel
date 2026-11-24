@@ -1,11 +1,12 @@
 import { CorruptEventRowError, type StoredFact } from "../../../infra/event-store-types.js"
 import { InvariantViolation } from "../../../infra/invariant.js"
 import { recoverWorkflowContext } from "../../context-bundle/context-recovery.js"
-import { loadQueueFromEvents, QUEUE_FACT_TYPES } from "../../view/view-projection.js"
-import type { CommittedWorkflowControl } from "../facts/committed-control.js"
+import { loadQueueFromEvents } from "./workflow-view.js"
+import { QUEUE_FACT_TYPES } from "../../view/view-projection.js"
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import { recoverWorkflowControl, workflowRecoveryBasis, type WorkflowRecoveryPlan } from "./recovery.js"
-import type { WorkflowRecoveryDegradationReason } from "../facts/session-facts.js"
-import { selectNewestWorkflowRoot } from "../../run/workflow-root.js"
+import type { WorkflowRecoveryDegradationReason } from "../../control-facts/family.js"
+import { selectNewestWorkflowRoot } from "../../control-facts/workflow-root.js"
 
 /** Execution needs strict control, a current-epoch queue with the same concrete
  * identities, and a canonical input seed. Inspection alone never repairs them. */

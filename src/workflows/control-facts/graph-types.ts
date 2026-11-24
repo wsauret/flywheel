@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { ArtifactContractSchema } from "../../schema/artifact-contracts.js";
-import { FieldMapSchema } from "../../output-contract/grammar.js";
-import { VotesSchema } from "../../schema/workflow-schema.js";
+import { ArtifactContractSchema } from "../schema/artifact-contracts.js";
+import { FieldMapSchema } from "../output-contract/grammar.js";
+import { VotesSchema } from "../schema/workflow-schema.js";
 
 // The graph of committed workflow control, version 11. Its node
 // kinds are `agent`, `phase`, `list`, `item`, and `repeat`; `while` and

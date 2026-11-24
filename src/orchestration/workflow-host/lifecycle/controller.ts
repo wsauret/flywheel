@@ -45,7 +45,7 @@ import type { WorkflowLaunchApprovalSource } from "../../session/agent-input/age
 import { assessWorkflowRecovery, commitWorkflowRecovery } from "../recovery-commit.js"
 import { describeWorkflowRecoveryDegradation } from "../../../workflows/vm/recovery/recovery.js"
 import { replayWorkflowControl, resumesFailedAgents } from "../../../workflows/vm/recovery/fact-fold.js"
-import { workflowAggregateId } from "../../../workflows/vm/facts/session-facts.js"
+import { workflowAggregateId } from "../../../workflows/run/run-facts.js"
 import { createWorkflowLaunchLifecycle, type WorkflowLaunchLifecycleDeps } from "./launch-lifecycle.js"
 import type { WorkflowLaunchHost } from "./launch-operation-contract.js"
 import { createWorkflowLaunchPipeline, type AdmitWorkflowOperation, type StartWorkflowResult, type WorkflowLaunchPipelineDeps } from "./launch-pipeline.js"

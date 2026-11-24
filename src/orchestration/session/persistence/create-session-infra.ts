@@ -1,7 +1,7 @@
 import { createEmit, type EventBus, type Unsubscribe } from "../../../infra/event-bus.js"
 import { PersistenceWriteRefused, type AsyncEventStateReadSurface, type AsyncEventWriter, type StoredFact } from "../../../infra/event-store-types.js"
 import type { WorkflowContextStore } from "../../../workflows/context-bundle/context-store.js"
-import type { WorkflowViewStore } from "../../../workflows/view/view-store.js"
+import type { WorkflowViewStore } from "../../../workflows/vm/recovery/workflow-view.js"
 import type { BudgetMetrics, SessionBudgetStore } from "../runtime-facts/budget-store-types.js"
 import { DebugLog } from "../../../infra/debug-log.js"
 import { toRuntimeEvent, type FlywheelEvent } from "../../../infra/events.js"

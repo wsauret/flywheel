@@ -11,7 +11,8 @@ import { readConversationSnapshotSync } from "../../../../src/orchestration/sess
 import { historicalWorkflowPublicationFacts } from "../../../release/fixtures/historical-workflow-publication.js"
 import { recoverSessionMessageProducer, sessionMessageSourcesSync } from "../../../../src/orchestration/session/metadata/session-message-sources.js"
 import type { EventStoreReadSurface } from "../../../../src/infra/event-store-types.js"
-import { parseWorkflowSessionFact, workflowRootControl } from "../../../../src/workflows/vm/facts/session-facts.js"
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js"
+import { workflowRootControl } from "../../../../src/workflows/control-facts/family.js"
 
 const temporary = temporaryDirectories()
 

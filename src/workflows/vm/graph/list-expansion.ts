@@ -2,9 +2,9 @@ import type { ItemVote } from "../../reducers/reducer.js";
 import { requireReducer } from "../../reducers/registry.js";
 import type { WorkflowInputValue } from "../../output-contract/compile.js";
 import { ITEM_POSITION_KEY, WORKFLOW_INPUT_SOURCE_ID } from "../../schema/workflow-schema.js";
-import type { WorkflowProposalEncoding } from "../facts/events.js";
+import type { WorkflowProposalEncoding } from "../../control-facts/events.js";
 import { applyGraphChanges, type GraphChange, type GraphStructure } from "./graph-changes.js";
-import type { Attempt, ListNode } from "./graph-types.js";
+import type { Attempt, ListNode } from "../../control-facts/graph-types.js";
 import { worstCaseAttempts } from "./structural-admission.js";
 
 // The expansion of a list into its items: the manifest of a source list and

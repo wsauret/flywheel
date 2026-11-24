@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import type { Attempt, LogicalNode } from "../../../../src/workflows/vm/graph/graph-types.js";
+import type { Attempt, LogicalNode } from "../../../../src/workflows/control-facts/graph-types.js";
 import { compileReassessmentOutput, compileRetiredReassessmentOutput } from "../../../../src/workflows/definitions/reassessment-contract.js";
 import { reassessesRetiredFor, reassessmentIssues, reassessmentProposal, type ReassessmentControl } from "../../../../src/workflows/vm/transitions/reassessment.js";
 import { loadBriefs } from "../../../../src/workflows/definitions/brief.js";

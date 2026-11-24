@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
 import { compileWorkflowControl, launchGuardrailLimits } from "../../../../../src/workflows/vm/compile/compile.js";
 import { WorkflowStructureRejectedError } from "../../../../../src/workflows/vm/graph/structural-admission.js";
-import { definitionIdentityMismatches, identityDefinitionIds } from "../../../../../src/workflows/vm/facts/definition-identity.js";
+import { definitionIdentityMismatches, identityDefinitionIds } from "../../../../../src/workflows/control-facts/definition-identity.js";
 import { hashDefinition } from "../../../../../src/workflows/provenance/definition-hash.js";
 import { resolveWorkflowAgents } from "../../../../../src/workflows/definitions/agent-resolution.js";
 import { testSkill, testSkillRevision } from "../../../../helpers/skill-fixtures.js";

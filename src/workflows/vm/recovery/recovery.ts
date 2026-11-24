@@ -1,8 +1,9 @@
-import type { CommittedWorkflowControl } from "../facts/committed-control.js"
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import { CorruptEventRowError } from "../../../infra/event-store-types.js"
 import { isUnknownWorkflowFamilyType, replayWorkflowControl, replayWorkflowControlFrom } from "./fact-fold.js"
-import { parseWorkflowSessionFact, workflowRootControl, WORKFLOW_CONTROL_FACT_TYPES, WORKFLOW_SESSION_FACT_DESCRIPTORS, type WorkflowRecoveryDegradationReason } from "../facts/session-facts.js"
-import { selectNewestWorkflowRoot } from "../../run/workflow-root.js"
+import { parseWorkflowSessionFact, WORKFLOW_SESSION_FACT_DESCRIPTORS } from "../facts/session-facts.js"
+import { workflowRootControl, WORKFLOW_CONTROL_FACT_TYPES, type WorkflowRecoveryDegradationReason } from "../../control-facts/family.js"
+import { selectNewestWorkflowRoot } from "../../control-facts/workflow-root.js"
 import { WORKFLOW_RUN_FACT_TYPES } from "../../run/run-facts.js"
 import { parseDefinitionProvenanceFact, type DefinitionDriftRejectedPayload } from "../../provenance/definition-provenance-facts.js"
 

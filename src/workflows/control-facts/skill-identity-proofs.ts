@@ -1,5 +1,5 @@
-import type { SkillRegistryRevision } from "../../skills/skill-schema.js"
-import type { ResolvedAgent } from "../../definitions/agent-resolution.js"
+import type { SkillRegistryRevision } from "../skills/skill-schema.js"
+import type { ResolvedAgent } from "../definitions/agent-resolution.js"
 import { composedIdentity, type DefinitionIdentity, type DefinitionIdentityOptions } from "./definition-identity.js"
 
 // Proofs that a skill closure an earlier build recorded is the closure of the current bundled skills. Each proof

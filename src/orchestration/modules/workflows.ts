@@ -28,7 +28,7 @@ import { HANDOFF_REVISION_MIGRATIONS, migrateHandoffRevisions } from "./workflow
 import { dropLegacyWorkflowPruneEvidence } from "./workflows/migrations/workflow-prune-evidence.js"
 import { DefinitionProvenanceFactSchemas } from "../../workflows/provenance/definition-provenance-facts.js"
 import { HandoffFactSchemas } from "../../workflows/output-contract/facts.js"
-import { isWorkflowExecutionFact } from "../../workflows/run/workflow-completion.js"
+import { isWorkflowExecutionFact } from "../../workflows/vm/recovery/workflow-completion.js"
 import { fileURLToPath } from "node:url"
 import { Log } from "../../infra/log.js"
 import { moduleRuntimeHandle, type ModuleRuntimes } from "../../infra/module-runtime.js"

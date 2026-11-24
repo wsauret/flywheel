@@ -32,7 +32,7 @@ import {
   executeChildSessionDeletionPlan,
 } from "../../../session/control/children/child-session-deletion.js"
 import type { WorkflowView } from "../../../../workflows/view/types.js"
-import { loadQueueSnapshotFromReader } from "../../../../workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../../workflows/vm/recovery/workflow-view.js"
 import { liveWorkflowConversations } from "../../../../workflows/view/live-conversations.js"
 import { createMutationEvidenceRecovery } from "../../../session/history/mutation-evidence-recovery.js"
 import { createSessionRecoveryGate, settlingGuardReads, type OwedRecovery, type SessionRecoveryGate } from "./session-recovery-gate.js"

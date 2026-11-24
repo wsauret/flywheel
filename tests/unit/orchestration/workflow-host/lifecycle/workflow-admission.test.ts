@@ -9,7 +9,7 @@ import { runDefinition } from "../../../../../src/orchestration/workflow-host/li
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
-import { workflowAggregateId } from "../../../../../src/workflows/vm/facts/session-facts.js"
+import { workflowAggregateId } from "../../../../../src/workflows/run/run-facts.js"
 import { readRunDefinitionLineage } from "../../../../../src/workflows/run/definition-provenance-projection.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import prePhaseLineage from "../golden/pre-phase-lineage.json"

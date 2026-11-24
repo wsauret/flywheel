@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import { FIXTURE_WORKFLOW_ID } from "../../../helpers/project-definitions.js"
-import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import { mkdtempSync, realpathSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"

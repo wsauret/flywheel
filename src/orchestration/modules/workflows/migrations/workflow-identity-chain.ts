@@ -8,7 +8,7 @@ import {
   DefinitionIdentitySchema,
   type DefinitionIdentity,
   type DefinitionIdentityMigrationId,
-} from "../../../../workflows/vm/facts/definition-identity.js"
+} from "../../../../workflows/control-facts/definition-identity.js"
 
 interface UnknownRecord {
   [key: string]: unknown

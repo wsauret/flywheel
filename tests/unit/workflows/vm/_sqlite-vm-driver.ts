@@ -14,8 +14,7 @@ import { loadHandoffsFromEvents } from "../../../../src/workflows/output-contrac
 import { accumulatorStateFromProjection, createWorkflowContextProjection } from "../../../../src/workflows/context-bundle/context-projection.js"
 import { buildContextAccumulatedFact, buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
 import { createWorkflowContextStore, type WorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
-import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
-import { createWorkflowViewStore, type WorkflowViewStore } from "../../../../src/workflows/view/view-store.js"
+import { createWorkflowViewStore, loadQueueFromEvents, type WorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
 import { resolveSkillClosure } from "../../../../src/workflows/skills/skill-closure.js"
@@ -33,18 +32,15 @@ import { buildHandoffValidatedFact, buildHandoffWrittenFact } from "../../../../
 import { compileWorkflowControl, launchGuardrailLimits } from "../../../../src/workflows/vm/compile/compile.js"
 import { queuedAttempts } from "../../../../src/workflows/vm/graph/structural-admission.js"
 import type { WorkflowInputValue } from "../../../../src/workflows/output-contract/compile.js"
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js"
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js"
 import type { WorkflowMachineState } from "../../../../src/workflows/vm/control/control-types.js"
-import type { WorkflowEvent } from "../../../../src/workflows/vm/facts/events.js"
+import type { WorkflowEvent } from "../../../../src/workflows/control-facts/events.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
 import { continueWorkflowReplay } from "../../../../src/workflows/vm/host/replay.js"
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery/recovery.js"
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flatten.js"
-import {
-  buildWorkflowControlInitializedFact,
-  parseWorkflowSessionFact,
-  type WorkflowSessionFact,
-} from "../../../../src/workflows/vm/facts/session-facts.js"
+import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/control-facts/family.js"
+import { parseWorkflowSessionFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { initializeWorkflow, replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 import { quietHostDeps } from "./host-test-support.js"

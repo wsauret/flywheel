@@ -37,11 +37,11 @@ import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../session/
 import { historicalCompletionEntryId, interruptedTurnMessage, turnEndEntryId } from "../../../session/conversation/turn-end-record.js"
 import { replayWorkflowControl, resumesFailedAgents, workflowInsertionRefusalReason } from "../../../../workflows/vm/recovery/fact-fold.js"
 import { proposeFollowUpTransfer } from "../../../../workflows/vm/control/transition.js"
-import type { CommittedWorkflowControl } from "../../../../workflows/vm/facts/committed-control.js"
-import { failedAgents, agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../workflows/run/workflow-completion.js"
-import { loadQueueFromEvents } from "../../../../workflows/view/view-projection.js"
+import type { CommittedWorkflowControl } from "../../../../workflows/control-facts/committed-control.js"
+import { failedAgents, agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../workflows/vm/recovery/workflow-completion.js"
+import { loadQueueFromEvents } from "../../../../workflows/vm/recovery/workflow-view.js"
 import type { WorkflowView } from "../../../../workflows/view/types.js"
-import { workflowFamilyBoundary } from "../../../../workflows/run/workflow-root.js"
+import { workflowFamilyBoundary } from "../../../../workflows/control-facts/workflow-root.js"
 import { childSessionResultFact, workflowNotificationLabel } from "../../../session/control/children/child-session-completion.js"
 
 const log = Log.create({ service: "workflow-child-adoption" })

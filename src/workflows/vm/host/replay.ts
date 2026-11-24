@@ -4,7 +4,7 @@ import { resolveWorkflowAgents, type ResolvedAgent } from "../../definitions/age
 import type { ProjectDefinitionRegistryRevision } from "../../definitions/definition-registry.js"
 import type { WorkflowDefinition } from "../../schema/workflow-schema.js"
 import type { WorkflowTransitionResult } from "../control/commands.js"
-import type { CommittedWorkflowControl } from "../facts/committed-control.js"
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import {
   buildDefinitionIdentity,
   DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID,
@@ -29,8 +29,8 @@ import {
   type DefinitionIdentityMigrationId,
   type DefinitionIdentityVersionOverride,
   type StepDefinitionIdentity,
-} from "../facts/definition-identity.js"
-import { adoptPhaseGrammarIdentity, retiredStepIdentity, retiredStepView, withoutRetiredStepScopes } from "../facts/retired-step-identity.js"
+} from "../../control-facts/definition-identity.js"
+import { adoptPhaseGrammarIdentity, retiredStepIdentity, retiredStepView, withoutRetiredStepScopes } from "../../control-facts/retired-step-grammar/retired-step-identity.js"
 import {
   acrossRetiredLexicon,
   withCapabilityMarkers,
@@ -44,16 +44,12 @@ import {
   withoutRetiredScenarioBudget,
   withoutRetiredToolSteering,
   withUatScratchpadRule,
-} from "../facts/persona-identity-proofs.js"
-import { leanPromptDroppedSkills, skillsBeforeLeanPrompt, withoutLeanPromptDependencies } from "../facts/skill-identity-proofs.js"
-import type { WorkflowEvent } from "../facts/events.js"
+} from "../../control-facts/persona-identity-proofs.js"
+import { leanPromptDroppedSkills, skillsBeforeLeanPrompt, withoutLeanPromptDependencies } from "../../control-facts/skill-identity-proofs.js"
+import type { WorkflowEvent } from "../../control-facts/events.js"
 import { WorkflowDriftEvidencePersistenceError } from "./host-types.js"
-import {
-  buildDefinitionIdentityAdoptedFact,
-  buildDefinitionIdentityMigratedFact,
-  workflowAggregateId,
-  type WorkflowControlFact,
-} from "../facts/session-facts.js"
+import { buildDefinitionIdentityAdoptedFact, buildDefinitionIdentityMigratedFact, type WorkflowControlFact } from "../../control-facts/family.js"
+import { workflowAggregateId } from "../../run/run-facts.js"
 import { replayWorkflowControlFrom } from "../recovery/fact-fold.js"
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../control/transition.js"
 

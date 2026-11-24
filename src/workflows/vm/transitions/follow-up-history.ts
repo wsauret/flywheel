@@ -1,6 +1,6 @@
 import type { ProposedTransition } from "./attempt-transitions.js";
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
-import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "../facts/events.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
+import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "../../control-facts/events.js";
 import { buildFollowUpFailedFact, buildFollowUpRequestedFact, buildFollowUpSucceededFact } from "./fact-drafts.js";
 
 type FollowUpRunEvent = Extract<DecodedWorkflowProposalEvent, { type: "FOLLOW_UP_REQUESTED" | "FOLLOW_UP_SUCCEEDED" | "FOLLOW_UP_FAILED" }>;

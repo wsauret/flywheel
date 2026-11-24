@@ -3,7 +3,7 @@ import { WorkflowLaunchAgentModelsSchema } from "../../../infra/workflow-types.j
 import type { InFlightRecord } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
 import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
-import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { workflowRecoveryBasis } from "../../../workflows/vm/recovery/recovery.js"
 import { readToolExecution } from "../../session/runtime-facts/tool-execution-projection.js"
 import { turnEndEntryId } from "../../session/conversation/turn-end-record.js"

@@ -1,7 +1,6 @@
 import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/event-store-types.js"
 import { InvariantViolation } from "../../infra/invariant.js"
-import { WORKFLOW_RUN_FACT_TYPES } from "./run-facts.js"
-import { workflowAggregateId } from "../vm/facts/session-facts.js"
+import { WORKFLOW_RUN_FACT_TYPES, workflowAggregateId } from "../run/run-facts.js"
 import { selectNewestWorkflowRoot, workflowFamilyBoundary, WORKFLOW_ROOT_FACT_TYPES } from "./workflow-root.js"
 
 const INITIALIZED_FACT_TYPE = "workflow.control.initialized"
@@ -41,20 +40,6 @@ async function holdsControlHistory(reader: AsyncEventStateReadSurface, aggregate
   if (total === 0) return false
   const { facts: runFacts } = await reader.readSlice({ aggregateId, types: WORKFLOW_RUN_FACT_TYPES }, true)
   return total > runFacts.length
-}
-
-/** The commit time of the session's first workflow root, which is the launch,
- * or null before the launch commits. A recovery root keeps this launch: it
- * restarts a task inside the same workflow. The envelope timestamp needs no
- * payload decode, so a tolerant read keeps a launch row that no longer parses. */
-export async function readWorkflowLaunchedAt(reader: AsyncEventStateReadSurface, sessionId: string): Promise<number | null> {
-  const { facts } = await reader.readSlice(
-    { aggregateId: workflowAggregateId(sessionId), types: [INITIALIZED_FACT_TYPE], order: "asc", limit: 1 },
-    true,
-  )
-  const launch = facts[0]
-  if (!launch) return null
-  return launch instanceof CorruptEventRowError ? launch.row.timestamp : launch.timestamp
 }
 
 function missingInitialization(aggregateId: string, eventPosition: number): InvariantViolation {

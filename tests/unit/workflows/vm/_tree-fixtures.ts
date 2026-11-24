@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile.js"
 import { completeAttempt, failAttempt, prepareExecution, admissibleExecutionInput, startExecution } from "../../../../src/workflows/vm/transitions/attempt-transitions.js"
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js"
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js"
 import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js"
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js"

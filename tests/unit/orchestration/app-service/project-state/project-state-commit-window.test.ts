@@ -7,7 +7,7 @@ import { createProjectStateClient, ProjectStateUnavailableError, type ProjectSta
 import { encodeProjectStateResponseFrame, type ProjectStateRequest, type ProjectStateResponseFrame, type ProjectStateResult } from "../../../../../src/orchestration/app-service/project-state/project-state-protocol.js"
 import { createWorkflowToolSummaryReader } from "../../../../../src/orchestration/modules/workflows/history/tool-summary.js"
 import { createConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
-import { loadQueueSnapshotFromReader } from "../../../../../src/workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../../../src/workflows/vm/recovery/workflow-view.js"
 import { WorkflowSessionFactSchema } from "../../../../../src/workflows/vm/facts/session-facts.js"
 import { terminalWorkflowFacts } from "../../session/_child-session-reconciliation-fixtures.js"
 import { createProjectStateCommitWindow } from "../../../../../src/orchestration/app-service/project-state/project-state-commit-window.js"

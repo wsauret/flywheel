@@ -1,6 +1,6 @@
-import type { AgentDefinition } from "../../../infra/agent-definition.js"
-import { workflowAgentSubagents } from "../../agents/subagent-reachability.js"
-import { hashDefinition } from "../../provenance/definition-hash.js"
+import type { AgentDefinition } from "../../infra/agent-definition.js"
+import { workflowAgentSubagents } from "../agents/subagent-reachability.js"
+import { hashDefinition } from "../provenance/definition-hash.js"
 import { composedIdentity, personaIdentitySha256, type DefinitionIdentity, type DefinitionIdentityOptions } from "./definition-identity.js"
 
 // Proofs that a persona hash an earlier build recorded names the current bundled persona. Each proof restores

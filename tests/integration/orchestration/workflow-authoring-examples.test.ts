@@ -17,7 +17,7 @@ import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js
 import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-resolution.js"
 import { authoredGuardrailLimits, compileWorkflowControl } from "../../../src/workflows/vm/compile/compile.js"
 import { SAMPLED_LAUNCH, sampleItems } from "../../../src/workflows/vm/graph/list-expansion.js"
-import type { ListNode } from "../../../src/workflows/vm/graph/graph-types.js"
+import type { ListNode } from "../../../src/workflows/control-facts/graph-types.js"
 import { worstCaseAttempts } from "../../../src/workflows/vm/graph/structural-admission.js"
 import type { WorkflowVmHostDeps } from "../../../src/workflows/vm/host/host-types.js"
 import { FieldMapSchema, type Field, type FieldMap } from "../../../src/workflows/output-contract/grammar.js"

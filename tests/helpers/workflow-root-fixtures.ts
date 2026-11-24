@@ -1,10 +1,11 @@
 import type { StoredFact } from "../../src/infra/event-store-types.js"
 import { compileWorkflowControl } from "../../src/workflows/vm/compile/compile.js"
-import type { CommittedWorkflowControl } from "../../src/workflows/vm/facts/committed-control.js"
+import type { CommittedWorkflowControl } from "../../src/workflows/control-facts/committed-control.js"
 import { buildContextInputSeededFact } from "../../src/workflows/context-bundle/context-facts.js"
 import { queueFactsForState } from "../../src/workflows/view/view-diff.js"
 import { flattenWorkflowView } from "../../src/workflows/vm/view/view-flatten.js"
-import { buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, type WorkflowSessionFact } from "../../src/workflows/vm/facts/session-facts.js"
+import { buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact } from "../../src/workflows/control-facts/family.js"
+import type { WorkflowSessionFact } from "../../src/workflows/vm/facts/session-facts.js"
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "./skill-fixtures.js"
 import { loadedWorkflow } from "./workflow-files.js"
 

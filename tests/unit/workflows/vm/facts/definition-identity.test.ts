@@ -35,7 +35,7 @@ import {
   DefinitionIdentitySchema,
   personaIdentitySha256,
   type StepDefinitionIdentity,
-} from "../../../../../src/workflows/vm/facts/definition-identity.js"
+} from "../../../../../src/workflows/control-facts/definition-identity.js"
 import { hashDefinition } from "../../../../../src/workflows/provenance/definition-hash.js"
 import {
   withDefaultAdvisor,
@@ -44,10 +44,10 @@ import {
   withoutRetiredPromptSwitches,
   withoutRetiredScenarioBudget,
   withoutRetiredToolSteering,
-} from "../../../../../src/workflows/vm/facts/persona-identity-proofs.js"
+} from "../../../../../src/workflows/control-facts/persona-identity-proofs.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { beforeBudgetCut, beforeLexiconCut, beforePromptSwitchCut, beforeScenarioBudgetCut, beforeToolSteeringCut, personasAtCapabilityTextBase } from "../../../orchestration/migrations/_persona-budget.js"
-import { retiredStepIdentity, withoutRetiredStepScopes } from "../../../../../src/workflows/vm/facts/retired-step-identity.js"
+import { retiredStepIdentity, withoutRetiredStepScopes } from "../../../../../src/workflows/control-facts/retired-step-grammar/retired-step-identity.js"
 import { parseWorkflowSessionFact } from "../../../../../src/workflows/vm/facts/session-facts.js"
 import { StepGrammarWorkflowSchema, type StepGrammarWorkflow } from "../../../../../src/workflows/schema/retired-step-grammar/schema.js"
 import { testSkill, testSkillRevision } from "../../../../helpers/skill-fixtures.js"

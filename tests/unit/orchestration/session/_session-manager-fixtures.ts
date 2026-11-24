@@ -14,7 +14,8 @@ import { queueFactsForState } from "../../../../src/workflows/view/view-diff";
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile";
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flatten";
-import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts";
+import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/control-facts/family";
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts";
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { buildDurableSubagentCreated, buildSubagentPrompted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js";
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/persistence/session-fact-writer.js";
@@ -22,7 +23,7 @@ import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fac
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js";
 import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership.js";
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/control/companions.js";
-import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js";
+import { loadQueueFromEvents } from "../../../../src/workflows/vm/recovery/workflow-view.js";
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js";
 
 /** Commits one control transition with the companion facts the runtime publishes. */

@@ -6,8 +6,8 @@ import {
   type FollowUpIdentity,
 } from "./committed-control.js";
 import { ReassessmentChangeV3Schema, SharedEventArmsV3 } from "./historical-codecs.js";
-import { DurableFollowUpInputSchema } from "../../../infra/chat-input-schema.js";
-import { HandoffIssueSchema } from "../graph/graph-types.js";
+import { DurableFollowUpInputSchema } from "../../infra/chat-input-schema.js";
+import { HandoffIssueSchema } from "./graph-types.js";
 
 const IdSchema = Schema.NonEmptyString;
 const NonNegativeIntSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));

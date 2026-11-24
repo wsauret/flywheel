@@ -10,10 +10,10 @@ import { migrateWorkflowDefinitionIdentityContext } from "../../../../src/orches
 import {
   DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID,
   definitionIdentityMismatches,
-} from "../../../../src/workflows/vm/facts/definition-identity.js"
+} from "../../../../src/workflows/control-facts/definition-identity.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
-import { workflowAggregateId } from "../../../../src/workflows/vm/facts/session-facts.js"
-import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
+import { workflowAggregateId } from "../../../../src/workflows/run/run-facts.js"
+import { loadQueueSnapshotFromReader } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flatten.js"
 import {

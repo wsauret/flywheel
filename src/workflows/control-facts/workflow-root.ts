@@ -1,6 +1,6 @@
 import { parseProjectionFact } from "../../infra/event-projection.js"
 import { CorruptEventRowError, type StoredFact } from "../../infra/event-store-types.js"
-import { parseWorkflowSessionFact } from "../vm/facts/session-facts.js"
+import { parseWorkflowControlFact } from "./family.js"
 
 export const WORKFLOW_ROOT_FACT_TYPES = ["workflow.control.initialized", "workflow.control.recovered"] as const
 
@@ -41,7 +41,7 @@ export function workflowFamilyBoundary(events: readonly (StoredFact | CorruptEve
   // SAFETY: selectNewestWorkflowRoot returns an index within this unchanged event array.
   const event = events[root.index]!
   if (event instanceof CorruptEventRowError) throw event
-  parseProjectionFact(event, parseWorkflowSessionFact)
+  parseProjectionFact(event, parseWorkflowControlFact)
   return root.type === "workflow.control.recovered" ? event : null
 }
 

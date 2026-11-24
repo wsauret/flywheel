@@ -70,7 +70,7 @@ const HISTORY_PATHS: readonly string[] = [
   "/legacy-",
   "/migrations/",
   // The view of a run that the step grammar recorded, read for history only.
-  "src/workflows/view/view-history-tree.ts",
+  "src/workflows/vm/recovery/view-history-tree.ts",
   // Recorded calls of the retired step tool.
   "src/infra/tools/displays/step.ts",
 ];
@@ -132,8 +132,8 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   // workflow.compiled v8 to v10.
   "src/workflows/provenance/definition-provenance-facts.ts",
   // The persona and brief identities that recorded runs hash.
-  "src/workflows/vm/facts/definition-identity.ts",
-  "src/workflows/vm/facts/session-facts.ts",
+  "src/workflows/control-facts/definition-identity.ts",
+  "src/workflows/control-facts/family.ts",
   "src/workflows/vm/graph/node-outputs.ts",
   // The stored keys of control v11: `steps[].stepId`, the handoff evidence
   // `stepId`, and the join slot `step_id`.
@@ -397,7 +397,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
     [/\blaneSteps?\b/, "agentParts"],
     [/\bcontentId\b/, "briefId", [
       // A hash key of briefContentSha256 that recorded runs hold.
-      "src/workflows/vm/facts/definition-identity.ts",
+      "src/workflows/control-facts/definition-identity.ts",
       "src/workflows/view/schemas.ts",
       "src/workflows/view/view-facts.ts",
       "src/workflows/provenance/definition-provenance-facts.ts",

@@ -10,7 +10,7 @@ import type { SessionEntry, SessionStore } from "../../../session-store/types.js
 import { entryActivity } from "../../../session-store/activity.js"
 import { workflowMembershipReader, type WorkflowMember } from "../../../session/metadata/workflow-membership.js"
 import { workflowRunReader } from "../../../module-catalog.js"
-import { loadQueueSnapshotFromReader } from "../../../../workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../../workflows/vm/recovery/workflow-view.js"
 import { readAttemptStarts, servedAttempts } from "../../../../workflows/vm/host/attempt-conversations.js"
 import { readStartedAgentsLive, type ConversationLive, type StartedAgentsChange, type StartedAgentStates, type StartedAgentsLive } from "../../../workflow-host/started-agent-states.js"
 import { readWorkflowMemberDurations } from "../../../workflow-host/member-totals.js"

@@ -1,7 +1,7 @@
-import { CorruptEventRowError, type EventStoreReadSurface } from "../../infra/event-store-types.js"
-import { parseWorkflowSessionFact } from "../vm/facts/session-facts.js"
-import { workflowRowsFromV9 } from "./schemas.js"
-import type { WorkflowView } from "./types.js"
+import { CorruptEventRowError, type EventStoreReadSurface } from "../../../infra/event-store-types.js"
+import { parseWorkflowSessionFact } from "../facts/session-facts.js"
+import { workflowRowsFromV9 } from "../../view/schemas.js"
+import type { WorkflowView } from "../../view/types.js"
 
 /** Historical launch companions can omit the plan or tree. */
 const LAUNCH_FACT_TYPES: ReadonlySet<string> = new Set(["context.input.seeded", "queue.created", "queue.plan.changed", "queue.tree.changed"])

@@ -9,8 +9,8 @@ import { resolveWorkflowAgents } from "../../definitions/agent-resolution.js"
 import { attemptConversations } from "./attempt-conversations.js"
 import type { AttemptRunOutcome } from "./attempt-runner.js"
 import type { WorkflowTransitionResult } from "../control/commands.js"
-import type { CommittedWorkflowControl } from "../facts/committed-control.js"
-import type { NewWorkflowProposalEvent } from "../facts/events.js"
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
+import type { NewWorkflowProposalEvent } from "../../control-facts/events.js"
 import { resumesFailedAgents, resumesLiveFailedAgents, workflowInsertionRefusalReason } from "../recovery/fact-fold.js"
 import {
   WorkflowAttemptRefusedError,
@@ -32,7 +32,8 @@ import { failureResult, lifecycleError, publicFailureCause, terminalResult, toPu
 import { disposeWorkflowHostLifecycle } from "./host-lifecycle.js"
 import { createWorkflowRuntimePublisher } from "./host-publication.js"
 import { continueWorkflowReplay } from "./replay.js"
-import { parseWorkflowSessionFact, workflowAggregateId } from "../facts/session-facts.js"
+import { parseWorkflowSessionFact } from "../facts/session-facts.js"
+import { workflowAggregateId } from "../../run/run-facts.js"
 import { admissionCommand, nextWorkflowCommand, transitionDecodedWorkflow } from "../control/transition.js"
 
 const COMMAND_QUANTUM = 8

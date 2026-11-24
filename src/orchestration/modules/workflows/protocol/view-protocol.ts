@@ -3,7 +3,7 @@ import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/e
 import { Log } from "../../../../infra/log.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
 import { containSessionReads } from "../../../../infra/session-read-containment.js"
-import { createReplayingWorkflowView, type LiveWorkflowView } from "../../../../workflows/view/view-projection.js"
+import { createReplayingWorkflowView, type LiveWorkflowView } from "../../../../workflows/vm/recovery/workflow-view.js"
 import type { WorkflowView } from "../../../../workflows/view/types.js"
 import { frontendAttempts, readWorkflowRunRecords } from "../../../workflow-host/frontend-attempts.js"
 import type { FrontendWorkflowView } from "../../../../protocol/workflow-view-protocol-types.js"

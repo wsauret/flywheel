@@ -5,7 +5,7 @@ import { testSkillRevision } from "../../../../helpers/skill-fixtures.js";
 import { MAX_ATTEMPTS_CEILING, type WorkflowDefinition } from "../../../../../src/workflows/schema/workflow-schema.js";
 import { launchVerificationWarnings, parseWorkflowVerificationReport } from "../../../../../src/workflows/vm/compile/verify-types.js";
 import { authoredGuardrailLimits, authoredStructureFindings, compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js";
-import type { CommittedWorkflowControl } from "../../../../../src/workflows/vm/facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../../src/workflows/control-facts/committed-control.js";
 import { verifyAuthoredWorkflow, verifyInstantiatedWorkflow } from "../../../../../src/workflows/vm/compile/verify.js";
 import { DRY_LOOP, dryWorkflow, mapSkills } from "../_map-fixtures.js";
 import { loadedWorkflow } from "../../../../helpers/workflow-files.js";

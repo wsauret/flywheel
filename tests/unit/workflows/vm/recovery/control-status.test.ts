@@ -7,7 +7,7 @@ import { createSessionFactWriter } from "../../../../../src/orchestration/sessio
 import { skillLoadedFact } from "../../../../../src/workflows/skills/skill-facts.js"
 import { readWorkflowActivity, readWorkflowControlStatuses } from "../../../../../src/workflows/vm/recovery/control-status.js"
 import { replayWorkflowControl } from "../../../../../src/workflows/vm/recovery/fact-fold.js"
-import { buildWorkflowControlRecoveredFact } from "../../../../../src/workflows/vm/facts/session-facts.js"
+import { buildWorkflowControlRecoveredFact } from "../../../../../src/workflows/control-facts/family.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
 import { createMemoryStore, initialFacts, recordProposal, testHost } from "../host-test-support.js"
 

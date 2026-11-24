@@ -9,7 +9,7 @@ import {
   type DefinitionLoadedPayload,
   type WorkflowCompiledPayload,
 } from "../provenance/definition-provenance-facts.js"
-import { workflowAggregateId } from "../vm/facts/session-facts.js"
+import { workflowAggregateId } from "./run-facts.js"
 
 /** Folded view of the definition provenance facts. Every member is the typed
  *  payload of the owning fact, so the view can never drift from what the fact

@@ -12,7 +12,7 @@ import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
 import type { AttemptRow } from "../../../../src/workflows/view/types.js";
 import type { ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";
-import { buildDefinitionIdentity, definitionIdentityMismatches } from "../../../../src/workflows/vm/facts/definition-identity.js";
+import { buildDefinitionIdentity, definitionIdentityMismatches } from "../../../../src/workflows/control-facts/definition-identity.js";
 import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js";
 import { createSkillTool } from "../../../../src/orchestration/agent-runtime/tools/definitions/skill.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js";

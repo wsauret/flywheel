@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
-import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store.js"
+import { createWorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { createAttemptExecutor } from "../../../../src/workflows/vm/host/attempt-runner.js"
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host/host.js"

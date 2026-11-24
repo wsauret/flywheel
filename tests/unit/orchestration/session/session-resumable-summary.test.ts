@@ -7,7 +7,7 @@ import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../..
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { isWorkflowResumeCandidate } from "../../../../src/orchestration/session/metadata/resumable.js"
-import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
 import { publishTestWorkflow } from "./_session-manager-fixtures.js"

@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { DurableFollowUpInputSchema } from "../../../infra/chat-input-schema.js";
+import { DurableFollowUpInputSchema } from "../../infra/chat-input-schema.js";
 import { DefinitionIdentitySchema } from "./definition-identity.js";
-import { AttemptSchema, WorkflowGraphSchema } from "../graph/graph-types.js";
+import { AttemptSchema, WorkflowGraphSchema } from "./graph-types.js";
 
 const IdSchema = Schema.NonEmptyString;
 const NonNegativeIntSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
