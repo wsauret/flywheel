@@ -6,7 +6,7 @@ import type { BackgroundOutputRequest, BackgroundProcessRecord } from "../../bac
 import { formatRuntimeNotification } from "../../background-work/runtime-notifications.js";
 import { readBoundedSpoolTail, type BoundedSpoolTail, type RandomAccessSpool } from "../bash/execution/bash-output-tail.js";
 import type { AdvertisedTool, ToolContext, RuntimeTool, RuntimeToolInput, ToolResult } from "../types.js";
-import { parseWorkflowTargets } from "../../../../protocol/client/workflow-addresses.js";
+import { parseWorkflowTargets } from "./workflow-targets.js";
 
 const PROCESS_TOOL_NAME = "process";
 /** The targeting rules that a child with addresses states beside them in its status, so they reach only an agent

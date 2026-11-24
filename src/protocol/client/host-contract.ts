@@ -4,6 +4,7 @@ import type { ModuleId } from "../module-ids.js"
 import type { ChangesSummaryState } from "./session-changes.js"
 import type { ProviderSummary } from "./provider-summary.js"
 import type { RuntimeAuthLoginQuestion } from "../auth-status-protocol-types.js"
+import type { NotificationAction } from "../../infra/notification-episode.js"
 
 /** What crosses between the web client and the host that mounts it.
  *
@@ -126,4 +127,43 @@ export function isClientSheetId(id: string): id is ClientSheetId {
 
 export function openSheetCommand(sheet: ClientSheetId, focus?: SheetFocus): Extract<ClientCommand, { readonly type: "openSheet" }> {
   return { type: "openSheet", sheet, ...(focus === undefined ? {} : { focus }) }
+}
+
+/** A notice's one action as the web and editor clients offer it: the words
+ *  on its button and the client command that opens where it points. The
+ *  words name the sheet or surface the command opens, so a button never
+ *  names one place and opens another, and both clients land on the same
+ *  surface. */
+export interface NotificationActionView {
+  readonly label: string
+  readonly open: Extract<ClientCommand, { readonly type: "openSheet" | "openSurface" }>
+}
+
+/** Maps a notice's action to its button words and the client command that opens it. */
+export function notificationAction(action: NotificationAction): NotificationActionView {
+  switch (action.kind) {
+    case "open-settings":
+      return { label: "Open settings", open: { type: "openSheet", sheet: "settings" } }
+    case "open-usage":
+      // The subscription-usage module's surface. The host contract imports
+      // no module home, so the id is named here.
+      return { label: "Open usage", open: { type: "openSurface", surface: "usage" } }
+    case "open-auth-provider":
+      return { label: "Open provider", open: { type: "openSheet", sheet: "providers", focus: { kind: "focus-provider", providerId: action.providerId } } }
+    case "open-auth":
+      if (!("providerId" in action)) return { label: "Open providers", open: { type: "openSheet", sheet: "providers" } }
+      return {
+        label: "Open provider",
+        open: {
+          type: "openSheet",
+          sheet: "providers",
+          focus: {
+            kind: "review-paid-use",
+            providerId: action.providerId,
+            accountCorrelationId: action.accountCorrelationId,
+            envelopeId: action.envelopeId,
+          },
+        },
+      }
+  }
 }
