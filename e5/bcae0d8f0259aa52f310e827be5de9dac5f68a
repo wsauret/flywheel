@@ -1,0 +1,26 @@
+src/orchestration/modules/development/benchmark/accounting.ts
+  h_4b47e9e4a8b456 84-85
+src/orchestration/modules/provider-google-antigravity/acp/schema.ts
+  h_4b47e9e4a8b456 52-53
+src/orchestration/modules/provider-google-antigravity/bridge.ts
+  h_4b47e9e4a8b456 17,125-126,150-151,289-290,423,470,489-490,493,496,542,559
+src/orchestration/modules/provider-google-antigravity/stream-map.ts
+  h_4b47e9e4a8b456 30,32-37,40-43,58-59,61-62,80-82,146,151-167,172-187,202,257-259
+tests/unit/bench/benchmark-invocation.test.ts
+  h_4b47e9e4a8b456 49-50,91,103
+tests/unit/orchestration/modules/provider-google-antigravity/bridge.test.ts
+  h_4b47e9e4a8b456 50-54,74,78,99-100,105,216,225-226,231-254,263-265
+tests/unit/orchestration/modules/provider-google-antigravity/stream-map.test.ts
+  h_4b47e9e4a8b456 31,33,105-134,148,195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e5bcae0d8f0259aa52f310e827be5de9dac5f68a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
