@@ -94,9 +94,7 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "src/tui/output-blocks/", reason: WIDE },
   { lint: "wide-directory", key: "src/workflows/", reason: WIDE },
   { lint: "wide-directory", key: "src/workflows/vm/", reason: WIDE },
-  { lint: "wide-directory", key: "vscode/src/runtime/", reason: WIDE },
   { lint: "wide-directory", key: "webview/src/app/", reason: WIDE },
-  { lint: "wide-directory", key: "webview/src/app/sheets/", reason: WIDE },
   { lint: "wide-directory", key: "webview/src/client/", reason: WIDE },
   {
     lint: "module-cycle",
