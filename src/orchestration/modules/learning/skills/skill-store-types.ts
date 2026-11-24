@@ -5,7 +5,7 @@ import type { PreparedPackage, SkillSemanticAuditEvidence } from "../../../agent
 
 import type { LearningScope } from "../../../../infra/learning-scope.js";
 import type { MutationDiff } from "../../../../infra/mutation-diff.js";
-import type { SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
+import type { SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 
 
 export type SkillStoreRootName = "user" | "project";

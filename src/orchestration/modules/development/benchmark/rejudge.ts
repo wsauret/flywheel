@@ -1,18 +1,18 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
-import type { JudgeSelection } from "./benchmark-plan.js";
-import { appendCampaignRecords, loadAllCampaignRecords, scoreLine, type CampaignRecords, type CellLine } from "./benchmark-records.js";
+import type { JudgeSelection } from "./persona/benchmark-plan.js";
+import { appendCampaignRecords, loadAllCampaignRecords, scoreLine, type CampaignRecords, type CellLine } from "./records/benchmark-records.js";
 import { benchmarkMode, type BenchmarkCatalog, type ImplementTask, type ResearchTask, type ReviewTask } from "./catalog.js";
-import { scoreImplementTraps } from "./implement-scoring.js";
-import { createJsonLinesLedger } from "./json-lines.js";
-import type { JudgeAttemptReport, JudgeModel } from "./judge.js";
-import { planTasks, scoringVersion } from "./persona-benchmark.js";
-import { cellStanding, rankingCorpus } from "./ranking.js";
-import { scoreResearch, snapshotLines } from "./research-scoring.js";
-import { PersonaRecordSchemas, type JudgeAttemptRecord, type ScoreRecord } from "./run-store.js";
-import { scoreReviews } from "./scoring.js";
-import { withSnapshotWorkspace } from "./snapshot-workspace.js";
+import { scoreImplementTraps } from "./scoring/implement-scoring.js";
+import { createJsonLinesLedger } from "./campaign/json-lines.js";
+import type { JudgeAttemptReport, JudgeModel } from "./scoring/judge.js";
+import { planTasks, scoringVersion } from "./persona/persona-benchmark.js";
+import { cellStanding, rankingCorpus } from "./records/ranking.js";
+import { scoreResearch, snapshotLines } from "./scoring/research-scoring.js";
+import { PersonaRecordSchemas, type JudgeAttemptRecord, type ScoreRecord } from "./scoring/run-store.js";
+import { scoreReviews } from "./scoring/scoring.js";
+import { withSnapshotWorkspace } from "./execution/snapshot-workspace.js";
 
 // Rejudging scores recorded cells with another judge (ARCH-DIRECTORIES-020).
 // It reads only record files, so it works on any clone: the cells whose task

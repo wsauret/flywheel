@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { exhaustedProvidersCopy } from "../../../../../src/infra/llm/provider-error-copy.js"
+import { exhaustedProvidersCopy } from "../../../../../src/infra/llm/errors/provider-error-copy.js"
 import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "../../../../../src/orchestration/agent-runtime/runner/failure-message.js"
 import { PersistenceWriteRefused, type PersistenceWriteStage } from "../../../../../src/infra/event-store-types.js"
 import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/llm/routing/runtime-errors.js"

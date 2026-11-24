@@ -1,4 +1,4 @@
-import { mountSemanticComponent, type SemanticPublication } from "../../app/semantic-rows-fixture.js"
+import { mountSemanticComponent, type SemanticPublication } from "../../test-support/semantic-rows-fixture.js"
 import { NotificationsSheet } from "./sheet.js"
 
 /** Mounts notifications under immutable client publications; the runtime accepts every dismissal. */

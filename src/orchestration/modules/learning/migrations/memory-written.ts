@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { memoryWriteActor } from "../../../../workflows/memory/memory-fact-writers.js"
-import type { MemoryWrittenFact } from "../../../../workflows/memory/memory-facts.js"
+import { memoryWriteActor } from "../../../../workflows/learning/memory/memory-fact-writers.js"
+import type { MemoryWrittenFact } from "../../../../workflows/learning/memory/memory-facts.js"
 import { LearningScopeSchema } from "../../../../infra/learning-scope.js"
 import { migrateFactVersions, type FactMigrationResult } from "../../../migrations/engine.js"
 

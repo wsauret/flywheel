@@ -1,9 +1,9 @@
 import { Effect, Exit, Scope } from "effect";
 import { subscribeCustomProviderRetirement } from "../../../infra/llm/custom-provider-registry.js";
-import type { AdmittedFailoverPlan } from "../../../infra/llm/access-provider.js";
+import type { AdmittedFailoverPlan } from "../../../infra/llm/access/access-provider.js";
 import type { ProviderConnection } from "../../../infra/auth/auth-context.js";
 import type { FirstPartyModuleComposition } from "../../modules.js";
-import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
+import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
 import type { ModelClient, ProviderDemand, ProviderSessionLifetime } from "../llm/types.js";
 import type { SharedTree } from "./shared-tree.js";
 

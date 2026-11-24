@@ -9,9 +9,9 @@ import { workflowAgentGlyph, type WorkflowOutline } from "../../../../src/protoc
 import { workflowSeatRoleText } from "../../../../src/protocol/client/workflow-agent.js"
 import type { WorkflowAgentLive } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import "../../styles/workflow-card.css"
-import { keyedRows } from "../../app/keyed-rows.js"
-import { AgentLineCells } from "../../app/agent-line.js"
-import { createSessionReading, type SessionReadingSource } from "../../app/session-reading.js"
+import { keyedRows } from "../../app/controls/keyed-rows.js"
+import { AgentLineCells } from "../../app/transcript/blocks/agents/agent-line.js"
+import { createSessionReading, type SessionReadingSource } from "../../app/transcript/blocks/agents/session-reading.js"
 import { sessionServingLabel, type RoleAssignmentView } from "../../../../src/protocol/role-protocol-types.js"
 
 type AgentGroupBlock = Extract<FrontendOutputBlock, { kind: "agentGroup" }>

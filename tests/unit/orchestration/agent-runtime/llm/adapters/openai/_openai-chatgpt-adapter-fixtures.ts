@@ -12,7 +12,7 @@ import { afterAll, spyOn } from "bun:test";
 import { z } from "zod";
 import { Redacted } from "effect";
 import * as RealOpenAIModule from "openai";
-import type { ModelInfo } from "../../../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
 import { mapChatGptAdapterEvents } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/chatgpt-adapter/sse.js";
 import type { LLMClient, StreamEvent } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { StoredTokens } from "../../../../../../../src/infra/auth/openai/openai-auth-types.js";

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { AccessProviderId } from "../../../../../../src/infra/llm/access-provider.js";
-import { classifyApiError } from "../../../../../../src/infra/llm/provider-error-copy.js";
+import type { AccessProviderId } from "../../../../../../src/infra/llm/access/access-provider.js";
+import { classifyApiError } from "../../../../../../src/infra/llm/errors/provider-error-copy.js";
 import { AllCandidatesExhaustedError, LlmStreamError, ProviderRequestValidationError, QuotaExhaustedError, StreamIdleTimeoutError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { toFailureReason } from "../../../../../../src/orchestration/agent-runtime/runner/errors.js";
 import { describeAgentFailure } from "../../../../../../src/orchestration/agent-runtime/runner/failure-message.js";

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { runSkillCorpusCleanup } from "../../../../../../src/orchestration/modules/learning/maintenance/skill-corpus-cleanup.js";
 import type { SkillCorpusCleanupState } from "../../../../../../src/orchestration/modules/learning/maintenance/skill-corpus-cleanup-state.js";
-import { publishSkillRevision } from "../../../../../../src/workflows/skill-schema.js";
+import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
 
 const TMP = fileTemporaryDirectory("flywheel-skill-corpus-cleanup-owner-test-");
 const revision = publishSkillRevision(1, new Map());

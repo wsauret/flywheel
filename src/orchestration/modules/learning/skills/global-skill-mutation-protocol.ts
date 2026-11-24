@@ -36,7 +36,7 @@ import {
   type OperationManifest,
   type OperationState,
 } from "./skill-operation-manifest.js";
-import { skillOperationTransitionedFact } from "../../../../workflows/skill-facts.js";
+import { skillOperationTransitionedFact } from "../../../../workflows/skills/skill-facts.js";
 import type { SkillMutationPlan } from "./skill-store-types.js";
 
 const log = Log.create({ service: "global-skill-operation" });

@@ -24,7 +24,7 @@ import {
   extractProviderErrorDetail,
   providerErrorProse,
   type ProviderErrorCopy,
-} from "../../../infra/llm/provider-error-copy.js";
+} from "../../../infra/llm/errors/provider-error-copy.js";
 import type { AgentFailureReason } from "../types.js";
 
 export type AgentFailureCopy = ProviderErrorCopy;

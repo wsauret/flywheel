@@ -8,11 +8,11 @@
 
 import type { Content, Part } from "@google/genai";
 import { imageOmittedPlaceholder, splitToolOutputParts } from "../../../../infra/llm/tool-output-part-schema.js";
-import type { AccessProviderId } from "../../../../infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../../infra/llm/access/access-provider.js";
 import { healConversation } from "../history/heal-messages.js";
 import { lowerProviderHistory, type ProviderHistoryTarget } from "../history/provider-history.js";
 import { isSameProviderReplay } from "../messages.js"
-import type { ModelFamily } from "../../../../infra/llm/model-family.js";
+import type { ModelFamily } from "../../../../infra/llm/models/model-family.js";
 import type { ContentBlock, ConversationMessage } from "../types.js";
 import { sanitizeSurrogates } from "../history/sanitize-unicode.js";
 

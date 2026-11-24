@@ -26,12 +26,12 @@ import { fileURLToPath } from "node:url";
 import { bundledAgentAsset, type AgentAssetName } from "../src/infra/agent-assets/system-prompt.js";
 import { renderCapabilityText } from "../src/infra/capability-text.js";
 import { errorMessage } from "../src/infra/error-message.js";
-import { inspectSkillLibrary } from "../src/workflows/skill-health.js";
-import { loadSkillReferences, resolveSkillBody } from "../src/workflows/skill-references.js";
-import { BUNDLED_REFERENCE_DIR } from "../src/workflows/skill-source-inventory.js";
-import type { SkillDefinition } from "../src/workflows/skill-schema.js";
-import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../src/workflows/definition-registry.js";
-import type { DefinitionBundle } from "../src/workflows/loader.js";
+import { inspectSkillLibrary } from "../src/workflows/skills/skill-health.js";
+import { loadSkillReferences, resolveSkillBody } from "../src/workflows/skills/skill-references.js";
+import { BUNDLED_REFERENCE_DIR } from "../src/workflows/skills/skill-source-inventory.js";
+import type { SkillDefinition } from "../src/workflows/skills/skill-schema.js";
+import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../src/workflows/definitions/definition-registry.js";
+import type { DefinitionBundle } from "../src/workflows/definitions/loader.js";
 
 import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js";
 import { installedDefinitionBundles, installModuleCatalog } from "../src/orchestration/module-catalog.js";

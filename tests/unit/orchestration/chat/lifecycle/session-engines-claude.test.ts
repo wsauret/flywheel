@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js"
+import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js"
 import { createSessionEngines } from "../../../../../src/orchestration/chat/lifecycle/session-engines.js"
 import type { ResolvedRole, ResolvedRoles } from "../../../../../src/orchestration/config/roles.js"
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"

@@ -3,7 +3,7 @@
  *  `failover-client-failover.test.ts`, and the outage failover and
  *  sole-source last resort in `failover-client-outage.test.ts`. */
 
-import { candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+import { candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId } from "../../../../../src/infra/llm/access/access-provider.js";
 import { expect } from "bun:test";
 import { AllCandidatesExhaustedError, LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { createFailoverClient, createRoutingDecisions, type ProviderChainDeps } from "../../../../../src/orchestration/agent-runtime/llm/routing/failover-client.js";

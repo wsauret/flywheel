@@ -13,9 +13,9 @@ import { executePreparedTool, prepareToolCall } from "../../../../../../src/orch
 import { requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
 import { capabilityAccessHolding, makeContext as makeToolContext, testGrant } from "../../../agent-runtime/tools/_fixtures.js";
-import { publishSkillRevision } from "../../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
-import { parseSkillFact } from "../../../../../../src/workflows/skill-facts.js";
+import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
+import { parseSkillFact } from "../../../../../../src/workflows/skills/skill-facts.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 

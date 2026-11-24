@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto"
 
 import type { AsyncEventStateReadSurface, EventStoreAppend, StoredFact, InFlightPayload } from "../../../../infra/event-store-types.js"
 import { Log } from "../../../../infra/log.js"
-import { parseSkillFact, skillCleanupCompletedFact } from "../../../../workflows/skill-facts.js"
-import { skillPackageManifestIdentity, type BundledCorpusIdentity, type SkillPackageIdentity, type SkillPackageManifestEntry } from "../../../../workflows/skill-schema.js"
+import { parseSkillFact, skillCleanupCompletedFact } from "../../../../workflows/skills/skill-facts.js"
+import { skillPackageManifestIdentity, type BundledCorpusIdentity, type SkillPackageIdentity, type SkillPackageManifestEntry } from "../../../../workflows/skills/skill-schema.js"
 
 const SKILL_CORPUS_CLEANUP_AGGREGATE_ID = "project:skill-core-cleanup:v2"
 const SKILL_CORPUS_CLEANUP_SESSION_ID = "skill-core-cleanup-v2"

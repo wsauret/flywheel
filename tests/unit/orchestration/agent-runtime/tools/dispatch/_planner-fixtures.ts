@@ -3,7 +3,7 @@ import type { KernelToolDeps } from "../../../../../../src/orchestration/agent-r
 import { planToolExposure, type ToolExposureInput } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import type { AskUserController } from "../../../../../../src/orchestration/runner/ask-user-controller.js";
 import type { SubagentsRuntime } from "../../../../../../src/orchestration/modules/subagents/execution/control/runtime-binding.js";
-import { publishSkillRevision, type SkillDefinition, type SkillRegistryRevision } from "../../../../../../src/workflows/skill-schema.js";
+import { publishSkillRevision, type SkillDefinition, type SkillRegistryRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";
 import { makeDeps as makeSubagentDeps } from "../../subagent/_fixtures.js";

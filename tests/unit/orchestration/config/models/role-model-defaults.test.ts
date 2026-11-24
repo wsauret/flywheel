@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { modelsSnapshotFile } from "../../../../../src/infra/paths.js";
-import type { ModelFamily } from "../../../../../src/infra/llm/model-family.js";
+import type { ModelFamily } from "../../../../../src/infra/llm/models/model-family.js";
 import { reachableRoleModelDefaults, type RoleModelPreferences, selectRoleModelDefault } from "../../../../../src/orchestration/config/models/role-model-defaults.js";
 import { resolveCapturedRole, resolveRoles } from "../../../../../src/orchestration/config/models/role-resolution.js";
 import { installedConfigSchema } from "../../../../../src/orchestration/config/schema/schema.js";
@@ -108,7 +108,7 @@ describe("role model defaults", () => {
   it("prices a coded model from the bundled document when the admitted archive has no row for it", async () => {
     await withTempDir(async (userDataRoot) => {
       // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: each JSON value that JSON.parse visits
-      const withoutLuna: unknown = JSON.parse(await Bun.file("src/infra/llm/models-bundled.txt").text(), (key, value: unknown) => key === "gpt-6-luna" ? undefined : value);
+      const withoutLuna: unknown = JSON.parse(await Bun.file("src/infra/llm/models/models-bundled.txt").text(), (key, value: unknown) => key === "gpt-6-luna" ? undefined : value);
       await mkdir(dirname(modelsSnapshotFile(userDataRoot)), { recursive: true });
       await Bun.write(modelsSnapshotFile(userDataRoot), JSON.stringify(withoutLuna));
 

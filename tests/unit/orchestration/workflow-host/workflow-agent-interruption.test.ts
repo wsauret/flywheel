@@ -24,7 +24,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/lifecycle/publish"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store"
-import { attemptIdOf, attemptNodeIdOf } from "../../../../src/workflows/vm/graph-types"
+import { attemptIdOf, attemptNodeIdOf } from "../../../../src/workflows/vm/graph/graph-types"
 import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/runs/duration"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog"
 import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts"
@@ -34,10 +34,10 @@ import { workflowOutline } from "../../../../src/protocol/client/workflow-outlin
 import { activeTimeMs } from "../../../../src/protocol/client/session-time"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 import { readCapturedFacts } from "../../../../src/infra/event-store-types"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold"
 import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/protocol/detail"
 import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages"
-import { readAttemptStarts } from "../../../../src/workflows/vm/attempt-conversations"
+import { readAttemptStarts } from "../../../../src/workflows/vm/host/attempt-conversations"
 import { chatSessionActions } from "../../../../src/orchestration/session/chat-session-run-evidence"
 
 /** `failFirst`: the first agent that opens answers and ends without a

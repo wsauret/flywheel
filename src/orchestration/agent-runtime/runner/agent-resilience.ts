@@ -5,7 +5,7 @@ import type { ConnectionState } from "../../../infra/output-blocks.js"
 import { asNoticePresentation } from "../../../infra/error-presentation.js"
 import type { SessionNoticeOperation } from "../../../infra/session-notice.js"
 import { failureTerminal, type AgentFailureReason, type AgentRunResult } from "../types.js"
-import { boundProviderDetail, providerErrorProse } from "../../../infra/llm/provider-error-copy.js"
+import { boundProviderDetail, providerErrorProse } from "../../../infra/llm/errors/provider-error-copy.js"
 import { blockedFailureMessage, blockedFailureRecord, describeAgentFailure, type AgentFailureCopy } from "./failure-message.js"
 import type { RetryState } from "../llm/retry-budget.js"
 

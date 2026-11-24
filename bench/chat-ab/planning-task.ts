@@ -14,8 +14,8 @@ import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { Schema } from "effect";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
-import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { objectValue, parseImplementSandbox, parseManifestPoints, type ImplementSandboxSpec, type ManifestPoint } from "../../src/orchestration/modules/development/benchmark/task-schema.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { objectValue, parseImplementSandbox, parseManifestPoints, type ImplementSandboxSpec, type ManifestPoint } from "../../src/orchestration/modules/development/benchmark/tasks/task-schema.js";
 import { REPO_ROOT } from "./harness-paths.js";
 import { taskPath } from "./tasks.js";
 

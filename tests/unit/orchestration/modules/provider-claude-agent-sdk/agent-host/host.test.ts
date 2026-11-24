@@ -6,12 +6,12 @@ import { LlmStreamError, ProviderRequestValidationError, QuotaExhaustedError } f
 import { AGENT_HOST_PLUGIN } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.js";
 import { openAgentHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js";
 import { hostValues } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
-import type { CliUserFrame, HostLaunch, LaunchedHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
-import { queueIterable } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/queue-iterable.js";
+import type { CliUserFrame, HostLaunch, LaunchedHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
+import { queueIterable } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/queue-iterable.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { apiErrorLine, assistantError, cliInit, concurrentsRejected, ENVELOPE, GENERIC_USAGE_LIMIT_TEXT, includedReport, forwardDiagnostics, payloads, rateLimitReport, refused, responseBlock, sentBlock } from "../_bridge-harness.js";
-import { silentVersions, type SilentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
-import type { ExtraUsage, ExtraUsageStop } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/extra-usage-guard.js";
+import { silentVersions, type SilentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.js";
+import type { ExtraUsage, ExtraUsageStop } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge/extra-usage-guard.js";
 import { hostSessionFolder } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-file.js";
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";

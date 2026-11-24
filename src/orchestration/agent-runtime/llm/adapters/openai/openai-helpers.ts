@@ -4,8 +4,8 @@ import type {
   ResponseStreamEvent,
 } from "openai/resources/responses/responses.js";
 import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared.js";
-import type { AccessProviderId } from "../../../../../infra/llm/access-provider.js";
-import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models.js";
+import type { AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
+import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
 import { Option, Schema } from "effect";
 import { DebugLog } from "../../../../../infra/debug-log.js";
 import { ChatGptAdapterApiError } from "../../chatgpt-adapter-error.js";

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { AUTH_DIR, AUTH_NONE } from "./_model-listing-fixtures.js";
 import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js";
-import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../../../src/infra/llm/access/access-provider.js";
 import { testEligibility, testProviderSelection } from "../../../helpers/provider-authority.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 

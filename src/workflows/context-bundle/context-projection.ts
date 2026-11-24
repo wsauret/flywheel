@@ -2,9 +2,9 @@ import type { EventProjection } from "../../infra/event-projection.js"
 import { heldProjection } from "../../infra/projection-registry.js"
 import { createEventProjection, parseProjectionFact, reduceEvents } from "../../infra/event-projection.js"
 import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js"
-import { workflowProjectionBoundary } from "../session-fact-source.js"
-import { workflowAggregateId } from "../vm/session-facts.js"
-import { workflowFamilyEvents } from "../workflow-root.js"
+import { workflowProjectionBoundary } from "../run/session-fact-source.js"
+import { workflowAggregateId } from "../vm/facts/session-facts.js"
+import { workflowFamilyEvents } from "../run/workflow-root.js"
 import {
   createContextAccumulator,
   type AccumulatedContext,

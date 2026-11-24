@@ -23,7 +23,7 @@ import {
 } from "../../../../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
 import type { SkillMutationPlan, SkillStoreConfig } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
-import { publishSkillRevision } from "../../../../../../src/workflows/skill-schema.js";
+import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
 
 interface UnknownObject {
   [key: string]: unknown;

@@ -10,7 +10,7 @@ import { decodeModuleState } from "../src/orchestration/config/module-descriptor
 import { installedDefinitionBundles } from "../src/orchestration/module-catalog.js";
 import type { FirstPartyModule } from "../src/orchestration/modules.js";
 import { installedPersonaToolEntries } from "../src/orchestration/tool-catalog.js";
-import { createProjectDefinitionRegistry } from "../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../src/workflows/definitions/definition-registry.js";
 import { isUnderAny, moduleHomes } from "./module-homes.js";
 
 // A module's vocabulary in model text is its tool names and its capability

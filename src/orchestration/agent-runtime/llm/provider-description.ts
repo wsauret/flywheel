@@ -1,7 +1,7 @@
-import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
-import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
-import type { ModelInfo } from "../../../infra/llm/models.js";
+import type { AccessProviderId } from "../../../infra/llm/access/access-provider.js";
+import { computeUsagePrice } from "../../../infra/llm/models/llm-helpers.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
+import type { ModelInfo } from "../../../infra/llm/models/models.js";
 import { FUNCTION_TOOL_PRESENTATION, type ServingAttempt, type ToolDef, type ToolPresentation } from "./types.js";
 
 // The facts of each wire protocol live here, apart from its adapter: a provider describes a model when it builds

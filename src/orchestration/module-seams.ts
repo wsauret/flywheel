@@ -7,7 +7,7 @@ import type { ModuleServices } from "../infra/module-service.js"
 import type { ChildCut } from "./session/child-continuation.js"
 import type { ChildRunStatus } from "../protocol/app-service-types.js"
 import type { AgentFailureDisplay, AgentGroupBlock, PausedBy, WorkflowCard } from "../infra/output-blocks.js"
-import type { SkillRegistryRevision } from "../workflows/skill-schema.js"
+import type { SkillRegistryRevision } from "../workflows/skills/skill-schema.js"
 import type { AgentLifecycleCallbacks, ChildConversation } from "./agent-runtime/types.js"
 import type { ToolCallEventData } from "../infra/runtime-event-payload-types.js"
 import type { AskUserToolDeps } from "./agent-runtime/tools/sessions/ask-user.js"
@@ -35,7 +35,7 @@ import type { WorkflowDeliveryAddress } from "./session/conversation/addressed-w
 import type { ChildExecutionResources } from "./session/child-execution-resources.js"
 import type { WorkflowRunCut, WorkflowRunReader, WorkflowRunWriter } from "./workflow-host/run-record.js"
 import type { WorkflowPublication, WorkflowLaunchBinding } from "./session/child-session-publication.js"
-import type { WorkflowSessionFact } from "../workflows/vm/session-facts.js"
+import type { WorkflowSessionFact } from "../workflows/vm/facts/session-facts.js"
 
 /** Installed run reads stay available when new workflow admission is disabled. */
 /** Where workflows sit in the session tree, for an owner that walks

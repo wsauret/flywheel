@@ -1,7 +1,7 @@
 import { Array as Arr, Effect, Result, Schema, SchemaIssue } from "effect";
 import { exactStruct } from "../../infra/exact-struct.js";
 import { isRecord, type UnknownRecord } from "../../infra/record.js";
-import { hashDefinition } from "../definition-hash.js";
+import { hashDefinition } from "../provenance/definition-hash.js";
 import { envelope, modelFacingFields } from "./envelope.js";
 import { checkCommandCitations, type ReadCommandEvidence } from "./evidence.js";
 import { locatedIssues, type Field, type FieldMap, type FieldType, type OutputObject } from "./grammar.js";

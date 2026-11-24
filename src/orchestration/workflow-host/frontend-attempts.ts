@@ -4,12 +4,12 @@ import type { FrontendAttempt, WorkflowAgentPersona } from "../../protocol/workf
 import { getPersonaMetadataIndex } from "../../workflows/agents/agent-roles.js"
 import { personaRoleChain } from "../config/models/role-selection.js"
 import { readToolExecutions } from "../session/tool-execution-projection.js"
-import type { DefinitionLineageView } from "../../workflows/definition-provenance-projection.js"
+import type { DefinitionLineageView } from "../../workflows/run/definition-provenance-projection.js"
 import type { AttemptRow, WorkflowView } from "../../workflows/view/types.js"
 import { workflowRunReader } from "../module-catalog.js"
 import type { WorkflowMember } from "../session/workflow-membership.js"
-import { attemptNodeIdOf } from "../../workflows/vm/graph-types.js"
-import { startedConversation, type AttemptStarts } from "../../workflows/vm/attempt-conversations.js"
+import { attemptNodeIdOf } from "../../workflows/vm/graph/graph-types.js"
+import { startedConversation, type AttemptStarts } from "../../workflows/vm/host/attempt-conversations.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 
 /** The persona of each agent record of a run, by record id. */

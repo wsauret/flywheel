@@ -4,8 +4,8 @@ import { classifyAnthropicError } from "../../../../../../src/orchestration/agen
 import { LlmStreamError, ProviderRequestValidationError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { isFailoverFailure, normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { hostedRequests } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/hosted-requests.js";
-import { wireFailure } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/service-requests.js";
-import { debugLineReader, silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
+import { wireFailure } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/service-requests.js";
+import { debugLineReader, silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.js";
 import { apiErrorLine, forwardDiagnostics, payloads, responseBlock, sentBlock, streamErrorLine } from "../_bridge-harness.js";
 
 forwardDiagnostics();

@@ -7,7 +7,7 @@ import { isExternalLoginDefinition } from "../../../../../src/infra/auth/provide
 import { cliLaunch } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import { processUsageReadings } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/account-usage.js";
-import type { CliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import type { CliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { updateModuleMember } from "../../../../../src/orchestration/config/policy/module-selection-writer.js";
 import { composeFirstPartyModules, moduleProtocolRows, moduleSelectionFromConfig, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
 import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";
@@ -16,7 +16,7 @@ import { observedLogins } from "../../../../helpers/login-observations.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { enginePath } from "../../../../../src/infra/claude-engine.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
-import { registerHostDrain, registerLiveBridge } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/live-bridges.js";
+import { registerHostDrain, registerLiveBridge } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/live-bridges.js";
 import { moduleProcessServices } from "../../../../helpers/module-kernel.js";
 import { DebugLog } from "../../../../../src/infra/debug-log.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";

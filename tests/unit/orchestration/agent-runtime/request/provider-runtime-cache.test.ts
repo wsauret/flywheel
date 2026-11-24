@@ -4,7 +4,7 @@ import { Effect, Exit, Scope } from "effect";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
 import { ProviderRuntimeCache, providerRuntimeServingKey } from "../../../../../src/orchestration/agent-runtime/request/provider-runtime-cache.js";
 import { captureProviderConnection, type ProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
-import type { AdmittedFailoverPlan } from "../../../../../src/infra/llm/access-provider.js";
+import type { AdmittedFailoverPlan } from "../../../../../src/infra/llm/access/access-provider.js";
 import type { ProviderSessionLifetime } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { holdSharedTree, treeLogin, type SharedTree } from "../../../../../src/orchestration/agent-runtime/request/shared-tree.js";
 

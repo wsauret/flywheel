@@ -31,7 +31,7 @@ import {
   writeFileUnder,
 } from "../../../../infra/write-file-under.js";
 import { ContainedPathError } from "../../../../infra/descriptor-directory-contract.js";
-import { SKILL_FILE } from "../../../../workflows/skill-schema.js";
+import { SKILL_FILE } from "../../../../workflows/skills/skill-schema.js";
 import { tryWithPackageLocksSync } from "../../../../infra/package-directory-lock.js";
 import {
   stagingLockPath,

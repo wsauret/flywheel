@@ -22,14 +22,14 @@ import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission } from "../../../../.
 import { createAgentRuntime } from "../../../../../../src/orchestration/agent-runtime/runner/factory.js";
 import { isWebSocketSseFallbackActive, recordWebSocketFailure, recordWebSocketSuccess } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/chatgpt-adapter/websocket-session.js";
 import { authDir } from "../../../../../../src/infra/paths.js";
-import { createModelsClient } from "../../../../../../src/infra/llm/models.js";
+import { createModelsClient } from "../../../../../../src/infra/llm/models/models.js";
 import { temporaryDirectories, testDirectories } from "../../../../../helpers/directories.js";
 import { testCapabilityModules, testEligibility, testProviderRegistry, testProviderSessionLifetime } from "../../../../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../../../../helpers/request-tool-surface.js";
 import { fixedDefinitions, repoDefinitions } from "../../../../../helpers/project-definitions.js";
 import { fakeAvailability, preparedRequest, requestEvents } from "../_provider-chain-harness.js";
 import { fakeModelsClient } from "../../../../../helpers/model-tier-fixtures.js";
-import type { AccessProviderCandidate } from "../../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderCandidate } from "../../../../../../src/infra/llm/access/access-provider.js";
 import { authProviders } from "../../../../../helpers/auth-context.js";
 import { stableSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { ownHistoryTarget } from "../../_model-client.js";

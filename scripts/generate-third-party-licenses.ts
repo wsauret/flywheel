@@ -335,7 +335,7 @@ const ZIG_TOOLCHAIN = {
   ],
 } as const;
 
-// src/infra/llm/models-bundled.txt is a snapshot of the models.dev catalog, which scripts/refresh-models-snapshot.ts
+// src/infra/llm/models/models-bundled.txt is a snapshot of the models.dev catalog, which scripts/refresh-models-snapshot.ts
 // fetches. The catalog data is MIT-licensed, so every binary that bundles the snapshot carries its notice.
 const MODELS_DEV_CATALOG = {
   source: "https://github.com/anomalyco/models.dev/blob/d298380ee36b7e01261e5234d1f62d9a5f2955d3/LICENSE",

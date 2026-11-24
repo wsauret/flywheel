@@ -2,11 +2,11 @@ import { Schema } from "effect";
 import { InvariantViolation } from "../../infra/invariant.js";
 import { selectionReport } from "../reducers/list-selection.js";
 import { compareCodeUnits } from "../reducers/reducer.js";
-import { attemptNodeIdOf, roundOfNodeId } from "../vm/graph-types.js";
-import { ArtifactContractSchema, USER_REQUEST_ARTIFACT_ID } from "../artifact-contracts.js";
+import { attemptNodeIdOf, roundOfNodeId } from "../vm/graph/graph-types.js";
+import { ArtifactContractSchema, USER_REQUEST_ARTIFACT_ID } from "../schema/artifact-contracts.js";
 import { AddressedAddendumSchema, HandoffEntrySchema, RequestAddendumSchema, type AddressedAddendum, type HandoffEntry, type ItemScope, type RecipientScope, type RequestAddendum } from "./context-facts.js";
 import { WorkflowInputValueSchema, type WorkflowInputValue } from "../output-contract/compile.js";
-import type { AgentRead } from "../workflow-schema.js";
+import type { AgentRead } from "../schema/workflow-schema.js";
 
 /** Transient contract a blocked attempt wrote instead of its declared durable
  *  artifacts: the blocker report reached the immediate next attempt, the one

@@ -7,9 +7,9 @@
 
 import { randomUUID } from "node:crypto";
 import type { CapabilityCheck } from "../../../../infra/capability-text.js";
-import { REASONING_EFFORTS, type ReasoningEffort } from "../../../../infra/llm/models.js";
+import { REASONING_EFFORTS, type ReasoningEffort } from "../../../../infra/llm/models/models.js";
 import { prepareLocalTokenizer } from "../../../../infra/local-tokenizer.js";
-import type { ProjectDefinitionRegistry } from "../../../../workflows/definition-registry.js";
+import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import type { AgentLoopOptions, HistorySink } from "../../agent-loop-types.js";
 import { appendEntries, appendProviderHistory, createLoopMessageWriters } from "./agent-loop-history.js";
 import { turnContextEntry } from "../../request/prompt/agent-loop-turn-context.js";

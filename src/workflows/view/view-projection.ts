@@ -7,9 +7,9 @@ import { attemptIdOf, parseWorkflowQueueFact } from "./view-facts.js"
 import { attemptRowFromV9, mutationFromV9, WorkflowPlanSchema, WorkflowRowsSchema, workflowRowsFromV9, WorkflowTreeV1Schema, WorkflowViewSchema } from "./schemas.js"
 import type { AttemptRow, AttemptStatus, MutationLogEntry, WorkflowView } from "./types.js"
 import type { WorkflowTree, WorkflowTreeNode } from "../../protocol/workflow-view-protocol-types.js"
-import { workflowProjectionBoundary } from "../session-fact-source.js"
-import { parseWorkflowSessionFact, workflowAggregateId } from "../vm/session-facts.js"
-import { workflowFamilyEvents } from "../workflow-root.js"
+import { workflowProjectionBoundary } from "../run/session-fact-source.js"
+import { parseWorkflowSessionFact, workflowAggregateId } from "../vm/facts/session-facts.js"
+import { workflowFamilyEvents } from "../run/workflow-root.js"
 import { historicalWorkflowTree } from "./view-history-tree.js"
 
 

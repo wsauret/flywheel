@@ -5,7 +5,7 @@ import type { ChatInput } from "../../../infra/chat-input.js"
 import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
 import { currentAddresses, HeldMessageAddressesSchema, type AddressedAddendum, type WorkflowMessageAddress } from "../../../workflows/context-bundle/context-facts.js"
 import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
-import { startedAgents } from "../../../workflows/vm/host-commit-controller.js"
+import { startedAgents } from "../../../workflows/vm/host/host-commit-controller.js"
 import { decodeHeldInput, queuedInputPayload, readUnreadMessages, type QueuedUserInput, type QueuedUserInputCell } from "./queued-user-inputs.js"
 import { conversationHoldsEntries } from "./session-message-entries.js"
 

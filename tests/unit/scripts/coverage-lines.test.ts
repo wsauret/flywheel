@@ -15,8 +15,8 @@ function report(covered = 100) {
 describe("measured production lines", () => {
   test("excludes established test support but retains runner tooling", () => {
     expect(productionPath("scripts/test-temp-guard.ts", root)).toBeNull();
-    expect(productionPath("webview/src/app/composer-status-fixture.ts", root)).toBeNull();
-    expect(productionPath("webview/src/app/render-ownership-loader-fixture.ts", root)).toBeNull();
+    expect(productionPath("webview/src/app/toolbar/composer-status-fixture.ts", root)).toBeNull();
+    expect(productionPath("webview/src/app/transcript/render-ownership-loader-fixture.ts", root)).toBeNull();
     expect(productionPath("scripts/test-parallel.ts", root)).toBe("scripts/test-parallel.ts");
   });
   test("unions shard hits by path and line, excluding test files", () => {

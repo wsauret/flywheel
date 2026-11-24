@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { errorMessage } from "../../../../../infra/error-message.js";
-import type { AccessProviderId } from "../../../../../infra/llm/access-provider.js";
-import type { ModelInfo } from "../../../../../infra/llm/models.js";
+import type { AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
+import type { ModelInfo } from "../../../../../infra/llm/models/models.js";
 import { toAnthropicMessagesRequest } from "../../conversions/anthropic-messages.js";
 import { ANTHROPIC_STANDARD_CONTEXT_WINDOW, classifyQuotaError, ContentFilteredError, ContextLengthExceededError, extendedContextRefusal, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError } from "../../errors.js";
 import { supportsAdaptiveThinking, supportsEagerToolStreamingOnCopilot, supportsPerTurnEffort } from "../../model-compat.js";

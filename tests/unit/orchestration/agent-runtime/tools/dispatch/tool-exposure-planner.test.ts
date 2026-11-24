@@ -15,7 +15,7 @@ import { runtimeToolExecution, type RuntimeToolInput } from "../../../../../../s
 import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import { mcpPortsOver, mcpRuntimeOver } from "../../../../../helpers/mcp.js";
 import { codeModeRuntimeOver } from "../../../../../helpers/code-mode-worker.js";
-import { publishSkillRevision } from "../../../../../../src/workflows/skill-schema.js";
+import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
 import type { AskUserController } from "../../../../../../src/orchestration/runner/ask-user-controller.js";
 import type { SkillManageToolDeps } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { WorkflowToolDeps } from "../../../../../../src/orchestration/agent-runtime/tools/definitions/workflow-tool.js";

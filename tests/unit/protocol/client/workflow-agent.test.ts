@@ -4,7 +4,7 @@ import { workflowAgentFigures } from "../../../../src/protocol/client/workflow-c
 import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentLine, workflowAgentModel, workflowAgentMove, workflowAgentOpenTarget, workflowAgentTitle, workflowBriefLine, workflowNextAgentLabel, workflowSeatRoleText, type WorkflowAgentModel } from "../../../../src/protocol/client/workflow-agent.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
 import { attemptOf, inputStage as wideStage, stage } from "../../workflows/vm/_map-fixtures.js"
-import { completeAttempt } from "../../../../src/workflows/vm/attempt-transitions.js"
+import { completeAttempt } from "../../../../src/workflows/vm/transitions/attempt-transitions.js"
 import { drive, failedBranch, findingsBindings, findingsControl, frontendView, interrupt, phaseBindings, phaseControl, startNext, wideBindings, wideControl } from "../../workflows/vm/_tree-fixtures.js"
 
 const pinned = (agentNodeId: string) => ({ agentNodeId, follow: false })

@@ -9,7 +9,7 @@ import { cachedSolidTransform, compilerIdentity, installedPackage } from "../../
  *  - `ssr`: Solid's server renderer, so a test reads the markup as a string. */
 export type SolidFixtureRenderer = "memory-host" | "ssr"
 
-const MEMORY_HOST = fileURLToPath(new URL("../app/render-ownership-host-fixture.ts", import.meta.url))
+const MEMORY_HOST = fileURLToPath(new URL("render-ownership-host-fixture.ts", import.meta.url))
 
 const SOLID_PRESET = {
   "memory-host": { generate: "universal", moduleName: MEMORY_HOST },

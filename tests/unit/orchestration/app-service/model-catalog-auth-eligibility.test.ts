@@ -12,10 +12,10 @@ import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-
 import { appendCredentialInstanceWithReceipt, replaceCredentialInstance, replaceCredentialInstanceWithReceipt } from "../../../../src/infra/auth/store/auth-store-mutations.js";
 import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/store/auth-store.js";
 import { isCredentialCollection } from "../../../../src/infra/auth/store/auth-store-types.js";
-import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
-import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
+import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access/access-provider.js";
+import { createModelListingClient } from "../../../../src/infra/llm/access/model-listing.js";
 import { canonicalCatalogModelId } from "../../../../src/infra/model-id.js";
-import type { ModelsClient } from "../../../../src/infra/llm/models.js";
+import type { ModelsClient } from "../../../../src/infra/llm/models/models.js";
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js";
 import { captureAccountConnection } from "../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/models/model-assignment-providers.js";

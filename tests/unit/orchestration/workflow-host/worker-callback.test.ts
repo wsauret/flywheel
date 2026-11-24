@@ -19,7 +19,7 @@ import type { ActiveBackgroundCommandDescriptor } from "../../../../src/orchestr
 import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types"
 import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/handoff-correction-exhausted"
 import { HandoffInvalidError } from "../../../../src/workflows/context-bundle/handoff-errors"
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution"
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution"
 import { temporaryDirectories } from "../../../helpers/directories"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { fakeContainer, handedOverRow, handoverAuthority } from "../agent-runtime/_command-handover-fixtures"

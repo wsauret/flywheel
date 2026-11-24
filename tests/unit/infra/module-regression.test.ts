@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { AccessProviderId } from "../../../src/infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../src/infra/llm/access/access-provider.js";
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
 import { MODULE_IDS } from "../../../src/protocol/module-ids.js";
 import { createObserverChain } from "../../../src/orchestration/agent-runtime/loop/batch-observers.js";

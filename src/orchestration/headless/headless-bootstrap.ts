@@ -4,7 +4,7 @@ import type { AsyncEventWriter, EventStoreReadSurface } from "../../infra/event-
 import type { EventStoreWriterLane } from "../../infra/event-store-writer-lane-types.js"
 import type { ModuleServices } from "../../infra/module-service.js"
 import type { StartupDirectories } from "../../infra/directory-authorities.js"
-import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js"
+import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js"
 import type { WorkflowDeps } from "../workflow-host/deps.js"
 import type { FlywheelConfig } from "../config/schema/schema.js"
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../config/runtime-config-owner.js"

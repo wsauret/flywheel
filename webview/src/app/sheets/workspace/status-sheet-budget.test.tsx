@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { loadBudgetRenderFixture } from "../../budget-render-test-loader.js"
+import { loadBudgetRenderFixture } from "../../../test-support/budget-render-test-loader.js"
 
 test("Status Session and Spend follow the reactive selected budget", async () => {
   const fixture = await loadBudgetRenderFixture()

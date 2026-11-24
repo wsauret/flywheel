@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { skillWriteActor, type SkillReviewCompletedFact, type SkillWrittenFact } from "../../../../workflows/skill-facts.js"
+import { skillWriteActor, type SkillReviewCompletedFact, type SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js"
 import { LEGACY_MEMORY_TARGET_REACH } from "./memory-written.js"
 import { migrateFactVersions, type FactMigrationResult } from "../../../migrations/engine.js"
 

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js"
 import { bindWorkflowAgentModels } from "../../../../src/orchestration/config/models/workflow-agent-models.js"
 import { resolveSessionRoles } from "../../../../src/orchestration/config/models/session-role-resolver.js"
 import { resolveWorkflowAgentRole } from "../../../../src/orchestration/config/models/role-selection.js"

@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { detectModelFamily } from "../../../../../../src/infra/llm/model-family.js";
+import { detectModelFamily } from "../../../../../../src/infra/llm/models/model-family.js";
 import { stripProviderReasoningBlocks } from "../../../../../../src/infra/llm/provider-reasoning-blocks.js";
 import { createClient } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";

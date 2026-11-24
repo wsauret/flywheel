@@ -10,9 +10,9 @@ import type { DispatchedToolContext } from "../../../../../../src/orchestration/
 import { loadAgentInputProjection } from "../../../../../../src/orchestration/session/agent-input-projection.js";
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
 import type { SkillWriteOrigin } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import type { SkillDefinition } from "../../../../../../src/workflows/skill-schema.js";
-import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
+import type { SkillDefinition } from "../../../../../../src/workflows/skills/skill-schema.js";
+import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
 import { operationIdentity, readOperationManifest } from "../../../../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
 import { planSkillMutation } from "../../../../../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import { publishGlobalSkillMutation } from "../../../../../../src/orchestration/modules/learning/skills/global-skill-mutation.js";

@@ -9,7 +9,7 @@ import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR as SEPARATOR } from "../../
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../../src/infra/agent-assets/system-prompt.js";
 import { createSkillTool } from "../../../../../../src/orchestration/agent-runtime/tools/definitions/skill.js";
 import { advertisedBashTool } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
-import type { SkillRegistryRevision } from "../../../../../../src/workflows/skill-schema.js";
+import type { SkillRegistryRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { testSkill, testSkillRevision } from "../../../../../helpers/skill-fixtures.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";

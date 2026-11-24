@@ -1,6 +1,6 @@
 import { Redacted } from "effect";
 import { expect, setSystemTime, test } from "bun:test";
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
+import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
 import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";

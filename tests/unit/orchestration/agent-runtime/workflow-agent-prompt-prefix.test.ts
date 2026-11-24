@@ -13,7 +13,7 @@ import { temporaryDirectories, testDirectories } from "../../../helpers/director
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { asModelClient, ownHistoryTarget } from "./_model-client.js"
 import { checkpointTestPersistences } from "../../../helpers/checkpoint-store.js"
-import { providerModelInfo } from "../../../../src/infra/llm/provider-model-info.js"
+import { providerModelInfo } from "../../../../src/infra/llm/catalog/provider-model-info.js"
 
 const temporaryDirectory = temporaryDirectories()
 const checkpointTestPersistence = checkpointTestPersistences()

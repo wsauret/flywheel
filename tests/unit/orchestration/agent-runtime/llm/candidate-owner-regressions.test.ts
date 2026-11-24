@@ -3,7 +3,7 @@ import { Redacted } from "effect";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
 import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription/subscription-spend-consent.js";
 import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription/subscription-account-identity.js";
-import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access/access-provider.js";
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/runner/factory.js";
 import { authDir } from "../../../../../src/infra/paths.js";
 import { AllCandidatesExhaustedError, LlmStreamError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";

@@ -7,8 +7,8 @@ import { composeFirstPartyModules } from "../../../modules.js";
 import type { ToolRegistration } from "../../../agent-runtime/tools/dispatch/tool-registry.js";
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../modules.js";
 import { createAgentGeneration } from "../../../runner/host.js";
-import { createBenchmarkAccounting } from "./accounting.js";
-import type { BenchmarkAccounting } from "./evidence.js";
+import { createBenchmarkAccounting } from "./accounting/accounting.js";
+import type { BenchmarkAccounting } from "./accounting/evidence.js";
 
 export type ChatRoutingOutcome =
   | { readonly kind: "dispatch"; readonly persona: string; readonly durationMs: number; readonly accounting: BenchmarkAccounting }

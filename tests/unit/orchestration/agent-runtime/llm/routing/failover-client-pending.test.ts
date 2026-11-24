@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { AccessProviderId } from "../../../../../../src/infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../../../../src/infra/llm/access/access-provider.js";
 import type { ProviderAvailability, QuotaStanding, RecheckPending } from "../../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js";
 import { chain, executeStream, fakeAvailability, fakeClient, preparedRequest, singletonCandidate, streamOptions, textDelta, textStream } from "../_provider-chain-harness.js";
 

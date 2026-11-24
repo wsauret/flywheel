@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { asAsyncEventReadSurface, type StoredFact } from "../../../../../../src/infra/event-store-types.js";
 import { applySkillLifecycleTransitions } from "../../../../../../src/orchestration/modules/learning/maintenance/skill-prune.js";
 import { skillActivitySource } from "../../../../../../src/orchestration/modules/learning/skills/skill-load-stats.js";
-import { publishSkillRevision } from "../../../../../../src/workflows/skill-schema.js";
-import type { SkillWrittenFact } from "../../../../../../src/workflows/skill-facts.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
+import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
+import type { SkillWrittenFact } from "../../../../../../src/workflows/skills/skill-facts.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 

@@ -3,12 +3,12 @@ import type { RuntimeOAuthCredential } from "../../../infra/auth/auth-context.js
 import { replaceCredentialInstance } from "../../../infra/auth/store/auth-store-mutations.js";
 import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
 import { type StoredTokens, storedTokensToCredential } from "../../../infra/auth/openai/openai-auth-types.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { canonicalizeProviderIdCatalogRow, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
+import type { AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js";
+import { canonicalizeProviderIdCatalogRow, extractDataCatalogRows } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
-import { classifyFetchFailure, fetchCatalog } from "../../../infra/llm/model-listing.js";
-import { PROVIDER_REASONING_EFFORTS } from "../../../infra/llm/models.js";
-import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
+import { classifyFetchFailure, fetchCatalog } from "../../../infra/llm/access/model-listing.js";
+import { PROVIDER_REASONING_EFFORTS } from "../../../infra/llm/models/models.js";
+import { providerModelInfo } from "../../../infra/llm/catalog/provider-model-info.js";
 import { isRecord } from "../../../infra/record.js";
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";

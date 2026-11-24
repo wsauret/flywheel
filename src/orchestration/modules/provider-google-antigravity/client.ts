@@ -1,5 +1,5 @@
 import { Effect, Scope } from "effect"
-import type { AccessProviderCandidateAttribution } from "../../../infra/llm/access-provider.js"
+import type { AccessProviderCandidateAttribution } from "../../../infra/llm/access/access-provider.js"
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js"
 import { providerAdapter, type AccessProviderBuild } from "../../agent-runtime/llm/routing/client-factory.js"
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js"

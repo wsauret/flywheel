@@ -6,7 +6,7 @@ import { createSessionFactWriter } from "../../../../src/orchestration/session/s
 import { backgroundIndexEntries } from "../../../../src/protocol/client/background-index"
 import { workflowRunWriter } from "../../../../src/orchestration/module-catalog"
 import { publishTestWorkflow } from "../session/_session-manager-fixtures"
-import { validateWorkflowBootstrap } from "../../../../src/workflows/vm/bootstrap-validation"
+import { validateWorkflowBootstrap } from "../../../../src/workflows/vm/recovery/bootstrap-validation"
 import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store"
 import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact } from "../../../../src/orchestration/session/session-metadata-facts"
 import { countStateRequests } from "../../../helpers/state-requests"

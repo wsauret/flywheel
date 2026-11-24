@@ -113,8 +113,8 @@ step("checking the Antigravity CLI pin (bun run check:antigravity-engine)", ["bu
 const refresh = Bun.spawnSync(["bun", "run", "scripts/refresh-models-snapshot.ts"], { cwd: ROOT, stdout: "inherit", stderr: "inherit", windowsHide: true });
 if (refresh.exitCode !== 0) {
   console.warn("release: bundled models.dev snapshot refresh failed; shipping the committed snapshot");
-} else if (captureCommandOutput(["git", "status", "--porcelain", "--", "src/infra/llm/models-bundled.txt"]) !== "") {
-  captureCommandOutput(["git", "add", "src/infra/llm/models-bundled.txt"]);
+} else if (captureCommandOutput(["git", "status", "--porcelain", "--", "src/infra/llm/models/models-bundled.txt"]) !== "") {
+  captureCommandOutput(["git", "add", "src/infra/llm/models/models-bundled.txt"]);
   captureCommandOutput(["git", "commit", "-m", "chore: refresh bundled models.dev snapshot"]);
 }
 

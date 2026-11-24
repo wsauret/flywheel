@@ -7,9 +7,9 @@ import { workflowAuthorshipLedger, type WorkflowAuthorshipCampaign } from "../..
 import { renderWorkflowAuthorshipReport, workflowCompliance } from "../../../bench/chat-ab/workflow-authorship-report.js";
 import { workflowAuthorshipFamily } from "../../../bench/chat-ab/workflow-authorship-family.js";
 import { parseCodingDesign } from "../../../bench/chat-ab/coding-ab-design.js";
-import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
-import { bytesIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
-import type { HeadlessBenchmarkExecution } from "../../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
+import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import { bytesIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import type { HeadlessBenchmarkExecution } from "../../../src/orchestration/modules/development/benchmark/execution/headless-execution-contract.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { recoverCampaignAttempts } from "../../../bench/chat-ab/campaign-runner.js";
 import { readCampaignArtifact } from "../../../bench/chat-ab/campaign-artifacts.js";

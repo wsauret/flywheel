@@ -24,7 +24,7 @@ import { createSessionStore } from "../../../../src/orchestration/session-store/
 import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { createWorkflowHosts } from "../../../../src/orchestration/modules/workflows/host-collection.js"
 import { childSessionProjectionAttachment } from "../../../../src/orchestration/session-store/child-session-projection.js"
-import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { initializedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js"
 import { mockRunner, supervisorBaseDeps } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { testDirectories } from "../../../helpers/directories.js"

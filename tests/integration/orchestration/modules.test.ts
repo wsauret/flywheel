@@ -42,9 +42,9 @@ import type { RuntimeModulesView } from "../../../src/protocol/module-protocol-t
 import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
 import { decodeModuleState } from "../../../src/orchestration/config/module-descriptor.js";
 import { admitWorkflowOperation } from "../../../src/orchestration/workflow-host/lifecycle/workflow-admission.js";
-import { loadWorkflowFile } from "../../../src/workflows/workflow-file.js";
+import { loadWorkflowFile } from "../../../src/workflows/vm/admission/workflow-file.js";
 import { moduleRequirementsForContribution } from "../../../src/orchestration/module-requirements.js";
-import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 import { makeContext } from "../../unit/orchestration/agent-runtime/tools/_fixtures.js";
 import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { canonicalModuleIds, missingModuleIds, MODULE_IDS, moduleDisabledReason } from "../../../src/protocol/module-ids.js";

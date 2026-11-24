@@ -2,17 +2,17 @@ import type { AuthContext } from "../../../infra/auth/auth-context.js";
 import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory } from "../../../infra/auth/store/auth-profile-store.js";
 import { authStoreObservationKey, loadAuthStoreWithDiagnostics } from "../../../infra/auth/store/auth-store.js";
 import { loadAndMigrateProviderModelPreferences, type AccountProviderModelPreference } from "../../../infra/auth/provider-models/provider-model-preference-store.js";
-import { accessProviderAccountIdentity, compareAutomaticSelection, type AccessProviderCandidate, type AccessProviderId } from "../../../infra/llm/access-provider.js";
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
-import type { ModelDiscoveryMode, ModelListingClient } from "../../../infra/llm/model-listing.js";
-import type { AccessAuditProgressListener } from "../../../infra/llm/model-access-audit.js";
-import type { AccessAuditStatus } from "../../../infra/llm/model-listing-rows.js";
-import { groupedOfferingIndex, offeringTransportFamily, type ResolvedModelCatalog } from "../../../infra/llm/model-catalog-resolution.js";
+import { accessProviderAccountIdentity, compareAutomaticSelection, type AccessProviderCandidate, type AccessProviderId } from "../../../infra/llm/access/access-provider.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
+import type { ModelDiscoveryMode, ModelListingClient } from "../../../infra/llm/access/model-listing.js";
+import type { AccessAuditProgressListener } from "../../../infra/llm/access/model-access-audit.js";
+import type { AccessAuditStatus } from "../../../infra/llm/access/model-listing-rows.js";
+import { groupedOfferingIndex, offeringTransportFamily, type ResolvedModelCatalog } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import { offeringTransport } from "../../../infra/model-catalog-rows.js";
 import type { CatalogModelOffering } from "../../../infra/catalog-model-offering.js";
 import { deriveProviderModelPreferences, resolveAccountProviderModelPreferences, type ProviderModelCatalog, type ResolvedProviderModels } from "../../../infra/auth/provider-models/provider-model-preferences.js";
 import { getSharedModelListingClient } from "./llm-clients.js";
-import { isListableRoute, sharedModelInfos } from "../../../infra/llm/provider-model-info.js";
+import { isListableRoute, sharedModelInfos } from "../../../infra/llm/catalog/provider-model-info.js";
 import { customProviderById } from "../../../infra/llm/custom-provider-registry.js";
 import { composeFirstPartyModules, type FirstPartyModuleSnapshot } from "../../modules.js";
 import { installedCredentialProviderIds } from "../../credential-provider-modules.js";
@@ -58,7 +58,7 @@ export interface ResolvedProviderModelCatalogs {
   readonly providers: ReadonlyMap<AccessProviderId, ResolvedProviderModels>;
   readonly accounts: ReadonlyMap<string, ResolvedProviderModels>;
   readonly inventoryCandidates: ReadonlyMap<string, ResolvedProviderModelInventoryCandidate>;
-  readonly modelInfos: ReadonlyMap<string, import("../../../infra/llm/models.js").ModelInfo>;
+  readonly modelInfos: ReadonlyMap<string, import("../../../infra/llm/models/models.js").ModelInfo>;
   readonly enabledModels: ReadonlyMap<ModelFamily, ReadonlySet<string>>;
 }
 
@@ -216,7 +216,7 @@ function eligibleOfferingMap(
 export function enabledModelInfos(
   candidates: ReadonlyMap<string, Pick<ResolvedProviderModelInventoryCandidate, "candidate" | "enabledOfferings">>,
   rank: (providerId: AccessProviderId) => number,
-): ReadonlyMap<string, import("../../../infra/llm/models.js").ModelInfo> {
+): ReadonlyMap<string, import("../../../infra/llm/models/models.js").ModelInfo> {
   const ordered = [...candidates.values()].toSorted((left, right) => compareAutomaticSelection(
     { spendMode: left.candidate.spendMode, rank: rank(left.candidate.providerId) },
     { spendMode: right.candidate.spendMode, rank: rank(right.candidate.providerId) },

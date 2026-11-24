@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto"
-import type { AccessProviderCandidate, AccessProviderCatalogProvenance } from "../../infra/llm/access-provider.js"
+import type { AccessProviderCandidate, AccessProviderCatalogProvenance } from "../../infra/llm/access/access-provider.js"
 import { Schema } from "effect"
-import { ProviderErrorDiagnosticSchema, type ProviderErrorDiagnostic } from "../../infra/llm/provider-error-diagnostic.js"
-import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js"
+import { ProviderErrorDiagnosticSchema, type ProviderErrorDiagnostic } from "../../infra/llm/errors/provider-error-diagnostic.js"
+import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js"
 import type { ModelInteractionProfileId } from "../agent-runtime/request/prompt/model-interaction-profile.js"
 
 /** Profile ids that only recorded requests hold: builds before 2026-10-30 served gpt-6-luna through them. */
@@ -271,7 +271,7 @@ export const PromptStaleMaskingSchema = Schema.Struct({
 export const PromptToolHistoryProjectionSchema = Schema.Struct({
   loweredToolUseIds: Schema.Array(Schema.String),
 })
-// What the shared lowering of provider history (agent-runtime/llm/history/provider-history.ts) withheld from this request's
+// What the shared lowering of provider history (agent-runtime/llm/provider-history.ts) withheld from this request's
 // messages: request framing that the serving route does not read, and deliberation that another access provider,
 // API, or model produced, or that a route which reads history as text cannot replay (`foreign-deliberation` names both). `at` is the index of the message in the request's messages before the lowering, `block`
 // the index of the content block that the edit changes, absent when the edit leaves out the whole message.

@@ -4,8 +4,8 @@ import type { BugReportResult } from "../../../../src/protocol/modules/bug-repor
 import { ClientContext } from "../../app/client-context.js"
 import { fakeClient, fakeClientHost, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"
 import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
-import { RuntimeFaultNotice } from "../../app/composer-status.js"
-import { createElement, insert, nodes, textContent } from "../../app/render-ownership-host-fixture.js"
+import { RuntimeFaultNotice } from "../../app/toolbar/composer-status.js"
+import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { bugReportsWeb } from "./index.js"
 import { BugReportSheet, ViewErrorReport } from "./surfaces.js"
 

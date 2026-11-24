@@ -14,7 +14,7 @@ import { capabilityAccessFor, type CapabilityAccess } from "../../../../src/orch
 import { loadConfig } from "../../../../src/orchestration/config/loader.js"
 import { composeFirstPartyModules, unattendedModuleIds } from "../../../../src/orchestration/modules.js"
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js"
-import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js"
+import { createProjectDefinitionRegistry } from "../../../../src/workflows/definitions/definition-registry.js"
 import {
   cleanupProjectRoots,
   createDeps,

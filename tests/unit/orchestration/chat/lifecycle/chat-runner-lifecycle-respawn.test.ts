@@ -9,7 +9,7 @@ import { createChatControls } from "../../../../../src/orchestration/chat/contro
 import { ChatSessionState } from "../../../../../src/orchestration/chat/types"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types"
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types"
-import type { ProviderRequestOptions } from "../../../../../src/infra/llm/provider-options"
+import type { ProviderRequestOptions } from "../../../../../src/infra/llm/access/provider-options"
 import {
   askUserStub,
   createTestChatSessionDeps,

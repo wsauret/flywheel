@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models/models.js";
 import { anthropicThinkingMode, clampReasoningEffort, familySettings, inheritsPerTurnEffort, supportsAdaptiveThinking, supportsPerTurnEffort, supportsReasoningOff, supportsThinkingDisable } from "../../../../../src/orchestration/agent-runtime/llm/model-compat.js";
 
 const baseModelInfo = {

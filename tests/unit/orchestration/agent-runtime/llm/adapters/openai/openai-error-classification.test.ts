@@ -9,8 +9,8 @@ import { isProviderAttributedFailure, normalizeProviderAttemptFailure, ProviderA
 import { ApiError, fromStreamError } from "../../../../../../../src/orchestration/agent-runtime/llm/routing/runtime-errors.js";
 import { repairContentRefusal } from "../../../../../../../src/orchestration/agent-runtime/llm/history/content-repair.js";
 import type { ConversationMessage } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ModelInfo } from "../../../../../../../src/infra/llm/models.js";
-import { providerModelInfo } from "../../../../../../../src/infra/llm/provider-model-info.js";
+import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
+import { providerModelInfo } from "../../../../../../../src/infra/llm/catalog/provider-model-info.js";
 import { modelInfo } from "../../../../../../helpers/model-tier-fixtures.js";
 import { stableSystemPrompt } from "../../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { ChatGptAdapterTransportError } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/chatgpt-adapter/types.js";

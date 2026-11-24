@@ -3,14 +3,14 @@
 import { DebugLog } from "../../../../infra/debug-log.js";
 import { errorDetail, errorMessage } from "../../../../infra/error-message.js";
 import { mergeAbortSignals } from "../../../../infra/abort.js";
-import type { ProviderRequestOptions } from "../../../../infra/llm/provider-options.js";
-import type { MeasuredUsageEntry, UsageEntry } from "../../../../infra/llm/usage-entry.js";
+import type { ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";
+import type { MeasuredUsageEntry, UsageEntry } from "../../../../infra/llm/usage/usage-entry.js";
 import { Log } from "../../../../infra/log.js";
-import type { ReasoningEffort } from "../../../../infra/llm/models.js";
+import type { ReasoningEffort } from "../../../../infra/llm/models/models.js";
 import { durationMs } from "../../../../infra/operation-log.js";
 import { probeLoopUnit } from "../../../../infra/event-loop-lag.js";
-import { summarizeProviderError, type ProviderErrorDiagnostic } from "../../../../infra/llm/provider-error-diagnostic.js";
-import { classifyApiError } from "../../../../infra/llm/provider-error-copy.js";
+import { summarizeProviderError, type ProviderErrorDiagnostic } from "../../../../infra/llm/errors/provider-error-diagnostic.js";
+import { classifyApiError } from "../../../../infra/llm/errors/provider-error-copy.js";
 import { type AgentRuntimeError, ApiError, fromStreamError, ProviderAuditSettlementError, StreamStalled } from "../../llm/routing/runtime-errors.js";
 import { ProviderAttemptFailure, type ProviderFailure } from "../../llm/stream/provider-failure.js";
 import {

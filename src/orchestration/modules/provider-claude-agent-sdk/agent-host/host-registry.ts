@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { DebugLog } from "../../../../infra/debug-log.js";
-import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access-provider.js";
-import type { ModelInfo } from "../../../../infra/llm/models.js";
+import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access/access-provider.js";
+import type { ModelInfo } from "../../../../infra/llm/models/models.js";
 import { mapAnthropicAdaptiveEffort } from "../../../agent-runtime/llm/adapters/anthropic/anthropic-options.js";
 import { supportsAdaptiveThinking } from "../../../agent-runtime/llm/model-compat.js";
 import { orderedJson } from "../cli-view.js";
-import { registerHostDrain } from "../live-bridges.js";
-import type { ExtraUsage } from "../extra-usage-guard.js";
-import type { EngineValues } from "../query-engine.js";
+import { registerHostDrain } from "../engine/live-bridges.js";
+import type { ExtraUsage } from "../bridge/extra-usage-guard.js";
+import type { EngineValues } from "../query/query-engine.js";
 import { COORDINATOR_EFFORT, type AgentHost, type Coordinator, type HostValues } from "./host.js";
 
 /** What decides which host serves an agent: the login, the spend mode, the chat tree, the git status of the agent's

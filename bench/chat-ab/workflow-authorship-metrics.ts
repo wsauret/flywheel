@@ -1,16 +1,16 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
-import { writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
-import { parseDefinitionProvenanceFact } from "../../src/workflows/definition-provenance-facts.js";
-import { hashDefinition } from "../../src/workflows/definition-hash.js";
-import { canonicalWorkflowRecord } from "../../src/workflows/definition-records.js";
-import { decodeWorkflowFile } from "../../src/workflows/workflow-file.js";
-import { allPhases, namedAgents, WorkflowDefinitionSchema } from "../../src/workflows/workflow-schema.js";
-import { replayWorkflowControl } from "../../src/workflows/vm/fact-fold.js";
-import { roundOfNodeId } from "../../src/workflows/vm/graph-types.js";
+import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/execution/headless-execution-contract.js";
+import { writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
+import { parseDefinitionProvenanceFact } from "../../src/workflows/provenance/definition-provenance-facts.js";
+import { hashDefinition } from "../../src/workflows/provenance/definition-hash.js";
+import { canonicalWorkflowRecord } from "../../src/workflows/schema/definition-records.js";
+import { decodeWorkflowFile } from "../../src/workflows/vm/admission/workflow-file.js";
+import { allPhases, namedAgents, WorkflowDefinitionSchema } from "../../src/workflows/schema/workflow-schema.js";
+import { replayWorkflowControl } from "../../src/workflows/vm/recovery/fact-fold.js";
+import { roundOfNodeId } from "../../src/workflows/vm/graph/graph-types.js";
 import { REPO_ROOT } from "./harness-paths.js";
 
 const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));

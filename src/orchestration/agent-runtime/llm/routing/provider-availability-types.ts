@@ -2,10 +2,10 @@
  *  about the accounts it spends from, and the shapes those answers take. The
  *  semantics live with the implementation in `provider-availability.ts`. */
 
-import type { CapacityHold } from "../../../../infra/llm/provider-error-copy.js";
-import type { AccessProviderCandidate, AccessProviderId, ProviderSettingValues } from "../../../../infra/llm/access-provider.js";
-import type { AvailabilityAuthority } from "../../../../infra/llm/availability-store.js";
-import type { SubscriptionUsageMetric } from "../../../../infra/llm/subscription-usage.js";
+import type { CapacityHold } from "../../../../infra/llm/errors/provider-error-copy.js";
+import type { AccessProviderCandidate, AccessProviderId, ProviderSettingValues } from "../../../../infra/llm/access/access-provider.js";
+import type { AvailabilityAuthority } from "../../../../infra/llm/access/availability-store.js";
+import type { SubscriptionUsageMetric } from "../../../../infra/llm/usage/subscription-usage.js";
 import type { SubscriptionSpendAuthorization } from "../../../subscription-spend-consent/subscription-spend-consent-service.js";
 
 

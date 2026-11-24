@@ -2,8 +2,8 @@ import type { PreparedFile, PreparedPackage } from "../../../agent-runtime/reque
 import { Buffer } from "node:buffer";
 import { containsSecret } from "../../../../infra/redact-secrets.js";
 import { parseFrontmatter } from "../../../../infra/frontmatter.js";
-import { bindPackageDir, readManifestPackage, readSkillPackage, readSkillPackageFiles } from "../../../../workflows/skill-context.js";
-import { normalizeSkillFrontmatter, SKILL_FILE, SKILL_LIMITS } from "../../../../workflows/skill-schema.js";
+import { bindPackageDir, readManifestPackage, readSkillPackage, readSkillPackageFiles } from "../../../../workflows/skills/skill-context.js";
+import { normalizeSkillFrontmatter, SKILL_FILE, SKILL_LIMITS } from "../../../../workflows/skills/skill-schema.js";
 
 
 export function prepareSkillPackage(files: ReadonlyMap<string, string>): { package: PreparedPackage } | { error: string } {

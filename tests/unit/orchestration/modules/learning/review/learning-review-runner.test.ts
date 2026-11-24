@@ -4,7 +4,7 @@ import { createLearningReviewExecution } from "../../../../../../src/orchestrati
 import { captureProviderConnection as captureAuthProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
 import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
 import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type ServingAttempt } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { publishSkillRevision, type BundledSkillPackage } from "../../../../../../src/workflows/skill-schema.js";
+import { publishSkillRevision, type BundledSkillPackage } from "../../../../../../src/workflows/skills/skill-schema.js";
 
 import { testProviderRegistry } from "../../../../../helpers/provider-authority.js";
 import { withRequestAdmission } from "../../../agent-runtime/_model-client.js";

@@ -27,7 +27,7 @@ import { readWorkflowAgentTurnEnds, resumableAgentTurnEnd, workflowSessionAction
 import { createWorkflowRunner } from "../../../../src/orchestration/workflow-host/execution/runner.js"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import { definition, fixtureSkills, workflow } from "../../workflows/vm/host-test-support"
-import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery"
+import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery/recovery"
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js"
 import { cleanupProjectRoots, createCapabilities, makeWorkflowDeps, noConversationRecall } from "./_workflow-controller-fixtures"
 import { capabilityAccessFor, type CapabilityAccess } from "../../../../src/orchestration/agent-runtime/tools/types.js"

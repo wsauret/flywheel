@@ -8,10 +8,10 @@ import { createFinalizeChildGrant } from "../../../../../src/orchestration/modul
 import type { ExperimentsRuntime } from "../../../../../src/orchestration/modules/experiments/runtime.js"
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js"
 import { makeContext } from "../../agent-runtime/tools/_fixtures.js"
-import type { SkillRegistryRevision } from "../../../../../src/workflows/skill-schema.js"
-import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js"
-import { BUNDLED_SKILL_DIR } from "../../../../../src/workflows/skill-source-inventory.js"
-import { loadSkillDefinitions } from "../../../../../src/workflows/skills.js"
+import type { SkillRegistryRevision } from "../../../../../src/workflows/skills/skill-schema.js"
+import { publishSkillRevision } from "../../../../../src/workflows/skills/skill-schema.js"
+import { BUNDLED_SKILL_DIR } from "../../../../../src/workflows/skills/skill-source-inventory.js"
+import { loadSkillDefinitions } from "../../../../../src/workflows/skills/skills.js"
 import { testDirectories } from "../../../../helpers/directories.js"
 
 const SKILL_ROOTS = [{ authority: "bundled" as const, dir: BUNDLED_SKILL_DIR, reach: "global" as const, sourceKind: "agent" as const }]

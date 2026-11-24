@@ -5,9 +5,9 @@ import { applyPlannedMutation, refuseUncontainedSkillStores, restoreSkill } from
 import { admitSkillMutationPlan, planSkillMutation } from "../../../../../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import { prepareSkillPackage } from "../../../../../../src/orchestration/modules/learning/skills/skill-package-planning.js";
 import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { publishSkillRevision, SKILL_BODY_BUDGET_CHARS, SKILL_FILE, SKILL_LIMITS, type BundledSkillPackage, type SkillDefinition } from "../../../../../../src/workflows/skill-schema.js";
+import { publishSkillRevision, SKILL_BODY_BUDGET_CHARS, SKILL_FILE, SKILL_LIMITS, type BundledSkillPackage, type SkillDefinition } from "../../../../../../src/workflows/skills/skill-schema.js";
 
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 
 const TMP = fileTemporaryDirectory("flywheel-skill-store-test-");

@@ -1,11 +1,11 @@
 import { Redacted } from "effect";
 import { apiKey } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { canonicalizeIdCatalogRow, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
+import type { AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js";
+import { canonicalizeIdCatalogRow, extractDataCatalogRows } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
-import { fetchCatalog } from "../../../infra/llm/model-listing.js";
-import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
-import { currentOpenAiStandardPricing, openAiPricingFromMetadata, openAiPricingMetadata, refreshOpenAiStandardPricing } from "../../../infra/llm/openai-pricing.js";
+import { fetchCatalog } from "../../../infra/llm/access/model-listing.js";
+import { providerModelInfo } from "../../../infra/llm/catalog/provider-model-info.js";
+import { currentOpenAiStandardPricing, openAiPricingFromMetadata, openAiPricingMetadata, refreshOpenAiStandardPricing } from "../../../infra/llm/models/openai-pricing.js";
 import { isRecord } from "../../../infra/record.js";
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";

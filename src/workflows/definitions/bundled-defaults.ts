@@ -4,11 +4,11 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { systemPromptText } from "../../infra/agent-assets/manifest.js"
-import { agents, moduleSkillDefinitions, skillDefinitions, type WorkflowAssets } from "../asset-manifest.js"
-import { definitionAssets } from "../definition-assets.js"
+import { agents, moduleSkillDefinitions, skillDefinitions, type WorkflowAssets } from "../provenance/asset-manifest.js"
+import { definitionAssets } from "./definition-assets.js"
 import { loadPersonaSources } from "../agents/persona-sources.js"
-import { BUNDLED_SKILL_DIR } from "../skill-source-inventory.js"
-import type { DefinitionBundle } from "../loader.js"
+import { BUNDLED_SKILL_DIR } from "../skills/skill-source-inventory.js"
+import type { DefinitionBundle } from "./loader.js"
 
 
 interface BundledDefaultFile {

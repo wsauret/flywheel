@@ -6,13 +6,13 @@
  *  `provider-availability-copilot-coordination.test.ts`. */
 
 import { describe, expect, test } from "bun:test";
-import { accessProviderCandidateKey } from "../../../../../../src/infra/llm/access-provider.js";
+import { accessProviderCandidateKey } from "../../../../../../src/infra/llm/access/access-provider.js";
 import {
   type AvailabilityAuthority,
   AvailabilityCorruptError,
   type AvailabilityKey,
   type AvailabilityObservation,
-} from "../../../../../../src/infra/llm/availability-store.js";
+} from "../../../../../../src/infra/llm/access/availability-store.js";
 import {
   disposeSharedProviderAvailability,
   getSharedProviderAvailability,

@@ -1,5 +1,5 @@
 import { imageOmittedPlaceholder, splitToolOutputParts } from "../../../../infra/llm/tool-output-part-schema.js";
-import type { ReasoningEffort } from "../../../../infra/llm/models.js";
+import type { ReasoningEffort } from "../../../../infra/llm/models/models.js";
 import { healConversation } from "../history/heal-messages.js";
 import { lowerProviderHistory, type ProviderHistoryTarget } from "../history/provider-history.js";
 import { isSameAccessProviderReplay, isSameProviderReplay } from "../messages.js"

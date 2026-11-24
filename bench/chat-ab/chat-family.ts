@@ -1,5 +1,5 @@
 import { classifyAcceptance } from "./acceptance.js";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { BASELINE_ARM_ID, installArm, type Arm } from "./arms.js";
 import type { CampaignDesign, CampaignFamily } from "./campaign-runner.js";
 import type { CampaignTreatment } from "./campaign-subject.js";

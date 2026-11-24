@@ -10,7 +10,7 @@ import { accessProviderRegistry } from "../../../../src/orchestration/agent-runt
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogCanonicalRow } from "../../../../src/infra/model-catalog-rows.js";
 import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
-import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
+import { createModelListingClient } from "../../../../src/infra/llm/access/model-listing.js";
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { modelsSnapshotFile } from "../../../../src/infra/paths.js";
 import { createHeadlessProfileRuntime } from "../../../../src/orchestration/headless/headless-profile-runtime.js";

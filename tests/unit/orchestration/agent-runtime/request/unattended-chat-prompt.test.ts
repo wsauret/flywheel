@@ -13,8 +13,8 @@ import type { CapabilityRequest } from "../../../../../src/orchestration/config/
 import { composeFirstPartyModules, unattendedModuleIds, type FirstPartyModuleComposition } from "../../../../../src/orchestration/modules.js";
 import { canonicalModuleIds } from "../../../../../src/protocol/module-ids.js";
 import { installedPersonaToolEntries } from "../../../../../src/orchestration/tool-catalog.js";
-import { createProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../../../../src/workflows/definition-registry.js";
-import { publishSkillRevision, type SkillDefinition } from "../../../../../src/workflows/skill-schema.js";
+import { createProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../../../../src/workflows/definitions/definition-registry.js";
+import { publishSkillRevision, type SkillDefinition } from "../../../../../src/workflows/skills/skill-schema.js";
 import { unusedSessionMessaging } from "../../../../helpers/child-session-control.js";
 import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
 import { interceptBashCommand } from "../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-command-policy.js";

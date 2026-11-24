@@ -5,7 +5,7 @@ import type { StorageReclaimPreview } from "../../../../src/protocol/store-recla
 import { ClientContext } from "../../app/client-context.js"
 import { fakeClient, fakeViewState } from "../../app/client-context-fixture.js"
 import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
-import { createElement, insert, nodes, textContent } from "../../app/render-ownership-host-fixture.js"
+import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { ReclaimStorageSheet } from "./sheet.js"
 
 /** Runs the real Reclaim storage sheet over a scripted preview and reclaim

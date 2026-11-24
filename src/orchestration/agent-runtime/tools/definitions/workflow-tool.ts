@@ -17,7 +17,7 @@ import {
   workflowRefusalText,
 } from "../../../workflow-host/lifecycle/launch-origin.js";
 import { stageWorkflowSource, type LaunchingSessionAuthority } from "../../../workflow-host/lifecycle/path-workflow.js";
-import type { VerificationUncertaintyKind, WorkflowVerificationResult } from "../../../../workflows/vm/verify-types.js";
+import type { VerificationUncertaintyKind, WorkflowVerificationResult } from "../../../../workflows/vm/compile/verify-types.js";
 import type { WorkflowAgentModels } from "../../../config/models/workflow-agent-models.js";
 
 import type { CapabilityAccess, RuntimeToolInput } from "../types.js";

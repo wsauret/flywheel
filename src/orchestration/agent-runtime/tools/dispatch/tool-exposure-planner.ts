@@ -16,7 +16,7 @@
 
 import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
 import type { ToolAction } from "../../../../infra/workflow-types.js";
-import type { SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
+import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import type { FirstPartyModuleComposition, ToolExposureGate } from "../../../modules.js";
 import type { KernelToolDeps } from "../kernel-tool-deps.js";
 import { exposedToolName, toolRegistryFromComposition, type DeferredToolFactory, type RegisteredTool, type ToolFactoryResult, type ToolRegistry } from "./tool-registry.js";

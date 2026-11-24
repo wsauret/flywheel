@@ -23,7 +23,7 @@ import type { SessionStore, SessionEntry } from "../../../../src/orchestration/s
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager"
 import type { WorkflowView } from "../../../../src/workflows/view/types"
-import type { WorkflowCapabilityBoundary } from "../../../../src/workflows/run-facts"
+import type { WorkflowCapabilityBoundary } from "../../../../src/workflows/run/run-facts"
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema"
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request/request-config"
 import type { WorkflowDeps } from "../../../../src/orchestration/workflow-host/deps"

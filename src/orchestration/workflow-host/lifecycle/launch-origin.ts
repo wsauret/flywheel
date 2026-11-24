@@ -6,7 +6,7 @@
 import type { WorkflowCallSource, WorkflowLaunchSource } from "../../../infra/tools/workflow-call-source.js"
 import type { DecisionRefusal } from "../../session/agent-input-decision.js"
 import type { AgentInputDecision, WorkflowLaunchApprovalSource } from "../../session/agent-input-facts.js"
-import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definition-registry.js"
+import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"
 import type { CapabilityAccess } from "../../agent-runtime/tools/types.js"
 import { describeDefinitionRefusal, readPathWorkflow, stageWorkflowSource, workflowFileName, type LaunchingSessionAuthority } from "./path-workflow.js"
 

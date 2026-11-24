@@ -2,7 +2,7 @@ import { scoreAcceptance } from "./acceptance.js";
 import { campaignCellKey } from "./campaign-store.js";
 import { chatLedger, type ChatOutcome } from "./chat-store.js";
 import { compareCampaignRoles } from "./campaign-role-evidence.js";
-import { renderCampaignRoleChanges } from "../../src/orchestration/modules/development/benchmark/campaign-role-changes.js";
+import { renderCampaignRoleChanges } from "../../src/orchestration/modules/development/benchmark/campaign/campaign-role-changes.js";
 
 const amount = (value: ChatOutcome["accounting"]["estimatedUsd"]) => value.kind === "observed" ? `$${value.value.toFixed(4)}` : "unavailable";
 

@@ -16,7 +16,7 @@ import { createConversationTree } from "../../../../../../src/orchestration/sess
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { SHELL_CAPABILITIES } from "../../../../../helpers/prompt-capabilities.js";
 import { Redacted } from "effect";
-import { providerModelInfo } from "../../../../../../src/infra/llm/provider-model-info.js";
+import { providerModelInfo } from "../../../../../../src/infra/llm/catalog/provider-model-info.js";
 import type { AccessProviderBuild } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { openrouterModule } from "../../../../../../src/orchestration/modules/provider-openrouter/module.js";
 import { fakeAvailability } from "../_provider-chain-harness.js";

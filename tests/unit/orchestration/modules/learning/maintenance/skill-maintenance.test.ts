@@ -7,8 +7,8 @@ import type { SkillMaintenanceUnit } from "../../../../../../src/orchestration/m
 import type { SkillUnitPackage } from "../../../../../../src/orchestration/modules/learning/maintenance/skill-maintenance-unit.js";
 
 import type { SkillStoreConfig } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
-import { publishSkillRevision, type SkillRegistryRevision } from "../../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
+import { publishSkillRevision, type SkillRegistryRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 
 const TMP = fileTemporaryDirectory("flywheel-skill-maintenance-test-");

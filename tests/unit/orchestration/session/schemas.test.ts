@@ -2,7 +2,7 @@ import { safeParse } from "../../../helpers/schema-assertions.js";
 import { resolve } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { SessionSchema } from "../../../../src/orchestration/session/schemas";
-import { toBudgetLimits } from "../../../../src/workflows/budget";
+import { toBudgetLimits } from "../../../../src/workflows/run/budget";
 
 describe("toBudgetLimits", () => {
   it("converts zero budgets to unlimited nullable runtime limits", () => {

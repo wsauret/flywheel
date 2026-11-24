@@ -25,7 +25,7 @@ import { createBackgroundExecutionOwner } from "../../../../../src/orchestration
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js"
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js"
 
-import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js"
+import { publishSkillRevision } from "../../../../../src/workflows/skills/skill-schema.js"
 import { testSkill } from "../../../../helpers/skill-fixtures.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js"
 import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../src/orchestration/modules.js"

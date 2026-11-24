@@ -8,7 +8,7 @@ import { encodeProjectStateResponseFrame, type ProjectStateRequest, type Project
 import { createWorkflowToolSummaryReader } from "../../../../src/orchestration/modules/workflows/history/tool-summary.js"
 import { createConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
-import { WorkflowSessionFactSchema } from "../../../../src/workflows/vm/session-facts.js"
+import { WorkflowSessionFactSchema } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { terminalWorkflowFacts } from "../session/_child-session-reconciliation-fixtures.js"
 import { createProjectStateCommitWindow } from "../../../../src/orchestration/app-service/project-state-commit-window.js"
 import { createEventProjection } from "../../../../src/infra/event-projection.js"

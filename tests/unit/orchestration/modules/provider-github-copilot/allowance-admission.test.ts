@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { join } from "node:path"
 import { writeFileSync } from "node:fs"
-import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access-provider.js"
+import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access/access-provider.js"
 import { captureCopilotAllowanceAdmission } from "../../../../../src/orchestration/modules/provider-github-copilot/allowance-admission.js"
 import { createSubscriptionUsageService, type SubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { createProfileFixture, definition, registry, report, writeAccounts } from "../../auth/provider-observations/_service-fixtures.js"

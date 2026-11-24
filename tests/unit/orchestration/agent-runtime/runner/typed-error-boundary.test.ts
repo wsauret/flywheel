@@ -10,7 +10,7 @@ import type { AgentOptions } from "../../../../../src/orchestration/agent-runtim
 import type { AgentOptionsOverride } from "../_runner-options.js"
 import type { ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types"
 import { asModelClient } from "../_model-client"
-import type { ProviderErrorCopy } from "../../../../../src/infra/llm/provider-error-copy"
+import type { ProviderErrorCopy } from "../../../../../src/infra/llm/errors/provider-error-copy"
 import { describeAgentFailure, formatAgentFailure } from "../../../../../src/orchestration/agent-runtime/runner/failure-message"
 import { PersistenceWriteRefused } from "../../../../../src/infra/event-store-types.js"
 

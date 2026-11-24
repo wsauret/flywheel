@@ -23,9 +23,9 @@ import { buildMutationDiff, type MutationDiff, type MutationDiffEndpoint, type M
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
 import { isQualifiedSkillId } from "../../../../infra/skill-id.js";
 import { firstThreatMessage } from "../../../../infra/threat-patterns.js";
-import { readSkillPackageFiles } from "../../../../workflows/skill-context.js";
-import { NEW_SKILL_TRIGGER_MAX_CHARS, SKILL_FILE, SKILL_LIMITS, type SkillDefinition, type SkillPackageBinding } from "../../../../workflows/skill-schema.js";
-import { ownedSkillStoreDirs } from "../../../../workflows/skills.js";
+import { readSkillPackageFiles } from "../../../../workflows/skills/skill-context.js";
+import { NEW_SKILL_TRIGGER_MAX_CHARS, SKILL_FILE, SKILL_LIMITS, type SkillDefinition, type SkillPackageBinding } from "../../../../workflows/skills/skill-schema.js";
+import { ownedSkillStoreDirs } from "../../../../workflows/skills/skills.js";
 import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
 import type {
   PreparedLocation,
@@ -39,7 +39,7 @@ import type {
   SkillWriteOrigin,
 } from "./skill-store-types.js";
 import { composeSkillFile, packageDigestAt, prepareSkillPackage, readPackageFiles, validateSkillFile } from "./skill-package-planning.js";
-import { packagePathRefusal } from "../../../../workflows/skill-package-path.js";
+import { packagePathRefusal } from "../../../../workflows/skills/skill-package-path.js";
 import { refuseOverBudgetBody } from "./skill-body-budget.js";
 
 import { skillSemanticAuditEvidenceIsCurrent } from "./skill-semantic-audit.js";
@@ -109,7 +109,7 @@ function requiresSemanticAudit(action: SkillWriteAction): boolean {
  * candidate, canonical package relationship, and pinned registry revision. */
 export function admitSkillMutationPlan(
   plan: SkillMutationPlan,
-  revision: import("../../../../workflows/skill-schema.js").SkillRegistryRevision,
+  revision: import("../../../../workflows/skills/skill-schema.js").SkillRegistryRevision,
   result: SkillSemanticAuditResult,
 ): SkillMutationPlanResult {
   if (plan.semanticAudit?.kind !== "required") return { kind: "planned", plan };

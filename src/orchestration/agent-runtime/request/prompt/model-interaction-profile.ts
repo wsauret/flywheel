@@ -1,4 +1,4 @@
-import { isApplyPatchModel, type ModelFamily } from "../../../../infra/llm/model-family.js"
+import { isApplyPatchModel, type ModelFamily } from "../../../../infra/llm/models/model-family.js"
 import { familySettings } from "../../llm/model-compat.js"
 import { MODEL_GUIDANCE, type ModelGuidance } from "./model-chat-body.js"
 

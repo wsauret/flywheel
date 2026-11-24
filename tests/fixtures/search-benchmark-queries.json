@@ -20,7 +20,7 @@
     { "query": "createSessionManager", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/session/manager.ts" },
     { "query": "createWorkflowRunner", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/workflow-runner.ts" },
     { "query": "createAgentRuntime", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/runner/factory.ts" },
-    { "query": "createWorkflowVmHost", "path": "src", "glob": "*.ts", "targetFile": "src/workflows/vm/host.ts" },
+    { "query": "createWorkflowVmHost", "path": "src", "glob": "*.ts", "targetFile": "src/workflows/vm/host/host.ts" },
     { "query": "registerHandoffType", "path": "src", "glob": "*.ts", "targetFile": "src/workflows/handoffs/registry.ts" },
     { "query": "resolveToolPath", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/files/tool-paths.ts" },
     { "query": "isDefinitionLine", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/search/search-ranking.ts" }

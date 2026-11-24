@@ -16,7 +16,7 @@ import { readToolExecution } from "../../../../src/orchestration/session/tool-ex
 import { readChildCall, readChildStop, workflowSessionActions, workflowToolCall } from "../../../../src/orchestration/session/chat-session-run-evidence"
 import { workflowRunReader, workflowRunOwner } from "../../../../src/orchestration/module-catalog"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications"
-import { WorkflowSessionFactSchema } from "../../../../src/workflows/vm/session-facts"
+import { WorkflowSessionFactSchema } from "../../../../src/workflows/vm/facts/session-facts"
 import { replaceWorkflowState, terminalWorkflowFacts } from "./_child-session-reconciliation-fixtures"
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
 import { createBackgroundNotificationDelivery } from "../../../../src/orchestration/runner/background-notification-delivery"

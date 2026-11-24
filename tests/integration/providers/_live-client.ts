@@ -46,7 +46,7 @@ import { captureSubscriptionAdmission } from "../../../src/orchestration/subscri
 import { createSubscriptionSpendConsentCaptureCache } from "../../../src/orchestration/subscription-spend-consent/capture-cache.js";
 import type { SubscriptionSpendConsentCapture } from "../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
 import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js";
-import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 import { unusedProviderModelWrites } from "../../helpers/provider-model-writes.js";
 import { diskAuthObservation } from "../../helpers/profile-auth-observation.js";
 

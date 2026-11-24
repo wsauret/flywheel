@@ -17,8 +17,8 @@ import { createEventProjection, parseProjectionFact } from "../../../../infra/ev
 import { heldProjection } from "../../../../infra/projection-registry.js";
 import { requireContainedDirectory } from "../../../../infra/write-file-under.js";
 import { Log } from "../../../../infra/log.js";
-import type { SkillRecommendationRecordedFact } from "../../../../workflows/skill-facts.js";
-import { ownedSkillStoreDirs } from "../../../../workflows/skills.js";
+import type { SkillRecommendationRecordedFact } from "../../../../workflows/skills/skill-facts.js";
+import { ownedSkillStoreDirs } from "../../../../workflows/skills/skills.js";
 import { escapeXml, formatRuntimeNotification } from "../../../agent-runtime/background-work/runtime-notifications.js";
 import { createConversationTreeProjection, currentContextIdentities } from "../../../session/conversation/conversation-projection.js";
 import type { ContextContentIdentities } from "../../../session/conversation/conversation-context-identities.js";

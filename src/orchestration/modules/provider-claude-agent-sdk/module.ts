@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { privateTemporaryRoot } from "../../../infra/private-temporary-root.js";
 import type { ClaudeLoginEngines } from "../../../infra/claude-engine.js";
-import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../infra/llm/access-provider.js";
+import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../infra/llm/access/access-provider.js";
 import type { AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { moduleServiceHandle } from "../../../infra/module-service.js";
 import type { ModuleServiceInstance, PortableModuleServices } from "../../app-service/module-service-host.js";
@@ -12,10 +12,10 @@ import { SEVEN_DAY_METRIC } from "./account-usage.js";
 import { historicalEngineFraming } from "./agent-host/engine-text.js";
 import { claudeSdkDynamicCatalog } from "./catalog.js";
 import { cliLaunch, engineHost, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
-import { profileClaudeAccounts, loginClaudeAccount, logoutClaudeAccount, logoutProfileClaudeAccounts, type ClaudeProfile } from "./cli-login.js";
-import { drainAgentHosts, releaseLiveBridges, resumeLiveBridges } from "./live-bridges.js";
-import { claudeLoginHealth, loginProblems } from "./login-status.js";
-import { prototypeLoginConversion, replacedSubscriptionConversion } from "./profile-conversions.js";
+import { profileClaudeAccounts, loginClaudeAccount, logoutClaudeAccount, logoutProfileClaudeAccounts, type ClaudeProfile } from "./login/cli-login.js";
+import { drainAgentHosts, releaseLiveBridges, resumeLiveBridges } from "./engine/live-bridges.js";
+import { claudeLoginHealth, loginProblems } from "./login/login-status.js";
+import { prototypeLoginConversion, replacedSubscriptionConversion } from "./login/profile-conversions.js";
 import { CLAUDE_AGENT_SDK_CLI_FLAG, CLAUDE_AGENT_SDK_LABEL, CLAUDE_AGENT_SDK_LOGIN_COMMAND, CLAUDE_AGENT_SDK_MODULE_ID, CLAUDE_AGENT_SDK_PROVIDER_ID, LOGIN_PROGRAM_LABEL, TOKEN_LOGIN_VARIABLE } from "./names.js";
 import { claudeUsageReader } from "./usage-reader.js";
 import type { ExternalAccount } from "../../../infra/auth/provider-account.js";
@@ -139,7 +139,7 @@ function createClaudeAgentSdkService(services: Pick<PortableModuleServices, "ena
           accountId: account.accountId,
           identity: account.identity,
           // The launcher loads the Agent SDK, which stays off the start path until an engine starts.
-          start: async (engine) => (await import("./query-launcher.js")).startLoginEngine(launch.config, engine),
+          start: async (engine) => (await import("./engine/query-launcher.js")).startLoginEngine(launch.config, engine),
         }];
       });
     },

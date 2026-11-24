@@ -6,7 +6,7 @@ import { deselectAllProviderModels, loadAndMigrateProviderModelPreferences, prov
 import { authStoreRevision } from "../../../../../src/infra/auth/store/auth-store.js";
 import { authDir } from "../../../../../src/infra/paths.js";
 import { accessProviderAccountKey } from "../../../../../src/infra/auth/provider-account.js";
-import { groupedOfferingIndex } from "../../../../../src/infra/llm/model-catalog-resolution.js";
+import { groupedOfferingIndex } from "../../../../../src/infra/llm/catalog/model-catalog-resolution.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();

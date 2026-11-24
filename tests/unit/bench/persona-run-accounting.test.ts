@@ -11,13 +11,13 @@ import {
   type BenchmarkRuntime,
   type PersonaDefinition,
   type PersonaTaskRequest,
-} from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
+} from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
 import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
 import { captureRuntimeConfigRequest } from "../../../src/orchestration/agent-runtime/request/request-config.js";
 import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema/schema.js";
 import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
-import { runGroups } from "../../../src/orchestration/modules/development/benchmark/matrix-runner.js";
+import { runGroups } from "../../../src/orchestration/modules/development/benchmark/campaign/matrix-runner.js";
 
 const PERSONA: PersonaDefinition = {
   kind: "persona",

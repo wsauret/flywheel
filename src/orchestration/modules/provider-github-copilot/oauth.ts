@@ -3,7 +3,7 @@ import { COPILOT_CLIENT_ID, COPILOT_STATIC_HEADERS, type CopilotStoredTokens } f
 import { getCopilotAuthUrls, getGitHubCopilotBaseUrl } from "./base-url.js";
 import { refreshGitHubCopilotToken } from "./token-refresh.js";
 import { Log } from "../../../infra/log.js";
-import type { DeviceCodeLoginPorts } from "../../../infra/llm/access-provider.js";
+import type { DeviceCodeLoginPorts } from "../../../infra/llm/access/access-provider.js";
 import { mergeAbortSignals } from "../../../infra/abort.js";
 import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
 

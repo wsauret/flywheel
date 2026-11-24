@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import type { WorkflowProposalEvent } from "../../../../src/workflows/vm/events.js";
-import type { createWorkflowHostCommitController } from "../../../../src/workflows/vm/host-commit-controller.js";
+import type { WorkflowProposalEvent } from "../../../../src/workflows/vm/facts/events.js";
+import type { createWorkflowHostCommitController } from "../../../../src/workflows/vm/host/host-commit-controller.js";
 
 /** The event a running workflow host can commit. */
 type CommittableEvent = Parameters<ReturnType<typeof createWorkflowHostCommitController>["commit"]>[0]["event"];

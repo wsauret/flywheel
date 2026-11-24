@@ -12,7 +12,7 @@ import { buildSessionChildLinkedFact } from "../../../../src/orchestration/sessi
 import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store.js"
 import { CHILD_SESSION_DELETION_IN_FLIGHT_KIND, executeChildSessionDeletionPlan } from "../../../../src/orchestration/session/child-session-deletion.js"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage.js"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
 import { initialFacts } from "../../workflows/vm/host-test-support.js"
 import { loadToolExecutionTimelineFromEvents, TOOL_EXECUTION_FACT_TYPES } from "../../../../src/orchestration/session/tool-execution-projection.js"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"

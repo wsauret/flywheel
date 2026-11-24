@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { hashContent } from "../../../../src/workflows/definition-hash.js";
-import { buildWorkflowCompilationFacts } from "../../../../src/workflows/definition-provenance-fact-writers.js";
+import { hashContent } from "../../../../src/workflows/provenance/definition-hash.js";
+import { buildWorkflowCompilationFacts } from "../../../../src/workflows/definitions/definition-provenance-fact-writers.js";
 import { buildHandoffValidatedFact, buildHandoffWrittenFact } from "../../../../src/workflows/output-contract/facts.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
-import { DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID } from "../../../../src/workflows/vm/definition-identity.js";
-import { buildWorkflowControlCommittedFact, committedWorkflowEvent, buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, buildDefinitionIdentityMigratedFact, buildDefinitionIdentityAdoptedFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
-import { buildAttemptBlockedFact, buildAttemptFailedFact, buildAttemptInsertionRejectedFact, buildAttemptResumeCapExceededFact, buildAttemptResumeRecoveredFact, buildAttemptRetryInsertedFact, buildAttemptRevertedFact, buildAttemptStartedFact, buildAttemptSucceededFact, buildFollowUpFailedFact, buildFollowUpRequestedFact, buildFollowUpSucceededFact, buildFollowUpTransferredFact, buildForExpandedFact, buildForExpansionRejectedFact, buildWorkflowAbortedFact, buildWorkflowCompletedFact, buildWorkflowFailedFact, buildWorkflowPausedFact, buildWorkflowReassessedFact, buildWorkflowResumedFact } from "../../../../src/workflows/vm/fact-drafts.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/facts/committed-control.js";
+import { DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID } from "../../../../src/workflows/vm/facts/definition-identity.js";
+import { buildWorkflowControlCommittedFact, committedWorkflowEvent, buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, buildDefinitionIdentityMigratedFact, buildDefinitionIdentityAdoptedFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
+import { buildAttemptBlockedFact, buildAttemptFailedFact, buildAttemptInsertionRejectedFact, buildAttemptResumeCapExceededFact, buildAttemptResumeRecoveredFact, buildAttemptRetryInsertedFact, buildAttemptRevertedFact, buildAttemptStartedFact, buildAttemptSucceededFact, buildFollowUpFailedFact, buildFollowUpRequestedFact, buildFollowUpSucceededFact, buildFollowUpTransferredFact, buildForExpandedFact, buildForExpansionRejectedFact, buildWorkflowAbortedFact, buildWorkflowCompletedFact, buildWorkflowFailedFact, buildWorkflowPausedFact, buildWorkflowReassessedFact, buildWorkflowResumedFact } from "../../../../src/workflows/vm/transitions/fact-drafts.js";
 import { controlBeforePhases } from "../../../helpers/control-before-phases.js";
 import { historicalAttemptRecoveredFact } from "../../../helpers/workflow-root-fixtures.js";
 import { testResolvedAgent, testSkill } from "../../../helpers/skill-fixtures.js";

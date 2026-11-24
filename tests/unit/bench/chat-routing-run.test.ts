@@ -5,7 +5,7 @@ import type { RuntimeToolInput } from "../../../src/orchestration/agent-runtime/
 import { ChatRoutingFailure, chatRoutingGuidance, runChatRoutingTask } from "../../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
 import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
 import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
-import { publishSkillRevision } from "../../../src/workflows/skill-schema.js";
+import { publishSkillRevision } from "../../../src/workflows/skills/skill-schema.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
 import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js";
 

@@ -1,7 +1,7 @@
 import type { ResponseCreateParamsStreaming, ResponseInput } from "openai/resources/responses/responses.js";
-import type { AccessProviderId } from "../../../../../infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
 import { toOpenAIResponsesRequestInput, type ReasoningEffortUpdates } from "../../conversions/openai-responses.js";
-import type { ReasoningEffort } from "../../../../../infra/llm/models.js";
+import type { ReasoningEffort } from "../../../../../infra/llm/models/models.js";
 import { sanitizeSurrogates } from "../../history/sanitize-unicode.js";
 import { extractSystemPrompt } from "./openai-helpers.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "../../system-prompt-tiers.js";

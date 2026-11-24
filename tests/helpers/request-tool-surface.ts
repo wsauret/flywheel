@@ -10,9 +10,9 @@ import { captureRuntimeConfigRequest, type CaptureRuntimeConfig } from "../../sr
 import { createToolRegistry } from "../../src/orchestration/tool-catalog.js";
 import { definitionAvailabilityOf } from "../../src/orchestration/app-service/definition-availability.js";
 import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
-import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/definition-registry.js";
+import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/definitions/definition-registry.js";
 import type { AgentDefinition } from "../../src/infra/agent-definition.js";
-import { publishSkillRevision } from "../../src/workflows/skill-schema.js";
+import { publishSkillRevision } from "../../src/workflows/skills/skill-schema.js";
 import type { ExecutionAdmission } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import type { FirstPartyModuleComposition } from "../../src/orchestration/modules.js";
 const toolRegistrations = Object.fromEntries(createToolRegistry());

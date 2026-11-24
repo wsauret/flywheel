@@ -11,11 +11,11 @@ import { fakeModelsClient, modelInfo } from "../../../../../helpers/model-tier-f
 import { clearSharedModelListingClients, getSharedModelListingClient, getSharedModelsClient } from "../../../../../../src/orchestration/config/models/llm-clients.js";
 import { createAdmittedClient, createClient, type AccessProviderBuild } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import type { AdapterAdmission } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ModelInfo } from "../../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../../src/infra/llm/models/models.js";
 import { credentialSlotClassifier } from "../../../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
 import { testRuntimeConfigCapture } from "../../../../../helpers/request-tool-surface.js";
-import { AccessProviderCandidateSchema, createAccessProviderSelection, type AccessProviderCandidate } from "../../../../../../src/infra/llm/access-provider.js";
+import { AccessProviderCandidateSchema, createAccessProviderSelection, type AccessProviderCandidate } from "../../../../../../src/infra/llm/access/access-provider.js";
 
 import { accessProviderRegistry } from "../../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { authProviders } from "../../../../../helpers/auth-context.js";

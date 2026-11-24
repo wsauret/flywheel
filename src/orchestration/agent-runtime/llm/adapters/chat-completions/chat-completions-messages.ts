@@ -4,7 +4,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from "openai/resources/chat/completions.js";
-import type { AccessProviderId } from "../../../../../infra/llm/access-provider.js";
+import type { AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
 import { imageOmittedPlaceholder, splitToolOutputParts } from "../../../../../infra/llm/tool-output-part-schema.js";
 import { healConversation } from "../../history/heal-messages.js";
 import { lowerProviderHistory, type ProviderHistoryTarget } from "../../history/provider-history.js";

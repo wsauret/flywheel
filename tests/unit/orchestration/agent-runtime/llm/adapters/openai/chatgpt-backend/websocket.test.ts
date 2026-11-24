@@ -10,7 +10,7 @@ import { ChatGptAdapterTransportError } from "../../../../../../../../src/orches
 import { createStaleToolResultMasker } from "../../../../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
 import { buildOpenAIResponseInput } from "../../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
 import type { ConversationMessage } from "../../../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ModelInfo } from "../../../../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../../../../src/infra/llm/models/models.js";
 import { prepareOpenAIResponsesRequest } from "../../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-responses.js";
 import { stableSystemPrompt } from "../../../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { Log } from "../../../../../../../../src/infra/log.js";

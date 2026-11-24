@@ -21,7 +21,7 @@ import { createConversationRecall } from "../session/conversation-recall.js"
 import { ChatTurnMailbox } from "../chat/turn-mailbox.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
 import { getSharedModelsClient } from "../config/models/llm-clients.js"
-import type { ModelsClient } from "../../infra/llm/models.js"
+import type { ModelsClient } from "../../infra/llm/models/models.js"
 import { createBackgroundExecutionOwner } from "../agent-runtime/background-execution/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../agent-runtime/background-work/background-work.js"
 import { emitToolExecutionOutput } from "../agent-runtime/runner/emit.js"
@@ -41,7 +41,7 @@ import { captureRuntimeConfigRequest } from "../agent-runtime/request/request-co
 import { shellWriteGuardObserver } from "../config/policy/shell-write-guard-policy.js"
 import { createHeadlessProfileRuntime, resolveHeadlessAuth } from "./headless-profile-runtime.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/routing/access-provider-registry.js"
-import { personaRoleIds } from "../../workflows/definition-registry.js"
+import { personaRoleIds } from "../../workflows/definitions/definition-registry.js"
 export interface RunHeadlessTaskOptions {
   directories: StartupDirectories
   launcher: LauncherScope

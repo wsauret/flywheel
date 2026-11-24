@@ -2,7 +2,7 @@
 
 import { Redacted } from "effect";
 import { COPILOT_STATIC_HEADERS } from "./auth-types.js";
-import { boundedProviderText, normalizeSubscriptionUsageReport, readBoundedSubscriptionUsageJson, unsupportedSubscriptionUsageOutcome, type SubscriptionUsageMetric, type SubscriptionUsageOutcome, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageReport, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
+import { boundedProviderText, normalizeSubscriptionUsageReport, readBoundedSubscriptionUsageJson, unsupportedSubscriptionUsageOutcome, type SubscriptionUsageMetric, type SubscriptionUsageOutcome, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageReport, type SubscriptionUsageSpendSource } from "../../../infra/llm/usage/subscription-usage.js";
 import { isRecord } from "../../../infra/record.js";
 import { getCopilotAuthUrls } from "./base-url.js";
 

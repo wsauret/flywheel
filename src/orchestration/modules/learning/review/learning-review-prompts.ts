@@ -1,5 +1,5 @@
 import type { CapabilityCheck } from "../../../../infra/capability-text.js";
-import { SKILL_BODY_BUDGET_CHARS } from "../../../../workflows/skill-schema.js";
+import { SKILL_BODY_BUDGET_CHARS } from "../../../../workflows/skills/skill-schema.js";
 
 /** Review prompts for the learning fork: the read
  *  tool is `skill` (action list / load / resource), the write tool is

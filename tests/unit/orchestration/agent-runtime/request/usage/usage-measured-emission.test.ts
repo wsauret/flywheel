@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import type { UsageEntry } from "../../../../../../src/infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../../../../../src/infra/llm/usage/usage-entry.js";
 import type { RuntimeEvent } from "../../../../../../src/infra/runtime-event-types.js";
 import { createTurnUsageTracker } from "../../../../../../src/orchestration/agent-runtime/request/usage/turn-usage-tracker.js";
 

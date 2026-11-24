@@ -13,7 +13,7 @@ import { workflowMembershipReader } from "../../../src/orchestration/session/wor
 import { createSessionFactWriter } from "../../../src/orchestration/session/session-fact-writer.js"
 import { createChildMeasureReader } from "../../../src/orchestration/modules/subagents/history/child-measures.js"
 import { createWorkflowQueueProjection } from "../../../src/workflows/view/view-projection.js"
-import { readTerminalHandoff } from "../../../src/workflows/workflow-completion.js"
+import { readTerminalHandoff } from "../../../src/workflows/run/workflow-completion.js"
 import { buildHandoffWrittenFact } from "../../../src/workflows/output-contract/facts.js"
 import { initializedWorkflowFacts, initializedWorkflowRoot, recoveredWorkflowRoot } from "../../helpers/workflow-root-fixtures.js"
 import { fileMutationCompletionFacts, type FileMutationPreparedFact } from "../../../src/orchestration/session/file-mutation-fact-writers.js"

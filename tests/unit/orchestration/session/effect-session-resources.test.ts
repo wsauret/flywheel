@@ -27,7 +27,7 @@ import type { WorkflowViewStore } from "../../../../src/workflows/view/view-stor
 import { acquireChildExecutionResources } from "../../../../src/orchestration/session/child-execution-resources.js"
 import { readBackgroundCommands } from "../../../../src/orchestration/session/background-index-projection.js"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
-import { skillLoadedFact } from "../../../../src/workflows/skill-facts.js"
+import { skillLoadedFact } from "../../../../src/workflows/skills/skill-facts.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
 import { wireSessionSubscribers, type MetricsWriter } from "../../../../src/orchestration/session/create-session-infra.js"

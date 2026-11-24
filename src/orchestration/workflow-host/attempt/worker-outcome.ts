@@ -1,4 +1,4 @@
-import type { AgentFailureKind, AgentOutcome } from "../../../workflows/vm/agent-outcome.js"
+import type { AgentFailureKind, AgentOutcome } from "../../../workflows/vm/host/agent-outcome.js"
 import type { AgentRunResult } from "../../agent-runtime/types.js"
 import { formatAgentFailure } from "../../agent-runtime/runner/failure-message.js"
 

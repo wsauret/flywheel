@@ -288,7 +288,7 @@ Across all 11 tests in the 2026-10-23 run, Flywheel took 0.83 to 0.95 of Claude 
 
 ## Persona launch faces: the CLI and the benchmark tool
 
-`ab-persona` has one service and two faces. Both faces read the same catalog for every task, fixture and results path (`src/orchestration/modules/development/benchmark/catalog.ts`), and both plan and run the matrix through `planPersonaBenchmark` and `runPersonaBenchmark` (`src/orchestration/modules/development/benchmark/persona-benchmark.ts`). Nothing above the catalog recomputes a bench path, and neither face holds benchmark logic of its own.
+`ab-persona` has one service and two faces. Both faces read the same catalog for every task, fixture and results path (`src/orchestration/modules/development/benchmark/catalog.ts`), and both plan and run the matrix through `planPersonaBenchmark` and `runPersonaBenchmark` (`src/orchestration/modules/development/benchmark/persona/persona-benchmark.ts`). Nothing above the catalog recomputes a bench path, and neither face holds benchmark logic of its own.
 
 - The console face is `bench/ab-persona/bench.ts`, shown above. It reads argv, owns one runtime generation, and renders the service events.
 - The agent face is the `benchmark` runtime tool (`src/orchestration/modules/development/benchmark-tool.ts`). A host wires it only where a benchmark belongs; everywhere else the tool exposure planner omits it and states the reason.

@@ -9,7 +9,7 @@ import {
   type AvailabilityAuthority,
   AvailabilityCorruptError,
   type AvailabilityKey,
-} from "../../../../../../src/infra/llm/availability-store.js";
+} from "../../../../../../src/infra/llm/access/availability-store.js";
 import { harness, NOW_MS, OUTAGE_HOLD_MS, OUTAGE_MEMORY_MS, SAFE_RECHECK_MS, availabilityFixtures, subscription } from "../_provider-availability-harness.js";
 
 const { tempDbFile, createAuthority: createAvailabilityAuthority } = availabilityFixtures();

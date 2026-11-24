@@ -18,13 +18,13 @@
 import { type AuthContext, captureProviderConnection, captureSubscriptionCredentials, type ProviderConnection, type RuntimeCredential } from "../../../../infra/auth/auth-context.js";
 import type { AuthStoreCondition } from "../../../../infra/auth/store/auth-store.js";
 import type { CredentialSlotClassifier } from "../../../../infra/auth/store/auth-store-types.js";
-import type { ProviderRequestOptions } from "../../../../infra/llm/provider-options.js";
+import type { ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";
 import type { ModelRefusal } from "../../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import type { NotificationEpisodeInput } from "../../../../infra/notification-episode.js";
-import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderDefinition, type AccessProviderId, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan, type LoginWaitAnswer } from "../../../../infra/llm/access-provider.js";
-import type { ModelFamily } from "../../../../infra/llm/model-family.js";
-import type { ProviderIdentity } from "../../../../infra/llm/auth-error.js";
-import type { ModelsClient } from "../../../../infra/llm/models.js";
+import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderDefinition, type AccessProviderId, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan, type LoginWaitAnswer } from "../../../../infra/llm/access/access-provider.js";
+import type { ModelFamily } from "../../../../infra/llm/models/model-family.js";
+import type { ProviderIdentity } from "../../../../infra/llm/errors/auth-error.js";
+import type { ModelsClient } from "../../../../infra/llm/models/models.js";
 import { Log } from "../../../../infra/log.js";
 import { getSharedProviderAvailability } from "./shared-provider-availability.js";
 import { createModelReminders } from "../history/runtime-reminders.js";

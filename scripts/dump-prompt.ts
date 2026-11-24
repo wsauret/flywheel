@@ -21,10 +21,10 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInstalledDefinitionRegistry } from "../src/orchestration/definition-catalog.js";
-import { resolveWorkflowAgents } from "../src/workflows/agent-resolution.js";
-import { loadWorkflowFile, renderWorkflowFileDiagnostic } from "../src/workflows/workflow-file.js";
+import { resolveWorkflowAgents } from "../src/workflows/definitions/agent-resolution.js";
+import { loadWorkflowFile, renderWorkflowFileDiagnostic } from "../src/workflows/vm/admission/workflow-file.js";
 import { personaInstructions } from "../src/workflows/agents/persona-instructions.js";
-import type { SkillRegistryRevision } from "../src/workflows/skill-schema.js";
+import type { SkillRegistryRevision } from "../src/workflows/skills/skill-schema.js";
 import { assembleAgentPrompt } from "../src/workflows/context-bundle/prompt-assembly.js";
 import type { AttemptRow } from "../src/workflows/view/types.js";
 import { loadStandalonePersonaRegistry } from "../src/workflows/agents/registry.js";
