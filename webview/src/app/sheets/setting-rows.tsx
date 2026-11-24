@@ -13,8 +13,7 @@ import { renderSettingEntries, SETTING_SECTIONS, settingCatalogRow, settingGroup
 import { WRITE_SYNTAX_THEME_OPTIONS } from "../../../../src/protocol/write-syntax-theme.js"
 import { moduleRows } from "../../../../src/protocol/modules.js"
 import { pageDomainReader } from "../../client/module-domain-views.js"
-import { WEB_MODULES } from "../../modules.js"
-import { moduleMenuRows } from "../../web-module.js"
+import { moduleMenuRows } from "../module-menu-rows.js"
 import type { PanelModuleSetting, PanelProviderSetting, PanelSettings } from "../../client/session-settings.js"
 import { desktopPermissionDetail, desktopSwitchOn, isDesktopNotificationsSetting } from "../../client/desktop-notifier.js"
 import { moduleSettingId, parseProviderSetting, providerSettingId, settingKeys, settingRowKey, settingTarget, validCompactionThreshold, type InlineSettingAction, type SettingId, type SettingOutcome } from "../../client/settings-actions.js"
@@ -375,7 +374,7 @@ function browserSettingParts(client: ClientContextValue, state: SettingRowState,
         {(row) => <ModuleRowView row={row()} onAction={(action) => { if (action.kind === "command") client.actions.invokeCommand(action.id); else client.openSurface(action.id) }} />}
       </Key>,
       // This host's own rows, such as the phone's paired machines.
-      <Key each={moduleMenuRows(WEB_MODULES, client, "settings")} by="id">{(row) => <SheetRow label={row().label} detail={row().description} value={row().value} working={row().working} onClick={row().run} />}</Key>,
+      <Key each={moduleMenuRows(client, "settings")} by="id">{(row) => <SheetRow label={row().label} detail={row().description} value={row().value} working={row().working} onClick={row().run} />}</Key>,
     ],
     appearance: subsection,
     "show-thinking": inPlace("show-thinking"),

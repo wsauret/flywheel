@@ -1,6 +1,6 @@
 import { composeModuleServices } from "../../src/infra/module-service.js";
 import type { McpCallResult, McpToolHit } from "../../src/orchestration/modules/mcp/connection.js";
-import type { McpPorts } from "../../src/orchestration/modules/mcp/manager.js";
+import type { McpPorts } from "../../src/orchestration/modules/mcp/manager-types.js";
 import { createMcpRuntime, type McpRuntime } from "../../src/orchestration/modules/mcp/runtime.js";
 import type { McpService } from "../../src/orchestration/modules/mcp/service.js";
 

@@ -11,6 +11,7 @@ import type { ClientHost } from "../host.js"
 import type { ScreenStack } from "./screen-stack.js"
 import type { WebSurface } from "./surfaces.js"
 import type { SurfaceOpening } from "../../../src/protocol/client/surface-presentation.js"
+import type { WebModule } from "../web-module.js"
 
 /** A yes-or-no question the client asks before something irreversible. */
 export interface ConfirmRequest {
@@ -90,6 +91,8 @@ export interface ClientContextValue {
   readonly openSurface: (surface: string, opening?: SurfaceOpening) => void
   /** This client's place for the surface `id`, or undefined when it has none. */
   readonly surface: (id: string) => WebSurface | undefined
+  /** The modules this client renders. */
+  readonly modules: readonly WebModule[]
   /** The block the transcript should light and scroll to, once. */
   readonly markedBlock: Accessor<string | undefined>
   readonly markBlock: (blockId: string | undefined) => void

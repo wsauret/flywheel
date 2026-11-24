@@ -12,7 +12,6 @@ const build = await Bun.build({
     name: "capability-preset-memory-host",
     setup(builder) {
       builder.onLoad({ filter: /[\\/]focus-trap\.ts$/ }, () => ({ contents: "export function trapFocus() {}", loader: "js" }))
-      builder.onLoad({ filter: /webview[\\/]src[\\/]modules\.ts$/ }, () => ({ contents: "export const WEB_MODULES = []", loader: "js" }))
       builder.onLoad({ filter: /[\\/]client-context\.ts$/ }, () => ({
         contents: "export function useClient() { return Reflect.get(globalThis, '__flywheelCapabilityPresetTestClient') }", loader: "js",
       }))

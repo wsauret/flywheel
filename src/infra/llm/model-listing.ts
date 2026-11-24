@@ -6,13 +6,13 @@ import type { CredentialLineages, CredentialSlotClassifier } from "../auth/auth-
 import { deleteProviderModelCatalog, liveModelRefusals, writeProviderModelCatalog, writeProviderModelCandidates, type CatalogProfile, type ModelRefusal, type ProviderModelAccessSnapshot, type SavedModelRefusals } from "../auth/provider-model-catalog-store.js";
 import { openExistingAuthProfileDirectory } from "../auth/auth-profile-store.js";
 import { createSavedListingEvidence } from "./model-listing-evidence.js";
-import { accessCandidateRows, assembleAuditedCatalog, readSavedAudit, runAccessAudit } from "./model-access-audit.js";
+import { accessCandidateRows, assembleAuditedCatalog, readSavedAudit, runAccessAudit, type AccessAuditProgressListener } from "./model-access-audit.js";
 import { BoundedJsonError, readBoundedJson, readBoundedJsonWithByteLength } from "../auth/bounded-json.js";
 import { accessProviderAccountIdentity, accessProviderAccountKey, compareAutomaticSelection, type AccessProviderAccountIdentity, type AccessProviderCandidate, type AccessProviderCatalogFetchResult, type AccessProviderDefinition, type AccessProviderId, type AccessProviderSelection } from "./access-provider.js";
 import { customProviderById } from "./custom-provider-registry.js";
-import { recordCatalogDiscoveryDiagnostics, recordProviderCatalogFailure, type CatalogDiscoveryDiagnostics } from "./model-catalog-diagnostics.js";
+import { recordCatalogDiscoveryDiagnostics, recordProviderCatalogFailure } from "./model-catalog-diagnostics.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS, membershipFallback, resolveModelCatalog, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogJsonValue, type CatalogLimits, type CatalogModelOffering, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
-import { catalogRowsToModelMap, decodeDiscoveryRows, joinCatalogRows, modelsDevBaseline, preferredCatalog, reconcileSavedCatalogRows, staticOfferingMap, withModelRefusals, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
+import { catalogRowsToModelMap, decodeDiscoveryRows, joinCatalogRows, modelsDevBaseline, preferredCatalog, reconcileSavedCatalogRows, staticOfferingMap, withModelRefusals, type AccessProviderCandidateModels, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
 import { settleTasks } from "./model-listing-settlement.js";
 import type { ModelsClient } from "./models.js";
 import { providerRequestHeaders } from "./provider-request-identity.js";
@@ -130,15 +130,6 @@ function runtimeCredentialIdentity(credential: RuntimeCredential): string {
   return createHash("sha256").update(material).digest("hex");
 }
 
-export interface AccessProviderCandidateModels {
-  readonly models: ReadonlyMap<string, readonly CatalogModelOffering[]> | null;
-  readonly visibleModels?: ReadonlyMap<string, readonly CatalogModelOffering[]>;
-  readonly outcome?: ResolvedModelCatalog;
-  readonly diagnostics?: CatalogDiscoveryDiagnostics;
-  /** Present for an audited subscription, including candidates without saved results. */
-  readonly audit?: AccessAuditStatus;
-}
-
 /** Candidate-key map entries carry the typed candidate: the key is an opaque
  *  identity string, so readers take the candidate from the value and never
  *  decode the key. */
@@ -235,21 +226,6 @@ export interface ModelListingClientOptions {
   readonly diagnosedDiscoveries?: Map<string, string>;
   /** The clock that decides whether a saved refusal still applies. */
   readonly now?: () => number;
-}
-
-/** One conclusive probe result, reported after its durable commit. `remaining` counts the probes still due. */
-interface AccessAuditProgress {
-  readonly account: AccessProviderAccountIdentity;
-  readonly remaining: number;
-  readonly modelId: string;
-  readonly outcome: "completed" | "refused";
-}
-export type AccessAuditProgressListener = (progress: AccessAuditProgress) => Promise<void> | void;
-
-/** What the saved audit of one account leaves: probes still due and models refused (a recheck can retry either). */
-export interface AccessAuditStatus {
-  readonly remaining: number;
-  readonly refused: number;
 }
 
 function isDiscoveredListing(discovery: CatalogDiscovery | undefined): boolean {

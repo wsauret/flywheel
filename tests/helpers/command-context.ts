@@ -1,5 +1,5 @@
 import { mock } from "bun:test";
-import type { BuiltInCommandContext } from "../../src/tui/commands/command-definitions.js";
+import type { BuiltInCommandContext } from "../../src/tui/commands/command-types.js";
 import { refusingLauncher } from "./launcher-fake.js";
 import { runtimeDispatch } from "./runtime-dispatch.js";
 

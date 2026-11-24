@@ -1,6 +1,5 @@
 import type { ModalSelectOption } from "../components/modal-select-types.js"
-import type { BuiltInCommandContext } from "./command-definitions.js"
-import type { BuiltInCommandDefinition, CommandSpec } from "./command-types.js"
+import type { BuiltInCommandContext, BuiltInCommandDefinition, CommandSpec } from "./command-types.js"
 
 
 /** Derives presentation data from the built-in definitions. */

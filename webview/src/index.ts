@@ -6,6 +6,7 @@ import { createSessionChangesController } from "../../src/protocol/client/sessio
 import { createComponent } from "solid-js"
 import { ChangesContent } from "./app/changes-content.js"
 import { App } from "./app/app.js"
+import { WEB_MODULES } from "./modules.js"
 import { createClientActions } from "./client/actions.js"
 import { createReadingPlace } from "./client/reading-place.js"
 import { createRuntimeSession } from "./client/session.js"
@@ -217,6 +218,7 @@ function mountLoadedClient(root: HTMLElement, host: ClientHost, scope: () => str
   }
   const unmount = render(() => App({
     host,
+    modules: WEB_MODULES,
     session,
     connection,
     actions,

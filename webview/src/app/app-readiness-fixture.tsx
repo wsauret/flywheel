@@ -87,6 +87,7 @@ export function createAppReadiness(options: { readonly phone?: boolean; readonly
     host: fakeClientHost({ capabilities: options.phone ? { remote, push: { state: () => "default", current: async () => undefined, subscribe: async () => undefined, unsubscribe: async () => {} } } : {} }),
     onCommand: listener => { command = listener; return () => {} },
     onReport: () => () => {}, onCaptureSurfaceOpener: () => () => {},
+    modules: WEB_MODULES,
   }
   return {
     props,

@@ -1,5 +1,5 @@
 import { createMcpConnection, type McpConnection } from "../../src/orchestration/modules/mcp/connection.js";
-import type { McpPorts } from "../../src/orchestration/modules/mcp/manager.js";
+import type { McpPorts } from "../../src/orchestration/modules/mcp/manager-types.js";
 
 /** The tools the loopback server lists. `large` answers with one text part
  *  whose text is a JSON array of about `largeResultBytes` bytes. `pending`

@@ -1,6 +1,5 @@
 import type { BuiltInCommandDescriptor, CommandOutcome } from "../../protocol/command-catalog-protocol-types.js"
-import type { BuiltInCommandContext } from "./command-definitions.js"
-import type { BuiltInCommandDefinition } from "./command-types.js"
+import type { BuiltInCommandContext, BuiltInCommandDefinition } from "./command-types.js"
 import { chordForCommand, type Keymap } from "../keymap/keymap.js"
 import { chatOnlyCommandNotice } from "../../protocol/client/slash-route.js"
 

@@ -193,7 +193,8 @@ export function repairAuthoredDocument(document: RawNode, sourceText: string): R
     id,
     isNode(record) && isNode(record.output) ? { ...record, output: repairOutput(record.output, `steps.${id}.output`, repairs, source) } : record, // retired key path
   ]));
-  const reads = moveRetiredFlowReads(outputs, flow, repairs);
+  const reads = moveRetiredFlowReads(outputs, flow);
+  repairs.push(...reads.moves);
   if (repairs.length === 0) return { document, repairs };
-  return { document: { ...document, ...repairedInput, ...reads }, repairs };
+  return { document: { ...document, ...repairedInput, ...reads.document }, repairs };
 }

@@ -20,7 +20,6 @@ import { parseSessionRuntimeFact, parseStoredSessionRuntimeFact, type SessionRun
 import { loadToolExecutionTimelineFromEvents, TOOL_EXECUTION_FACT_TYPES } from "../tool-execution-projection.js"
 import type { ToolExecutionEntry } from "../tool-execution-types.js"
 import { projectHistoricalContainerChild, projectHistoricalExecuteChild } from "../tool-child-presentation.js"
-import type { IndexedGroupChildren } from "./branch-history-builder.js"
 
 /** Display meta a completed tool's `tool.result.recorded` fact carried.
  *  Edit/replace diffs and filetypes live in the result `details`, not in the
@@ -86,6 +85,14 @@ export interface ToolChildRenderContext {
   readonly idSuffix: string
   readonly presentation: "container" | "execute"
   readonly settledCount?: number
+}
+
+/** The operations of a card, indexed in display order. */
+export interface IndexedGroupChildren {
+  readonly totalCount: number
+  readonly settledCount?: number
+  readonly blockCount: number
+  readBlock(index: number): ToolEntry | Promise<ToolEntry>
 }
 
 interface IndexedToolChildren extends IndexedGroupChildren {

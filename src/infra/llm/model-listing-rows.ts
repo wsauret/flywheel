@@ -1,7 +1,7 @@
 /** Catalog row joining for provider model listing: the models.dev baseline, saved and discovered rows, and their model maps. */
 import { createHash } from "node:crypto";
 import { CatalogDiscoveryDiagnosticAccumulator, type CatalogDiscoveryDiagnostics } from "./model-catalog-diagnostics.js";
-import { normalizeResolvedCatalogRows, offeringTransport, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogJsonValue, type CatalogModelOffering, type CatalogSourceRow, type ModelCatalogContribution, type OfferingTransport } from "./model-catalog-resolution.js";
+import { normalizeResolvedCatalogRows, offeringTransport, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogJsonValue, type CatalogModelOffering, type CatalogSourceRow, type ModelCatalogContribution, type OfferingTransport, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
 import type { ModelInfo, ModelsClient, ProviderModelInfoField } from "./models.js";
 import { narrowContextWindow, preferCatalogModelInfoFields, providerModelInfo } from "./provider-model-info.js";
 import type { SavedModelRefusals } from "../auth/provider-model-catalog-store.js";
@@ -17,6 +17,22 @@ export interface SharedModelsDevBaseline {
   readonly knownWireIds: ReadonlySet<string>;
   readonly provenance: "live" | "last-known-good" | "bundled";
   readonly generation: string;
+}
+
+/** What the saved audit of one account leaves: probes still due and models refused (a recheck can retry either). */
+export interface AccessAuditStatus {
+  readonly remaining: number;
+  readonly refused: number;
+}
+
+/** The model maps that one candidate account's listing or audit serves and shows. */
+export interface AccessProviderCandidateModels {
+  readonly models: ReadonlyMap<string, readonly CatalogModelOffering[]> | null;
+  readonly visibleModels?: ReadonlyMap<string, readonly CatalogModelOffering[]>;
+  readonly outcome?: ResolvedModelCatalog;
+  readonly diagnostics?: CatalogDiscoveryDiagnostics;
+  /** Present for an audited subscription, including candidates without saved results. */
+  readonly audit?: AccessAuditStatus;
 }
 
 export interface JoinedCatalogRows {

@@ -5,7 +5,7 @@ import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import type { McpToolHit } from "../../../../../src/orchestration/modules/mcp/connection.js";
-import type { McpPorts } from "../../../../../src/orchestration/modules/mcp/manager.js";
+import type { McpPorts } from "../../../../../src/orchestration/modules/mcp/manager-types.js";
 import { codeModeRuntimeOver, codeModeServices } from "../../../../helpers/code-mode-worker.js";
 import { mcpRuntimeOver } from "../../../../helpers/mcp.js";
 import { testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";

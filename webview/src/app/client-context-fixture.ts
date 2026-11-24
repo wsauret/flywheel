@@ -115,6 +115,7 @@ export function fakeClient(members: Partial<ClientContextValue> = {}): ClientCon
     // The real table over this fake's own members, so an overridden sheet
     // or action is what a surface opens.
     surface: createWebSurfaces(() => client, new Map()),
+    modules: [],
     markedBlock: () => undefined,
     markBlock: noop,
     readingPlace: createReadingPlace(undefined),

@@ -2,7 +2,7 @@ import { afterAll, afterEach, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { McpManager } from "../../src/orchestration/modules/mcp/manager.js";
+import type { McpManager } from "../../src/orchestration/modules/mcp/manager-types.js";
 import { createMcpManager } from "../../src/orchestration/modules/mcp/manager.js";
 import type { LauncherScope } from "../../src/infra/process-supervisor.js";
 import { unguardedSpawnOwned } from "../helpers/real-process-fixture.js";

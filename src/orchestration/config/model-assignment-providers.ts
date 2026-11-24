@@ -4,7 +4,9 @@ import { authStoreObservationKey, loadAuthStoreWithDiagnostics } from "../../inf
 import { loadAndMigrateProviderModelPreferences, type AccountProviderModelPreference } from "../../infra/auth/provider-model-preference-store.js";
 import { accessProviderAccountIdentity, accessProviderAccountKey, compareAutomaticSelection, type AccessProviderAccountIdentity, type AccessProviderCandidate, type AccessProviderId } from "../../infra/llm/access-provider.js";
 import type { ModelFamily } from "../../infra/llm/model-family.js";
-import type { AccessAuditProgressListener, AccessAuditStatus, ModelDiscoveryMode, ModelListingClient } from "../../infra/llm/model-listing.js";
+import type { ModelDiscoveryMode, ModelListingClient } from "../../infra/llm/model-listing.js";
+import type { AccessAuditProgressListener } from "../../infra/llm/model-access-audit.js";
+import type { AccessAuditStatus } from "../../infra/llm/model-listing-rows.js";
 import { groupedOfferingIndex, offeringTransport, offeringTransportFamily, type CatalogModelOffering, type ResolvedModelCatalog } from "../../infra/llm/model-catalog-resolution.js";
 import { deriveProviderModelPreferences, resolveAccountProviderModelPreferences, type ProviderModelCatalog, type ResolvedProviderModels } from "../../infra/llm/provider-model-preferences.js";
 import { getSharedModelListingClient } from "./llm-clients.js";

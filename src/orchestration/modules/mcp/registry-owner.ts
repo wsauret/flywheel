@@ -1,6 +1,6 @@
 import { createOrderedLane } from "../../../infra/ordered-lane.js";
 import { isMcpConnector, type McpServerRegistry } from "./config.js";
-import type { McpManager, McpManagerOptions, McpManagerResource } from "./manager.js";
+import type { McpManager, McpManagerOptions, McpManagerResource } from "./manager-types.js";
 
 type ResourceFactory = (options: McpManagerOptions) => McpManagerResource;
 

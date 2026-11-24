@@ -6,7 +6,7 @@ import { createOrderedLane } from "../../infra/ordered-lane.js"
 import { createProfileRuntimeStateOwner, type ProfileRuntimeSnapshot } from "./profile-runtime-state.js"
 import { providerModelEligibilityDecision, type PickerModelEligibility, type ProviderModelEnabledCandidate } from "../config/provider-model-eligibility.js"
 import type { CatalogModelOffering } from "../../infra/llm/model-catalog-resolution.js"
-import type { AccessAuditStatus } from "../../infra/llm/model-listing.js"
+import type { AccessAuditStatus } from "../../infra/llm/model-listing-rows.js"
 import type { ProviderModelPreferenceService } from "./app-service.js"
 import { TRAINING_ROUTES_REQUIRED, type ProviderCatalogDiscovery, type ProviderModelRow, type ProviderModelTarget, type ProviderModelView, type RuntimeDeselectAllProviderModelsMutation, type RuntimeProviderModelHiddenResult, type RuntimeRecheckProviderModelsMutation, type RuntimeSetProviderAutoEnableNewModelsMutation, type RuntimeSetProviderAutoEnableNewModelsResult, type RuntimeSetProviderFreeRoutesMutation, type RuntimeSetProviderModelMutation, type RuntimeSetProviderModelResult } from "../../protocol/provider-model-preference-protocol-types.js"
 

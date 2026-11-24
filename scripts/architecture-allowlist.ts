@@ -28,31 +28,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "src/orchestration/modules/workflows/migrations/", reason: "One file per dated migration; the set grows by design and has no subdivision by concern." },
   { lint: "long-file", key: "src/infra/code-mode/interpreter/runtime.ts", reason: "Exact upstream donor file kept intact for future upstream diffs; scripts/check-file-sizes.ts exempts it the same way (VENDORED_FILE_SIZE_EXEMPTIONS)." },
 
-  // Seams that the rules read as circles.
-  { lint: "module-cycle", key: "flywheel::infra::llm::model-access-audit,flywheel::infra::llm::model-listing", reason: "The audit builds listing-shaped records through contextual object keys and reads no listing field; only model-listing imports the audit." },
-  { lint: "module-cycle", key: "flywheel::orchestration::modules::mcp::manager,flywheel::orchestration::modules::mcp::registry-owner", reason: "Injected resource seam: the registry owner takes a factory, manages publication and retirement, and imports no manager implementation." },
-  {
-    lint: "module-cycle",
-    reason: "Lifecycle seam: the bridge supplies a host lease factory, and demand retains and releases the lease without reaching into the host.",
-    key: [
-      "flywheel::orchestration::modules::provider-claude-agent-sdk::agent-host",
-      "flywheel::orchestration::modules::provider-claude-agent-sdk::engine-demand",
-    ].join(","),
-  },
-  {
-    lint: "module-cycle",
-    reason: "The reverse tie is record shapes that tool-result-meta builds for the builder, not reads of the builder's own fields.",
-    key: [
-      "flywheel::orchestration::session::conversation::branch-history-builder",
-      "flywheel::orchestration::session::conversation::conversation-block-projection",
-      "flywheel::orchestration::session::conversation::tool-result-meta",
-    ].join(","),
-  },
-  { lint: "module-cycle", key: "flywheel::tui::commands::command-definitions,flywheel::tui::commands::runtime-command-bindings", reason: "Command dispatch seam: bindings present outcomes and dispatch registered commands through the context callbacks they receive." },
-  { lint: "module-cycle", key: "flywheel::workflows::authored-repairs,flywheel::workflows::retired-step-grammar", reason: "flow-reads only annotates the repair array and appends records; the real call runs one way, from authored-repairs." },
-  { lint: "module-cycle", key: "webview::app,webview::modules,webview::web-module", reason: "Module contribution seam: the app composes the static module registry, and contributions use the host seams and UI primitives that the app supplies." },
-  { lint: "module-cycle", key: "webview::app::blocks,webview::app::client-extensions", reason: "Contribution seam: the host block renderer supplies block data and a fallback; the dispatcher reads the supplied block rather than importing the renderer." },
-
   // Debt, with the cheapest fix.
   { lint: "module-cycle", key: "flywheel::cli::runtime-attach,flywheel::cli::serving-build", reason: "Move RuntimeIdentity to a shared CLI contract." },
   {

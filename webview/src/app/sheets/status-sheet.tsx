@@ -6,7 +6,6 @@ import { readModuleStatusRows, sameModuleStatusScope, type ModuleStatusScope } f
 import { pageDomainReader } from "../../client/module-domain-views.js"
 import { moduleRows } from "../../../../src/protocol/modules.js"
 import type { ModuleRow, ModuleRowAction } from "../../../../src/protocol/protocol-module.js"
-import { WEB_MODULES } from "../../modules.js"
 import type { WebModule } from "../../web-module.js"
 import { describeFailure } from "../../client/failure-message.js"
 import type { BudgetSummary } from "../../../../src/protocol/client/host-contract.js"
@@ -54,13 +53,13 @@ export function StatusSheet(props: { readonly docked?: boolean; readonly onClose
     ])
     return { detail: detail?.view ?? undefined, roles: roles?.views[0]?.view ?? undefined }
   })
-  const statusScope = createMemo<ModuleStatusScope, undefined>(() => ({ sessionId: state().sessionId, profileId: state().authStatus?.auth.profile.id, moduleIds: state().settings?.moduleIds ?? WEB_MODULES.map((module) => module.id) }), undefined, { equals: sameModuleStatusScope })
+  const statusScope = createMemo<ModuleStatusScope, undefined>(() => ({ sessionId: state().sessionId, profileId: state().authStatus?.auth.profile.id, moduleIds: state().settings?.moduleIds ?? client.modules.map((module) => module.id) }), undefined, { equals: sameModuleStatusScope })
   let generation = 0
   let mounted = true
   onCleanup(() => { mounted = false; generation += 1 })
   const [queriedRows] = createResource(statusScope, async (scope) => {
     const request = ++generation
-    const rows = await readModuleStatusRows(WEB_MODULES, scope, (module: WebModule, sessionId) => module.status?.(client.connection, sessionId), (module, error) => {
+    const rows = await readModuleStatusRows(client.modules, scope, (module: WebModule, sessionId) => module.status?.(client.connection, sessionId), (module, error) => {
       if (mounted && request === generation && statusScope() === scope) client.report("warning", `The ${module.id} module could not read its status: ${describeFailure(error)}`)
     }, () => state().health.kind !== "faulted")
     return { scope, rows }

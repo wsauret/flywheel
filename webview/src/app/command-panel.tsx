@@ -5,8 +5,7 @@ import { createEffect, createMemo, createSignal, on, Show } from "solid-js"
 
 import type { BuiltInCommandDescriptor } from "../../../src/protocol/command-catalog-protocol-types.js"
 import { CAPABILITIES_DETAIL } from "../../../src/protocol/client/capabilities.js"
-import { WEB_MODULES } from "../modules.js"
-import { moduleMenuRows } from "../web-module.js"
+import { moduleMenuRows } from "./module-menu-rows.js"
 import { catalogSummary, COMMAND_MENU_SECTIONS } from "../client/command-choices.js"
 import type { PanelSettings } from "../client/session-settings.js"
 import { offeredControls, summaryOf } from "../client/view-state.js"
@@ -225,7 +224,7 @@ function buildGroups(deps: PanelDeps, settingRows: () => readonly InPlaceSetting
         run: () => client.openSheet("capabilities"),
       },
     ]),
-    ...moduleMenuRows(WEB_MODULES, client, "panel"),
+    ...moduleMenuRows(client, "panel"),
     ...hostRow("flywheel.showRuntimeLog", { id: "runtime-log", label: HOST_ACTION_NAMES["flywheel.showRuntimeLog"], description: "Open the runtime's own output", filterOnly: true }),
     { id: "reconnect", label: HOST_ACTION_NAMES["flywheel.reconnect"], description: "Reconnect to the Flywheel runtime", filterOnly: true, run: () => actions.reconnect() },
     // The version rides as the value because it is the first thing a report

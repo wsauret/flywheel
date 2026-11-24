@@ -6,8 +6,6 @@
  *  phases, so the conversion moves the reads to the phase of that step.
  *
  *  Remove after 2027-04-30, with the conversion. */
-import type { AuthoredRepair } from "../authored-repairs.js";
-
 /** One mapping of the parsed YAML, before any schema reads it. */
 interface RawNode {
   readonly [key: string]: unknown;
@@ -45,6 +43,14 @@ function readingStep(entry: RawNode): string | undefined {
   return Array.isArray(entry.do) && entry.do.length === 1 && typeof entry.do[0] === "string" ? entry.do[0] : undefined;
 }
 
+/** One `reads` that left a flow entry for the record of its step, as the
+ *  repair report states it. */
+interface MovedFlowRead {
+  /** The key path of the `reads` on the flow entry. */
+  readonly keyPath: string;
+  readonly message: string;
+}
+
 interface FlowRepair {
   readonly flow: readonly unknown[];
   /** The ids that each step takes from the flow entries that ran it. */
@@ -53,7 +59,7 @@ interface FlowRepair {
 
 /** `flow` with each `reads` that one step owns moved out. A phase holds a
  *  flow of its own. */
-function moveFlowReads(flow: readonly unknown[], at: string, steps: RawNode, uses: ReadonlyMap<string, number>, repairs: AuthoredRepair[]): FlowRepair {
+function moveFlowReads(flow: readonly unknown[], at: string, steps: RawNode, uses: ReadonlyMap<string, number>, moves: MovedFlowRead[]): FlowRepair {
   const reads = new Map<string, readonly string[]>();
   const take = (step: string, ids: readonly string[]): void => {
     reads.set(step, [...(reads.get(step) ?? []), ...ids]);
@@ -61,7 +67,7 @@ function moveFlowReads(flow: readonly unknown[], at: string, steps: RawNode, use
   const entries = flow.map((entry, index) => {
     if (!isNode(entry)) return entry;
     const path = `${at}.${index}`;
-    const inner = Array.isArray(entry.flow) ? moveFlowReads(entry.flow, `${path}.flow`, steps, uses, repairs) : undefined;
+    const inner = Array.isArray(entry.flow) ? moveFlowReads(entry.flow, `${path}.flow`, steps, uses, moves) : undefined;
     for (const [step, ids] of inner?.reads ?? []) take(step, ids);
     const node = inner === undefined ? entry : { ...entry, flow: inner.flow };
     const step = readingStep(node);
@@ -70,22 +76,24 @@ function moveFlowReads(flow: readonly unknown[], at: string, steps: RawNode, use
     const held = steps[step].reads;
     if (held !== undefined && (!Array.isArray(held) || !held.every((id) => typeof id === "string"))) return node;
     take(step, ids);
-    repairs.push({ keyPath: `${path}.reads`, message: `reads is a key of the step record in the retired step grammar, so Flywheel moved it to steps.${step}.reads; rewrite the file in the phase grammar` });
+    moves.push({ keyPath: `${path}.reads`, message: `reads is a key of the step record in the retired step grammar, so Flywheel moved it to steps.${step}.reads; rewrite the file in the phase grammar` });
     return rest;
   });
   return { flow: entries, reads };
 }
 
 /** The `steps` of a step-grammar document with each `reads` that one step
- *  owns moved from `flow` into its record, and the `flow` without them. A
- *  document whose flow holds no such `reads` keeps its flow. */
-export function moveRetiredFlowReads(steps: RawNode, flow: unknown, repairs: AuthoredRepair[]) {
-  const moved = Array.isArray(flow) ? moveFlowReads(flow, "flow", steps, stepUses(flow), repairs) : undefined;
+ *  owns moved from `flow` into its record, the `flow` without them, and
+ *  each move in flow order. A document whose flow holds no such `reads`
+ *  keeps its flow. */
+export function moveRetiredFlowReads(steps: RawNode, flow: unknown) {
+  const moves: MovedFlowRead[] = [];
+  const moved = Array.isArray(flow) ? moveFlowReads(flow, "flow", steps, stepUses(flow), moves) : undefined;
   const repairedSteps = Object.fromEntries(Object.entries(steps).map(([id, step]) => {
     const ids = moved?.reads.get(id);
     if (ids === undefined || !isNode(step)) return [id, step];
     const held = Array.isArray(step.reads) ? step.reads : [];
     return [id, { ...step, reads: [...held, ...ids.filter((read) => !held.includes(read))] }];
   }));
-  return { steps: repairedSteps, ...(moved && moved.reads.size > 0 ? { flow: moved.flow } : {}) };
+  return { document: { steps: repairedSteps, ...(moved && moved.reads.size > 0 ? { flow: moved.flow } : {}) }, moves };
 }

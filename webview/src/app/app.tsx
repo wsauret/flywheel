@@ -15,7 +15,6 @@ import type { ClientCommand, ClientSheetId, SheetFocus } from "../../../src/prot
 import { createWebSurfaces } from "./surfaces.js"
 import type { ClientHost } from "../host.js"
 import type { ModuleId } from "../../../src/protocol/module-ids.js"
-import { WEB_MODULES } from "../modules.js"
 import { describeFailure } from "../client/failure-message.js"
 import { ClientContext, type ClientContextValue, type PromptRequest } from "./client-context.js"
 import { createConfirmationQueue } from "./confirmation-queue.js"
@@ -118,6 +117,8 @@ export interface AppProps {
   readonly onCommand: (listener: (command: ClientCommand) => void) => () => void
   readonly onReport: (listener: (severity: "info" | "warning", message: string) => void) => () => void
   readonly onCaptureSurfaceOpener: (listener: CaptureSurfaceOpener) => () => void
+  /** The modules this client renders, from the registry the entry composes. */
+  readonly modules: readonly WebModule[]
 }
 
 /** The client's root.
@@ -269,7 +270,7 @@ export function App(props: AppProps) {
   }
 
   const { stage: hostStage, placement, reach, stack } = createModuleHostPresence(
-    WEB_MODULES, props.host, () => state().settings?.moduleIds,
+    props.modules, props.host, () => state().settings?.moduleIds,
     (module, error) => report("warning", `The ${module.id} module could not show its host: ${describeFailure(error)}`),
     {
       selection: {
@@ -323,7 +324,7 @@ export function App(props: AppProps) {
   // module sheet mounts where the kernel sheets do; a module focus is the
   // module's own to open.
   const [moduleSheet, setModuleSheet] = createSignal<{ readonly moduleId: ModuleId; readonly sheet: Component } | undefined>(undefined)
-  const moduleSurfaces = new Map<string, () => void>(WEB_MODULES.flatMap((module: WebModule) => (module.surfaces ?? []).map((surface) =>
+  const moduleSurfaces = new Map<string, () => void>(props.modules.flatMap((module: WebModule) => (module.surfaces ?? []).map((surface) =>
     [surface.id, () => {
       if (!webModuleEnabled(module.id, state().settings?.moduleIds)) return
       if ("sheet" in surface) { navigation.clearModal(); setModuleSheet({ moduleId: module.id, sheet: surface.sheet }) }
@@ -346,7 +347,7 @@ export function App(props: AppProps) {
   })
   onCleanup(props.onCaptureSurfaceOpener(captureSurfaceOpener))
 
-  const clients = WEB_MODULES.flatMap((module: WebModule) => module.createClient ? [module.createClient({
+  const clients = props.modules.flatMap((module: WebModule) => module.createClient ? [module.createClient({
     state, connection: props.connection, actions: props.actions, session: props.session, report,
     selectSession: props.actions.selectSession,
   })] : [])
@@ -399,6 +400,7 @@ export function App(props: AppProps) {
     pickFiles: () => composer?.pickFiles(),
     openSurface,
     surface: surfaceFor,
+    modules: props.modules,
     markedBlock,
     markBlock: setMarkedBlock,
     readingPlace: props.readingPlace,
@@ -470,7 +472,7 @@ export function App(props: AppProps) {
   const coldStart = () => state().stage === "starting" && state().localSubmissions.length === 0
   const staged = () => shownHostStage() !== undefined || coldStart() || state().stage === "needs_provider"
   const viewError = () => {
-    const module: WebModule | undefined = WEB_MODULES.find((entry: WebModule) => entry.viewError && webModuleEnabled(entry.id, state().settings?.moduleIds))
+    const module: WebModule | undefined = props.modules.find((entry: WebModule) => entry.viewError && webModuleEnabled(entry.id, state().settings?.moduleIds))
     return module?.viewError?.component
   }
   const stacked = () => stack() !== undefined && !wide() && hasProject()
@@ -495,7 +497,7 @@ export function App(props: AppProps) {
         onPointerUp={keyboardDismissal.onPointerUp}
         onPointerCancel={keyboardDismissal.onPointerCancel}
       >
-        <For each={WEB_MODULES}>
+        <For each={props.modules}>
           {(module: WebModule) => <Show when={webModuleEnabled(module.id, state().settings?.moduleIds) && module.notice}>{(Notice) =>
             <ErrorBoundary fallback={(error: unknown) => { report("warning", `A module could not show its host: ${describeFailure(error)}`); return null }}><Dynamic component={Notice()} visible={(hasProject() || !takesOver()) && !moduleSheet()} /></ErrorBoundary>
           }</Show>}
@@ -539,9 +541,9 @@ export function App(props: AppProps) {
                 composerHidden={coversConversation() || conversationInput()?.hidden}
                 phoneSelection={stack() !== undefined && (!stacked() || stack()?.screen() === "chat")}
                 header={<>
-                  <Toolbar wide={wide() && !rail().collapsed} rail={wide() ? { collapsed: rail().collapsed, toggle: toggleRail } : undefined} modules={WEB_MODULES}
+                  <Toolbar wide={wide() && !rail().collapsed} rail={wide() ? { collapsed: rail().collapsed, toggle: toggleRail } : undefined} modules={props.modules}
                     />
-                  <RuntimeFaultNotice reach={reach()} modules={WEB_MODULES} />
+                  <RuntimeFaultNotice reach={reach()} modules={props.modules} />
 
                   {/* What the runtime wants the user to know about this session.
                       Above the transcript because it is about the session as a whole. */}
@@ -555,7 +557,7 @@ export function App(props: AppProps) {
 
                   {/* Module strips belong to the open session and remount with it. */}
                   <Show when={state().sessionId} keyed>
-                    {(sessionId) => <ModuleStrips modules={WEB_MODULES} sessionId={sessionId} report={(module, error) => report("warning", `The ${module.id} module could not draw its strip: ${describeFailure(error)}`)} />}
+                    {(sessionId) => <ModuleStrips modules={props.modules} sessionId={sessionId} report={(module, error) => report("warning", `The ${module.id} module could not draw its strip: ${describeFailure(error)}`)} />}
                   </Show>
 
                   <Show when={finding()} keyed>{(find) => <FindBar query={find.query} onClose={closeFind} />}</Show>

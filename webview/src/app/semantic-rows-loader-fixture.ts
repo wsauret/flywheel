@@ -16,7 +16,6 @@ export async function loadSemanticRowsFixture<T>(entrypoint: URL): Promise<T> {
       name: "semantic-row-memory-host",
       setup(builder) {
         builder.onLoad({ filter: /[\\/]client-context\.ts$/ }, () => ({ contents: "export function useClient() { return Reflect.get(globalThis, '__flywheelSemanticRowsClient') }", loader: "js" }))
-        builder.onLoad({ filter: /webview[\\/]src[\\/]modules\.ts$/ }, () => ({ contents: "export const WEB_MODULES = []", loader: "js" }))
         builder.onLoad({ filter: /[\\/]focus-trap\.ts$/ }, () => ({ contents: "export function trapFocus() {}", loader: "js" }))
         builder.onLoad({ filter: /\.css$/ }, () => ({ contents: "", loader: "js" }))
         builder.onLoad({ filter: /\.tsx$/ }, loadSolidFixture("memory-host"))

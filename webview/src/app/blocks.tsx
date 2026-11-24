@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
 
-import { ExtensionBlock, useClientExtensions } from "./client-extensions.js"
+import { useClientExtensions } from "./client-extensions.js"
 import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, type ProcessStatus } from "../../../src/protocol/client/transcript-model.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
 import type { RoleAssignmentView } from "../../../src/protocol/role-protocol-types.js"
@@ -95,8 +95,10 @@ export interface BlockProps {
   writeSyntaxTheme: WriteSyntaxThemeId
 }
 
+/** Modules replace only the blocks they own. Ordinary blocks keep their renderer. */
 export function Block(props: BlockProps) {
-  return <ExtensionBlock block={props} fallback={() => <OrdinaryBlock {...props} />} />
+  const contribution = useClientExtensions().find(client => client.block?.matches(props.block))?.block
+  return contribution ? contribution.render(props) : <OrdinaryBlock {...props} />
 }
 
 function OrdinaryBlock(props: BlockProps) {

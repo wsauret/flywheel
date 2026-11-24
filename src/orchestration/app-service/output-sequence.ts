@@ -4,7 +4,8 @@ import { readRecordedExecutionCwd } from "../session/session-execution-directory
 import type { SessionStore } from "../session-store/types.js"
 import type { CommandKeeper } from "./command-keeper.js"
 import type { TranscriptProjectionCache } from "./transcript-projection-cache.js"
-import { indexOutputBlocks, type IndexedBlockReader, type IndexedGroupChildren } from "../session/conversation/branch-history-builder.js"
+import { indexOutputBlocks, type IndexedBlockReader } from "../session/conversation/branch-history-builder.js"
+import type { IndexedGroupChildren } from "../session/conversation/tool-result-meta.js"
 import { isAgentInFlight } from "../../infra/output-blocks.js"
 
 export interface OutputSequence extends IndexedBlockReader {

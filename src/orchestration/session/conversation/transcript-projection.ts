@@ -12,7 +12,7 @@ import type { ConversationEntry } from "./conversation-entry-types.js"
 import type { ToolExecutionEntry } from "../tool-execution-types.js"
 import { ConversationTreeError } from "./conversation-tree-storage.js"
 import { walkBranchFromLeaf } from "./conversation-tree-context.js"
-import { BranchHistoryBuilder, type IndexedTranscript, type IndexedGroupChildren, indexEntries } from "./branch-history-builder.js"
+import { BranchHistoryBuilder, type IndexedTranscript, indexEntries } from "./branch-history-builder.js"
 import type { ToolBlockReader } from "./conversation-block-projection.js"
 import { turnEndOfEntry } from "./turn-end-record.js"
 import {
@@ -23,6 +23,7 @@ import {
 import {
   createToolResultDisplayMetaCursorReader,
   createToolResultDisplayMetaSetReader,
+  type IndexedGroupChildren,
   type ToolDisplaySource,
   type ToolResultDisplayMetaCatchUp,
   type ToolResultDisplayMetaCursorReader,

@@ -1,7 +1,7 @@
 import { boundedStringCodeModeOutput, type RuntimeTool } from "../../agent-runtime/tools/types.js";
 import type { McpToolHit } from "./connection.js";
 import { McpOutcomeUnknownError } from "./errors.js";
-import type { McpPorts } from "./manager.js";
+import type { McpPorts } from "./manager-types.js";
 
 /** Build one code-only tool from the live server catalog. It forwards
  *  progress through the nested dispatch output channel, and a refusal the

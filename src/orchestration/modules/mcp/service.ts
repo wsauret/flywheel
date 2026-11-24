@@ -13,7 +13,8 @@ import { resolveMcpClient } from "./clients.js"
 import { isMcpConnector, mcpConfigSection, resolveMcpConfig, withMcpConnectors, type McpConfig, type McpConnectorServer } from "./config.js"
 import { mcpExpectedToken, removeMcpServer, setMcpClaudeAiConnectors, setMcpClient, setMcpEnabled, type McpSelectedMutation } from "./config-mutation.js"
 import { createMcpConnectors } from "./connectors.js"
-import { createMcpManager, type McpManager, type McpManagerOptions, type McpPorts } from "./manager.js"
+import { createMcpManager } from "./manager.js"
+import type { McpManager, McpManagerOptions, McpPorts } from "./manager-types.js"
 
 const log = Log.create({ service: "mcp" })
 

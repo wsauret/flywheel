@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { parseMcpArgs } from "../../../../../../src/orchestration/modules/mcp/cli/args.js"
 import { runMcp } from "../../../../../../src/orchestration/modules/mcp/cli/mcp.js"
 import { canonicalTestDirectory, temporaryDirectories, testDirectories } from "../../../../../helpers/directories.js"
-import type { McpManager } from "../../../../../../src/orchestration/modules/mcp/manager.js"
+import type { McpManager } from "../../../../../../src/orchestration/modules/mcp/manager-types.js"
 import type { McpCredential, McpCredentialStore } from "../../../../../../src/orchestration/modules/mcp/credentials.js"
 import { Redacted } from "effect"
 

@@ -1,7 +1,7 @@
-import { isVisibleMessageBlock, type AnyBlock, type ToolEntry } from "../../../infra/output-blocks.js"
+import { isVisibleMessageBlock, type AnyBlock } from "../../../infra/output-blocks.js"
 import type { ConversationTreeTranscriptEntry } from "./conversation-projection.js"
 import { TreeBlockProjection, type ToolBlockReader, type TreeBlockProjectionOptions } from "./conversation-block-projection.js"
-import type { ToolResultDisplayMeta } from "./tool-result-meta.js"
+import type { IndexedGroupChildren, ToolResultDisplayMeta } from "./tool-result-meta.js"
 import type { ToolHistorySummary } from "../../module-seams.js"
 import type { ToolExecutionEntry } from "../tool-execution-types.js"
 import { blockEntryKeys, blockIdentity } from "../../../protocol/block-identity.js"
@@ -29,13 +29,6 @@ export function indexEntries(identities: readonly string[]): Map<string, number>
     for (const key of blockEntryKeys(identity)) if (!entries.has(key)) entries.set(key, index)
   }
   return entries
-}
-
-export interface IndexedGroupChildren {
-  readonly totalCount: number
-  readonly settledCount?: number
-  readonly blockCount: number
-  readBlock(index: number): ToolEntry | Promise<ToolEntry>
 }
 
 export interface IndexedTranscript extends IndexedBlockReader {

@@ -2,12 +2,21 @@
 import { readSavedProviderModels, recordProviderModelAccess, writeProviderModelCandidates, type CatalogProfile, type ProviderModelAccessSnapshot, type SavedProviderModels } from "../auth/provider-model-catalog-store.js";
 import type { AccessProviderAccessOutcome, AccessProviderAccessProbeInput, AccessProviderAccountIdentity, AccessProviderCatalogFetchInput } from "./access-provider.js";
 import { enrichCatalogRows, resolveModelCatalog, type CatalogCanonicalRow, type CatalogLimits, type ModelCatalogContribution, type OfferingTransport, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
-import { catalogRowsToModelMap, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
-import type { AccessAuditProgressListener, AccessProviderCandidateModels } from "./model-listing.js";
+import { catalogRowsToModelMap, type AccessProviderCandidateModels, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
 import { isMovingModelAlias } from "./model-id.js";
 import { isListableRoute } from "./provider-model-info.js";
 
 type SavedAudit = NonNullable<SavedProviderModels["audit"]>;
+
+/** One conclusive probe result, reported after its durable commit. `remaining` counts the probes still due. */
+interface AccessAuditProgress {
+  readonly account: AccessProviderAccountIdentity;
+  readonly remaining: number;
+  readonly modelId: string;
+  readonly outcome: "completed" | "refused";
+}
+export type AccessAuditProgressListener = (progress: AccessAuditProgress) => Promise<void> | void;
+
 /** Opens the profile for one read or write and closes it after. */
 type WithProfile = <T>(use: (profile: CatalogProfile) => T | Promise<T>) => Promise<T>;
 

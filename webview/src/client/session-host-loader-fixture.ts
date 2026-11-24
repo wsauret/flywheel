@@ -45,6 +45,7 @@ const build = await Bun.build({
       builder.onLoad({ filter: /[\\/]app\.tsx$/ }, () => ({
         contents: 'export { App } from "test-host"', loader: "js",
       }))
+      builder.onLoad({ filter: /webview[\\/]src[\\/]modules\.ts$/ }, () => ({ contents: "export const WEB_MODULES = []", loader: "js" }))
       builder.onLoad({ filter: /[\\/]changes-content\.tsx$/ }, () => ({
         contents: 'export function ChangesContent() {}', loader: "js",
       }))

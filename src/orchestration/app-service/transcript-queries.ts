@@ -5,7 +5,8 @@ import { compactGroupChild, projectFrontendOutputBlocks } from "./frontend-outpu
 import { frontendOutputBlockBytes } from "../../protocol/frontend-output-block-metrics.js"
 import { minOutputRangeRecords, projectRecordsWithinRangeBudget, trimOutputRangeFromTail } from "./output-range-budget.js"
 import { threadHistoryRangeIndices, type BranchHistoryRecord } from "../session/conversation/branch-history-pagination.js"
-import type { IndexedBlockReader, IndexedGroupChildren } from "../session/conversation/branch-history-builder.js"
+import type { IndexedBlockReader } from "../session/conversation/branch-history-builder.js"
+import type { IndexedGroupChildren } from "../session/conversation/tool-result-meta.js"
 import type {
   HydratedOutputGroupChildren,
   HydratedOutputGroupChildrenBatch,

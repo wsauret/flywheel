@@ -1,46 +1,13 @@
 import { errorMessage } from "../../infra/error-message.js"
-import type { AgentViewKind } from "../../protocol/client/slash-route.js"
 import { fontInstallSummary, fontStatusSummary, getFontStatus, installBundledFont } from "../../orchestration/font-installer.js"
-import type { AccountDirectories } from "../../infra/directory-authorities.js"
 import { ownedCommandRunner } from "../../infra/owned-command.js"
-import type { LauncherScope } from "../../infra/process-supervisor.js"
 import { createAsyncReporter } from "../hooks/report-async.js"
 import { mutateRuntimeConfig } from "../hooks/create-settings-store.js"
-import type { RuntimeConfigCache, ShellServices, ShellSignals } from "../hooks/shell-state.js"
 import type { Keymap } from "../keymap/keymap.js"
-import type { BuiltInCommandDefinition } from "./command-types.js"
+import type { BuiltInCommandContext, BuiltInCommandDefinition, FontCommandContext } from "./command-types.js"
 import type { BuiltInCommandDescriptor } from "../../protocol/command-catalog-protocol-types.js"
-import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import { bindRuntimeCommandDefinitions } from "./runtime-command-bindings.js"
-import type { OpenSurface } from "./command-surfaces.js"
-import type { CaptureSurfaceOpener } from "../../protocol/client/surface-presentation.js"
 import { commandMenuGroups } from "../../protocol/client/command-menu.js"
-
-export interface FontCommandContext {
-  directories: AccountDirectories
-  launcher: LauncherScope
-  appService: Pick<RuntimeClient, "dispatch">
-  runtimeConfig: RuntimeConfigCache
-  showToast: ShellServices["showToast"]
-}
-
-export interface BuiltInCommandContext extends FontCommandContext {
-  signals: Pick<ShellSignals, "sessionInputMode" | "foregroundId" | "commandCatalogRevision">
-  startClearedChat: () => Promise<void>
-  exit: () => void
-  /** Restarts the account service and this terminal in place. */
-  restart: () => Promise<never>
-  openThemeModal: () => void
-  /** Opens the client surface a descriptor or a runtime command outcome names. */
-  openSurface: OpenSurface
-  /** Captures the placement and opening intent before a runtime invocation. */
-  captureSurfaceOpener: CaptureSurfaceOpener
-  /** Brings a session the runtime created or named to the front. */
-  focusSession: (sessionId: string) => void
-  refreshCommandCatalog: () => Promise<void>
-  /** The kind of agent whose view is in front, or undefined in a chat. */
-  agentInView: () => AgentViewKind | undefined
-}
 
 export async function handleFontCommand(context: FontCommandContext, action: string | undefined): Promise<void> {
   switch ((action ?? "status").toLowerCase()) {

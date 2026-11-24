@@ -92,8 +92,3 @@ export interface WebModule {
 export function webModuleEnabled(id: ModuleId, enabled: readonly ModuleId[] | undefined): boolean {
   return enabled?.includes(id) ?? true
 }
-
-export function moduleMenuRows(modules: readonly WebModule[], client: ClientContextValue, location: "panel" | "settings"): readonly WebMenuRow[] {
-  const enabled = client.state().settings?.moduleIds
-  return modules.flatMap((module) => module.menu && webModuleEnabled(module.id, enabled) ? module.menu.rows(client, location) : [])
-}

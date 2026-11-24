@@ -7,8 +7,8 @@ import {
   type TranscriptAuxiliarySnapshot,
   type SessionTranscriptReadView,
 } from "../session/conversation/transcript-projection.js"
-import type { IndexedTranscript, IndexedGroupChildren } from "../session/conversation/branch-history-builder.js"
-import { createToolResultDisplayMetaCursorReader, type ToolDisplaySource, type ToolResultDisplayMetaCatchUp, type ToolResultDisplayMetaCursorReader, type ToolChildRenderContext } from "../session/conversation/tool-result-meta.js"
+import type { IndexedTranscript } from "../session/conversation/branch-history-builder.js"
+import { createToolResultDisplayMetaCursorReader, type IndexedGroupChildren, type ToolDisplaySource, type ToolResultDisplayMetaCatchUp, type ToolResultDisplayMetaCursorReader, type ToolChildRenderContext } from "../session/conversation/tool-result-meta.js"
 import type { SessionEntry } from "../session-store/types.js"
 import { runsWorkflowClock } from "../session-store/view.js"
 import { createAgentInputCursorReader, type AgentInputCursorReader } from "../session/agent-input-projection.js"
