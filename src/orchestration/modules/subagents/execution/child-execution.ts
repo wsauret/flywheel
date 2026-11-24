@@ -7,7 +7,7 @@ import type { Agent, AgentRunResult, OmitAgentOptions, RunnableAgentOptions } fr
 import { deriveChildRuntimeSurfaces } from "../../../agent-runtime/tools/tool-registry.js";
 import { mergeAbortSignals } from "../../../../infra/abort.js";
 import type { RetryState } from "../../../agent-runtime/llm/retry-budget.js";
-import { createAgentHost } from "../../../runner/host.js";
+import { createAgentGeneration } from "../../../runner/host.js";
 import { AgentTurnAborted } from "../../../runner/agent-turn-types.js";
 import { createSubagentRunInputs } from "./run-inputs.js";
 import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work-types.js";
@@ -413,7 +413,7 @@ export function createChildExecution(options: {
 
   // Read once per execution: the publication recorded it, and it never changes.
   let inheritedIntent: Promise<string | undefined> | undefined;
-  const startRunner = (): Promise<AgentRunResult> => createAgentHost<RunnableAgentOptions>({ createRunner: deps.createRunner }).runTurn({
+  const startRunner = (): Promise<AgentRunResult> => createAgentGeneration<RunnableAgentOptions>({ createRunner: deps.createRunner }).runTurn({
     createContextOptions: async (attempt: RetryState) => {
       if (dispatchAbort.signal.aborted) throw new AgentTurnAborted();
       await childBackground.adoptHandedOver();

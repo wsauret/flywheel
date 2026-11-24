@@ -10,7 +10,7 @@ import type { SkillRegistryRevision } from "../../../workflows/skill-schema.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../agent-runtime/model-interaction-profile.js";
 import type { CaptureProviderConnection } from "../../agent-runtime/model-runtime-capture.js";
 import type { AgentFactory, AgentRunTerminal } from "../../agent-runtime/types.js";
-import { createAgentHost } from "../../runner/host.js";
+import { createAgentGeneration } from "../../runner/host.js";
 
 import { verifySkillSemanticAudit } from "./skill-semantic-audit.js";
 import type { ServingAttempt } from "../../agent-runtime/llm/types.js";
@@ -259,7 +259,7 @@ function createOneShotChild(createRunner: AgentFactory, captureProviderConnectio
   return async (request: LearningReviewChildRequest): Promise<{ readonly output: string; readonly turns: number }> => {
     let output = "";
     let turns = 0;
-    const result = await createAgentHost({ createRunner }).runTurn({
+    const result = await createAgentGeneration({ createRunner }).runTurn({
       createContextOptions: () => {
         request.onAttempt?.();
         output = "";

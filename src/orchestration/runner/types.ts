@@ -30,8 +30,22 @@ interface AgentHostTurnOptions<O> {
   onAttemptFailure?: (result: AgentRunResult) => void | Promise<void>
 }
 
-export interface AgentHost<O = AgentHostContextOptions> {
+/** One logical generation at a time and its shared recovery policy: what a
+ *  caller that runs one turn and then stops needs. */
+export interface AgentGeneration<O = AgentHostContextOptions> {
   readonly generationState: "active" | "idle"
+  runTurn(options: AgentHostTurnOptions<O>): Promise<AgentRunResult>
+  /** Interrupts current model work, including recovery between contexts. */
+  interruptGeneration(): boolean
+  /** Aborts current model work, including recovery between contexts. */
+  abortGeneration(): void
+  /** Settles after the active logical generation and all retry attempts end. */
+  settle(): Promise<void>
+}
+
+/** A generation host with the turn slot that a chat runner reserves, starts,
+ *  and continues across the person's messages. */
+export interface AgentHost<O = AgentHostContextOptions> extends AgentGeneration<O> {
   readonly turnState: "active" | "idle"
   readonly activeTurnLease: AgentHostTurnLease | null
   reserveTurn(): AgentHostTurnLease | null
@@ -41,13 +55,6 @@ export interface AgentHost<O = AgentHostContextOptions> {
   startTurn(lease: AgentHostTurnLease, run: () => Promise<void>): void
   interruptTurn(): void
   continueAfterTurn(lease: AgentHostTurnLease, continuation: () => void): void
-  runTurn(options: AgentHostTurnOptions<O>): Promise<AgentRunResult>
-  /** Interrupts current model work, including recovery between contexts. */
-  interruptGeneration(): boolean
-  /** Aborts current model work, including recovery between contexts. */
-  abortGeneration(): void
-  /** Settles after the active logical generation and all retry attempts end. */
-  settle(): Promise<void>
 }
 import type { ChatInputLike } from "../../infra/chat-input.js"
 export interface Runner {

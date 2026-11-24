@@ -18,7 +18,7 @@ import { agentPersonaRun, personaTask } from "./agent-persona.js"
 import type { AgentOutput } from "../../workflows/vm/agent-outcome.js"
 import type { ComposeAttemptBrief } from "../../workflows/vm/attempt-runner.js"
 import type { CapabilityPlanner } from "../agent-runtime/request-preparation.js"
-import { createAgentHost } from "../runner/host.js"
+import { createAgentGeneration } from "../runner/host.js"
 import { createBackgroundNotificationDelivery } from "../runner/background-notification-delivery.js"
 import type { AgentHostContextOptions } from "../runner/types.js"
 import { CONTINUATION_MESSAGES, reopenedContinuation } from "../agent-runtime/continuation-messages.js"
@@ -650,7 +650,7 @@ export function createWorkerCallback(
       // conversation before its first request, and parks on them as on its own.
       await background.adoptHandedOver()
       const runStartedAt = Date.now()
-      const agentResult = await createAgentHost({ createRunner: createAgent }).runTurn({
+      const agentResult = await createAgentGeneration({ createRunner: createAgent }).runTurn({
         createContextOptions,
         onContextCreated: (context) => { slot.runner = context },
         onContextStarted: () => {

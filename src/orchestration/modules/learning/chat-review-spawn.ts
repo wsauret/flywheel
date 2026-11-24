@@ -1,6 +1,6 @@
 import type { ChatModuleHostInput } from "../../chat-module-host.js"
 import { resolveSessionDir } from "../../../infra/paths.js"
-import { createAgentHost } from "../../runner/host.js"
+import { createAgentGeneration } from "../../runner/host.js"
 import { requireRole } from "../../config/roles.js"
 import { renderSkillRecommendationNotification } from "./reconciliation.js"
 import { createReviewUsageAccounting, resolveReviewRoute, reviewReplay, type ReviewRunSpec, type SpawnedReview } from "./learning-review.js"
@@ -43,7 +43,7 @@ export function createLearningReviewSpawner(input: ChatModuleHostInput): (spec: 
       captureProviderConnection: deps.captureProviderConnection,
       treeRootSessionId: sessionId,
     })
-    const done = createAgentHost({ createRunner: reviewExecution.createAgent }).runTurn({
+    const done = createAgentGeneration({ createRunner: reviewExecution.createAgent }).runTurn({
       createContextOptions: async () => {
         await reviewExecution.prepare()
         return {

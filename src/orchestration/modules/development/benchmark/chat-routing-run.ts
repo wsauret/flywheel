@@ -6,7 +6,7 @@ import { agentTasksFromComposition, type ModuleAgentTasks } from "../../../modul
 import { composeFirstPartyModules } from "../../../modules.js";
 import type { ToolRegistration } from "../../../agent-runtime/tools/tool-registry.js";
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../modules.js";
-import { createAgentHost } from "../../../runner/host.js";
+import { createAgentGeneration } from "../../../runner/host.js";
 import { createBenchmarkAccounting } from "./accounting.js";
 import type { BenchmarkAccounting } from "./evidence.js";
 
@@ -143,7 +143,7 @@ export async function runChatRoutingTask(deps: ChatRoutingDeps, request: ChatRou
     return { content: "The benchmark captured the subagent dispatch without constructing a child.", outcome: "ok" as const };
   };
   const moduleSelection = (): FirstPartyModuleComposition => routingComposition(request.moduleSelection(), intercept);
-  const host = createAgentHost({ createRunner: deps.createAgent });
+  const host = createAgentGeneration({ createRunner: deps.createAgent });
   const timer = setTimeout(() => { timedOut = true; runner?.abort(); }, request.deadlineMs);
   const abort = (): void => { cancelled = true; runner?.abort(); };
   request.signal?.addEventListener("abort", abort, { once: true });

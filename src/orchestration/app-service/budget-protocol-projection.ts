@@ -1,4 +1,4 @@
-import type { SessionStore } from "../session-store/types.js"
+import type { SessionStoreReader } from "../session-store/types.js"
 import { budgetCursor, type BudgetView } from "../../protocol/budget-protocol-types.js"
 import { createSessionViewProjection } from "./session-view-projection.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../protocol/runtime-ui-protocol-types.js"
@@ -13,7 +13,7 @@ export interface BudgetProtocolProjection {
 }
 
 export interface BudgetProtocolProjectionDeps {
-  readonly sessionStore: SessionStore
+  readonly sessionStore: SessionStoreReader
   readonly summaries: RuntimeSummaryProjection
   readonly publish: (input: RuntimeUiPatchInput) => RuntimeUiPatch
 }

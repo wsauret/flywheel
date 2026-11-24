@@ -1,6 +1,6 @@
 import { Log } from "../../infra/log.js"
 import { createBackgroundLane, type BackgroundLane } from "../../infra/ordered-lane.js"
-import type { SessionEntry, SessionStore } from "../session-store/types.js"
+import type { SessionEntry, SessionStoreReader } from "../session-store/types.js"
 import type { RuntimeSessionCursorIdentity, RuntimeUiPatch, RuntimeUiPatchInput, RuntimeUiPatchPayload } from "../../protocol/runtime-ui-protocol-types.js"
 
 /** The publish half every per-session view projection shares: an equality-gated
@@ -129,11 +129,8 @@ export interface SessionViewProjection<View> {
   dispose(): void
 }
 
-/** The members of the session store that a view projection reads. */
-export type ViewedSessionStore = Pick<SessionStore, "allIds" | "get" | "revision" | "onChange">
-
 export interface SessionViewProjectionConfig<View> extends SessionViewPublisherConfig<View> {
-  readonly sessionStore: ViewedSessionStore
+  readonly sessionStore: SessionStoreReader
   /** Store subscription label, for change-listener diagnostics. */
   readonly label: string
   /** The domain's view of one live entry; null when the entry has no view in

@@ -3,7 +3,7 @@ import { RuntimeEventProjector } from "../../../infra/output/runtime-event-proje
 import { resolveSessionDir } from "../../../infra/paths.js"
 import { mergeAbortSignals } from "../../../infra/abort.js"
 import type { ChatModuleHostInput } from "../../chat-module-host.js"
-import { createAgentHost } from "../../runner/host.js"
+import { createAgentGeneration } from "../../runner/host.js"
 import type { SideQuestionRun } from "./host.js"
 import { createSideQuestionHost } from "./host.js"
 
@@ -20,7 +20,7 @@ export function createChatSideQuestions(input: ChatModuleHostInput) {
       const output = new OutputProjector({ executionCwd: deps.executionCwd, onChange: () => {} })
       const fold = new RuntimeEventProjector(output)
       const followAnswer = answerFollower(output, request)
-      const host = createAgentHost({ createRunner: deps.createAgent })
+      const host = createAgentGeneration({ createRunner: deps.createAgent })
       return host.runTurn({
         createContextOptions: () => ({
           model: role?.model,

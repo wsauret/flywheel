@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { releaseFit } from "../../../../src/infra/update/release-fit.js"
+import { releaseFit } from "../../../src/orchestration/terminal-remote.js"
 
 /** PI-REMOTE-016: a terminal on another machine follows the machine's
  *  release, never the other way round. */

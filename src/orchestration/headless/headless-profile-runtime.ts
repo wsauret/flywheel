@@ -28,8 +28,8 @@ import { getSharedModelsClient } from "../config/llm-clients.js"
 import { captureSubscriptionAdmission } from "../subscription-spend-consent/admission-capture.js"
 import { createSubscriptionSpendConsentCaptureCache } from "../subscription-spend-consent/capture-cache.js"
 import type { SubscriptionSpendConsentCapture } from "../subscription-spend-consent/subscription-spend-consent-service.js"
-import { createSubscriptionUsageService, type SubscriptionUsageProfile } from "../auth/provider-observations/subscription-usage-service.js"
-import { createSubscriptionUsageServicePool } from "../auth/provider-observations/subscription-usage-service-pool.js"
+import type { SubscriptionUsageProfile } from "../auth/provider-observations/subscription-usage-service.js"
+import { createSubscriptionUsagePool } from "../auth/provider-observations/runtime-composition.js"
 
 interface HeadlessAuthProfiles {
   acquireAccess(options: { readonly createDefault: true; readonly createSelected?: string }): Promise<{ close(): void }>
@@ -85,14 +85,10 @@ export async function resolveHeadlessAuth(
  * waits for active leases before releasing usage observations. A usage reader
  * that asks a program that owns the login starts it only in `launcher`. */
 export function createHeadlessSubscriptionAdmission(moduleSelection: FirstPartyModuleSnapshot, launcher: LauncherScope | undefined) {
-  const usagePool = createSubscriptionUsageServicePool({
-    create: (profile, thresholds) => createSubscriptionUsageService({
-      profile: () => profile,
-      registry: () => accessProviderRegistry(moduleSelection()),
-      thresholds: () => thresholds,
-      monitor: false,
-      ...(launcher === undefined ? {} : { launcher }),
-    }),
+  const usagePool = createSubscriptionUsagePool({
+    registry: () => accessProviderRegistry(moduleSelection()),
+    monitor: false,
+    ...(launcher === undefined ? {} : { launcher }),
   })
   const consentCache = createSubscriptionSpendConsentCaptureCache<SubscriptionSpendConsentCapture>()
   return {

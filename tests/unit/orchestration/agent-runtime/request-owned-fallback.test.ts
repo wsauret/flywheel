@@ -14,7 +14,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
 import { LiveAgent } from "../../../../src/orchestration/agent-runtime/runner.js"
 import { ApiError } from "../../../../src/orchestration/agent-runtime/llm/runtime-errors.js"
-import { createAgentHost } from "../../../../src/orchestration/runner/host.js"
+import { createAgentGeneration } from "../../../../src/orchestration/runner/host.js"
 import { generateSessionTitle, type SessionTitles } from "../../../../src/orchestration/session/session-title.js"
 import { createLearningReviewExecution } from "../../../../src/orchestration/modules/learning/learning-review-runner.js"
 import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runtime-assembly.js"
@@ -492,7 +492,7 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
   test.each(["interactive-chat", "subagent", "workflow-agent"] as const)("shared host constructs one real %s runner across fallback", async (kind) => {
     const f = await fixture({ failures: [wrappedQuota()] })
     try {
-      const result = await createAgentHost({ createRunner: f.createRunner }).runTurn({
+      const result = await createAgentGeneration({ createRunner: f.createRunner }).runTurn({
         createContextOptions: () => ({
           ...testDirectories(f.root), model: MODEL,
           purpose: kind === "subagent" ? { kind, renderAs: "subagent", parentToolUseId: "parent-call" }

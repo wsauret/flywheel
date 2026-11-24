@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { Agent } from "../../../../src/orchestration/agent-runtime/types.js"
-import { createAgentHost } from "../../../../src/orchestration/runner/host.js"
+import { createAgentGeneration } from "../../../../src/orchestration/runner/host.js"
 
 describe("runner host identity", () => {
   it("publishes the runner it owns without a forwarding wrapper", async () => {
@@ -11,7 +11,7 @@ describe("runner host identity", () => {
     }
     let published: Agent | undefined
     // The host is generic over its context-options shape; this runner ignores them.
-    const host = createAgentHost<{ readonly model: string }>({ createRunner: () => runner })
+    const host = createAgentGeneration<{ readonly model: string }>({ createRunner: () => runner })
 
     await host.runTurn({
       createContextOptions: () => ({ model: "test" }),
