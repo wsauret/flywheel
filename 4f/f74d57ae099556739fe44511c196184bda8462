@@ -1,0 +1,78 @@
+scripts/check-diagnostics-registry.ts
+  h_4b47e9e4a8b456 311-315
+src/infra/diagnostics/diagnostics-registry.ts
+  h_4b47e9e4a8b456 178-183
+src/orchestration/agent-runtime/tools/sessions/message-session.ts
+  h_4b47e9e4a8b456 102
+src/orchestration/app-service/supervisor/actor/session-chat-durability.ts
+  h_4b47e9e4a8b456 100-103,122,124-132,136,141
+src/orchestration/app-service/supervisor/actor/session-reactivation.ts
+  h_4b47e9e4a8b456 31,102
+src/orchestration/app-service/supervisor/actor/session-runtime-actor.ts
+  h_4b47e9e4a8b456 2-3,25,136-138,455,471-476,478-479,561-563,581-582,584-589,649-653,674-676,687
+src/orchestration/app-service/supervisor/runtime-supervisor.ts
+  h_4b47e9e4a8b456 345-351,353,356
+src/orchestration/app-service/supervisor/session-background-notifications.ts
+  h_4b47e9e4a8b456 30-32,36,46,52-53,63-72,74-84
+src/orchestration/chat/controls.ts
+  h_4b47e9e4a8b456 268-270
+src/orchestration/chat/host-ports.ts
+  h_4b47e9e4a8b456 84-89
+src/orchestration/chat/lifecycle/runner-lifecycle.ts
+  h_4b47e9e4a8b456 5,329-331,396-405,485-487,556-564,648-651,655-674,678,684-687,708,767-769,792-794,796,798-803
+src/orchestration/chat/lifecycle/runner-message-delivery.ts
+  h_4b47e9e4a8b456 27-31,57-63,69,71,85-88
+src/orchestration/chat/runner-types.ts
+  h_4b47e9e4a8b456 57-58,120-126
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 177-181,208-209,211-215,324
+src/orchestration/chat/tree-writer.ts
+  h_4b47e9e4a8b456 13,23,86-107,117-118,161-163,251-258,309-340,360,447,565
+src/orchestration/chat/turn-mailbox.ts
+  h_4b47e9e4a8b456 47-53,62-65,81,86,113,148-154,159-187,245,260-264,322,357-361
+src/orchestration/session/control/messaging/session-messaging.ts
+  h_4b47e9e4a8b456 30
+src/orchestration/session/conversation/queued-background-notifications.ts
+  h_4b47e9e4a8b456 2,4,12-24,28,59-60,67,70,106-114,140-141
+src/orchestration/session/conversation/tree/conversation-tree-writer.ts
+  h_4b47e9e4a8b456 11,24-28,79-83,179-184,193-197,216-221,324-337,385,510
+src/orchestration/session/conversation/tree/conversation-tree.ts
+  h_4b47e9e4a8b456 3,215-236,400-403,457
+src/orchestration/session/history/agent-input-reconciliation.ts
+  h_4b47e9e4a8b456 16,143-195
+src/orchestration/session/message-disposition.ts
+  h_4b47e9e4a8b456 5-7,12,21,39-40,76
+tests/fixtures/runtime-supervisor-fixtures.ts
+  h_4b47e9e4a8b456 274
+tests/unit/orchestration/agent-runtime/subagent/_fixtures.ts
+  h_4b47e9e4a8b456 423-426
+tests/unit/orchestration/app-service/_frontend-projection-fixtures.ts
+  h_4b47e9e4a8b456 146
+tests/unit/orchestration/app-service/project-state/worker/project-state-recovery.test.ts
+  h_4b47e9e4a8b456 26,393-429
+tests/unit/orchestration/app-service/runtime-supervisor-question-hold.test.ts
+  h_4b47e9e4a8b456 1-683
+tests/unit/orchestration/app-service/runtime-supervisor-reactivation-seed.test.ts
+  h_4b47e9e4a8b456 336-338,359,362,365-372
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 46-49
+tests/unit/orchestration/chat/chat-controls.test.ts
+  h_4b47e9e4a8b456 64,83,94-97
+tests/unit/orchestration/session-store/session-store.test.ts
+  h_4b47e9e4a8b456 43
+tests/unit/orchestration/session/question-suspended-turn.test.ts
+  h_4b47e9e4a8b456 6,151-154
+tests/unit/tui/hooks/state/shell-state-harness.ts
+  h_4b47e9e4a8b456 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4ff74d57ae099556739fe44511c196184bda8462",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
