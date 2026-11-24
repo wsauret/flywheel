@@ -114,6 +114,25 @@ describe("persona benchmark service", () => {
     expect(await store.loadAttempts()).toEqual([]);
   });
 
+  it("runs at most the requested number of cells at once", async () => {
+    const peakInFlight = async (concurrency?: number): Promise<number> => {
+      const root = await syntheticProject();
+      let inFlight = 0;
+      let peak = 0;
+      const runtime = fakeRuntime(async () => {
+        peak = Math.max(peak, ++inFlight);
+        await Bun.sleep(5);
+        inFlight--;
+        return { terminal: { kind: "completed" } };
+      });
+      const plan = await planPersonaBenchmark({ variants: VARIANTS, repeats: 1, operation: "run" }, createBenchmarkCatalog(root));
+      await runPersonaBenchmark(plan, { ...deps(runtime, root, []), concurrency });
+      return peak;
+    };
+    expect(await peakInFlight()).toBe(VARIANTS.length);
+    expect(await peakInFlight(1)).toBe(1);
+  });
+
   it("retains completed candidates with inherited provider options", async () => {
     const root = await syntheticProject();
     const runtime = {
