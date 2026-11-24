@@ -1,4 +1,4 @@
-import type { StoredFact } from "./event-store-types.js"
+import type { StoredFact } from "./store/event-store-types.js"
 
 /** The narrow write surface a typed-fact recorder needs: append a validated fact
  *  and group a burst of appends into one store transaction. `SessionFactWriter`

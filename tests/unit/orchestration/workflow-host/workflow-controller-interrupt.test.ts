@@ -13,7 +13,7 @@ import type { WorkflowControllerDeps } from "../../../../src/orchestration/workf
 import { cleanupProjectRoots, createCapabilities, createDeps, createMockManager, modelLaunch, until } from "./_workflow-controller-fixtures"
 import { moduleDisabledReason } from "../../../../src/protocol/runtime/module-ids"
 import type { WorkflowHandBack } from "../../../../src/orchestration/workflow-host/runner-types"
-import { contentEvidence } from "../../../../src/infra/content-evidence"
+import { contentEvidence } from "../../../../src/infra/runtime-facts/content-evidence"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 import { readChildCall, readChildStop, workflowSessionActions, workflowToolCall } from "../../../../src/orchestration/session/control/chat-session-run-evidence"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages.js"

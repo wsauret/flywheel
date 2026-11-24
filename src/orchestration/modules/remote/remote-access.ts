@@ -7,7 +7,7 @@ import { Socket } from "effect/socket"
 
 import { importLegacyRemotePlacements, mutateRemotePairingStore, mutateRemotePushStore, readRemotePairingStore, readRemotePushStore, onRemoteStoresWritten, watchRemotePushStore, type PairedDevice, type RemotePairingStore, type StoredKeyPair } from "./remote-pairing-store.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { HeartbeatTiming, RelayChannelSocket, RelayChannelStreams } from "../../../protocol/modules/remote/relay-channel.js"
 import { sealedSocket } from "../../../protocol/modules/remote/sealed-socket.js"
 import {

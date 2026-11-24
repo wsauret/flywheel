@@ -3,15 +3,15 @@ import * as fs from "node:fs"
 import { Effect, Schema } from "effect"
 import type { ProjectDirectories } from "../../../../infra/directory-authorities.js"
 import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
-import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
+import { createSqliteEventInserter } from "../../../../infra/store/sqlite-event-store-core.js"
 import { isRecord } from "../../../../infra/record.js"
 import { hashDefinition } from "../../../../workflows/provenance/definition-hash.js"
 import {
   DEFINITION_IDENTITY_GRAPH_MIGRATION_ID,
   DefinitionIdentitySchema,
   type DefinitionIdentity,
-} from "../../../../workflows/vm/facts/definition-identity.js"
-import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/facts/session-facts.js"
+} from "../../../../workflows/control-facts/definition-identity.js"
+import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/control-facts/family.js"
 import { MIGRATED_FACT_TYPE } from "./workflow-identity-chain.js"
 import { tableExists } from "../../../migrations/engine.js"
 

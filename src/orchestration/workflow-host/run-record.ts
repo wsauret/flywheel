@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../infra/event-store-types.js"
+import type { StoredFact } from "../../infra/store/event-store-types.js"
 import type { DefinitionLineageView } from "../../workflows/run/definition-provenance-projection.js"
 import type { WorkflowCapabilityBoundary, WorkflowLaunchBindingSchema, WorkflowRunSettingsSchema } from "../../workflows/run/run-facts.js"
 import { strongestInterrupt } from "../session/control/child-continuation.js"
@@ -22,10 +22,10 @@ export type WorkflowRunRecord = typeof WorkflowRunSettingsSchema.Type & {
 /** Workflow-keyed reads. Missing records return null; unreadable durable facts report their decoding error. */
 export interface WorkflowRunReader {
   readCut(workflowId: string): Promise<WorkflowRunCut | null>
-  readAttempt(workflowId: string, attemptId: string): Promise<import("../../workflows/vm/graph/graph-types.js").Attempt | null>
+  readAttempt(workflowId: string, attemptId: string): Promise<import("../../workflows/control-facts/graph-types.js").Attempt | null>
   /** The attempt that a member session serves now (refer to
    *  `servedAttempts`), else the attempt that opened the session. */
-  readMemberAttempt(workflowId: string, member: { readonly attemptId: string; readonly conversationId: string }): Promise<import("../../workflows/vm/graph/graph-types.js").Attempt | null>
+  readMemberAttempt(workflowId: string, member: { readonly attemptId: string; readonly conversationId: string }): Promise<import("../../workflows/control-facts/graph-types.js").Attempt | null>
   read(workflowId: string): Promise<WorkflowRunRecord | null>
   /** The run while it can still take a turn: null when it is missing,
    *  deleted, or completed. */

@@ -14,7 +14,7 @@
  *  and settlement after a later disable. A sibling dispatch, a later resume, a
  *  later automatic review, or an unrelated write asks for a new grant. */
 
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import { selectionPolicyError, type ModuleId } from "../../modules.js";
 import { readConfigAt, type ConfigFileLocation } from "../config-file.js";
 import { defaultModuleState, moduleDescriptor, observeModuleState, type ModuleState } from "../module-descriptor.js";

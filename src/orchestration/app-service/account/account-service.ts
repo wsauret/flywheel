@@ -1,8 +1,8 @@
 import { runAccountShutdownBarrier } from "../runtime/runtime-shutdown.js"
 import type { StartupReached } from "../../../protocol/runtime/startup-steps.js"
-import { DebugLog } from "../../../infra/debug-log.js"
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { durationMs } from "../../../infra/operation-log.js"
 
 const log = Log.create({ service: "account-service" })

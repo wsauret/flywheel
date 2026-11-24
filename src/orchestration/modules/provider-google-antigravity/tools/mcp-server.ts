@@ -3,7 +3,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js"
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js"
 import { CallToolRequestSchema, CancelledNotificationSchema, ErrorCode, ListToolsRequestSchema, McpError, type CallToolRequest, type CallToolResult, type RequestId } from "@modelcontextprotocol/sdk/types.js"
 import { Redacted } from "effect"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { McpToolCall } from "../stream-map.js"
 import { ENGINE_TOOL_SUMMARY, type McpToolDeclaration } from "./tool-projection.js"
 

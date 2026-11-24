@@ -4,7 +4,7 @@ import { createBackgroundWorkRegistry } from "../../../../../../src/orchestratio
 import type { BackgroundWorkResult } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
 import type { BackgroundOutputRequest } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work-processes.js";
 import { createProcessTool } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
-import type { PersistentProcessRecord } from "../../../../../../src/infra/persistent-process-manager.js";
+import type { PersistentProcessRecord } from "../../../../../../src/infra/supervision/persistent/persistent-process-manager.js";
 import { unusedChildSessionControl } from "../../../../../helpers/child-session-control.js";
 import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js";
 

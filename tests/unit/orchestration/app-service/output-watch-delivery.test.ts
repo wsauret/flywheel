@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { Rpc } from "effect/rpc"
-import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
+import { EventReaderService } from "../../../../src/infra/store/event-store-effect.js"
 import { createOutputProjection } from "../../../../src/orchestration/app-service/projections/output/output-projection.js"
 import { createOutputWatches } from "../../../../src/orchestration/app-service/account/projects/output-watches.js"
 import { connectProjectExecutionChannel, serveProjectExecutionChannel } from "../../../../src/orchestration/app-service/executor/project-execution-channel.js"

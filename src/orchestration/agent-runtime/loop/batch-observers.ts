@@ -1,5 +1,5 @@
 import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import { formatRuntimeNotification } from "../background-work/runtime-notifications.js";
 
 const log = Log.create({ service: "batch-observers" });

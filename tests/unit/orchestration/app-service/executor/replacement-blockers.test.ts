@@ -1,6 +1,6 @@
 import { describe, expect, jest, spyOn, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js"
-import { Log } from "../../../../../src/infra/log.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
 import { createMutationAdmission } from "../../../../../src/orchestration/app-service/mutations/mutation-admission.js"
 import { createReplacementReport, delaysReplacement, type ReplacementReportDeps } from "../../../../../src/orchestration/app-service/executor/replacement-blockers.js"
 import type { FrontendActivity } from "../../../../../src/protocol/runtime/app-service-types.js"

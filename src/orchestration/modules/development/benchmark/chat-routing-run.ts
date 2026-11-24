@@ -1,5 +1,5 @@
 import type { AgentDefinition } from "../../../../infra/agent-definition.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
 import type { Agent, AgentFactory, AgentRunTerminal, RuntimeToolSurfaces } from "../../../agent-runtime/types.js";
 import { failureTerminal } from "../../../agent-runtime/types.js";
 import { agentTasksFromComposition, type ModuleAgentTasks } from "../../../module-agent-tasks.js";

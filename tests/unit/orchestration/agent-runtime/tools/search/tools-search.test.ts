@@ -6,7 +6,7 @@ import * as path from "node:path";
 import * as ripgrep from "../../../../../../src/orchestration/agent-runtime/tools/files/ripgrep.js";
 import { searchDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/search/search.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
-import { canonicalMutationPath } from "../../../../../../src/infra/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../../../src/infra/locks/file-mutation-queue.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
 import { makeContext } from "../_fixtures.js";

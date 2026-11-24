@@ -6,10 +6,10 @@ import type { SessionEntry, SessionStore } from "../../../session-store/types.js
 import { runsWorkflowClock } from "../../../session-store/view.js"
 import type { CommandKeeper } from "../../runtime/command-keeper.js"
 import type { AnyBlock } from "../../../../infra/output-blocks.js"
-import type { StoredFact } from "../../../../infra/event-store-types.js"
-import { Log } from "../../../../infra/log.js"
+import type { StoredFact } from "../../../../infra/store/event-store-types.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
-import { probeLoopUnit } from "../../../../infra/event-loop-lag.js"
+import { probeLoopUnit } from "../../../../infra/diagnostics/event-loop-lag.js"
 import type { ProjectedBlockChange, ShippedOutput } from "./shipped-output.js"
 
 const log = Log.create({ service: "output-projection" })

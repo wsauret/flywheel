@@ -4,6 +4,7 @@ import type { SessionNotice } from "../../../infra/session-notice.js"
 import type { RuntimeTranscriptWindow } from "../../../protocol/transcript/transcript-protocol-types.js"
 import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
 import type { OutputHeightEstimate } from "./output-height-estimates.js"
+import type { BlockDisclosureChannel } from "../../context/transcript/block-disclosure.js"
 
 /** The resident-block budget: how many timeline blocks the TUI will hold
  *  mounted-or-resident for one session. One number, two enforcement
@@ -90,10 +91,32 @@ export interface TranscriptFreshness {
   readonly source: "live" | "range" | "status"
 }
 
+/** What the scroll controller drives on the shown transcript as the viewport
+ *  moves: the message count it follows, the tail read, the delta path's row
+ *  estimates, and far-page eviction. */
+export interface TranscriptViewportPaging {
+  /** Authoritative absolute count of user-visible messages. Reactive and
+   * independent of the resident block window. */
+  visibleMessageCount(): number
+  /** Replace the resident reader window with the live tail. An empty window
+   *  that leaves the viewport short reads the tail this way too. */
+  jumpToLatest(): Promise<void>
+  /** Drain the incremental delta path's per-block row-estimate point updates
+   *  (absolute blockIndex -> rows) for the height index. Non-reactive. */
+  takeEstimateUpdates(): readonly (readonly [number, number])[]
+  /** Far-page eviction: drop resident blocks before `blockIndex` once the
+   *  scroll controller's viewport-protected range clears them; absolute
+   *  indices are untouched and the older-page path re-fetches on demand. */
+  evictBefore(blockIndex: number): void
+}
+
 /** One session's transcript as OutputWindow renders it, bound to the shown
  *  session by `OutputTranscriptCache.bindSession`. The paging and lifecycle calls
- *  the render boundary must not make (open, loadPage, retain) are absent. */
-export interface OutputTranscriptView {
+ *  the render boundary must not make (open, loadPage, retain) are absent. As a
+ *  `BlockDisclosureChannel` it reads and writes the session's block-identity-keyed
+ *  disclosure map, which stays stable across prepends, generation bumps, and row
+ *  virtualization. */
+export interface OutputTranscriptView extends BlockDisclosureChannel, TranscriptViewportPaging {
   /** Publish visible block identities before the shared store chooses residency. */
   protectReader(reader: import("../../../protocol/client/transcript-view.js").TranscriptReader): void
   /** The resident session's passive evidence reader. Reactive; never opens a session. */
@@ -102,29 +125,10 @@ export interface OutputTranscriptView {
   reportProjectionFailure(error: unknown): never
   /** The generation-consistent hydrated window. Reactive. */
   visibleRange(): TranscriptSnapshot | undefined
-  /** Authoritative absolute count of user-visible messages. Reactive and
-   * independent of the resident block window. */
-  visibleMessageCount(): number
-  /** Replace the resident reader window with the live tail. */
-  jumpToLatest(): Promise<void>
   /** Low-cardinality freshness marker for render-boundary diagnostics. Reactive. */
   freshness(): TranscriptFreshness | undefined
-  /** Re-request the anchor range when the mounted window does not fill the viewport. */
-  hydrateAnchor(): Promise<void>
   /** Replace the resident window with the bounded range around one transcript entry. */
   loadAround(entryId: string): Promise<void>
-  /** Drain the incremental delta path's per-block row-estimate point updates
-   *  (absolute blockIndex -> rows) for the height index. Non-reactive. */
-  takeEstimateUpdates(): readonly (readonly [number, number])[]
-  /** Far-page eviction: drop resident blocks before `blockIndex` once the
-   *  scroll controller's viewport-protected range clears them; absolute
-   *  indices are untouched and the older-page path re-fetches on demand. */
-  evictBefore(blockIndex: number): void
-  /** Read/write the block-identity-keyed disclosure map (stable across
-   *  prepends, generation bumps, and row virtualization). `undefined` means
-   *  never written; the reading component resolves its own default. */
-  disclosure(key: string): boolean | undefined
-  setDisclosure(key: string, expanded: boolean): void
   /** Lazily fetch the full diffs/content of a wire-truncated historical
    *  diff-bearing block (tool artifact or review notice) and merge it into
    *  the resident window. Single-flight per block; fire-and-forget. */
@@ -202,14 +206,4 @@ export interface OutputTranscriptCache extends TranscriptResidency, TranscriptPa
 export function snapshotSeeded(snapshot: TranscriptSnapshot | undefined): boolean {
   const kind = snapshot?.status.kind
   return kind === "complete" || kind === "partial"
-}
-
-/** The transcript head is visible territory: the hydrated window starts at
- *  block 0, or the session is empty. While a snapshot is absent or loading (a
- *  reopened evicted session's round-trip), the head is UNKNOWN - rendering
- *  head furniture (the session intro card) then would flash it for the load
- *  duration: the tab-switch "box" flicker. */
-export function atTranscriptHead(snapshot: TranscriptSnapshot | undefined): boolean {
-  if (!snapshot || snapshot.status.kind === "loading") return false
-  return snapshot.window.startBlockIndex === 0 || snapshot.totalBlocks === 0
 }

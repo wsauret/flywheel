@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test"
-import { DebugLog } from "../../../../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js"
 import { DegenerateRepetitionError } from "../../../../../../src/orchestration/agent-runtime/llm/stream/reasoning-repetition.js"
 
 import { streamAssistantTurn } from "../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream"

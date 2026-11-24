@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { createRuntimeModelAssignmentService } from "../../../../src/orchestration/app-service/auth/models/model-assignment-service.js"
 import { CONFIG_DEFAULTS, installedConfigSchema } from "../../../../src/orchestration/config/schema/schema.js"

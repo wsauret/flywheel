@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
-import { publishedDefinitionDrift } from "../../../../workflows/vm/facts/definition-identity.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
+import { publishedDefinitionDrift } from "../../../../workflows/control-facts/definition-identity.js"
 import { readWorkflowRecovery } from "../../../../workflows/vm/recovery/recovery-fold.js"
 import { resumesLiveFailedAgents } from "../../../../workflows/vm/recovery/fact-fold.js"
 import type { WorkflowDetail } from "../../../../protocol/modules/workflows.js"

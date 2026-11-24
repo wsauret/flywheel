@@ -7,7 +7,7 @@ import { durableBranchHasUserMessage } from "../../session/conversation/tree/con
 import type { RuntimeChatKernel } from "./runtime-chat-kernel.js"
 import type { RuntimeSupervisor } from "./runtime-supervisor-types.js"
 import type { WorkflowHosts } from "../../workflow-host/host-collection.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
 import { liveSessionControl, liveWorkflowControl, onLiveWorkChanged } from "../../session/control/live-session-control.js"
 import { workProgressesWithout } from "../../session/control/messaging/reply-waits.js"
 import type { BackgroundWorkTracking } from "../../agent-runtime/background-work/background-work.js"

@@ -16,12 +16,12 @@
 import { lstatSync, readdirSync, realpathSync, rmdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-import { PersistenceWriteRefused } from "../../../../../infra/event-store-types.js";
+import { PersistenceWriteRefused } from "../../../../../infra/store/event-store-types.js";
 import { join, sep } from "node:path";
-import type { ContainedFileMetadata } from "../../../../../infra/descriptor-directory-contract.js";
-import { DebugLog } from "../../../../../infra/debug-log.js";
+import type { ContainedFileMetadata } from "../../../../../infra/descriptor-directory/descriptor-directory-contract.js";
+import { DebugLog } from "../../../../../infra/diagnostics/debug-log.js";
 import { errorMessage } from "../../../../../infra/error-message.js";
-import { Log } from "../../../../../infra/log.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
 import { buildMutationBytesEvidence, type MutationEvidenceEntry } from "../../../../../infra/mutation-evidence.js";
 import { formatConflictMarkers, formatFileSamples, formatNotAppliedFiles, summarizeFileSamples, summarizeNotAppliedFiles, type NotAppliedFile } from "../../../../../infra/not-applied-files.js";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../../../../infra/owned-command.js";

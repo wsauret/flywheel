@@ -19,7 +19,7 @@ import { createProcessTool } from "../../../../../src/orchestration/agent-runtim
 import { createHeadlessUsageAuthorityOwner } from "../../../../../src/orchestration/headless/headless-usage-authority.js"
 import { createUsageAuthority } from "../../../../../src/infra/llm/usage/usage-authority.js"
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/runner/factory.js"
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js"
+import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js"
 import { fakeModelInfos, tierAvailableModels } from "../../../../helpers/model-tier-fixtures.js"
 import { roleCapture } from "../../../../helpers/role-capture.js"
 import { newTestRunner } from "../../../../helpers/agent-runner.js"

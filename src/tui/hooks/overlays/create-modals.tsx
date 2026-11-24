@@ -8,7 +8,7 @@ import type { RuntimeAuthProfileScope } from "../../../protocol/auth/auth-profil
 import type { ModuleRow, ModuleRowAction } from "../../../protocol/protocol-module.js"
 import type { AccountDirectories } from "../../../infra/directory-authorities.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { KernelSurfaceTable } from "../../commands/command-surfaces.js"
 import type { CommandSpec } from "../../commands/command-types.js"
 import type { ModalContext } from "../../components/modal-stack.js"

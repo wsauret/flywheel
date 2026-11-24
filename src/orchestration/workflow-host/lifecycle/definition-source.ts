@@ -5,7 +5,7 @@
  *  deleted or edited. Admission resolves the definition once and every layer
  *  below it receives the object. */
 
-import type { AsyncEventReadSurface } from "../../../infra/event-store-types.js"
+import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js"
 import { readRunDefinitionLineage } from "../../../workflows/run/definition-provenance-projection.js"
 import { recordedWorkflow } from "../../../workflows/definitions/loader.js"
 import { errorMessage } from "../../../infra/error-message.js"

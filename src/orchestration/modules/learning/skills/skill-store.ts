@@ -18,11 +18,11 @@
 
 import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { basename, dirname } from "node:path";
-import { ContainedPathError } from "../../../../infra/descriptor-directory-contract.js";
+import { ContainedPathError } from "../../../../infra/descriptor-directory/descriptor-directory-contract.js";
 import { removeFileUnder, requireContainedDirectory, writeFileUnder } from "../../../../infra/write-file-under.js";
 import { planLockPaths, planSkillMutation, planStaleness } from "./skill-mutation-plan.js";
 import { skillSemanticAuditEvidenceIsCurrent } from "./skill-semantic-audit.js";
-import { withPackageLocks } from "../../../../infra/package-directory-lock.js";
+import { withPackageLocks } from "../../../../infra/locks/package-directory-lock.js";
 import type { PendingAudit } from "./learning-journal.js";
 import type {
   SkillMutationPlan,

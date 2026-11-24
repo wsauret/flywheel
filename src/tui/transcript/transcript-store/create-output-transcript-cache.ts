@@ -2,7 +2,7 @@ import { batch, untrack } from "solid-js"
 import { createStore, produce, reconcile, unwrap } from "solid-js/store"
 import type { BackoffOptions } from "../../../infra/backoff.js"
 import { probe, probeGauge, probeToolRenderPhase } from "../../../infra/render-probe.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import type { AttachedRuntimeClient, FrontendOutputBlock } from "../../../protocol/runtime/app-service-types.js"
 import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
@@ -613,11 +613,6 @@ export function createOutputTranscriptCache(deps: {
       freshness: () => {
         const id = sessionId()
         return id ? freshness[id] : undefined
-      },
-      // An empty window that leaves the viewport short is read again from the tail.
-      hydrateAnchor: () => {
-        const id = sessionId()
-        return id ? jumpToLatest(id) : Promise.resolve()
       },
       loadAround: (entryId) => {
         const id = sessionId()

@@ -3,7 +3,7 @@ import { RpcMessage, RpcSerialization, RpcServer } from "effect/rpc"
 import type { Socket } from "effect/socket"
 import { SocketServer } from "effect/socket"
 
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { MutationFilesQuerySchema, MutationFilesResultSchema, MutationPatchWindowQuerySchema, MutationPatchWindowResultSchema } from "../../../../protocol/session/mutation-evidence-protocol-types.js"
 import { fitMutationEvidenceWindow } from "../../../../protocol/session/mutation-evidence-window.js"
 import { SessionChangesQuerySchema, SessionChangesResultSchema } from "../../../../protocol/session/session-changes-protocol-types.js"

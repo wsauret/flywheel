@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type InFlightPayload } from "../../../../../../src/infra/event-store-types.js"
-import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type InFlightPayload } from "../../../../../../src/infra/store/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js"
 import { createUsageAuthority, UsageEntryConflictError } from "../../../../../../src/infra/llm/usage/usage-authority.js"
 import type { MeasuredUsageEntry, UsageEntry } from "../../../../../../src/infra/llm/usage/usage-entry.js"
-import { Log } from "../../../../../../src/infra/log.js"
+import { Log } from "../../../../../../src/infra/diagnostics/log.js"
 import {
   createSessionUsageSettlement,
   recoverSessionUsageSettlements,

@@ -1,10 +1,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { isRegisteredDiagnostic, registeredDiagnosticTypes } from "../src/infra/diagnostics-registry.js";
+import { isRegisteredDiagnostic, registeredDiagnosticTypes } from "../src/infra/diagnostics/diagnostics-registry.js";
 import { PROVIDER_REQUEST_DIAGNOSTIC_TYPES } from "../src/orchestration/session/runtime-facts/provider-request-audit-facts.js";
 
 // Every record family that reaches the JSONL diagnostics sink must declare its
-// tier in src/infra/diagnostics-registry.ts. Without this gate a new family is
+// tier in src/infra/diagnostics/diagnostics-registry.ts. Without this gate a new family is
 // simply absent from the table, which the sink treats as DEBUG: correct, and
 // silent. The author never learns their records are not being written, and the
 // reverse mistake - a per-event family declared INFO - is only ever caught by
@@ -73,12 +73,12 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/startup-timeline.ts",
+    file: "src/infra/diagnostics/startup-timeline.ts",
     what: "bounded startup lifecycle summaries",
     pattern: /emit\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/runtime-fact-mapper.ts",
+    file: "src/infra/runtime-facts/runtime-fact-mapper.ts",
     what: "runtime event debug channel",
     // defineRuntimeEvent({ type: "...", ..., debug: mapX })
     pattern: /defineRuntimeEvent\(\{\s*type:\s*"([^"]+)"[^\n]*\bdebug:\s*\w/g,
@@ -94,7 +94,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/conversation-fts.ts",
+    file: "src/infra/store/conversation-fts.ts",
     what: "derived conversation index write boundary",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -339,7 +339,7 @@ function main(): void {
   for (const [type, origin] of produced) {
     if (!isRegisteredDiagnostic(type)) {
       problems.push(
-        `  ${type}\n    written by ${origin}\n    but absent from src/infra/diagnostics-registry.ts, so the sink drops it as an undeclared family.`,
+        `  ${type}\n    written by ${origin}\n    but absent from src/infra/diagnostics/diagnostics-registry.ts, so the sink drops it as an undeclared family.`,
       );
     }
   }
@@ -347,7 +347,7 @@ function main(): void {
   for (const type of registeredDiagnosticTypes()) {
     if (!produced.has(type)) {
       problems.push(
-        `  ${type}\n    declared in src/infra/diagnostics-registry.ts\n    but no producer writes it. Remove the entry so the table stays an account of the real stream.`,
+        `  ${type}\n    declared in src/infra/diagnostics/diagnostics-registry.ts\n    but no producer writes it. Remove the entry so the table stays an account of the real stream.`,
       );
     }
   }

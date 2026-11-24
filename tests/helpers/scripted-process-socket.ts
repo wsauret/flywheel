@@ -1,6 +1,6 @@
 import { expect, spyOn } from "bun:test"
 
-import { connectInternalProcessChannel, type InternalProcessChannelLimits, type InternalProcessDecoder, type InternalProcessEndpoint } from "../../src/infra/internal-process-channel.js"
+import { connectInternalProcessChannel, type InternalProcessChannelLimits, type InternalProcessDecoder, type InternalProcessEndpoint } from "../../src/infra/process/channels/internal-process-channel.js"
 
 /** The wire of one socket connection, as the test scripts it. */
 export interface ScriptedSocketWire {

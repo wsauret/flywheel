@@ -1,24 +1,22 @@
-import { createEventProjection, parseProjectionFact, reduceEvents } from "../../infra/event-projection.js"
-import { heldProjection } from "../../infra/projection-registry.js"
-import type { AsyncEventStateReadSurface, StoredFact, CorruptEventRowError } from "../../infra/event-store-types.js"
+import { createEventProjection, parseProjectionFact, reduceEvents } from "../../infra/projection/event-projection.js"
+import { heldProjection } from "../../infra/projection/projection-registry.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/store/event-store-types.js"
 import { InvariantViolation } from "../../infra/invariant.js"
 import { Schema } from "effect"
 import { attemptIdOf, parseWorkflowQueueFact } from "./view-facts.js"
-import { attemptRowFromV9, mutationFromV9, WorkflowPlanSchema, WorkflowRowsSchema, workflowRowsFromV9, WorkflowTreeV1Schema, WorkflowViewSchema } from "./schemas.js"
+import { attemptRowFromV9, mutationFromV9, WorkflowRowsSchema, workflowRowsFromV9, type WorkflowPlanSchema, type WorkflowTreeV1Schema } from "./schemas.js"
 import type { AttemptRow, AttemptStatus, MutationLogEntry, WorkflowView } from "./types.js"
 import type { WorkflowTree, WorkflowTreeNode } from "../../protocol/session/workflow-view-protocol-types.js"
-import { workflowProjectionBoundary } from "../run/session-fact-source.js"
-import { parseWorkflowSessionFact, workflowAggregateId } from "../vm/facts/session-facts.js"
-import { workflowFamilyEvents } from "../run/workflow-root.js"
-import { historicalWorkflowTree } from "./view-history-tree.js"
-
+import { workflowProjectionBoundary } from "../control-facts/session-fact-source.js"
+import { parseWorkflowControlFact } from "../control-facts/family.js"
+import { workflowAggregateId } from "../run/run-facts.js"
 
 type RawQueue = Omit<WorkflowView, "tree">
 
 /** A row fact whose body this build cannot read. No other fact restates the
  *  rows it held, so the view cannot be built until a later `queue.created`
  *  replaces every row. */
-interface UnreadableRowFact {
+export interface UnreadableRowFact {
   readonly type: string
   readonly version: number
   readonly position: number
@@ -81,126 +79,6 @@ export function createWorkflowQueueProjection(
   return projection
 }
 
-/** Rebuild an absent tree, or a tree before version 4, from control,
- *  without changing immutable facts or execution authority. Both
- *  event-array and held readers cross this boundary. Remove the rebuild
- *  after 2027-04-30. */
-export function queueFromProjection(state: QueueProjectionState, events: readonly (StoredFact | CorruptEventRowError)[] = []): WorkflowView | null {
-  if (state.unreadableRows) throw unreadableRowsViolation(state.unreadableRows)
-  if (state.queue === null) return null
-  const tree = state.tree?.version === 4
-    ? state.tree.tree
-    : historicalWorkflowTree(state.queue, state.tree?.tree, state.historicalPlan, events)
-  return Schema.decodeUnknownSync(WorkflowViewSchema, { onExcessProperty: "error" })({ ...state.queue, tree: withTreeChanges(tree, state.treeChanges) })
-}
-
-/** The tree with each node that a later change replaced. */
-function withTreeChanges(tree: WorkflowTree, changes: QueueProjectionState["treeChanges"]): WorkflowTree {
-  if (!changes) return tree
-  const { currentAgentNodeId: _current, ...rest } = tree
-  return {
-    ...rest,
-    nodes: tree.nodes.map((node) => changes.nodes.get(node.id) ?? node),
-    ...(changes.currentAgentNodeId === null ? {} : { currentAgentNodeId: changes.currentAgentNodeId }),
-  }
-}
-
-const normalizedViews = new WeakMap<QueueProjectionState, Promise<WorkflowView | null>>()
-const normalizedTrees = new WeakMap<object, Promise<WorkflowTree>>()
-
-/** Current proposals write a v4 fact when the tree changes. A retained tree
- *  therefore needs one reconstruction, shared across row-only live states. */
-export function normalizedWorkflowView(reader: AsyncEventStateReadSurface, sessionId: string, state: QueueProjectionState, upperPosition: number): Promise<WorkflowView | null> {
-  const existing = normalizedViews.get(state)
-  if (existing) return existing
-  const normalized = (async () => {
-    if (state.queue === null || state.unreadableRows || state.tree?.version === 4) return queueFromProjection(state)
-    const source = state.historicalTreeSource ?? state
-    let tree = normalizedTrees.get(source)
-    if (!tree) {
-      tree = normalizeHistoricalTree(reader, sessionId, state, upperPosition)
-      normalizedTrees.set(source, tree)
-      void tree.catch(() => { normalizedTrees.delete(source) })
-    }
-    return queueFromProjection({ ...state, tree: { version: 4, tree: await tree } })
-  })()
-  normalizedViews.set(state, normalized)
-  void normalized.catch(() => { normalizedViews.delete(state) })
-  return normalized
-}
-
-/** Reconstruct one retained tree before current live proposals replace it. */
-async function normalizeHistoricalTree(reader: AsyncEventStateReadSurface, sessionId: string, state: QueueProjectionState, upperPosition: number): Promise<WorkflowTree> {
-  const { facts } = await reader.readSlice({ aggregateId: workflowAggregateId(sessionId), beforePosition: upperPosition + 1 }, true)
-  // SAFETY: only a readable, nonempty historical queue reaches reconstruction.
-  return queueFromProjection(state, facts)!.tree
-}
-
-export interface LiveWorkflowView {
-  read(): Promise<WorkflowView | null>
-  apply(events: StoredFact | readonly StoredFact[]): Promise<void>
-}
-
-/** Push-fed and replaying views share state-identity normalization. */
-function workflowView(
-  reader: AsyncEventStateReadSurface,
-  sessionId: string,
-  projection: ReturnType<typeof createEventProjection<QueueProjectionState>>,
-  freshen: () => Promise<QueueProjectionState>,
-): LiveWorkflowView {
-  return {
-    async read() {
-      const state = await freshen()
-      return normalizedWorkflowView(reader, sessionId, state, projection.getReadPosition())
-    },
-    async apply(event) {
-      await projection.apply(event)
-    },
-  }
-}
-
-/**
- * Push-fed sibling of loadQueueSnapshotFromReader for hot read paths. The
- * projection seeds from SQLite once at creation; after that the OWNER feeds
- * every stored queue and root batch through `apply` (the store's post-commit `onStored`
- * broadcast), so `read()` touches no SQL at all. Use this only where such an
- * owner exists: with no one feeding it, `read()` returns the seed forever.
- * A seed that fails is not kept: the next `read()` seeds again.
- */
-export function createLiveWorkflowView(reader: AsyncEventStateReadSurface, sessionId: string): LiveWorkflowView {
-  const projection = createWorkflowQueueProjection(reader, sessionId)
-  let seed: Promise<QueueProjectionState> | undefined
-  return workflowView(reader, sessionId, projection, async () => {
-    seed ??= projection.replay()
-    const seeding = seed
-    try {
-      await seeding
-    } catch (error) {
-      if (seed === seeding) seed = undefined
-      throw error
-    }
-    return projection.getState()
-  })
-}
-
-/**
- * Pull-fed sibling for a reader with no owner feeding it stored facts, which
- * is what a long-lived background reader is. `read()` replays, and replay
- * compares against the live SQLite position and folds only what is new, so a
- * repeated read costs a position check rather than a fold of the whole
- * aggregate from zero. Rebuilding the projection per call instead is what made
- * one background sweep re-read every workflow session's whole history on every
- * pass.
- */
-export function createReplayingWorkflowView(reader: AsyncEventStateReadSurface, sessionId: string): LiveWorkflowView {
-  const projection = createWorkflowQueueProjection(reader, sessionId)
-  return workflowView(reader, sessionId, projection, () => projection.replay())
-}
-
-export function loadQueueFromEvents(events: readonly StoredFact[]): WorkflowView | null {
-  return queueFromProjection(foldQueueFacts(workflowFamilyEvents(events)), events)
-}
-
 /** Folds family facts into a queue state with the one queue reducer and its
  *  salvage rules. A caller that holds a state passes it as `from` and folds
  *  only the facts after it. */
@@ -251,15 +129,11 @@ function salvageUnreadableQueueFact(state: QueueProjectionState, event: StoredFa
   }
 }
 
-function unreadableRowsViolation(fact: UnreadableRowFact): InvariantViolation {
-  return new InvariantViolation({ kind: "schema-mismatch", eventType: fact.type, eventVersion: fact.version, eventPosition: fact.position, aggregateId: fact.aggregateId, detail: fact.detail })
-}
-
 function reduceQueueEvent(state: QueueProjectionState, event: StoredFact): QueueProjectionState {
   // The rows stay unreadable until a new `queue.created` replaces them.
   if (state.unreadableRows && event.type !== "queue.created") return state
   if (event.type === "attempt.succeeded" || event.type === "attempt.failed" || event.type === "attempt.retry_inserted") {
-    const outcome = parseProjectionFact(event, parseWorkflowSessionFact)
+    const outcome = parseProjectionFact(event, parseWorkflowControlFact)
     switch (outcome.type) {
       case "attempt.succeeded":
       case "attempt.failed":

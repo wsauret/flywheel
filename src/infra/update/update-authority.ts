@@ -51,7 +51,7 @@ import * as path from "node:path";
 import { Database, SQLiteError } from "bun:sqlite";
 import { Schema } from "effect";
 import { errorMessage } from "../error-message.js";
-import type { ContainedDirectory } from "../descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory } from "../descriptor-directory.js";
 import { applySqliteBusyTimeout, applySqliteDurabilityPragmas } from "../sqlite-durability.js";
 

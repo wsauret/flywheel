@@ -26,7 +26,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openContainedDirectory } from "../src/infra/descriptor-directory.js";
 import { errorMessage } from "../src/infra/error-message.js";
-import { namedExitStatus } from "../src/infra/exit-status.js";
+import { namedExitStatus } from "../src/infra/supervision/launch/exit-status.js";
 import { BUILD_METADATA_FILE, buildExecutable, computeBuildId, NATIVE_DIR } from "../src/infra/update/build-identity.js";
 import { platformAssetName } from "../src/infra/update/release-manifest.js";
 import { extractArchive } from "../src/orchestration/update/archive-spool.js";

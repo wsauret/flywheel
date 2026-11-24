@@ -3,8 +3,8 @@ import { join } from "node:path"
 import { antigravityHomeLayout } from "../../../../infra/antigravity-engine.js"
 import { writeFileAtomic } from "../../../../infra/atomic-write.js"
 import { errnoCode } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
-import { decodeHolderFields, processHolders, type ProcessHolder } from "../../../../infra/process-holder.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
+import { decodeHolderFields, processHolders, type ProcessHolder } from "../../../../infra/process/process-holder.js"
 
 // Each engine session leaves files in the login's home: its conversation database, its brain folder (transcripts,
 // scratch), and its annotations (agy 1.5.14). They belong to the engine process that opened the session (plan P15),

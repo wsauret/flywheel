@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js";
-import { readWorkflowLaunchedAt } from "./session-fact-source.js";
+import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js";
+import { workflowAggregateId } from "./run-facts.js";
 
 /** Workflow budget limits. Flywheel checks them before each attempt starts
  *  and never stops an attempt that is already running (PI-AGENT-041).
@@ -90,4 +90,18 @@ export async function workflowBudgetRefusal(input: {
     ...(launchedAt === null ? {} : { elapsedMs: (input.nowMs ?? Date.now()) - launchedAt }),
   });
   return reason ? `Budget exhausted: ${reason}. The workflow paused before its next attempt.` : null;
+}
+
+/** The commit time of the session's first workflow root, which is the launch,
+ * or null before the launch commits. A recovery root keeps this launch: it
+ * restarts a task inside the same workflow. The envelope timestamp needs no
+ * payload decode, so a tolerant read keeps a launch row that no longer parses. */
+async function readWorkflowLaunchedAt(reader: AsyncEventStateReadSurface, sessionId: string): Promise<number | null> {
+  const { facts } = await reader.readSlice(
+    { aggregateId: workflowAggregateId(sessionId), types: ["workflow.control.initialized"], order: "asc", limit: 1 },
+    true,
+  );
+  const launch = facts[0];
+  if (!launch) return null;
+  return launch instanceof CorruptEventRowError ? launch.row.timestamp : launch.timestamp;
 }

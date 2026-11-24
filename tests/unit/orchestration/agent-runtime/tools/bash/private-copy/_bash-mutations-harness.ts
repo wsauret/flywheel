@@ -5,7 +5,7 @@ import { afterEach } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import type { OwnedProcess } from "../../../../../../../src/infra/owned-subprocess.js";
+import type { OwnedProcess } from "../../../../../../../src/infra/supervision/launch/owned-subprocess.js";
 import { createBashDefinition } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import type { ToolContext } from "../../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { ShellRuntime, ShellRuntimeClient } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/execution/shell-runtime-types.js";
@@ -14,16 +14,16 @@ import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext 
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry, type SettledProjectMutation } from "../../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import { createForegroundBashHoldController } from "../../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
 import { backgroundLogPath } from "../../../../../../helpers/background-log-path.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../../src/infra/store/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../../../src/infra/paths.js";
-import { createSqliteEventStore } from "../../../../../../../src/infra/sqlite-event-store.js";
+import { createSqliteEventStore } from "../../../../../../../src/infra/store/sqlite-event-store.js";
 import { createBackgroundExecutionOwner } from "../../../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { commandHandoversOfAsync } from "../../../../../../../src/orchestration/session/command-handover.js";
-import type { OutcomeRecordRead } from "../../../../../../../src/infra/command-handover.js";
+import type { OutcomeRecordRead } from "../../../../../../../src/infra/supervision/launch/command-handover.js";
 import { fakeContainer, handoverAuthority } from "../../../_command-handover-fixtures.js";
 import { createPrivateCopyPool, type PrivateCopyPool } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-pool.js";
 import { createShellRuntime } from "../../../../../../../src/orchestration/agent-runtime/background-execution/shell-runtime.js";
-import type { ContainerProbe } from "../../../../../../../src/infra/process-container.js";
+import type { ContainerProbe } from "../../../../../../../src/infra/process/container/process-container.js";
 
 /** A call's context overrides. `shell` is the session shell runtime that runs
  *  the call; without one, the call runs on a runtime of its own. */

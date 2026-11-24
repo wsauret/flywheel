@@ -1,6 +1,6 @@
 import { Deferred, Effect, Fiber } from "effect"
 import { awaitWithAbortSignal, mergeAbortSignals } from "../../infra/abort.js"
-import { probeLoopUnit } from "../../infra/event-loop-lag.js"
+import { probeLoopUnit } from "../../infra/diagnostics/event-loop-lag.js"
 import { closeScopedAbortSignal, createScopedAbortSignal } from "../agent-runtime/loop/turn/scoped-abort-signal.js"
 import { runAgentTurn } from "./agent-turn.js"
 import { AgentTurnAborted } from "./agent-turn-types.js"

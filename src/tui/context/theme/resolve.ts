@@ -1,5 +1,5 @@
 import { RGBA } from "@opentui/core"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { blendToward, contrastRatio } from "./color-contrast.js"
 import { workflowNameColors } from "./name-colors.js"
 import { readableTheme, textPole } from "./readable-theme.js"

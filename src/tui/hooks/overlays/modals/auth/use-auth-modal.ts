@@ -4,7 +4,7 @@ import { createStore, reconcile } from "solid-js/store"
 import { errorDetail, errorMessage } from "../../../../../infra/error-message.js"
 import type { CredentialProviderId } from "../../../../../infra/auth/store/auth-store-types.js"
 
-import { Log } from "../../../../../infra/log.js"
+import { Log } from "../../../../../infra/diagnostics/log.js"
 import type { RuntimeAuthLoginResult } from "../../../../../protocol/auth/auth-login-protocol-types.js"
 import type { AuthOperationConfirmation, AuthOperationSettlement, AuthProviderAccountStatus } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import { keptFreePlanMessage, loginOutcome } from "../../../../../protocol/client/auth-login.js"

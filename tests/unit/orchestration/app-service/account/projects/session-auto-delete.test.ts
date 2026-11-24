@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
-import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/debug-log.js"
+import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/diagnostics/debug-log.js"
 import { createRuntimeConfigOwner } from "../../../../../../src/orchestration/config/runtime-config-owner.js"
 import { createRuntimeSupervisor } from "../../../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import { createProjectStateSessionManager, createProjectStateSessionsService } from "../../../../../../src/orchestration/app-service/project-state/project-state-sessions.js"
@@ -11,7 +11,7 @@ import { createFlywheelAppService } from "../../../../../../src/orchestration/ap
 import { createFrontendProjection } from "../../../../../../src/orchestration/app-service/projections/frontend-projection.js"
 import { createRuntimeUiBus } from "../../../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { fakeProjections } from "../../app-service-doubles.js"
-import { asAsyncEventReadSurface } from "../../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../../src/infra/store/event-store-types.js"
 import { createSessionViewLoader } from "../../../../../../src/orchestration/session-store/view.js"
 
 type AutoDeletePorts = Parameters<typeof createSessionAutoDelete>[0]

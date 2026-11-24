@@ -1,6 +1,6 @@
 import type { WorkflowDefinition } from "../../../../../src/workflows/schema/workflow-schema.js"
 import type { AttemptRunOutcome } from "../../../../../src/workflows/vm/host/attempt-runner.js"
-import type { ReassessmentProposal } from "../../../../../src/workflows/vm/facts/events.js"
+import type { ReassessmentProposal } from "../../../../../src/workflows/control-facts/events.js"
 import { loadedWorkflow } from "../../../../helpers/workflow-files.js"
 
 interface CanonicalContent {

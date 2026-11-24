@@ -6,7 +6,7 @@ import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-id
 import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
 import { openContainedDirectory } from "../../../src/infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME } from "../../../src/infra/directory-authorities.js"
-import { registerSharedHolderIn, releaseSharedHolderIn, sharedHoldersIn } from "../../../src/infra/ownership-file-lock.js"
+import { registerSharedHolderIn, releaseSharedHolderIn, sharedHoldersIn } from "../../../src/infra/locks/ownership-file-lock.js"
 import { accountServeRecordPath, LOG_DIR } from "../../../src/infra/paths.js"
 import type { RuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"
 import { attachAccountProject, joinIsolatedAccountService } from "./_account-service.js"

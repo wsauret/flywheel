@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
+import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
+import type { RuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-types.js";
 import {
   createFilteredSubagentStream,
   createSubagentStats,

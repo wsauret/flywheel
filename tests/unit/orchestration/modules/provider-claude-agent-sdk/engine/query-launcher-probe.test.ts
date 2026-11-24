@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import type { Options, SDKControlGetContextUsageResponse } from "@anthropic-ai/claude-agent-sdk";
-import { DebugLog } from "../../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js";
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js";
 import { probeCliModel, type QueryFunction } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { forwardDiagnostics, records } from "../_bridge-harness.js";

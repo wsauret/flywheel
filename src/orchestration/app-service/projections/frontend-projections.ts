@@ -12,7 +12,7 @@ import { createQuestionProtocolProjection } from "./catalog/question-protocol-pr
 import { onReplyWaitsChanged, readReplyWaitViews } from "../../session/control/messaging/reply-waits.js"
 import { createStatusProjection } from "./catalog/status-projection.js"
 import type { RuntimeOwnership } from "../runtime/runtime-ownership.js"
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../infra/store/event-store-types.js"
 import type { RuntimeUiBus } from "./runtime-ui-bus.js"
 import type { RuntimeUiPatch } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { createSessionManager } from "../../session/manager.js"

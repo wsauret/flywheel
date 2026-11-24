@@ -1,8 +1,8 @@
 import { expect, it } from "bun:test";
 import { join } from "node:path";
 import { temporaryDirectories } from "../../helpers/directories.js";
-import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types.js";
+import { createSqliteEventStore } from "../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/store/event-store-types.js";
 import { collectSkillLoadStats, refreshSkillLoadStatsSnapshot } from "../../../src/orchestration/modules/learning/skills/skill-load-stats.js";
 import { createSessionFactWriter } from "../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { createLearningReview, reviewReplay } from "../../../src/orchestration/modules/learning/review/learning-review.js";

@@ -1,7 +1,7 @@
 import { afterEach, expect, spyOn, test } from "bun:test"
 
-import { Log } from "../../../src/infra/log.js"
-import { ownedProcessBackend, type OwnedProcessBackend } from "../../../src/infra/owned-subprocess-backend.js"
+import { Log } from "../../../src/infra/diagnostics/log.js"
+import { ownedProcessBackend, type OwnedProcessBackend } from "../../../src/infra/supervision/launch/owned-subprocess-backend.js"
 import { createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js"
 import { payloadThatRunsForever } from "../../helpers/payload.js"
 import { createRealProcessFixture, type RealProcessFixture } from "../../helpers/real-process-fixture.js"

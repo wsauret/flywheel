@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface } from "../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../src/infra/store/event-store-types.js"
 import { NO_MODULE_SERVICES } from "../../src/infra/module-service.js"
 import type { ModuleProcessServices } from "../../src/orchestration/app-service/module-service-host.js"
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js"

@@ -1,4 +1,4 @@
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { createBackgroundLane, type BackgroundLane } from "../../../../infra/ordered-lane.js"
 import type { SessionEntry, SessionStoreReader } from "../../../session-store/types.js"
 import type { RuntimeSessionCursorIdentity, RuntimeUiPatch, RuntimeUiPatchInput, RuntimeUiPatchPayload } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"

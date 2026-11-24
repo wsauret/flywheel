@@ -1,4 +1,4 @@
-import { connectPersistentProcessBridge } from "../../../src/infra/persistent-process-bridge.js"
+import { connectPersistentProcessBridge } from "../../../src/infra/supervision/persistent/persistent-process-bridge.js"
 
 declare const self: {
   addEventListener(type: "message", listener: (event: MessageEvent) => void): void

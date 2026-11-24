@@ -1,4 +1,4 @@
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { ToolCall } from "../../llm/types.js";
 
 export type ToolLifecyclePhase =

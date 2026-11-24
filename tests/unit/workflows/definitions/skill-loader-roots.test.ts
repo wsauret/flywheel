@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ContainedPathError, type ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
+import { ContainedPathError, type ContainedDirectory } from "../../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import type { SkillDirectoryEntries } from "../../../../src/workflows/skills/skill-context.js";
 import { SKILL_LIMITS } from "../../../../src/workflows/skills/skill-schema.js";
 import { loadSkillDefinitions } from "../../../../src/workflows/skills/skills.js";

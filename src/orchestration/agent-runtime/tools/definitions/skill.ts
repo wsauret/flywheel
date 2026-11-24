@@ -7,7 +7,7 @@ import type { SkillDefinition, SkillRegistryRevision } from "../../../../workflo
 import type { DefinitionAvailabilitySnapshot } from "../../../app-service/definitions/definition-availability.js";
 import type { AdvertisedTool, RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../types.js";
 import { formatToolInputProblems, validateToolInput } from "../input/validate-input.js";
-import { withPackageRead } from "../../../../infra/package-directory-lock.js";
+import { withPackageRead } from "../../../../infra/locks/package-directory-lock.js";
 
 /** How many ids an unknown-skill_id error names. The complete catalog is already
  *  in the prompt, so the error is a nudge back to it, not a listing surface. */

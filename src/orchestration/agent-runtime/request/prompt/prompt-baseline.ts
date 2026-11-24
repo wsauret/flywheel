@@ -6,7 +6,7 @@
  * context's `hold` parts, such as the environment with the date on which the context opened (PI-MODEL-093).
  */
 
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
 import { promptContextOpening, type ConversationPromptBaseline } from "../../../session/conversation-records/conversation-prompt-baseline.js";
 import { turnContextEntry } from "./agent-loop-turn-context.js";

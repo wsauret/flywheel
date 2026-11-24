@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { errorMessage } from "../../../../infra/error-message.js";
 import { displayRelativePath } from "../../../../infra/tools/detail-helpers.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { executePathBatch, missingPathHint, prepareReadOnlyPathInput, resolveToolPath, widenToExistingParent } from "../files/tool-paths.js";
 import { checkNumericRange } from "../input/numeric-input.js";
 import { type ListFilesResult, listFiles, SearchStoppedError } from "../files/ripgrep.js";

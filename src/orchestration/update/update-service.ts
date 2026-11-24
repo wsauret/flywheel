@@ -35,7 +35,7 @@
 
 import { errorMessage } from "../../infra/error-message.js";
 import type { BuildRef } from "../../infra/update/build-identity.js";
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import type { UpdateAutoInstall, UpdateStatus, UpdateStatusView } from "../../protocol/runtime/update-protocol-types.js";
 import { parseRepositoryIdentity, platformAssetName, type SelectedRelease } from "../../infra/update/release-manifest.js";
 import type { UpdateAuthority, UpdateLeaseRenewal } from "../../infra/update/update-authority.js";

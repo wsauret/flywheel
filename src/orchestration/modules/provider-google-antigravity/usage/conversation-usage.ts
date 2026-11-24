@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite"
-import { Log } from "../../../../infra/log.js"
-import { coalesceRepeats } from "../../../../infra/repeat-coalescer.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
+import { coalesceRepeats } from "../../../../infra/diagnostics/repeat-coalescer.js"
 import type { AcpUsage } from "../acp/schema.js"
 
 // agy records each model request of an engine session as one protobuf row of the table `gen_metadata(idx, data)` in

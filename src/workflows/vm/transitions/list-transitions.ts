@@ -3,11 +3,11 @@ import { requireReducer, runReducer } from "../../reducers/registry.js";
 import type { ItemScope, RecipientScope } from "../../context-bundle/context-facts.js";
 import { joinEntryId } from "../../context-bundle/context.js";
 import { WORKFLOW_INPUT_SOURCE_ID } from "../../schema/workflow-schema.js";
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import { completedBefore } from "../graph/completion-order.js";
-import type { WorkflowProposalEncoding } from "../facts/events.js";
+import type { WorkflowProposalEncoding } from "../../control-facts/events.js";
 import { applyGraphChanges, isContainerNode, listJoin, replaceNode, rerunSupersededIds, withNodeState, type GraphChange } from "../graph/graph-changes.js";
-import { roundOfNodeId, type Attempt, type CollectAllJoin, type ExpansionNode, type ItemNode, type ListNode, type LogicalNode } from "../graph/graph-types.js";
+import { roundOfNodeId, type Attempt, type CollectAllJoin, type ExpansionNode, type ItemNode, type ListNode, type LogicalNode } from "../../control-facts/graph-types.js";
 import { expansionChanges, itemProvenance, manifestOf, type ManifestItem } from "../graph/list-expansion.js";
 import {
   conditionHolds,
@@ -25,7 +25,7 @@ import {
   type JoinNode,
 } from "../graph/node-outputs.js";
 import { advanceRepeat, laterRoundItems, openRepeat } from "./repeat-transitions.js";
-import type { WorkflowControlFactDraft } from "../facts/session-facts.js";
+import type { WorkflowControlFactDraft } from "../../control-facts/family.js";
 import { buildGroupExpandedFact, buildGroupExpansionRejectedFact, buildGroupSettledFact, buildWorkflowFailedFact } from "./fact-drafts.js";
 import { admitStructureChange, WorkflowStructureRejectedError } from "../graph/structural-admission.js";
 

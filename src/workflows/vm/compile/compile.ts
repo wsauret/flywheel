@@ -26,10 +26,10 @@ import {
   type WorkflowPhase,
   type WorkflowRepeat,
 } from "../../schema/workflow-schema.js";
-import { parseCommittedWorkflowControl, type CommittedWorkflowControl } from "../facts/committed-control.js";
+import { parseCommittedWorkflowControl, type CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import { fieldIssues, resolveSources, type CompileLaunchInput, type EachRead, type JoinSource, type ResolvedSources } from "./compile-sources.js";
-import { buildDefinitionIdentity, type DefinitionIdentityOptions } from "../facts/definition-identity.js";
-import { CURRENT_PROPOSAL_ENCODING } from "../facts/events.js";
+import { buildDefinitionIdentity, type DefinitionIdentityOptions } from "../../control-facts/definition-identity.js";
+import { CURRENT_PROPOSAL_ENCODING } from "../../control-facts/events.js";
 import { calculateFrontier } from "../graph/frontier.js";
 import {
   attemptIdOf,
@@ -42,7 +42,7 @@ import {
   type RepeatNode,
   type WorkflowGraph,
   type WorkflowOwnership,
-} from "../graph/graph-types.js";
+} from "../../control-facts/graph-types.js";
 import { expandLaunchInput, prospectiveLaunchInput, SAMPLED_LAUNCH, SAMPLED_LAUNCH_ITEMS } from "../graph/list-expansion.js";
 import { admitStructure, structuralFindings, worstCaseAttempts } from "../graph/structural-admission.js";
 import type { WorkflowVerificationFinding } from "./verify-types.js";

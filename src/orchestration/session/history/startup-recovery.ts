@@ -1,5 +1,5 @@
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { durationMs } from "../../../infra/operation-log.js"
 import type { SessionManager } from "../manager.js"
 

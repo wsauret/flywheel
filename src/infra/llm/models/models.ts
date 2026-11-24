@@ -20,7 +20,7 @@ import * as fs from "node:fs";
 import bundledModelsJson from "./models-bundled.txt";
 import { writeFileAtomic } from "../../atomic-write.js";
 import { errorDetail, errorMessage } from "../../error-message.js";
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import type { CustomProviderDefinition } from "../custom-provider-registry.js";
 import {
   canonicalCatalogModelId,

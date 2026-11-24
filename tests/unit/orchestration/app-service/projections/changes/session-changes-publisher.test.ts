@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test"
-import type { EventStoreAppend } from "../../../../../../src/infra/event-store-types.js"
+import type { EventStoreAppend } from "../../../../../../src/infra/store/event-store-types.js"
 import { createSessionChangesPublisher } from "../../../../../../src/orchestration/app-service/projections/changes/session-changes-publisher.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import type { RuntimeUiPatch } from "../../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"

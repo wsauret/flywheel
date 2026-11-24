@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { loadAgentInputProjection } from "../../session/agent-input/agent-input-projection.js"
 import { reconcileAgentInput } from "../../session/history/agent-input-reconciliation.js"
 import { createSessionFactWriter } from "../../session/persistence/session-fact-writer.js"

@@ -3,7 +3,7 @@
 import { TextBufferRenderable, type Renderable } from "@opentui/core"
 import { ManualClock } from "@opentui/core/testing"
 import { describe, expect, it, spyOn } from "bun:test"
-import { DebugLog } from "../../../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log.js"
 import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { DEFAULT_ESTIMATE } from "../../../../../src/tui/transcript/transcript-store/output-height-estimates.js"
 import { createTranscriptWindowProjector } from "../../../../../src/tui/transcript/output-window/output-window-projection.js"

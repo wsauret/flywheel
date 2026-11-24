@@ -1,5 +1,5 @@
 import { failureTerminal, type AgentRunTerminal, type AgentToolInput } from "../agent-runtime/types.js"
-import { PersistenceWriteRefused } from "../../infra/event-store-types.js"
+import { PersistenceWriteRefused } from "../../infra/store/event-store-types.js"
 import type { ChatTurnEnding as ProtocolChatTurnEnding } from "../../protocol/session/chat-settlement-protocol-types.js"
 
 /** Owns the logical turn's durability barrier independently of runner attempts. */

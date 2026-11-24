@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url"
 
 import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-identity-record.js"
 import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath } from "../../../src/infra/paths.js"
-import { sweepPersistentSpools } from "../../../src/infra/persistent-spool.js"
-import { createProcessTemporaryDirectory, removeProcessTemporaryDirectory } from "../../../src/infra/process-temporary-directory.js"
+import { sweepPersistentSpools } from "../../../src/infra/supervision/persistent/persistent-spool.js"
+import { createProcessTemporaryDirectory, removeProcessTemporaryDirectory } from "../../../src/infra/process/process-temporary-directory.js"
 import { createAccountAttachResponseReader, encodeAccountAttach } from "../../../src/protocol/runtime/account-attach.js"
 import { defaultRoleSlots } from "../../../src/orchestration/config/models/role-selection.js"
 import { ROLE_MODEL_DEFAULTS } from "../../../src/orchestration/config/models/role-model-defaults.js"
@@ -351,7 +351,7 @@ describe.skipIf(process.platform === "win32")("terminal re-execution at a protoc
     const foregroundEntry = path.join(TMP, "foreground-successor.ts")
     fs.writeFileSync(foregroundEntry, [
       'import { mock } from "bun:test"',
-      `const { enterSourceSnapshot } = await import(${JSON.stringify(path.join(CHECKOUT, "src", "infra", "source-snapshot.ts"))})`,
+      `const { enterSourceSnapshot } = await import(${JSON.stringify(path.join(CHECKOUT, "src", "infra", "distribution", "source-snapshot.ts"))})`,
       `const entry = await enterSourceSnapshot(${JSON.stringify(CHECKOUT)})`,
       'if (entry.kind === "failed") throw new Error(entry.reason)',
       'const handoffPath = entry.root + "/src/cli/account-service/terminal-handoff.ts"',

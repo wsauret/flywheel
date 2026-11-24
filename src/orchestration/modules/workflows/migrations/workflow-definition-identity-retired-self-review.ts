@@ -2,16 +2,16 @@ import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
 import { isRecord } from "../../../../infra/record.js"
-import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
-import { createSqliteEventReadSurface } from "../../../../infra/sqlite-event-read-surface.js"
+import { createSqliteEventInserter } from "../../../../infra/store/sqlite-event-store-core.js"
+import { createSqliteEventReadSurface } from "../../../../infra/store/sqlite-event-read-surface.js"
 import { hashDefinition } from "../../../../workflows/provenance/definition-hash.js"
 import { replayWorkflowControl } from "../../../../workflows/vm/recovery/fact-fold.js"
 import {
   DEFINITION_IDENTITY_RETIRED_SELF_REVIEW_MIGRATION_ID,
   isLegacyDefinitionIdentity,
   type DefinitionIdentity,
-} from "../../../../workflows/vm/facts/definition-identity.js"
-import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/facts/session-facts.js"
+} from "../../../../workflows/control-facts/definition-identity.js"
+import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/control-facts/family.js"
 import { checkedThrough, headPosition, recordChecked, tableExists } from "../../../migrations/engine.js"
 import { MIGRATED_FACT_TYPE, recordSkippedWorkflowMigrationCandidate } from "./workflow-identity-chain.js"
 

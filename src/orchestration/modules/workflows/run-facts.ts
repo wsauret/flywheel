@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, EventStoreAppend, StoredFact } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, EventStoreAppend, StoredFact } from "../../../infra/store/event-store-types.js"
 import { parseWorkflowRunFact, type WorkflowRunFact } from "../../../workflows/run/run-facts.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { WorkflowRunCut, WorkflowRunWriter } from "../../workflow-host/run-record.js"

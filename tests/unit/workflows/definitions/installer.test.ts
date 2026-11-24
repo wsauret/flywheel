@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, spyOn, test } from "bun:test"
 
-import { Log } from "../../../../src/infra/log.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
 import type { BundledDefaultCatalog } from "../../../../src/workflows/definitions/bundled-defaults.js"
 import { installBundledDefaults } from "../../../../src/workflows/definitions/installer.js"
 import { configurationReferenceFile } from "../../../../src/infra/paths.js"

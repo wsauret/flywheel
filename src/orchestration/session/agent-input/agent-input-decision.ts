@@ -17,8 +17,8 @@
  *  Refusals are returned as typed reasons, not prose: each caller renders the
  *  wording its own surface promises the model. */
 
-import type { AsyncEventStateReadSurface, GuardedAppendResult } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
+import type { AsyncEventStateReadSurface, GuardedAppendResult } from "../../../infra/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { AgentInputAnswer } from "../../../protocol/session/question-protocol-types.js"
 import type { AgentInputDecision, AgentInputFact } from "./agent-input-facts.js"
 import { agentInputConsumedFact } from "./agent-input-facts.js"

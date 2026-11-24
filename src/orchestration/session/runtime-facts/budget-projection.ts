@@ -1,10 +1,10 @@
-import { createEventProjection, parseProjectionFact, type EventProjection } from "../../../infra/event-projection.js"
-import { heldProjection } from "../../../infra/projection-registry.js"
+import { createEventProjection, parseProjectionFact, type EventProjection } from "../../../infra/projection/event-projection.js"
+import { heldProjection } from "../../../infra/projection/projection-registry.js"
 import { durableOwnerAggregate, type DurableOwner } from "../../../infra/durable-owner.js"
-import type { AsyncEventReadSurface, StoredFact } from "../../../infra/event-store-types.js"
+import type { AsyncEventReadSurface, StoredFact } from "../../../infra/store/event-store-types.js"
 import { computeContextPercent, type BudgetMetrics, type ContextUtilization } from "./budget-store-types.js"
 import { parseSessionRuntimeFact, type SessionRuntimeFact } from "./session-runtime-event-types.js"
-import { currentUsageMeasurement } from "../../../infra/runtime-fact-types.js"
+import { currentUsageMeasurement } from "../../../infra/runtime-facts/runtime-fact-types.js"
 
 // `type` (not `interface`) so the shape carries the implicit index signature
 // `createEventProjection` requires of a projection state.

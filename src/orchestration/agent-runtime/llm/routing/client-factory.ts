@@ -25,7 +25,7 @@ import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCan
 import type { ModelFamily } from "../../../../infra/llm/models/model-family.js";
 import type { ProviderIdentity } from "../../../../infra/llm/errors/auth-error.js";
 import type { ModelsClient } from "../../../../infra/llm/models/models.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { getSharedProviderAvailability } from "./shared-provider-availability.js";
 import { createModelReminders } from "../history/runtime-reminders.js";
 import type {

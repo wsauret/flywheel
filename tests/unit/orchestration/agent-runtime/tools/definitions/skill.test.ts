@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, mkdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { contentEvidence } from "../../../../../../src/infra/content-evidence.js";
+import { contentEvidence } from "../../../../../../src/infra/runtime-facts/content-evidence.js";
 import { testSkill } from "../../../../../helpers/skill-fixtures.js";
 import { createSkillTool } from "../../../../../../src/orchestration/agent-runtime/tools/definitions/skill.js";
 import { interceptBashCommand } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-command-policy.js";

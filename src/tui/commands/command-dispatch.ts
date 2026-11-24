@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 import { errorMessage } from "../../infra/error-message.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { SLASH_COMMAND_PATTERN } from "../../infra/slash-command.js"
 import type { RuntimeClient } from "../../protocol/runtime/app-service-types.js"
 import type { OffCommandDescriptor } from "../../protocol/commands/command-catalog-protocol-types.js"

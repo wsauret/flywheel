@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 
 import { errorMessage } from "../../infra/error-message.js"
-import { startHardExitClock } from "../../infra/hard-exit-clock.js"
-import { listEventTypes, rowActor, rowTimestamp, rowType, searchEvents, type EventSearchQuery } from "../../infra/event-search.js"
+import { startHardExitClock } from "../../infra/process/workers/hard-exit-clock.js"
+import { listEventTypes, rowActor, rowTimestamp, rowType, searchEvents, type EventSearchQuery } from "../../infra/store/event-search.js"
 import { analyzeStreamGaps, formatStreamGapReport } from "../../orchestration/session/diagnostics/provider-stream-gaps.js"
 import { formatEventSearchMatch, formatEventTypeSummary, formatReconstruction } from "./event-search-format.js"
-import { withEventStore } from "../../infra/with-event-store.js"
+import { withEventStore } from "../../infra/store/with-event-store.js"
 import { loadProviderRequestAuditFromEvents } from "../../orchestration/session/diagnostics/provider-request-audit-projection.js"
 import {
   reconstructProviderRequestPrompt,

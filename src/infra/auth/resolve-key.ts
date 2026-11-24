@@ -1,6 +1,6 @@
 import { Redacted } from "effect";
 
-import { Log } from "../log.js";
+import { Log } from "../diagnostics/log.js";
 import { captureOwnedSecret, type OwnedSecretResult } from "../owned-command.js";
 import type { LauncherScope } from "../process-supervisor.js";
 import { shellCommandLaunch } from "../shell-command.js";

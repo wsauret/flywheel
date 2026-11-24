@@ -12,11 +12,11 @@ const internalRoles = {
     await runProjectExecutorMain()
   },
   [EXECUTABLE_ROLES.guardian]: async () => {
-    const { runProcessGuardianMain } = await import("../infra/process-guardian.js")
+    const { runProcessGuardianMain } = await import("../infra/supervision/guardian/process-guardian.js")
     await runProcessGuardianMain()
   },
   [EXECUTABLE_ROLES.commandSupervisor]: async () => {
-    const { runCommandSupervisorMain } = await import("../infra/owned-command-supervisor.js")
+    const { runCommandSupervisorMain } = await import("../infra/supervision/launch/owned-command-supervisor.js")
     await runCommandSupervisorMain(process.argv)
   },
   [EXECUTABLE_ROLES.binaryInstall]: async () => {
@@ -42,7 +42,7 @@ export async function runFlywheelCli(): Promise<void> {
     // by this one read of the build directory they started from.
     const { processRunningBuild } = await import("../orchestration/app-service/runtime-executable.js")
     processRunningBuild()
-    const [{ startupTrace }, { rootCliAction }] = await Promise.all([import("../infra/startup-trace.js"), import("./root-args.js")])
+    const [{ startupTrace }, { rootCliAction }] = await Promise.all([import("../infra/diagnostics/startup-trace.js"), import("./root-args.js")])
     startupTrace("cli main")
     const action = await rootCliAction(process.argv.slice(2))
     if (action.kind === "help") {

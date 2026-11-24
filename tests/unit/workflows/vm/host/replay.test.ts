@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { StepGrammarWorkflowSchema } from "../../../../../src/workflows/schema/retired-step-grammar/schema.js"
-import { retiredStepIdentity } from "../../../../../src/workflows/vm/facts/retired-step-identity.js"
-import type { AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../../src/infra/event-store-types.js"
+import { retiredStepIdentity } from "../../../../../src/workflows/control-facts/retired-step-grammar/retired-step-identity.js"
+import type { AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../../src/infra/store/event-store-types.js"
 import type { WorkflowDefinition } from "../../../../../src/workflows/schema/workflow-schema.js"
 import { compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js"
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
@@ -25,18 +25,14 @@ import {
   WorkflowDefinitionDriftError,
   type DefinitionIdentity,
   type DefinitionIdentityVersionOverride,
-} from "../../../../../src/workflows/vm/facts/definition-identity.js"
+} from "../../../../../src/workflows/control-facts/definition-identity.js"
 import { continueWorkflowReplay, type WorkflowReplayDeps } from "../../../../../src/workflows/vm/host/replay.js"
-import type { WorkflowEvent } from "../../../../../src/workflows/vm/facts/events.js"
+import type { WorkflowEvent } from "../../../../../src/workflows/control-facts/events.js"
 import { foldWorkflowControl } from "../../../../../src/workflows/vm/recovery/fact-fold.js"
 import { atCapabilityMarkers, atCapabilityTextBase, beforeExplorerModelClaim, beforeLeanPersonaText, beforeLexiconCut, beforeToolSteeringCut, beforeUatScratchpadRule } from "../../../orchestration/migrations/_persona-budget.js"
 import { recoverWorkflowControl } from "../../../../../src/workflows/vm/recovery/recovery.js"
-import {
-  buildWorkflowControlInitializedFact,
-  buildDefinitionIdentityMigratedFact,
-  parseWorkflowSessionFact,
-  type WorkflowSessionFact,
-} from "../../../../../src/workflows/vm/facts/session-facts.js"
+import { buildWorkflowControlInitializedFact, buildDefinitionIdentityMigratedFact } from "../../../../../src/workflows/control-facts/family.js"
+import { parseWorkflowSessionFact, type WorkflowSessionFact } from "../../../../../src/workflows/vm/facts/session-facts.js"
 import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../../src/workflows/vm/control/transition.js"
 import { resolveWorkflowAgents } from "../../../../../src/workflows/definitions/agent-resolution.js"
 import { testSkill, testSkillRevision, withTestExternalSkills } from "../../../../helpers/skill-fixtures.js"

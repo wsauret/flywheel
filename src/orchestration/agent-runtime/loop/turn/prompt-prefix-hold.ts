@@ -24,7 +24,7 @@
  */
 
 import { abortableSleep } from "../../../../infra/abort.js"
-import { DebugLog } from "../../../../infra/debug-log.js"
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
 import type { PreparedServingRequest, ProviderStreamEvent, ServingAttempt } from "../../llm/types.js"
 
 /** The longest time a follower waits for its leader's first response. A

@@ -13,7 +13,7 @@ import { createCursorIntake } from "../../../../src/protocol/client/cursor-intak
 import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import { sessionCursor } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { catalogRow, readyCatalogRow } from "../../../helpers/session-catalog.js"
-import { DebugLog, listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../../src/infra/debug-log.js"
+import { DebugLog, listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../../src/infra/diagnostics/debug-log.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 

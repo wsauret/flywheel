@@ -2,7 +2,7 @@
 
 import { createComponent, createEffect, createMemo, createSignal, ErrorBoundary, on, onCleanup, untrack, type Accessor, type JSX } from "solid-js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { readModuleStatusRows, sameModuleStatusScope, type ModuleStatusScope } from "../../../protocol/client/module-status.js"
 import { moduleComposerStatus, moduleRows } from "../../../protocol/modules.js"

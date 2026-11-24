@@ -1,8 +1,8 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
 import { workflowAgentTitle } from "../../../protocol/client/workflow-agent.js"
-import { attemptNodeIdOf } from "../../../workflows/vm/graph/graph-types.js"
+import { attemptNodeIdOf } from "../../../workflows/control-facts/graph-types.js"
 import type { WorkflowView } from "../../../workflows/view/types.js"
-import { createReplayingWorkflowView } from "../../../workflows/view/view-projection.js"
+import { createReplayingWorkflowView } from "../../../workflows/vm/recovery/workflow-view.js"
 
 /** The human title of the session that runs `attemptId`, from its run's
  *  plan: its phase and its item key or agent id. Undefined when the plan is

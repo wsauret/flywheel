@@ -1,6 +1,6 @@
 import { batch, createMemo, createSignal, onCleanup, untrack } from "solid-js"
 import { errorDetail, errorMessage as extractErrorMessage } from "../../../../../infra/error-message.js"
-import { Log } from "../../../../../infra/log.js"
+import { Log } from "../../../../../infra/diagnostics/log.js"
 import { isSessionId } from "../../../../../infra/session-id.js"
 import { effectiveSessionShortTitle, isActiveActivity, SHORT_TITLE_MAX_CHARS, type SessionCatalogError, type SessionCatalogRow } from "../../../../../protocol/runtime/app-service-types.js"
 import { dispatchInterrupt, isInterruptible, offeredSessionControls, resumeMutationType } from "../../../../../protocol/client/session-controls.js"

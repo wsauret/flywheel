@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js"
+import type { LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js"
 
 export function appendUsage(store: LocalSqliteEventStore, sessionId: string, input: number, output: number, cost: number): void {
   store.append({

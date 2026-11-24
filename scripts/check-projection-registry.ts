@@ -11,7 +11,7 @@ import { checkAggregateReads } from "./aggregate-reads.ts";
 // separate call sites paid it per read before anyone noticed, one of them
 // re-reading fifty-one workflow aggregates on every background sweep.
 //
-// The registry in src/infra/projection-registry.ts owns projection lifetime, so
+// The registry in src/infra/projection/projection-registry.ts owns projection lifetime, so
 // this gate exists to keep the next factory from quietly opting out of it: a
 // `createEventProjection` call that is not the body of a `heldProjection`
 // registration fails the build with the file and line that needs the wrapper.
@@ -26,8 +26,8 @@ const SOURCE_ROOT = path.join(REPO_ROOT, "src");
 // The registry is the one place allowed to hold a projection without
 // registering it, because it is what registration is.
 const EXEMPT = new Set([
-  path.join("src", "infra", "event-projection.ts"),
-  path.join("src", "infra", "projection-registry.ts"),
+  path.join("src", "infra", "projection", "event-projection.ts"),
+  path.join("src", "infra", "projection", "projection-registry.ts"),
 ]);
 
 /** A call to the projection constructor, with or without an explicit type argument. */

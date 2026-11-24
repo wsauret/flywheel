@@ -1,5 +1,5 @@
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { ReplacementBlocker } from "../../executor/replacement-blockers.js"
 
 const log = Log.create({ service: "idle-store-reclaim" })

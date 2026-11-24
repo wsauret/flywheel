@@ -19,7 +19,7 @@ import type { CatalogJsonValue, CatalogModelOffering } from "../../../../infra/c
 import { LISTING_SETTLEMENT_MS, type ModelDiscoveryMode } from "../../../../infra/llm/access/model-listing.js"
 import { awaitWithAbortSignal } from "../../../../infra/abort.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { heldDirectoryDerivation } from "../../../../infra/watched-directory-values.js"
 import { createOrderedLane } from "../../../../infra/ordered-lane.js"
 import { accessProviderRegistry } from "../../../agent-runtime/llm/routing/access-provider-registry.js"

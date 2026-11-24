@@ -14,7 +14,7 @@ import { chatEntry, fakeSessionStore } from "../../app-service-doubles.js"
 import { sink } from "../../_output-projection-fixtures.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../../../helpers/directories.js"
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js"
-import { asAsyncEventReadSurface } from "../../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../../src/infra/store/event-store-types.js"
 import { quietOutputCollaborators } from "../../../../../helpers/output-projection-deps.js"
 
 const TAIL = { content: "listening\n" }

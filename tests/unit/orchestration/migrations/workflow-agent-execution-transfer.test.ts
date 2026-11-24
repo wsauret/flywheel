@@ -3,7 +3,7 @@ import { temporaryDirectories, testDirectories } from "../../../helpers/director
 import { legacyWorkflowFixture } from "../../../helpers/workflow-agent-legacy-fixtures.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 import { convertWorkflowAgentSessions } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions.js"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership.js"
 import { readWorkflowUsage } from "../../../../src/orchestration/workflow-host/member-totals.js"
 import { Database } from "bun:sqlite"

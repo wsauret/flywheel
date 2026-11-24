@@ -10,8 +10,8 @@ import {
   type InFlightRecord,
   type StoreAssignment,
   type StoredFact,
-} from "../../../infra/event-store-types.js"
-import { ToolContentReferenceSchema } from "../../../infra/tool-content.js"
+} from "../../../infra/store/event-store-types.js"
+import { ToolContentReferenceSchema } from "../../../infra/runtime-facts/tool-content.js"
 import { InvariantViolation } from "../../../infra/invariant.js"
 import type { ProjectDirectories } from "../../../infra/directory-authorities.js"
 import type { SessionMetadataChange } from "../../session/manager.js"

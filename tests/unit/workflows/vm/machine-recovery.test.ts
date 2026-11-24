@@ -6,7 +6,7 @@ import {
 } from "../../../../src/workflows/vm/control/transition.js";
 import { compileWorkflowControl, launchGuardrailLimits } from "../../../../src/workflows/vm/compile/compile.js";
 import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/control/commands.js";
-import type { DecodedWorkflowEvent, WorkflowProposalEncoding } from "../../../../src/workflows/vm/facts/events.js";
+import type { DecodedWorkflowEvent, WorkflowProposalEncoding } from "../../../../src/workflows/control-facts/events.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/client/workflow-progress.js";
 import { frontendView } from "./_tree-fixtures.js";

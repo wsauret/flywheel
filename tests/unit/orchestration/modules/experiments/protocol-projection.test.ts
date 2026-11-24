@@ -1,7 +1,7 @@
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
 import { experimentsRuntime } from "../../../../../src/orchestration/modules/experiments/runtime.js"
 import { describe, expect, it } from "bun:test"
-import { asAsyncEventReadSurface, type EventReader, type StoredFact } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type EventReader, type StoredFact } from "../../../../../src/infra/store/event-store-types.js"
 import { createExperimentsProtocol, experimentsBackgroundReaders } from "../../../../../src/orchestration/modules/experiments/protocol.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createExperimentOperation, type ExperimentOperation } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"

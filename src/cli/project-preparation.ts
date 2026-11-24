@@ -1,6 +1,6 @@
 import type { StartupDirectories } from "../infra/directory-authorities.js"
 import { errorMessage } from "../infra/error-message.js"
-import { Log } from "../infra/log.js"
+import { Log } from "../infra/diagnostics/log.js"
 
 /** What every run mode that composes a runtime does before it composes one:
  *  make retired capability authorities canonical, materialize seeded config,

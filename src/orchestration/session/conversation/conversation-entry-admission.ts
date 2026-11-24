@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../../infra/event-store-types.js"
+import type { StoredFact } from "../../../infra/store/event-store-types.js"
 import { InvariantViolation, type InvariantKind } from "../../../infra/invariant.js"
 import type { DegradedBlock } from "../../../infra/output-blocks.js"
 import type { ConversationEntry } from "./conversation-entry-types.js"

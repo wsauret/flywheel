@@ -1,14 +1,14 @@
 import { chmodSync, mkdtempSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventWriter } from "../../../../src/infra/store/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-edits/retained-file-edit-host.js"
 import { prepareFileMutationOperation } from "../../../../src/orchestration/session/file-mutations/file-mutation-fact-writers.js"
 import { parseFileMutationFact } from "../../../../src/orchestration/session/file-mutations/file-mutation-facts.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
-import { contentEvidence } from "../../../../src/infra/content-evidence.js"
+import { contentEvidence } from "../../../../src/infra/runtime-facts/content-evidence.js"
 import { snapshotToFileObjectProof } from "../../../../src/orchestration/session/file-mutations/file-mutation-operation.js"
 
 const MUTATION_TYPES = ["file.mutation.prepared", "file.mutation.settled", "file.changed", "file.artifact.recorded"] as const

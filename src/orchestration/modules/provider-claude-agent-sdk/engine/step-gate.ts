@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { JsonValue } from "../../../../infra/auth/bounded-json.js";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import { asRecord } from "../../../../infra/record.js";
 import { ProviderRequestValidationError } from "../../../agent-runtime/llm/errors.js";
 import { CLAUDE_AGENT_SDK_LABEL } from "../names.js";

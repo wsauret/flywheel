@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Log } from "../../../../src/infra/log.js";
+import { Log } from "../../../../src/infra/diagnostics/log.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { installCustomProviders } from "../../../helpers/custom-providers.js";
 import { publishCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js";

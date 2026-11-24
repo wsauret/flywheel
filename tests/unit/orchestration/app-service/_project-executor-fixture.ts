@@ -1,15 +1,15 @@
-import { createMessagePortProcessEndpoint, type InternalProcessEndpoint, type listenInternalProcessChannel } from "../../../../src/infra/internal-process-channel.js"
+import { createMessagePortProcessEndpoint, type InternalProcessEndpoint, type listenInternalProcessChannel } from "../../../../src/infra/process/channels/internal-process-channel.js"
 import { createLauncherScope, type GuardianControl, type GuardianLoss, type OwnershipClosure } from "../../../../src/infra/process-supervisor.js"
-import type { OwnedProcessExit } from "../../../../src/infra/owned-subprocess.js"
-import type { TerminationCause } from "../../../../src/infra/process-container.js"
+import type { OwnedProcessExit } from "../../../../src/infra/supervision/launch/owned-subprocess.js"
+import type { TerminationCause } from "../../../../src/infra/process/container/process-container.js"
 import { createProjectExecutorClient } from "../../../../src/orchestration/app-service/executor/project-executor-client.js"
 import type { ProcessorAdmission } from "../../../../src/orchestration/app-service/executor/processor-governor.js"
 import { decodeProjectExecutorCommand, decodeProjectExecutorInitialization, encodeProjectExecutorCredential } from "../../../../src/orchestration/app-service/executor/project-executor-protocol.js"
 import { createProjectStateClient } from "../../../../src/orchestration/app-service/project-state/project-state-client.js"
-import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
+import { createPersistentProcessManager } from "../../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import type { RuntimeChatDefault } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createLoginShellPath, type LoginShellPath } from "../../../../src/infra/login-shell-path.js"
-import type { ProcessDiagnosticRecord } from "../../../../src/infra/process-diagnostic-reader.js"
+import type { ProcessDiagnosticRecord } from "../../../../src/infra/process/kernel/process-diagnostic-reader.js"
 
 const cleanup: (() => void)[] = []
 

@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { Log } from "../../../../src/infra/log.js";
+import { Log } from "../../../../src/infra/diagnostics/log.js";
 import type { UpdateCheckResult } from "../../../../src/orchestration/update/update-check.js";
 import type { UpdateService } from "../../../../src/orchestration/update/update-service.js";
 import type { UpdateStatus } from "../../../../src/protocol/runtime/update-protocol-types.js";

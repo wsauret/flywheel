@@ -1,4 +1,4 @@
-import type { LogicalNode } from "./graph-types.js";
+import type { LogicalNode } from "../../control-facts/graph-types.js";
 
 export function isNonEmpty(value: unknown): boolean {
   if (value == null) return false;

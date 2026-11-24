@@ -1,7 +1,7 @@
 import { errorMessage } from "../../../../../infra/error-message.js";
-import { Log } from "../../../../../infra/log.js";
-import type { RuntimeEvent } from "../../../../../infra/runtime-event-types.js";
-import { createToolUseCounter } from "../../../../../infra/runtime-tool-records.js";
+import { Log } from "../../../../../infra/diagnostics/log.js";
+import type { RuntimeEvent } from "../../../../../infra/runtime-facts/runtime-event-types.js";
+import { createToolUseCounter } from "../../../../../infra/runtime-facts/runtime-tool-records.js";
 import type { SubagentTurnLogObserver } from "./work-log.js";
 
 const log = Log.create({ service: "subagent-stream-filter" });

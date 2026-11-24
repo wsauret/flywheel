@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { pack } from "msgpackr"
-import { createReattachableProcessEndpoint } from "../../../../../src/infra/reattachable-process-endpoint.js"
+import { createReattachableProcessEndpoint } from "../../../../../src/infra/process/channels/reattachable-process-endpoint.js"
 import {
   connectProjectExecutionChannel,
   ProjectExecutionStopping,

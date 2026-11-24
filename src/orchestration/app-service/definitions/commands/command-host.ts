@@ -1,6 +1,6 @@
 import type { CapabilityCheck } from "../../../../infra/capability-text.js"
 import type { ProjectDirectories } from "../../../../infra/directory-authorities.js"
-import type { AsyncEventStateReadSurface, InFlightRecord } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, InFlightRecord } from "../../../../infra/store/event-store-types.js"
 import type { ModuleRuntimeHandle } from "../../../../infra/module-runtime.js"
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
 import type { CommandOutcome } from "../../../../protocol/commands/command-catalog-protocol-types.js"

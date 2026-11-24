@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types.js"
 import type { SessionChangesUndoResult } from "../../../../src/protocol/session/session-changes-protocol-types.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"

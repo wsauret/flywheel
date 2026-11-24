@@ -1,6 +1,6 @@
 import type { WorkflowWorkTarget, ModuleWorkControl, ModuleWorkflowRuns } from "../../module-seams.js"
 import { workflowProgress, workflowSummaryText } from "../../../protocol/client/workflow-progress.js"
-import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { frontendAttempts } from "../../workflow-host/frontend-attempts.js"
 import { workflowAddressText } from "../../workflow-host/workflow-addressing.js"
 import { workflowLaunchHost, type WorkflowLaunchHost } from "../../workflow-host/lifecycle/launch-operation-contract.js"

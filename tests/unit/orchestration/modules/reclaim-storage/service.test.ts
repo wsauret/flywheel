@@ -6,14 +6,14 @@ import type { NotificationEpisodeInput } from "../../../../../src/infra/notifica
 import type { StorageReclaimOutcome } from "../../../../../src/protocol/store-reclaim.js"
 import { createStorageService } from "../../../../../src/orchestration/modules/reclaim-storage/service.js"
 import { refusingEventWriter } from "../../../../helpers/event-writer-doubles.js"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
 import { canonicalTestDirectory, temporaryDirectories, testDirectories } from "../../../../helpers/directories.js"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { prepareWorkspaceState } from "../../../../../src/orchestration/workspace-state.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import { join } from "node:path"
-import { Log } from "../../../../../src/infra/log.js"
-import type { DebugLogRecordInput } from "../../../../../src/infra/debug-log.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
+import type { DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js"
 
 const temporary = temporaryDirectories()
 

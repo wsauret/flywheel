@@ -1,7 +1,7 @@
 import type { MutationEvidence } from "../../../../infra/mutation-evidence.js"
 import type { AgentFailureDisplay } from "../../../../infra/output-blocks.js"
 import type { ToolResultAction } from "../../../../infra/tool-result-action.js"
-import type { ToolOutcome } from "../../../../infra/tool-outcome.js"
+import type { ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js"
 
 /** Display meta a completed tool's `tool.result.recorded` fact carried.
  *  Edit/replace diffs and filetypes live in the result `details`, not in the

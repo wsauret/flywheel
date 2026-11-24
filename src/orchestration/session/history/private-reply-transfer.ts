@@ -1,9 +1,9 @@
 import type { Database } from "bun:sqlite"
-import { createSqliteEventReadSurface } from "../../../infra/sqlite-event-read-surface.js"
+import { createSqliteEventReadSurface } from "../../../infra/store/sqlite-event-read-surface.js"
 import { replyWaitSource, REPLY_WAIT_IN_FLIGHT_KIND } from "../conversation/reply-wait-cells.js"
 import { decodeQueuedUserInputCell, QUEUED_USER_INPUT_IN_FLIGHT_KIND, RETAINED_INPUT_GAP_IN_FLIGHT_KIND } from "../conversation/queued-user-inputs.js"
 import { heldBackgroundNotificationPut } from "../conversation/queued-background-notifications.js"
-import { createSqliteEventInserter } from "../../../infra/sqlite-event-store-core.js"
+import { createSqliteEventInserter } from "../../../infra/store/sqlite-event-store-core.js"
 
 /** A private reply follows one proven question, never the workflow's current seat.
  * The caller holds the conversion transaction and has rehomed its execution units. */

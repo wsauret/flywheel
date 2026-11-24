@@ -1,5 +1,5 @@
-import type { AssistantEventData, RateLimitEventData, RuntimeEvent } from "../runtime-event-types.js";
-import { extractToolResultRecords } from "../runtime-tool-records.js";
+import type { AssistantEventData, RateLimitEventData, RuntimeEvent } from "../runtime-facts/runtime-event-types.js";
+import { extractToolResultRecords } from "../runtime-facts/runtime-tool-records.js";
 import { redactSecrets } from "../redact-secrets.js";
 import { watchNoticeRow } from "../watch-notices.js";
 import { AssistantDraftProjector } from "./assistant-draft-projector.js";

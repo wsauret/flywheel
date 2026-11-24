@@ -1,5 +1,5 @@
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../infra/owned-command.js"
-import { MAX_OUTPUT_BYTES } from "../../../../infra/bounded-stream.js"
+import { MAX_OUTPUT_BYTES } from "../../../../infra/supervision/commands/bounded-stream.js"
 import { shellCommandInvocation } from "../../../agent-runtime/tools/bash/bash-script.js"
 import { parseMetricLines } from "./metric-lines.js"
 import type { ExperimentMetricValues } from "../state/types.js"

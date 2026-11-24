@@ -20,7 +20,7 @@
 import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fsyncDirectory } from "../../../../infra/atomic-write.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { writeFileUnder } from "../../../../infra/write-file-under.js";
 import { packageDigestAt } from "./skill-package-planning.js";
 import { destinationMatchesPlan, outgoingDirOf, planStaleness } from "./skill-mutation-plan.js";

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setContainedDirectoryBackendForTests } from "../../../../src/infra/descriptor-directory.js";
-import { win32ContainedDirectoryBackend } from "../../../../src/infra/descriptor-directory-win32.js";
+import { win32ContainedDirectoryBackend } from "../../../../src/infra/descriptor-directory/descriptor-directory-win32.js";
 import { readSkillResource, withSkillRoot } from "../../../../src/workflows/skills/skill-context.js";
 import { loadSkillDefinitions } from "../../../../src/workflows/skills/skills.js";
 import { testSkill } from "../../../helpers/skill-fixtures.js";

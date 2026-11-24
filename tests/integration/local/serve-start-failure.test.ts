@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { scanDebugLogFiles } from "../../../src/infra/debug-log.js"
+import { scanDebugLogFiles } from "../../../src/infra/diagnostics/debug-log.js"
 
 const ENTRY = join(import.meta.dir, "..", "..", "..", "src", "cli", "index.ts")
 const roots: string[] = []

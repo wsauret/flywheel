@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { DebugLog } from "../../../../infra/debug-log.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access/access-provider.js";
 import type { ModelInfo } from "../../../../infra/llm/models/models.js";
 import { mapAnthropicAdaptiveEffort } from "../../../agent-runtime/llm/adapters/anthropic/anthropic-options.js";

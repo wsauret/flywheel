@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, spyOn } from "bun:test";
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
+import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
 import { summarizeSubagentWork } from "../../../../../src/orchestration/modules/subagents/execution/result/summarize-work.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
@@ -7,9 +7,9 @@ import { asModelClient } from "../../agent-runtime/_model-client.js";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths";
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store";
+import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store";
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer";
 import { buildSubagentCompleted, buildSubagentPaused, buildSubagentResumed } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers";
 import { readSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection";

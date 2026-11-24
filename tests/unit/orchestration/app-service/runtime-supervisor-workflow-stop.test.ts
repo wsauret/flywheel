@@ -4,14 +4,14 @@ import { until } from "../workflow-host/_workflow-controller-fixtures.js"
 import type { AgentFactory } from "../../../../src/orchestration/agent-runtime/types.js"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
 import { asModelClient } from "../agent-runtime/_model-client.js"
-import { contentEvidence } from "../../../../src/infra/content-evidence.js"
+import { contentEvidence } from "../../../../src/infra/runtime-facts/content-evidence.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { readChildStop } from "../../../../src/orchestration/session/control/chat-session-run-evidence.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications.js"
 import { cleanup, compose, context, parentChat, branch, modelCall } from "./_runtime-supervisor-workflow-launch-fixtures.js"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import { workflowProtocol } from "./app-service-doubles.js"
-import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
+import { EventReaderService } from "../../../../src/infra/store/event-store-effect.js"
 
 afterEach(cleanup)
 

@@ -8,7 +8,7 @@ import { outputCursor } from "../../../../../src/protocol/transcript/output-prot
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer"
 import { sessionCursor } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types"
 import { createSessionStore } from "../../../../../src/orchestration/session-store/store"
-import { EventReaderService } from "../../../../../src/infra/event-store-effect.js"
+import { EventReaderService } from "../../../../../src/infra/store/event-store-effect.js"
 import { buildShellState, createSessionMetadata, runtime, waitForAssertion } from "./shell-state-harness"
 import { fakeLanes } from "../../../../helpers/fake-lanes.js"
 import { snapshotResult } from "../../../../helpers/session-catalog.js"

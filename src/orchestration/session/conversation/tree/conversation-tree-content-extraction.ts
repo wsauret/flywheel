@@ -1,4 +1,4 @@
-import { extractContent, type ToolContentRow } from "../../../../infra/tool-content.js"
+import { extractContent, type ToolContentRow } from "../../../../infra/runtime-facts/tool-content.js"
 import type { StoredConversationEntry } from "../conversation-entry-schemas.js"
 import { parseConversationTreeFact, type ConversationTreeFact } from "../conversation-facts.js"
 

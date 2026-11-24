@@ -3,7 +3,7 @@ import { readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { Deferred, Effect, Exit, Scope } from "effect";
 import { TestClock } from "effect/testing";
-import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/debug-log.js";
+import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/diagnostics/debug-log.js";
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js";
 import type { CliFrame, QueryLauncherConfig } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { inPlaceGate, runInPlaceSelfTest, type SelfTestResult } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/in-place-check.js";

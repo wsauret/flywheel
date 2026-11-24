@@ -1,6 +1,6 @@
 import * as fs from "node:fs"
 import { CliArgsError, type CliArgsResult, parseArgsResult, parseTimeInput, requiredValue } from "../../../../infra/cli-args.js"
-import { createSqliteEventStore } from "../../../../infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../infra/store/sqlite-event-store.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { formatDuration, formatTokens } from "../../../../protocol/client/format.js"
 import { resolveEventStoreDbFile } from "../../../../infra/paths.js"

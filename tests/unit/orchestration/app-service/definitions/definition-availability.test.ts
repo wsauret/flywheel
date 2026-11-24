@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test"
-import { Log } from "../../../../../src/infra/log.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
 import type { ModuleId } from "../../../../../src/orchestration/modules.js"
 import { configuredAgentTypes, createDefinitionAvailability, type DefinitionAvailabilitySnapshot } from "../../../../../src/orchestration/app-service/definitions/definition-availability.js"

@@ -8,7 +8,7 @@
 import { existsSync } from "node:fs";
 import { dirname, relative, sep } from "node:path";
 
-import { canonicalMutationPath } from "../../../../infra/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
 import {
   existingParentInScope,
   existingPathList,

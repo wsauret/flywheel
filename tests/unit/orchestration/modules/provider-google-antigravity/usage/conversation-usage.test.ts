@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite"
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
-import { Log } from "../../../../../../src/infra/log.js"
+import { Log } from "../../../../../../src/infra/diagnostics/log.js"
 import { createUsageLedger, readConversationRows, type ConversationRead } from "../../../../../../src/orchestration/modules/provider-google-antigravity/usage/conversation-usage.js"
 import { temporaryDirectories } from "../../../../../helpers/directories.js"
 

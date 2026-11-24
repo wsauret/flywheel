@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types"
 import { transcriptFixture, transcriptStores } from "./_transcript-projection-fixtures"
 import { createSubagentRunsByToolUseIdCursorReader, readSubagentRunsByToolUseId } from "../../../../src/orchestration/modules/subagents/history/subagent-history"
 

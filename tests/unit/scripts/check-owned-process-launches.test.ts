@@ -24,7 +24,7 @@ describe("check-owned-process-launches", () => {
   it("accepts the owned boundary, Workers, and the exec-only shell entry", async () => {
     const violations = await withRepo((write) => {
       write("src/orchestration/tools/bash.ts", [
-        "import { spawnOwned } from \"../../infra/owned-subprocess.js\"",
+        "import { spawnOwned } from \"../../infra/supervision/launch/owned-subprocess.js\"",
         "import { runOwnedCommand } from \"../../infra/owned-command.js\"",
         "import { openExternalUrl } from \"../../infra/open-external-url.js\"",
         "export const run = async () => {",
@@ -164,21 +164,21 @@ describe("check-owned-process-launches", () => {
 
   it("rejects an authority module that exports a raw launcher under any name", async () => {
     const violations = await withRepo((write) => {
-      write("src/infra/process-container.ts", [
+      write("src/infra/process/container/process-container.ts", [
         "const { spawn } = Bun",
         "export { spawn as launchContainer }",
         "export const containerLauncher = Bun.spawnSync",
         "export default Bun.spawn",
       ].join("\n"));
       write("src/infra/process-supervisor.ts", "export { spawn } from \"node:child_process\"\n");
-      write("src/orchestration/user.ts", "import { launchContainer } from \"../infra/process-container.js\"\nlaunchContainer([\"git\"])\n");
+      write("src/orchestration/user.ts", "import { launchContainer } from \"../infra/process/container/process-container.js\"\nlaunchContainer([\"git\"])\n");
     });
 
     expect(violations).toEqual([
-      { file: "src/infra/process-container.ts", line: 2, rule: "no-exported-raw-launch", detail: "export spawn" },
-      { file: "src/infra/process-container.ts", line: 3, rule: "no-exported-raw-launch", detail: "export containerLauncher" },
-      { file: "src/infra/process-container.ts", line: 4, rule: "no-exported-raw-launch", detail: "export default" },
       { file: "src/infra/process-supervisor.ts", line: 1, rule: "no-node-child-process", detail: 'import "node:child_process"' },
+      { file: "src/infra/process/container/process-container.ts", line: 2, rule: "no-exported-raw-launch", detail: "export spawn" },
+      { file: "src/infra/process/container/process-container.ts", line: 3, rule: "no-exported-raw-launch", detail: "export containerLauncher" },
+      { file: "src/infra/process/container/process-container.ts", line: 4, rule: "no-exported-raw-launch", detail: "export default" },
     ]);
   });
 
@@ -243,11 +243,11 @@ describe("check-owned-process-launches", () => {
     const violations = await withRepo((write) => {
       // Every raw launch also states what it does about a console, which is
       // what `no-unstated-console` requires of exactly these modules.
-      write("src/infra/owned-subprocess-backend.ts", "Bun.spawn({ cmd, windowsHide: true })\n");
-      write("src/infra/process-container.ts", "Bun.spawnSync([\"ps\"], { windowsHide: true })\n");
-      write("src/infra/owned-command-supervisor.ts", "Bun.spawn({ cmd, windowsHide: true })\n");
+      write("src/infra/supervision/launch/owned-subprocess-backend.ts", "Bun.spawn({ cmd, windowsHide: true })\n");
+      write("src/infra/process/container/process-container.ts", "Bun.spawnSync([\"ps\"], { windowsHide: true })\n");
+      write("src/infra/supervision/launch/owned-command-supervisor.ts", "Bun.spawn({ cmd, windowsHide: true })\n");
       write("src/infra/process-supervisor.ts", "Bun.spawn({ cmd, detached: true, windowsHide: true })\n");
-      write("src/infra/persistent-subprocess.ts", "Bun.spawn({ cmd, detached: true, windowsHide: true })\n");
+      write("src/infra/supervision/persistent/persistent-subprocess.ts", "Bun.spawn({ cmd, detached: true, windowsHide: true })\n");
     });
 
     expect(violations).toEqual([]);
@@ -255,7 +255,7 @@ describe("check-owned-process-launches", () => {
 
   it("rejects imports of the persistent raw launch authority outside authority modules", async () => {
     const violations = await withRepo((write) => {
-      write("src/orchestration/bad.ts", "import { persistentSubprocessPlatform } from \"../infra/persistent-subprocess.js\"\n");
+      write("src/orchestration/bad.ts", "import { persistentSubprocessPlatform } from \"../infra/supervision/persistent/persistent-subprocess.js\"\n");
     });
 
     expect(rules(violations)).toEqual(["src/orchestration/bad.ts:1 no-raw-backend-symbol"]);
@@ -336,11 +336,11 @@ describe("check-owned-process-launches", () => {
 
   it("rejects raw backend symbols imported outside the authority modules", async () => {
     const violations = await withRepo((write) => {
-      write("src/orchestration/bad.ts", "import { createOwnedProcessBackend } from \"../infra/owned-subprocess-backend.js\"\n");
-      write("src/orchestration/worse.ts", "import { unixContainer, ownUnixContainer } from \"../infra/process-container.js\"\n");
+      write("src/orchestration/bad.ts", "import { createOwnedProcessBackend } from \"../infra/supervision/launch/owned-subprocess-backend.js\"\n");
+      write("src/orchestration/worse.ts", "import { unixContainer, ownUnixContainer } from \"../infra/process/container/process-container.js\"\n");
       // The probe and the Windows tree read the kernel and end processes
       // through it; neither builds a launcher.
-      write("src/orchestration/fine.ts", "import { windowsContainer, bunContainerProbe } from \"../infra/process-container.js\"\n");
+      write("src/orchestration/fine.ts", "import { windowsContainer, bunContainerProbe } from \"../infra/process/container/process-container.js\"\n");
     });
 
     expect(rules(violations)).toEqual([
@@ -352,26 +352,26 @@ describe("check-owned-process-launches", () => {
 
   it("rejects a whole authority namespace however it is taken", async () => {
     const violations = await withRepo((write) => {
-      write("src/orchestration/a.ts", "import * as backend from \"../infra/owned-subprocess-backend.js\"\n");
+      write("src/orchestration/a.ts", "import * as backend from \"../infra/supervision/launch/owned-subprocess-backend.js\"\n");
       write("src/orchestration/b.ts", "const all = await import(\"../infra/process-supervisor.js\")\n");
     });
 
     expect(violations).toEqual([
-      { file: "src/orchestration/a.ts", line: 1, rule: "no-raw-backend-symbol", detail: "import * from \"../infra/owned-subprocess-backend.js\"" },
+      { file: "src/orchestration/a.ts", line: 1, rule: "no-raw-backend-symbol", detail: "import * from \"../infra/supervision/launch/owned-subprocess-backend.js\"" },
       { file: "src/orchestration/b.ts", line: 1, rule: "no-raw-backend-symbol", detail: "import * from \"../infra/process-supervisor.js\"" },
     ]);
   });
 
   it("permits the settlement and probe symbols the guardian and watchdog own", async () => {
     const violations = await withRepo((write) => {
-      write("src/infra/process-guardian.ts", [
-        "import { ownedProcessBackend } from \"./owned-subprocess-backend.js\"",
-        "import { emptyContainers, type ManagedContainer } from \"./process-container.js\"",
+      write("src/infra/supervision/guardian/process-guardian.ts", [
+        "import { ownedProcessBackend } from \"../launch/owned-subprocess-backend.js\"",
+        "import { emptyContainers, type ManagedContainer } from \"../../process/container/process-container.js\"",
         "export const inspect = (pid: number) => ownedProcessBackend.inspect(pid)",
       ].join("\n"));
-      write("src/infra/process-watchdog.ts", "import { threadProcessProbeSource, type ThreadProcessProbe } from \"./owned-subprocess-backend.js\"\n");
+      write("src/infra/supervision/process-watchdog.ts", "import { threadProcessProbeSource, type ThreadProcessProbe } from \"./launch/owned-subprocess-backend.js\"\n");
       write("src/tui/app.tsx", "import type { LauncherScope } from \"../infra/process-supervisor.js\"\n");
-      write("src/cli/index.ts", "const { runCommandSupervisorMain } = await import(\"../infra/owned-command-supervisor.js\")\n");
+      write("src/cli/index.ts", "const { runCommandSupervisorMain } = await import(\"../infra/supervision/launch/owned-command-supervisor.js\")\n");
     });
 
     expect(violations).toEqual([]);

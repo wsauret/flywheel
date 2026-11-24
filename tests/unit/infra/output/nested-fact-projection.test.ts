@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { StoredFact } from "../../../../src/infra/event-store-types.js"
+import type { StoredFact } from "../../../../src/infra/store/event-store-types.js"
 import { nestedFactProjectionEvents } from "../../../../src/infra/output/nested-fact-projection.js"
 import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js"
 

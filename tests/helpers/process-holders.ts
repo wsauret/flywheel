@@ -1,8 +1,8 @@
 import { spyOn } from "bun:test"
 
-import * as container from "../../src/infra/process-container.js"
-import type { BootIdentity, ProcessStart } from "../../src/infra/process-container.js"
-import type { processHolders } from "../../src/infra/process-holder.js"
+import * as container from "../../src/infra/process/container/process-container.js"
+import type { BootIdentity, ProcessStart } from "../../src/infra/process/container/process-container.js"
+import type { processHolders } from "../../src/infra/process/process-holder.js"
 
 /** The kernel facts a holder answer rests on, as a case scripts them. */
 export interface ScriptedKernel {
@@ -27,7 +27,7 @@ let instances = 0
  *  module calls, replaced only while that answer runs. */
 export async function processHoldersOver(kernel: ScriptedKernel): Promise<typeof processHolders> {
   instances += 1
-  const module: typeof import("../../src/infra/process-holder.js") = await import(`../../src/infra/process-holder.js?kernel=${instances}`)
+  const module: typeof import("../../src/infra/process/process-holder.js") = await import(`../../src/infra/process/process-holder.js?kernel=${instances}`)
   const fresh = module.processHolders
   const over = <T>(answer: () => T): T => {
     const start = spyOn(container, "processStart").mockImplementation((pid) => kernel.start(pid))

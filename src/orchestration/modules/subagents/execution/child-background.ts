@@ -1,5 +1,5 @@
-import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
-import { probeLoopUnit, trackLoopSpan } from "../../../../infra/event-loop-lag.js";
+import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
+import { probeLoopUnit, trackLoopSpan } from "../../../../infra/diagnostics/event-loop-lag.js";
 import { createBackgroundExecutionOwner } from "../../../agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry, type ActiveBackgroundCommandDescriptor } from "../../../agent-runtime/background-work/background-work.js";
 import type { CommandHandoverScope } from "../../../agent-runtime/background-execution/command-handover.js";

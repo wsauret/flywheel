@@ -3,7 +3,7 @@ import { POSIX_FAILURE_STAGING } from "../../../../helpers/posix-failure-staging
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, sep } from "node:path";
 import { AuthProfileStore } from "../../../../../src/infra/auth/store/auth-profile-store.js";
-import { ContainedPathError } from "../../../../../src/infra/descriptor-directory-contract.js";
+import { ContainedPathError } from "../../../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import * as containedDirectories from "../../../../../src/infra/descriptor-directory.js";
 import { authDir } from "../../../../../src/infra/paths.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";

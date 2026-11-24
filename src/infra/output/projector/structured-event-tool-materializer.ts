@@ -1,4 +1,4 @@
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import type { ProvisionalDiff, ToolEntry, ToolPresentation } from "../../output-blocks.js";
 import { toFileUri } from "../../paths.js";
 import { declaredMutationField, getToolDisplay, resolveToolRowPresentation, targetSessionField } from "../../tools/tool-display-registry.js";

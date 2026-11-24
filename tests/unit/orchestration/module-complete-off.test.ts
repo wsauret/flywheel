@@ -20,7 +20,7 @@ import type { AuthContext } from "../../../src/infra/auth/auth-context.js";
 import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { authProviders } from "../../helpers/auth-context.js";
 import { inMemoryEventReader } from "../../helpers/in-memory-event-reader.js";
-import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface } from "../../../src/infra/store/event-store-types.js";
 import { unusedSessionMessaging } from "../../helpers/child-session-control.js";
 import { asRecord } from "../../../src/infra/record.js";
 import { turnReminders } from "../../../src/orchestration/agent-runtime/request/prompt/turn-reminders.js";

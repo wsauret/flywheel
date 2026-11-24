@@ -11,9 +11,9 @@ import { chain, fakeAvailability } from "../agent-runtime/llm/_provider-chain-ha
 import { chatInputText, type ChatInputLike } from "../../../../src/infra/chat-input"
 import { appendTurnEnd, captureBlocks, createStoredChatSession, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
 import { interruptedTurnEnd } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { ownHistoryTarget } from "../agent-runtime/_model-client.js";
 import { durableSubagentCompletionNotification } from "../../../../src/orchestration/agent-runtime/background-work/background-work-notifications"

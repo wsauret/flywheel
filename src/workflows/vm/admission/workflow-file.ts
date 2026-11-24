@@ -5,8 +5,8 @@ import { definitionAssets, type AssetLocation, type DefinitionAssetReader } from
 import type { DefinitionProvenance } from "../../provenance/definition-provenance.js";
 import { validateWorkflowDefinition } from "./definition-validation.js";
 import { normalizeAuthoredDocument, withLoadedContent, type NormalizedAuthoredDocument } from "../../definitions/loader.js";
-import { parseWorkflowYaml, UnsupportedWorkflowYamlError } from "../../../infra/workflow-yaml.js";
-import type { LoadedYaml } from "../../../infra/yaml-load.js";
+import { parseWorkflowYaml, UnsupportedWorkflowYamlError } from "../../../infra/yaml/workflow-yaml.js";
+import type { LoadedYaml } from "../../../infra/yaml/yaml-load.js";
 import type { AuthoredRepair } from "../../definitions/authored-repairs.js";
 import type { SkillRegistryRevision } from "../../skills/skill-schema.js";
 import {

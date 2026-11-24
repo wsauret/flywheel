@@ -18,7 +18,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { ContainedDirectory } from "../../../src/infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import { heldDirectoryPrototype } from "../../helpers/contained-directory-spies.js";
 import { moduleProtocolRows, type ModuleId, composeFirstPartyModules, composeRealmModuleSnapshot, SHIPPED_MODULES, migrateLegacyCapabilityModules, effectiveModuleIds } from "../../../src/orchestration/modules.js";
 import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";

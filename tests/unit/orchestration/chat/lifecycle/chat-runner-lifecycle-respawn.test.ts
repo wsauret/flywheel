@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
 import { EventBus } from "../../../../../src/infra/event-bus"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../../src/infra/store/event-store-types"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { temporaryDirectories } from "../../../../helpers/directories"
 import { createChatRunnerLifecycle } from "../../../../../src/orchestration/chat/lifecycle/runner-lifecycle"

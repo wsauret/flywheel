@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test"
-import { Log } from "../../../../../../src/infra/log.js"
+import { Log } from "../../../../../../src/infra/diagnostics/log.js"
 import { ContextLengthExceededError, LlmStreamError, RouteUnavailableError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import type { ConversationMessage, ProviderStreamEvent } from "../../../../../../src/orchestration/agent-runtime/llm/types.js"
 import { AcpConnectionClosed } from "../../../../../../src/orchestration/modules/provider-google-antigravity/acp/connection.js"

@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
-import type { CommittedWorkflowControl } from "../facts/committed-control.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import { readWorkflowControls } from "./recovery-fold.js"
 
 /** Strict control status for message admission, without reading queue bodies

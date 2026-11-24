@@ -13,7 +13,7 @@ import { statSync } from "node:fs";
 import { sep } from "node:path";
 import type { FactRecorder } from "../../../../infra/fact-recorder.js";
 import type { ProjectDirectories } from "../../../../infra/directory-authorities.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import type { SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { ownedSkillStoreDirs } from "../../../../workflows/skills/skills.js";

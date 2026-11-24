@@ -2,11 +2,11 @@ import { summaryLine } from "../../../infra/summary-line.js";
 import type { WorkflowTree, WorkflowTreeAgent, WorkflowTreeDisposition, WorkflowTreeJoin, WorkflowTreeLoop, WorkflowTreeNode, WorkflowTreePhase } from "../../../protocol/session/workflow-view-protocol-types.js";
 import { followUpForAttempt, forBodyRemainder } from "../transitions/attempt-continuation.js";
 import { whileOutcome } from "../graph/loop-signal.js";
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
-import { CURRENT_PROPOSAL_ENCODING } from "../facts/events.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
+import { CURRENT_PROPOSAL_ENCODING } from "../../control-facts/events.js";
 import { readyAttempt } from "../graph/frontier.js";
 import { isContainerNode, listJoin, rerunSupersededIds } from "../graph/graph-changes.js";
-import { inRound, roundOfNodeId, type AgentNode, type Attempt, type FollowUpV10, type GraphNodeState, type LogicalNode, type RepeatNode } from "../graph/graph-types.js";
+import { inRound, roundOfNodeId, type AgentNode, type Attempt, type FollowUpV10, type GraphNodeState, type LogicalNode, type RepeatNode } from "../../control-facts/graph-types.js";
 import { isJoinNode, nodeById, ownedNodes, settledJoinProjections, type JoinNode } from "../graph/node-outputs.js";
 import { evaluatorDecision, latestRound, roundOutcome } from "../transitions/repeat-transitions.js";
 

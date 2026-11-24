@@ -54,7 +54,6 @@ function makeView(initial: TranscriptSnapshot) {
       visibleMessageCount: () => snap().totalBlocks,
       jumpToLatest: async () => {},
       freshness: () => undefined,
-      hydrateAnchor: async () => {},
       loadAround: async () => {},
       takeEstimateUpdates: () => [],
       evictBefore: () => {},

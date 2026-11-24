@@ -1,5 +1,5 @@
 import { factTypes } from "../../../infra/event-registry.js"
-import { CorruptEventRowError, type EventPayload, type EventStoreReadSurface, type StoredFact } from "../../../infra/event-store-types.js"
+import { CorruptEventRowError, type EventPayload, type EventStoreReadSurface, type StoredFact } from "../../../infra/store/event-store-types.js"
 import { isRecord } from "../../../infra/record.js"
 import { AGENT_INPUT_FACT_TYPES, parseAgentInputFact } from "../agent-input/agent-input-facts.js"
 import { ProviderRequestAuditFactSchemas, parseProviderRequestAuditFact } from "../runtime-facts/provider-request-audit-facts.js"

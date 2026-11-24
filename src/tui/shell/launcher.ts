@@ -3,8 +3,8 @@ import type { OnLoadCallback, PluginBuilder, PluginConstraints } from "bun"
 
 import { runningSourceSnapshot, sourceSnapshotHome } from "../../infra/cli-subprocess.js"
 import { errorMessage } from "../../infra/error-message.js"
-import { Log } from "../../infra/log.js"
-import { startupTrace } from "../../infra/startup-trace.js"
+import { Log } from "../../infra/diagnostics/log.js"
+import { startupTrace } from "../../infra/diagnostics/startup-trace.js"
 import { keepingStackTraceSettings } from "./solid-transform-stack-trace.js"
 import type { TUIOptions } from "./app.js"
 

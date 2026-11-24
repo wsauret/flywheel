@@ -1,5 +1,5 @@
 import { observeGitDirectory } from "../../../../infra/env-detection.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { gitCursor, type GitDirectoryView, type GitView } from "../../../../protocol/git/git-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 

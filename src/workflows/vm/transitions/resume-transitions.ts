@@ -1,6 +1,6 @@
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
-import { CURRENT_PROPOSAL_ENCODING, type WorkflowProposalEncoding, type WorkflowProposalEvent } from "../facts/events.js";
-import { attemptNodeIdOf, inRound, roundOfNodeId, type Attempt, type LogicalNode, type RepeatNode } from "../graph/graph-types.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
+import { CURRENT_PROPOSAL_ENCODING, type WorkflowProposalEncoding, type WorkflowProposalEvent } from "../../control-facts/events.js";
+import { attemptNodeIdOf, inRound, roundOfNodeId, type Attempt, type LogicalNode, type RepeatNode } from "../../control-facts/graph-types.js";
 import { startRepeatRun } from "./repeat-transitions.js";
 import { WORKFLOW_INPUT_SOURCE_ID } from "../../schema/workflow-schema.js";
 import { continuationAttempt, lastRunAttempt, retriableFailedNodes } from "./attempt-continuation.js";

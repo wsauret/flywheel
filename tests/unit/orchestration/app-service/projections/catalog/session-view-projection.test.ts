@@ -1,5 +1,5 @@
 import { describe, expect, mock, spyOn, test } from "bun:test"
-import { DebugLog } from "../../../../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js"
 import {
   createSessionViewProjection,
   createSessionViewPublisher,

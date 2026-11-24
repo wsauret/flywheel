@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util"
 import { Schema } from "effect"
-import { parseProjectionFact } from "../../../infra/event-projection.js"
+import { parseProjectionFact } from "../../../infra/projection/event-projection.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import {
   CorruptEventRowError,
@@ -9,18 +9,19 @@ import {
   type GuardedAppendResult,
   type GuardedEventStoreAppend,
   type StoredFact,
-} from "../../../infra/event-store-types.js"
+} from "../../../infra/store/event-store-types.js"
 import type { ProjectDefinitionRegistryRevision } from "../../definitions/definition-registry.js"
 import type { WorkflowDefinition } from "../../schema/workflow-schema.js"
 import type { WorkflowMutation, WorkflowTransitionResult } from "../control/commands.js"
 import type { WorkflowMachineState } from "../control/control-types.js"
-import type { WorkflowEvent } from "../facts/events.js"
-import type { CommittedWorkflowControl } from "../facts/committed-control.js"
+import type { WorkflowEvent } from "../../control-facts/events.js"
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import { replayWorkflowControl, replayWorkflowControlFrom } from "../recovery/fact-fold.js"
 import { continueWorkflowReplay } from "./replay.js"
-import { selectNewestWorkflowRoot } from "../../run/workflow-root.js"
+import { selectNewestWorkflowRoot } from "../../control-facts/workflow-root.js"
 import { WorkflowMalformedStateError } from "./host-types.js"
-import { parseWorkflowSessionFact, workflowAggregateId } from "../facts/session-facts.js"
+import { parseWorkflowSessionFact } from "../facts/session-facts.js"
+import { workflowAggregateId } from "../../run/run-facts.js"
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../control/transition.js"
 
 const IdSchema = Schema.NonEmptyString

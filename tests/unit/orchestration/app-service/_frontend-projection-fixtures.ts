@@ -1,5 +1,5 @@
 import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
-import type { StoredFact } from "../../../../src/infra/event-store-types.js"
+import type { StoredFact } from "../../../../src/infra/store/event-store-types.js"
 import type { SessionManager, SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 import type { SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"

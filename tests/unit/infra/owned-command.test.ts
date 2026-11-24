@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
 
 import { captureOwnedSecret, runOwnedCommand } from "../../../src/infra/owned-command.js"
-import { MAX_OUTPUT_BYTES } from "../../../src/infra/bounded-stream.js"
-import type { OwnedProcess, OwnedProcessExit } from "../../../src/infra/owned-subprocess.js"
-import type { OwnedLaunchOptions } from "../../../src/infra/owned-subprocess-backend.js"
+import { MAX_OUTPUT_BYTES } from "../../../src/infra/supervision/commands/bounded-stream.js"
+import type { OwnedProcess, OwnedProcessExit } from "../../../src/infra/supervision/launch/owned-subprocess.js"
+import type { OwnedLaunchOptions } from "../../../src/infra/supervision/launch/owned-subprocess-backend.js"
 
 const SENTINEL = "sk-sentinel-do-not-leak"
 

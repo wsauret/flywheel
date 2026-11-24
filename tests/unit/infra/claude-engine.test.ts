@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync 
 import { dirname, join } from "node:path";
 
 import { buildPlatformArch, checkoutClaudeEngine } from "../../../src/infra/native-assets.js";
-import { enterSourceSnapshot } from "../../../src/infra/source-snapshot.js";
+import { enterSourceSnapshot } from "../../../src/infra/distribution/source-snapshot.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { snapshotFixture } from "../../helpers/source-snapshot-fixture.js";
 

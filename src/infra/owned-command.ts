@@ -1,8 +1,8 @@
 import { Redacted } from "effect"
-import { MAX_OUTPUT_BYTES, readBounded } from "./bounded-stream.js"
+import { MAX_OUTPUT_BYTES, readBounded } from "./supervision/commands/bounded-stream.js"
 
-import type { OwnedLaunchOptions } from "./owned-subprocess-backend.js"
-import type { OwnedProcess } from "./owned-subprocess.js"
+import type { OwnedLaunchOptions } from "./supervision/launch/owned-subprocess-backend.js"
+import type { OwnedProcess } from "./supervision/launch/owned-subprocess.js"
 import type { LauncherScope } from "./process-supervisor.js"
 
 /** One short command, launched into a container the guardian owns, read to the

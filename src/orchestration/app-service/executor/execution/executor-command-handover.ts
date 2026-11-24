@@ -20,8 +20,8 @@
 
 import { serveLaneFor } from "../../../../infra/cli-subprocess.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/event-store-types.js"
-import { Log } from "../../../../infra/log.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { CommandHandoverAuthority } from "../../../agent-runtime/background-execution/command-handover.js"
 import type { ChatRunner } from "../../../chat/runner-types.js"
 import { allCommandHandoversAsync, type StoredCommandHandover } from "../../../session/command-handover.js"

@@ -359,7 +359,7 @@ wait_and_capture "$WAIT_SHORT" "T-07h-original-chat-after-default-change.log"
 assert_contains "T-07h-original-chat-after-default-change.log" "gpt-5.4 low*" "T-07h-original-chat-still-session-snapshot" || true
 # Seed a durable turn without hitting a provider; blank chat shells are pruned on restart.
 (cd "$PROJECT_DIR" && bun --conditions=browser -e '
-  import { createSqliteEventStore } from "./src/infra/sqlite-event-store.js";
+  import { createSqliteEventStore } from "./src/infra/store/sqlite-event-store.js";
   import { resolveEventStoreDbFile } from "./src/infra/paths.js";
   import { createConversationTreeWriterController } from "./src/orchestration/chat/tree-writer.js";
   import { createSessionManager } from "./src/orchestration/session/manager.js";

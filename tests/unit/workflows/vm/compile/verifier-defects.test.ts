@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { testSkillRevision } from "../../../../helpers/skill-fixtures.js";
 import { resolveWorkflowAgents } from "../../../../../src/workflows/definitions/agent-resolution.js";
 import { compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js";
-import type { CommittedWorkflowControl } from "../../../../../src/workflows/vm/facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../../src/workflows/control-facts/committed-control.js";
 import { verifyAuthoredWorkflow, verifyInstantiatedWorkflow } from "../../../../../src/workflows/vm/compile/verify.js";
 import { DRY_LOOP, dryRound, dryWorkflow, INPUT_GROUP, inputMapWorkflow, mapSkills, mapWorkflow, VOTES_CHECKS, votesWorkflow } from "../_map-fixtures.js";
 import { loadedWorkflow } from "../../../../helpers/workflow-files.js";

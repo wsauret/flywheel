@@ -3,7 +3,7 @@ import { mkdir, rm } from "node:fs/promises"
 import { join } from "node:path"
 
 import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { durationMs } from "../../../infra/operation-log.js"
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../infra/owned-command.js"
 import { parseRepository, type RepositoryReference } from "../../../protocol/git/repository-reference.js"

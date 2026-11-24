@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
 import { workflowLaunchTitle } from "../../infra/output/projector/deferred-agent-meta.js"
 import type { FrontendAttempt, WorkflowAgentPersona } from "../../protocol/session/workflow-view-protocol-types.js"
 import { getPersonaMetadataIndex } from "../../workflows/agents/agent-roles.js"
@@ -8,7 +8,7 @@ import type { DefinitionLineageView } from "../../workflows/run/definition-prove
 import type { AttemptRow, WorkflowView } from "../../workflows/view/types.js"
 import { workflowRunReader } from "../module-catalog.js"
 import type { WorkflowMember } from "../session/metadata/workflow-membership.js"
-import { attemptNodeIdOf } from "../../workflows/vm/graph/graph-types.js"
+import { attemptNodeIdOf } from "../../workflows/control-facts/graph-types.js"
 import { startedConversation, type AttemptStarts } from "../../workflows/vm/host/attempt-conversations.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 

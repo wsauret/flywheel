@@ -1,7 +1,7 @@
 import { afterEach } from "bun:test";
 import { join } from "node:path";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../src/infra/event-store-types.js";
-import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../src/infra/store/event-store-types.js";
+import { createSqliteEventStore } from "../../src/infra/store/sqlite-event-store.js";
 import { createSessionFactWriter } from "../../src/orchestration/session/persistence/session-fact-writer.js";
 import { temporaryDirectories } from "./directories.js";
 import type { DurableOwner } from "../../src/infra/durable-owner.js";

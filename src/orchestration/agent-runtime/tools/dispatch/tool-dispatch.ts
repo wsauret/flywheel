@@ -13,9 +13,9 @@
  */
 
 import { mergeAbortSignals } from "../../../../infra/abort.js";
-import { PersistenceWriteRefused } from "../../../../infra/event-store-types.js";
+import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js";
 import { errorDetail, errorMessage } from "../../../../infra/error-message.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../../infra/module-runtime.js";
 import { durationMs, logCompletion } from "../../../../infra/operation-log.js";
 import type { ToolCall, ToolInputRepair } from "../../llm/types.js";

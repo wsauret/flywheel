@@ -1,14 +1,14 @@
-import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
 import { resolveWorkflowAgentTarget, resolveWorkflowTargets, workflowAddresses, type WorkflowAddress, type WorkflowTargetResolution } from "../../protocol/client/workflow-addresses.js"
 import { workflowTreeIndex } from "../../protocol/client/workflow-outline.js"
 import type { LoadedWorkflowView } from "../../protocol/session/workflow-view-protocol-types.js"
 import { addressReachesAgent, type AddressedAgent, type WorkflowMessageAddress } from "../../workflows/context-bundle/context-facts.js"
-import { loadQueueSnapshotFromReader } from "../../workflows/view/view-store.js"
+import { loadQueueSnapshotFromReader } from "../../workflows/vm/recovery/workflow-view.js"
 import type { WorkflowView } from "../../workflows/view/types.js"
 import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
 import { frontendAttempts } from "./frontend-attempts.js"
 import { startedAgents } from "../../workflows/vm/host/host-commit-controller.js"
-import { attemptNodeIdOf } from "../../workflows/vm/graph/graph-types.js"
+import { attemptNodeIdOf } from "../../workflows/control-facts/graph-types.js"
 
 /** The workflow view of one session as every client reads it: its attempts
  *  and its one operational tree, from the held view projection. */

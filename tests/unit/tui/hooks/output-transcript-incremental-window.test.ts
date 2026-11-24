@@ -19,7 +19,7 @@ describe("incremental window recompute (live delta path)", () => {
         cache.retain("s1")
         await cache.open("s1")
         const slot: TranscriptLayoutSlot = {}
-        const controller = mountController(slot, () => cache.visibleRange("s1"), { visibleMessageCount: () => cache.bindSession(() => "s1").visibleMessageCount() })
+        const controller = mountController(slot, () => cache.visibleRange("s1"), { transcript: cache.bindSession(() => "s1") })
         const box = fakeScrollBox()
         controller.attach(asScrollBox(box))
         box.scrollHeight = 60

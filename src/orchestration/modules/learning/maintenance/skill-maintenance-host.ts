@@ -19,7 +19,7 @@
 import type { StartupDirectories } from "../../../../infra/directory-authorities.js"
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../../infra/auth/resolve-key.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { AuthProfileManager } from "../../../auth/auth-profile-manager.js"
 import { captureRuntimeConfigRequest } from "../../../agent-runtime/request/request-config.js"

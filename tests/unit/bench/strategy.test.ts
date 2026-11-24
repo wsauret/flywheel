@@ -40,7 +40,7 @@ import { fakeModelsClient } from "../../helpers/model-tier-fixtures.js";
 import { testDirectories } from "../../helpers/directories.js";
 import { refusingLauncher } from "../../helpers/launcher-fake.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
-import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js";
+import { createRuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-factory.js";
 import { captureRuntimeConfigRequest } from "../../../src/orchestration/agent-runtime/request/request-config.js";
 import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema/schema.js";
 import { authProviders } from "../../helpers/auth-context.js";

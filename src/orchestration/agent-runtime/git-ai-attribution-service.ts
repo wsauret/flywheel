@@ -1,6 +1,6 @@
 import { isAbsolute, resolve, sep } from "node:path"
 import { canonicalPathWithMissingTail } from "../../infra/canonical-path.js"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { processLoginShellPath, type LoginShellPath } from "../../infra/login-shell-path.js"
 import { createBackgroundLane } from "../../infra/ordered-lane.js"
 import type { OwnedCommandRunner } from "../../infra/owned-command.js"

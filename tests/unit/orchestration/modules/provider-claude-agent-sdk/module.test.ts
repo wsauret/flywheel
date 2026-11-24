@@ -18,7 +18,7 @@ import { enginePath } from "../../../../../src/infra/claude-engine.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
 import { registerHostDrain, registerLiveBridge } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/live-bridges.js";
 import { moduleProcessServices } from "../../../../helpers/module-kernel.js";
-import { DebugLog } from "../../../../../src/infra/debug-log.js";
+import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 
 const temporaryDirectory = temporaryDirectories();

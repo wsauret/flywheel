@@ -14,8 +14,8 @@ import {
   createSessionManager,
   type SessionManagerDeps,
 } from "../../../../src/orchestration/session/manager";
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
+import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
+import type { LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { finalizeTestSessionDeletion } from "./_session-manager-fixtures";
 import { writeArtifactBreadcrumb } from "../../../../src/orchestration/session/persistence/storage/session-artifacts";

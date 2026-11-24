@@ -1,7 +1,7 @@
-import { asAsyncEventReadSurface } from "../../../infra/event-store-types.js";
+import { asAsyncEventReadSurface } from "../../../infra/store/event-store-types.js";
 import type { ExecutionEvidence } from "../../../protocol/session/execution-evidence.js";
 import { resolveEventStoreDbFile } from "../../../infra/paths.js";
-import { openReadonlyEventReader } from "../../../infra/sqlite-event-store.js";
+import { openReadonlyEventReader } from "../../../infra/store/sqlite-event-store.js";
 import { usageEntriesFromFacts } from "../runtime-facts/durable-usage.js";
 import { loadProviderRequestAuditFromEvents, PROVIDER_REQUEST_AUDIT_FACT_TYPES } from "./provider-request-audit-projection.js";
 import type { ProviderRequestAuditEntry } from "../runtime-facts/provider-request-audit-types.js";

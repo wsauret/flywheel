@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../../infra/event-store-types.js"
+import type { StoredFact } from "../../../infra/store/event-store-types.js"
 import type { RuntimeAuthStatusScope } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { WorkflowRunReader } from "../../workflow-host/run-record.js"

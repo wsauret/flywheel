@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { createHash } from "node:crypto";
-import type { ContentEvidence } from "../../infra/content-evidence.js";
+import type { ContentEvidence } from "../../infra/runtime-facts/content-evidence.js";
 import { sanitizeExternalText } from "../../infra/control-characters.js";
 import type { LearningScope } from "../../infra/learning-scope.js";
 

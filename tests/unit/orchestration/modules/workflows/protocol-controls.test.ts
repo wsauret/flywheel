@@ -3,7 +3,7 @@ import type { WorkflowController } from "../../../../../src/orchestration/workfl
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../../../../../src/orchestration/session/conversation/addressed-workflow-messages.js"
 import { flattenWorkflowView } from "../../../../../src/workflows/vm/view/view-flatten.js"
 import { queueFactsForState } from "../../../../../src/workflows/view/view-diff.js"
-import { buildWorkflowControlInitializedFact } from "../../../../../src/workflows/vm/facts/session-facts.js"
+import { buildWorkflowControlInitializedFact } from "../../../../../src/workflows/control-facts/family.js"
 import { createMemoryStore } from "../../../workflows/vm/host-test-support.js"
 import { fourLaneControl, wideBindings } from "../../../workflows/vm/_tree-fixtures.js"
 import { fakeManager, fakeSessionStore, runtimeSupervisor, workflowController, workflowProtocol } from "../../app-service/app-service-doubles.js"

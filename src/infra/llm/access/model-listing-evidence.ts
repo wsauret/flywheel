@@ -1,7 +1,7 @@
 /** The saved evidence of one model listing client's profile: catalog rows, access audit, and refusals. */
 import { AuthProfileDirectoryNotFoundError } from "../../auth/store/auth-profile-store.js";
 import { readSavedProviderModels, recordProviderModelRefusal, type CatalogProfile, type ModelRefusal, type SavedProviderModels } from "../../auth/provider-models/provider-model-catalog-store.js";
-import { Log } from "../../log.js";
+import { Log } from "../../diagnostics/log.js";
 import type { CatalogCanonicalRow, CatalogLimits } from "../../model-catalog-rows.js";
 import { type AccountLineage, accessProviderAccountKey } from "../../auth/provider-account.js";
 

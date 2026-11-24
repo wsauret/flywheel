@@ -4,7 +4,7 @@ import type { AccessProviderCandidate, AccessProviderCandidateAttribution, Acces
 import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import type { CacheRetentionPolicy, ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
 import type { CompletedStopReason, LlmApi, LlmStopReason, LlmToolOutputPart } from "./messages.js";
-import type { ToolOutcome } from "../../../infra/tool-outcome.js";
+import type { ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js";
 import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models/models.js";
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
 import type { ContentRepair } from "../../../infra/llm/content-repair.js";

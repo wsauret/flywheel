@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { parseFrontmatter } from "../../infra/frontmatter.js";
+import { parseFrontmatter } from "../../infra/yaml/frontmatter.js";
 import type { PersonaMetadataIndex } from "./persona-schema.js";
 import { loadPersonaSources } from "./persona-sources.js";
 

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, setSystemTime, test } from "bun:test"
 
-import { EventStoreWriterService } from "../../../../../../src/infra/event-store-effect.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/event-store-types.js"
+import { EventStoreWriterService } from "../../../../../../src/infra/store/event-store-effect.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/store/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../../../src/infra/paths.js"
-import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js"
 import type { FrontendMutation } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { CONTINUATION_MESSAGES } from "../../../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js"
 import type { ChatHostAttach } from "../../../../../../src/orchestration/app-service/executor/execution/executor-command-handover.js"

@@ -20,7 +20,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Effect, Exit, Scope } from "effect";
-import { DebugLog, type DebugLogRecordInput } from "../../../src/infra/debug-log.js";
+import { DebugLog, type DebugLogRecordInput } from "../../../src/infra/diagnostics/debug-log.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js";
 import { streamAssistantTurn } from "../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
 import type { AssistantTurnResult } from "../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js";

@@ -4,9 +4,9 @@ import { hostKernel, processHoldersOver } from "../../../helpers/process-holders
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { Log } from "../../../../src/infra/log";
+import { Log } from "../../../../src/infra/diagnostics/log";
 import { resolveOwnerPidPath } from "../../../../src/infra/paths";
-import { decodeHolderText, processHolders } from "../../../../src/infra/process-holder";
+import { decodeHolderText, processHolders } from "../../../../src/infra/process/process-holder";
 import { isSessionOwnerGone, removeOwnerPid, writeOwnerPid } from "../../../../src/orchestration/session/pid-lock";
 
 const sessionId = "pid-lock-test";

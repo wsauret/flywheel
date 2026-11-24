@@ -2,10 +2,10 @@
  * records use the production planner and strict manifest codec, while the
  * retired consent flow exists only here to reproduce version 1 history. */
 
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventReader, type LocalSqliteEventStore } from "../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type EventReader, type LocalSqliteEventStore } from "../../src/infra/store/event-store-types.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js";
+import { createSqliteEventStore } from "../../src/infra/store/sqlite-event-store.js";
 import {
   readConsentClaims,
   reconcileGlobalSkillOperations,
@@ -31,7 +31,7 @@ import type { ProjectDirectories } from "../../src/infra/directory-authorities.j
 import { planSkillMutation, planLockPaths, storeRootDirs } from "../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import { resultOfPlan } from "../../src/orchestration/modules/learning/skills/skill-store.js";
 import { claimAnsweredDecision } from "../../src/orchestration/session/agent-input/agent-input-decision.js";
-import { withPackageLocks } from "../../src/infra/package-directory-lock.js";
+import { withPackageLocks } from "../../src/infra/locks/package-directory-lock.js";
 import { forgetOperation, runOperation } from "../../src/orchestration/modules/learning/skills/global-skill-mutation-protocol.js";
 import { reconcilePendingAudits, settlePendingAudit } from "../../src/orchestration/modules/learning/skills/learning-journal.js";
 

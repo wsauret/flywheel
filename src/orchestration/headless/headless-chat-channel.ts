@@ -1,7 +1,7 @@
 import { Readable } from "node:stream"
 import { createInterface } from "node:readline"
 import { Cause, Deferred, Effect, Fiber, Queue, Semaphore, Stream } from "effect"
-import { Log } from "../../infra/log.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import { diagnosticDetail, errorMessage } from "../../infra/error-message.js"
 import type { AttachedRuntimeClient, RuntimeClient, RuntimeEventFrame } from "../../protocol/runtime/app-service-types.js"
 import type { ChatSettlementOutcome, ChatSettlementResult } from "../../protocol/session/chat-settlement-protocol-types.js"

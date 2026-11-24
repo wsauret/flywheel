@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, jest, setSystemTime } from "bun:test";
-import type { CommandHandover } from "../../../../../../../src/infra/command-handover.js";
-import type { HandoverAnswer } from "../../../../../../../src/infra/owned-subprocess.js";
+import type { CommandHandover } from "../../../../../../../src/infra/supervision/launch/command-handover.js";
+import type { HandoverAnswer } from "../../../../../../../src/infra/supervision/launch/owned-subprocess.js";
 import { armUnheldDeadline } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/execution/processor-claims.js";
 import { freshProcessorClaims } from "../../../../../../helpers/processor-claims.js";
 import { makeMockOwnedProcess, type OwnedExit } from "../_bash-fixtures.js";

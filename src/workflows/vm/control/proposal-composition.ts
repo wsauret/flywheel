@@ -1,5 +1,6 @@
 import type { WorkflowTransitionResult } from "./commands.js"
-import { WORKFLOW_CONTROL_FACT_TYPES, type WorkflowSessionFact } from "../facts/session-facts.js"
+import { WORKFLOW_CONTROL_FACT_TYPES } from "../../control-facts/family.js"
+import type { WorkflowSessionFact } from "../facts/session-facts.js"
 
 const controlFactTypes: ReadonlySet<string> = new Set(WORKFLOW_CONTROL_FACT_TYPES)
 

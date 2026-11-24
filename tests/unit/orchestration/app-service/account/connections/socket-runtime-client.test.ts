@@ -13,7 +13,7 @@ import { runtimeHandlers } from "../../../../../../src/orchestration/app-service
 import { createOutputWatches } from "../../../../../../src/orchestration/app-service/account/projects/output-watches.js"
 import { runtimeProtocolSocketServer } from "../../../../../../src/orchestration/app-service/account/connections/runtime-protocol-socket-server.js"
 import { createSocketRuntimeClient } from "../../../../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"
-import { DebugLog } from "../../../../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js"
 import { runtimeDispatch } from "../../../../../helpers/runtime-dispatch.js"
 import { socketRpcServerLayer } from "../../../../../helpers/socket-rpc-server.js"
 

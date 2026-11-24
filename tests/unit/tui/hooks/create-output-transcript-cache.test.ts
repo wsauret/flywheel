@@ -1,11 +1,10 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import { createEffect, createMemo, createRoot, createSignal } from "solid-js"
 import { unwrap } from "solid-js/store"
-import { Log } from "../../../../src/infra/log.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
 import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
 import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
-import { atTranscriptHead } from "../../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"
 import { createTranscriptWindowProjector } from "../../../../src/tui/transcript/output-window/output-window-projection.js"
 import { INSTANT_BACKOFF, content, fakeRuntimeClient, flushRecovery, gen, liveView, rangeOk, rangeUnavailable, seedComplete, seedTail, textBlock, toolEntry, userMessageBlock, windowTotal } from "./_output-transcript-cache-fixtures.js"
 
@@ -87,7 +86,6 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       expect(started?.source.kind).toBe("live")
       expect(started?.totalBlocks).toBe(0)
       expect(started?.blocks.length).toBe(0)
-      expect(atTranscriptHead(cache.visibleRange("s1"))).toBe(true)
       expect(fake.outputWindowCalls()).toBe(1)
 
       fake.liveDelta("s1", { visibleMessageCount: 2, blocks: [{ kind: "insert", index: 1, blockId: "text:live", block: textBlock("live", "after create") }] })

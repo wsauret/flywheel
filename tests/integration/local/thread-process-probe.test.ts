@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import { threadProcessProbeSource } from "../../../src/infra/owned-subprocess-backend.js"
-import { unixProcessIdentity } from "../../../src/infra/process-container.js"
+import { threadProcessProbeSource } from "../../../src/infra/supervision/launch/owned-subprocess-backend.js"
+import { unixProcessIdentity } from "../../../src/infra/process/container/process-container.js"
 
 /** A pid no process holds: pid_max on every supported platform is far below it. */
 const FREE_PID = 2_000_000_000

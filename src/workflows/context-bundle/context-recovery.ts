@@ -1,7 +1,8 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/event-store-types.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/store/event-store-types.js"
 import { isRecord } from "../../infra/record.js"
-import { parseWorkflowSessionFact, workflowAggregateId, type WorkflowRecoveryDegradationReason, type WorkflowSessionFact } from "../vm/facts/session-facts.js"
-import { WORKFLOW_ROOT_FACT_TYPES, workflowFamilyBoundary } from "../run/workflow-root.js"
+import { parseWorkflowControlFact, type WorkflowControlFact, type WorkflowRecoveryDegradationReason } from "../control-facts/family.js"
+import { workflowAggregateId } from "../run/run-facts.js"
+import { WORKFLOW_ROOT_FACT_TYPES, workflowFamilyBoundary } from "../control-facts/workflow-root.js"
 import { parseWorkflowContextFact, WORKFLOW_CONTEXT_FACT_TYPES, type WorkflowContextFact } from "./context-facts.js"
 
 type Seed = Extract<WorkflowContextFact, { type: "context.input.seeded" }>
@@ -87,11 +88,11 @@ function recoverContextFact(event: StoredFact): WorkflowContextFact {
 export function contextlessRecoveryRoot(
   event: StoredFact | CorruptEventRowError,
   evidence: StoredFact | CorruptEventRowError | undefined,
-): Extract<WorkflowSessionFact, { type: "workflow.control.recovered"; version: 1 }> | null {
+): Extract<WorkflowControlFact, { type: "workflow.control.recovered"; version: 1 }> | null {
   if (event instanceof CorruptEventRowError || !evidence || evidence instanceof CorruptEventRowError) return null
   try {
-    const root = parseWorkflowSessionFact({ type: event.type, version: event.version, actor: event.actor, payload: event.payload })
-    const attempt = parseWorkflowSessionFact({ type: evidence.type, version: evidence.version, actor: evidence.actor, payload: evidence.payload })
+    const root = parseWorkflowControlFact({ type: event.type, version: event.version, actor: event.actor, payload: event.payload })
+    const attempt = parseWorkflowControlFact({ type: evidence.type, version: evidence.version, actor: evidence.actor, payload: evidence.payload })
     if (root.type !== "workflow.control.recovered" || root.version !== 1) return null
     return root.payload.control.aggregateSeq === event.seq + 2
       && root.payload.supersededThroughSeq === Math.max(event.seq - 1, 0)

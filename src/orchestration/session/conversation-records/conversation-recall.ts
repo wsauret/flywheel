@@ -1,11 +1,11 @@
-import type { AsyncEventReadSurface } from "../../../infra/event-store-types.js"
-import type { ConversationSearchIndex } from "../../../infra/conversation-fts.js"
+import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js"
+import type { ConversationSearchIndex } from "../../../infra/store/conversation-fts.js"
 import {
   countConversationRecall,
   searchConversationRecall,
   type RecallSearchHit,
   type RecallSearchQuery,
-} from "../../../infra/conversation-recall-search.js"
+} from "../../../infra/store/conversation-recall-search.js"
 import { branchVisibleTranscriptEntries, readConversationSnapshot, type DegradedTranscriptRecord } from "../conversation/conversation-projection.js"
 import { walkBranchFromLeaf, type BranchWalkGap } from "../conversation/tree/conversation-tree-context.js"
 import type { ConversationEntry } from "../conversation/conversation-entry-types.js"

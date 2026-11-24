@@ -11,14 +11,14 @@ import { readRuntimeIdentity, type RuntimeIdentity } from "../../../src/cli/acco
 import { launchRuntimeClient, type LaunchedRuntimeClient } from "../../../src/cli/account-service/runtime-launch.js"
 import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
 import { sourceSnapshotHome } from "../../../src/infra/cli-subprocess.js"
-import { scanDebugLogFiles } from "../../../src/infra/debug-log.js"
+import { scanDebugLogFiles } from "../../../src/infra/diagnostics/debug-log.js"
 import { openContainedDirectory } from "../../../src/infra/descriptor-directory.js"
 import { EXECUTABLE_ROLES } from "../../../src/infra/executable-roles.js"
-import { sharedHoldersIn } from "../../../src/infra/ownership-file-lock.js"
+import { sharedHoldersIn } from "../../../src/infra/locks/ownership-file-lock.js"
 import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/paths.js"
-import { sweepPersistentSpools } from "../../../src/infra/persistent-spool.js"
+import { sweepPersistentSpools } from "../../../src/infra/supervision/persistent/persistent-spool.js"
 import { isProcessAlive } from "../../../src/infra/process-liveness.js"
-import { createProcessTemporaryDirectory, removeProcessTemporaryDirectory } from "../../../src/infra/process-temporary-directory.js"
+import { createProcessTemporaryDirectory, removeProcessTemporaryDirectory } from "../../../src/infra/process/process-temporary-directory.js"
 import { DeadlineExceeded, withDeadline } from "../../../src/infra/with-deadline.js"
 import type { FrontendOutputBlock, RuntimeClient, RuntimeTransportHealth } from "../../../src/protocol/runtime/app-service-types.js"
 import { writeFixtureAccountConfig } from "./_fixture-account.js"
@@ -432,7 +432,7 @@ describe.skipIf(process.platform === "win32")("dev service source snapshot", () 
  *  with the digest it entered. The process ends once it has entered, or,
  *  with `stay`, runs until it is killed. */
 async function snapshotHolderProcess(checkout: string, stay: boolean): Promise<{ readonly child: Bun.Subprocess<"ignore", "pipe", "pipe">; readonly digest: string }> {
-  const module = pathToFileURL(path.join(REPO, "src", "infra", "source-snapshot.ts")).href
+  const module = pathToFileURL(path.join(REPO, "src", "infra", "distribution", "source-snapshot.ts")).href
   const script = [
     `const { enterSourceSnapshot } = await import(${JSON.stringify(module)})`,
     `const entry = await enterSourceSnapshot(${JSON.stringify(checkout)})`,

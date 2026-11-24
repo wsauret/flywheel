@@ -5,10 +5,10 @@ import { tmpdir } from "node:os"
 import { basename, join } from "node:path"
 
 import { runKill, type KillDependencies } from "../../../../src/cli/commands/kill.js"
-import { Log } from "../../../../src/infra/log.js"
-import type { ProcessAccountHome } from "../../../../src/infra/process-account-home.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
+import type { ProcessAccountHome } from "../../../../src/infra/process/process-account-home.js"
 import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath } from "../../../../src/infra/paths.js"
-import type { ProcessRow } from "../../../../src/infra/process-table.js"
+import type { ProcessRow } from "../../../../src/infra/process/container/process-table.js"
 
 const OWN_HOME = "/Users/me"
 const OTHER_HOME = "/Users/test-home"
@@ -206,15 +206,17 @@ test("finds a source checkout's command supervisor in the dev lane, and no other
   const supervisors: readonly ProcessRow[] = [
     { pid: 30, ppid: 1, argv: ["/usr/bin/bun", "/repo/node_modules/.cache/flywheel/owned-command-supervisor-0123456789abcdef.js", "--lifetime", "guarded", "--", "bash", "/s.sh"] },
     // Linux re-enters the running executable through its process identity.
-    { pid: 31, ppid: 1, argv: ["/proc/self/exe", "/repo/src/infra/owned-command-supervisor.ts", "--lifetime", "guarded", "--", "bash", "/s.sh"] },
+    { pid: 31, ppid: 1, argv: ["/proc/self/exe", "/repo/src/infra/supervision/launch/owned-command-supervisor.ts", "--lifetime", "guarded", "--", "bash", "/s.sh"] },
     { pid: 32, ppid: 1, argv: ["/usr/bin/bun", "/other/node_modules/.cache/flywheel/owned-command-supervisor-0123456789abcdef.js"] },
+    // An older source run, before its lock landed, runs the module from its earlier home.
+    { pid: 33, ppid: 1, argv: ["/usr/bin/bun", "/repo/src/infra/owned-command-supervisor.ts", "--lifetime", "guarded", "--", "bash", "/s.sh"] },
   ]
 
   const ownHome = (): ProcessAccountHome => ({ kind: "home", home: OWN_HOME })
   expect(await runKill(["dev", "--dry-run"], own, { ...fakeDependencies(printed), listProcesses: async () => supervisors, accountHomeOf: ownHome })).toBe(0)
 
-  expect(listing(printed)).toEqual({ stopped: [30, 31], left: [] })
-  expect(printed.filter((line) => line.startsWith("  ")).map((line) => line.trim().split(/\s+/)[1])).toEqual(["command-supervisor", "command-supervisor"])
+  expect(listing(printed)).toEqual({ stopped: [30, 31, 33], left: [] })
+  expect(printed.filter((line) => line.startsWith("  ")).map((line) => line.trim().split(/\s+/)[1])).toEqual(["command-supervisor", "command-supervisor", "command-supervisor"])
 })
 
 test("a lane name clears only that lane's stale rendezvous", async () => {

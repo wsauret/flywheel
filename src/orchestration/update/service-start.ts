@@ -44,7 +44,7 @@
  *  latest cause, until it serves its own minute (PI-INTERACTION-047). One stop that
  *  recovers reports nothing. */
 
-import { Log } from "../../infra/log.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { shutdownSignals, type ShutdownSignal } from "../../infra/shutdown-signals.js";
 import type { BuildRef } from "../../infra/update/build-identity.js";
 import { ownBuild } from "../../infra/update/live-builds.js";

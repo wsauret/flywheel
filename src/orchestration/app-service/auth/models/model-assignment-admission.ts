@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks"
-import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
+import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
 import type { KeyResolver } from "../../../../infra/auth/resolve-key.js"
 import { authDir } from "../../../../infra/paths.js"
 import type { ModelAssignmentRow, RuntimeGlobalDefaultRolesResult, RuntimeModelAssignmentScope, RuntimeModelAssignmentWriteScope, RuntimeSessionModelPlanQuery, RuntimeSessionModelPlanResult } from "../../../../protocol/auth/model-assignment-protocol-types.js"
@@ -32,7 +32,7 @@ import { getSharedProviderAvailability } from "../../../agent-runtime/llm/routin
 import { candidateReadiness } from "../../../agent-runtime/llm/routing/failover-client.js"
 import { requestAdmissionFromCaptures } from "../../../subscription-spend-consent/admission-capture.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { CapacityServingCheck, CapacityWaitLedger } from "../../../session/control/capacity-wait.js"
 
 const log = Log.create({ service: "model-assignment-admission" })

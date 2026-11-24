@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import type { CommittedWorkflowControl } from "../facts/committed-control.js";
+import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import { isContainerNode, withNodeState } from "./graph-changes.js";
 import { forgetGraphEdit, graphEdit, graphTopology, inheritGraphTopology, knownGraphTopology, type GraphTopology } from "./graph-topology.js";
 import type {
@@ -7,7 +7,7 @@ import type {
   GraphNodeState,
   LogicalNode,
   WorkflowGraph,
-} from "./graph-types.js";
+} from "../../control-facts/graph-types.js";
 
 export interface FrontierCalculation {
   readonly graph: WorkflowGraph;

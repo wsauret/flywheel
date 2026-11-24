@@ -1,7 +1,7 @@
 import { Scope } from "effect"
 import { EventBus } from "../../../../src/infra/event-bus"
 import { chatInputContent, type ChatInputLike } from "../../../../src/infra/chat-input"
-import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader"
 import type { AnyBlock } from "../../../../src/infra/output-blocks"

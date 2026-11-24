@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import { Schema } from "effect"
-import { PersistenceWriteRefused } from "../../../../src/infra/event-store-types.js"
+import { PersistenceWriteRefused } from "../../../../src/infra/store/event-store-types.js"
 import { runHeadlessTask } from "../../../../src/orchestration/headless/run-headless-task.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"

@@ -1,6 +1,6 @@
 import { errorMessage } from "../../../../infra/error-message.js"
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js"
-import { Log } from "../../../../infra/log.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import type { SessionNoticeOperation } from "../../../../infra/session-notice.js"
 
 const log = Log.create({ service: "child-session-reconciliation" })

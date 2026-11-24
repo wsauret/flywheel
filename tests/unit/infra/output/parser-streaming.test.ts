@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector";
 import { OutputProjector } from "../../../../src/infra/output/projector/output-projector";
-import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
+import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
 import { makeAssistantEvent } from "./_parser-fixtures";
 
 describe("RuntimeEventProjector — streaming text deltas", () => {

@@ -1,6 +1,6 @@
-import type { StoredFact } from "../../../../infra/event-store-types.js"
+import type { StoredFact } from "../../../../infra/store/event-store-types.js"
 import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
 import type { SessionEntry, SessionStoreReader } from "../../../session-store/types.js"
 import { entryActivity } from "../../../session-store/activity.js"

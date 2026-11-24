@@ -23,16 +23,16 @@ import { isDeepStrictEqual } from "node:util";
 import { fsyncDirectory } from "../../../../infra/atomic-write.js";
 import type { ProjectDirectories } from "../../../../infra/directory-authorities.js";
 import { errorMessage } from "../../../../infra/error-message.js";
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import {
   ensureDirectoryUnder,
   readFileUnder,
   removeFileUnder,
   writeFileUnder,
 } from "../../../../infra/write-file-under.js";
-import { ContainedPathError } from "../../../../infra/descriptor-directory-contract.js";
+import { ContainedPathError } from "../../../../infra/descriptor-directory/descriptor-directory-contract.js";
 import { SKILL_FILE } from "../../../../workflows/skills/skill-schema.js";
-import { tryWithPackageLocksSync } from "../../../../infra/package-directory-lock.js";
+import { tryWithPackageLocksSync } from "../../../../infra/locks/package-directory-lock.js";
 import {
   stagingLockPath,
   legacyStepAuthorityRoots,

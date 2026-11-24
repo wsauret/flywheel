@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from "./graph-types.js";
+import type { WorkflowGraph } from "../../control-facts/graph-types.js";
 
 // The run-before order of a compiled graph. Expansion freezes the context
 // that a list's items share from the nodes that complete before the list

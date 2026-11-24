@@ -7,7 +7,7 @@
  * The model's next wait call or the person's next message earns one reminder
  * again.
  */
-import { Log } from "../../../../infra/log.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
 import { DEFAULT_WAIT_SECONDS } from "../../tools/sessions/process.js";
 
 const log = Log.create({ service: "agent-loop" });
