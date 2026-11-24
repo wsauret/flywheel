@@ -1,7 +1,7 @@
 import { mkdir, rm } from "node:fs/promises"
 import { join } from "node:path"
 
-import { createCliLauncher, type CliLauncher } from "../../src/cli/runtime-launch.js"
+import { createCliLauncher, type CliLauncher } from "../../src/cli/account-service/runtime-launch.js"
 import { createBackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js"
 import { createForegroundBashHoldController } from "../../src/orchestration/agent-runtime/foreground-bash-hold.js"

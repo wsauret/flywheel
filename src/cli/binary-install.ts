@@ -27,7 +27,7 @@ import { ownedCommandRunner } from "../infra/owned-command.js"
 import { wrapperDirectory } from "../infra/update/wrapper-directory.js"
 import { installBuild } from "../orchestration/update/install-engine.js"
 import { collectInstalledBuilds } from "../orchestration/update/update-install.js"
-import { createCliLauncher } from "./runtime-launch.js"
+import { createCliLauncher } from "./account-service/runtime-launch.js"
 
 export async function runBinaryInstall(): Promise<number> {
   const directories = selectStartupDirectories({ env: process.env, cwd: process.cwd() })

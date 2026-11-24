@@ -6,7 +6,7 @@ import type { SessionEntry, SessionStore } from "../../../../src/orchestration/s
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import type { OutputChangeBatch } from "../../../../src/infra/output/output-block-delta.js"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
-import { StructuredOutputBuilder } from "../../../../src/infra/output/structured-output-builder.js"
+import { StructuredOutputBuilder } from "../../../../src/infra/output/projector/structured-output-builder.js"
 import { applyStreamingToolTextOps } from "../../../../src/protocol/client/streaming-text-edits.js"
 import { applyOutputDelta, buildBlockIndex } from "../../../../src/protocol/client/transcript-delta.js"
 import { chatEntry, fakeSessionStore } from "./app-service-doubles.js"

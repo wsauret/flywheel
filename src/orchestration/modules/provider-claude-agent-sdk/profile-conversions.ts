@@ -1,12 +1,12 @@
 import { Result, Schema } from "effect";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-import type { AuthProfileAccess } from "../../../infra/auth/auth-profile-store.js";
-import { loadAuthStoreWithDiagnostics } from "../../../infra/auth/auth-store.js";
-import { deleteProviderCredentials } from "../../../infra/auth/auth-store-mutations.js";
-import { AUTH_STORE_FILE, CredentialInstanceSchema, isCredentialCollection, type CredentialInstance, type OAuthCredential } from "../../../infra/auth/auth-store-types.js";
-import { transferProviderModelPreferences } from "../../../infra/auth/provider-model-preference-store.js";
-import { transferSubscriptionSpendDecisions } from "../../../infra/auth/subscription-spend-consent-store.js";
+import type { AuthProfileAccess } from "../../../infra/auth/store/auth-profile-store.js";
+import { loadAuthStoreWithDiagnostics } from "../../../infra/auth/store/auth-store.js";
+import { deleteProviderCredentials } from "../../../infra/auth/store/auth-store-mutations.js";
+import { AUTH_STORE_FILE, CredentialInstanceSchema, isCredentialCollection, type CredentialInstance, type OAuthCredential } from "../../../infra/auth/store/auth-store-types.js";
+import { transferProviderModelPreferences } from "../../../infra/auth/provider-models/provider-model-preference-store.js";
+import { transferSubscriptionSpendDecisions } from "../../../infra/auth/subscription/subscription-spend-consent-store.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
 import type { NotificationOccurrence } from "../../../infra/notification-episode.js";

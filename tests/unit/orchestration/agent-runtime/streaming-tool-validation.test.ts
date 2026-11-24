@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js";
 import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js";
-import type { StreamingToolTextStore } from "../../../../src/infra/output/streaming-tool-text.js";
+import type { StreamingToolTextStore } from "../../../../src/infra/output/streaming/streaming-tool-text.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js";
 import { emitAssistant, emitToolInputComplete, emitToolInputDelta, emitToolResult } from "../../../../src/orchestration/agent-runtime/emit.js";

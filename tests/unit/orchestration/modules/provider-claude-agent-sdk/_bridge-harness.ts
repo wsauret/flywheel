@@ -18,7 +18,7 @@ import type { BlockOrigins } from "../../../../../src/orchestration/agent-runtim
 import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { ENGINE_INSTRUCTIONS } from "../../../../helpers/hosted-engine-text.js";
 import type { AnthropicOperations } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import type { ModelRefusal } from "../../../../../src/infra/auth/provider-model-catalog-store.js";
+import type { ModelRefusal } from "../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
 import { QuotaCoordinationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { makeBridge } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge.js";
 import type { AdmittedWindow } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge-requests.js";

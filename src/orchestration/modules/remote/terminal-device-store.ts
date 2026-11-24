@@ -1,7 +1,7 @@
 import { hostname } from "node:os"
 import { Redacted, Schema } from "effect"
 
-import { mutateLockedJsonStore, readLockedJsonStore, type LockedJsonStoreOptions } from "../../../infra/auth/locked-json-store.js"
+import { mutateLockedJsonStore, readLockedJsonStore, type LockedJsonStoreOptions } from "../../../infra/auth/store/locked-json-store.js"
 import { accountAuthDir, accountSecretFile, TERMINAL_DEVICE_STORE_FILE, terminalDeviceStoreFile } from "../../../infra/paths.js"
 import type { DeviceStore, PairedRuntime, RemoteSelection } from "../../../protocol/modules/remote/relay-device.js"
 import { asKeyPair, fromBase64Url, keyDigest, ownedBytes, toBase64Url } from "../../../protocol/modules/remote/relay-protocol.js"

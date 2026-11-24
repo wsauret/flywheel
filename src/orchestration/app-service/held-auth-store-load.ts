@@ -1,6 +1,6 @@
 import { Redacted } from "effect"
-import { loadAuthStoreWithDiagnostics, type AuthStoreLoadResult } from "../../infra/auth/auth-store.js"
-import { AUTH_STORE_FILE } from "../../infra/auth/auth-store-types.js"
+import { loadAuthStoreWithDiagnostics, type AuthStoreLoadResult } from "../../infra/auth/store/auth-store.js"
+import { AUTH_STORE_FILE } from "../../infra/auth/store/auth-store-types.js"
 import { deepFreeze } from "../../infra/deep-freeze.js"
 import { customProviderGeneration } from "../../infra/llm/custom-provider-registry.js"
 import { heldDirectoryDerivation } from "../../infra/watched-directory-values.js"

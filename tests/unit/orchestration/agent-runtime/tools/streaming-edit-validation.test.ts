@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { MAX_STREAMING_TOOL_INPUT_BYTES } from "../../../../../src/infra/output/partial-json.js"
+import { MAX_STREAMING_TOOL_INPUT_BYTES } from "../../../../../src/infra/output/streaming/partial-json.js"
 import { deriveChildRuntimeSurfaces } from "../../../../../src/orchestration/agent-runtime/tools/tool-registry.js"
 import { createStreamingEditValidationService, type StreamingEditValidationService } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation.js"
 import type { StreamingEditValidationWorkerReply, StreamingEditValidationWorkerRequest } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation-protocol.js"

@@ -50,7 +50,7 @@ try {
   // proved snapshot (PI-UPDATES-009). Everything else fails as it did.
   if (entry !== undefined && entry.kind !== "failed") {
     const [{ SERVE_EXIT, startsServiceProcess }, { refuseFailedServiceStart }, { errorMessage }] = await Promise.all([
-      import("../src/cli/serve-contract.js"),
+      import("../src/cli/account-service/serve-contract.js"),
       import("../src/infra/source-snapshot.js"),
       import("../src/infra/error-message.js"),
     ]);

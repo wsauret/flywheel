@@ -4,7 +4,7 @@ import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "
 import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";
 import type { ProviderAvailability, RequestAdmission, SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
 import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
+import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription/subscription-spend-consent.js";
 import {
   chain,
   failoverFailure,

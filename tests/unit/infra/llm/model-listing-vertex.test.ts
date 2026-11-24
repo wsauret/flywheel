@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
-import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
+import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
 import { createAccessProviderSelection } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { testCapabilityModules, testProviderSelection } from "../../../helpers/provider-authority.js";

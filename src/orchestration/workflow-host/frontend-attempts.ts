@@ -1,5 +1,5 @@
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
-import { workflowLaunchTitle } from "../../infra/output/deferred-agent-meta.js"
+import { workflowLaunchTitle } from "../../infra/output/projector/deferred-agent-meta.js"
 import type { FrontendAttempt, WorkflowAgentPersona } from "../../protocol/workflow-view-protocol-types.js"
 import { getPersonaMetadataIndex } from "../../workflows/agents/agent-roles.js"
 import { personaRoleChain } from "../config/role-selection.js"

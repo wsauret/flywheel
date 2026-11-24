@@ -7,7 +7,7 @@ import { mutateRemotePairingStore, readRemotePairingStore } from "../../../../..
 import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../../../../../src/protocol/account-attach.js"
 import type { RemoteAccountAnswer } from "../../../../../src/protocol/modules/remote/account-requests.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
-import { unusedLauncher } from "../../../cli/_serve-fixtures.js"
+import { unusedLauncher } from "../../../cli/account-service/_serve-fixtures.js"
 import { installationOf } from "../../app-service/_account-service-fixtures.js"
 
 const temporaryDirectory = temporaryDirectories()

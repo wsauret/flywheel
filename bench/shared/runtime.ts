@@ -13,7 +13,7 @@ import { composeRealmModuleSnapshot, type ModuleId } from "../../src/orchestrati
 import { installedAccessProviderIds } from "../../src/orchestration/credential-provider-modules.js";
 import { createAgentJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/judge.js";
 import { prepareWorkflowDeps, type WorkflowDeps } from "../../src/orchestration/workflow-host/deps.js";
-import { createCliLauncher } from "../../src/cli/runtime-launch.js";
+import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";
 import { createInstalledDefinitionRegistry } from "../../src/orchestration/definition-catalog.js";
 import { createHeadlessProfileRuntime, resolveHeadlessAuthProfile } from "../../src/orchestration/headless/headless-profile-runtime.js";
 import { getSharedModelsClient } from "../../src/orchestration/config/llm-clients.js";

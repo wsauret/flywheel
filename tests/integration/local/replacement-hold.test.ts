@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from "bun:test"
 
-import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
+import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
 import { joinIsolatedAccountService } from "./_account-service.js"
 import { answerChoice, createReplacementHarness, openChat, sessionStatus, until } from "./_replacement-harness.js"
 import { toolResult } from "./_replacement-provider.js"

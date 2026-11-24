@@ -9,7 +9,7 @@
 
 import { Cause, Effect, Exit } from "effect";
 import { abortableSleep, awaitWithAbortSignal } from "../../../infra/abort.js";
-import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../infra/auth/openai-auth-types.js";
+import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../infra/auth/openai/openai-auth-types.js";
 import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import type { CapacityHold } from "../../../infra/llm/provider-error-copy.js";

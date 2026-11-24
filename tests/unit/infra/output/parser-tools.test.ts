@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector";
-import { OutputProjector } from "../../../../src/infra/output/output-projector";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector";
 import type { AgentGroupBlock } from "../../../../src/infra/output-blocks";
 import {
   makeAgentDispatchedEvent,

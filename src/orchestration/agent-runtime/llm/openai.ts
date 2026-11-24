@@ -1,7 +1,7 @@
 import OpenAI, { APIConnectionError, APIError } from "openai";
 import { Redacted } from "effect";
 import type { ResponseStreamEvent } from "openai/resources/responses/responses.js";
-import type { OpenAIAuth } from "../../../infra/auth/openai-auth-types.js";
+import type { OpenAIAuth } from "../../../infra/auth/openai/openai-auth-types.js";
 import type { AccessProviderCandidate, AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
 import type { ModelInfo } from "../../../infra/llm/models.js";

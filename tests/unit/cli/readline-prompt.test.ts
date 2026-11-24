@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { PassThrough, Writable } from "node:stream"
 
 import { chooseStartupDirectory, PromptCancelled, promptCancelledExitCode, promptFromReadline } from "../../../src/cli/readline-prompt.js"
-import { apiKeyHint } from "../../../src/infra/auth/api-key-hint.js"
+import { apiKeyHint } from "../../../src/infra/auth/store/api-key-hint.js"
 import type { StartupDirectoryFallbackCandidate } from "../../../src/infra/directory-authorities.js"
 
 const STARTUP_CANDIDATES: readonly StartupDirectoryFallbackCandidate[] = [

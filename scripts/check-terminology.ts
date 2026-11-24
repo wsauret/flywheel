@@ -143,7 +143,7 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   "src/workflows/context-bundle/context.ts",
   // The event search formatter and the decode-only schema of the older usage fact.
   "src/infra/runtime-fact-types.ts",
-  "src/cli/event-search-format.ts",
+  "src/cli/events/event-search-format.ts",
   "src/orchestration/agent-runtime/usage-settlement.ts",
   "src/orchestration/session/provider-request-audit-facts.ts",
   "src/orchestration/session/provider-request-audit-projection.ts",

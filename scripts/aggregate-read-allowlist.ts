@@ -22,7 +22,7 @@ function migration(file: string, scope: string, rule: AggregateReadRule = FULL):
 
 export const AGGREGATE_READ_ALLOWLIST: readonly AggregateReadAllowance[] = [
   // Person commands and CLI invocations.
-  { file: "src/cli/event-search.ts", scope: "reconstructPromptForRequest", rule: FULL, reason: "one `flywheel events` CLI invocation reconstructs one request's prompt" },
+  { file: "src/cli/events/event-search.ts", scope: "reconstructPromptForRequest", rule: FULL, reason: "one `flywheel events` CLI invocation reconstructs one request's prompt" },
   { file: "src/orchestration/modules/development/cli/cache-report.ts", scope: "run", rule: FULL, reason: "one development `cache-report` CLI invocation" },
   { file: "src/orchestration/modules/development/cli/efficiency.ts", scope: "run", rule: FULL, reason: "one development `efficiency` CLI invocation" },
   { file: "src/orchestration/modules/workflows/cli/verify.ts", scope: "readWorkflowRunFacts", rule: FULL, reason: "one `flywheel workflows verify` CLI invocation" },

@@ -15,7 +15,7 @@ import type { CaptureSubscriptionAdmission } from "../agent-runtime/model-runtim
 import { AuthProfileManager, type AuthProfileManagerOptions, type AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
 import { installedAccessProviderDefinitions, installedCredentialProviderIds } from "../credential-provider-modules.js"
-import { loadAuthStoreWithDiagnostics } from "../../infra/auth/auth-store.js"
+import { loadAuthStoreWithDiagnostics } from "../../infra/auth/store/auth-store.js"
 import { prepareWorkflowDeps, type PrepareWorkflowDepsInput, type WorkflowDeps } from "../workflow-host/deps.js"
 import type { CaptureRuntimeConfig } from "../agent-runtime/request-config.js"
 

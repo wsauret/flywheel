@@ -1,5 +1,5 @@
 import { batch } from "solid-js"
-import type { CredentialProviderId } from "../../infra/auth/auth-store-types.js"
+import type { CredentialProviderId } from "../../infra/auth/store/auth-store-types.js"
 import type { ExternalUrlOpener } from "../../infra/open-external-url.js"
 import type { AuthProviderAccountStatus, RuntimeAuthStatusScope, RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"

@@ -1,5 +1,5 @@
-import type { AuthProfileAccess } from "./auth-profile-store.js";
-import type { CredentialSlotClassifier } from "./auth-store-types.js";
+import type { AuthProfileAccess } from "./store/auth-profile-store.js";
+import type { CredentialSlotClassifier } from "./store/auth-store-types.js";
 import type { NotificationOccurrence } from "../notification-episode.js";
 
 /** How the terminal names a credential provider: the `flywheel auth login

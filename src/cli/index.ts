@@ -57,7 +57,7 @@ export async function runFlywheelCli(): Promise<void> {
     }
     // The startup module is light and settles the terminal's service launch
     // before command composition, the heavy import, starts loading.
-    const { prepareCliStartup } = await import("./startup.js")
+    const { prepareCliStartup } = await import("./startup/startup.js")
     const startup = await prepareCliStartup(action)
     if (!startup) return
     const endComposition = startup.timeline?.begin("client.composition")
@@ -75,7 +75,7 @@ export async function runFlywheelCli(): Promise<void> {
   } catch (err) {
     // Logging may already point to a file, so the fatal exit also names the
     // failure on stderr, where a failed start stays visible on the terminal.
-    const { exitFatally } = await import("./fatal-exit.js")
+    const { exitFatally } = await import("./startup/fatal-exit.js")
     await exitFatally(err, "thrown")
   }
 }

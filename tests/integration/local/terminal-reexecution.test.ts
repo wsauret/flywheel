@@ -4,7 +4,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { readRuntimeIdentity } from "../../../src/cli/runtime-identity-record.js"
+import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-identity-record.js"
 import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath } from "../../../src/infra/paths.js"
 import { sweepPersistentSpools } from "../../../src/infra/persistent-spool.js"
 import { createProcessTemporaryDirectory, removeProcessTemporaryDirectory } from "../../../src/infra/process-temporary-directory.js"
@@ -354,7 +354,7 @@ describe.skipIf(process.platform === "win32")("terminal re-execution at a protoc
       `const { enterSourceSnapshot } = await import(${JSON.stringify(path.join(CHECKOUT, "src", "infra", "source-snapshot.ts"))})`,
       `const entry = await enterSourceSnapshot(${JSON.stringify(CHECKOUT)})`,
       'if (entry.kind === "failed") throw new Error(entry.reason)',
-      'const handoffPath = entry.root + "/src/cli/terminal-handoff.ts"',
+      'const handoffPath = entry.root + "/src/cli/account-service/terminal-handoff.ts"',
       "const handoff = await import(handoffPath)",
       "const { createTerminalHandoff } = handoff",
       "mock.module(handoffPath, () => ({ ...handoff,",

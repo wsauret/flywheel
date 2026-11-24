@@ -7,7 +7,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { AuthProfileStore } from "../../../src/infra/auth/auth-profile-store.js"
+import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-store.js"
 import type { ServeLane } from "../../../src/infra/cli-subprocess.js"
 import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath, accountServeTokenPath } from "../../../src/infra/paths.js"
 import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account-project-registry.js"

@@ -4,8 +4,8 @@ import { canonicalCatalogModelId, canonicalModelId } from "../../infra/model-id.
 import { isCustomProviderModel } from "../../infra/llm/custom-provider-registry.js";
 import { installedAccessProviderDefinitions } from "../credential-provider-modules.js";
 import { getSharedModelsClient } from "./llm-clients.js";
-import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../infra/auth/auth-profile-store.js";
-import { savedProviderModelIds } from "../../infra/auth/provider-model-catalog-store.js";
+import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../infra/auth/store/auth-profile-store.js";
+import { savedProviderModelIds } from "../../infra/auth/provider-models/provider-model-catalog-store.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../infra/model-catalog-rows.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 import { Log } from "../../infra/log.js";

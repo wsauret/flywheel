@@ -2,7 +2,7 @@ import { createEventProjection, parseProjectionFact } from "../../../infra/event
 import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../../infra/event-store-types.js"
 import { heldProjection } from "../../../infra/projection-registry.js"
 import type { ToolEntry } from "../../../infra/output-blocks.js"
-import { extractDisplayMeta, resultReadContract, resultStatusMessage, resultTargetName, type ToolResultIdentity } from "../../../infra/output/structured-event-tool-results.js"
+import { extractDisplayMeta, resultReadContract, resultStatusMessage, resultTargetName, type ToolResultIdentity } from "../../../infra/output/projector/structured-event-tool-results.js"
 import { hydrateToolContentFact } from "../../../infra/tool-content-hydration.js"
 import type { ContentResolver } from "../../../infra/tool-content.js"
 import { sanitizeExternalText } from "../../../infra/control-characters.js"

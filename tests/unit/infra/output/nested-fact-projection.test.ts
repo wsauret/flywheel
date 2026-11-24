@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { StoredFact } from "../../../../src/infra/event-store-types.js"
 import { nestedFactProjectionEvents } from "../../../../src/infra/output/nested-fact-projection.js"
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js"
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js"
 
 function stored(type: string, actor: string, payload: StoredFact["payload"], timestamp = 42): StoredFact {
   return {

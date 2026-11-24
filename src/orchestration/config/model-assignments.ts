@@ -4,7 +4,7 @@ import { installedCredentialProviderIds } from "../credential-provider-modules.j
 import { credentialSlotClassifier } from "../auth/credential-slot-classifier.js";
 import type { ModelFamily } from "../../infra/llm/model-family.js";
 import { offeringTransportFamily } from "../../infra/llm/model-catalog-resolution.js";
-import type { ResolvedProviderModels } from "../../infra/auth/provider-model-preferences.js";
+import type { ResolvedProviderModels } from "../../infra/auth/provider-models/provider-model-preferences.js";
 import { resolveEnabledProviderModelCatalog } from "./model-assignment-providers.js";
 import type { EffortOptionRow, ModelAssignmentExpected, ModelAssignmentPatch, ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort, ModelSelectionSlot, ModelTier } from "../../protocol/model-assignment-protocol-types.js";
 import type { ModelConfigDeps, ModelPickerConfigDeps } from "./model-assignment-types.js";

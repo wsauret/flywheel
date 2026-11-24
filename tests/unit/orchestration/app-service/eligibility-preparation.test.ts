@@ -5,7 +5,7 @@ import { createProviderModelPreferenceService } from "../../../../src/orchestrat
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
 import type { CatalogModelOffering } from "../../../../src/infra/catalog-model-offering.js"
-import type { ResolvedProviderModels } from "../../../../src/infra/auth/provider-model-preferences.js"
+import type { ResolvedProviderModels } from "../../../../src/infra/auth/provider-models/provider-model-preferences.js"
 import type { ResolvedProviderModelCatalogs } from "../../../../src/orchestration/config/model-assignment-providers.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js"

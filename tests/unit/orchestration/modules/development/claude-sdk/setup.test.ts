@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { captureSubscriptionCredentials } from "../../../../../../src/infra/auth/auth-context.js";
-import { AuthProfileStore } from "../../../../../../src/infra/auth/auth-profile-store.js";
+import { AuthProfileStore } from "../../../../../../src/infra/auth/store/auth-profile-store.js";
 import { authDir } from "../../../../../../src/infra/paths.js";
 import { createClaudeAgentSdkModule } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import { CLAUDE_SDK_PROFILE, setupClaudeSdkHome, setupClaudeSdkProfile } from "../../../../../../src/orchestration/modules/development/claude-sdk/setup.js";

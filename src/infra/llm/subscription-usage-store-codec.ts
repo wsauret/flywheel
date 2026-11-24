@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { SQLiteError } from "bun:sqlite";
 import { errorMessage } from "../error-message.js";
-import type { SubscriptionAccountIdentity } from "../auth/subscription-account-identity.js";
+import type { SubscriptionAccountIdentity } from "../auth/subscription/subscription-account-identity.js";
 import { SubscriptionUsageMetricSchema, SubscriptionUsageResetCreditsSchema, SubscriptionUsageSpendSourceSchema, type SubscriptionUsageResetCredits, type SubscriptionUsageSpendSource } from "./subscription-usage.js";
 
 /** The persisted records of the subscription usage authority: what one

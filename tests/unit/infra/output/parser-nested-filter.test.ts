@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector";
-import { OutputProjector } from "../../../../src/infra/output/output-projector";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
 import { makeToolResultEvent } from "./_parser-fixtures";
 

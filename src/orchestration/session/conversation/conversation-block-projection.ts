@@ -3,11 +3,11 @@ import { assistantContentRuns, reasoningSummaryText } from "../../../infra/outpu
 import { isDeliveryConfirmationText } from "../../../infra/delivery-confirmation.js";
 import { isProgressUpdate } from "../../../infra/llm/anthropic-narration.js";
 import { isAgentInFlight, messageSenderOf, type AgentGroupBlock, type AnyBlock, type DegradedBlock, type QuestionBlock, type ToolEntry } from "../../../infra/output-blocks.js";
-import { deferredAgentMeta } from "../../../infra/output/deferred-agent-meta.js";
+import { deferredAgentMeta } from "../../../infra/output/projector/deferred-agent-meta.js";
 import { formatCompactionReport } from "../../../protocol/client/format.js";
 import { blockedStatusLine, formatAgentFailureDisplay, launderToolError, resolveAgentFailureDisplay } from "../../../infra/output/output-formatter.js";
-import { extractFilePath } from "../../../infra/output/structured-event-tool-materializer.js";
-import { agentResultSummary, selectToolResultContent } from "../../../infra/output/structured-event-tool-results.js";
+import { extractFilePath } from "../../../infra/output/projector/structured-event-tool-materializer.js";
+import { agentResultSummary, selectToolResultContent } from "../../../infra/output/projector/structured-event-tool-results.js";
 import { toFileUri } from "../../../infra/paths.js";
 import { contractReadRow, declaredMutationField, getToolDisplay, isHiddenFromTranscript, resolveToolRowPresentation, targetSessionField } from "../../../infra/tools/tool-display-registry.js";
 import type { MessageEntry, ConversationEntry } from "./conversation-entry-types.js";
@@ -15,9 +15,9 @@ import type { ConversationTreeTranscriptEntry } from "./conversation-projection.
 import type { ToolResultDisplayMeta } from "./tool-result-display-meta.js";
 import type { ToolHistorySummary } from "../../module-seams.js";
 import { installedRuntimeInvocationTool } from "../../module-catalog.js";
-import { createProvisionalDiffInput } from "../../../infra/output/provisional-diff-input.js";
+import { createProvisionalDiffInput } from "../../../infra/output/streaming/provisional-diff-input.js";
 import { mutationEvidenceSummaryDisplayPaths, provisionalDiffDisplayPaths } from "../../../infra/output/display-paths.js";
-import { resetFailedFileChange } from "../../../infra/output/file-change-settlement.js";
+import { resetFailedFileChange } from "../../../infra/output/projector/file-change-settlement.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
 import type { AgentInputEntry } from "../agent-input-projection.js";
 import { formatAgentInputAnswers } from "../../../protocol/question-protocol-types.js";

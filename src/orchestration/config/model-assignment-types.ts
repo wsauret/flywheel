@@ -4,7 +4,7 @@ import type { KeyResolver } from "../../infra/auth/resolve-key.js";
 import type { ModelFamily } from "../../infra/llm/model-family.js";
 import type { ModelListingClient } from "../../infra/llm/model-listing.js";
 import type { ModelInfo, ModelsClient } from "../../infra/llm/models.js";
-import type { ResolvedProviderModels } from "../../infra/auth/provider-model-preferences.js";
+import type { ResolvedProviderModels } from "../../infra/auth/provider-models/provider-model-preferences.js";
 import type { AccessProviderId } from "../../infra/llm/access-provider.js";
 import type { PickerModelEligibility } from "./provider-model-eligibility.js";
 import type { ConfigValidity } from "./writer.js";

@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
 import { Redacted } from "effect";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
-import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
-import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription-account-identity.js";
+import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription/subscription-spend-consent.js";
+import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription/subscription-account-identity.js";
 import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access-provider.js";
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/factory.js";
 import { authDir } from "../../../../../src/infra/paths.js";
