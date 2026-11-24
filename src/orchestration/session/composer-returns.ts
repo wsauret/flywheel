@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import { Log } from "../../infra/log.js"
 import { ComposerReturnSchema, returnedInputNoticeId, type ClaimComposerReturnsResult } from "../../protocol/composer-returns.js"
-import { createSessionPlacementProjection, sessionMetadataStateOf } from "./session-metadata-projection.js"
+import { owningChat } from "./session-metadata-projection.js"
 import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, queuedInputPayload, type QueuedUserInputCell } from "./conversation/queued-user-inputs.js"
 import { liveSessionControl } from "./live-session-control.js"
@@ -11,19 +11,6 @@ const COMPOSER_RETURN_KIND = "chat.composer_return"
 const CellSchema = Schema.Struct({ version: Schema.Literal(1), conversationId: Schema.NonEmptyString, ...ComposerReturnSchema.fields })
 const decode = Schema.decodeUnknownSync(CellSchema)
 const log = Log.create({ service: "composer-returns" })
-
-/** Resolves the durable owning chat without using a viewer or live runner. */
-export async function owningChat(reader: AsyncEventStateReadSurface, sessionId: string) {
-  const placements = await createSessionPlacementProjection(reader).replay()
-  let id = sessionId
-  let current = sessionMetadataStateOf(placements, sessionId).sessions[sessionId]
-  while (current && (current.kind === "subagent" || current.kind === "workflow-agent")) {
-    const parent = current.launchedFrom.parentSessionId
-    id = parent
-    current = sessionMetadataStateOf(placements, parent).sessions[parent]
-  }
-  return current?.kind === "chat" ? { ...current, id } : undefined
-}
 
 /** Atomically preserves unread human words on the owning chat and retires their
  * source hold. Repeated settlement never recreates a claimed convenience copy. */

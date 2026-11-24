@@ -3,7 +3,6 @@ import { loggedOperation, type CompletionLevel, type OperationFailure, type Oper
 import { coalesceRepeats } from "../../infra/repeat-coalescer.js"
 import type { FrontendMutation, FrontendEvent, RuntimeClient } from "../../protocol/app-service-types.js"
 import { declinedByPausedProject, lostWithLane, supersededByGenerationChange } from "../../protocol/client/connection-failures.js"
-import type { FlywheelAppService } from "./app-service.js"
 
 interface MutationLogFields {
   [field: string]: unknown
@@ -29,10 +28,14 @@ const DISPATCH_LEVEL = {
   client: { slowMs: CLIENT_DISPATCH_SLOW_MS },
 } as const satisfies { readonly [side in ProtocolSide]: CompletionLevel }
 
-export function withLoggedFlywheelAppService(service: FlywheelAppService, log: OperationLogger): FlywheelAppService {
+/** The client calls of the runtime side of the app service, each recorded.
+ *  The composition spreads them over its service, so every member beyond the
+ *  client contract, such as the shutdown steps, stays unwrapped: the barrier
+ *  that runs the shutdown steps logs every step's start, duration, and
+ *  failure by name. */
+export function withLoggedAppServiceClient(service: RuntimeClient, log: OperationLogger): RuntimeClient {
   return {
     ...withLoggedRuntimeClient(service, log, "app-service", "runtime"),
-    publish: service.publish,
     // The protocol handlers record each client stream's subscription once;
     // these are the service-internal steps under it.
     subscribe(listener: (event: FrontendEvent) => void) {
@@ -43,13 +46,6 @@ export function withLoggedFlywheelAppService(service: FlywheelAppService, log: O
         log.debug("unsubscribed")
       }
     },
-    // No logging wrapper on the shutdown steps: the barrier that runs them logs
-    // every step's start, duration, and failure by name.
-    shutdown: service.shutdown,
-    admission: service.admission,
-    hasLiveSession: service.hasLiveSession,
-    watchOutput: service.watchOutput,
-    hideSession: service.hideSession,
   }
 }
 

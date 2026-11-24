@@ -7,7 +7,6 @@ import { createProfileRuntimeStateOwner, type ProfileRuntimeSnapshot } from "./p
 import { providerModelEligibilityDecision, type PickerModelEligibility, type ProviderModelEnabledCandidate } from "../config/provider-model-eligibility.js"
 import type { CatalogModelOffering } from "../../infra/llm/catalog-model-offering.js"
 import type { AccessAuditStatus } from "../../infra/llm/model-listing-rows.js"
-import type { ProviderModelPreferenceService } from "./app-service.js"
 import { TRAINING_ROUTES_REQUIRED, type ProviderCatalogDiscovery, type ProviderModelRow, type ProviderModelTarget, type ProviderModelView, type RuntimeDeselectAllProviderModelsMutation, type RuntimeProviderModelHiddenResult, type RuntimeRecheckProviderModelsMutation, type RuntimeSetProviderAutoEnableNewModelsMutation, type RuntimeSetProviderAutoEnableNewModelsResult, type RuntimeSetProviderFreeRoutesMutation, type RuntimeSetProviderModelMutation, type RuntimeSetProviderModelResult } from "../../protocol/provider-model-preference-protocol-types.js"
 
 const ABSENT_CATALOG: ProviderCatalogDiscovery = { kind: "unavailable", reason: "authentication-absent" }
@@ -95,6 +94,16 @@ export interface ProviderModelEligibilitySnapshots {
   publish(state: ProviderModelEligibilityState): void
   state(profileId?: string): ProviderModelEligibilityState | undefined
   dispose(): Promise<void>
+}
+
+/** The provider model reads and writes that the app service answers. */
+export interface ProviderModelPreferenceService {
+  query(profileId: string, target: ProviderModelTarget): Promise<ProviderModelView>
+  set(mutation: RuntimeSetProviderModelMutation): Promise<RuntimeSetProviderModelResult>
+  deselectAll(mutation: RuntimeDeselectAllProviderModelsMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult>
+  recheck(mutation: RuntimeRecheckProviderModelsMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult>
+  setAutoEnableNewModels(mutation: RuntimeSetProviderAutoEnableNewModelsMutation): Promise<RuntimeSetProviderAutoEnableNewModelsResult>
+  setFreeRoutes(mutation: RuntimeSetProviderFreeRoutesMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult>
 }
 
 export interface ProfileBoundProviderModelPreferenceService extends ProviderModelPreferenceService, ProviderModelEligibilitySnapshots {

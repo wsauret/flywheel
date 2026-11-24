@@ -1,6 +1,5 @@
 import { canonicalDirectory, directoryExists } from "../../infra/directory-authorities.js"
-import type { SessionManager } from "./manager.js"
-import type { ReplayedSession } from "./schemas.js"
+import type { ReplayedSession, SessionMetadataReader } from "./schemas.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import { workflowRunReader } from "../module-catalog.js"
 
@@ -44,7 +43,7 @@ export async function readRecordedExecutionCwd(session: ReplayedSession | null, 
 }
 
 /** Reads the directory that a session's agent work starts in (`executionCwdFromSession`) without writing facts. */
-export async function requireSessionExecutionCwd(manager: Pick<SessionManager, "read">, sessionId: string, projectRoot: string, reader?: AsyncEventStateReadSurface): Promise<string> {
+export async function requireSessionExecutionCwd(manager: SessionMetadataReader, sessionId: string, projectRoot: string, reader?: AsyncEventStateReadSurface): Promise<string> {
   const session = await manager.read(sessionId)
   const ownerId = session?.kind === "workflow-agent" ? session.workflowMembership.workflowId : sessionId
   return executionCwdFromSession(await readDirectoryOwner(session, reader), ownerId, projectRoot)

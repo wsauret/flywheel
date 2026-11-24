@@ -12,7 +12,7 @@ import type { ConversationMessage, StreamOptions } from "../../../../src/orchest
 import { asModelClient } from "../agent-runtime/_model-client"
 import type { SessionEntryBasePatch } from "../../../../src/orchestration/session-store/types"
 import { appendTurnEnd, captureBlocks, createStoredChatSession, createTestChatSessionDeps, makeMemoryTreeWriter } from "./_chat-session-agent-runtime-fixtures"
-import { messageDisposition, type LiveRecipientState } from "../../../../src/orchestration/session/live-session-control"
+import { messageDisposition, type LiveRecipientState } from "../../../../src/orchestration/session/message-disposition"
 import type { SessionInputProducer } from "../../../../src/infra/chat-input"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"

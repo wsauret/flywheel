@@ -1,6 +1,7 @@
 import type { ChatInput } from "../../infra/chat-input.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
-import { heldAtWakeLimit, liveWorkflowControl, type LiveRecipientState, type LiveSessionControl } from "../session/live-session-control.js"
+import { liveWorkflowControl, type LiveSessionControl } from "../session/live-session-control.js"
+import { heldAtWakeLimit, type LiveRecipientState } from "../session/message-disposition.js"
 import type { WorkflowAgentInput } from "./agent-inputs.js"
 import type { WorkflowInjectionQueue } from "./injection-queue.js"
 
