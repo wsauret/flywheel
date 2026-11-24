@@ -1,0 +1,36 @@
+src/orchestration/app-service/supervisor/actor/session-chat-durability.ts
+  h_4b47e9e4a8b456 101,104-108
+src/orchestration/app-service/supervisor/actor/session-reactivation.ts
+  h_4b47e9e4a8b456 30,101
+src/orchestration/app-service/supervisor/actor/session-runtime-actor.ts
+  h_4b47e9e4a8b456 408-409,569-571,577
+src/orchestration/chat/controls.ts
+  h_4b47e9e4a8b456 280-282,292,296
+src/orchestration/chat/lifecycle/runner-lifecycle.ts
+  h_4b47e9e4a8b456 329-330,395-396,476-479,511-514,553-559,642,650-653,678
+src/orchestration/chat/lifecycle/runner-message-delivery.ts
+  h_4b47e9e4a8b456 27-28,75-76
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 205-206,208-210
+src/orchestration/chat/tree-writer.ts
+  h_4b47e9e4a8b456 23-24,87-90,281-290,310-311,398-399,517
+src/orchestration/session/conversation/tree/conversation-tree-writer.ts
+  h_4b47e9e4a8b456 74-75,197-201,477
+src/orchestration/session/conversation/tree/conversation-tree.ts
+  h_4b47e9e4a8b456 379-380,385
+src/orchestration/session/history/agent-input-reconciliation.ts
+  h_4b47e9e4a8b456 278-286
+tests/unit/orchestration/app-service/zz-question-hold.probe.test.ts
+  h_4b47e9e4a8b456 1-520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "253fc1f10e93ac07c469bf199161883dc74dc758",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
