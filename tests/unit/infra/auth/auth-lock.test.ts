@@ -8,6 +8,7 @@ import {
   acquireLock,
   acquireLockIn,
   acquireLockSync,
+  acquireLockSyncIn,
   liveSharedHoldersIn,
   LockRefusal,
   registerSharedHolderIn,
@@ -52,6 +53,41 @@ function claimOnClaimPath(lockPath: string, claim: string, owner: string): strin
 
 function reclaimEntries(lockPath: string): string[] {
   return readdirSync(dirname(lockPath)).filter((name) => name.includes(".reclaim."));
+}
+
+const LOCK = "auth.json.lock";
+
+/** A lock directory held in memory, for a case about the protocol rather than
+ *  the file system, which walks the whole retry ladder to its refusal. Every
+ *  attempt of the path adapter writes and fsyncs an owner file, and under the
+ *  I/O of a full parallel suite those nine fsyncs stretch one case from about
+ *  90 ms to more than the 5 s test deadline. */
+function memoryLockDirectory(initial: ReadonlyArray<readonly [string, string]>): LockDirectory {
+  const entries = new Map<string, { readonly content: string; readonly modifiedAt: number }>();
+  const create = (name: string, content: string): boolean => {
+    if (entries.has(name)) return false;
+    entries.set(name, { content, modifiedAt: Date.now() });
+    return true;
+  };
+  for (const [name, content] of initial) create(name, content);
+  const entry = (name: string) => entries.get(name) ?? expect.unreachable(`no entry '${name}'`);
+  return {
+    readFile: (name) => {
+      const found = entries.get(name);
+      return found === undefined ? undefined : Buffer.from(found.content);
+    },
+    createExclusive: create,
+    linkFile: (existing, name) => create(name, entry(existing).content),
+    removeFile: (name) => {
+      entries.delete(name);
+    },
+    entryNames: () => [...entries.keys()],
+    regularFileModifiedAt: (name) => entry(name).modifiedAt,
+  };
+}
+
+function contentOf(directory: LockDirectory, name: string): string | undefined {
+  return directory.readFile(name, 4096)?.toString("utf-8");
 }
 
 describe("ownership file lock", () => {
@@ -100,19 +136,19 @@ describe("ownership file lock", () => {
   });
 
   test("does not steal an old lock owned by a live process", async () => {
-    const lockPath = makeTmpLockPath();
-    writeFileSync(lockPath, JSON.stringify({ pid: process.pid, owner: "live-owner" }));
-    await expect(acquireLock(lockPath, 1)).rejects.toThrow("Failed to acquire lock");
-    expect(existsSync(lockPath)).toBe(true);
+    const live = JSON.stringify({ pid: process.pid, owner: "live-owner" });
+    const directory = memoryLockDirectory([[LOCK, live]]);
+    await expect(acquireLockIn(directory, LOCK, 0)).rejects.toThrow("Failed to acquire lock");
+    expect(contentOf(directory, LOCK)).toBe(live);
   });
 
   // acquireLockSync duplicates the retry/liveness ladder for synchronous
   // callers (the config writer); cover it directly, not via the async twin.
   test("sync: does not steal an old lock owned by a live process", () => {
-    const lockPath = makeTmpLockPath();
-    writeFileSync(lockPath, JSON.stringify({ pid: process.pid, owner: "live-owner" }));
-    expect(() => acquireLockSync(lockPath, 1)).toThrow("Failed to acquire lock");
-    expect(existsSync(lockPath)).toBe(true);
+    const live = JSON.stringify({ pid: process.pid, owner: "live-owner" });
+    const directory = memoryLockDirectory([[LOCK, live]]);
+    expect(() => acquireLockSyncIn(directory, LOCK, 0)).toThrow("Failed to acquire lock");
+    expect(contentOf(directory, LOCK)).toBe(live);
   });
 
   test("sync: steals a lock only after proving its owner is dead", () => {
@@ -148,13 +184,13 @@ describe("ownership file lock", () => {
   });
 
   test("keeps a record whose identity version this build cannot read, and names the version", async () => {
-    const lockPath = makeTmpLockPath();
     const future = JSON.stringify({ pid: DEAD_PID, owner: "future", v: 99 });
-    writeFileSync(lockPath, future);
-    const refusal = acquireLock(lockPath, 1);
+    const directory = memoryLockDirectory([[LOCK, future]]);
+    const refusal = acquireLockIn(directory, LOCK, 0);
     await expect(refusal).rejects.toBeInstanceOf(LockRefusal);
     await expect(refusal).rejects.toThrow("version 99");
-    expect(await Bun.file(lockPath).text()).toBe(future);
+    expect(contentOf(directory, LOCK)).toBe(future);
+    expect(directory.entryNames()).toEqual([LOCK]);
   });
 
   test("does not release a lock owned by another acquisition", async () => {
@@ -165,20 +201,17 @@ describe("ownership file lock", () => {
   });
 
   test("does not remove a replacement while reclaim for the observed owner is held", async () => {
-    const lockPath = makeTmpLockPath();
-    const deadOwner = "dead-owner";
-    writeFileSync(lockPath, JSON.stringify({ pid: DEAD_PID, owner: deadOwner }));
-    const identity = createHash("sha256").update(deadOwner).digest("hex");
-    const claimPath = `${lockPath}.reclaim.${identity}`;
-    writeFileSync(claimPath, "");
+    const claim = ownerClaimPath(LOCK, "dead-owner");
+    const directory = memoryLockDirectory([[LOCK, JSON.stringify({ pid: DEAD_PID, owner: "dead-owner" })], [claim, ""]]);
 
-    const contender = acquireLock(lockPath, 1);
-    unlinkSync(lockPath);
-    writeFileSync(lockPath, JSON.stringify({ pid: process.pid, owner: "replacement" }));
-    unlinkSync(claimPath);
+    const contender = acquireLockIn(directory, LOCK, 0);
+    directory.removeFile(LOCK);
+    const replacement = JSON.stringify({ pid: process.pid, owner: "replacement" });
+    directory.createExclusive(LOCK, replacement);
+    directory.removeFile(claim);
 
     await expect(contender).rejects.toThrow("Failed to acquire lock");
-    expect(JSON.parse(await Bun.file(lockPath).text())).toEqual({ pid: process.pid, owner: "replacement" });
+    expect(contentOf(directory, LOCK)).toBe(replacement);
   });
 
   test("reclaims a dead owner's lock behind a claim that a dead claimant left", async () => {
@@ -193,20 +226,22 @@ describe("ownership file lock", () => {
   // Each claim on a claim is itself a claim, so a chain of leaked claims is
   // removed from its far end, and the chain a reclaim may build is bounded.
   test("removes a chain of two leaked claims, and waits on a chain of three", async () => {
-    const lockPath = makeTmpLockPath();
-    writeFileSync(lockPath, JSON.stringify({ pid: DEAD_PID, owner: "dead-owner" }));
-    const first = ownerClaimPath(lockPath, "dead-owner");
-    const second = claimOnClaimPath(lockPath, first, "first-claimant");
-    const third = claimOnClaimPath(lockPath, second, "second-claimant");
-    const leak = (path: string, owner: string): void => writeFileSync(path, JSON.stringify({ pid: DEAD_PID, owner }));
-    leak(first, "first-claimant");
-    leak(second, "second-claimant");
-    leak(third, "third-claimant");
-    await expect(acquireLock(lockPath, 1)).rejects.toThrow(basename(third));
+    const first = ownerClaimPath(LOCK, "dead-owner");
+    const second = claimOnClaimPath(LOCK, first, "first-claimant");
+    const third = claimOnClaimPath(LOCK, second, "second-claimant");
+    const leak = (owner: string): string => JSON.stringify({ pid: DEAD_PID, owner });
+    const directory = memoryLockDirectory([
+      [LOCK, leak("dead-owner")],
+      [first, leak("first-claimant")],
+      [second, leak("second-claimant")],
+      [third, leak("third-claimant")],
+    ]);
+    await expect(acquireLockIn(directory, LOCK, 0)).rejects.toThrow(third);
 
-    unlinkSync(third);
-    ownership = await acquireLock(lockPath, 1);
-    expect(reclaimEntries(lockPath)).toEqual([]);
+    directory.removeFile(third);
+    const hold = await acquireLockIn(directory, LOCK, 0);
+    expect(directory.entryNames()).toEqual([LOCK]);
+    expect(JSON.parse(contentOf(directory, LOCK) ?? "null").owner).toBe(hold.owner);
   });
 
   // An earlier release created its claim empty and wrote nothing into it, so
@@ -224,14 +259,12 @@ describe("ownership file lock", () => {
   });
 
   test("waits on an earlier release's empty claim that is younger than ten minutes, and names it", async () => {
-    const lockPath = makeTmpLockPath();
-    writeFileSync(lockPath, JSON.stringify({ pid: DEAD_PID, owner: "dead-owner" }));
-    const claim = ownerClaimPath(lockPath, "dead-owner");
-    writeFileSync(claim, "");
-    const refusal = acquireLock(lockPath, 1);
-    await expect(refusal).rejects.toThrow(basename(claim));
+    const claim = ownerClaimPath(LOCK, "dead-owner");
+    const directory = memoryLockDirectory([[LOCK, JSON.stringify({ pid: DEAD_PID, owner: "dead-owner" })], [claim, ""]]);
+    const refusal = acquireLockIn(directory, LOCK, 0);
+    await expect(refusal).rejects.toThrow(claim);
     await expect(refusal).rejects.toThrow("earlier release");
-    expect(existsSync(claim)).toBe(true);
+    expect(contentOf(directory, claim)).toBe("");
   });
 
   test("a release clears a claim that a dead claimant left on its own owner", async () => {
@@ -391,21 +424,23 @@ describe("ownership file lock", () => {
   });
 
   // A read that fails is a question the file system did not answer, not a
-  // foreign object: the holder may be live and release the name.
-  test.skipIf(POSIX_STAGING_UNAVAILABLE)("waits on a lock it cannot read, and names the read error", async () => {
+  // foreign object: the holder may be live and release the name. One attempt
+  // shows the path adapter's classification; the ladder an occupied lock
+  // waits through is the malformed case below.
+  test.skipIf(POSIX_STAGING_UNAVAILABLE)("waits on a lock it cannot read, and names the read error", () => {
     const lockPath = makeTmpLockPath();
     writeFileSync(lockPath, JSON.stringify({ pid: process.pid, owner: "hidden" }));
     chmodSync(lockPath, 0);
-    await expect(acquireLock(lockPath, 1)).rejects.toThrow("could not be read: EACCES");
+    expect(tryAcquireLockSync(lockPath)).toEqual({ kind: "blocked", reason: "the lock record could not be read: EACCES" });
     expect(existsSync(lockPath)).toBe(true);
   });
 
   // Malformed bytes in a regular file are indistinguishable from a record this
   // process may simply not reclaim, so they stay on the conservative ladder.
   test("a malformed regular file is retried, not refused as foreign", async () => {
-    const lockPath = makeTmpLockPath();
-    writeFileSync(lockPath, "not json");
-    await expect(acquireLock(lockPath, 1)).rejects.toThrow("Failed to acquire lock");
+    const directory = memoryLockDirectory([[LOCK, "not json"]]);
+    await expect(acquireLockIn(directory, LOCK, 0)).rejects.toThrow("Failed to acquire lock");
+    expect(contentOf(directory, LOCK)).toBe("not json");
   });
 
   // Valid churn between observations must never read as foreign: an occupant
