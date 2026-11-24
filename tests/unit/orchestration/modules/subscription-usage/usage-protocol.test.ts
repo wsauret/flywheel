@@ -97,7 +97,7 @@ describe("unified Usage protocol", () => {
     const root = mkdtempSync(join(tmpdir(), "usage-protocol-")); roots.push(root)
     const authority = createUsageAuthority({ profileDir: root, profileId: "default", now: () => Date.parse("2025-01-01T00:00:00.000Z") })
     authority.append(entry())
-    authority.append(entry({ attemptId: crypto.randomUUID(), attribution: { kind: "candidate", providerId: "chatgpt", instanceId: "account-a" }, spendMode: "included", credentialLineage: "00000000-0000-4000-8000-000000000020", model: "gpt-4o", classification: "subscription_equivalent", price: { kind: "priced", estimatedUsd: 2, rateCard: { inputPerMillionUsd: 1 }, provenance: "live" } }))
+    authority.append(entry({ attemptId: crypto.randomUUID(), attribution: { kind: "candidate", providerId: "chatgpt", instanceId: "account-a" }, spendMode: "included", credentialLineage: "00000000-0000-4000-8000-000000000020", model: "gpt-4o", tokens: { input: 10, output: 5, cacheRead: 2, cacheWrite: 1, reasoning: 3 }, classification: "subscription_equivalent", price: { kind: "priced", estimatedUsd: 2, rateCard: { inputPerMillionUsd: 1 }, provenance: "live" } }))
     authority.append(entry({ attemptId: crypto.randomUUID(), model: "unknown-model", price: { kind: "unavailable", reason: "missing catalog price" } }))
     let checkCalls = 0
     const service = serviceFor(authority, () => { checkCalls += 1 })
@@ -109,7 +109,7 @@ describe("unified Usage protocol", () => {
       kind: "usage.accounts",
       profileId: "default",
       sources: [
-        { kind: "subscription", label: "Personal", quotaAccounting: { state: "window-unavailable" }, activity: { state: "available", includedValueUsd: 2, estimatedBilledUsd: 0, attempts: 1 } },
+        { kind: "subscription", label: "Personal", quotaAccounting: { state: "window-unavailable" }, activity: { state: "available", includedValueUsd: 2, estimatedBilledUsd: 0, attempts: 1, tokens: { input: 10, output: 5, cacheRead: 2, cacheWrite: 1, reasoning: 3, total: 18 } } },
         { kind: "metered", label: "OpenAI", activity: { state: "available", includedValueUsd: 0, estimatedBilledUsd: 3, attempts: 2, priceUnavailable: true } },
       ],
     })

@@ -34,7 +34,7 @@ describe("describeMetric", () => {
 
 const subscription = (observation: Extract<UsageAccountSource, { kind: "subscription" }>["observation"]): UsageAccountSource => ({
   kind: "subscription",
-  activity: { state: "available", startMs: 1, endMs: 2, trackingStartMs: 1, partial: false, incomplete: true, attempts: 8, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true, tokens: { input: 10, output: 5, cacheRead: 2, cacheWrite: 1, reasoning: 3, total: 21 }, estimatedBilledUsd: 4, includedValueUsd: 12, priceUnavailable: true },
+  activity: { state: "available", startMs: 1, endMs: 2, trackingStartMs: 1, partial: false, incomplete: true, attempts: 8, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true, tokens: { input: 10, output: 5, cacheRead: 2, cacheWrite: 1, reasoning: 3, total: 18 }, estimatedBilledUsd: 4, includedValueUsd: 12, priceUnavailable: true },
   sourceId: "acct-1",
   providerId: "copilot",
   label: "Copilot Personal",
@@ -117,7 +117,7 @@ describe("providerNotice and activityLines", () => {
     assert.deepEqual(lines.slice(1), [
         { label: "Estimated billed", value: "$4.00" },
         { label: "Included value", value: "$12.00", detail: "8 measured requests" },
-        { label: "Tokens", value: "21", detail: "cache read 2 · cache write 1 · reasoning 3" },
+        { label: "Tokens", value: "18", detail: "cache read 2 · cache write 1 · reasoning 3" },
         { label: "Some ended requests are not counted yet", tone: "warn" },
         { label: "Some model prices are unavailable", tone: "warn" },
         { label: "Current usage windows" },
