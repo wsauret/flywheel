@@ -1,0 +1,30 @@
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 51
+src/tui/transcript/output-window/create-output-scroll-controller.ts
+  h_4b47e9e4a8b456 4,67-69,194,401-403,593,605,608,761
+src/tui/transcript/output-window/output-window-scroll.ts
+  h_4b47e9e4a8b456 559,568
+src/tui/transcript/output-window/output-window.tsx
+  h_4b47e9e4a8b456 28,91-100,177,299
+src/tui/transcript/transcript-store/output-transcript-cache-types.ts
+  h_4b47e9e4a8b456 7,94-112,115-119
+tests/fixtures/output-scroll-harness.ts
+  h_4b47e9e4a8b456 110
+tests/unit/tui/hooks/output-transcript-incremental-window.test.ts
+  h_4b47e9e4a8b456 22
+tests/unit/tui/transcript/output-window/output-window-near-edge.test.tsx
+  h_4b47e9e4a8b456 117
+tests/unit/tui/transcript/output-window/output-window-wheel.test.ts
+  h_4b47e9e4a8b456 238,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6e4d97355c7924a12b58ec01f424cf6f01171b18",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
