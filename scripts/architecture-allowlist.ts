@@ -77,8 +77,7 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "src/tui/hooks/", reason: WIDE },
   { lint: "wide-directory", key: "src/workflows/", reason: WIDE },
   { lint: "wide-directory", key: "src/workflows/vm/", reason: WIDE },
-  { lint: "wide-directory", key: "webview/src/app/", reason: WIDE },
-  { lint: "wide-directory", key: "webview/src/client/", reason: WIDE },
+  { lint: "wide-directory", key: "webview/src/client/", reason: "Every grouping by concern that was tried makes a new shallow-module finding. The hidden functions are inside session.ts, and the files around it show most of their functions to it or to webview/src/app/: session-readings shows 9 of its 10 functions, session-input 12 of 24, tool-runs 12 of 18. So a part only passes in the same directory as session.ts, and session.ts with its 10 colocated tests and 3 fixtures fills that directory alone. Next cut: give session-readings and session-input interfaces that hide their work (fewer functions that session.ts calls), then move the session runtime to session/ with session/residents/ (residents, holds, seat, roles, tool-runs, turn-folds) and session/navigation/, and group the rest as domains/, input/ (input diagnostics, touch activation, input reload, service restart), settings/, questions/, format/, and commands/." },
   {
     lint: "module-cycle",
     reason: "`module-requirements` (module-requirements.ts:31) and `tool-catalog` read the tool declaration types of agent-runtime/tools/tool-registry.ts while `agent-runtime` calls them; give the tool declaration contract a home below all three, then reassess. `module-catalog` joins because it reads the `DefinitionContribution` union of modules.ts (module-catalog.ts:143) while modules.ts calls installedModules; give the module descriptor and contribution types a home below both.",

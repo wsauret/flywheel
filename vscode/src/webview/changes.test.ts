@@ -27,7 +27,7 @@ interface TestComposer {
   readonly questionAnswers: readonly unknown[]
 }
 // The browser fixture compiles under its own JSX project, not the editor host's.
-const browserFixture = new URL("../../../webview/src/app/composer-submission-loader-fixture.ts", import.meta.url).href
+const browserFixture = new URL("../../../webview/src/app/composer/composer-submission-loader-fixture.ts", import.meta.url).href
 const { mountComposerSubmission }: { mountComposerSubmission(options?: { question: FrontendQuestionBlock }): TestComposer } = await import(browserFixture)
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the arguments that VS Code passes to a registered command

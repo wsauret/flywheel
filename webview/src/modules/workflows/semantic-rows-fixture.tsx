@@ -1,5 +1,5 @@
 import { createComponent, createRoot } from "solid-js"
-import { createElement, insert, nodes, textContent } from "../../app/render-ownership-host-fixture.js"
+import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { WorkflowCard } from "./card.js"
 import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
 
