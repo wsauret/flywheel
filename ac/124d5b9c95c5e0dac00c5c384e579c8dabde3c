@@ -1,0 +1,34 @@
+src/infra/output/output-tool-projection-types.ts
+  h_4b47e9e4a8b456 22-28,32
+src/infra/output/structured-output-builder.ts
+  h_4b47e9e4a8b456 26,94
+src/infra/tools/displays/ask-user.ts
+  h_4b47e9e4a8b456 134,136
+src/orchestration/agent-runtime/factory.ts
+  h_4b47e9e4a8b456 27,56,207
+src/orchestration/agent-runtime/provider-runtime-cache.ts
+  h_4b47e9e4a8b456 37-52,63,146
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 49,82
+src/orchestration/agent-runtime/tools/bash-write-directories.ts
+  h_4b47e9e4a8b456 3-18,22
+src/orchestration/agent-runtime/tools/bash-write-state.ts
+  h_4b47e9e4a8b456 4,30
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 53,117
+src/orchestration/app-service/model-assignment-admission.ts
+  h_4b47e9e4a8b456 196-197,201-204
+src/orchestration/app-service/model-assignment-service.ts
+  h_4b47e9e4a8b456 27-29,46-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ac124d5b9c95c5e0dac00c5c384e579c8dabde3c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
