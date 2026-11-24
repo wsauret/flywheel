@@ -156,6 +156,13 @@ Not: Implicit detachment as a consequence of a tool returning.
 
 A command launched in the background transfers to the session registry at once and is owed work until it ends. The turn's park, the pending-work reminder, a bounded run's completion, and handoff readiness all wait for it. Every tracked command is owed. A command that must run on after the agent stops waiting persists after Flywheel exits, untracked. The close of its scope ends a background command like any owned work.
 
+## ARCH-TOOLS-059: A watch is a tracked command whose output is its event stream
+
+A watch is an owed tracked background command (ARCH-TOOLS-031) with a deadline, started through the shell tool. The reader of its output delivers complete lines as keyed notices through the held background-notification path. A notice's key is the output position where its lines end, so the conversation is the ledger of delivered output, and a successor after a planned replacement continues from the last delivered position. Delivery advances only while the chat can take a turn.
+
+Because: A position in the output is a key that a repeated delivery cannot change.
+Not: A separate watch tool, a filter language, a second process registry, a listener that outlives its chat, or tool limits by turn origin.
+
 ## ARCH-TOOLS-033: An explicit timeout is a hard deadline across every transfer
 
 A command's explicit timeout is bounded and starts at launch. It counts only the time that its container is not held for processor time (ARCH-TOOLS-051). It stays the hard deadline after a registry transfer and across a build handover. At expiry it ends the container and publishes only after settlement. Without an explicit timeout, a transfer adds no deadline.
