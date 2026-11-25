@@ -1,5 +1,5 @@
-import type { RuntimeAuthLoginPrompt, RuntimeAuthLoginResult } from "../auth-login-protocol-types.js"
-import type { AuthProviderStatus, RuntimeAuthView } from "../auth-status-protocol-types.js"
+import type { RuntimeAuthLoginPrompt, RuntimeAuthLoginResult } from "../auth/auth-login-protocol-types.js"
+import type { AuthProviderStatus, RuntimeAuthView } from "../auth/auth-status-protocol-types.js"
 
 /** Connecting a provider from a client, step by step.
  *

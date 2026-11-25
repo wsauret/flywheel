@@ -6,9 +6,9 @@
  */
 
 import { expect, test } from "bun:test"
-import { createProjectControlClient } from "../../../../src/orchestration/app-service/project-control-client.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import { createProjectControlClient } from "../../../../src/orchestration/app-service/account/projects/project-control-client.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { recordingAccountService } from "../../../helpers/account-service-state.js"
 import { fixture } from "./_project-control-client-fixture.js"
 
@@ -36,4 +36,23 @@ test("the snapshot answers the account service's report, each report reaches the
   expect(service.listeners.size).toBe(0)
   expect(f.failures).toEqual([])
   await bus.clear()
+})
+
+test("a client's restart readiness and restart reach the account service, never the executor", async () => {
+  const f = fixture()
+  const service = recordingAccountService()
+  const client = createProjectControlClient({ ...f.options, service: service.port })
+
+  expect(await client.query({ type: "restartReadiness" })).toEqual({ kind: "ready", serviceStart: "start-1" })
+  expect(await client.dispatch({ type: "service.restart" })).toEqual({ ok: true })
+  expect(service.restarts).toBe(1)
+
+  const unavailable = { kind: "unavailable", reason: "nothing would start it", serviceStart: "start-1" } as const
+  service.setReadiness(unavailable)
+  expect(await client.query({ type: "restartReadiness" })).toEqual(unavailable)
+  expect(await client.dispatch({ type: "service.restart" })).toEqual({ ok: false, error: "nothing would start it" })
+  expect(service.restarts).toBe(1)
+
+  await client.close()
+  expect(f.failures).toEqual([])
 })

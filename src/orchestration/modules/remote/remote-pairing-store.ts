@@ -1,9 +1,9 @@
-import type { ServeLane } from "../../../infra/cli-subprocess.js";
+import type { ServeLane } from "../../../infra/platform/cli-subprocess.js";
 import { mkdirSync, watch as watchDirectory } from "node:fs";
 import { Redacted, Schema } from "effect";
-import { accountAuthDir, accountSecretFile } from "../../../infra/paths.js";
-import { readLockedJsonStore, mutateLockedJsonStore, type LockedJsonStoreOptions } from "../../../infra/auth/locked-json-store.js";
-import type { AccountProjectRegistry } from "../../app-service/account-project-registry.js";
+import { accountAuthDir, accountSecretFile } from "../../../infra/platform/files/paths.js";
+import { readLockedJsonStore, mutateLockedJsonStore, type LockedJsonStoreOptions } from "../../../infra/providers/auth/store/locked-json-store.js";
+import type { AccountProjectRegistry } from "../../app-service/account/account-project-registry.js";
 import type { RemotePushSubscription } from "../../../protocol/modules/remote.js";
 
 /** The account's remote-access facts: which relay it pairs against, the one

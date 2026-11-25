@@ -1,4 +1,4 @@
-import type { RuntimeAuthView } from "../../../../src/protocol/auth-status-protocol-types.js"
+import type { RuntimeAuthView } from "../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { formatUsd, isDetailWindow, prepaidBalances, sumUsageCoverage, sumUsageTokens, USAGE_CACHE_UNAVAILABLE_REASON, usageCoverageText, usageFraction, usageTokenBreakdown, type UsageAccountSource, type UsageCoverageCounts, type UsageHistorySource, type UsageSpendResult, type UsageTokens } from "../../../../src/protocol/modules/subscription-usage.js"
 
 

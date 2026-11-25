@@ -228,7 +228,7 @@ send_sqlite_workflow_command() {
   while [ "$i" -lt 120 ]; do
     if [ -f "$EVENT_DB" ]; then
       SESSION_ID=$(cd "$PROJECT_DIR" && bun -e '
-        import { openEventSearch } from "./src/infra/event-store-search.ts";
+        import { openEventSearch } from "./src/infra/substrate/store/event-store-search.ts";
         const store = openEventSearch(process.argv[1]);
         const event = store?.scan({ types: ["queue.created"], order: "desc" })[0];
         if (event) console.log(event.sessionId);
@@ -247,7 +247,7 @@ send_sqlite_workflow_command() {
 
 workflow_events_json() {
   (cd "$PROJECT_DIR" && bun -e '
-    import { openEventSearch } from "./src/infra/event-store-search.ts";
+    import { openEventSearch } from "./src/infra/substrate/store/event-store-search.ts";
     const [dbPath, sessionId, ...types] = process.argv.slice(1);
     const store = openEventSearch(dbPath);
     if (!store) process.exit(0);
@@ -259,7 +259,7 @@ workflow_events_json() {
 
 workflow_queue_json() {
   (cd "$PROJECT_DIR" && bun -e '
-    import { openEventSearch } from "./src/infra/event-store-search.ts";
+    import { openEventSearch } from "./src/infra/substrate/store/event-store-search.ts";
     import { loadQueueFromEvents } from "./src/workflows/queue/queue-projection.ts";
     const [dbPath, sessionId] = process.argv.slice(1);
     const store = openEventSearch(dbPath);

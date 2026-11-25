@@ -2,10 +2,10 @@
 // command, the proactive token-cap threshold, and context-overflow recovery.
 // Each one resets the context through applyCompaction after the agent has
 // saved a session checkpoint.
-import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
+import { Log } from "../../../infra/diagnostics/log.js";
 import { applyCompaction, type ApplyCompactionInput, type ApplyCompactionResult } from "./apply.js";
-import type { ConversationMessage } from "../llm/types.js";
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js";
 import type { CompactionAfter } from "../agent-loop-types.js";
 
 const log = Log.create({ service: "agent-loop" });

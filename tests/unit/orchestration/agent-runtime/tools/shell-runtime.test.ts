@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test";
 
-import type { DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
-import { Log } from "../../../../../src/infra/log.js";
-import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
-import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
-import { commandOutputOps, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, streamOf, type OwnedExit } from "./_bash-fixtures.js";
+import type { DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js";
+import { Log } from "../../../../../src/infra/diagnostics/log.js";
+import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
+import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/background-execution/shell-runtime.js";
+import { commandOutputOps, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, streamOf, type OwnedExit } from "./bash/_bash-fixtures.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { processSettled } from "../../../../helpers/process-settled.js";
 
@@ -64,9 +64,9 @@ describe("shell runtime host generation", () => {
 
   it("keeps shell lifecycle implementation behind the runtime boundary", async () => {
     const [bashSource, shellExecutionSource, managedCommandSource] = await Promise.all([
-      Bun.file("src/orchestration/agent-runtime/tools/bash.ts").text(),
-      Bun.file("src/orchestration/agent-runtime/tools/shell-execution.ts").text(),
-      Bun.file("src/orchestration/agent-runtime/tools/managed-command.ts").text(),
+      Bun.file("src/orchestration/agent-runtime/tools/bash/bash.ts").text(),
+      Bun.file("src/orchestration/agent-runtime/tools/bash/execution/shell-execution.ts").text(),
+      Bun.file("src/orchestration/agent-runtime/tools/bash/execution/managed-command.ts").text(),
     ]);
     const executionSource = shellExecutionSource + managedCommandSource;
 
@@ -140,7 +140,7 @@ describe("shell runtime host generation", () => {
     const runtime = createShellRuntime(tasks);
     const owned = makeMockOwnedProcess({
       stdout: streamOf(""),
-      stderr: streamOf("error: Unexpected export\n    at src/infra/process-container.ts:308:1\n"),
+      stderr: streamOf("error: Unexpected export\n    at src/infra/process/container/process-container.ts:308:1\n"),
       exited: Promise.resolve({ code: 1, signal: null, statusOf: "payload", ownership: "surrendered" }),
     });
     const result = await runtime.client.run({

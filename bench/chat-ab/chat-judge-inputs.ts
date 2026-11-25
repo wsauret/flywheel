@@ -1,11 +1,11 @@
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { codingRedaction } from "./block-judge.js";
 import { readCampaignArtifact } from "./campaign-artifacts.js";
 import type { ChatCampaign, ChatOutcome } from "./chat-store.js";
 import { CHAT_AB_JUDGE, type Redaction, type RunInputs } from "./judge-inputs.js";
 import { loadBenchTasks } from "./tasks.js";
 import { TASKS_DIR } from "./harness-paths.js";
-import { detectModelFamily } from "../../src/infra/llm/model-family.js";
+import { detectModelFamily } from "../../src/infra/providers/llm/models/model-family.js";
 import { campaignBlinding } from "./campaign-role-evidence.js";
 import type { CampaignExecutionOutcome } from "./campaign-store.js";
 

@@ -1,12 +1,12 @@
-import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
-import { probeLoopUnit, trackLoopSpan } from "../../../../infra/event-loop-lag.js";
-import { createBackgroundExecutionOwner } from "../../../agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry, type ActiveBackgroundCommandDescriptor } from "../../../agent-runtime/background-work.js";
-import type { CommandHandoverScope } from "../../../agent-runtime/command-handover.js";
-import { emitBackgroundCommandRecorded, emitToolExecutionOutput, emitToolExecutionOutputRecorded } from "../../../agent-runtime/emit.js";
+import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";
+import { probeLoopUnit, trackLoopSpan } from "../../../../infra/diagnostics/event-loop-lag.js";
+import { createBackgroundExecutionOwner } from "../../../agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry, type ActiveBackgroundCommandDescriptor } from "../../../session/control/background-work/background-work.js";
+import type { CommandHandoverScope } from "../../../agent-runtime/background-execution/command-handover.js";
+import { emitBackgroundCommandRecorded, emitToolExecutionOutput, emitToolExecutionOutputRecorded } from "../../../agent-runtime/runner/emit.js";
 import type { ConversationTreeWriterController } from "../../../chat/tree-writer.js";
-import { createBackgroundNotificationDelivery } from "../../../runner/background-notification-delivery.js";
-import type { WorkflowInjectionQueue } from "../../../workflow-host/injection-queue.js";
+import { createBackgroundNotificationDelivery } from "../../../workflow-host/execution/background-notification-delivery.js";
+import type { WorkflowInjectionQueue } from "../../../workflow-host/execution/injection-queue.js";
 
 /** Builds the background execution of one child run (ARCH-SESSIONS-006, ARCH-SESSIONS-010): `owner`, the
  *  owner the child's shell, nested dispatches, and reply waits run in;

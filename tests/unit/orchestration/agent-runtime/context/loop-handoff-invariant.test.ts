@@ -2,19 +2,20 @@ import { describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { type InputSource, messageInput } from "../../../../../src/infra/agent-loop-events.js";
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
+import { type InputSource, messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { assemblyPinned, RequestToolMap, testBaseTools } from "../../../../helpers/request-tool-surface.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/injection-queue.js";
-import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
-import { createWorkflowLoopObservers } from "../../../../../src/orchestration/workflow-host/loop-observers.js";
-import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/execution/injection-queue.js";
+import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js";
+import { createWorkflowLoopObservers } from "../../../../../src/orchestration/workflow-host/execution/loop-observers.js";
+import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
 import { makeCaptureClient, makeFakeLLMClient } from "./_loop-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
+import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
 
 const loopIdentity = { userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", providerSessionKey: "handoff-invariant", promptCacheKey: "handoff-invariant", artifactScopeId: "handoff-invariant", retrievalSessionId: "handoff-invariant" };

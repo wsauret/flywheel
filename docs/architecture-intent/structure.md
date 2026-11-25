@@ -10,6 +10,14 @@ Source layers depend one way: infra, then protocol, then workflows, then orchest
 
 Sibling modules do not depend on each other in a circle through runtime references. A runtime read of a type's fields counts, and a reference that exists only in types does not. A module keeps its fields to itself and changes them only through its own methods. A module shows a narrow interface over the work it hides.
 
+## ARCH-STRUCTURE-046: Orchestration subsystems depend in one order
+
+The orchestration subsystems depend in this order, each only on the subsystems before it: config, session, agent-runtime, auth, session-store, chat, workflow-host, workspace-state. The conversation message model lives in the conversation area of infra, below session and agent-runtime.
+
+Because: A search over every order of these subsystems found that this order reverses the fewest files, so each cut moves the least code.
+
+Not: A shared kernel directory that every subsystem imports, which hides the circle instead of removing it.
+
 ## ARCH-STRUCTURE-043: The source tree holds the binary, and other hosts are workspace members
 
 The source tree holds the runtime and the terminal client, which compile into the Flywheel binary. A host that runs on another platform is its own workspace member beside the source tree, with its own runtime types, dependencies, and deploy. These hosts are the web client in a browser, the editor extension in the editor, the desktop app in its native window, and the relay service with its hosted phone page.

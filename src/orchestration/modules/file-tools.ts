@@ -1,10 +1,10 @@
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
-import { applyPatchDefinition } from "../agent-runtime/tools/apply-patch.js"
-import { editDefinition } from "../agent-runtime/tools/edit.js"
-import { readDefinition, wholeFileReadDefinition } from "../agent-runtime/tools/read.js"
-import { writeDefinition } from "../agent-runtime/tools/write.js"
-import type { FirstPartyModule } from "../modules.js"
+import type { ToolDeclaration } from "../module-contract/module-seams.js"
+import { applyPatchDefinition } from "../agent-runtime/tools/edit/apply-patch.js"
+import { editDefinition } from "../agent-runtime/tools/edit/edit.js"
+import { readDefinition, wholeFileReadDefinition } from "../agent-runtime/tools/read/read.js"
+import { writeDefinition } from "../agent-runtime/tools/edit/write.js"
+import type { FirstPartyModule } from "../module-contract/module-catalog.js"
 
 function policy(tool: RuntimeTool, order: number): Omit<ToolDeclaration, "registrations"> {
   return {

@@ -1,24 +1,24 @@
 import { describe, expect, it } from "bun:test";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
+import type { ModelFamily } from "../../../../src/infra/providers/llm/models/model-family.js";
 import { parseSchema } from "../../../helpers/schema-assertions.js";
-import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema/schema.js";
 import {
   listModelAssignments,
   listModelOptionsForSlot,
   listEffortOptionsForSlot,
   normalizeAssignmentPatch,
-} from "../../../../src/orchestration/config/model-assignments.js";
-import { createModelAssignmentController } from "../../../../src/orchestration/config/model-assignment-controller.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
+} from "../../../../src/orchestration/config/models/model-assignments.js";
+import { createModelAssignmentController } from "../../../../src/orchestration/config/models/model-assignment-controller.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
 import { USER_DATA_ROOT, withTempDir, NO_CREDENTIALS } from "./_config-models-fixtures.js";
 
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
-import { saveModelAssignment } from "../../../../src/orchestration/config/model-selection.js";
+import { saveModelAssignment } from "../../../../src/orchestration/config/models/model-selection.js";
 // Role defaults resolve only for listed models, so the listing must contain
 // the current candidates (role-model-defaults.ts).
 const availableModels = new Map<ModelFamily, ReadonlySet<string>>([

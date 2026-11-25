@@ -2,7 +2,7 @@ import { describe, expect, test, afterEach, beforeEach } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { limitOutput } from "../../../../../src/orchestration/agent-runtime/compaction/truncation.js";
+import { limitOutput } from "../../../../../src/orchestration/agent-runtime/tools/results/truncation.js";
 import { Effect } from "effect";
 import { codeModeServices, codeToolOver } from "../../../../helpers/code-mode-worker.js";
 

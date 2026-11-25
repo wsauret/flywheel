@@ -29,7 +29,7 @@ describe("provider model literal policy", () => {
         "export const supports = (modelId: string) => MODEL_ALLOWLIST.includes(modelId)",
         "export const protocol = (modelId: string) => modelId.startsWith('claude-') ? 'anthropic' : 'openai'",
       ].join("\n"),
-      "src/infra/llm/example-routing.ts": [
+      "src/infra/providers/llm/example-routing.ts": [
         "const modelFamilyPatterns = [{ family: 'openai', pattern: /^gpt-/i }]",
         "const route = MODEL_ID.toLowerCase().match(/^claude-/) ? 'anthropic' : 'openai'",
       ].join("\n"),
@@ -51,13 +51,13 @@ describe("provider model literal policy", () => {
         "const identity = wireModelId.endsWith(':free') ? 'free' : 'default' // provider-model-literal-allow: identity -- provider catalog grammar",
       ].join("\n"),
       "src/orchestration/config/custom-provider.ts": "const models = config.models",
-      "src/infra/llm/models-bundled.txt": "example:model-a",
+      "src/infra/providers/llm/models/models-bundled.txt": "example:model-a",
     })).toEqual([]);
   });
 
   it("catches authority rules beside an annotated payload operation", async () => {
     const violations = await check({
-      "src/orchestration/custom-provider-modules.ts": [
+      "src/orchestration/config/custom-provider-modules.ts": [
         "const payload = modelId === 'o3' ? {} : {} // provider-model-literal-allow: payload -- wire payload compatibility",
         "const route = modelId.startsWith('claude-') ? 'anthropic' : 'openai'",
       ].join("\n"),

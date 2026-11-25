@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
-import { loadTreeSitterParser } from "../../../src/infra/tree-sitter-parser.js"
+import { loadTreeSitterParser } from "../../../src/infra/parsing/tree-sitter-parser.js"
 import {
   findWorkerOwnershipViolations,
   type WorkerOwnershipViolation,
@@ -59,7 +59,7 @@ describe("check-worker-ownership", () => {
 
   test("rejects raw Worker construction outside exact authority sites", async () => {
     const violations = await withRepo({
-      "src/infra/bounded-worker-spawner.ts": [
+      "src/infra/process/workers/bounded-worker-spawner.ts": [
         "function createBoundedWorkerSpawner() {",
         "  new globalThis.Worker(url)",
         "}",
@@ -77,7 +77,7 @@ describe("check-worker-ownership", () => {
 
     expect(rules(violations)).toEqual([
       "scripts/release-worker.ts:1 no-raw-worker",
-      "src/infra/bounded-worker-spawner.ts:5 no-raw-worker",
+      "src/infra/process/workers/bounded-worker-spawner.ts:5 no-raw-worker",
       "src/orchestration/domain.ts:2 no-raw-worker",
       "src/orchestration/domain.ts:3 no-raw-worker",
     ])
@@ -85,7 +85,7 @@ describe("check-worker-ownership", () => {
 
   test("rejects extra Worker construction inside the authority", async () => {
     const violations = await withRepo({
-      "src/infra/bounded-worker-spawner.ts": [
+      "src/infra/process/workers/bounded-worker-spawner.ts": [
         "function createBoundedWorkerSpawner() {",
         "  new globalThis.Worker(url)",
         "  new globalThis.Worker(url)",
@@ -95,13 +95,13 @@ describe("check-worker-ownership", () => {
     })
 
     expect(rules(violations)).toEqual([
-      "src/infra/bounded-worker-spawner.ts:3 no-raw-worker",
+      "src/infra/process/workers/bounded-worker-spawner.ts:3 no-raw-worker",
     ])
   })
 
   test("rejects a missing Worker authority constructor", async () => {
     const violations = await withRepo({
-      "src/infra/bounded-worker-spawner.ts": "function createBoundedWorkerSpawner() { new globalThis.Worker(url) }\n",
+      "src/infra/process/workers/bounded-worker-spawner.ts": "function createBoundedWorkerSpawner() { new globalThis.Worker(url) }\n",
     })
 
     expect(violations.map(({ rule, detail }) => `${rule}:${detail}`)).toEqual([
@@ -144,7 +144,7 @@ describe("check-worker-ownership", () => {
 
   test("rejects unknown, dynamic, misplaced, and duplicate Worker roles", async () => {
     const violations = await withRepo({
-      "src/orchestration/app-service/runtime-maintenance-owner.ts": [
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts": [
         "function runMaintenanceWorkerJob() {",
         "  createBoundedWorkerSpawner(\"runtime-maintenance\")",
         "  createBoundedWorkerSpawner(\"runtime-maintenance\")",
@@ -158,7 +158,7 @@ describe("check-worker-ownership", () => {
     })
 
     expect(rules(violations)).toEqual([
-      "src/orchestration/app-service/runtime-maintenance-owner.ts:3 unapproved-worker-owner",
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts:3 unapproved-worker-owner",
       "src/orchestration/domain.ts:1 unapproved-worker-owner",
       "src/orchestration/domain.ts:2 unknown-worker-role",
       "src/orchestration/domain.ts:3 unknown-worker-role",
@@ -168,8 +168,8 @@ describe("check-worker-ownership", () => {
   test("rejects imported, namespace, and local Worker allocator aliases", async () => {
     const violations = await withRepo({
       "src/orchestration/domain.ts": [
-        "import { createBoundedWorkerSpawner as importedAllocate } from '../infra/bounded-worker-spawner.js'",
-        "import * as spawners from '../infra/bounded-worker-spawner.js'",
+        "import { createBoundedWorkerSpawner as importedAllocate } from '../infra/process/workers/bounded-worker-spawner.js'",
+        "import * as spawners from '../infra/process/workers/bounded-worker-spawner.js'",
         "const allocate = createBoundedWorkerSpawner",
         "const allocateAgain = allocate",
         "importedAllocate('made-up-worker')",
@@ -189,7 +189,7 @@ describe("check-worker-ownership", () => {
 
   test("permits only the reviewed number of MessageChannels in each owner", async () => {
     const violations = await withRepo({
-      "src/orchestration/app-service/runtime-maintenance-owner.ts": [
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts": [
         "function runMaintenanceWorkerJob() {",
         "  new MessageChannel()",
         "  new MessageChannel()",
@@ -201,20 +201,20 @@ describe("check-worker-ownership", () => {
     })
 
     expect(rules(violations)).toEqual([
-      "src/orchestration/app-service/runtime-maintenance-owner.ts:4 unowned-message-channel",
-      "src/orchestration/app-service/runtime-maintenance-owner.ts:6 unowned-message-channel",
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts:4 unowned-message-channel",
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts:6 unowned-message-channel",
       "src/orchestration/domain.ts:1 unowned-message-channel",
     ])
   })
 
   test("permits the reviewed project state owner only", async () => {
     const violations = await withRepo({
-      "src/infra/bounded-worker-spawner.ts": `
+      "src/infra/process/workers/bounded-worker-spawner.ts": `
         export const WORKER_GENERATION_BUDGETS = { "project-state": 3 }
         export function createBoundedWorkerSpawner() { return new Worker("x") }
         function createEmbeddedWorkerSpawner() { return new Worker("x") }
       `,
-      "src/orchestration/app-service/project-state-worker-spawner.ts": `
+      "src/orchestration/app-service/project-state/project-state-worker-spawner.ts": `
         import { createBoundedWorkerSpawner } from "../../infra/bounded-worker-spawner"
         export function spawnProjectStateWorker() {
           const spawn = createBoundedWorkerSpawner("project-state")

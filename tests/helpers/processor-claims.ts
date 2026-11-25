@@ -1,4 +1,4 @@
-import type { ProcessorClaims } from "../../src/orchestration/agent-runtime/tools/processor-claims.js"
+import type { ProcessorClaims } from "../../src/orchestration/agent-runtime/tools/bash/execution/processor-claims.js"
 
 let instances = 0
 
@@ -8,6 +8,6 @@ let instances = 0
  *  shared with another case or with this process's own registry. */
 export async function freshProcessorClaims(): Promise<ProcessorClaims> {
   instances += 1
-  const module: typeof import("../../src/orchestration/agent-runtime/tools/processor-claims.js") = await import(`../../src/orchestration/agent-runtime/tools/processor-claims.js?executor=${instances}`)
+  const module: typeof import("../../src/orchestration/agent-runtime/tools/bash/execution/processor-claims.js") = await import(`../../src/orchestration/agent-runtime/tools/bash/execution/processor-claims.js?executor=${instances}`)
   return module.sharedProcessorClaims()
 }

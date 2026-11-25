@@ -2,21 +2,21 @@ import { afterAll, afterEach, describe, expect, test } from "bun:test"
 import * as fs from "node:fs"
 import * as path from "node:path"
 
-import { readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
-import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
-import { openContainedDirectory } from "../../../src/infra/descriptor-directory.js"
-import { FLYWHEEL_DIR_NAME } from "../../../src/infra/directory-authorities.js"
-import { registerSharedHolderIn, releaseSharedHolderIn, sharedHoldersIn } from "../../../src/infra/ownership-file-lock.js"
-import { accountServeRecordPath, LOG_DIR } from "../../../src/infra/paths.js"
-import type { RuntimeClient } from "../../../src/protocol/app-service-types.js"
+import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-identity-record.js"
+import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
+import { openContainedDirectory } from "../../../src/infra/platform/files/descriptor-directory.js"
+import { FLYWHEEL_DIR_NAME } from "../../../src/infra/platform/files/directory-authorities.js"
+import { registerSharedHolderIn, releaseSharedHolderIn, sharedHoldersIn } from "../../../src/infra/process/locks/ownership-file-lock.js"
+import { accountServeRecordPath, LOG_DIR } from "../../../src/infra/platform/files/paths.js"
+import type { RuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"
 import { attachAccountProject, joinIsolatedAccountService } from "./_account-service.js"
-import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
+import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state/workspace-state.js"
 import { loadSubagentRunsFromEvents, SUBAGENT_RUN_FACT_TYPES } from "../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import { TASKS, toolResult } from "./_replacement-provider.js"
 import { answerChoice, childOf, createReplacementHarness, LANE, launchWorkflow, openChat, parentCard, sessionRow, sessionStatus, startHeldChat, systemRows, until, workflowMember, workflowParent, workflowState } from "./_replacement-harness.js"
 
 const harness = createReplacementHarness("replacement-continuation")
-const { tmp: TMP, accountHome, userDataRoot, provider, makeProject, setInstalledBuild, requestCutover, serviceListening, stopAccountService, killAccountServiceUncleanly, startSuccessor, replace, continuationRows, allContinuationSessions, handoverSessions, entriesCarrying, conversationEntryIds, handoffRows, lockStore, useChatModel } = harness
+const { tmp: TMP, accountHome, userDataRoot, provider, makeProject, setInstalledBuild, requestCutover, serviceListening, stopAccountService, killAccountServiceUncleanly, startSuccessor, replace, continuationRows, allContinuationSessions, handoverSessions, entriesCarrying, conversationEntryIds, handoffRows, lockStore, useChatModel, toolUseIdFor } = harness
 const SERVING_GATE = `project-serving.${LANE}.lock`
 
 /** Whether the child's latest run completed after exactly one resume, read
@@ -249,10 +249,11 @@ describe("planned interruption and automatic continuation", () => {
     try {
       // The question is still open, unanswered, and the person's answer
       // continues the turn with no Resume.
-      const asked = await until("question still open", async () => (await secondA.client.query({ type: "questionSnapshot", sessionIds: [sessions.ask] })).views[0]?.view ?? null, (view) => view?.toolUseId === "ask-1")
+      const question = toolUseIdFor(projectA, sessions.ask, "ask-1")
+      const asked = await until("question still open", async () => (await secondA.client.query({ type: "questionSnapshot", sessionIds: [sessions.ask] })).views[0]?.view ?? null, (view) => view?.toolUseId === question)
       expect(asked?.answers).toBeUndefined()
       expect(provider.trace("ask").requests).toBe(1)
-      expect(await answerChoice(secondA.client, sessions.ask, "ask-1", "Yes")).toMatchObject({ ok: true })
+      expect(await answerChoice(secondA.client, sessions.ask, question, "Yes")).toMatchObject({ ok: true })
       await until("the answer continued the turn", async () => provider.trace("ask").requests, (count) => count === 2)
       expect(toolResult(JSON.parse(provider.trace("ask").lastBody ?? "null"), "ask-1")).toContain("Yes")
       // The request the answer continued carries no turn-end record: none was

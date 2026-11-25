@@ -4,15 +4,15 @@ import * as path from "node:path"
 
 import { FFIType } from "bun:ffi"
 
-import { readOutcomeRecord, type OutcomeRecordRead } from "../../../src/infra/command-handover.js"
-import { bindLibc } from "../../../src/infra/libc.js"
-import { accountServeDir } from "../../../src/infra/paths.js"
+import { readOutcomeRecord, type OutcomeRecordRead } from "../../../src/infra/supervision/launch/command-handover.js"
+import { bindLibc } from "../../../src/infra/platform/libc.js"
+import { accountServeDir } from "../../../src/infra/platform/files/paths.js"
 import { createLauncherScope, createProcessSupervisor, guardianCommand, type ProcessSupervisor } from "../../../src/infra/process-supervisor.js"
 import { createRealProcessFixture, processAlive, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 import { socketTemporaryRoot } from "../../helpers/directories.js"
 
 const SUPERVISOR_MODULE = new URL("../../../src/infra/process-supervisor.ts", import.meta.url).href
-const HANDOVER_MODULE = new URL("../../../src/infra/command-handover.ts", import.meta.url).href
+const HANDOVER_MODULE = new URL("../../../src/infra/supervision/launch/command-handover.ts", import.meta.url).href
 
 /** The account whose service directory holds each handed-over command's
  *  channel. A Unix socket path is bounded (104 bytes on macOS), and the

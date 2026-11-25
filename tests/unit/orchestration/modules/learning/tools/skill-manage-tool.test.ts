@@ -2,20 +2,20 @@ import { Schema } from "effect";
 import { beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import type { SessionNoticeOperation } from "../../../../../../src/infra/session-notice.js";
-import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
-import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evidence-schema.js";
-import { readSessionContentRange, type SessionContentNode } from "../../../../../../src/infra/session-content.js";
-import { resolveToolRowPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js";
+import type { SessionNoticeOperation } from "../../../../../../src/infra/substrate/events/session-notice.js";
+import { readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js";
+import { MutationEvidenceSchema } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence-schema.js";
+import { readSessionContentRange, type SessionContentNode } from "../../../../../../src/infra/substrate/session-content.js";
+import { resolveToolRowPresentation } from "../../../../../../src/infra/substrate/output/tools/tool-display-registry.js";
 import { createSkillManageTool, type SkillManageToolDeps } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { CapabilityAccess, DispatchedToolContext, RuntimeTool } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { requestAdmission } from "../../../../../helpers/request-tool-surface.js";
-import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
+import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { capabilityAccessHolding, makeContext as makeToolContext, testGrant } from "../../../agent-runtime/tools/_fixtures.js";
-import { publishSkillRevision } from "../../../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
-import { parseSkillFact } from "../../../../../../src/workflows/skill-facts.js";
+import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
+import { parseSkillFact } from "../../../../../../src/workflows/skills/skill-facts.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 
@@ -40,7 +40,7 @@ function registry() {
   return publishSkillRevision(1, load.skills);
 }
 
-function verifiedCandidate(candidate: import("../../../../../../src/orchestration/agent-runtime/review-types.js").PreparedPackage, revision = registry()) {
+function verifiedCandidate(candidate: import("../../../../../../src/orchestration/agent-runtime/request/module-services/review-types.js").PreparedPackage, revision = registry()) {
   return Promise.resolve({
     kind: "verified" as const,
     evidence: {
@@ -231,7 +231,7 @@ describe("skill_manage review-origin facts", () => {
   });
 
   it("supplies the exact prepared candidate before publication", async () => {
-    let candidate: import("../../../../../../src/orchestration/agent-runtime/review-types.js").PreparedPackage | undefined;
+    let candidate: import("../../../../../../src/orchestration/agent-runtime/request/module-services/review-types.js").PreparedPackage | undefined;
     let existedDuringCallback = true;
     const tool = createSkillManageTool({
       origin: { kind: "review", reviewRunId: "rev-9", loadedSkillIds: new Set() },

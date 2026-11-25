@@ -1,21 +1,21 @@
-import { readCapturedFacts } from "../../../../infra/event-store-types.js"
-import type { RecallInput, RecallResult } from "../../../../protocol/conversation-recall.js"
+import { readCapturedFacts } from "../../../../infra/substrate/store/event-store-types.js"
+import type { RecallInput, RecallResult } from "../../../../protocol/transcript/conversation-recall.js"
 import type { SessionManager } from "../../../session/manager.js"
-import { prepareSessionFactAppend } from "../../../session/session-fact-writer.js"
-import { acquireChildExecutionResources } from "../../../session/child-execution-resources.js"
-import { errorMessage } from "../../../../infra/error-message.js"
-import { Log } from "../../../../infra/log.js"
+import { prepareSessionFactAppend } from "../../../session/persistence/session-fact-writer.js"
+import { acquireChildExecutionResources } from "../../../chat/children/child-execution-resources.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
 // oxlint-disable-next-line import/no-cycle -- the module authority schedules the kernel cross-session publication.
-import { reconcileChildSessionCompletions } from "../../../session/child-session-reconciliation.js"
+import { reconcileChildSessionCompletions } from "../../../session/control/children/child-session-reconciliation.js"
 import type { HeldBackgroundNotification } from "../../../session/conversation/queued-background-notifications.js"
 import { readSubagentRuns } from "../history/subagent-run-projection.js"
 import { buildSubagentCompleted, buildSubagentResumed } from "../history/subagent-run-fact-writers.js"
-import { buildSessionMetadataAppend } from "../../../session/session-metadata-store.js"
-import { liveChildRun, registerLiveSessionControl } from "../../../session/live-session-control.js"
-import { settleUnreadMessages, wakeAfterSettlement } from "../../../session/session-input-delivery.js"
+import { buildSessionMetadataAppend } from "../../../session/metadata/catalog/session-metadata-store.js"
+import { liveChildRun, registerLiveSessionControl } from "../../../session/control/live-session-control.js"
+import { settleUnreadMessages, wakeAfterSettlement } from "../../../session/control/messaging/session-input-delivery.js"
 // oxlint-disable-next-line import/no-cycle -- planned continuation is a kernel authorization consumed by the module run owner.
-import { preparePlannedSessionContinuationConsumption, readPlannedSessionContinuationAsync } from "../../../session/planned-session-continuation.js"
-import type { AttachChildSessionProjection, ChildSessionAuthority, SessionStorePorts } from "../../../module-seams.js"
+import { preparePlannedSessionContinuationConsumption, readPlannedSessionContinuationAsync } from "../../../session/control/planned-session-continuation.js"
+import type { AttachChildSessionProjection, ChildSessionAuthority, SessionStorePorts } from "../../../module-contract/module-seams.js"
 
 const log = Log.create({ service: "subagent-session-authority" })
 export function createSubagentSessionAuthority(input: SessionStorePorts & {
@@ -24,8 +24,8 @@ export function createSubagentSessionAuthority(input: SessionStorePorts & {
   readonly attachProjection?: AttachChildSessionProjection
 }): ChildSessionAuthority {
   const pendingReconciliations = new Set<Promise<void>>()
-  const resolveRoles = async (sessionId: string, capture?: import("../../../agent-runtime/factory.js").ProviderConnectionCapture) => {
-    const { createSessionRoleResolver } = await import("../../../config/session-role-resolver.js")
+  const resolveRoles = async (sessionId: string, capture?: import("../../../agent-runtime/request/model-runtime-capture.js").ProviderConnectionCapture) => {
+    const { createSessionRoleResolver } = await import("../../../agent-runtime/request/roles/session-roles.js")
     return createSessionRoleResolver({ reader: input.projectionReader, projectRoot: input.projectRoot, sessionId })(capture)
   }
   const openExecution = async (publication: Omit<Parameters<ChildSessionAuthority["publish"]>[0], "runBinding" | "forkHistory" | "assignment">) => {
@@ -43,7 +43,7 @@ export function createSubagentSessionAuthority(input: SessionStorePorts & {
     })
     return {
       ...resources,
-      resolveRoles: (capture?: import("../../../agent-runtime/factory.js").ProviderConnectionCapture) => resolveRoles(publication.childSessionId, capture),
+      resolveRoles: (capture?: import("../../../agent-runtime/request/model-runtime-capture.js").ProviderConnectionCapture) => resolveRoles(publication.childSessionId, capture),
     }
   }
   const scheduleParentReconciliation = (

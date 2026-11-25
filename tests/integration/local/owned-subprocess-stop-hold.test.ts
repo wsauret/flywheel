@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { rmSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
-import { onTermination } from "../../../src/infra/process-container.js"
+import { onTermination } from "../../../src/infra/process/container/process-container.js"
 import { createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js"
 import { payloadThatRunsForever } from "../../helpers/payload.js"
 import { createRealProcessFixture, processAlive, type RealProcessFixture } from "../../helpers/real-process-fixture.js"

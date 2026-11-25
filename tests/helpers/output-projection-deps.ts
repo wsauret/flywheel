@@ -1,4 +1,4 @@
-import type { OutputProjectionDeps } from "../../src/orchestration/app-service/output-projection.js"
+import type { OutputProjectionDeps } from "../../src/orchestration/app-service/projections/output/output-projection.js"
 
 /** The output projection's collaborators that a test does not exercise, each
  *  quiet: a block projects to itself, no fact is stored, no continuation

@@ -1,15 +1,15 @@
-import type { AnyBlock } from "../../infra/output-blocks.js"
-import type { CapabilityCheck } from "../../infra/capability-text.js"
-import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
-import type { Runner } from "../runner/types.js"
-import type { AgentInputAnswers } from "../../protocol/question-protocol-types.js"
-import type { ModuleRuntimes } from "../../infra/module-runtime.js"
+import type { CapabilityCheck } from "../../infra/definitions/capability-text.js"
+import type { ChatInput, ChatInputLike } from "../../infra/substrate/events/chat-input.js"
+import type { Runner } from "../agent-runtime/runner/runner-types.js"
+import type { AgentInputAnswers } from "../../protocol/session/question-protocol-types.js"
+import type { ModuleRuntimes } from "../../infra/definitions/modules/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
 import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
-import type { HeldRetainedOperation } from "../module-seams.js"
-import type { DeliveryOutcome, LiveRecipientState } from "../session/live-session-control.js"
-import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import type { HeldRetainedOperation } from "../module-contract/module-seams.js"
+import type { DeliveryOutcome, LiveRecipientState } from "../session/message-disposition.js"
+import type { BackgroundWorkTracking } from "../session/control/background-work/background-work.js"
 import type { ChatTurnEnding } from "./runner-completion.js"
+import type { PooledRunner } from "../session-store/types.js"
 
 /** What a person's message to a chat came to. `recorded` is a message the
  *  conversation already held under its submission identity: a client sent it
@@ -17,7 +17,17 @@ import type { ChatTurnEnding } from "./runner-completion.js"
  *  `ended` is a chat, or its one-shot invocation, that takes no more input. */
 export type ChatSendResult = "accepted" | "recorded" | "ended"
 
-export interface ChatRunner extends Runner {
+export interface ChatRunner extends Runner, PooledRunner {
+  /** Cuts the running turn and any running tool call and hands the turn to
+   *  the person: the one resumable cut. False when nothing runs. */
+  interrupt(): boolean
+  /** Continues the interrupted turn or step from where it stopped, with no
+   *  new message; false when nothing is interrupted or the runner ended.
+   *  `announce` is false after a planned replacement's unseen cut, so the
+   *  continuation shows no Resumed row either. */
+  resume(options: { readonly announce: boolean }): boolean
+  /** Fire the combined learning review immediately (the /learn command). */
+  learn?(): boolean
   /** Session resources available from attachment until awaited disposal. */
   readonly chatModuleHosts: ModuleRuntimes
   onModuleRuntimesChange?(listener: (modules: ModuleRuntimes) => void): () => void
@@ -43,6 +53,8 @@ export interface ChatRunner extends Runner {
   /** Admit already-durable module work to this runner's ordinary save point. */
   acceptRetainedOperation?(operation: HeldRetainedOperation): Promise<void>
   deliverBackgroundNotification(notification: HeldBackgroundNotification): Promise<boolean>
+  /** Runs one message with one-shot request context. False when the runner
+   *  refuses it, also while a question waits for the person. */
   requestWithContext(input: ChatInputLike, context: string): boolean
   /** The module runtimes the current runner generation was assembled with;
    *  absent on a runner that has not assembled one. A command handler reads
@@ -104,11 +116,12 @@ export interface ChatRunner extends Runner {
    *  has settled, and never rejects: what it cannot adopt is left for a later
    *  host. Every turn waits for it before its first model request. */
   adoptHandedOver(): Promise<void>
-  /** Seed the display blocks the store accumulated before attach, whose first
-   *  block sits at absolute index `sequenceStart`. The store's
-   *  attachChatRunner calls this in the same synchronous frame that makes the
-   *  runner the block authority, so no pre-runner append can fall between the
-   *  capture and the handoff. */
-  seedDisplayBlocks(blocks: readonly AnyBlock[], sequenceStart: number): void
+  /** When a question waits for the person, takes the input held behind it
+   *  in the conversation's durable holds into this runner's queue in the
+   *  order it arrived, where a recall can take a person's message back.
+   *  The attach runs it before the runner takes any input; it opens the
+   *  conversation writer, so the runner's question gates decide in their
+   *  caller's tick. */
+  adoptHeldInput(): Promise<void>
   publishCommittedNotice?(notice: { readonly id: string; readonly message: string; readonly timestamp: number }): void
 }

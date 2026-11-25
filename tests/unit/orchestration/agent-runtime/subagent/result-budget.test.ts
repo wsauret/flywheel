@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { agentResultSummary } from "../../../../../src/infra/output/structured-event-tool-results.js";
+import { agentResultSummary } from "../../../../../src/infra/substrate/output/projector/structured-event-tool-results.js";
 import {
   boundHandoff,
   resultCharBudget,
   type ResultBudget,
-} from "../../../../../src/orchestration/modules/subagents/execution/result-budget.js";
+} from "../../../../../src/orchestration/modules/subagents/execution/result/result-budget.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();

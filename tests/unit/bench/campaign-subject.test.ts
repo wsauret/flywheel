@@ -4,7 +4,7 @@ import { chmod, realpath, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { captureCampaignEventSearch, resolveCampaignSubject } from "../../../bench/chat-ab/campaign-subject.js";
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js";
-import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js";
 import { challengeConversationEvidence } from "../../../bench/chat-ab/challenge-reply.js";

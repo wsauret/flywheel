@@ -1,19 +1,19 @@
 import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
-import type { ProjectDirectories } from "../../../../infra/directory-authorities.js"
-import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
-import { factRowsChanged } from "../../../../infra/sqlite-event-store-core.js"
-import { Log } from "../../../../infra/log.js"
-import { isRecord } from "../../../../infra/record.js"
-import { parseHistoricalWorkflowControlV2 } from "../../../../workflows/vm/historical-codecs.js"
-import { DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID } from "../../../../workflows/vm/definition-identity.js"
+import type { ProjectDirectories } from "../../../../infra/platform/files/directory-authorities.js"
+import { admitPrivateDatabaseFiles } from "../../../../infra/platform/files/private-path.js"
+import { factRowsChanged } from "../../../../infra/substrate/store/sqlite-event-store-core.js"
+import { Log } from "../../../../infra/diagnostics/log.js"
+import { isRecord } from "../../../../infra/guards/record.js"
+import { parseHistoricalWorkflowControlV2 } from "../../../../workflows/control-facts/historical-codecs.js"
+import { DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID } from "../../../../workflows/control-facts/definition-identity.js"
 import {
   normalizeLegacyIdentityMembers,
   selectAdoptionCandidates,
   recordSkippedWorkflowMigrationCandidate,
   type AdoptionCandidate,
 } from "./workflow-identity-chain.js"
-import { migrationRecorded, recordMigration, requirePlannedScope, tableExists } from "../../../migrations/engine.js"
+import { migrationRecorded, recordMigration, requirePlannedScope, tableExists } from "../../../workspace-state/migrations/engine.js"
 
 interface UnknownRecord {
   [key: string]: unknown

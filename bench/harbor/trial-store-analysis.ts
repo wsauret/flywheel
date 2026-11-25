@@ -2,18 +2,18 @@ import { Database } from "bun:sqlite"
 import { Schema } from "effect"
 import { createHash } from "node:crypto"
 import { closeSync, constants, fstatSync, openSync, readSync, type Stats } from "node:fs"
-import type { EventStoreReadSurface, StoredFact } from "../../src/infra/event-store-types.js"
-import { SESSION_RUNTIME_FACT_DEFINITIONS, TOOL_CONTENT_REFERENCE_FACT_DEFINITIONS } from "../../src/infra/runtime-fact-types.js"
-import { createSqliteEventReadSurface } from "../../src/infra/sqlite-event-read-surface.js"
-import { MAX_CONTENT_FILTER_RETRIES } from "../../src/orchestration/agent-runtime/agent-loop-content-filter.js"
-import { usageEntriesFromFacts } from "../../src/orchestration/session/durable-usage.js"
-import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/provider-request-audit-projection.js"
-import { reconstructProviderRequestPrompt } from "../../src/orchestration/session/provider-request-audit-reconstruction.js"
-import { ProviderRequestOutcomeSchema, type ProviderRequestAuditEntry, type ProviderRequestOutcome } from "../../src/orchestration/session/provider-request-audit-types.js"
+import type { EventStoreReadSurface, StoredFact } from "../../src/infra/substrate/store/event-store-types.js"
+import { SESSION_RUNTIME_FACT_DEFINITIONS, TOOL_CONTENT_REFERENCE_FACT_DEFINITIONS } from "../../src/infra/substrate/runtime-facts/runtime-fact-types.js"
+import { createSqliteEventReadSurface } from "../../src/infra/substrate/store/sqlite-event-read-surface.js"
+import { MAX_CONTENT_FILTER_RETRIES } from "../../src/orchestration/agent-runtime/loop/turn/agent-loop-content-filter.js"
+import { usageEntriesFromFacts } from "../../src/orchestration/session/runtime-facts/durable-usage.js"
+import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/diagnostics/provider-request-audit-projection.js"
+import { reconstructProviderRequestPrompt } from "../../src/orchestration/agent-runtime/loop/provider-request-audit-reconstruction.js"
+import { ProviderRequestOutcomeSchema, type ProviderRequestAuditEntry, type ProviderRequestOutcome } from "../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 // Prompt reconstruction reads the installed module catalog to label the hidden
 // entries that each module wrote, such as the Claude engine's reminders. As in
 // a release, loading the module registry publishes the shipped catalog.
-import "../../src/orchestration/modules.js"
+import "../../scripts/shipped-modules.js"
 
 /** The analysis of one Harbor trial store. Every trial runs the bundle of this
  *  file inside its sandbox through the packaged Flywheel executable, with

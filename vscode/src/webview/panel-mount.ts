@@ -1,12 +1,12 @@
 import { randomBytes } from "node:crypto"
 import * as vscode from "vscode"
 
-import type { ClientBundle } from "../../../src/protocol/account-attach.js"
-import type { CapabilityRequest, HostMessage, ViewMessage } from "../../../src/protocol/client/editor-host.js"
-import { HOST_CONTRACT_VERSION, type ChangesReviewTarget, type ClientSummary } from "../../../src/protocol/client/host-contract.js"
+import type { ClientBundle } from "../../../src/protocol/runtime/account-attach.js"
+import type { CapabilityRequest, HostMessage, ViewMessage } from "../../../src/protocol/client/host/editor-host.js"
+import { HOST_CONTRACT_VERSION, type ChangesReviewTarget, type ClientSummary } from "../../../src/protocol/client/host/host-contract.js"
 import { resolveContainedPath } from "../runtime/contained-path.js"
-import { resolveEditorClient } from "../runtime/editor-client.js"
-import type { RuntimeSocketTarget } from "../runtime/node-socket.js"
+import { resolveEditorClient } from "../runtime/connection/editor-client.js"
+import type { RuntimeSocketTarget } from "../runtime/connection/node-socket.js"
 import { SocketBridge } from "./socket-bridge.js"
 import { statusPage, statusPageHtml, type PageActionId, type StatusPage } from "./status-page.js"
 

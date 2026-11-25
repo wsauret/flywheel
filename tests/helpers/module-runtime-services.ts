@@ -1,8 +1,8 @@
-import { NO_MODULE_SERVICES } from "../../src/infra/module-service.js"
-import { createChildSlotRegistry } from "../../src/orchestration/agent-runtime/child-slot-registry.js"
+import { NO_MODULE_SERVICES } from "../../src/infra/definitions/modules/module-service.js"
+import { createChildSlotRegistry } from "../../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js"
 import { createProviderRequestAuditWriter } from "../../src/orchestration/agent-runtime/llm/provider-request-audit.js"
-import type { ModuleRuntimeServices } from "../../src/orchestration/agent-runtime/module-runtime-services.js"
-import { composeFirstPartyModules } from "../../src/orchestration/modules.js"
+import type { ModuleRuntimeServices } from "../../src/orchestration/agent-runtime/request/module-services/module-runtime-services.js"
+import { composeFirstPartyModules } from "../../src/orchestration/module-contract/module-composition.js"
 import { fixedDefinitions } from "./project-definitions.js"
 import { testRuntimeConfigCapture } from "./request-tool-surface.js"
 

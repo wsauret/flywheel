@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
+import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
+import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream/stream-attempt.js";
 
 describe("stream attempt watchdog", () => {
   test("maps a watchdog timeout to ProviderAttemptFailure", async () => {

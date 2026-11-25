@@ -1,10 +1,10 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { summarizeSubagentWork } from "../../../../src/orchestration/modules/subagents/execution/summarize-work.js";
-import { buildFallbackSummary, type SubagentToolCallRecord } from "../../../../src/orchestration/modules/subagents/execution/work-log.js";
+import { summarizeSubagentWork } from "../../../../src/orchestration/modules/subagents/execution/result/summarize-work.js";
+import { buildFallbackSummary, type SubagentToolCallRecord } from "../../../../src/orchestration/modules/subagents/execution/result/work-log.js";
 import { AllCandidatesExhaustedError } from "../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { failureSummaryInput } from "./subagent/_fixtures.js";
 import { checkpointTestPersistences } from "../../../helpers/checkpoint-store.js";
-import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { FUNCTION_TOOL_PRESENTATION, type ModelClient, type ProviderStreamEvent, type ServingAttempt, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { ownHistoryTarget } from "./_model-client.js";
 

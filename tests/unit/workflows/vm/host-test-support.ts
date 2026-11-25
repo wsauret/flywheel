@@ -1,25 +1,26 @@
-import { asAsyncEventReadSurface, type AsyncEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type AsyncEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
-import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store.js"
+import { createWorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
-import type { ResolvedAgent } from "../../../../src/workflows/agent-resolution.js"
+import type { ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
-import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js"
-import type { ProjectDefinitionRegistryRevision } from "../../../../src/workflows/definition-registry.js"
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
-import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
-import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
-import type { WorkflowVmHostDeps } from "../../../../src/workflows/vm/host-types.js"
-import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
-import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
-import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "../../../../src/workflows/vm/events.js"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
-import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js"
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
+import type { SkillRegistryRevision } from "../../../../src/workflows/skills/skill-schema.js"
+import type { ProjectDefinitionRegistryRevision } from "../../../../src/workflows/definitions/definition-registry.js"
+import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js"
+import { compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile.js"
+import { createWorkflowVmHost } from "../../../../src/workflows/vm/host/host.js"
+import type { WorkflowVmHostDeps } from "../../../../src/workflows/vm/host/host-types.js"
+import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flatten.js"
+import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/control-facts/family.js"
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js"
+import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "../../../../src/workflows/control-facts/events.js"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js"
+import { composeWorkflowCompanions } from "../../../../src/workflows/vm/control/companions.js"
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
@@ -129,7 +130,7 @@ export function quietHostDeps(writer: AsyncEventWriter): Pick<WorkflowVmHostDeps
 type TestHostOverrides = Partial<WorkflowVmHostDeps> & {
   readonly workflow?: WorkflowDefinition
   readonly skills?: SkillRegistryRevision
-  readonly personas?: ReadonlyMap<string, import("../../../../src/infra/agent-definition.js").AgentDefinition>
+  readonly personas?: ReadonlyMap<string, import("../../../../src/infra/definitions/agent-definition.js").AgentDefinition>
 }
 
 export function testHost(

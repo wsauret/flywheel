@@ -1,3 +1,5 @@
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../../scripts/shipped-modules.js";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { sum } from "../shared/sum.js";

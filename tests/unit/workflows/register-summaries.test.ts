@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
-import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js";
+import { installedDefinitionBundles } from "../../../src/orchestration/module-contract/module-catalog.js";
+import { installedPersonaToolEntries } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
-import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 import { testDirectories } from "../../helpers/directories.js";
 
 const definitions = createProjectDefinitionRegistry({

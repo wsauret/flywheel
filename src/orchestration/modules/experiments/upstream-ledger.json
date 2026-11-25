@@ -6,7 +6,7 @@
   "copies": [
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/types.ts",
+      "target": "src/orchestration/modules/experiments/state/types.ts",
       "startMarker": "interface ExperimentResult {",
       "endMarker": "  /** Current session confidence score (best improvement / noise floor). null if insufficient data. */",
       "sha256": "d251d0d2e5193fc7faec7c39163c7bd9bffb549e68d0df8472b5bc80127449f3",
@@ -32,7 +32,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/metric-lines.ts",
+      "target": "src/orchestration/modules/experiments/measurement/metric-lines.ts",
       "startMarker": "/** Prefix for structured metric output lines: `METRIC name=value` */",
       "endMarker": "  return metrics;\n}",
       "sha256": "2cb621ea24fccc73e9ed9716adb7b737e9b2c5951cb428797770046cf3a31054",
@@ -42,7 +42,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/result-analysis.ts",
+      "target": "src/orchestration/modules/experiments/state/result-analysis.ts",
       "startMarker": "function isBetter(",
       "endMarker": "  return results.filter((r) => r.segment === segment);",
       "sha256": "3e1db0c7d0c0be58af8564c8ca9beefbd4eb3a0cf0a8f9cbf0fe16b897bf0a1b",
@@ -57,7 +57,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/result-analysis.ts",
+      "target": "src/orchestration/modules/experiments/state/result-analysis.ts",
       "startMarker": "/** Baseline = first experiment in current segment */",
       "endMarker": "  return direction === \"lower\" ? Math.min(...kept) : Math.max(...kept);",
       "sha256": "b67e1e79bdcd559c2efc791564dcf0d5f5458e97f2b159b79b24e09d1d96cd8b",
@@ -67,7 +67,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/auto-resume-guards.ts",
+      "target": "src/orchestration/modules/experiments/guards/auto-resume-guards.ts",
       "startMarker": "export const AUTORESUME_TURN_LIMIT = 200;",
       "endMarker": "  return null;\n}",
       "sha256": "6e3fabb4d974aa38df07196a246e74688afce3d2637f4306da9f6ac3d9288d85",
@@ -79,7 +79,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/git-worktree.ts",
+      "target": "src/orchestration/modules/experiments/git/git-worktree.ts",
       "startMarker": "function validateWorkDir(ctxCwd: string): string | null {",
       "endMarker": "  return null;\n}",
       "sha256": "2d39c6412d4436f99e27ce2203b03f61649fccce80d6ceedbdf40f355ede84c5",
@@ -94,7 +94,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/experiment-command-runner.ts",
+      "target": "src/orchestration/modules/experiments/measurement/experiment-command-runner.ts",
       "startMarker": "function isAutoresearchShCommand(command: string): boolean {",
       "endMarker": "(?:\\s|$)/.test(cmd);\n}",
       "sha256": "23b4770a96aead69a3bf51791bdf2ae469475b9e22181a6788ffa9acd2cd3071",
@@ -108,7 +108,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/experiment-command-runner.ts",
+      "target": "src/orchestration/modules/experiments/measurement/experiment-command-runner.ts",
       "startMarker": "      const timeout = (params.timeout_seconds ?? 600) * 1000;",
       "endMarker": "        text += `\\n\\n── Checks output (last 80 lines) ──\\n${details.checksOutput}`;",
       "sha256": "796089a3bd4a4e54e29e97334b4974e5b0fb41b55c1731fdf714d45d39e7d9a5",
@@ -177,7 +177,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/git-operations.ts",
+      "target": "src/orchestration/modules/experiments/git/git-operations.ts",
       "startMarker": "      // Auto-commit only on keep",
       "endMarker": "          text += `\\n⚠️ Git commit error: ${e instanceof Error ? e.message : String(e)}`;",
       "sha256": "d0a0acc4f5bfa2c882fedefa42aea1d6bc5d77b0a71c6a42c4a98fd7c50b4b8c",
@@ -194,7 +194,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
-      "target": "src/orchestration/modules/experiments/git-operations.ts",
+      "target": "src/orchestration/modules/experiments/git/git-operations.ts",
       "startMarker": "          const revertScript = `",
       "endMarker": "          text += `\\n⚠️ Git revert failed: ${e instanceof Error ? e.message : String(e)}`;",
       "sha256": "aa3863957f3ee2bd5b6c0753120f90e7df839a6a7771e587897b5675c1a5137a",
@@ -209,7 +209,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/jsonl.ts",
-      "target": "src/orchestration/modules/experiments/state-reconstruction.ts",
+      "target": "src/orchestration/modules/experiments/state/state-reconstruction.ts",
       "startMarker": "function inferMetricUnit(name: string): string {",
       "endMarker": "    registerSecondaryMetrics(state, run.metrics);",
       "sha256": "6a740978ace608b309bc2823d0bf222078dabbffaf950518265785df360a4cec",
@@ -306,7 +306,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/tests/auto-resume-guards.test.mjs",
-      "target": "tests/unit/orchestration/modules/experiments/auto-resume-guards.test.ts",
+      "target": "tests/unit/orchestration/modules/experiments/guards/auto-resume-guards.test.ts",
       "startMarker": "test(\"auto-resume turn ceiling is 200\", () => {",
       "endMarker": "      state([...previousSegmentFailures, currentSegmentFailure], 1),",
       "sha256": "c934c6c6f0b556c55d4a5994083c136693a3c492b21f48b1cb224e78e2389813",

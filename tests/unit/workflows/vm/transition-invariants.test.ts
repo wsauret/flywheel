@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
 import {
   initializeWorkflow,
   transitionDecodedWorkflow,
-} from "../../../../src/workflows/vm/transition.js";
+} from "../../../../src/workflows/vm/control/transition.js";
 
 function control(): CommittedWorkflowControl {
   const ownership = { _tag: "workflow", workflowDefinitionId: "ordering" } as const;

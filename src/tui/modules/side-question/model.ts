@@ -2,8 +2,8 @@ import { createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
 import type { TextareaRenderable } from "@opentui/core"
 import { readSideQuestionView } from "../../../protocol/modules/side-question.js"
 import type { TuiControllerHost } from "../../tui-module.js"
-import type { ListModalKeyEvent } from "../../components/modal-list-keys.js"
-import { createModalScrollController } from "../../components/modal-scroll-controller.js"
+import type { ListModalKeyEvent } from "../../components/modal/select/modal-list-keys.js"
+import { createModalScrollController } from "../../components/modal/scroll/modal-scroll-controller.js"
 
 type Host = Pick<TuiControllerHost, "enabled" | "read" | "client" | "showToast" | "navigate" | "clipboard">
 type Request = Extract<Parameters<Host["client"]["dispatch"]>[0], { type: `side-question.${string}` }>

@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setSystemTime, test } from "bun:test";
 import type Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
-import type { ModelInfo } from "../../../../../../src/infra/llm/models.js";
-import { createAnthropicAdapter } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
+import type { ModelInfo } from "../../../../../../src/infra/providers/llm/models/models.js";
+import { createAnthropicAdapter } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { LlmStreamError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { ProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { ProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { stableSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { ThinkingStallError } from "../../../../../../src/orchestration/agent-runtime/llm/thinking-stall.js";
+import { ThinkingStallError } from "../../../../../../src/orchestration/agent-runtime/llm/stream/thinking-stall.js";
 import type { ProviderStreamEvent } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { AgentRows, SignedBlock } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-file.js";
 import { hostedStreamEvents, type HostedAnswer, type StepEvent } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.js";
 import type { HostStepItem } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.js";
-import { controlledClock } from "../../../agent-runtime/llm/_stream-deadline-clock.js";
+import { controlledClock } from "../../../agent-runtime/llm/stream/_stream-deadline-clock.js";
 
 afterEach(() => { setSystemTime(); });
 

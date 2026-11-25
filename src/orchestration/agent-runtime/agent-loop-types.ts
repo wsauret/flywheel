@@ -1,51 +1,41 @@
-import type { ConnectionState } from "../../infra/output-blocks.js";
-import type { ChatInput } from "../../infra/chat-input.js";
-import type { NotificationEpisodeInput } from "../../infra/notification-episode.js";
-import type { SessionNoticeOperation } from "../../infra/session-notice.js";
-import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
-import type { ReasoningEffort } from "../../infra/llm/models.js";
-import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js";
-import type { SessionFactWriter } from "../session/session-fact-writer.js";
+import type { ConnectionState } from "../../infra/substrate/events/output-blocks.js";
+import type { ChatInput } from "../../infra/substrate/events/chat-input.js";
+import type { NotificationEpisodeInput } from "../../infra/substrate/events/notification-episode.js";
+import type { SessionNoticeOperation } from "../../infra/substrate/events/session-notice.js";
+import type { ProviderRequestOptions } from "../../infra/providers/llm/access/provider-options.js";
+import type { ReasoningEffort } from "../../infra/providers/llm/models/models.js";
+import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/substrate/store/event-store-types.js";
+import type { SessionFactWriter } from "../session/persistence/session-fact-writer.js";
 import type { CommittedTree } from "../session/conversation/conversation-projection.js";
-import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/handoff-tool-schema.js";
-import type { InputSource, LogicalTurnStartedContext, TurnEndedContext, TurnParkedContext } from "../../infra/agent-loop-events.js";
+import type { HandoffRejection, HandoffToolSchema } from "./tools/sessions/handoff-tool-schema.js";
+import type { InputSource, LogicalTurnStartedContext, TurnEndedContext, TurnParkedContext } from "../../infra/substrate/events/agent-loop-events.js";
 import type { ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
-import type { UsageSettlement } from "./usage-settlement.js";
-import type { BackgroundExecutionOwner } from "./background-execution-owner.js";
-import type { AfterToolCallHook } from "./agent-loop-tools.js";
-import type {
-  CacheRetention,
-  ContentBlock,
-  ConversationMessage,
-  ServingAttempt,
-  StreamEvent,
-  TurnModelClient,
-} from "./llm/types.js";
+import type { UsageSettlement } from "../session/history/usage-settlement.js";
+import type { BackgroundExecutionOwner } from "./background-execution/background-execution-owner.js";
+import type { AfterToolCallHook } from "./loop/tool-calls/agent-loop-tools.js";
+import type { CacheRetention, ServingAttempt, StreamEvent, TurnModelClient } from "./llm/types.js";
+import type { ContentBlock, ConversationMessage } from "../../infra/providers/llm/conversation/conversation-message.js";
 import type { SystemPromptTiers } from "./llm/system-prompt-tiers.js";
-import type { PromptPrefixHold } from "./prompt-prefix-hold.js";
-import type { ModelInteractionProfile } from "./model-interaction-profile.js";
-import type { ModuleRuntimes } from "../../infra/module-runtime.js";
+import type { PromptPrefixHold } from "./loop/turn/prompt-prefix-hold.js";
+import type { ModelInteractionProfile } from "./request/prompt/model-interaction-profile.js";
+import type { ModuleRuntimes } from "../../infra/definitions/modules/module-runtime.js";
 import type { CapabilityAccess, ToolAttributionIdentity } from "./tools/types.js";
-import type { RequestToolSurfaceOwner } from "./request-tool-surface.js";
-import type { CurrentTurnInterruption } from "./run-lifecycle.js";
+import type { RequestToolSurfaceOwner } from "./request/request-tool-surface.js";
+import type { CurrentTurnInterruption } from "./loop/turn/run-lifecycle.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
-import type { PersistentProcessClient } from "../../infra/persistent-process-manager.js";
-import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
+import type { PersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-manager.js";
+import type { BridgedPersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-bridge.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
-import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
-import type { AgentRunTally, PersonWait, WaitExpiry } from "./agent-loop-state.js";
+import type { StreamingEditValidationService } from "./tools/edit/streaming-edit-validation.js";
+import type { RestoredAgentWait } from "../session/conversation/turn-end-record.js";
+import type { FinalizedCheckpointSwap } from "../session/conversation/tree/conversation-tree-writer.js";
+import type { AgentRunTally, PersonWait } from "./loop/agent-loop-state.js";
 
 interface HandoffContent {
   [key: string]: unknown;
 }
 
 type UserMessageOrigin = "user" | "system";
-
-export interface FinalizedCheckpointSwap {
-  readonly kind: string;
-  readonly key: string;
-  readonly expectedRaw: string;
-}
 
 /** What follows a context reset: the next model request (`continue`), or
  *  the input wait with no request (`park`), as after a /compact the person
@@ -141,28 +131,6 @@ export type AgentLoopSeed =
  *  a background notification folds into history. */
 export interface AgentLoopMaintenance {
   readonly personWait?: PersonWait;
-}
-
-/** The committed wait batch and any input committed before the new loop attached.
- *  `parkOnly` is a property of the restored chain: an unexpected exit or an
- *  ordinary stop cut the wait after its batch, so no continuation authority
- *  covers it, even under a later planned replacement's successor. The loop
- *  then parks the turn on its work with no expiry and never starts a request
- *  itself: the completion of work that runs or that registers later, a
- *  message, or the person's Resume wakes the turn. A chain of planned cuts
- *  alone keeps the original deadline and the nothing-pending notice.
- *  `expiry` is the duration that the wait call asked for and its original
- *  deadline, absent for a reply wait, which has none, and `replyWaitIds`
- *  names the reply waits that the wait holds (`OpenWait`). `requestOwed`
- *  says that input committed after the wait that no request answered, so
- *  the loop runs that request instead of parking first. `woken` says that
- *  such input ended the wait (`endsOpenWait`), so the loop opens no wait. */
-export interface RestoredAgentWait {
-  readonly expiry?: WaitExpiry;
-  readonly replyWaitIds: readonly string[];
-  readonly requestOwed?: true;
-  readonly woken?: true;
-  readonly parkOnly?: true;
 }
 
 interface AgentLoopLifecycle {
@@ -271,7 +239,7 @@ export interface AgentLoopOptions {
   onSystemMessage?: (message: string, level?: "info" | "error") => void;
   onNotice?: (operation: SessionNoticeOperation) => void;
   onNotification?: (episode: NotificationEpisodeInput) => void;
-  onUserMessage?: (content: string | ContentBlock[], origin: UserMessageOrigin, identity?: Pick<ChatInput, "submissionIds" | "dispatchIds">) => void;
+  onUserMessage?: (content: string | ContentBlock[], origin: UserMessageOrigin, identity?: Pick<ChatInput, "submissionIds" | "dispatchIds"> & { readonly backgroundNotificationIds?: readonly string[] }) => void;
   onTurnAssistantMessage?: (content: ContentBlock[], entryId?: string) => void;
   inputSource?: InputSource;
   /** Injects the park clock. Returns cleanup for the single wait expiry. */
@@ -314,7 +282,7 @@ export interface AgentLoopOptions {
    *  agent workspace, never a read substrate. */
   scratchDir?: string;
   /** Scoped checkpoint authority, independent of the current conversation branch. */
-  checkpoint?: import("../session/conversation-checkpoint.js").ConversationCheckpointOwner;
+  checkpoint?: import("../session/conversation-records/conversation-checkpoint.js").ConversationCheckpointOwner;
   /** The recorded brief of an unattended agent, which every reset opening
    *  restates (PI-AGENT-089). Read once per reset; absent or undefined omits it. */
   standingBrief?: () => Promise<string | undefined>;

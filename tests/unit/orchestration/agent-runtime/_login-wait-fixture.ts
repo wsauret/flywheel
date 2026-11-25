@@ -1,8 +1,8 @@
-import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream.js";
-import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
+import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { observedLogins } from "../../../helpers/login-observations.js";
 import { chain, fakeAvailability, subscriptionCandidate } from "./llm/_provider-chain-harness.js";
 import { ownHistoryTarget } from "./_model-client.js";

@@ -1,19 +1,19 @@
 import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import { Effect, Schema } from "effect"
-import type { ProjectDirectories } from "../../../../infra/directory-authorities.js"
-import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
-import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
-import { isRecord } from "../../../../infra/record.js"
-import { hashDefinition } from "../../../../workflows/definition-hash.js"
+import type { ProjectDirectories } from "../../../../infra/platform/files/directory-authorities.js"
+import { admitPrivateDatabaseFiles } from "../../../../infra/platform/files/private-path.js"
+import { createSqliteEventInserter } from "../../../../infra/substrate/store/sqlite-event-store-core.js"
+import { isRecord } from "../../../../infra/guards/record.js"
+import { hashDefinition } from "../../../../workflows/provenance/definition-hash.js"
 import {
   DEFINITION_IDENTITY_GRAPH_MIGRATION_ID,
   DefinitionIdentitySchema,
   type DefinitionIdentity,
-} from "../../../../workflows/vm/definition-identity.js"
-import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/session-facts.js"
+} from "../../../../workflows/control-facts/definition-identity.js"
+import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/control-facts/family.js"
 import { MIGRATED_FACT_TYPE } from "./workflow-identity-chain.js"
-import { tableExists } from "../../../migrations/engine.js"
+import { tableExists } from "../../../workspace-state/migrations/engine.js"
 
 const BUSY_TIMEOUT_MS = 5000
 

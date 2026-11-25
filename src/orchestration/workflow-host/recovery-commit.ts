@@ -1,20 +1,17 @@
 import { isDeepStrictEqual } from "node:util"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedEventStoreAppend } from "../../infra/event-store-types.js"
-import type { CommittedWorkflowControl } from "../../workflows/vm/committed-control.js"
-import { readWorkflowRecoveryEvidence, type WorkflowRecoveryEvidence } from "../../workflows/vm/recovery-fold.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedEventStoreAppend } from "../../infra/substrate/store/event-store-types.js"
+import type { CommittedWorkflowControl } from "../../workflows/control-facts/committed-control.js"
+import { readWorkflowRecoveryEvidence, type WorkflowRecoveryEvidence } from "../../workflows/vm/recovery/recovery-fold.js"
 import { recoverWorkflowContext, type RecoveredWorkflowContext } from "../../workflows/context-bundle/context-recovery.js"
 import { buildContextInputSeededFact } from "../../workflows/context-bundle/context-facts.js"
-import { readPristineWorkflowLaunch } from "../../workflows/view/launch-recovery.js"
+import { readPristineWorkflowLaunch } from "../../workflows/vm/recovery/launch-recovery.js"
 import { queueFactsForState } from "../../workflows/view/view-diff.js"
-import { flattenWorkflowView } from "../../workflows/vm/view-flatten.js"
-import type { ResolvedAgent } from "../../workflows/agent-resolution.js"
-import { workflowRunReader } from "../module-catalog.js"
-import { describeWorkflowRecoveryDegradation, workflowRecoveryBasis } from "../../workflows/vm/recovery.js"
-import {
-  buildWorkflowControlRecoveredFact,
-  workflowAggregateId,
-  type WorkflowRecoveryDegradationReason,
-} from "../../workflows/vm/session-facts.js"
+import { flattenWorkflowView } from "../../workflows/vm/view/view-flatten.js"
+import type { ResolvedAgent } from "../../workflows/definitions/agent-resolution.js"
+import { workflowRunReader } from "../module-contract/module-catalog.js"
+import { describeWorkflowRecoveryDegradation, workflowRecoveryBasis } from "../../workflows/vm/recovery/recovery.js"
+import { buildWorkflowControlRecoveredFact, type WorkflowRecoveryDegradationReason } from "../../workflows/control-facts/family.js"
+import { workflowAggregateId } from "../../workflows/run/run-facts.js"
 import type { WorkflowInputValue } from "../../workflows/output-contract/compile.js"
 
 export interface WorkflowRecoveryCommitInput {

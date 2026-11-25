@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { CAPABILITY_PHRASES, findCapabilityTableDrift, findCapabilityTermViolations, realCapabilityVocabulary } from "../../../scripts/capability-terms.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
-import { SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
+import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
 
 const REPO_ROOT = resolve(import.meta.dir, "../../..");
 // One vocabulary of the real catalog for every case: building it reads every bundled definition once.
@@ -31,7 +31,7 @@ async function findings(files: { readonly [path: string]: string }): Promise<str
 const MUTATIONS = [
   {
     name: "process wait guidance that names workflows",
-    path: "src/orchestration/agent-runtime/tools/process.ts",
+    path: "src/orchestration/agent-runtime/tools/sessions/process.ts",
     bad: 'export const WAIT = "Wait for every managed process, especially subagents and workflows.";\n',
     corrected: 'export const wait = (has: (term: string) => boolean) => has("workflow") ? "Wait for every managed process, especially subagents and workflows." : "Wait for every managed process.";\n',
     module: "workflows",
@@ -45,7 +45,7 @@ const MUTATIONS = [
   },
   {
     name: "a truncation hint that names the search tool",
-    path: "src/orchestration/agent-runtime/compaction/truncation.ts",
+    path: "src/orchestration/agent-runtime/tools/results/truncation.ts",
     bad: `export const HINT = \`Output truncated. Use the search tool on \${'file'} to find the part you need.\`;\n`,
     corrected: `export const HINT = \`Output truncated. Find the part you need in \${'file'}.\`;\n`,
     module: "discovery",
@@ -59,7 +59,7 @@ const MUTATIONS = [
   },
   {
     name: "sizing guidance that names a reviewer",
-    path: "src/orchestration/agent-runtime/system-prompt.ts",
+    path: "src/orchestration/agent-runtime/request/prompt/system-prompt.ts",
     bad: 'export const SIZE = "Every expensive move, such as adding a reviewer, must pass a size test.";\n',
     corrected: 'export const size = (has: (term: string) => boolean) => has("type:reviewer") ? "Every expensive move, such as adding a reviewer, must pass a size test." : "Every expensive move must pass a size test.";\n',
     module: "type:reviewer",

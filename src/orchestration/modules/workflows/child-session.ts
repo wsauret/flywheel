@@ -1,12 +1,12 @@
-import type { WorkflowWorkTarget, ModuleWorkControl, ModuleWorkflowRuns } from "../../module-seams.js"
-import { workflowProgress, workflowSummaryText } from "../../../protocol/client/workflow-progress.js"
-import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
-import { frontendAttempts } from "../../workflow-host/frontend-attempts.js"
-import { workflowAddressText } from "../../workflow-host/workflow-addressing.js"
-import { workflowLaunchHost, type WorkflowLaunchHost } from "../../workflow-host/launch-operation-contract.js"
-import { readChildCall, readChildStop } from "../../session/chat-session-run-evidence.js"
-import { liveWorkflowControl } from "../../session/live-session-control.js"
-import { workflowMembershipReader } from "../../session/workflow-membership.js"
+import type { WorkflowWorkTarget, ModuleWorkControl, ModuleWorkflowRuns } from "../../module-contract/module-seams.js"
+import { workflowProgress, workflowSummaryText } from "../../../protocol/client/work/workflow/workflow-progress.js"
+import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
+import { frontendAttempts } from "../../session/metadata/frontend-attempts.js"
+import { workflowAddressText } from "../../session/control/messaging/workflow-addressing.js"
+import { workflowLaunchHost, type WorkflowLaunchHost } from "../../workflow-host/lifecycle/launch-operation-contract.js"
+import { readChildCall, readChildStop } from "../../session/control/chat-session-run-evidence.js"
+import { liveWorkflowControl } from "../../session/control/live-session-control.js"
+import { workflowMembershipReader } from "../../session/metadata/workflow-membership.js"
 
 function launchHost({ hosts }: WorkflowWorkTarget): WorkflowLaunchHost {
   const host = hosts.get(workflowLaunchHost)

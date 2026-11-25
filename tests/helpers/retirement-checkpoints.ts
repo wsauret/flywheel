@@ -9,10 +9,10 @@
 
 import { basename, dirname } from "node:path"
 import { Schema } from "effect"
-import { setContainedDirectoryBackendForTests } from "../../src/infra/descriptor-directory.js"
-import type { ContainedDirectory, ContainedDirectoryBackend } from "../../src/infra/descriptor-directory-contract.js"
-import { posixContainedDirectoryBackend } from "../../src/infra/descriptor-directory-posix.js"
-import { win32ContainedDirectoryBackend } from "../../src/infra/descriptor-directory-win32.js"
+import { setContainedDirectoryBackendForTests } from "../../src/infra/platform/files/descriptor-directory.js"
+import type { ContainedDirectory, ContainedDirectoryBackend } from "../../src/infra/platform/files/descriptor-directory/descriptor-directory-contract.js"
+import { posixContainedDirectoryBackend } from "../../src/infra/platform/files/descriptor-directory/descriptor-directory-posix.js"
+import { win32ContainedDirectoryBackend } from "../../src/infra/platform/files/descriptor-directory/descriptor-directory-win32.js"
 
 /** One durable point of the sequence, named by what is on disk once it is reached. */
 export type RetirementCheckpoint =

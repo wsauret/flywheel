@@ -3,8 +3,8 @@ import { Schema } from "effect";
 import { createServer } from "node:http";
 import { statSync } from "node:fs";
 import { join } from "node:path";
-import { windowsDirectoryIsOwnerOnly } from "../../src/infra/windows-private-directory-acl.js";
-import { createMcpManager } from "../../src/orchestration/modules/mcp/manager.js";
+import { windowsDirectoryIsOwnerOnly } from "../../src/infra/platform/files/windows/windows-private-directory-acl.js";
+import { createMcpManager } from "../../src/orchestration/modules/mcp/manager/manager.js";
 import { temporaryDirectories } from "../helpers/directories.js";
 
 const CLIENT_SECRET = "fixture-client-secret";

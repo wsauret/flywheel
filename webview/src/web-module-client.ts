@@ -1,12 +1,12 @@
 import type { Accessor, JSX } from "solid-js"
-import type { RuntimeConnection } from "../../src/protocol/client/connection.js"
-import type { FrontendOutputBlock } from "../../src/protocol/app-service-types.js"
-import type { ClientViewState } from "./client/view-state.js"
+import type { RuntimeConnection } from "../../src/protocol/client/runtime/connection.js"
+import type { FrontendOutputBlock } from "../../src/protocol/runtime/app-service-types.js"
+import type { ClientViewState } from "./client/session/view-state.js"
 import type { ClientActions } from "./client/actions.js"
-import type { RuntimeSession } from "./client/session.js"
-import type { BlockProps } from "./app/blocks.js"
-import type { ClientCommand } from "../../src/protocol/client/host-contract.js"
-import type { BackgroundWorkTarget } from "../../src/protocol/background-index-protocol-types.js"
+import type { RuntimeSession } from "./client/session/session.js"
+import type { BlockProps } from "./app/transcript/blocks/blocks.js"
+import type { ClientCommand } from "../../src/protocol/client/host/host-contract.js"
+import type { BackgroundWorkTarget } from "../../src/protocol/session/background-index-protocol-types.js"
 
 /** Module presentation composes around the resident ordinary conversation. */
 export interface WebModuleClientHost {

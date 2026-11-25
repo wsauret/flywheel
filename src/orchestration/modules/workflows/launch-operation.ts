@@ -1,21 +1,21 @@
 import { Result, Schema, SchemaTransformation } from "effect"
-import { WorkflowLaunchAgentModelsSchema } from "../../../infra/workflow-types.js"
-import type { InFlightRecord } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
-import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
-import { workflowRecoveryBasis } from "../../../workflows/vm/recovery.js"
-import { readToolExecution } from "../../session/tool-execution-projection.js"
+import { WorkflowLaunchAgentModelsSchema } from "../../../infra/definitions/workflow/workflow-types.js"
+import type { InFlightRecord } from "../../../infra/substrate/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
+import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
+import { workflowRecoveryBasis } from "../../../workflows/vm/recovery/recovery.js"
+import { readToolExecution } from "../../session/runtime-facts/tool-execution-projection.js"
 import { turnEndEntryId } from "../../session/conversation/turn-end-record.js"
-import { workflowRunReader } from "../../module-catalog.js"
-import { retirePlannedSessionContinuation } from "../../session/planned-session-continuation.js"
-import { WORKFLOW_LAUNCH_OPERATION_KIND, workflowLaunchHost, type WorkflowLaunchOperation } from "../../workflow-host/launch-operation-contract.js"
+import { workflowRunReader } from "../../module-contract/module-catalog.js"
+import { retirePlannedSessionContinuation } from "../../session/control/planned-session-continuation.js"
+import { WORKFLOW_LAUNCH_OPERATION_KIND, workflowLaunchHost, type WorkflowLaunchOperation } from "../../workflow-host/lifecycle/launch-operation-contract.js"
 import type {
   HeldRetainedOperation,
   ModuleRetainedOperationContribution,
   RetainedOperationCell,
   RetainedOperationContinuation,
-} from "../../module-seams.js"
+} from "../../module-contract/module-seams.js"
 
 const log = Log.create({ service: "workflow-launch-operation" })
 

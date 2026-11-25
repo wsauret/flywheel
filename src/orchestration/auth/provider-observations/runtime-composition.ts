@@ -1,16 +1,41 @@
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { createSubscriptionUsageService, type SubscriptionUsageProfile } from "./subscription-usage-service.js"
 import { createSubscriptionUsageServicePool, type SubscriptionUsageServicePool } from "./subscription-usage-service-pool.js"
-import { peekSharedProviderAvailability } from "../../agent-runtime/llm/shared-provider-availability.js"
+import { peekSharedProviderAvailability } from "../../agent-runtime/llm/routing/shared-provider-availability.js"
 import { foldSubscriptionUsageIntoAvailability } from "./usage-availability-fold.js"
 
-import type { AccessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js"
+import type { AccessProviderRegistry } from "../../config/models/access-provider-registry.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
 const log = Log.create({ service: "runtime-composition" })
 
 interface UsageOwnership {
   own<T>(name: string, resource: T, dispose: (owned: T) => Promise<void> | void): T
+}
+
+interface SubscriptionUsagePoolOptions {
+  readonly registry: () => AccessProviderRegistry
+  /** The initial monitoring policy; the pool owns every later replacement. */
+  readonly thresholds?: readonly number[]
+  readonly monitor: boolean
+  /** The runtime's launch authority, for a usage reader that asks a program that owns the login. */
+  readonly launcher?: LauncherScope
+}
+
+/** A pool that reads subscription usage for each leased profile through the
+ *  access providers of `registry`. Its caller owns its shutdown, and starts
+ *  it only when it needs background monitoring. */
+export function createSubscriptionUsagePool(options: SubscriptionUsagePoolOptions): SubscriptionUsageServicePool {
+  return createSubscriptionUsageServicePool({
+    ...(options.thresholds === undefined ? {} : { thresholds: options.thresholds }),
+    create: (profile: SubscriptionUsageProfile, thresholds) => createSubscriptionUsageService({
+      profile: () => profile,
+      registry: options.registry,
+      thresholds: () => thresholds,
+      monitor: options.monitor,
+      ...(options.launcher === undefined ? {} : { launcher: options.launcher }),
+    }),
+  })
 }
 
 export interface SubscriptionUsageRuntimeOptions {
@@ -24,15 +49,11 @@ export interface SubscriptionUsageRuntimeOptions {
 }
 
 export function createSubscriptionUsageRuntime(options: SubscriptionUsageRuntimeOptions): SubscriptionUsageServicePool {
-  const pool = options.own("provider-observations", createSubscriptionUsageServicePool({
+  const pool = options.own("provider-observations", createSubscriptionUsagePool({
+    registry: options.registry,
     thresholds: options.thresholds(),
-    create: (profile: SubscriptionUsageProfile, thresholds) => createSubscriptionUsageService({
-      profile: () => profile,
-      registry: options.registry,
-      thresholds: () => thresholds,
-      monitor: options.monitor,
-      ...(options.launcher === undefined ? {} : { launcher: options.launcher }),
-    }),
+    monitor: options.monitor,
+    ...(options.launcher === undefined ? {} : { launcher: options.launcher }),
   }), (servicePool) => { servicePool.closeAdmission(); return servicePool.settled() })
   // Publications start after the composition acquires the availability owner; a
   // publication before that has no authority to reach and states nothing.

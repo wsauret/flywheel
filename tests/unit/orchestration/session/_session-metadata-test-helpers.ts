@@ -1,9 +1,9 @@
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
-import { ensureSessionDir, resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { deleteSessionArtifacts } from "../../../../src/orchestration/session/session-artifacts.js"
-import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/session-metadata-store.js"
-import type { ReplayedSession, Session } from "../../../../src/orchestration/session/schemas.js"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { ensureSessionDir, resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths.js"
+import { deleteSessionArtifacts } from "../../../../src/orchestration/session/persistence/storage/session-artifacts.js"
+import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js"
+import type { ReplayedSession, Session } from "../../../../src/orchestration/session/metadata/schemas.js"
 
 export function makeMetadataStore(
   baseDir: string,

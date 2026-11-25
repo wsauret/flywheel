@@ -1,8 +1,8 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../infra/event-store-types.js"
-import { parseProjectionFact } from "../../infra/event-projection.js"
-import { Log } from "../../infra/log.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../infra/substrate/store/event-store-types.js"
+import { parseProjectionFact } from "../../infra/substrate/projection/event-projection.js"
+import { Log } from "../../infra/diagnostics/log.js"
 import type { SessionEntry } from "./types.js"
-import { parseSessionRuntimeFact } from "../session/session-runtime-event-types.js"
+import { parseSessionRuntimeFact } from "../session/runtime-facts/session-runtime-event-types.js"
 
 /** The one version of `session.duration.recorded` this build writes and reads. */
 const DURATION_FACT_VERSION = 1

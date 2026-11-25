@@ -2,16 +2,16 @@ import { Result, Schema } from "effect";
 import { cp, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix, relative } from "node:path";
-import type { ContainedDirectory } from "../../../../infra/descriptor-directory-contract.js";
-import { openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../../../../infra/platform/files/descriptor-directory.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import { containsSecret } from "../../../../infra/redact-secrets.js";
 import { describeOutputIssues, schemaIssues } from "../../../../workflows/output-contract/accept.js";
 import { compileOutput } from "../../../../workflows/output-contract/compile.js";
 import { decodeOutputObject } from "../../../../workflows/output-contract/grammar.js";
 import planContract from "../../../../workflows/workflows/contracts/implementation-plan.json" with { type: "json" };
-import { bytesIdentity, directoryIdentity, structuredIdentity } from "./content-identity.js";
-import { containedPath, realDirectoryUnder, realFileUnder } from "./paths.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "./campaign/content-identity.js";
+import { containedPath, realDirectoryUnder, realFileUnder } from "./campaign/paths.js";
 import {
   requireCompleteSandboxOutput,
   runCheckedSandboxCommand,
@@ -19,9 +19,9 @@ import {
   SANDBOX_HOME_DIR,
   type SandboxCommandOptions,
 } from "./sandbox-command.js";
-import { objectValue, parseImplementSandbox, parseManifestPoints, parseNativePath, stringValue, type ImplementManifest, type ImplementSandboxSpec, type ImplementTaskObject } from "./task-schema.js";
-import { retainImplementStore, retainNativeGradeFailure, type ImplementEvidence } from "./implement-evidence.js";
-import { materializeCommitSnapshot } from "./snapshot-workspace.js";
+import { objectValue, parseImplementSandbox, parseManifestPoints, parseNativePath, stringValue, type ImplementManifest, type ImplementSandboxSpec, type ImplementTaskObject } from "./tasks/task-schema.js";
+import { retainImplementStore, retainNativeGradeFailure, type ImplementEvidence } from "./execution/implement-evidence.js";
+import { materializeCommitSnapshot } from "./execution/snapshot-workspace.js";
 
 /** The direct persona harness names this gitignored plan file in its prompt. */
 export const PLAN_FILE = ".bench-plan.json";

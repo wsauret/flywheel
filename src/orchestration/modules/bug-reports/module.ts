@@ -1,6 +1,6 @@
 import { BUG_REPORT_COMMAND, BUG_REPORT_COMMAND_NAME, BUG_REPORT_SURFACE, bugReportsProtocol } from "../../../protocol/modules/bug-reports.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js"
 import { bugReportsService, createBugReportsService } from "./service.js"
 
 export const bugReportsModule = {

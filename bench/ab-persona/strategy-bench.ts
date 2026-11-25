@@ -13,22 +13,23 @@
 // randomized blinded pairwise judging.
 
 import { dirname, join, resolve } from "node:path";
-import { codedRolePreference, ROLE_MODEL_DEFAULTS } from "../../src/orchestration/config/role-model-defaults.js";
+import { codedRolePreference, ROLE_MODEL_DEFAULTS } from "../../src/orchestration/config/models/role-model-defaults.js";
 import { createBenchmarkCatalog, RESEARCH_SNAPSHOT, RESEARCH_TASKS_CHANGED, type ResearchTask } from "../../src/orchestration/modules/development/benchmark/catalog.js";
-import { admitBenchmark, benchmarkPreflightReport } from "../../src/orchestration/modules/development/benchmark/admission.js";
-import { loadBenchmarkPersona, type BenchmarkPlan } from "../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
-import { validateAttempts, validateJudgeAttempts, validateRuns, validateScores } from "../../src/orchestration/modules/development/benchmark/persona-evidence-validation.js";
+import { admitBenchmark, benchmarkPreflightReport } from "../../src/orchestration/modules/development/benchmark/persona/admission.js";
+import { loadBenchmarkPersona } from "../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
+import type { BenchmarkPlan } from "../../src/orchestration/modules/development/benchmark/persona/benchmark-plan.js";
+import { validateAttempts, validateJudgeAttempts, validateRuns, validateScores } from "../../src/orchestration/modules/development/benchmark/persona/persona-evidence-validation.js";
 import { sameVariants } from "../../src/orchestration/modules/development/benchmark/variant.js";
 import { createBenchmarkRuntime, type OwnedBenchmarkRuntime } from "../shared/runtime.js";
-import { judgePairs, type JudgeCandidate } from "../../src/orchestration/modules/development/benchmark/judge.js";
-import { judgeOverhead, renderReport, sourceReport, unsuccessfulOverhead } from "../../src/orchestration/modules/development/benchmark/reports.js";
-import { combineBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/report-accounting.js";
-import { asPersonaTaskFailure, PersonaTaskFailure, renderPersonaTaskGuidance, runPersonaTask, type BenchmarkRuntime, type PersonaDefinition, type PersonaTaskRequest } from "../../src/orchestration/modules/development/benchmark/persona-run.js";
-import { runningSourceIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { withSnapshotWorkspace } from "../../src/orchestration/modules/development/benchmark/snapshot-workspace.js";
-import type { BenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/evidence.js";
-import type { AgentDefinition } from "../../src/infra/agent-definition.js";
-import { createPersonaStore } from "../../src/orchestration/modules/development/benchmark/persona-store.js";
+import { judgePairs, type JudgeCandidate } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
+import { judgeOverhead, renderReport, sourceReport, unsuccessfulOverhead } from "../../src/orchestration/modules/development/benchmark/scoring/reports.js";
+import { combineBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/accounting/report-accounting.js";
+import { asPersonaTaskFailure, PersonaTaskFailure, renderPersonaTaskGuidance, runPersonaTask, type BenchmarkRuntime, type PersonaDefinition, type PersonaTaskRequest } from "../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
+import { runningSourceIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { withSnapshotWorkspace } from "../../src/orchestration/modules/development/benchmark/execution/snapshot-workspace.js";
+import type { BenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import type { AgentDefinition } from "../../src/infra/definitions/agent-definition.js";
+import { createPersonaStore } from "../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import {
   judgeScoreIdentityKey,
   runKey,
@@ -37,8 +38,8 @@ import {
   type BenchmarkVariant,
   type ResearchRunRecord,
   type RunConfig,
-} from "../../src/orchestration/modules/development/benchmark/run-store.js";
-import { failedJudgeCallCount } from "../../src/orchestration/modules/development/benchmark/judge-attempt-reconciliation.js";
+} from "../../src/orchestration/modules/development/benchmark/scoring/run-store.js";
+import { failedJudgeCallCount } from "../../src/orchestration/modules/development/benchmark/scoring/judge-attempt-reconciliation.js";
 
 /** The judge runs on the benchmark judge's coded OpenAI preference, whatever the role's order. */
 const JUDGE_SEAT = codedRolePreference("benchmark-judge", "openai");

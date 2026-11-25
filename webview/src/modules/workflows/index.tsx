@@ -1,17 +1,17 @@
 import { createEffect, createMemo, createSignal, on, onCleanup, Show, untrack } from "solid-js"
-import { workflowBriefLine } from "../../../../src/protocol/client/workflow-agent.js"
-import { parseWorkflowLink } from "../../../../src/protocol/client/session-links.js"
+import { workflowBriefLine } from "../../../../src/protocol/client/work/workflow/workflow-agent.js"
+import { parseWorkflowLink } from "../../../../src/protocol/client/session/session-links.js"
 import { controlActionKey, actionKey } from "../../client/action-key.js"
-import { summaryOf } from "../../client/view-state.js"
+import { summaryOf } from "../../client/session/view-state.js"
 import type { WebModule } from "../../web-module.js"
 import type { WebModuleClient, WebModuleClientHost } from "../../web-module-client.js"
-import { AgentHeader, agentInput } from "./agent-header.js"
+import { AgentHeader, agentInput } from "./screen/agent-header.js"
 import { WorkflowActivity } from "./activity.js"
-import { WorkflowCardScreen } from "./card-screen.js"
+import { WorkflowCardScreen } from "./screen/card-screen.js"
 import { WorkflowsProvider, type WorkflowsClient } from "./context.js"
 import { createWorkflowInspections, type WorkflowReading } from "./inspection.js"
 import { createWorkflowAgentAdoption, createWorkflowNavigation } from "./navigation.js"
-import type { WorkflowCardChoices } from "../../../../src/protocol/client/workflow-card.js"
+import type { WorkflowCardChoices } from "../../../../src/protocol/client/work/workflow/workflow-card.js"
 
 function createClient(host: WebModuleClientHost): WebModuleClient {
   const [cardChoices, setCardChoices] = createSignal<ReadonlyMap<string, WorkflowCardChoices>>(new Map())

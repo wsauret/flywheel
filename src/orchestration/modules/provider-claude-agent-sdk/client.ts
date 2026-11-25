@@ -1,28 +1,29 @@
 import { Effect, Exit, Redacted, Scope } from "effect";
-import { ApiError } from "../../agent-runtime/errors.js";
-import { createAnthropicAdapter, prepareAnthropicRequest, type AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { createAnthropicAdapter, prepareAnthropicRequest, type AnthropicOperations } from "../../agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
-import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
-import { engineModelId, createClaudeReminders, environmentFacts } from "../../agent-runtime/llm/runtime-reminders.js";
-import { credentialForCandidate, providerAdapter, type AccessProviderBuild } from "../../agent-runtime/llm/client-factory.js";
+import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/stream/provider-failure.js";
+import { engineModelId, createClaudeReminders, environmentFacts } from "../../agent-runtime/llm/history/runtime-reminders.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderBuild } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type ProviderAdapter, type ToolPresentation } from "../../agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, type ProviderAdapter, type ToolPresentation } from "../../agent-runtime/llm/types.js";
+import { trailingRuntimeNotices } from "../../../infra/providers/llm/conversation/conversation-message.js";
 import { processUsageReadings } from "./account-usage.js";
-import { makeBridge } from "./bridge.js";
-import type { BridgeConfig } from "./bridge-state.js";
+import { makeBridge } from "./bridge/bridge.js";
+import type { BridgeConfig } from "./bridge/bridge-state.js";
 import { cliLaunch, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
-import { cliLogin } from "./cli-login.js";
-import { extraUsageNotice, extraUsageOf } from "./extra-usage-guard.js";
-import { inPlaceGate, runInPlaceSelfTest, type InPlaceGate, type SelfTestConfig } from "./in-place-check.js";
-import { engineShell } from "./engine-environment.js";
+import { cliLogin } from "./login/cli-login.js";
+import { extraUsageNotice, extraUsageOf } from "./bridge/extra-usage-guard.js";
+import { inPlaceGate, runInPlaceSelfTest, type InPlaceGate, type SelfTestConfig } from "./query/in-place-check.js";
+import { engineShell } from "./engine/engine-environment.js";
 import { CLAUDE_AGENT_SDK_LABEL, CLAUDE_AGENT_SDK_LOGIN_COMMAND, CLAUDE_AGENT_SDK_PROVIDER_ID, TOOL_MCP_PREFIX } from "./names.js";
-import { silentVersions } from "./stderr-signals.js";
-import { createHostLauncher, createQueryLauncher } from "./query-launcher.js";
+import { silentVersions } from "./engine/stderr-signals.js";
+import { createHostLauncher, createQueryLauncher } from "./engine/query-launcher.js";
 import { createHostedAgent, type HostedAgent, type HostedBinding } from "./agent-host/agent-bridge.js";
 import { createHostedAgentEntries } from "./agent-host/engine-text.js";
 import { cliView } from "./cli-view.js";
 import { processAgentHosts } from "./agent-host/host-registry.js";
-import { accessProviderAccountKey } from "../../../infra/llm/access-provider.js";
+import { accessProviderAccountKey } from "../../../infra/providers/auth/provider-account.js";
 
 /** The gate that runs the fake-host self-test of each listed CLI version once per process for the bridge's model. */
 function selfTestedGate(config: SelfTestConfig): InPlaceGate {

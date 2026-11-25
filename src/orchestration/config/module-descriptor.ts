@@ -1,7 +1,8 @@
-import { effectiveModuleIds, installedRetiredModuleConfig, migrateLegacyCapabilityModules, moduleSelectionFromConfig, selectionPolicyError, workflowsModeOf, type ModuleId } from "../modules.js";
-import type { WorkflowsMode } from "../../protocol/module-protocol-types.js";
+import { effectiveModuleIds, installedModules, installedRetiredModuleConfig, moduleSelectionVocabulary, selectionPolicyError, type ModuleId } from "../module-contract/module-catalog.js";
+import { composeFirstPartyModules } from "../module-contract/module-composition.js";
+import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js";
 
-import { canonicalModuleIds, MODULE_IDS } from "../../protocol/module-ids.js";
+import { canonicalModuleIds, EMPTY_MODULE_IDS, MODULE_IDS } from "../../protocol/runtime/module-ids.js";
 import type { ConfigReadResult } from "./config-file.js";
 
 interface ParsedHarnessConfig extends UnknownRecord {
@@ -156,4 +157,126 @@ function selectionError(field: string, error: string): string {
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const MODULE_ID_SET: ReadonlySet<string> = new Set(MODULE_IDS)
+
+function canonicalModuleIdSpelling(id: string): string {
+  return moduleSelectionVocabulary().retiredSpellings.get(id) ?? id
+}
+
+export function workflowsModeOf(selected: readonly ModuleId[], confirmationRequired: boolean): WorkflowsMode {
+  if (!selected.includes(moduleSelectionVocabulary().workflowsModuleId)) return "off"
+  return confirmationRequired ? "ask" : "on"
+}
+
+export const MODULE_PRESETS = {
+  minimal: { moduleIds: EMPTY_MODULE_IDS, workflowsMode: "off" },
+  full: { moduleIds: MODULE_IDS, workflowsMode: "on" },
+} as const
+
+
+export type ModuleSelection =
+  | { readonly ok: true; readonly moduleIds: readonly ModuleId[]; readonly warnings: readonly string[] }
+  | { readonly ok: false; readonly error: string }
+
+/** Decodes an external module selection against the wire vocabulary. */
+export function normalizeModuleSelection(value: unknown): ModuleSelection {
+  if (value === undefined) return selectedCapabilityModules(MODULE_IDS)
+  if (!Array.isArray(value)) return { ok: false, error: 'Invalid config value "modules": expected an array of registered module ids' }
+  if (!value.every((member) => typeof member === "string")) return { ok: false, error: 'Invalid config value "modules": every member must be a registered module id' }
+  const selected = new Set(value.map(canonicalModuleIdSpelling))
+  const unknown = [...selected].filter((id) => !MODULE_ID_SET.has(id)).sort()
+  if (unknown.length > 0) return { ok: false, error: `Unknown module id(s): ${unknown.join(", ")}` }
+  return selectedCapabilityModules(MODULE_IDS.filter((id) => selected.has(id)))
+}
+
+/** The id of the retired add-on that let agents write workflows; the workflows module absorbed it. */
+const RETIRED_WORKFLOWS_ADD_ON = "adhoc-workflows"
+
+/** The persisted opt-out list: the default-on modules that the person turned off. */
+function persistedDisabledModules(value: unknown): ModuleSelection {
+  if (value === undefined) return { ok: true, moduleIds: [], warnings: [] }
+  if (!Array.isArray(value)) return { ok: false, error: 'Invalid config value "disabled_modules": expected an array of registered module ids' }
+  if (!value.every((member) => typeof member === "string")) return { ok: false, error: 'Invalid config value "disabled_modules": every member must be a registered module id' }
+  // The opt-out of the retired add-on module becomes Workflows Off. Remove after 2027-04-30.
+  const converted = value.includes(RETIRED_WORKFLOWS_ADD_ON)
+  const workflows = moduleSelectionVocabulary().workflowsModuleId
+  const members = new Set(value.map((id) => canonicalModuleIdSpelling(id === RETIRED_WORKFLOWS_ADD_ON ? workflows : id)))
+  const unknown = [...members].filter((id) => !MODULE_ID_SET.has(id)).sort()
+  if (unknown.length > 0) return { ok: false, error: `Unknown disabled_modules id(s): ${unknown.join(", ")}` }
+  return { ok: true, moduleIds: MODULE_IDS.filter((id) => members.has(id)), warnings: converted ? [`flywheel.toml disabled_modules names "${RETIRED_WORKFLOWS_ADD_ON}", the retired Ad hoc workflows module. Flywheel reads it as "${workflows}", so Workflows is Off. The next settings change writes "${workflows}" in its place.`] : [] }
+}
+
+/** The modules that the retired `enabled_modules` list could name: the opt-in modules there were, each of which is
+ *  now either on by default (`provider-claude-agent-sdk`) or replaced by one that is (`provider-claude-subscription`,
+ *  replaced by the Agent SDK provider). Every module is on by default now, so such a list states the default
+ *  selection. A read takes it as no difference, and startup and the next selection write remove it. Any other value
+ *  is invalid, as it was. Remove the conversion after 2027-04-08. */
+const RETIRED_ENABLED_MODULES_ERROR = 'Invalid config value "enabled_modules": every module is on unless disabled_modules names it, so remove enabled_modules'
+
+/** Decodes one parsed config's sole module-selection authority. */
+export function moduleSelectionFromConfig(parsed: {
+  readonly modules?: unknown
+  readonly capability_modules?: unknown // retired spelling of modules; remove the conversion after 2026-12-18
+  readonly disabled_modules?: unknown
+  readonly enabled_modules?: unknown
+}): ModuleSelection {
+  const hasDisabled = Object.hasOwn(parsed, "disabled_modules")
+  const hasModules = Object.hasOwn(parsed, "modules")
+  const hasCapabilityModules = Object.hasOwn(parsed, "capability_modules")
+  if (hasDisabled && (hasModules || hasCapabilityModules)) return { ok: false, error: 'Cannot state both "disabled_modules" and a retired spelling ("modules" or "capability_modules")' }
+  if (Object.hasOwn(parsed, "enabled_modules") && (hasModules || hasCapabilityModules)) return { ok: false, error: 'Cannot state "enabled_modules" with a retired spelling ("modules" or "capability_modules")' }
+  if (hasModules || hasCapabilityModules) {
+    const migrated = migrateModuleSelection(hasModules ? parsed.modules : parsed.capability_modules) // retired spelling
+    if (!migrated.ok) return migrated
+    return selectedCapabilityModules(canonicalModuleIds([...migrated.moduleIds, ...moduleSelectionVocabulary().enabledSinceModulesSnapshot]))
+  }
+  const disabled = persistedDisabledModules(parsed.disabled_modules)
+  if (!disabled.ok) return disabled
+  const enabled = parsed.enabled_modules
+  if (enabled !== undefined && !(Array.isArray(enabled) && enabled.every((id) => typeof id === "string" && moduleSelectionVocabulary().retiredOptInModuleIds.has(id)))) return { ok: false, error: RETIRED_ENABLED_MODULES_ERROR }
+  return selectedCapabilityModules(MODULE_IDS.filter((id) => !disabled.moduleIds.includes(id)), disabled.warnings)
+}
+
+/** Expands retired aggregate IDs only when the complete selection is otherwise valid. */
+function migrateModuleSelection(value: unknown): ModuleSelection {
+  if (!Array.isArray(value) || !value.every((member) => typeof member === "string")) {
+    return { ok: false, error: 'Invalid config value "modules": every member must be a registered or retired module id' }
+  }
+  const { retiredExpansions } = moduleSelectionVocabulary()
+  const expanded = value.map(canonicalModuleIdSpelling).flatMap((id): readonly string[] => {
+    if (MODULE_ID_SET.has(id)) return [id]
+    return retiredExpansions.get(id) ?? []
+  })
+  const unknown = value.map(canonicalModuleIdSpelling).filter((id) => !MODULE_ID_SET.has(id) && !retiredExpansions.has(id))
+  if (unknown.length > 0) return { ok: false, error: `Unknown module id(s): ${[...new Set(unknown)].sort().join(", ")}` }
+  const selected = new Set(expanded)
+  return selectedCapabilityModules(MODULE_IDS.filter((id) => selected.has(id)))
+}
+
+/** Converts the retired five-choice selection without changing any former core module. */
+export function migrateLegacyCapabilityModules(value: unknown): ModuleSelection {
+  const { legacyFeatureTokens } = moduleSelectionVocabulary()
+  const tokens = new Set(legacyFeatureTokens.values())
+  if (!Array.isArray(value) || !value.every((member) => typeof member === "string" && tokens.has(member))) {
+    return { ok: false, error: 'Invalid legacy config value "features": expected only workflows, skills, subagents, learning, and background_commands' }
+  }
+  const selectedLegacy = new Set(value)
+  // The features vocabulary predates the kebab module ids: a module maps back
+  // to its features token before membership decides whether it stays on.
+  return selectedCapabilityModules(MODULE_IDS.filter((id) => {
+    const token = legacyFeatureTokens.get(id)
+    return token === undefined || selectedLegacy.has(token)
+  }))
+}
+
+function selectedCapabilityModules(moduleIds: readonly ModuleId[], warnings: readonly string[] = []): ModuleSelection {
+  try {
+    const selected = new Set(moduleIds)
+    composeFirstPartyModules(installedModules(), MODULE_IDS.filter((id) => !selected.has(id)))
+    return { ok: true, moduleIds: Object.freeze([...moduleIds]), warnings: Object.freeze([...warnings]) }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) }
+  }
 }

@@ -1,9 +1,10 @@
 import { Redacted } from "effect";
 import { expect, setSystemTime, test } from "bun:test";
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
-import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
-import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
-import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { providerModelInfo } from "../../../../../src/infra/providers/llm/catalog/provider-model-info.js";
+import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
+import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
+import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { anthropicApiModule } from "../../../../../src/orchestration/modules/provider-anthropic-api/module.js";
 import { fakeAvailability } from "../../agent-runtime/llm/_provider-chain-harness.js";
 import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";

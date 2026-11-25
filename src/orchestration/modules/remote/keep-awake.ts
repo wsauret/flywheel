@@ -1,7 +1,7 @@
-import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
-import type { OwnedProcess, OwnedProcessExit } from "../../../infra/owned-subprocess.js"
-import { windowsExecutionStateApi, type WindowsExecutionStateApi } from "../../../infra/windows-execution-state.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import type { OwnedProcess, OwnedProcessExit } from "../../../infra/supervision/launch/owned-subprocess.js"
+import { windowsExecutionStateApi, type WindowsExecutionStateApi } from "../../../infra/platform/windows-execution-state.js"
 
 /** Keeps an awake machine from idle-sleeping while a phone is using a runtime
  *  the account service opened for a phone: `caffeinate -i` on macOS and `systemd-inhibit` on

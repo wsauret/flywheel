@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { existsSync, linkSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 
-import { planSkillMutation, storeRootDirs } from "../../../src/orchestration/modules/learning/skill-mutation-plan.js";
+import { planSkillMutation, storeRootDirs } from "../../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import {
   activeOperationIds,
   manifestPath,
@@ -11,9 +11,9 @@ import {
   quarantineDir,
   readProposalRecordsQuarantiningUnusable,
   type ProposalRecord,
-} from "../../../src/orchestration/modules/learning/skill-operation-manifest.js";
-import type { SkillMutationPlan, SkillStoreConfig } from "../../../src/orchestration/modules/learning/skill-store-types.js";
-import { publishSkillRevision } from "../../../src/workflows/skill-schema.js";
+} from "../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
+import type { SkillMutationPlan, SkillStoreConfig } from "../../../src/orchestration/modules/learning/skills/skill-store-types.js";
+import { publishSkillRevision } from "../../../src/workflows/skills/skill-schema.js";
 
 const TMP = join(tmpdir(), `flywheel-operation-record-boundaries-${process.pid}-${Date.now()}`);
 const GLOBAL_ROOT = join(TMP, "skills");

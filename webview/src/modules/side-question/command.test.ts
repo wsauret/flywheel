@@ -6,7 +6,7 @@ import { importBuiltModule } from "../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../test-support/solid-transform.js"
 
 const build = await Bun.build({
-  entrypoints: [fileURLToPath(new URL("../../app/composer-submission-fixture.tsx", import.meta.url))],
+  entrypoints: [fileURLToPath(new URL("../../app/composer/composer-submission-fixture.tsx", import.meta.url))],
   target: "bun", conditions: ["browser"], format: "esm",
   plugins: [{ name: "side-question-composer", setup(builder) {
     builder.onLoad({ filter: /\.css$/ }, () => ({ contents: "", loader: "js" }))
@@ -16,7 +16,7 @@ const build = await Bun.build({
 if (!build.success) throw new Error(build.logs.map(String).join("\n"))
 const output = build.outputs.find((item) => item.kind === "entry-point")
 if (!output) throw new Error("Missing composer build")
-const { mountComposerSubmission }: typeof import("../../app/composer-submission-fixture.js") = await importBuiltModule(output)
+const { mountComposerSubmission }: typeof import("../../app/composer/composer-submission-fixture.js") = await importBuiltModule(output)
 const catalog = {
   revision: 3, offCommands: [],
   builtInCommands: [{ id: SIDE_QUESTION_COMMAND, title: "Side question", description: "Ask a side question", aliases: [] }],

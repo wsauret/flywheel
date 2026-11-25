@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import { runWithResilience } from "../../../src/orchestration/agent-runtime/agent-resilience.js"
+import { runWithResilience } from "../../../src/orchestration/agent-runtime/runner/agent-resilience.js"
 import type { AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js"
-import type { SessionNoticeOperation } from "../../../src/infra/session-notice.js"
+import type { SessionNoticeOperation } from "../../../src/infra/substrate/events/session-notice.js"
 import { createProjectNotificationSink } from "../../../src/orchestration/modules/project-notifications/sink.js"
 
 function ok(providerSessionKey?: string): AgentRunResult {

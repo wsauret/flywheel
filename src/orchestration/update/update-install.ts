@@ -43,13 +43,13 @@ import { createHash, randomBytes, type Hash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import * as path from "node:path";
 import { Schema } from "effect";
-import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
-import { openContainedDirectory } from "../../infra/descriptor-directory.js";
-import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
-import { coalesceRepeats } from "../../infra/repeat-coalescer.js";
+import type { ContainedDirectory } from "../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openContainedDirectory } from "../../infra/platform/files/descriptor-directory.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
+import { Log } from "../../infra/diagnostics/log.js";
+import { coalesceRepeats } from "../../infra/diagnostics/repeat-coalescer.js";
 import { ownedCommandRunner } from "../../infra/owned-command.js";
-import { versionsDir } from "../../infra/paths.js";
+import { versionsDir } from "../../infra/platform/files/paths.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import { collectBuildTrees } from "../../infra/update/build-retention.js";
 import type { UpdateAuthority } from "../../infra/update/update-authority.js";
@@ -144,29 +144,40 @@ export function createUpdateInstaller(deps: UpdateInstallerDeps): UpdateInstalle
       }
     },
 
-    async collect(signal) {
-      // The Windows launcher directory holds the launchers an update renamed
-      // out of the way and what a flat installation left, each removable only
-      // once nothing runs it.
-      if (deps.platform === "win32") {
-        try {
-          collectWindowsLauncherDirectory(deps.wrapperDir, activeLaunchers(deps.userDataRoot, deps.platformArch));
-        } catch (error) {
-          log.warn("the Windows launcher directory could not be collected", { error: errorMessage(error) });
-        }
-      }
-      const collected = await collectBuildTrees({ userDataRoot: deps.userDataRoot, signal, platform: deps.platform });
-      if (collected.removedBuilds.length === 0 && collected.removedRemainders.length === 0) return;
-      log.info("collected installed builds", {
-        removedBuilds: collected.removedBuilds.length,
-        removedRemainders: collected.removedRemainders.length,
-        keptBuilds: collected.keptBuilds,
-        // Said out loud, because a bounded or withdrawn sweep that reported
-        // nothing would read as an account with nothing left to collect.
-        moreToCollect: collected.truncated,
-      });
+    collect(signal) {
+      return collectInstalledBuilds(deps, signal);
     },
   };
+}
+
+/** Collect the builds and Windows launchers of an installation that nothing
+ *  can still be using. It runs after an update run and after an installation
+ *  completes (ARCH-DISTRIBUTION-027). The build collector takes the account
+ *  update lease itself and removes nothing when it cannot win it. A launcher
+ *  directory that cannot be collected is logged and left for a later run; a
+ *  failure of the build collector rejects. `signal` withdraws the sweep
+ *  between two removals. */
+export async function collectInstalledBuilds(location: Pick<UpdateInstallerDeps, "userDataRoot" | "wrapperDir" | "platform" | "platformArch">, signal?: AbortSignal): Promise<void> {
+  // The Windows launcher directory holds the launchers an update renamed
+  // out of the way and what a flat installation left, each removable only
+  // once nothing runs it.
+  if (location.platform === "win32") {
+    try {
+      collectWindowsLauncherDirectory(location.wrapperDir, activeLaunchers(location.userDataRoot, location.platformArch));
+    } catch (error) {
+      log.warn("the Windows launcher directory could not be collected", { error: errorMessage(error) });
+    }
+  }
+  const collected = await collectBuildTrees({ userDataRoot: location.userDataRoot, signal, platform: location.platform });
+  if (collected.removedBuilds.length === 0 && collected.removedRemainders.length === 0) return;
+  log.info("collected installed builds", {
+    removedBuilds: collected.removedBuilds.length,
+    removedRemainders: collected.removedRemainders.length,
+    keptBuilds: collected.keptBuilds,
+    // Said out loud, because a bounded or withdrawn sweep that reported
+    // nothing would read as an account with nothing left to collect.
+    moreToCollect: collected.truncated,
+  });
 }
 
 function openVersionsRoot(userDataRoot: string): ContainedDirectory {

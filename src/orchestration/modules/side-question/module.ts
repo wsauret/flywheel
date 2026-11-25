@@ -1,6 +1,6 @@
 import { SIDE_QUESTION_COMMAND, SIDE_QUESTION_COMMAND_NAME, SIDE_QUESTION_SURFACE, sideQuestionProtocol } from "../../../protocol/modules/side-question.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js"
 import { sideQuestionHost } from "./host.js"
 import { createChatSideQuestions } from "./request.js"
 import { createSideQuestionProtocol } from "./protocol.js"

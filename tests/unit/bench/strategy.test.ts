@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
-import { createPersonaStore, type PersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
+import { createPersonaStore, type PersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import {
   assertSameVariants,
   buildPlanJudgePrompt,
@@ -18,20 +18,20 @@ import {
   strategyVariants,
   STRATEGY_PERSONA,
 } from "../../../bench/ab-persona/strategy-bench.js";
-import { validateRuns } from "../../../src/orchestration/modules/development/benchmark/persona-evidence-validation.js";
-import type { AttemptRecord, ResearchRunRecord, RunConfig } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
-import { PersonaTaskFailure, renderPersonaTaskGuidance } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
-import { loadBenchmarkPersona } from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
-import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { validateRuns } from "../../../src/orchestration/modules/development/benchmark/persona/persona-evidence-validation.js";
+import type { AttemptRecord, ResearchRunRecord, RunConfig } from "../../../src/orchestration/modules/development/benchmark/scoring/run-store.js";
+import { PersonaTaskFailure, renderPersonaTaskGuidance } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
+import { loadBenchmarkPersona } from "../../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
+import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { createBenchmarkCatalog, RESEARCH_SNAPSHOT, RESEARCH_TASKS_CHANGED } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { captureProviderConnection, type AuthContext } from "../../../src/infra/auth/auth-context.js";
-import type { FailoverPlan } from "../../../src/infra/llm/access-provider.js";
+import { captureProviderConnection, type AuthContext } from "../../../src/infra/providers/auth/auth-context.js";
+import type { FailoverPlan } from "../../../src/infra/providers/llm/access/access-provider.js";
 import type { AgentOptions } from "../../../src/orchestration/agent-runtime/types.js";
-import type { WorkflowDeps } from "../../../src/orchestration/workflow-host/deps.js";
+import type { WorkflowDeps } from "../../../src/orchestration/agent-runtime/runner/workflow-deps.js";
 import type { OwnedBenchmarkRuntime } from "../../../bench/shared/runtime.js";
-import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";
+import { createForegroundBashHoldController } from "../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
+import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/session/control/background-work/background-work.js";
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js";
 import { testCapabilityModules, testProviderRegistry } from "../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
@@ -40,9 +40,9 @@ import { fakeModelsClient } from "../../helpers/model-tier-fixtures.js";
 import { testDirectories } from "../../helpers/directories.js";
 import { refusingLauncher } from "../../helpers/launcher-fake.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
-import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js";
-import { captureRuntimeConfigRequest } from "../../../src/orchestration/agent-runtime/request-config.js";
-import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema.js";
+import { createRuntimeEvent } from "../../../src/infra/substrate/runtime-facts/runtime-event-factory.js";
+import { captureRuntimeConfigRequest } from "../../../src/orchestration/config/request-config.js";
+import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema/schema.js";
 import { authProviders } from "../../helpers/auth-context.js";
 import { planEveryCapability } from "../../helpers/attempt-brief.js";
 

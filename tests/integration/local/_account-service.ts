@@ -2,11 +2,12 @@ import { readFileSync, realpathSync } from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { createAccountRuntimeAttach, isRuntimeListening, readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
-import { launchRuntimeClient } from "../../../src/cli/runtime-launch.js"
-import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
-import type { StartupDirectories } from "../../../src/infra/directory-authorities.js"
-import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/paths.js"
+import { createAccountRuntimeAttach, isRuntimeListening } from "../../../src/cli/account-service/runtime-attach.js"
+import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-identity-record.js"
+import { launchRuntimeClient } from "../../../src/cli/account-service/runtime-launch.js"
+import { serveLaneFor } from "../../../src/infra/platform/cli-subprocess.js"
+import type { StartupDirectories } from "../../../src/infra/platform/files/directory-authorities.js"
+import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/platform/files/paths.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../src/protocol/runtime-liveness.js"
 
 // The isolated account service is started through this process's bun, so it serves this process's lane.

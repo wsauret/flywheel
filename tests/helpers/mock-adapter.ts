@@ -1,5 +1,5 @@
-import type { FlywheelEvent } from "../../src/infra/events";
-import type { EventBus, Unsubscribe } from "../../src/infra/event-bus";
+import type { FlywheelEvent } from "../../src/infra/substrate/events/events";
+import type { EventBus, Unsubscribe } from "../../src/infra/substrate/events/event-bus";
 
 /**
  * MockAdapter — connects to event bus, records events.

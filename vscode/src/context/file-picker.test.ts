@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "bun:test"
 
-import type { ProjectFileEntry } from "../../../src/protocol/transcript-protocol-types.js"
+import type { ProjectFileEntry } from "../../../src/protocol/transcript/transcript-protocol-types.js"
 import { pickFile, type FileItem, type FileQuickPick } from "./file-picker.js"
 
 /** A quick pick that records what the picker sets and lets the test act as

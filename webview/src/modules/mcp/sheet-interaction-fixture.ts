@@ -1,9 +1,9 @@
 import { createComponent, createRoot } from "solid-js"
-import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { McpStatusRow } from "../../../../src/protocol/modules/mcp.js"
 import { fakeClient, fakeClientActions, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"
-import { createElement, insert, nodes, textContent } from "../../app/render-ownership-host-fixture.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
+import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 import { McpSheet } from "./sheet.js"
 
 /** Mounts the real MCP sheet against an in-memory Solid host, so a test

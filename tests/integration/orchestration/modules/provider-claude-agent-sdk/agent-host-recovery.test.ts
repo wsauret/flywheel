@@ -3,18 +3,18 @@
  * case drives an agent loop as `agent-host.test.ts` does.
  */
 import { afterEach, describe, expect, test } from "bun:test";
-import type { LaunchedHost } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import type { LaunchedHost } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { processAgentHosts, type HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
-import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { processLoginObservations, type LoginKey, type RequestOutcome } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
-import type { ModelRefusal } from "../../../../../src/infra/auth/provider-model-catalog-store.js";
+import type { ModelRefusal } from "../../../../../src/infra/providers/auth/provider-models/provider-model-catalog-store.js";
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js";
-import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js";
-import { turnContextEntry } from "../../../../../src/orchestration/agent-runtime/agent-loop-turn-context.js";
+import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
+import { turnContextEntry } from "../../../../../src/orchestration/agent-runtime/request/prompt/agent-loop-turn-context.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { agentLoop, dispatchedIds, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, SYSTEM, textOf, TREE, wireMessages } from "./_agent-host.js";
-import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js";
+import type { NotificationEpisodeInput } from "../../../../../src/infra/substrate/events/notification-episode.js";
 import { captureDiagnostics, onFakeHost, removeEngineProbes, streamedText, streamedToolCalls, until } from "./_claude-sdk-client.js";
 import type { FakeReply, RecordedRequest } from "./_fake-host.js";
 

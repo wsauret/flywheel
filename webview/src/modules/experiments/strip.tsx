@@ -1,9 +1,9 @@
 import { createSignal, Show, type Accessor } from "solid-js"
-import { keyedRows } from "../../app/keyed-rows.js"
+import { keyedRows } from "../../app/controls/keyed-rows.js"
 
 import type { FrontendExperimentRun, FrontendExperimentView } from "../../../../src/protocol/modules/experiments.js"
 import { formatDuration } from "../../../../src/protocol/client/format.js"
-import { scrollEdges } from "../../app/scroll-edges.js"
+import { scrollEdges } from "../../app/controls/scroll-edges.js"
 import "./strip.css"
 
 /** What the app can ask the strip to do from outside it: `/experiment

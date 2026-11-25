@@ -11,8 +11,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
 import OpenAI from "openai";
 
-import type { OAuthPersistencePolicy, ProviderConnection, RuntimeOAuthCredential } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderCandidate } from "../../../infra/llm/access-provider.js";
+import type { OAuthPersistencePolicy, ProviderConnection, RuntimeOAuthCredential } from "../../../infra/providers/auth/auth-context.js";
+import type { AccessProviderCandidate } from "../../../infra/providers/llm/access/access-provider.js";
 import {
   COPILOT_STATIC_HEADERS,
   type CopilotStoredTokens,
@@ -20,9 +20,9 @@ import {
 } from "./auth-types.js";
 import { getGitHubCopilotBaseUrl, rebaseToCopilotHost } from "./base-url.js";
 import { refreshGitHubCopilotToken } from "./token-refresh.js";
-import { Log } from "../../../infra/log.js";
-import { timingFetch } from "../../agent-runtime/llm/request-timing.js";
-import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
+import { Log } from "../../../infra/diagnostics/log.js";
+import { timingFetch } from "../../agent-runtime/llm/stream/request-timing.js";
+import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/stream/provider-failure.js";
 
 const log = Log.create({ service: "llm-copilot" });
 

@@ -1,0 +1,36 @@
+import { describe, expect, test } from "bun:test"
+import { Schema } from "effect"
+import { modelRoleAdmission, publishedModelRoles } from "../../../../../../src/orchestration/app-service/auth/models/model-role-projection.js"
+import { definitionAvailabilityOf } from "../../../../../../src/orchestration/config/policy/definition-availability.js"
+import { RuntimeModelRolesResultSchema } from "../../../../../../src/protocol/auth/model-role-protocol-schemas.js"
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js"
+import { SHIPPED_MODULES } from "../../../../../../scripts/shipped-modules.js"
+import type { FirstPartyModuleComposition } from "../../../../../../src/orchestration/module-contract/module-catalog.js"
+import { repoDefinitions, repoModules } from "../../../../../helpers/project-definitions.js"
+
+const rolesOf = (composition: FirstPartyModuleComposition) =>
+  publishedModelRoles(modelRoleAdmission(composition, definitionAvailabilityOf(repoDefinitions().captureRevision(), composition.enabledModuleIds, [])))
+
+describe("published model roles", () => {
+  test("publishes Workflow first in the agents group and rejects retired wire groups", () => {
+    const roles = rolesOf(composeFirstPartyModules())
+    expect(roles.filter(({ group }) => group === "agents")[0]).toMatchObject({ id: "workflow-agent", label: "Workflow", description: "Runs the agents of workflows." })
+    expect(roles.some(({ id }) => id === "step-agent")).toBe(false)
+    expect(Schema.decodeUnknownSync(RuntimeModelRolesResultSchema)({ roles })).toEqual({ roles })
+    const retired = { roles: [{ id: "step-agent", label: "Step Agent", group: "steps", order: 0, description: "Runs workflow steps." }] }
+    expect(() => Schema.decodeUnknownSync(RuntimeModelRolesResultSchema)(retired)).toThrow()
+    expect(() => Schema.decodeUnknownSync(RuntimeModelRolesResultSchema)({
+      roles: [{ id: "workflow-agent", label: "Workflow Agent", group: "briefs", order: 0, description: "Runs the agents of workflows." }],
+    })).toThrow()
+  })
+  test("lists module-owned roles only while their module is installed and enabled", () => {
+    const enabled = rolesOf(composeFirstPartyModules(repoModules))
+    expect(enabled.find(({ id }) => id === "benchmark-judge")).toMatchObject({ label: "Benchmark Judge", group: "background" })
+    for (const composition of [composeFirstPartyModules(repoModules, ["development"]), composeFirstPartyModules(SHIPPED_MODULES)]) {
+      const roles = rolesOf(composition)
+      expect(roles.some(({ id }) => id === "benchmark-judge")).toBe(false)
+      expect(roles.some(({ id }) => id === "chat")).toBe(true)
+      expect(roles.some(({ id }) => id === "subagent-summary")).toBe(true)
+    }
+  })
+})

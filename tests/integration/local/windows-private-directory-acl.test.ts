@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { ensurePrivateRootDirectory } from "../../../src/infra/private-path.js"
+import { ensurePrivateRootDirectory } from "../../../src/infra/platform/files/private-path.js"
 
 const system32 = join(process.env.SystemRoot ?? "C:\\Windows", "System32")
 const whoami = join(system32, "whoami.exe")

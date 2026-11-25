@@ -357,7 +357,7 @@ Not: A frame cap as the only size limit a person can meet.
 
 ## ARCH-PROTOCOL-068: Pending questions cross from the durable question projection
 
-Every client derives the question it docks at the prompt from the durable question projection, which committed question facts alone advance, never from transcript rows or runner state. The transcript's question row settles from the same committed answer, skip, or withdrawal on every settlement path, and a settlement that the runtime refuses returns its reason to the client. The same projection publishes the set of project sessions with a pending question, closed ones included, and clients derive every waiting mark from it.
+Every client derives the question it docks at the prompt from the durable question projection, which committed question facts alone advance, never from transcript rows or runner state. The transcript's question row settles from the same committed answer, skip, or withdrawal on every settlement path, and a settlement that the runtime refuses returns its reason to the client. The account service holds the set of project sessions with a pending question, closed ones included, from the same facts and the same fold, so it answers while no executor runs. Clients derive every waiting mark from it.
 
 Not: A dock derived from live transcript rows, which stays after a settlement that the live display never received, a question field on a session row, or a client request for each listed session.
 

@@ -1,5 +1,5 @@
-import { MODULE_SETTING_GROUPS } from "../../src/protocol/module-protocol-types.js"
-import { SETTING_SECTIONS, settingGroupHead, type SettingCatalogEntry, type SettingCatalogRow } from "../../src/protocol/setting-catalog.js"
+import { MODULE_SETTING_GROUPS } from "../../src/protocol/runtime/module-protocol-types.js"
+import { SETTING_SECTIONS, settingGroupHead, type SettingCatalogEntry, type SettingCatalogRow } from "../../src/protocol/settings/setting-catalog.js"
 
 /** Every row of the setting catalog in the order that a client lays it out:
  *  subsection rows in place, and the head rows of each module group, in group

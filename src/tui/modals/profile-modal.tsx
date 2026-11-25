@@ -1,12 +1,12 @@
 /** @jsxImportSource @opentui/solid */
 
 import { useTheme } from "@tui/context/theme"
-import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
-import { ModalSelect } from "../components/modal-select.js"
-import type { FilteredResult } from "../components/modal-select-types.js"
-import { ModalFrame } from "../components/modal-frame.js"
-import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "../components/modal-copy.js"
-import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
+import { useModalDimensions } from "@tui/components/modal/use-modal-dimensions"
+import { ModalSelect } from "../components/modal/select/modal-select.js"
+import type { FilteredResult } from "../components/modal/select/modal-select-types.js"
+import { ModalFrame } from "../components/modal/modal-frame.js"
+import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "../components/modal/modal-copy.js"
+import { KERNEL_COMMAND_NAMES } from "../../protocol/commands/command-names.js"
 
 interface ProfileModalProps {
   result: FilteredResult<string>

@@ -1,5 +1,5 @@
-import type { EventStoreReadSurface, FactQuery, StoredFact } from "../../src/infra/event-store-types.js"
-import type { ToolContentRow } from "../../src/infra/tool-content.js"
+import type { EventStoreReadSurface, FactQuery, StoredFact } from "../../src/infra/substrate/store/event-store-types.js"
+import type { ToolContentRow } from "../../src/infra/substrate/runtime-facts/tool-content.js"
 
 /** Filter semantics of the SQLite read surface over an in-memory fact list. */
 export function matchesFactQuery(event: StoredFact, query: FactQuery): boolean {

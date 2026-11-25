@@ -1,19 +1,19 @@
 import { createEffect, createMemo, createSignal, Index, on, onCleanup, Show, untrack } from "solid-js"
-import { parseWorkflowLink } from "../../../../src/protocol/client/session-links.js"
-import { workflowCard, workflowCardChoice, workflowCardCut, workflowCardHeaderParts, workflowCardNotice, workflowCardSettled, workflowPlanAbsence } from "../../../../src/protocol/client/workflow-card.js"
-import { workflowCardControls, workflowHoldsFailedAgent, workflowResumeTitle } from "../../../../src/protocol/client/session-controls.js"
-import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
-import { workflowAgentOpenTarget } from "../../../../src/protocol/client/workflow-agent.js"
-import type { BlockProps } from "../../app/blocks.js"
-import { WORKFLOW_TEXT_GLYPH } from "../../app/icons.js"
-import { RowTime } from "../../app/row-time.js"
+import { parseWorkflowLink } from "../../../../src/protocol/client/session/session-links.js"
+import { workflowCard, workflowCardChoice, workflowCardCut, workflowCardHeaderParts, workflowCardNotice, workflowCardSettled, workflowPlanAbsence } from "../../../../src/protocol/client/work/workflow/workflow-card.js"
+import { workflowCardControls, workflowResumeTitle } from "../../../../src/protocol/client/work/session-controls.js"
+import { workflowOutline } from "../../../../src/protocol/client/work/workflow/workflow-outline.js"
+import { workflowAgentOpenTarget } from "../../../../src/protocol/client/work/workflow/workflow-agent.js"
+import type { BlockProps } from "../../app/transcript/blocks/blocks.js"
+import { WORKFLOW_TEXT_GLYPH } from "../../app/controls/icons.js"
+import { RowTime } from "../../app/transcript/reading/row-time.js"
 import { actionKey, controlActionKey } from "../../client/action-key.js"
 import { WORKFLOW_CONTROLS, WorkflowCard } from "./card.js"
 import { useWorkflows } from "./context.js"
 import type { WorkflowReading } from "./inspection.js"
-import { workflowSurfaceReads } from "../../../../src/protocol/client/workflow-surface.js"
-import { agentGroupInFlight } from "../../../../src/protocol/client/agent-group-summary.js"
-import { CARD_ACTION_COPY, CardActionHeader, type CardAction } from "../../app/card-action-header.js"
+import { workflowSurfaceReads } from "../../../../src/protocol/client/work/workflow/workflow-surface.js"
+import { agentGroupInFlight } from "../../../../src/protocol/client/work/agent-group-summary.js"
+import { CARD_ACTION_COPY, CardActionHeader, type CardAction } from "../../app/transcript/blocks/agents/card-action-header.js"
 
 /** Workflow cards read passive run cursors, never a session detail or transcript. */
 export function WorkflowActivity(props: BlockProps) {
@@ -57,8 +57,7 @@ export function WorkflowActivity(props: BlockProps) {
   })
   const roles = untrack(() => props.roleAssignments)
   const controls = () => {
-    const view = reading().view
-    return workflowCardControls(workflowSurfaceReads(surface()).detail ? reading().detail : undefined, active(), block()?.status === "paused", view?.attemptsStatus === "loaded" && workflowHoldsFailedAgent(view))
+    return workflowCardControls(workflowSurfaceReads(surface()).detail ? reading().detail : undefined, active(), block()?.status === "paused", reading().view)
   }
   const open = () => { const id = workflowId(); if (id !== undefined) client.open(id) }
   const parts = () => { const current = block(); return current ? workflowCardHeaderParts(current, now()) : [] }

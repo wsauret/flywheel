@@ -3,7 +3,7 @@ import { POSIX_FILE_MODES } from "../../../helpers/posix-modes.js";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { versionsDir } from "../../../../src/infra/paths.js";
+import { versionsDir } from "../../../../src/infra/platform/files/paths.js";
 import {
   BUILD_METADATA_FILE,
   assertInstallLocation,

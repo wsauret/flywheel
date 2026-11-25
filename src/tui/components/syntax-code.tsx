@@ -2,11 +2,12 @@
 
 import { type CodeRenderable, StyledText, fg as stFg, type TextChunk } from "@opentui/core"
 import { resolveSyntaxLanguage } from "@tui/adapters/syntax-language.js"
-import { chatSyntaxColors, createHighlighter, type SyntaxColors } from "@tui/adapters/syntax-highlight.js"
+import { createHighlighter } from "@tui/adapters/syntax-highlight.js"
+import { chatSyntaxColors, type SyntaxColors } from "@tui/context/theme/syntax-colors.js"
 import { useTheme } from "@tui/context/theme"
-import { useFindPaint } from "@tui/context/find-highlight.js"
-import type { TuiTheme } from "@tui/context/theme/resolve.js"
-import { bindSelectableStyledTextContent } from "@tui/utils/reactive-text.js"
+import { useFindPaint } from "@tui/context/find/find-highlight.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
+import { bindSelectableStyledTextContent } from "@tui/context/find/reactive-text.js"
 import { createMemo, createSignal, For, type JSX, Show } from "solid-js"
 
 interface SyntaxCodeProps {

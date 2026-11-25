@@ -6,7 +6,7 @@ import {
   type ServingAttempt,
   type StreamOptions,
 } from "../../../../src/orchestration/agent-runtime/llm/types.js";
-import { modelFamilyApi } from "../../../../src/orchestration/agent-runtime/llm/messages.js";
+import { modelFamilyApi } from "../../../../src/infra/providers/llm/conversation/messages.js";
 
 /** The history target of a fake client that stamps its turns with its attempt's own identity. */
 export function attemptHistoryTarget(attempt: Pick<ServingAttempt, "accessProvider" | "modelFamily" | "model">): ReturnType<LLMClient["historyTarget"]> {

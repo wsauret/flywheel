@@ -1,4 +1,4 @@
-import type { AttachedRuntimeClient, FrontendEvent } from "../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendEvent } from "../../src/protocol/runtime/app-service-types.js"
 
 /** The event a connection publishes when its lane breaks. */
 export const LANE_BREAK: FrontendEvent = {

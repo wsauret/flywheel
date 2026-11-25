@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
-import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorConversationFixture, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 let ctx: SupervisorTestContext

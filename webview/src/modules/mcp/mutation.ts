@@ -1,4 +1,4 @@
-import type { FrontendMutation, MutationResult } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, MutationResult } from "../../../../src/protocol/runtime/app-service-types.js"
 import { mcpRemovalConfirmation, type McpClientAction, type McpEnabledAction, type McpRemovalReview, type McpStatusRow } from "../../../../src/protocol/modules/mcp.js"
 import type { ConfirmRequest } from "../../app/client-context.js"
 import type { ClientActions } from "../../client/actions.js"

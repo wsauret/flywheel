@@ -2,9 +2,9 @@
  *  it makes, so a test can ask what reached the disk, including writes that
  *  failed, and an unlink that the platform refuses. */
 
-import type { ContainedDirectory, ContainedDirectoryOptions } from "../../src/infra/descriptor-directory-contract.js";
-import { setContainedDirectoryBackendForTests } from "../../src/infra/descriptor-directory.js";
-import { posixContainedDirectoryBackend } from "../../src/infra/descriptor-directory-posix.js";
+import type { ContainedDirectory, ContainedDirectoryOptions } from "../../src/infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { setContainedDirectoryBackendForTests } from "../../src/infra/platform/files/descriptor-directory.js";
+import { posixContainedDirectoryBackend } from "../../src/infra/platform/files/descriptor-directory/descriptor-directory-posix.js";
 
 /** Every contained directory opened from now on, and every child it opens,
  *  is the real POSIX one with the members `override` returns. Own properties

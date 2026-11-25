@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import type { JsonValue } from "../../../../infra/auth/bounded-json.js";
-import { DebugLog } from "../../../../infra/debug-log.js";
-import { asRecord } from "../../../../infra/record.js";
-import { servePluginGate, type PluginGateServer } from "../step-gate.js";
+import type { JsonValue } from "../../../../infra/providers/auth/bounded-json.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
+import { asRecord } from "../../../../infra/guards/record.js";
+import { servePluginGate, type PluginGateServer } from "../engine/step-gate.js";
 import pluginManifest from "./host-plugin/plugin.json" with { type: "json" };
 import pluginHooks from "./host-plugin/hooks/hooks.json" with { type: "json" };
 import pluginHookModule from "./host-plugin/hooks/register.js.txt";

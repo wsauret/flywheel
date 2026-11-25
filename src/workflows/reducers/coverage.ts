@@ -1,9 +1,9 @@
 import { Schema } from "effect";
-import { isRecord } from "../../infra/record.js";
+import { isRecord } from "../../infra/guards/record.js";
 import type { CompiledField } from "../output-contract/compile.js";
 import type { FieldMap } from "../output-contract/grammar.js";
-import type { WorkflowTreeCoverage } from "../../protocol/workflow-view-protocol-types.js";
-import { ITEM_POSITION_KEY } from "../workflow-schema.js";
+import type { WorkflowTreeCoverage } from "../../protocol/session/workflow-view-protocol-types.js";
+import { ITEM_POSITION_KEY } from "../schema/workflow-schema.js";
 import { byKey, compareCodeUnits, defineReducer, fieldNoun, HANDOFF_REFERENCE_FIELD, handoffValue, type JoinContracts, type ReducerInput, type ReducerInputSlot, type ReducerOutput, type SourceOutput } from "./reducer.js";
 
 // `coverage@1`: the breadth-coverage contract of a survey. Each item of the

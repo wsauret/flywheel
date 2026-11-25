@@ -1,10 +1,10 @@
 // Manifest writers for the binary build.
 //
 // Two generated manifests carry runtime prompt assets inline:
-//   src/workflows/agents/manifest.ts   persona markdown, skill packages, shared
+//   src/workflows/provenance/asset-manifest.ts    persona markdown, skill packages, shared
 //     reference assets, workflow output contract files, and the skill
 //     packages of every shipped module definition bundle
-//   src/infra/agent-assets/manifest.ts the runner-universal system prompt
+//   src/infra/definitions/agent-assets/manifest.ts the runner-universal system prompt
 //
 // Invoked by scripts/build-binary.ts before bundling, then restored to the
 // checked-in empty defaults after bundling.
@@ -12,12 +12,12 @@
 import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { DEFINITION_ASSET_EXTENSIONS } from "../src/workflows/definition-assets.js";
-import { BUNDLED_REFERENCE_DIR, BUNDLED_SKILL_DIR } from "../src/workflows/skill-source-inventory.js";
+import { DEFINITION_ASSET_EXTENSIONS } from "../src/workflows/definitions/definition-assets.js";
+import { BUNDLED_REFERENCE_DIR, BUNDLED_SKILL_DIR } from "../src/workflows/skills/skill-source-inventory.js";
 
 const ROOT = join(import.meta.dir, "..");
 const WORKFLOWS_SRC = join(ROOT, "src", "workflows");
-const AGENT_ASSETS_SRC = join(ROOT, "src", "infra", "agent-assets");
+const AGENT_ASSETS_SRC = join(ROOT, "src", "infra", "definitions", "agent-assets");
 
 interface TextByPath {
   [path: string]: string;
@@ -114,7 +114,7 @@ export interface GeneratedManifest {
  *  restores them afterwards, including after a failed bundle. */
 export const GENERATED_MANIFESTS: readonly GeneratedManifest[] = [
   {
-    path: join(WORKFLOWS_SRC, "agents", "manifest.ts"),
+    path: join(WORKFLOWS_SRC, "provenance", "asset-manifest.ts"),
     emptySource: EMPTY_WORKFLOW_MANIFEST_SOURCE,
     write: writeWorkflowManifest,
   },
@@ -156,7 +156,8 @@ export async function collectSkillPackageFiles(packageDir = BUNDLED_SKILL_DIR): 
  *  The shipped catalog never names the development bundle, so no release
  *  carries it. */
 export async function collectModuleSkillPackageFiles(): Promise<{ [bundle: string]: TextByPath }> {
-  const { shippedDefinitionBundles } = await import("../src/orchestration/modules.js");
+  await import("./shipped-modules.js");
+  const { shippedDefinitionBundles } = await import("../src/orchestration/module-contract/module-catalog.js");
   const bundles: { [bundle: string]: TextByPath } = {};
   for (const { id, root } of shippedDefinitionBundles()) bundles[id] = await collectSkillPackageFiles(join(root, "skills"));
   return bundles;

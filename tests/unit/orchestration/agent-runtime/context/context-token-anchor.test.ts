@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { createContextTokenAnchor, type OutgoingContextSnapshot } from "../../../../../src/orchestration/agent-runtime/context-token-anchor"
+import { createContextTokenAnchor, type OutgoingContextSnapshot } from "../../../../../src/orchestration/agent-runtime/request/context-token-anchor"
 import { FUNCTION_TOOL_PRESENTATION, type ServingAttempt } from "../../../../../src/orchestration/agent-runtime/llm/types"
 
 const attempt: ServingAttempt = {

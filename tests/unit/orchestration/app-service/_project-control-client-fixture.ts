@@ -1,16 +1,16 @@
-import type { ProjectControlClientOptions, ProjectControlExecutor } from "../../../../src/orchestration/app-service/project-control-client.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
-import type { FrontendMutation, RuntimeChatDefault, RuntimeExecutorState } from "../../../../src/protocol/app-service-types.js"
+import type { ProjectControlClientOptions, ProjectControlExecutor } from "../../../../src/orchestration/app-service/account/projects/project-control-client.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
+import type { FrontendMutation, RuntimeChatDefault, RuntimeExecutorState } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
-import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
+import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
-import { projectSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-row.js"
-import type { RuntimeBackgroundLane } from "../../../../src/orchestration/app-service/runtime-background-lane.js"
+import { projectSessionCatalogRow } from "../../../../src/orchestration/session/control/session-catalog-row.js"
+import type { RuntimeBackgroundLane } from "../../../../src/orchestration/app-service/background/runtime-background-lane.js"
 import { durableRow, durableSessionFromCatalogRow, storedEvents } from "./_frontend-projection-fixtures.js"
 import { servingAccountService } from "../../../helpers/account-service-state.js"
 import { idleAccountUpdates } from "../../../helpers/account-updates.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 
 export const never = <T>(): Promise<T> => new Promise(() => {})
 

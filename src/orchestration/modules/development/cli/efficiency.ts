@@ -1,9 +1,9 @@
 import * as fs from "node:fs"
-import { CliArgsError, type CliArgsResult, parseArgsResult, parseTimeInput, requiredValue } from "../../../../infra/cli-args.js"
-import { createSqliteEventStore } from "../../../../infra/sqlite-event-store.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { CliArgsError, type CliArgsResult, parseArgsResult, parseTimeInput, requiredValue } from "../../../../infra/parsing/cli-args.js"
+import { createSqliteEventStore } from "../../../../infra/substrate/store/sqlite-event-store.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { formatDuration, formatTokens } from "../../../../protocol/client/format.js"
-import { resolveEventStoreDbFile } from "../../../../infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../../infra/platform/files/paths.js"
 import {
   hasStepActivity,
   loadStepEfficiencyFromEvents,
@@ -12,7 +12,7 @@ import {
   type StepEfficiencySummary,
   summarizeStepEfficiency,
 } from "../diagnostics/step-efficiency-projection.js"
-import type { CliVerb } from "../../../cli-contribution.js"
+import type { CliVerb } from "../../../module-contract/cli-contribution.js"
 
 type Mode = "steps" | "interval"
 

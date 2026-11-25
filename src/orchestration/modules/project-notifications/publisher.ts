@@ -1,8 +1,8 @@
-import type { StoredFact } from "../../../infra/event-store-types.js"
-import { Log } from "../../../infra/log.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 import { projectNotificationsCursor, type ProjectNotificationPatchPayload } from "../../../protocol/modules/project-notifications.js"
-import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { parseProjectNotificationFact } from "./facts.js"
 import type { ProjectNotificationJournal } from "./journal.js"
 

@@ -2,18 +2,20 @@ import { afterEach, beforeEach, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, type LocalSqliteEventStore, type EventStoreAppend } from "../../../../../src/infra/event-store-types.js"
-import type { DebugLogRecordInput } from "../../../../../src/infra/debug-log.js"
-import { Log } from "../../../../../src/infra/log.js"
-import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
-import { composeFirstPartyModules, createSessionToolSummaryReader, installedWorkspaceMigrations } from "../../../../../src/orchestration/modules.js"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore, type EventStoreAppend } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import type { DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
+import { resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
+import { createSessionToolSummaryReader } from "../../../../../src/orchestration/session/runtime-facts/module-tool-history.js"
+import { installedWorkspaceMigrations } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 import { subagentsModule } from "../../../../../src/orchestration/modules/subagents.js"
-import { TreeBlockProjection } from "../../../../../src/orchestration/session/conversation/conversation-block-projection.js"
+import { TreeBlockProjection } from "../../../../../src/orchestration/session/conversation/transcript/conversation-block-projection.js"
 import type { MessageEntry } from "../../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import { entriesVisited } from "../../../../helpers/entries-visited.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
-import type { ToolHistorySummary } from "../../../../../src/orchestration/module-seams.js"
+import type { ToolHistorySummary } from "../../../../../src/orchestration/module-contract/module-seams.js"
 
 let directory: string
 let store: LocalSqliteEventStore
@@ -24,8 +26,7 @@ beforeEach(() => {
   store = createSqliteEventStore(resolveEventStoreDbFile(directory))
 })
 afterEach(() => {
-  store.close()
-  rmSync(directory, { recursive: true, force: true })
+  store.close(); rmSync(directory, { recursive: true, force: true })
 })
 function append(fact: Omit<EventStoreAppend, "aggregateId" | "sessionId" | "timestamp">): void {
   store.append({ ...fact, aggregateId: `session:${sessionId}`, sessionId, timestamp: 10 })

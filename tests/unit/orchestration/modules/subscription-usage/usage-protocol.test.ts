@@ -4,12 +4,12 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Schema } from "effect"
 import { createUsageAppService as createFlywheelAppService, type UsageAppServiceDeps as FlywheelAppServiceDeps } from "../../../../helpers/usage-app-service.js"
-import { RuntimeProtocolRpc, runtimeQueryResultSchema } from "../../../../../src/protocol/runtime-protocol-schemas.js"
-import { createFrontendProjection } from "../../../../../src/orchestration/app-service/frontend-projection.js"
-import { createRuntimeUiBus } from "../../../../../src/orchestration/app-service/runtime-ui-bus.js"
+import { RuntimeProtocolRpc, runtimeQueryResultSchema } from "../../../../../src/protocol/rpc/runtime-protocol-schemas.js"
+import { createFrontendProjection } from "../../../../../src/orchestration/app-service/projections/frontend-projection.js"
+import { createRuntimeUiBus } from "../../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import type { SubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
-import { createUsageAuthority, type UsageAuthority } from "../../../../../src/infra/llm/usage-authority.js"
-import type { UsageEntry } from "../../../../../src/infra/llm/usage-entry.js"
+import { createUsageAuthority, type UsageAuthority } from "../../../../../src/infra/providers/llm/usage/usage-authority.js"
+import type { UsageEntry } from "../../../../../src/infra/providers/llm/usage/usage-entry.js"
 import { createInertSubscriptionUsageService } from "../../../../helpers/subscription-usage-service-fixture.js"
 import { projectUsageAccounts } from "../../../../../src/orchestration/modules/subscription-usage/usage-projection.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "../../app-service/app-service-doubles.js"
@@ -97,7 +97,7 @@ describe("unified Usage protocol", () => {
     const root = mkdtempSync(join(tmpdir(), "usage-protocol-")); roots.push(root)
     const authority = createUsageAuthority({ profileDir: root, profileId: "default", now: () => Date.parse("2025-01-01T00:00:00.000Z") })
     authority.append(entry())
-    authority.append(entry({ attemptId: crypto.randomUUID(), attribution: { kind: "candidate", providerId: "chatgpt", instanceId: "account-a" }, spendMode: "included", credentialLineage: "00000000-0000-4000-8000-000000000020", model: "gpt-4o", classification: "subscription_equivalent", price: { kind: "priced", estimatedUsd: 2, rateCard: { inputPerMillionUsd: 1 }, provenance: "live" } }))
+    authority.append(entry({ attemptId: crypto.randomUUID(), attribution: { kind: "candidate", providerId: "chatgpt", instanceId: "account-a" }, spendMode: "included", credentialLineage: "00000000-0000-4000-8000-000000000020", model: "gpt-4o", tokens: { input: 10, output: 5, cacheRead: 2, cacheWrite: 1, reasoning: 3 }, classification: "subscription_equivalent", price: { kind: "priced", estimatedUsd: 2, rateCard: { inputPerMillionUsd: 1 }, provenance: "live" } }))
     authority.append(entry({ attemptId: crypto.randomUUID(), model: "unknown-model", price: { kind: "unavailable", reason: "missing catalog price" } }))
     let checkCalls = 0
     const service = serviceFor(authority, () => { checkCalls += 1 })
@@ -109,7 +109,7 @@ describe("unified Usage protocol", () => {
       kind: "usage.accounts",
       profileId: "default",
       sources: [
-        { kind: "subscription", label: "Personal", quotaAccounting: { state: "window-unavailable" }, activity: { state: "available", includedValueUsd: 2, estimatedBilledUsd: 0, attempts: 1 } },
+        { kind: "subscription", label: "Personal", quotaAccounting: { state: "window-unavailable" }, activity: { state: "available", includedValueUsd: 2, estimatedBilledUsd: 0, attempts: 1, tokens: { input: 10, output: 5, cacheRead: 2, cacheWrite: 1, reasoning: 3, total: 18 } } },
         { kind: "metered", label: "OpenAI", activity: { state: "available", includedValueUsd: 0, estimatedBilledUsd: 3, attempts: 2, priceUnavailable: true } },
       ],
     })

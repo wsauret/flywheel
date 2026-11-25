@@ -4,27 +4,27 @@
  * a module reaches its own per-runner state through its runtime handle.
  */
 
-import type { AgentDefinition } from "../../../infra/agent-definition.js";
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
-import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
-import type { SkillRegistryRevision, SkillDefinition } from "../../../workflows/skill-schema.js";
-import type { AskUserController } from "../../runner/ask-user-controller.js";
-import type { HandoffToolSchema } from "../../workflow-host/handoff-tool-schema.js";
-import type { RecallPort } from "../../../protocol/conversation-recall.js"
-import type { BackgroundWorkRegistry } from "../background-work.js";
-import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
-import type { ShellRuntimeClient } from "./shell-runtime-types.js";
-import type { ExternalSkillChildGrant } from "./skill.js";
+import type { AgentDefinition } from "../../../infra/definitions/agent-definition.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
+import type { ProviderRequestOptions } from "../../../infra/providers/llm/access/provider-options.js";
+import type { SkillRegistryRevision, SkillDefinition } from "../../../workflows/skills/skill-schema.js";
+import type { AskUserController } from "./sessions/ask-user-controller.js";
+import type { HandoffToolSchema } from "./sessions/handoff-tool-schema.js";
+import type { RecallPort } from "../../../protocol/transcript/conversation-recall.js"
+import type { BackgroundWorkRegistry } from "../../session/control/background-work/background-work.js";
+import type { ForegroundBashHoldController } from "../../session/control/background-work/foreground-bash-hold.js";
+import type { ShellRuntimeClient } from "./bash/execution/shell-runtime-types.js";
+import type { ExternalSkillChildGrant } from "./definitions/skill.js";
 import type { CapabilityAccess } from "./types.js";
-import type { FirstPartyModuleComposition } from "../../modules.js";
-import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import type { DefinitionAvailabilitySnapshot } from "../../app-service/definition-availability.js";
-import type { RuntimeConfigRequestCapture } from "../request-config.js";
+import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js";
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
+import type { DefinitionAvailabilitySnapshot } from "../../config/policy/definition-availability.js";
+import type { RuntimeConfigRequestCapture } from "../../config/request-config.js";
 import type { AgentPurpose } from "../types.js";
-import type { ModelInteractionProfile } from "../model-interaction-profile.js";
-import type { SessionMessaging } from "../../session/session-messaging.js";
-import type { CaptureProviderConnection } from "../factory.js";
-import type { ConversationCheckpointOwner } from "../../session/conversation-checkpoint.js";
+import type { ModelInteractionProfile } from "../request/prompt/model-interaction-profile.js";
+import type { SessionMessaging } from "../../session/control/messaging/session-messaging.js";
+import type { CaptureProviderConnection } from "../request/model-runtime-capture.js";
+import type { ConversationCheckpointOwner } from "../../session/conversation-records/conversation-checkpoint.js";
 
 /** The model one request is served with. Per request, because the provider
  *  chain that serves a request is resolved per request. */

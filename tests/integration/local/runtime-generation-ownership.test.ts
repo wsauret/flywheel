@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 
-import { createCliLauncher } from "../../../src/cli/runtime-launch.js"
+import { createCliLauncher } from "../../../src/cli/account-service/runtime-launch.js"
 import { guardianCommand } from "../../../src/infra/process-supervisor.js"
 import { serveOwnedProcessBridge } from "../../../src/infra/owned-process-bridge.js"
-import { ownedProcessBackend } from "../../../src/infra/owned-subprocess-backend.js"
+import { ownedProcessBackend } from "../../../src/infra/supervision/launch/owned-subprocess-backend.js"
 import { createRealProcessFixture, processAlive, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 import { payloadThatRunsForever } from "../../helpers/payload.js"
 

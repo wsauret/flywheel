@@ -1,5 +1,5 @@
-import { createEmit, type EventBus } from "../../src/infra/event-bus"
-import type { FlywheelEventData, FlywheelEventType } from "../../src/infra/events"
+import { createEmit, type EventBus } from "../../src/infra/substrate/events/event-bus"
+import type { FlywheelEventData, FlywheelEventType } from "../../src/infra/substrate/events/events"
 
 export function emitTestEvent<T extends FlywheelEventType>(
   bus: EventBus,

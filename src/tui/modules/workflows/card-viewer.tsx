@@ -4,28 +4,28 @@ import { useTerminalDimensions } from "@opentui/solid"
 import { StyledText, type MouseEvent, type ScrollBoxRenderable } from "@opentui/core"
 import { createMemo, createSignal, For, Show, untrack, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { createKeyedListSelection } from "../../hooks/create-keyed-list-selection.js"
-import { useListSelectionReveal } from "../../hooks/use-list-selection-reveal.js"
-import type { RuntimeClient } from "../../../protocol/app-service-types.js"
-import { dispatchInterrupt, resumeMutation, workflowCardControls, workflowHoldsFailedAgent, workflowParked, workflowStateLabel, type ControlRefusal } from "../../../protocol/client/session-controls.js"
-import { workflowCard, workflowCardChoice, workflowCardNotice, workflowRunName, workflowViewCardStatus, type WorkflowCardChoices } from "../../../protocol/client/workflow-card.js"
-import { workflowOutline } from "../../../protocol/client/workflow-outline.js"
-import { workflowAgentOpenTarget, type WorkflowAgentTarget } from "../../../protocol/client/workflow-agent.js"
+import { createKeyedListSelection } from "../../hooks/overlays/modals/create-keyed-list-selection.js"
+import { useListSelectionReveal } from "../../components/modal/scroll/use-list-selection-reveal.js"
+import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
+import { dispatchInterrupt, resumeMutation, workflowCardControls, type ControlRefusal } from "../../../protocol/client/work/session-controls.js"
+import { workflowCard, workflowCardChoice, workflowCardNotice, workflowRunName, workflowRunState, type WorkflowCardChoices } from "../../../protocol/client/work/workflow/workflow-card.js"
+import { workflowOutline } from "../../../protocol/client/work/workflow/workflow-outline.js"
+import { workflowAgentOpenTarget, type WorkflowAgentTarget } from "../../../protocol/client/work/workflow/workflow-agent.js"
 import type { WorkflowInspection } from "./inspection.js"
 import { createWorkflowServingLabels, type WorkflowRoleReadings } from "./serving-labels.js"
 import { formatElapsed, formatCostSplit } from "../../../protocol/client/format.js"
-import { activeTimeMs } from "../../../protocol/client/session-time.js"
+import { activeTimeMs } from "../../../protocol/client/work/session-time.js"
 import { useTheme } from "@tui/context/theme.js"
 import { useTickPool } from "@tui/context/tick-pool-context.js"
-import { useHoverHighlight } from "@tui/hooks/use-hover-highlight.js"
-import { workflowFullCardRows, type WorkflowCardAction, type WorkflowCardRow, type WorkflowFullCardRows } from "@tui/output-blocks/workflow-card.js"
-import { hitsDrawnContent } from "@tui/utils/content-hit.js"
+import { useHoverHighlight } from "@tui/components/controls/use-hover-highlight.js"
+import { workflowFullCardRows, type WorkflowCardAction, type WorkflowCardRow, type WorkflowFullCardRows } from "@tui/transcript/output-blocks/agents/workflow-card.js"
+import { hitsDrawnContent } from "@tui/terminal/content-hit.js"
 
 const NO_ROWS: WorkflowFullCardRows = { rows: [], bar: undefined }
-import { bindStyledTextContent } from "@tui/utils/reactive-text.js"
-import { displayWidth, shareWidth, truncateToWidth } from "@tui/utils/text.js"
-import { Button } from "@tui/components/button.js"
-import { ModalFrame, MODAL_FRAME_CLOSE_WIDTH, MODAL_FRAME_HORIZONTAL_INSET, modalFrameBackWidth, sessionViewerBodyHeight, sessionViewerWidth } from "@tui/components/modal-frame.js"
+import { bindStyledTextContent } from "@tui/context/find/reactive-text.js"
+import { displayWidth, shareWidth, truncateToWidth } from "@tui/terminal/text.js"
+import { Button } from "@tui/components/controls/button.js"
+import { ModalFrame, MODAL_FRAME_CLOSE_WIDTH, MODAL_FRAME_HORIZONTAL_INSET, modalFrameBackWidth, sessionViewerBodyHeight, sessionViewerWidth } from "@tui/components/modal/modal-frame.js"
 
 type KeyEvent = { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean; preventDefault?: () => void }
 
@@ -83,9 +83,10 @@ export function WorkflowCardViewer(props: WorkflowCardViewerProps) {
   const row = surface.detail
   const live = surface.live
   const view = createMemo(() => { const loaded = surface.view(); return loaded?.attemptsStatus === "loaded" ? loaded : undefined })
-  const parked = () => workflowParked(live(), row())
-  const status = createMemo(() => workflowViewCardStatus(view()?.state, row(), parked()))
-  const stateWord = () => workflowStateLabel(view()?.state, row(), parked())
+  const run = createMemo(() => workflowRunState(view()?.state, row(), live()))
+  const parked = () => run().parked
+  const status = () => run().status
+  const stateWord = () => run().label
   const outline = createMemo(() => { const loaded = view(); return loaded === undefined ? undefined : workflowOutline(loaded, stateWord(), live(), row() ?? undefined) })
   const modelLabel = createWorkflowServingLabels(() => outline(), props)
   const [choices, setChoices] = createSignal<WorkflowCardChoices>()
@@ -135,7 +136,7 @@ export function WorkflowCardViewer(props: WorkflowCardViewerProps) {
     if (!result.ok) props.showToast({ message: result.error, variant: "error" })
   }
   const reportRefusal = (failed: ControlRefusal | undefined): void => { if (failed) props.showToast({ message: `Interrupt failed: ${failed.reason}`, variant: failed.variant }) }
-  const admitted = createMemo(() => workflowCardControls(row(), false, parked(), workflowHoldsFailedAgent(view())))
+  const admitted = createMemo(() => workflowCardControls(row(), false, parked(), view()))
   const controls = createMemo(() => {
     const current = row()
     const { primary, resumeFailed } = admitted()

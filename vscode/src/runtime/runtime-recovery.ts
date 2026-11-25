@@ -1,4 +1,4 @@
-import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import { describeStartFailure, type PrepareAccountResult } from "./supervisor.js"
 
 interface RuntimeRecovery {

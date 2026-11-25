@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted, Schema } from "effect";
 
-import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account-project-registry.js";
+import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account/account-project-registry.js";
 import { importLegacyRemotePlacements, mutateRemotePairingStore, mutateRemotePushStore, readRemotePairingStore, readRemotePushStore } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js";
-import { ensureRemoteIdentity, remoteIdentityFrom } from "../../../../../src/orchestration/modules/remote/remote-identity.js";
+import { ensureRemoteIdentity, remoteIdentityFrom } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js";
 import { asKeyPair, keyDigest, toBase64Url } from "../../../../../src/protocol/modules/remote/relay-protocol.js";
 
 const ReleaseBase64Url = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]+$/));

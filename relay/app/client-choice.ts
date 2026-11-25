@@ -1,4 +1,4 @@
-import { CLIENT_IDENTITY_PATTERN } from "../../src/protocol/client-identity.js"
+import { CLIENT_IDENTITY_PATTERN } from "../../src/protocol/runtime/client-identity.js"
 import { decodeCurrentClient } from "../../src/protocol/modules/remote/relay-protocol.js"
 
 /** Which client build the hosted page loads, and where from.

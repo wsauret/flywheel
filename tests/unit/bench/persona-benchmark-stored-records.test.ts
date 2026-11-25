@@ -3,16 +3,16 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createBenchmarkCatalog, RESEARCH_TASKS_CHANGED } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/judge.js";
+import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
 import {
   planPersonaBenchmark,
   runPersonaBenchmark,
-  type BenchmarkPlan,
-} from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
-import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
+} from "../../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
+import type { BenchmarkPlan } from "../../../src/orchestration/modules/development/benchmark/persona/benchmark-plan.js";
+import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
-import { validateJudgeAttempts } from "../../../src/orchestration/modules/development/benchmark/persona-evidence-validation.js";
+import { validateJudgeAttempts } from "../../../src/orchestration/modules/development/benchmark/persona/persona-evidence-validation.js";
 import {
   benchmarkDeps as deps,
   cancelledAttempt,

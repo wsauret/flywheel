@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, realpathSync, symlinkSync, writeFil
 import { join } from "node:path";
 
 import { createTestTempGuard, formatTempLeaks, tempEntryPrefix } from "../../../scripts/test-temp-guard.js";
-import { privateTemporaryRootName } from "../../../src/infra/private-temporary-root.js";
+import { privateTemporaryRootName } from "../../../src/infra/platform/files/private-temporary-root.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporary = temporaryDirectories();

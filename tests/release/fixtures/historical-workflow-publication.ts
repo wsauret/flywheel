@@ -1,5 +1,5 @@
-import { contentEvidence } from "../../../src/infra/content-evidence.js"
-import type { EventStoreAppend } from "../../../src/infra/event-store-types.js"
+import { contentEvidence } from "../../../src/infra/substrate/runtime-facts/content-evidence.js"
+import type { EventStoreAppend } from "../../../src/infra/substrate/store/event-store-types.js"
 
 /**
  * Serializes the startup workload captured from publishWorkflow and its

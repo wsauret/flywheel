@@ -1,16 +1,17 @@
 import { describe, expect, it } from "bun:test";
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
-import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
-import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
-import type { WorkflowEvent } from "../../../../src/workflows/vm/events.js";
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";
+import { compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile.js";
+import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/control/commands.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
+import type { WorkflowEvent } from "../../../../src/workflows/control-facts/events.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
-import { buildWorkflowControlInitializedFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { initializeWorkflow, replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/control-facts/family.js";
+import type { WorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
+import { initializeWorkflow, replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js";
 import { acknowledge, runningControl } from "./_machine-semantics-fixtures.js";
 import histories from "./golden/committed-v2-histories.json";
-import { queuedAttempts } from "../../../../src/workflows/vm/structural-admission.js";
+import { queuedAttempts } from "../../../../src/workflows/vm/graph/structural-admission.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const handoff = { outcome: { state: "blocked", reason: "The required contract is missing", evidence: "The referenced contract does not exist in the repository" } };

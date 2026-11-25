@@ -22,11 +22,11 @@ import { lstatSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { Schema } from "effect";
 import * as yaml from "js-yaml";
-import { parseFrontmatter } from "../../../../infra/frontmatter.js";
-import { isQualifiedSkillId } from "../../../../infra/skill-id.js";
-import { ContainedPathError } from "../../../../infra/descriptor-directory-contract.js";
-import { readFileUnder, requireContainedDirectory } from "../../../../infra/write-file-under.js";
-import { SKILL_FILE } from "../../../../workflows/skill-schema.js";
+import { parseFrontmatter } from "../../../../infra/parsing/yaml/frontmatter.js";
+import { isQualifiedSkillId } from "../../../../infra/definitions/learning/skill-id.js";
+import { ContainedPathError } from "../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { readFileUnder, requireContainedDirectory } from "../../../../infra/platform/files/write-file-under.js";
+import { SKILL_FILE } from "../../../../workflows/skills/skill-schema.js";
 
 interface UnknownRecord {
   [key: string]: unknown;

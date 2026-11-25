@@ -1,10 +1,10 @@
-import { imageOmittedPlaceholder, splitToolOutputParts } from "../../../../infra/llm/tool-output-part-schema.js";
-import type { ReasoningEffort } from "../../../../infra/llm/models.js";
-import { healConversation } from "../heal-messages.js";
-import { lowerProviderHistory, type ProviderHistoryTarget } from "../provider-history.js";
-import { isSameAccessProviderReplay, isSameProviderReplay } from "../messages.js"
-import type { ContentBlock, ConversationMessage } from "../types.js";
-import { sanitizeSurrogates } from "../sanitize-unicode.js";
+import { imageOmittedPlaceholder, splitToolOutputParts } from "../../../../infra/providers/llm/tool-output-part-schema.js";
+import type { ReasoningEffort } from "../../../../infra/providers/llm/models/models.js";
+import { healConversation } from "../../../session/conversation/tree/heal-messages.js";
+import { lowerProviderHistory, type ProviderHistoryTarget } from "../history/provider-history.js";
+import { isSameAccessProviderReplay, isSameProviderReplay } from "../../../../infra/providers/llm/conversation/messages.js"
+import type { ContentBlock, ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
+import { sanitizeSurrogates } from "../history/sanitize-unicode.js";
 import { deterministicMessageId, ProviderIdConversionError, ProviderIdNormalizer, type CanonicalProviderIds } from "./provider-id.js";
 
 interface OpenAIResponsesConversionOptions extends ProviderHistoryTarget {

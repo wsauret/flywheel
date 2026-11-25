@@ -1,13 +1,13 @@
 import { parseSchema } from "../../../helpers/schema-assertions.js";
 import { describe, expect, test } from "bun:test";
-import { listModelOptionsForSlot } from "../../../../src/orchestration/config/model-assignments.js";
-import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { listModelOptionsForSlot } from "../../../../src/orchestration/config/models/model-assignments.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema/schema.js";
 import { makeModelsClient, modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
 import { USER_DATA_ROOT, NO_CREDENTIALS } from "./_config-models-fixtures.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
 
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 describe("model release metadata", () => {
   test("keeps an old current model selectable in assignment options", async () => {
     const modelsClient = makeModelsClient({

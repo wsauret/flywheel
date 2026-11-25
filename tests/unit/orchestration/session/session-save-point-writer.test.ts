@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer";
+import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer";
-import { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
-import type { HeldRetainedOperation } from "../../../../src/orchestration/module-seams";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types";
-import { Log } from "../../../../src/infra/log";
+import { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
+import type { ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js";
+import type { HeldRetainedOperation } from "../../../../src/orchestration/module-contract/module-seams";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
+import { Log } from "../../../../src/infra/diagnostics/log";
 import { chatTurnEndOf, isResumableTurnEnd, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record";
 import {
   assistantMessage,

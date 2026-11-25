@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { TurnParkedContext } from "../../../../src/infra/agent-loop-events.js";
+import type { TurnParkedContext } from "../../../../src/infra/substrate/events/agent-loop-events.js";
 import { createIdleCompaction } from "../../../../src/orchestration/chat/idle-compaction.js";
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox.js";
 

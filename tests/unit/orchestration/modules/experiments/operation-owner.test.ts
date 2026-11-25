@@ -1,15 +1,15 @@
 import { afterEach, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
-import { asAsyncEventWriter, type InFlightRecord } from "../../../../../src/infra/event-store-types.js"
-import { Log } from "../../../../../src/infra/log.js"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
+import { asAsyncEventWriter, type InFlightRecord } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import {
   createExperimentOperation,
   experimentStopRetirement,
   findExperimentInterruption,
   type ExperimentOperation,
 } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
-import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js"
+import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()

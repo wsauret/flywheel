@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { loadStepEfficiencyFromEvents } from "../../../../../../src/orchestration/modules/development/diagnostics/step-efficiency-projection"
-import { loadProviderRequestAuditFromEvents } from "../../../../../../src/orchestration/session/provider-request-audit-projection"
+import { loadProviderRequestAuditFromEvents } from "../../../../../../src/orchestration/session/diagnostics/provider-request-audit-projection"
 import {
   appendFact,
   appendParentSubagentScenario,

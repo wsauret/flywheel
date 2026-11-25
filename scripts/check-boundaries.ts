@@ -111,10 +111,10 @@ const rules: BoundaryRule[] = [
     description: "@modelcontextprotocol/sdk imports belong only in the MCP module home, its shared owned transport, the source-only iOS simulator owner, the Agent SDK bridge's tool gate, and the Antigravity tool listener.",
     matches(importRef): boolean {
       if (isUnder(importRef.sourcePath, "src/orchestration/modules/mcp/")) return false;
-      if (importRef.sourcePath === "src/orchestration/agent-runtime/mcp-stdio-client-transport.ts") return false;
+      if (importRef.sourcePath === "src/orchestration/agent-runtime/mcp/mcp-stdio-client-transport.ts") return false;
       if (importRef.sourcePath === "src/orchestration/modules/development/ios-simulator-backend.ts") return false;
-      if (importRef.sourcePath === "src/orchestration/modules/provider-claude-agent-sdk/tool-gate.ts") return false;
-      if (importRef.sourcePath === "src/orchestration/modules/provider-google-antigravity/mcp-server.ts") return false;
+      if (importRef.sourcePath === "src/orchestration/modules/provider-claude-agent-sdk/query/tool-gate.ts") return false;
+      if (importRef.sourcePath === "src/orchestration/modules/provider-google-antigravity/tools/mcp-server.ts") return false;
       return importRef.specifier === "@modelcontextprotocol/sdk" || importRef.specifier.startsWith("@modelcontextprotocol/sdk/");
     },
   },
@@ -123,8 +123,8 @@ const rules: BoundaryRule[] = [
     description: "Only the Agent SDK bridge's query launcher and the MCP engine's session launcher import a value from @anthropic-ai/claude-agent-sdk (bridge rule 10). lint:owned-processes cannot see a launch inside the SDK package, and both launchers always pass the owned spawn seam; other files import its types only.",
     matches(importRef): boolean {
       if (importRef.isTypeOnly) return false;
-      if (importRef.sourcePath === "src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts") return false;
-      if (importRef.sourcePath === "src/orchestration/modules/mcp/claude-engine-session.ts") return false;
+      if (importRef.sourcePath === "src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.ts") return false;
+      if (importRef.sourcePath === "src/orchestration/modules/mcp/claude-engine/claude-engine-session.ts") return false;
       return importRef.specifier === "@anthropic-ai/claude-agent-sdk" || importRef.specifier.startsWith("@anthropic-ai/claude-agent-sdk/");
     },
   },

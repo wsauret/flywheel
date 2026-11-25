@@ -8,7 +8,7 @@
  *
  *   Add --sizes to print a per-layer size table (chars + estimated tokens)
  *   instead of the raw prompt text, e.g.:
- *   bun run scripts/dump-prompt.ts worker src/cli/composition-probe.workflow.yaml fix --sizes
+ *   bun run scripts/dump-prompt.ts worker src/cli/startup/composition-probe.workflow.yaml fix --sizes
  *
  *
  * The request comes from the shared assembly (scripts/prompt-assembly.ts),
@@ -18,30 +18,32 @@
  * representative session scratch path in for the live one.
  */
 
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "./shipped-modules.js"
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { createInstalledDefinitionRegistry } from "../src/orchestration/definition-catalog.js";
-import { resolveWorkflowAgents } from "../src/workflows/agent-resolution.js";
-import { loadWorkflowFile, renderWorkflowFileDiagnostic } from "../src/workflows/workflow-file.js";
+import { createInstalledDefinitionRegistry } from "../src/orchestration/app-service/definitions/definition-catalog.js";
+import { resolveWorkflowAgents } from "../src/workflows/definitions/agent-resolution.js";
+import { loadWorkflowFile, renderWorkflowFileDiagnostic } from "../src/workflows/vm/admission/workflow-file.js";
 import { personaInstructions } from "../src/workflows/agents/persona-instructions.js";
-import type { SkillRegistryRevision } from "../src/workflows/skill-schema.js";
+import type { SkillRegistryRevision } from "../src/workflows/skills/skill-schema.js";
 import { assembleAgentPrompt } from "../src/workflows/context-bundle/prompt-assembly.js";
 import type { AttemptRow } from "../src/workflows/view/types.js";
 import { loadStandalonePersonaRegistry } from "../src/workflows/agents/registry.js";
-import { handoffToolSchemaFromOutput } from "../src/orchestration/workflow-host/handoff-tool-schema.js";
-import { loadAgentInstructions } from "../src/orchestration/agent-runtime/project-instructions.js";
+import { handoffToolSchemaFromOutput } from "../src/orchestration/agent-runtime/tools/sessions/handoff-tool-schema.js";
+import { loadAgentInstructions } from "../src/orchestration/agent-runtime/request/prompt/instructions/project-instructions.js";
 import { buildSubagentTask, SUBAGENT_HANDOFF_SCHEMA } from "../src/orchestration/modules/subagents/execution/prompts.js";
-import type { SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
-import { readModuleMemory } from "../src/orchestration/agent-runtime/request-system-prompt.js";
+import type { SystemPromptPart } from "../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
+import { readModuleMemory } from "../src/orchestration/agent-runtime/request/prompt/request-system-prompt.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../src/infra/agent-assets/system-prompt.js";
-import { personaToolEntries, toolRegistryFromComposition } from "../src/orchestration/agent-runtime/tools/tool-registry.js";
-import { captureRuntimeConfigRequest } from "../src/orchestration/agent-runtime/request-config.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../src/infra/definitions/agent-assets/system-prompt.js";
+import { personaToolEntries, toolRegistryFromComposition } from "../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
+import { captureRuntimeConfigRequest } from "../src/orchestration/config/request-config.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
-import { composeFirstPartyModules } from "../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../src/orchestration/module-contract/module-composition.js";
 import { loadConfig } from "../src/orchestration/config/loader.js";
-import type { AgentDefinition } from "../src/infra/agent-definition.js";
-import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/capability-checks.js";
+import type { AgentDefinition } from "../src/infra/definitions/agent-definition.js";
+import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import { grantedSubagentTypes, personaToolNames } from "../src/workflows/agents/subagent-reachability.js";
 import { planPromptRequest, plannedCapabilities, promptParts, type PlanInput, type PlannedRequest, type PromptAssembly } from "./prompt-assembly.js";
 
@@ -244,7 +246,7 @@ async function buildWorkerPrompt(workflowFile: string, definitionId: string): Pr
 let result: PromptResult;
 switch (mode) {
   case "subagent": result = await buildSubagentPrompt(args[1] ?? "implementer"); break;
-  case "worker": result = await buildWorkerPrompt(args[1] ?? join(repoRoot, "src", "cli", "composition-probe.workflow.yaml"), args[2] ?? "fix"); break;
+  case "worker": result = await buildWorkerPrompt(args[1] ?? join(repoRoot, "src", "cli", "startup", "composition-probe.workflow.yaml"), args[2] ?? "fix"); break;
   case "chat": result = await buildChatPrompt(); break;
   default: console.error(`Unknown mode: "${mode}". Use: subagent, worker, or chat`); process.exit(1);
 }

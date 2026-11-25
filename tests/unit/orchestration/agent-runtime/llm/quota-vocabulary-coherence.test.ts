@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { classifyApiError } from "../../../../../src/infra/llm/provider-error-copy.js";
+import { classifyApiError } from "../../../../../src/infra/providers/llm/errors/provider-error-copy.js";
 import { classifyQuotaError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 
 /** One message per pattern arm of the classifier, phrased the way the

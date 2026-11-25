@@ -1,11 +1,11 @@
-import type { CapabilityRequest, HostMessage, ViewMessage } from "../../src/protocol/client/editor-host.js"
-import { mutationTypeExposure } from "../../src/protocol/client/editor-protocol-coverage.js"
+import type { CapabilityRequest, HostMessage, ViewMessage } from "../../src/protocol/client/host/editor-host.js"
+import { mutationTypeExposure } from "../../src/protocol/client/host/editor-protocol-coverage.js"
 import type { ClientHandle, HostCapabilities } from "../src/host.js"
 import { mountClient } from "../src/index.js"
 import { postMessageSocketLayer, ViewBridge } from "./post-message-socket.js"
 import "./vscode-theme.css"
-import { editorInputReloadStorage } from "../src/client/input-reload-storage.js"
-import type { InputReloadCheckpoint } from "../src/client/input-reload-checkpoint.js"
+import { editorInputReloadStorage } from "../src/client/input/input-reload-storage.js"
+import type { InputReloadCheckpoint } from "../src/client/input/input-reload-checkpoint.js"
 import { editorClientReplacement } from "./client-replacement.js"
 
 /** The editor host shell. It has no UI of its own: it wires the client to

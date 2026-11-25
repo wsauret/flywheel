@@ -3,7 +3,7 @@ import { test } from "node:test"
 
 import type { UsageSessionStats, UsageAccountsResult } from "../../../../src/protocol/modules/subscription-usage.js"
 import { loadStatsRenderFixture } from "./stats-render-test-loader.js"
-import { loadSemanticRowsFixture } from "../../app/semantic-rows-loader-fixture.js"
+import { loadSemanticRowsFixture } from "../../test-support/semantic-rows-loader-fixture.js"
 
 function stats(sessionId: string): UsageSessionStats {
   const summary = { attempts: 2, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true, tokens: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, reasoning: 0, total: 150 }, estimatedBilledUsd: 0.25, includedValueUsd: 0, priceUnavailable: false }

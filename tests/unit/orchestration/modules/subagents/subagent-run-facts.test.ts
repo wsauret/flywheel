@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test"
 import { join } from "node:path"
-import { asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js"
-import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
+import { asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { buildDurableSubagentCreated, buildSubagentCompleted, buildSubagentPrompted } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { loadSubagentRunsFromEvents } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
-import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js"
+import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { cpus } from "node:os"
 
-import { windowsJobApi } from "../../../src/infra/windows-job-object.js"
+import { windowsJobApi } from "../../../src/infra/process/container/windows-job-object.js"
 
 /** These cases drive real job objects and real processes, which is why they sit
  *  in the integration tier rather than the unit one. Only Windows has them. */

@@ -9,34 +9,34 @@ export interface TerminalIoViolation {
 }
 
 const INTENTIONAL_STDOUT_WRITE_ALLOWLIST = new Set([
-  "src/infra/desktop-notify.ts",
+  "src/infra/substrate/output/notify/desktop-notify.ts",
   "src/tui/components/error-boundary.tsx",
-  "src/tui/utils/clipboard.ts",
+  "src/tui/terminal/clipboard.ts",
 ]);
 
 const DIRECT_OUTPUT_FILE_ALLOWLIST = new Set([
-  "src/infra/log.ts",
+  "src/infra/diagnostics/log.ts",
   // The sink under log.ts: when the diagnostics stream itself fails, stderr is
   // the only channel left, and routing through Log would be circular.
-  "src/infra/debug-log.ts",
-  "src/orchestration/headless/run-headless-task.ts",
+  "src/infra/diagnostics/debug-log.ts",
+  "src/orchestration/app-service/headless/run-headless-task.ts",
   // This executable role runs inside a captured command. Its fixed refusal
   // belongs to that command's stderr, not the host renderer or diagnostics.
-  "src/orchestration/agent-runtime/tools/bash-git-main.ts",
+  "src/orchestration/agent-runtime/tools/bash/git/bash-git-main.ts",
 ]);
 
 /** The supervisor of one owned command hands the launcher's own stream handles
  *  to the payload. Inheriting is the point: it keeps every payload byte out of
  *  this process. It renders nothing of its own. */
 const INHERITED_STDIO_FILE_ALLOWLIST = new Set([
-  "src/infra/owned-command-supervisor.ts",
+  "src/infra/supervision/launch/owned-command-supervisor.ts",
   // Delegated children retain the payload's existing container and handles.
   // This runner does not emit host UI output.
-  "src/infra/inherited-command.ts",
+  "src/infra/supervision/commands/inherited-command.ts",
   // The successor a terminal becomes where no process image can be replaced:
   // it owns the terminal from its first frame, and the terminal that started
   // it has suspended its renderer and only waits for its status.
-  "src/infra/foreground-successor.ts",
+  "src/infra/update/distribution/foreground-successor.ts",
 ]);
 
 const INHERITED_STDIO_LINE_RE = /\b(?:stdout|stderr)\s*:\s*["'`]inherit["'`]/;

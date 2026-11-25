@@ -1,4 +1,6 @@
 import { plugin } from "bun"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 
 const initializationFailure = 'throw new Error("provider runtime initialized before command selection")'
 
@@ -14,32 +16,44 @@ async function instrumentInitialization(args: { path: string }, boundaries: read
   return { contents, loader: "ts" as const }
 }
 
+const SOURCE = join(import.meta.dir, "..", "..", "src")
+
+/** The load filter of one source file, given relative to `src/`. A filter that matches nothing turns its stub or
+ *  guard off without a sign, so a file that moved stops the preload instead. */
+function sourceFile(relativePath: string): RegExp {
+  const segments = relativePath.split("/")
+  if (!existsSync(join(SOURCE, ...segments))) throw new Error(`cli-startup-imports: src/${relativePath} moved; update the preload`)
+  return new RegExp(`[\\\\/]src[\\\\/]${segments.map(segment => segment.replaceAll(".", "\\.")).join("[\\\\/]")}$`)
+}
+
 // This preload makes eager provider initialization observable through the real
 // entry, while descriptor imports remain available for dynamic CLI help.
 plugin({
   name: "cli-startup-import-boundary",
   setup(build) {
     if (process.env.FLYWHEEL_TEST_POISON_CLI_IMPORTS === "1") {
-      build.onLoad({ filter: /[\\/]cli[\\/](?:startup|main)\.ts$/ }, () => ({
-        contents: 'throw new Error("normal CLI composition imported before internal role dispatch")',
-        loader: "js",
-      }))
+      for (const composition of ["cli/startup/startup.ts", "cli/main.ts"]) {
+        build.onLoad({ filter: sourceFile(composition) }, () => ({
+          contents: 'throw new Error("normal CLI composition imported before internal role dispatch")',
+          loader: "js",
+        }))
+      }
     }
-    build.onLoad({ filter: /[\\/]agent-runtime[\\/]llm[\\/]client-factory\.ts$/ }, (args) =>
+    build.onLoad({ filter: sourceFile("orchestration/agent-runtime/llm/routing/client-factory.ts") }, (args) =>
       instrumentInitialization(args, [
         "async function createAdmittedClient",
         "async function createClient",
       ]))
-    build.onLoad({ filter: /[\\/]agent-runtime[\\/]llm[\\/]shared-provider-availability\.ts$/ }, (args) =>
+    build.onLoad({ filter: sourceFile("orchestration/agent-runtime/llm/routing/shared-provider-availability.ts") }, (args) =>
       instrumentInitialization(args, ["function acquireSharedProviderAvailability"]))
-    build.onLoad({ filter: /[\\/]infra[\\/]process-guardian\.ts$/ }, () => ({
+    build.onLoad({ filter: sourceFile("infra/supervision/guardian/process-guardian.ts") }, () => ({
       contents: 'export async function runProcessGuardianMain() { process.stdout.write("guardian selected\\n") }',
       loader: "js",
     }))
-    build.onLoad({ filter: /[\\/]infra[\\/]owned-command-supervisor\.ts$/ }, args =>
+    build.onLoad({ filter: sourceFile("infra/supervision/launch/owned-command-supervisor.ts") }, args =>
       instrumentInitialization(args, ["async function runCommandSupervisorMain"],
         'process.stdout.write("command supervisor selected\\n"); process.exit(0)'))
-    build.onLoad({ filter: /[\\/]cli[\\/]binary-install\.ts$/ }, () => ({
+    build.onLoad({ filter: sourceFile("cli/binary-install.ts") }, () => ({
       contents: 'export async function runBinaryInstall() { process.stdout.write("binary install selected\\n"); return 0 }',
       loader: "js",
     }))

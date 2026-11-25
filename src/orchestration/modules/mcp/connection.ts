@@ -19,12 +19,12 @@ import type { McpServerConfig } from "./config.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import { MCP_STARTUP_TIMEOUT_MS, redactMcpError, redactMcpString, redactMcpValue, resolveMcpTemplate } from "./config.js";
 import { McpNeedsAuthError, McpOutcomeUnknownError } from "./errors.js";
-import { MAX_TIMER_MS } from "../../../infra/timers.js";
-import { BunStdioClientTransport } from "../../agent-runtime/mcp-stdio-client-transport.js";
-import { runInTaskTurn } from "../../../infra/task-scheduling.js";
-import { normalizeMcpCallResult as normalizeMcpResult, type McpCallResult } from "../../agent-runtime/mcp-result.js";
+import { MAX_TIMER_MS } from "../../../infra/timing/timers.js";
+import { BunStdioClientTransport } from "../../agent-runtime/mcp/mcp-stdio-client-transport.js";
+import { runInTaskTurn } from "../../../infra/process/task-scheduling.js";
+import { normalizeMcpCallResult as normalizeMcpResult, type McpCallResult } from "../../agent-runtime/mcp/mcp-result.js";
 
-export type { McpCallResult } from "../../agent-runtime/mcp-result.js";
+export type { McpCallResult } from "../../agent-runtime/mcp/mcp-result.js";
 
 const MCP_PROTOCOL_VERSION: string = "2025-11-25";
 

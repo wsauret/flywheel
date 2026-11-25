@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
-import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context";
+import type { ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js";
+import { buildSessionContext } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context";
 import type { MessageEntry, ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
 
 let nowCounter = 0;

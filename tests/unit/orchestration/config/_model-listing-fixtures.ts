@@ -2,8 +2,8 @@
  * Shared fixtures for model-listing tests.
  */
 
-import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
-import { authDir } from "../../../../src/infra/paths.js";
+import type { AuthContext } from "../../../../src/infra/providers/auth/auth-context.js";
+import { authDir } from "../../../../src/infra/platform/files/paths.js";
 import { testDirectories } from "../../../helpers/directories.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 

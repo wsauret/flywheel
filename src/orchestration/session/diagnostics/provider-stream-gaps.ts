@@ -1,8 +1,8 @@
-import { searchEvents, type EventSearchQuery } from "../../../infra/event-search.js"
-import type { StoredFact } from "../../../infra/event-store-types.js"
+import { searchEvents, type EventSearchQuery } from "../../../infra/substrate/store/event-search.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { formatDuration } from "../../../protocol/client/format.js"
-import { canonicalProviderStreamSummary, readProviderRequestAuditFact, type ProviderRequestAuditFact } from "../provider-request-audit-facts.js"
-import type { ProviderStreamSummary } from "../provider-request-audit-types.js"
+import { canonicalProviderStreamSummary, readProviderRequestAuditFact, type ProviderRequestAuditFact } from "../runtime-facts/provider-request-audit-facts.js"
+import type { ProviderStreamSummary } from "../runtime-facts/provider-request-audit-types.js"
 
 // Analyzes durable stream telemetry summaries. Historical stores can also hold
 // raw stream facts, which remain valid inputs until retired maintenance removes

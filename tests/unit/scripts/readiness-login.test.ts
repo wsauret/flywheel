@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { inHomeLogin, parseReleaseLoginStatus, releaseLoginPlan, releaseLoginStatus, type ReleaseLoginCheck } from "../../../scripts/readiness-login.js";
-import { AuthProfileStore } from "../../../src/infra/auth/auth-profile-store.js";
+import { antigravityReleaseLoginStatus, inHomeLogin, parseReleaseLoginStatus, releaseLoginPlan, releaseLoginStatus, type ReleaseLoginCheck } from "../../../scripts/readiness-login.js";
+import { AuthProfileStore } from "../../../src/infra/providers/auth/store/auth-profile-store.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../src/infra/owned-command.js";
-import { authDir } from "../../../src/infra/paths.js";
-import type { TokenProbe } from "../../../src/orchestration/modules/provider-claude-agent-sdk/login-token.js";
+import { authDir } from "../../../src/infra/platform/files/paths.js";
+import type { TokenProbe } from "../../../src/orchestration/modules/provider-claude-agent-sdk/login/login-token.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { AuthProfileManager } from "../../../src/orchestration/auth/auth-profile-manager.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
@@ -96,10 +96,23 @@ describe("the release login status", () => {
     });
   });
 
+  test("of Google Antigravity is held when the live profile holds a login's account record, and absent otherwise, with no program started", async () => {
+    const home = temporary("readiness-login-agy-");
+    const userDataRoot = join(home, ".flywheel");
+    expect(antigravityReleaseLoginStatus(home, ROOT, PROFILE)).toEqual({ kind: "absent" });
+    const id = await new AuthProfileManager({ userDataRoot, projectRoot: home, env: {} }).create(PROFILE);
+    expect(antigravityReleaseLoginStatus(home, ROOT, PROFILE)).toEqual({ kind: "absent" });
+    const loginDir = join(authDir(userDataRoot, id), "antigravity", "login-1");
+    mkdirSync(loginDir, { recursive: true });
+    writeFileSync(join(loginDir, "account.json"), JSON.stringify({ version: 1, accountId: "login-1", identity: "person@example.com", createdAt: "2026-11-22T00:00:00.000Z", refreshedAt: "2026-11-22T00:00:00.000Z" }));
+    expect(antigravityReleaseLoginStatus(home, ROOT, PROFILE)).toEqual({ kind: "held" });
+  });
+
   test("reads back each status line that the status mode prints, after any output of what ran before it, and nothing else", () => {
     expect(parseReleaseLoginStatus("present file\n")).toEqual({ kind: "present", store: "file" });
     expect(parseReleaseLoginStatus("present keychain\n")).toEqual({ kind: "present", store: "keychain" });
     expect(parseReleaseLoginStatus("absent\n")).toEqual({ kind: "absent" });
+    expect(parseReleaseLoginStatus("held\n")).toEqual({ kind: "held" });
     expect(parseReleaseLoginStatus("unchecked the login keychain is locked\n")).toEqual({ kind: "unchecked", reason: "the login keychain is locked" });
     expect(parseReleaseLoginStatus("ending 2026-11-18T08:16:10.836Z\n")).toEqual({ kind: "ending", endsAt: "2026-11-18T08:16:10.836Z" });
     // A Linux container installs the candidate before the status mode prints its line.
@@ -111,7 +124,7 @@ describe("the release login status", () => {
 });
 
 describe("the release login helper", () => {
-  const context = { candidate: "/scratch/login/candidate.tar", folder: "flywheel-readiness-login-1", bunVersion: "1.3.14", dockerPlatform: "linux/arm64", liveAuthProfile: "Owner's" };
+  const context = { candidate: "/scratch/login/candidate.tar", folder: "flywheel-readiness-login-1", bunVersion: "1.3.14", dockerPlatform: "linux/arm64", liveAuthProfile: "Owner's", engine: "claude" as const };
   const archive = { command: ["git", "archive", "--format=tar", "--output=/scratch/login/candidate.tar", "HEAD"], interactive: false };
 
   test("logs in on Windows over SSH at the named host in the persistent folder, from a fresh install of the candidate in a temporary folder, in the live profile", () => {
@@ -160,9 +173,18 @@ describe("the release login helper", () => {
     });
   });
 
+  test("logs in to Google Antigravity in the same release login homes, with agy's tools in the Linux container", () => {
+    const antigravity = { ...context, engine: "antigravity" as const };
+    const [, linux] = releaseLoginPlan({ kind: "linux" }, antigravity).steps;
+    expect(linux?.command.at(-1)).toBe("apt-get update -qq && apt-get install -qq -y --no-install-recommends git procps && mkdir /work && tar -xf /input/candidate.tar -C /work && cd /work && bun install --frozen-lockfile && bun run scripts/readiness-login.ts --in-home /home/readiness antigravity");
+    expect(linux?.command).toContain("type=volume,source=flywheel-readiness-claude,target=/home/readiness");
+    const windows = releaseLoginPlan({ kind: "windows", sshHost: "windows-host" }, antigravity).steps.at(-1)?.command.at(-1);
+    expect(windows).toContain(String.raw`bun run scripts/readiness-login.ts --in-home "$env:LOCALAPPDATA\FlywheelReadiness" antigravity; exit $LASTEXITCODE`);
+  });
+
   test("runs the CLI's own Claude login in the home, after it adds the live profile that the live tier reads", async () => {
     const home = temporary("readiness-login-home-");
-    const login = await inHomeLogin(home, "/bun", ROOT, PROFILE);
+    const login = await inHomeLogin(home, "/bun", ROOT, PROFILE, "claude");
     expect(login).toEqual({
       command: ["/bun", "--conditions=browser", join(ROOT, "scripts", "dev.ts"), "auth", "login", "--claude-agent-sdk"],
       env: { HOME: home, FLYWHEEL_AUTH_PROFILE: PROFILE },
@@ -170,14 +192,20 @@ describe("the release login helper", () => {
     const stored = () => new AuthProfileStore(join(home, ".flywheel")).inspect().profiles.map(({ displayName }) => displayName);
     expect(stored()).toEqual([PROFILE]);
     // A second login keeps the profile that the first one added.
-    await inHomeLogin(home, "/bun", ROOT, PROFILE);
+    await inHomeLogin(home, "/bun", ROOT, PROFILE, "claude");
     expect(stored()).toEqual([PROFILE]);
+    // A fresh candidate holds no Antigravity CLI, so its login first prepares the pinned copy.
+    expect(await inHomeLogin(home, "/bun", ROOT, PROFILE, "antigravity")).toEqual({
+      prepare: ["/bun", "run", join(ROOT, "scripts", "antigravity-engine-asset.ts"), "prepare"],
+      command: ["/bun", "--conditions=browser", join(ROOT, "scripts", "dev.ts"), "auth", "login", "--google-antigravity"],
+      env: { HOME: home, FLYWHEEL_AUTH_PROFILE: PROFILE },
+    });
   });
 
   test("logs in to a profile that the home names the live profile in another case, as the live tier finds it, and adds none", async () => {
     const home = temporary("readiness-login-home-");
     await new AuthProfileManager({ userDataRoot: join(home, ".flywheel"), projectRoot: home, env: {} }).create("live");
-    const login = await inHomeLogin(home, "/bun", ROOT, PROFILE);
+    const login = await inHomeLogin(home, "/bun", ROOT, PROFILE, "claude");
     expect(login.env).toEqual({ HOME: home, FLYWHEEL_AUTH_PROFILE: PROFILE });
     expect(new AuthProfileStore(join(home, ".flywheel")).inspect().profiles.map(({ displayName }) => displayName)).toEqual(["live"]);
   });

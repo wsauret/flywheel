@@ -7,9 +7,9 @@ import { Socket } from "effect/socket"
 
 import * as pairingStore from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
 import { mutateRemotePairingStore, readRemotePairingStore } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
-import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/remote-identity.js"
-import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account-project-registry.js"
-import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js"
+import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
+import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account/account-project-registry.js"
+import type { NotificationEpisodeInput } from "../../../../../src/infra/substrate/events/notification-episode.js"
 import { createRemoteAccess, placementId, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import { attachDeviceChannel, RELAY_HEARTBEAT } from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import {
@@ -20,7 +20,7 @@ import {
   toBase64Url,
 } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 import type { PairedDevice } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { FailedRelaySocket, PendingRelaySocket, startRelayStub, type RelayStub } from "./relay-stub.js"
 import { manualHeartbeatClock } from "../../../../helpers/heartbeat-clock.js"
 import { fromText, pairDevice, pairedNotices, sealDevice, text, viewWhere, waitFor } from "./_remote-device-fixtures.js"

@@ -2,9 +2,9 @@
 import { expect, test } from "bun:test"
 import { sideQuestionProtocol, type SideQuestionView } from "../../../../../src/protocol/modules/side-question.js"
 import type { DomainReader } from "../../../../../src/protocol/protocol-module.js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
-import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { TuiControllerHost } from "../../../../../src/tui/tui-module.js"
 import type { Renderable, TextareaRenderable, ScrollBoxRenderable as ScrollBox } from "@opentui/core"
 const { createSignal, createRoot } = await import("solid-js")
@@ -15,8 +15,8 @@ const { createSideQuestionModel } = await import("../../../../../src/tui/modules
 const { createSideQuestionSurface } = await import("../../../../../src/tui/modules/side-question/surface.js")
 const { createModalStack } = await import("../../../../../src/tui/components/modal-stack.js")
 const { createTextAttributes, ScrollBoxRenderable } = await import("@opentui/core")
-const { ComposerBody } = await import("../../../../../src/tui/components/composer-frame.js")
-const { createComposerFocus } = await import("../../../../../src/tui/hooks/create-composer-focus.js")
+const { ComposerBody } = await import("../../../../../src/tui/components/composer/frame/composer-frame.js")
+const { createComposerFocus } = await import("../../../../../src/tui/components/composer/create-composer-focus.js")
 
 const [sideQuestionDomain, sideQuestionRequestDomain] = sideQuestionProtocol.domains
 const query: TuiControllerHost["client"]["query"] = async () => { throw new Error("side question must not query") }

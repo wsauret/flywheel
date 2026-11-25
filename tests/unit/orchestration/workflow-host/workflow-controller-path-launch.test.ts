@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
-import { resolveWorkflowAgentRole } from "../../../../src/orchestration/config/role-selection.js"
-import { resolveSessionRoles } from "../../../../src/orchestration/config/session-role-resolver.js"
-import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
-import { modelWorkflowLaunchOrigin, workflowLaunchTargets, type WorkflowLaunchTarget } from "../../../../src/orchestration/workflow-host/launch-origin.js"
-import { canonicalWorkflowRecord } from "../../../../src/workflows/definition-records.js"
-import { readRunDefinitionLineage } from "../../../../src/workflows/definition-provenance-projection.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { resolveWorkflowAgentRole } from "../../../../src/orchestration/config/models/role-selection.js"
+import { resolveSessionRoles } from "../../../../src/orchestration/agent-runtime/request/roles/session-roles.js"
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
+import { modelWorkflowLaunchOrigin, workflowLaunchTargets } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
+import type { WorkflowLaunchTarget } from "../../../../src/orchestration/agent-runtime/tools/definitions/workflow-launch.js"
+import { canonicalWorkflowRecord } from "../../../../src/workflows/schema/definition-records.js"
+import { readRunDefinitionLineage } from "../../../../src/workflows/run/definition-provenance-projection.js"
 import { fixtureDefinitions } from "../../../helpers/project-definitions.js"
 import { cleanupProjectRoots, seedLaunchApproval, until, makeWorkflowDeps } from "./_workflow-controller-fixtures.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
@@ -25,10 +26,10 @@ steps:
 flow:
   - step: survey
 `
-import { createLazyWorkflowController } from "../../../../src/orchestration/app-service/lazy-workflow-controller.js"
-import { createWorkflowToolCore } from "../../../../src/orchestration/agent-runtime/tools/workflow-tool.js"
+import { createLazyWorkflowController } from "../../../../src/orchestration/app-service/executor/execution/lazy-workflow-controller.js"
+import { createWorkflowToolCore } from "../../../../src/orchestration/agent-runtime/tools/definitions/workflow-tool.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
-import { agentRecords } from "../../../../src/workflows/workflow-schema.js"
+import { agentRecords } from "../../../../src/workflows/schema/workflow-schema.js"
 
 const SKILL_POINTER = "Load the `workflow-authoring` skill if you have not, fix the file, and launch it again."
 

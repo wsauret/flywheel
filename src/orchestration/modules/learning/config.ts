@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { configSection, type ModuleConfigSection } from "../../config/config-section.js"
+import { configSection, type ModuleConfigSection } from "../../config/schema/config-section.js"
 
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const described = <S extends Schema.Top>(schema: S, description: string) => schema.pipe(Schema.annotate({ description }))

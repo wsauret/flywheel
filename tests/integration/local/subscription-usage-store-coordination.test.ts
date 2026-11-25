@@ -5,10 +5,10 @@ import { join } from "node:path";
 import {
   createSubscriptionUsageStore,
   type SubscriptionUsageAccount,
-} from "../../../src/infra/llm/subscription-usage-store.js";
+} from "../../../src/infra/providers/llm/usage/subscription-usage-store.js";
 import { Database } from "bun:sqlite";
-import { subscriptionUsageAuthorityDbFile } from "../../../src/infra/paths.js";
-import type { SubscriptionUsageOutcome, SubscriptionUsageReport } from "../../../src/infra/llm/subscription-usage.js";
+import { subscriptionUsageAuthorityDbFile } from "../../../src/infra/platform/files/paths.js";
+import type { SubscriptionUsageOutcome, SubscriptionUsageReport } from "../../../src/infra/providers/llm/usage/subscription-usage.js";
 
 const roots: string[] = [];
 
@@ -60,7 +60,7 @@ describe("profile-local subscription usage coordination", () => {
     const blocker = new Database(authorityFile);
     blocker.exec("alter table subscription_usage_snapshots drop column spend_sources_json; alter table subscription_usage_history drop column spend_sources_json; alter table subscription_usage_alerts drop column project_root; alter table subscription_usage_alerts drop column account_label; alter table subscription_usage_alerts drop column metric_label; alter table subscription_usage_alerts drop column distinct_window; alter table subscription_usage_alerts drop column reset_at; begin immediate");
 
-    const storeUrl = new URL("../../../src/infra/llm/subscription-usage-store.ts", import.meta.url).href;
+    const storeUrl = new URL("../../../src/infra/providers/llm/usage/subscription-usage-store.ts", import.meta.url).href;
     const childScript = `
       const { createSubscriptionUsageStore } = await import(process.env.STORE_URL);
       await Bun.write(process.env.READY_FILE, "ready");

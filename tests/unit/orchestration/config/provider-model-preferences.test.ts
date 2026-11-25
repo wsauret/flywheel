@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { deriveProviderModelPreferences, resolveAccountProviderModelPreferences } from "../../../../src/infra/llm/provider-model-preferences.js";
+import { deriveProviderModelPreferences, resolveAccountProviderModelPreferences } from "../../../../src/infra/providers/auth/provider-models/provider-model-preferences.js";
 
 test("provider unions derive from explicit account identities", () => {
   const catalog = new Set(["alpha", "beta", "gamma"]);

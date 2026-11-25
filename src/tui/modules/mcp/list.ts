@@ -1,8 +1,8 @@
 import { createSignal, onCleanup } from "solid-js"
 import { mcpClientAction, mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, mcpRemovable, mcpRepairAction, type McpStatusRow } from "../../../protocol/modules/mcp.js"
-import type { ListModalKeyEvent } from "../../components/modal-list-keys.js"
+import type { ListModalKeyEvent } from "../../components/modal/select/modal-list-keys.js"
 import type { TuiSurfaceHost } from "../../tui-module.js"
-import { createKeyedListSelection } from "../../hooks/create-keyed-list-selection.js"
+import { createKeyedListSelection } from "../../hooks/overlays/modals/create-keyed-list-selection.js"
 
 export interface McpRemovalState {
   readonly row: McpStatusRow

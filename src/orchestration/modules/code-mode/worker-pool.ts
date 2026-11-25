@@ -1,9 +1,9 @@
 import { Exit, Schema } from "effect"
-import { createBoundedWorkerSpawner } from "../../../infra/bounded-worker-spawner.js"
-import { embeddedEntrySpecifier, runsThroughBun } from "../../../infra/cli-subprocess.js"
-import { DebugLog } from "../../../infra/debug-log.js"
-import { trackLoopSpan } from "../../../infra/event-loop-lag.js"
-import { terminateWorker } from "../../../infra/worker-termination.js"
+import { createBoundedWorkerSpawner } from "../../../infra/process/workers/bounded-worker-spawner.js"
+import { embeddedEntrySpecifier, runsThroughBun } from "../../../infra/platform/cli-subprocess.js"
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
+import { trackLoopSpan } from "../../../infra/diagnostics/event-loop-lag.js"
+import { terminateWorker } from "../../../infra/process/workers/worker-termination.js"
 import { GuestMessageSchema, type HostMessage } from "./invocation-protocol.js"
 
 /** The host's view of one invocation Worker. A Bun `Worker` satisfies it,

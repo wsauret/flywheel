@@ -1,26 +1,26 @@
-import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
-import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta.js"
-import type { OutputBlockBodyRequest, OutputGroupChildrenRequest, OutputRangeRequest } from "../../../../src/protocol/transcript-protocol-types.js"
-import type { RuntimeSupervisor, SendChatOutcome } from "../../../../src/orchestration/app-service/runtime-supervisor-types.js"
-import type { WorkflowController } from "../../../../src/orchestration/workflow-host/controller.js"
+import type { QuestionBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
+import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/substrate/output/output-block-delta.js"
+import type { OutputBlockBodyRequest, OutputGroupChildrenRequest, OutputRangeRequest } from "../../../../src/protocol/transcript/transcript-protocol-types.js"
+import type { RuntimeSupervisor, SendChatOutcome } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor-types.js"
+import type { WorkflowController } from "../../../../src/orchestration/workflow-host/lifecycle/controller.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import type { SessionManager, SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import type { SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
-import type { RuntimeChatDefault } from "../../../../src/protocol/app-service-types.js"
-import type { ProviderModelPreferenceService } from "../../../../src/orchestration/app-service/app-service.js"
-import type { AdmittedModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-admission.js"
+import type { RuntimeChatDefault } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { ProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
+import type { AdmittedModelAssignmentService } from "../../../../src/orchestration/app-service/auth/models/model-assignment-admission.js"
 import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
-import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
+import { NO_MODULE_SERVICES } from "../../../../src/infra/definitions/modules/module-service.js"
 import { createMemoryStore } from "../../workflows/vm/host-test-support.js"
 import { workflowsModule } from "../../../../src/orchestration/modules/workflows.js"
-import { workflowProtocolServices } from "../../../../src/orchestration/modules/workflows/protocol.js"
+import { workflowProtocolServices } from "../../../../src/orchestration/modules/workflows/protocol/protocol.js"
 import { composeModuleProtocolRuntimes } from "../../../../src/orchestration/app-service/module-protocol-host.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
-import type { RuntimeEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import type { RuntimeEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection.js"
 
 const configView = {
@@ -286,12 +286,7 @@ export function fakeSessionStore(entries: Map<string, SessionEntry>): FakeSessio
     has: (sessionId) => entries.has(sessionId),
     isRunning: (sessionId) => entries.has(sessionId),
     abort: async () => false,
-    prepareForShutdown: () => {},
-    interruptForReplacement: async () => false,
-    interrupt: () => false,
-    releaseForegroundBash: () => false,
-    transferForegroundForReplacement: async () => {},
-    terminateBackgroundWork: () => {},
+    activeRunner: () => null,
     remove: async (sessionId) => {
       entries.delete(sessionId)
       revisions.delete(sessionId)
@@ -313,10 +308,6 @@ export function fakeSessionStore(entries: Map<string, SessionEntry>): FakeSessio
       bump(sessionId)
       emitChange()
     },
-    answerQuestion: () => false,
-    cancelQuestion: () => false,
-    compactConversation: async () => false,
-    learnFromSession: () => false,
     runningCount: () => entries.size,
     allIds: () => [...entries.keys()],
     revision: (sessionId) => revisions.get(sessionId) ?? 0,

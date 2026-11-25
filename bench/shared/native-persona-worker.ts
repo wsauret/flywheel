@@ -1,11 +1,10 @@
 import { createRequire } from "node:module";
 import { watch, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { installModuleCatalog } from "../../src/orchestration/module-catalog.js";
-import { osAccount } from "../../src/infra/os-account.js";
-import type { FirstPartyModule } from "../../src/orchestration/modules.js";
+import { installModuleCatalog, type FirstPartyModule } from "../../src/orchestration/module-contract/module-catalog.js";
+import { osAccount } from "../../src/infra/platform/os-account.js";
 import type { createClaudeAgentSdkModule as CreateSdkModule } from "../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
-import { decodeNativePersonaRequest, nativePersonaStartupFailure, writeNativePersonaResult, NATIVE_CANDIDATE_TIMEOUT_MS, type NativePersonaResult } from "../../src/orchestration/modules/development/benchmark/native-persona-codec.js";
+import { decodeNativePersonaRequest, nativePersonaStartupFailure, writeNativePersonaResult, NATIVE_CANDIDATE_TIMEOUT_MS, type NativePersonaResult } from "../../src/orchestration/modules/development/benchmark/persona/native-persona-codec.js";
 
 const load = createRequire(import.meta.url);
 let accountHome: string;
@@ -44,11 +43,11 @@ async function main(requestPath: string, resultPath: string, cancelPath: string)
       { structuredIdentity },
     ] = await Promise.all([
       import("./runtime.js"),
-      import("../../src/orchestration/definition-catalog.js"),
-      import("../../src/infra/directory-authorities.js"),
-      import("../../src/orchestration/modules/development/benchmark/admission.js"),
-      import("../../src/orchestration/modules/development/benchmark/persona-run.js"),
-      import("../../src/orchestration/modules/development/benchmark/content-identity.js"),
+      import("../../src/orchestration/app-service/definitions/definition-catalog.js"),
+      import("../../src/infra/platform/files/directory-authorities.js"),
+      import("../../src/orchestration/modules/development/benchmark/persona/admission.js"),
+      import("../../src/orchestration/modules/development/benchmark/persona/persona-run.js"),
+      import("../../src/orchestration/modules/development/benchmark/campaign/content-identity.js"),
     ]);
     watcher = watch(dirname(cancelPath), (_event, name) => { if (name?.toString() === "cancel") onAbort(); });
     process.once("SIGTERM", onAbort);

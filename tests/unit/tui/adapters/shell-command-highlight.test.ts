@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test"
 import { RGBA, type TextChunk } from "@opentui/core"
 import { highlightShellCommand } from "@tui/adapters/shell-command-highlight.js"
 import flywheelTheme from "@tui/context/theme/flywheel.json" with { type: "json" }
-import { resolveTheme, type TuiTheme } from "@tui/context/theme/resolve.js"
+import { resolveTheme } from "@tui/context/theme/resolve.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 
 // Distinct colors per role, so each assertion proves which role a token got.
 const theme: TuiTheme = {

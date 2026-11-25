@@ -1,10 +1,11 @@
 import { expect, test } from "bun:test";
 
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
+import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
+import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { makeCaptureClient } from "./_loop-fixtures.js";

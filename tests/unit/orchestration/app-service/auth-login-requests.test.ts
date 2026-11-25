@@ -5,11 +5,11 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { createAuthLoginService } from "../../../../src/orchestration/app-service/auth-login-service.js";
-import { dispatchAuthMutation } from "../../../../src/orchestration/app-service/auth-mutations.js";
+import { createAuthLoginService } from "../../../../src/orchestration/app-service/auth/login/auth-login-service.js";
+import { dispatchAuthMutation } from "../../../../src/orchestration/app-service/auth/login/auth-mutations.js";
 import { LoginRefusedError, type ProviderOAuthLogin } from "../../../../src/orchestration/auth/auth-actions.js";
 import { defaultModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
-import type { AuthOperationNotice } from "../../../../src/protocol/auth-status-protocol-types.js";
+import type { AuthOperationNotice } from "../../../../src/protocol/auth/auth-status-protocol-types.js";
 import { testAuthContext } from "../../../helpers/auth-context.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 import { account, provider, service, silentLog } from "./_auth-login-service-fixtures.js";

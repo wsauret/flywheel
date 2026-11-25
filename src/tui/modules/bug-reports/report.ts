@@ -1,5 +1,5 @@
-import { errorMessage } from "../../../infra/error-message.js"
-import type { RuntimeClient, RuntimeHealth } from "../../../protocol/app-service-types.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import type { RuntimeClient, RuntimeHealth } from "../../../protocol/runtime/app-service-types.js"
 import { bugReportCopyText, NOT_RELEASE_REPORT_STATUS, reportSentStatus, sanitizeBugReportInput, type BugReportInput, type BugReportResult } from "../../../protocol/modules/bug-reports.js"
 import { createSignal, onMount, onCleanup } from "solid-js"
 import type { TuiErrorReport, TuiErrorReportProps, TuiFaultNotice, TuiFaultNoticeHost } from "../../tui-module.js"

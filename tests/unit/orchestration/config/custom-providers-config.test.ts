@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { publishCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js";
-import { customProviderById, customProviderIds, customProviderModelUnavailableReason, isCustomProviderModel } from "../../../../src/infra/llm/custom-provider-registry.js";
+import { customProviderById, customProviderIds, customProviderModelUnavailableReason, isCustomProviderModel } from "../../../../src/infra/providers/llm/custom-provider-registry.js";
 import { installCustomProviders } from "../../../helpers/custom-providers.js";
-import { staticOfferingMap } from "../../../../src/infra/llm/model-listing-rows.js";
+import { staticOfferingMap } from "../../../../src/infra/providers/llm/access/model-listing-rows.js";
 
 // Validation of the [custom_providers] config section: an invalid entry is
 // warned about and dropped, never fatal, and valid entries land in the

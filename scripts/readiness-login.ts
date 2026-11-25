@@ -1,8 +1,9 @@
 /**
- * The release login: the one Claude login, in the auth profile that `LIVE_AUTH_PROFILE_SETTING` names, that the live
- * Claude engine tier of readiness runs on, on a host that keeps it in a home of its own. A person logs in once per
- * host, through the Claude engine's own login, and the engine refreshes its own token there. No token is ever read,
- * copied, printed, or moved: each host's login stays in that host's home.
+ * The release logins: the one Claude login and the one Google Antigravity login, in the auth profile that
+ * `LIVE_AUTH_PROFILE_SETTING` names, that the live tiers of readiness run on (the Claude engine's and the Antigravity
+ * CLI's), on a host that keeps them in a home of its own. A person logs in once per host and engine, through the
+ * engine's own login, and the engine refreshes its own token there. No token is ever read, copied, printed, or moved:
+ * each host's logins stay in that host's home.
  *
  * - Windows: the folder `%LOCALAPPDATA%\FlywheelReadiness` on a Windows machine that the release machine reaches over
  *   SSH, at the host that `WINDOWS_HOST_SETTING` names. The Windows pass names the folder with the readiness setting
@@ -12,40 +13,49 @@
  *
  * Usage, on the release machine, the arm64 macOS host that runs readiness:
  *
- *   bun run readiness:login windows   log in on the Windows machine over SSH, in its release login folder
- *   bun run readiness:login linux     log in in a container on the release login volume
+ *   bun run readiness:login windows [engine]   log in on the Windows machine over SSH, in its release login folder
+ *   bun run readiness:login linux [engine]     log in in a container on the release login volume
  *
  * The modes that run where the home is:
  *
- *   bun run readiness:login --in-home <home>   add the profile if it is missing, then run the CLI's own Claude login
- *   bun run readiness:login --status <home>    print the login's status line, which readiness reads
+ *   bun run readiness:login --in-home <home> [engine]   add the profile if it is missing, then run the CLI's own login
+ *   bun run readiness:login --status <home> [engine]    print the login's status line, which readiness reads
  *
- * The status mode asks the bundled engine for each login's sign-in (`claude auth status`), which states when the
- * engine stops renewing the login. The engine reads its own token for that; this script reads only the engine's
- * answer, and prints no field of it but the date.
+ * `engine` is `claude`, the default, or `antigravity`.
  *
- * The engine's login needs no browser on the machine that runs it. It prints "If the browser didn't open, visit:
- * <url>" and reads the code that the page shows, which `flywheel auth login` asks the person to paste.
+ * The Claude status mode asks the bundled engine for each login's sign-in (`claude auth status`), which states when
+ * the engine stops renewing the login. The engine reads its own token for that; this script reads only the engine's
+ * answer, and prints no field of it but the date. The Antigravity status mode reads only Flywheel's token-free account
+ * records of the profile's Google Antigravity logins, and starts no program.
+ *
+ * Neither login needs a browser on the machine that runs it. The Claude engine prints "If the browser didn't open,
+ * visit: <url>" and reads the code that the page shows; agy, which finds no display in a container or over SSH, signs
+ * in with its pasted-code flow. `flywheel auth login` asks the person to paste the code.
  */
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "./shipped-modules.js";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { LIVE_AUTH_PROFILE_SETTING, LIVE_AUTH_PROFILE_UNSET, liveAuthProfile, liveClaudeAccounts } from "./claude-engine-release.js";
 import { readinessPlan, releaseLoginContainerCommand } from "./readiness-plan.js";
-import { canonicalAccountHome, FLYWHEEL_DIR_NAME } from "../src/infra/directory-authorities.js";
-import { processEngineHost, type EngineHost } from "../src/infra/claude-engine.js";
-import { keychainUnlocked } from "../src/infra/macos-keychain.js";
+import { canonicalAccountHome, FLYWHEEL_DIR_NAME } from "../src/infra/platform/files/directory-authorities.js";
+import { processEngineHost, type EngineHost } from "../src/infra/providers/claude-engine.js";
+import { keychainUnlocked } from "../src/infra/platform/macos-keychain.js";
 import { ownedCommandRunner } from "../src/infra/owned-command.js";
-import { isRecord } from "../src/infra/record.js";
-import { osAccount } from "../src/infra/os-account.js";
+import { isRecord } from "../src/infra/guards/record.js";
+import { osAccount } from "../src/infra/platform/os-account.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../src/infra/process-supervisor.js";
+import { authDir } from "../src/infra/platform/files/paths.js";
 import { AuthProfileManager } from "../src/orchestration/auth/auth-profile-manager.js";
-import { cliLoginEnvironment } from "../src/orchestration/modules/provider-claude-agent-sdk/cli-environment.js";
+import { antigravityAccounts } from "../src/orchestration/modules/provider-google-antigravity/login/login.js";
+import { GOOGLE_ANTIGRAVITY_CLI_FLAG } from "../src/orchestration/modules/provider-google-antigravity/names.js";
+import { cliLoginEnvironment } from "../src/orchestration/modules/provider-claude-agent-sdk/engine/cli-environment.js";
 import { CLAUDE_AGENT_SDK_CLI_FLAG } from "../src/orchestration/modules/provider-claude-agent-sdk/names.js";
-import { loginToken, type LoginToken, type TokenProbe } from "../src/orchestration/modules/provider-claude-agent-sdk/login-token.js";
+import { loginToken, type LoginToken, type TokenProbe } from "../src/orchestration/modules/provider-claude-agent-sdk/login/login-token.js";
 
-/** The readiness setting that names the release login home of this host. Only the live Claude engine tier reads it. */
+/** The readiness setting that names the release login home of this host. Only the live tiers read it. */
 export const RELEASE_LOGIN_SETTING = "FLYWHEEL_READINESS_CLAUDE_HOME";
 /** The variable that names the SSH host of the Windows machine that `readiness:login windows` logs in on. */
 export const WINDOWS_HOST_SETTING = "FLYWHEEL_READINESS_WINDOWS_HOST";
@@ -54,10 +64,15 @@ export const WINDOWS_RELEASE_LOGIN_FOLDER = "FlywheelReadiness";
 /** The Windows release login home, as PowerShell on the Windows machine expands it. */
 const WINDOWS_HOME = `$env:LOCALAPPDATA\\${WINDOWS_RELEASE_LOGIN_FOLDER}`;
 
-/** A release login: its token (`LoginToken`), or `ending` when the engine holds a token that it can stop renewing
- *  at any time, by `endsAt`, an ISO date. Such a login can refuse every request of the live tier, with "this login
- *  reached its time limit and cannot be renewed". */
-export type ReleaseLogin = LoginToken | { readonly kind: "ending"; readonly endsAt: string };
+/** The engine whose release login a mode handles. */
+export type ReleaseEngine = "claude" | "antigravity";
+const RELEASE_ENGINES: readonly ReleaseEngine[] = ["claude", "antigravity"];
+
+/** A release login: its token (`LoginToken`), `ending` when the engine holds a token that it can stop renewing at
+ *  any time, by `endsAt`, an ISO date, or `held` for a Google Antigravity login, whose token agy keeps where Flywheel
+ *  reads it never. An ending login can refuse every request of the live tier, with "this login reached its time limit
+ *  and cannot be renewed". */
+export type ReleaseLogin = LoginToken | { readonly kind: "ending"; readonly endsAt: string } | { readonly kind: "held" };
 
 /** What the status check needs: the token probe, the engine that states each login's sign-in, which runs through
  *  the probe's runner, and the time of the check. */
@@ -120,10 +135,21 @@ export async function releaseLoginStatus(home: string, root: string, profile: st
   return logins.find(({ kind }) => kind === "present") ?? logins.find(({ kind }) => kind === "unchecked") ?? logins.find(({ kind }) => kind === "ending") ?? { kind: "absent" };
 }
 
+/** The Google Antigravity release login of the account home `home`: held when its auth profile `profile` holds a
+ *  Google Antigravity login, and absent otherwise, also when the home has no such profile. It reads only the
+ *  token-free account record of each login directory, and starts no program; the live tier decides whether agy still
+ *  holds the sign-in. */
+export function antigravityReleaseLoginStatus(home: string, root: string, profile: string): ReleaseLogin {
+  const userDataRoot = join(canonicalAccountHome(home), FLYWHEEL_DIR_NAME);
+  const { id } = new AuthProfileManager({ userDataRoot, projectRoot: root, env: { FLYWHEEL_AUTH_PROFILE: profile } }).inspect();
+  return antigravityAccounts(authDir(userDataRoot, id)).length > 0 ? { kind: "held" } : { kind: "absent" };
+}
+
 /** The one line that the status mode prints for `login`. */
 function statusLine(login: ReleaseLogin): string {
   switch (login.kind) {
     case "present": return `present ${login.store}`;
+    case "held": return "held";
     case "absent": return "absent";
     case "unchecked": return `unchecked ${login.reason}`;
     case "ending": return `ending ${login.endsAt}`;
@@ -136,6 +162,7 @@ export function parseReleaseLoginStatus(output: string): ReleaseLogin | undefine
   const line = output.trim().split("\n").at(-1)?.trim() ?? "";
   if (line === "present file" || line === "present keychain") return { kind: "present", store: line === "present file" ? "file" : "keychain" };
   if (line === "absent") return { kind: "absent" };
+  if (line === "held") return { kind: "held" };
   const endsAt = /^ending (\S+)$/u.exec(line)?.[1];
   if (endsAt !== undefined) return Number.isNaN(Date.parse(endsAt)) ? undefined : { kind: "ending", endsAt };
   const unchecked = /^unchecked (.+)$/u.exec(line)?.[1];
@@ -165,11 +192,12 @@ export interface LoginContext {
   readonly folder: string;
   readonly bunVersion: string;
   readonly dockerPlatform: string;
-  /** The auth profile that the login adds the Claude login to. */
+  /** The auth profile that the login adds the engine's login to. */
   readonly liveAuthProfile: string;
+  readonly engine: ReleaseEngine;
 }
 
-/** The login of `target`, run from the release machine. Each host runs the CLI's own Claude login (`inHomeLogin`) in
+/** The login of `target`, run from the release machine. Each host runs the CLI's own login of the engine (`inHomeLogin`) in
  *  its release login home, from a fresh install of the candidate: Windows in a temporary folder over SSH, which the
  *  cleanup removes, and Linux in a container whose home is the release login volume. */
 export function releaseLoginPlan(target: LoginTarget, context: LoginContext): LoginPlan {
@@ -189,7 +217,7 @@ export function releaseLoginPlan(target: LoginTarget, context: LoginContext): Lo
     "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
     // A single-quoted PowerShell string is literal; a quote inside it is doubled.
     `$env:${LIVE_AUTH_PROFILE_SETTING} = '${context.liveAuthProfile.replaceAll("'", "''")}'`,
-    `bun run scripts/readiness-login.ts --in-home "${WINDOWS_HOME}"`,
+    `bun run scripts/readiness-login.ts --in-home "${WINDOWS_HOME}"${context.engine === "claude" ? "" : ` ${context.engine}`}`,
     "exit $LASTEXITCODE",
   ].join("; ");
   return {
@@ -204,18 +232,21 @@ export function releaseLoginPlan(target: LoginTarget, context: LoginContext): Lo
   };
 }
 
-/** The CLI command that logs in in a home, and the variables that select the home and its profile. */
+/** The CLI command that logs in in a home, the variables that select the home and its profile, and the command that
+ *  must succeed before it: a fresh candidate holds no Antigravity CLI, because the checkout's verified copy is not in
+ *  git, so the Antigravity login first prepares the pinned copy for this host. */
 export interface HomeLogin {
+  readonly prepare?: readonly string[];
   readonly command: readonly string[];
   readonly env: { readonly HOME: string; readonly FLYWHEEL_AUTH_PROFILE: string };
 }
 
 /** Adds the auth profile `profile` to the account home `home` when it has none, and returns the CLI command
- *  that logs in to Claude in that profile: `flywheel auth login`, from this checkout, which runs the engine's own
+ *  that logs in to `engine` in that profile: `flywheel auth login`, from this checkout, which runs the engine's own
  *  login in a login folder of the profile. The live tier reads that profile and refuses a home without it. The
  *  profile is found as the live tier finds it (`liveClaudeAccounts`): by the environment selector, whose display name
  *  match ignores case, as the profile store's name conflict check does. */
-export async function inHomeLogin(home: string, bunExecutable: string, root: string, profile: string): Promise<HomeLogin> {
+export async function inHomeLogin(home: string, bunExecutable: string, root: string, profile: string, engine: ReleaseEngine): Promise<HomeLogin> {
   mkdirSync(home, { recursive: true });
   const userDataRoot = join(canonicalAccountHome(home), FLYWHEEL_DIR_NAME);
   const selected = new AuthProfileManager({ userDataRoot, projectRoot: root, env: { FLYWHEEL_AUTH_PROFILE: profile } }).inspect();
@@ -223,8 +254,9 @@ export async function inHomeLogin(home: string, bunExecutable: string, root: str
     await new AuthProfileManager({ userDataRoot, projectRoot: root, env: {} }).create(profile);
   }
   return {
+    ...(engine === "antigravity" ? { prepare: [bunExecutable, "run", join(root, "scripts", "antigravity-engine-asset.ts"), "prepare"] } : {}),
     // bin/flywheel, without its POSIX shell, so the same command runs on Windows.
-    command: [bunExecutable, "--conditions=browser", join(root, "scripts", "dev.ts"), "auth", "login", `--${CLAUDE_AGENT_SDK_CLI_FLAG}`],
+    command: [bunExecutable, "--conditions=browser", join(root, "scripts", "dev.ts"), "auth", "login", `--${engine === "claude" ? CLAUDE_AGENT_SDK_CLI_FLAG : GOOGLE_ANTIGRAVITY_CLI_FLAG}`],
     env: { HOME: home, FLYWHEEL_AUTH_PROFILE: profile },
   };
 }
@@ -238,15 +270,30 @@ function runAttached(command: readonly string[], options: { readonly interactive
   return spawned.exitCode ?? 1;
 }
 
-const USAGE = "usage: bun run readiness:login <windows|linux> | --in-home <home> | --status <home>";
+const USAGE = "usage: bun run readiness:login <windows|linux> [claude|antigravity] | --in-home <home> [claude|antigravity] | --status <home> [claude|antigravity]";
+
+/** The engine that the optional last argument names, `claude` without one, or undefined for any other word. */
+function releaseEngine(word: string | undefined): ReleaseEngine | undefined {
+  return word === undefined ? "claude" : RELEASE_ENGINES.find((engine) => engine === word);
+}
 
 async function main(args: readonly string[]): Promise<number> {
   const root = join(import.meta.dir, "..");
   const [mode, home] = args;
   const profile = liveAuthProfile(process.env);
   const refuse = (reason: string) => { console.error(reason); return 1; };
-  if (mode === "--status" && home !== undefined && args.length === 2) {
+  const withHome = mode === "--status" || mode === "--in-home";
+  const engine = releaseEngine(withHome ? args[2] : args[1]);
+  if (engine === undefined || args.length > (withHome ? 3 : 2)) {
+    console.error(USAGE);
+    return 2;
+  }
+  if (mode === "--status" && home !== undefined) {
     if (profile === undefined) return refuse(LIVE_AUTH_PROFILE_UNSET);
+    if (engine === "antigravity") {
+      console.log(statusLine(antigravityReleaseLoginStatus(home, root, profile)));
+      return 0;
+    }
     const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
     const launcher = createLauncherScope(supervisor);
     try {
@@ -261,14 +308,18 @@ async function main(args: readonly string[]): Promise<number> {
       supervisor.dispose();
     }
   }
-  if (mode === "--in-home" && home !== undefined && args.length === 2) {
+  if (mode === "--in-home" && home !== undefined) {
     if (profile === undefined) return refuse(LIVE_AUTH_PROFILE_UNSET);
-    const login = await inHomeLogin(home, process.execPath, root, profile);
-    console.log(`Logging in to Claude in the auth profile "${profile}" of ${home}.`);
+    const login = await inHomeLogin(home, process.execPath, root, profile, engine);
+    if (login.prepare !== undefined) {
+      const prepared = runAttached(login.prepare, { interactive: false, cwd: root });
+      if (prepared !== 0) return prepared;
+    }
+    console.log(`Logging in to ${engine === "claude" ? "Claude" : "Google Antigravity"} in the auth profile "${profile}" of ${home}.`);
     return runAttached(login.command, { interactive: true, cwd: root, env: login.env });
   }
-  if ((mode === "windows" || mode === "linux") && args.length === 1) {
-    const linux = readinessPlan(process.platform, process.arch, false, { tmux: true }).linuxClaudeLive;
+  if (mode === "windows" || mode === "linux") {
+    const linux = readinessPlan(process.platform, process.arch, false, { tmux: true }).linuxLive;
     if (linux === undefined) return refuse("readiness:login runs on the arm64 macOS release machine that runs readiness: it holds the Linux release login volume and reaches the Windows machine over SSH.");
     if (profile === undefined) return refuse(LIVE_AUTH_PROFILE_UNSET);
     let target: LoginTarget = { kind: "linux" };
@@ -278,7 +329,7 @@ async function main(args: readonly string[]): Promise<number> {
       target = { kind: "windows", sshHost };
     }
     const scratch = mkdtempSync(join(tmpdir(), "flywheel-readiness-login-"));
-    const plan = releaseLoginPlan(target, { candidate: join(scratch, "candidate.tar"), folder: `flywheel-readiness-login-${crypto.randomUUID()}`, bunVersion: Bun.version, dockerPlatform: linux.dockerPlatform, liveAuthProfile: profile });
+    const plan = releaseLoginPlan(target, { candidate: join(scratch, "candidate.tar"), folder: `flywheel-readiness-login-${crypto.randomUUID()}`, bunVersion: Bun.version, dockerPlatform: linux.dockerPlatform, liveAuthProfile: profile, engine });
     try {
       for (const step of plan.steps) {
         const exitCode = runAttached(step.command, { interactive: step.interactive, cwd: root });

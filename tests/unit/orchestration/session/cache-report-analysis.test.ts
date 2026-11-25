@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { buildTurnReport } from "../../../../src/orchestration/session/diagnostics/cache-report-analysis.js"
-import type { ProviderRequestAuditEntry } from "../../../../src/orchestration/session/provider-request-audit-types.js"
+import type { ProviderRequestAuditEntry } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 
 function entry(overrides: {
   turn: number

@@ -1,11 +1,11 @@
 import type { Accessor } from "solid-js"
 import { batch } from "solid-js"
-import { errorMessage } from "../../infra/error-message.js"
-import type { RuntimeClient, SessionCatalogRow } from "../../protocol/app-service-types.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import type { RuntimeClient, SessionCatalogRow } from "../../protocol/runtime/app-service-types.js"
 
-import type { ShellServices } from "./shell-state.js"
+import type { ShellServices } from "./state/shell-state.js"
 import type { TabInfo } from "./create-tabs.js"
-import type { DraftCache } from "./create-draft-cache.js"
+import type { DraftCache } from "../components/composer/create-draft-cache.js"
 
 interface TabCloserDeps {
   tabs: Accessor<readonly TabInfo[]>

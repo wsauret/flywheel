@@ -1,6 +1,6 @@
 import { createRoot, createSignal } from "solid-js"
-import { mountSemanticComponent, type SemanticPublication } from "../../app/semantic-rows-fixture.js"
-import type { FakeConnectionScript } from "../../client/runtime-connection-fixture.js"
+import { mountSemanticComponent, type SemanticPublication } from "../../test-support/semantic-rows-fixture.js"
+import type { FakeConnectionScript } from "../../test-support/runtime-connection-fixture.js"
 import type { RemoteHostCapability, RemoteHostSnapshot } from "../../host.js"
 import { RemoteSheet } from "./sheet.js"
 import { RuntimesSheet } from "./runtimes.js"

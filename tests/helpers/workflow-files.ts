@@ -1,15 +1,15 @@
 import { Schema } from "effect";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { DefinitionLayer } from "../../src/infra/definition-resolution.js";
-import { DefinitionProvenanceSchema, type DefinitionError, type DefinitionProvenance } from "../../src/workflows/definition-provenance.js";
-import { definitionAssets, type DefinitionAssetReader, type AssetLocation } from "../../src/workflows/definition-assets.js";
-import { decodeWorkflowFile, type DecodedWorkflowFile } from "../../src/workflows/workflow-file.js";
-import { withLoadedContent } from "../../src/workflows/loader.js";
-import type { SkillRegistryRevision } from "../../src/workflows/skill-schema.js";
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../src/workflows/workflow-schema.js";
-import { stepGrammarWarning } from "../../src/workflows/retired-step-grammar/convert.js";
-import { stageWorkflowSource, type StagedWorkflowFile } from "../../src/orchestration/workflow-host/path-workflow.js";
+import type { DefinitionLayer } from "../../src/infra/definitions/definition-resolution.js";
+import { DefinitionProvenanceSchema, type DefinitionError, type DefinitionProvenance } from "../../src/workflows/provenance/definition-provenance.js";
+import { definitionAssets, type DefinitionAssetReader, type AssetLocation } from "../../src/workflows/definitions/definition-assets.js";
+import { decodeWorkflowFile, type DecodedWorkflowFile } from "../../src/workflows/vm/admission/workflow-file.js";
+import { withLoadedContent } from "../../src/workflows/definitions/loader.js";
+import type { SkillRegistryRevision } from "../../src/workflows/skills/skill-schema.js";
+import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../src/workflows/schema/workflow-schema.js";
+import { stepGrammarWarning } from "../../src/workflows/schema/retired-step-grammar/convert.js";
+import { type StagedWorkflowFile, stageWorkflowSource } from "../../src/orchestration/agent-runtime/tools/definitions/workflow-staging.js";
 
 /** Loads explicit fixture files without a production definition catalog or layer merge. */
 export function loadWorkflowFiles(entries: Iterable<{ file: string; location: AssetLocation; content: string }>, layer: DefinitionLayer = "project", bundle?: string, reader: DefinitionAssetReader = definitionAssets, skills?: SkillRegistryRevision) {

@@ -1,6 +1,6 @@
-import type { CatalogJsonValue } from "../../../infra/llm/model-catalog-resolution.js";
+import type { CatalogJsonValue } from "../../../infra/providers/catalog-model-offering.js";
 import { copilotRequestInitiator } from "./headers.js";
-import type { ProviderAffordabilityCapability, ProviderAffordabilityDecision, ProviderAffordabilityEvaluation } from "../../agent-runtime/llm/provider-affordability.js";
+import type { ProviderAffordabilityCapability, ProviderAffordabilityDecision, ProviderAffordabilityEvaluation } from "../../agent-runtime/llm/routing/provider-affordability.js";
 
 interface PriceTier {
   readonly inputPrice: number;

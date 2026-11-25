@@ -1,8 +1,9 @@
-import { errnoCode, errorDetail, errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
-import { ownerPidRelativePath, resolveOwnerPidPath } from "../../infra/paths.js";
-import { decodeHolderText, encodeHolderText, processHolders } from "../../infra/process-holder.js";
-import { readFileUnder, removeFileUnder, writeFileUnder } from "../../infra/write-file-under.js";
+import { errorDetail, errorMessage } from "../../infra/diagnostics/error-message.js";
+import { errnoCode } from "../../infra/platform/files/system-error.js";
+import { Log } from "../../infra/diagnostics/log.js";
+import { ownerPidRelativePath, resolveOwnerPidPath } from "../../infra/platform/files/paths.js";
+import { decodeHolderText, encodeHolderText, processHolders } from "../../infra/process/process-holder.js";
+import { readFileUnder, removeFileUnder, writeFileUnder } from "../../infra/platform/files/write-file-under.js";
 
 const log = Log.create({ service: "session-pid-lock" });
 
@@ -17,7 +18,7 @@ const warnedUnknown = new Set<string>();
 
 /** Record this process as the owner of a session. `owner.pid` holds the
  *  process's holder identity in its text encoding, `<pid> <v> <start>[ <boot>]`
- *  (src/infra/process-holder.ts), with no newline, so an earlier build that
+ *  (src/infra/process/process-holder.ts), with no newline, so an earlier build that
  *  takes the leading pid still reads the owner. A process that cannot read its
  *  own identity writes its pid alone, which a recovery reads as a live owner
  *  while that pid runs; the next write asks for the identity again.

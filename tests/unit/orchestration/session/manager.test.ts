@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test"
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/session-metadata-store"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types"
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths"
+import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/metadata/catalog/session-metadata-store"
 import { cleanupTmpRoot, makeTmpDir, minimalSession } from "./_session-manager-fixtures"
 
 

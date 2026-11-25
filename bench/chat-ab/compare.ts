@@ -18,7 +18,7 @@
 //     [--differ arm|models] [--auth-profile <id>] [--min-win-ratio 2] [--max-cost-increase 0.3]
 import { basename, join, resolve } from "node:path";
 import { Schema } from "effect";
-import { createJsonLinesLedger } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { createJsonLinesLedger } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { scoreAcceptance } from "./acceptance.js";
 import { CHAT_AB_JUDGE } from "./judge-inputs.js";
 import { VerdictSchema } from "./pair-judge.js";

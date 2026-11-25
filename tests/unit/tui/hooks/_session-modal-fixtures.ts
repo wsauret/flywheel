@@ -1,11 +1,11 @@
 import { mock, spyOn } from "bun:test"
 import { createSignal } from "solid-js"
-import type { RuntimeClient, SessionCatalogError, SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
-import type { FrontendWorkflowView } from "../../../../src/protocol/workflow-view-protocol-types.js"
-import { createShellState, type ShellSignals } from "../../../../src/tui/hooks/shell-state.js"
+import type { RuntimeClient, SessionCatalogError, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { FrontendWorkflowView } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
+import { createShellState, type ShellSignals } from "../../../../src/tui/hooks/state/shell-state.js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
-import type { SessionActivationResult } from "../../../../src/tui/hooks/session-activation.js"
-import { useSessionModal } from "../../../../src/tui/hooks/use-session-modal.js"
+import type { SessionActivationResult } from "../../../../src/tui/hooks/foreground/session-activation.js"
+import { useSessionModal } from "../../../../src/tui/hooks/overlays/modals/session/use-session-modal.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch, runtimeQuery, type QueryAnswer } from "../../../helpers/runtime-dispatch.js"
 
@@ -81,6 +81,8 @@ export function createModal(options: {
   queueViews?: QueueViews
   foregroundId?: string
   now?: () => number
+  /** The project's sessions that wait on a question. */
+  waitingSessions?: ReadonlySet<string>
   activateSession?: (session: SessionCatalogRow) => Promise<SessionActivationResult>
   deleteActiveSession?: (sessionId: string) => Promise<void>
   closeChat?: (sessionId: string) => Promise<void>
@@ -97,6 +99,8 @@ export function createModal(options: {
   const closeChat = mock(options.closeChat ?? (async (_id: string) => {}))
   const signals = createSignals(options.queueViews, options.foregroundId)
   if (options.now) signals.now = options.now
+  const waiting = options.waitingSessions
+  if (waiting) signals.waitingSessions = () => waiting
   const hook = useSessionModal({
     modal: modals,
     renderModal: () => "mock-element",

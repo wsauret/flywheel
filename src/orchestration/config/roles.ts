@@ -1,10 +1,10 @@
-import { familyRole } from "../../infra/agent-definition.js";
-import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
+import { familyRole } from "../../infra/definitions/agent-definition.js";
+import { parseBriefRoleId } from "../../protocol/auth/brief-role-id.js";
 import { canonicalRoleId, RETIRED_COMPACTION_ROLE_IDS } from "./retired-config-names.js";
-import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
+import type { ProviderRequestOptions } from "../../infra/providers/llm/access/provider-options.js";
 import { discoverAgentRoles } from "../../workflows/agents/agent-roles.js";
-import type { ProviderConnectionCapture } from "../agent-runtime/factory.js";
-import type { RoleSettingEntry } from "../session/schemas.js";
+import type { ProviderConnectionCapture } from "../agent-runtime/request/model-runtime-capture.js";
+import type { RoleSettingEntry } from "../session/metadata/schemas.js";
 
 export type RoleId = string;
 export const LEARNING_REVIEW_ROLE_ID: RoleId = "learning-review";

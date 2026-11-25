@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
 
-import { createAccountService } from "../../../../src/orchestration/app-service/account-service.js"
-import { createAccountSocketRouter } from "../../../../src/orchestration/app-service/account-socket-router.js"
-import { createProjectRuntime } from "../../../../src/orchestration/app-service/project-runtime.js"
-import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime-ownership.js"
-import { runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
-import { encodeAccountAttach, newAccountAttachCredential } from "../../../../src/protocol/account-attach.js"
+import { createAccountService } from "../../../../src/orchestration/app-service/account/account-service.js"
+import { createAccountSocketRouter } from "../../../../src/orchestration/app-service/account/connections/account-socket-router.js"
+import { createProjectRuntime } from "../../../../src/orchestration/app-service/account/projects/project-runtime.js"
+import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime/runtime-ownership.js"
+import { runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
+import { encodeAccountAttach, newAccountAttachCredential } from "../../../../src/protocol/runtime/account-attach.js"
 
 const deferred = <T>() => Promise.withResolvers<T>()
 

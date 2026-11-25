@@ -1,6 +1,7 @@
-import type { CatalogJsonValue, CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
-import type { ModelPricing, ProviderReasoningEffort } from "../../../infra/llm/models.js";
-import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
+import type { CatalogSourceRow } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import type { CatalogJsonValue } from "../../../infra/providers/catalog-model-offering.js";
+import type { ModelPricing, ProviderReasoningEffort } from "../../../infra/providers/llm/models/models.js";
+import { providerModelInfo } from "../../../infra/providers/llm/catalog/provider-model-info.js";
 
 // Copilot model eligibility and endpoint dispatch, decided by Copilot's own
 // `/models` listing. Each listed model states the wire endpoints it is served

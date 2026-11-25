@@ -1,10 +1,10 @@
-import type { CaptureModelRuntime, CaptureProviderConnection, LLMClientFactory } from "../../src/orchestration/agent-runtime/factory.js";
-import { LiveAgent } from "../../src/orchestration/agent-runtime/runner.js";
+import type { CaptureModelRuntime, CaptureProviderConnection, LLMClientFactory } from "../../src/orchestration/agent-runtime/request/model-runtime-capture.js";
+import { LiveAgent } from "../../src/orchestration/agent-runtime/runner/runner.js";
 import type { AgentOptions } from "../../src/orchestration/agent-runtime/types.js";
 import type { ModelClient } from "../../src/orchestration/agent-runtime/llm/types.js"
-import type { ProviderRuntimeCache } from "../../src/orchestration/agent-runtime/provider-runtime-cache.js";
+import type { ProviderRuntimeCache } from "../../src/orchestration/agent-runtime/request/provider-runtime-cache.js";
 import { repoDefinitions } from "./project-definitions.js";
-import { createBreadcrumbMaintenance } from "../../src/orchestration/session/session-artifacts.js";
+import { createBreadcrumbMaintenance } from "../../src/orchestration/session/persistence/storage/session-artifacts.js";
 import { testCapabilityModules } from "./request-tool-surface.js";
 import { testRuntimeConfigCapture } from "./request-tool-surface.js";
 

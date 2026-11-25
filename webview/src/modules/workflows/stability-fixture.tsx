@@ -1,29 +1,29 @@
 import { batch, createComponent, createRoot, createSignal } from "solid-js"
 import type { InlineSettingAction } from "../../client/settings-actions.js"
-import type { ModuleId } from "../../../../src/protocol/module-ids.js"
-import type { RuntimeAuthStatusSnapshotResult, RuntimeAuthView } from "../../../../src/protocol/auth-status-protocol-types.js"
-import type { ProviderCatalogDiscovery, ProviderModelRow, ProviderModelTarget, ProviderModelView, RuntimeProviderModelHiddenResult } from "../../../../src/protocol/provider-model-preference-protocol-types.js"
+import type { ModuleId } from "../../../../src/protocol/runtime/module-ids.js"
+import type { RuntimeAuthStatusSnapshotResult, RuntimeAuthView } from "../../../../src/protocol/auth/auth-status-protocol-types.js"
+import type { ProviderCatalogDiscovery, ProviderModelRow, ProviderModelTarget, ProviderModelView, RuntimeProviderModelHiddenResult } from "../../../../src/protocol/auth/provider-model-preference-protocol-types.js"
 import { fakeClient, fakeClientActions, fakeRuntimeSession, fakeViewState, fakeWebModuleHost } from "../../app/client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
-import type { ModuleDomainViews } from "../../client/module-domain-views.js"
-import type { ClientViewState } from "../../client/view-state.js"
-import { PersistentPane } from "../../app/persistent-pane.js"
-import { createQuestionInteractions, QuestionPanel } from "../../app/question-panel.js"
-import { SessionNotices } from "../../app/session-notices.js"
-import { ProviderModelsSheet } from "../../app/sheets/provider-models-sheet.js"
-import { AgentHeader } from "./agent-header.js"
-import type { WorkflowAgentModel } from "../../../../src/protocol/client/workflow-agent.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
+import type { ModuleDomainViews } from "../../client/domains/module-domain-views.js"
+import type { ClientViewState } from "../../client/session/view-state.js"
+import { PersistentPane } from "../../app/screens/persistent-pane.js"
+import { createQuestionInteractions, QuestionPanel } from "../../app/composer/questions/question-panel.js"
+import { SessionNotices } from "../../app/sessions/session-notices.js"
+import { ProviderModelsSheet } from "../../app/sheets/providers/provider-models-sheet.js"
+import { AgentHeader } from "./screen/agent-header.js"
+import type { WorkflowAgentModel } from "../../../../src/protocol/client/work/workflow/workflow-agent.js"
 import { WorkflowCard } from "./card.js"
-import { workflowCard } from "../../../../src/protocol/client/workflow-card.js"
-import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
-import { ToolbarBadges } from "../../app/toolbar-badges.js"
-import { SettingsSheet } from "../../app/sheets/settings-sheet.js"
-import { StatusSheet } from "../../app/sheets/status-sheet.js"
+import { workflowCard } from "../../../../src/protocol/client/work/workflow/workflow-card.js"
+import { workflowOutline } from "../../../../src/protocol/client/work/workflow/workflow-outline.js"
+import { ToolbarBadges } from "../../app/toolbar/toolbar-badges.js"
+import { SettingsSheet } from "../../app/sheets/settings/settings-sheet.js"
+import { StatusSheet } from "../../app/sheets/workspace/status-sheet.js"
 import type { PanelSettings } from "../../client/session-settings.js"
-import type { LoadedWorkflowView, WorkflowAgentLive } from "../../../../src/protocol/workflow-view-protocol-types.js"
-import { createElement, insert, nodes, textContent } from "../../app/render-ownership-host-fixture.js"
+import type { LoadedWorkflowView, WorkflowAgentLive } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
+import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { actionOwner } from "../../app/action-owner-fixture.js"
-import type { RoleAssignmentView } from "../../../../src/protocol/role-protocol-types.js"
+import type { RoleAssignmentView } from "../../../../src/protocol/auth/role-protocol-types.js"
 
 const tick = async (): Promise<void> => {
   for (let turn = 0; turn < 8; turn += 1) await Promise.resolve()
@@ -361,7 +361,7 @@ export function mountWorkflowAgent() {
     const root = createElement("root")
     const [state, setState] = createSignal(fakeViewState({ sessionId: "workflow", interruptible: false, windowCurrent: true }))
     const [live, setLive] = createSignal<readonly WorkflowAgentLive[]>([])
-    const [model, setModel] = createSignal<WorkflowAgentModel>({ agentNodeId: "leaf", follow: true, attemptId: "attempt", kind: "list", phaseId: "map", position: "1/1", state: "running", stateText: "running", emptyText: "No output yet", label: "alpha", definitionId: "work", name: "Agent", running: true, current: true, history: [] })
+    const [model, setModel] = createSignal<WorkflowAgentModel>({ agentNodeId: "leaf", follow: true, attemptId: "attempt", kind: "list", phaseId: "map", next: "Next agent 1/1", state: "running", stateText: "running", emptyText: "No output yet", label: "alpha", definitionId: "work", name: "Agent", running: true, current: true, history: [] })
     let queries = 0
     const connection = fakeRuntimeConnection({ onQuery: () => { queries += 1 } })
     const actions = fakeClientActions({ working: () => false, canOpenFiles: false, openFile() {}, interrupt() {}, resume() {}, selectSession() {} }, fakeRuntimeSession(), connection)

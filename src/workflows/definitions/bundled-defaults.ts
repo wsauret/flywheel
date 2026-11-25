@@ -3,12 +3,12 @@ import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { systemPromptText } from "../../infra/agent-assets/manifest.js"
-import { agents, moduleSkillDefinitions, skillDefinitions, type WorkflowAssets } from "../agents/manifest.js"
-import { definitionAssets } from "../definition-assets.js"
+import { systemPromptText } from "../../infra/definitions/agent-assets/manifest.js"
+import { agents, moduleSkillDefinitions, skillDefinitions, type WorkflowAssets } from "../provenance/asset-manifest.js"
+import { definitionAssets } from "./definition-assets.js"
 import { loadPersonaSources } from "../agents/persona-sources.js"
-import { BUNDLED_SKILL_DIR } from "../skill-source-inventory.js"
-import type { DefinitionBundle } from "../loader.js"
+import { BUNDLED_SKILL_DIR } from "../skills/skill-source-inventory.js"
+import type { DefinitionBundle } from "./loader.js"
 
 
 interface BundledDefaultFile {
@@ -98,7 +98,7 @@ function addFile(
  * and rebases. A bundle that only a source run loads is never a default. */
 export function loadBundledDefaultCatalog(bundles: readonly DefinitionBundle[]): BundledDefaultCatalog {
   const files: MutableBundledDefaultFiles = {}
-  const prompt = systemPromptText || readFileSync(join(fileURLToPath(new URL("../../infra/agent-assets", import.meta.url)), "system-prompt.md"), "utf8")
+  const prompt = systemPromptText || readFileSync(join(fileURLToPath(new URL("../../infra/definitions/agent-assets", import.meta.url)), "system-prompt.md"), "utf8")
   addFile(files, "system-prompt.md", "system-prompt.md", prompt)
 
   // File workflows can still refer to the core contracts until brief lookup retires.

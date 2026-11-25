@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { Redacted } from "effect";
-import { accessProviderAccountKey } from "../../../../../src/infra/llm/access-provider.js";
-import { createModelListingClient } from "../../../../../src/infra/llm/model-listing.js";
-import { createModelsClient } from "../../../../../src/infra/llm/models.js";
-import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/credential-slot-classifier.js";
+import { accessProviderAccountKey } from "../../../../../src/infra/providers/auth/provider-account.js";
+import { createModelListingClient } from "../../../../../src/infra/providers/llm/access/model-listing.js";
+import { createModelsClient } from "../../../../../src/infra/providers/llm/models/models.js";
+import { credentialSlotClassifier } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { combinedModelsDevProviders, modelsDevDocument } from "../../../../helpers/model-catalog-fixtures.js";
 import { testCapabilityModules, testProviderSelection } from "../../../../helpers/provider-authority.js";

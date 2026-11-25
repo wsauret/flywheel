@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createUsageAuthority } from "../../../src/infra/llm/usage-authority.js";
-import type { UsageEntry } from "../../../src/infra/llm/usage-entry.js";
+import { createUsageAuthority } from "../../../src/infra/providers/llm/usage/usage-authority.js";
+import type { UsageEntry } from "../../../src/infra/providers/llm/usage/usage-entry.js";
 
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -82,7 +82,7 @@ describe("usage authority coordination", () => {
   });
 
   test("derives month bounds from the local calendar without mutating this process timezone", () => {
-    const script = `import { localMonthBounds } from "./src/infra/llm/usage-authority-codec.ts"; console.log(JSON.stringify(localMonthBounds(Date.parse("2025-03-01T00:30:00.000Z"))))`;
+    const script = `import { localMonthBounds } from "./src/infra/providers/llm/usage/usage-authority-codec.ts"; console.log(JSON.stringify(localMonthBounds(Date.parse("2025-03-01T00:30:00.000Z"))))`;
     const result = Bun.spawnSync({ cmd: [process.execPath, "-e", script], cwd: join(import.meta.dir, "../../.."), env: { ...process.env, TZ: "America/Los_Angeles" }, windowsHide: true });
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout.toString())).toEqual({ startMs: Date.parse("2025-02-01T08:00:00.000Z"), endMs: Date.parse("2025-03-01T08:00:00.000Z"), start: "2025-02-01T08:00:00.000Z", end: "2025-03-01T08:00:00.000Z" });

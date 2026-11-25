@@ -4,9 +4,9 @@ import * as path from "node:path";
 import { Schema } from "effect";
 import { disconnectProviderInstance, getAuthStatus, loginWithApiKey, logoutProvider, reconnectWithApiKey, renameProviderInstance } from "../../../../src/orchestration/auth/auth-actions.js";
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js";
-import { isCredentialCollection, MeteredCredentialRecordSchema, type CredentialInstance } from "../../../../src/infra/auth/auth-store-types.js";
-import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
-import { apiKey } from "../../../../src/infra/auth/auth-context.js";
+import { isCredentialCollection, MeteredCredentialRecordSchema, type CredentialInstance } from "../../../../src/infra/providers/auth/store/auth-store-types.js";
+import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/providers/auth/store/auth-store.js";
+import { apiKey } from "../../../../src/infra/providers/auth/auth-context.js";
 import { fileTemporaryDirectory } from "../../../helpers/directories.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 

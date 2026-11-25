@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { createInitExperimentTool } from "../../../../../../src/orchestration/modules/experiments/tools/init-experiment.js"
-import type { ExperimentInitializedFact } from "../../../../../../src/orchestration/modules/experiments/facts.js"
+import type { ExperimentInitializedFact } from "../../../../../../src/orchestration/modules/experiments/state/facts.js"
 import { testExperimentOperation } from "../../../agent-runtime/tools/_fixtures.js"
 import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js"
 

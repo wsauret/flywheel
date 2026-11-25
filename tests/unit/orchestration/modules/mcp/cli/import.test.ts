@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { runMcp } from "../../../../../../src/orchestration/modules/mcp/cli/mcp.js"
-import { accountAuthDir } from "../../../../../../src/infra/paths.js"
+import { accountAuthDir } from "../../../../../../src/infra/platform/files/paths.js"
 import { temporaryDirectories, testDirectories } from "../../../../../helpers/directories.js"
 import { Redacted, Schema } from "effect"
 import { McpConfigSchema } from "../../../../../../src/orchestration/modules/mcp/config.js"
-import type { McpCredential, McpCredentialStore } from "../../../../../../src/orchestration/modules/mcp/credentials.js"
+import type { McpCredential, McpCredentialStore } from "../../../../../../src/orchestration/modules/mcp/oauth/credentials.js"
 
 const temporaryDirectory = temporaryDirectories()
 const originalError = console.error

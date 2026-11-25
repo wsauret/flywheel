@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test"
 import { join } from "node:path"
 
-import { sourceCheckout } from "../../../../src/infra/cli-subprocess.js"
-import { accountServicePlatform, createAccountServiceInstallation } from "../../../../src/orchestration/app-service/account-service-installation.js"
-import { SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
+import { sourceCheckout } from "../../../../src/infra/platform/cli-subprocess.js"
+import { accountServicePlatform, createAccountServiceInstallation } from "../../../../src/orchestration/app-service/account/installation/account-service-installation.js"
+import { SERVICE_NAMES } from "../../../../src/orchestration/app-service/account/installation/account-service-registration.js"
 import { bytesOf, fixture, missing, plistPath, retired, taskXmlPath, textOf, unitPath } from "./_account-service-fixtures.js"
 
 /** The dev lane registers its own job, which runs the checkout's entry

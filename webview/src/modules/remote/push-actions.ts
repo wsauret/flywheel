@@ -1,4 +1,4 @@
-import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
 import type { RuntimeRemoteView } from "../../../../src/protocol/modules/remote.js"
 import type { HostCapabilities } from "../../host.js"
 

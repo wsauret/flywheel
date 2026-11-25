@@ -17,7 +17,7 @@ import { isAbsolute, join, normalize, relative, resolve } from "node:path"
  *  than refusing, so neither is allowed through.
  *
  *  boundary: the containment authority (ARCH-DIRECTORIES-012) is `ContainedDirectory` in
- *  `src/infra/descriptor-directory.ts`, which holds directories open through
+ *  `src/infra/platform/files/descriptor-directory.ts`, which holds directories open through
  *  `bun:ffi`. A Node extension host cannot load that, and infra is not part of
  *  the protocol surface this extension may import, so the pure path-resolution
  *  rule is restated here rather than reused. */

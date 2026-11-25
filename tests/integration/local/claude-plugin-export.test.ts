@@ -9,8 +9,8 @@
 import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { enginePath } from "../../../src/infra/claude-engine.js";
-import { parseFrontmatter } from "../../../src/infra/frontmatter.js";
+import { enginePath } from "../../../src/infra/providers/claude-engine.js";
+import { parseFrontmatter } from "../../../src/infra/parsing/yaml/frontmatter.js";
 import { buildClaudePlugin, writePluginDirectory } from "../../../scripts/build-claude-plugin.js";
 import { CLAUDE_MARKETPLACE_FILE, claudeMarketplace } from "../../../scripts/release-contract.js";
 import { zipArchive } from "../../../scripts/zip-archive.js";
@@ -76,6 +76,7 @@ async function runEngine(pluginPath: string | undefined, reply: (request: Record
         HOME: home,
         USERPROFILE: home,
         CLAUDE_CONFIG_DIR: join(root, "config"),
+        CLAUDE_CODE_TMPDIR: root,
         ANTHROPIC_API_KEY: "sk-ant-fake-endpoint",
         CLAUDE_CODE_MAX_RETRIES: "0",
         DISABLE_TELEMETRY: "1",

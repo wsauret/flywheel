@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineProtocolDomain, defineProtocolModule, type BackgroundSnapshotOf } from "../protocol-module.js"
-import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
+import type { RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 
 /** The session-scoped `experiment_view` contract: what the runtime publishes
  *  about one session's experiment loop to the terminal and web clients. Every

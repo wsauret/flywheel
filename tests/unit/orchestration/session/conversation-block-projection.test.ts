@@ -3,17 +3,17 @@ import { Schema } from "effect"
 import { MessageEntrySchema } from "../../../../src/orchestration/session/conversation/conversation-entry-schemas.js"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
-import { buildMutationDiff } from "../../../../src/infra/mutation-diff"
-import { buildMutationDiffEntries } from "../../../../src/infra/mutation-diff-evidence"
-import { buildMutationEvidence, readMutationEvidenceFiles } from "../../../../src/infra/mutation-evidence"
-import { readSessionContentRange } from "../../../../src/infra/session-content"
+import { buildMutationDiff } from "../../../../src/infra/substrate/file-mutations/mutation-diff"
+import { buildMutationDiffEntries } from "../../../../src/infra/substrate/file-mutations/mutation-diff-evidence"
+import { buildMutationEvidence, readMutationEvidenceFiles } from "../../../../src/infra/substrate/file-mutations/mutation-evidence"
+import { readSessionContentRange } from "../../../../src/infra/substrate/session-content"
 import { sessionContentFixture } from "../../../helpers/session-content"
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
-import { DELIVERY_CONFIRMATION } from "../../../../src/infra/delivery-confirmation.js"
-import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
-import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { DELIVERY_CONFIRMATION } from "../../../../src/infra/substrate/output/notify/delivery-confirmation.js"
+import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript/transcript-protocol-schemas.js"
+import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/transcript/conversation-block-projection"
 import { branchBlocks } from "../../../helpers/branch-blocks"
-import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/frontend-output-blocks"
+import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/projections/output/frontend-output-blocks"
 
 const CWD = resolve("/scratch/project")
 const T0 = "2026-07-02T10:00:00.000Z"
@@ -95,18 +95,23 @@ describe("tree -> output blocks re-projection", () => {
     ])
   })
 
-  it("skips system-origin user entries (runtime notification envelopes are hidden from the transcript)", () => {
+  it("skips system-origin user entries (runtime notification envelopes are hidden from the transcript), except a watch's event and end, which show as rows of the command's text under the notice key and never as a person's message", () => {
     const user = entry({ kind: "user", content: "real question" })
     const reply = entry({ kind: "assistant", content: [{ type: "text", text: "NUMBER=7" }] })
     const injected = entry({ kind: "user", content: "<subagent_notifications>\n<visibility>hidden_from_user</visibility>\n</subagent_notifications>", origin: "system" })
     const assistant = entry({ kind: "assistant", content: [{ type: "text", text: "NUMBER=7" }] })
-    const blocks = project([user, reply, injected, assistant])
+    const fields = "<source>runtime</source>\n<visibility>hidden_from_user</visibility>\n<process_id>bash-bg-1</process_id>\n<description>tail -f app.log</description>"
+    const event = entry({ kind: "user", origin: "system", content: `<watch_event>\n${fields}\n<output>\nERROR one &lt;x&gt;\nERROR two\n</output>\n</watch_event>` }, { id: "watch:bash-bg-1:42" })
+    const end = entry({ kind: "user", origin: "system", content: `<watch_ended>\n${fields}\n<summary>The watch reached its deadline after 3 events.</summary>\n</watch_ended>` }, { id: "watch:bash-bg-1:end" })
+    const blocks = project([user, reply, injected, assistant, event, end])
 
     // The hidden envelope leaves two replies adjacent; each stays its own row, as it was live.
     expect(blocks).toEqual([
       { kind: "userMessage", id: user.id, content: "real question", timestamp: Date.parse(T0), pending: false, injected: false },
       { kind: "text", id: `${reply.id}:0`, content: "NUMBER=7", timestamp: Date.parse(T0) },
       { kind: "text", id: `${assistant.id}:0`, content: "NUMBER=7", timestamp: Date.parse(T0) },
+      { kind: "system", id: "watch:bash-bg-1:42", message: "ERROR one <x>\nERROR two", timestamp: Date.parse(T0), watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "event" } },
+      { kind: "system", id: "watch:bash-bg-1:end", message: "The watch reached its deadline after 3 events.", timestamp: Date.parse(T0), watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "end" } },
     ])
   })
 
@@ -148,13 +153,13 @@ describe("tree -> output blocks re-projection", () => {
   it("carries the tool's action, so a reopened read folds and abbreviates like a live one", () => {
     const assistant = entry({
       kind: "assistant",
-      content: [{ type: "tool_use", id: "toolu_read", name: "read", input: { path: "src/orchestration/agent-runtime/agent-loop.ts" } }],
+      content: [{ type: "tool_use", id: "toolu_read", name: "read", input: { path: "src/orchestration/agent-runtime/loop/agent-loop.ts" } }],
     })
     const result = entry({ kind: "toolResult", toolUseId: "toolu_read", content: [{ type: "text", text: "export const loop = 1" }] })
     const [tool] = project([assistant, result])
     if (tool?.kind !== "tool") throw new Error("expected tool block")
     expect(tool.action).toBe("file_read")
-    expect(tool.linkUri).toBe(pathToFileURL(resolve(CWD, "src/orchestration/agent-runtime/agent-loop.ts")).href)
+    expect(tool.linkUri).toBe(pathToFileURL(resolve(CWD, "src/orchestration/agent-runtime/loop/agent-loop.ts")).href)
   })
 
   it("settles tool_use parts against their toolResult entries", () => {

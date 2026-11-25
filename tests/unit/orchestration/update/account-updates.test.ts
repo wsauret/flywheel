@@ -12,16 +12,16 @@ import { afterAll, beforeEach, expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { globalConfigFile } from "../../../../src/infra/paths.js";
+import { globalConfigFile } from "../../../../src/infra/platform/files/paths.js";
 import type { GuardianControl } from "../../../../src/infra/process-supervisor.js";
-import { ADMISSION_CLOSED_ERROR } from "../../../../src/orchestration/app-service/mutation-admission.js";
+import { ADMISSION_CLOSED_ERROR } from "../../../../src/infra/process/shutdown-signals.js";
 import { createAccountUpdates } from "../../../../src/orchestration/update/account-updates.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
 import { systemUpdateScheduler } from "../../../../src/orchestration/update/update-check.js";
-import type { UpdateStatusView } from "../../../../src/protocol/update-protocol-types.js";
+import type { UpdateStatusView } from "../../../../src/protocol/runtime/update-protocol-types.js";
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-account-updates-"));
-const WORKER_URL = new URL("../../../../src/orchestration/app-service/worker-entry.ts", import.meta.url).href;
+const WORKER_URL = new URL("../../../../src/cli/composition/worker-entry.ts", import.meta.url).href;
 
 afterAll(() => {
   fs.rmSync(TMP, { recursive: true, force: true });

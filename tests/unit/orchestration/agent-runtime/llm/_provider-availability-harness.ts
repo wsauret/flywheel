@@ -8,9 +8,9 @@ import { Redacted } from "effect";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { AccessProviderCandidate, AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
-import { createAvailabilityAuthority, type AvailabilityAuthority } from "../../../../../src/infra/llm/availability-store.js";
-import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability.js";
+import type { AccessProviderCandidate, AccessProviderId } from "../../../../../src/infra/providers/llm/access/access-provider.js";
+import { createAvailabilityAuthority, type AvailabilityAuthority } from "../../../../../src/infra/providers/llm/access/availability-store.js";
+import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
 
 interface UnknownRecord {
   [key: string]: unknown;

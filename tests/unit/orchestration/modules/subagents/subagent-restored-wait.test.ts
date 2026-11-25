@@ -1,15 +1,15 @@
 import { expect, test, setSystemTime } from "bun:test"
-import { liveChildRun } from "../../../../../src/orchestration/session/live-session-control.js"
+import { liveChildRun } from "../../../../../src/orchestration/session/control/live-session-control.js"
 import type { AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { makeContext, TEST_RATIONALE } from "../../agent-runtime/subagent/_fixtures.js"
 import { subagentChildHarnesses, createRoot, waitForSettled, continuationService, heldRunner } from "./_subagent-child-fixtures.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { asModelClient } from "../../agent-runtime/_model-client.js"
 import { newTestRunner } from "../../../../helpers/agent-runner.js"
-import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../../src/orchestration/session/conversation/turn-end-record.js"
-import { asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js"
-import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js"
+import { asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js"
 
 const createHarness = subagentChildHarnesses()
 

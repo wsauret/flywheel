@@ -2,21 +2,21 @@ import { describe, expect, it, mock } from "bun:test";
 import { Redacted } from "effect";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { appendCredentialInstanceWithReceipt } from "../../../../src/infra/auth/auth-store-mutations.js";
-import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
-import { isCredentialCollection } from "../../../../src/infra/auth/auth-store-types.js";
-import type { AccessProviderDefinition, DeviceCodeLoginPorts, OAuthLoginResult } from "../../../../src/infra/llm/access-provider.js";
-import type { SubscriptionUsageReader } from "../../../../src/infra/llm/subscription-usage.js";
+import { appendCredentialInstanceWithReceipt } from "../../../../src/infra/providers/auth/store/auth-store-mutations.js";
+import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/providers/auth/store/auth-store.js";
+import { isCredentialCollection } from "../../../../src/infra/providers/auth/store/auth-store-types.js";
+import type { AccessProviderDefinition, DeviceCodeLoginPorts, OAuthLoginResult } from "../../../../src/infra/providers/llm/access/access-provider.js";
+import type { SubscriptionUsageReader } from "../../../../src/infra/providers/llm/usage/subscription-usage.js";
 import { providerLoginFlow, type ProviderOAuthLogin } from "../../../../src/orchestration/auth/auth-actions.js";
 import { chatgptModule } from "../../../../src/orchestration/modules/provider-chatgpt/module.js";
 import { githubCopilotModule } from "../../../../src/orchestration/modules/provider-github-copilot/module.js";
 import { supergrokModule } from "../../../../src/orchestration/modules/provider-supergrok/module.js";
-import type { FirstPartyModule } from "../../../../src/orchestration/modules.js";
+import type { FirstPartyModule } from "../../../../src/orchestration/module-contract/module-catalog.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
-import { FREE_PLAN_REPLACE_QUESTION } from "../../../../src/infra/llm/free-plan-accounts.js";
-import { createUsageAuthority } from "../../../../src/infra/llm/usage-authority.js";
-import { installedCredentialSlotClassifier } from "../../../../src/orchestration/credential-provider-modules.js";
+import { FREE_PLAN_REPLACE_QUESTION } from "../../../../src/infra/providers/llm/access/free-plan-accounts.js";
+import { createUsageAuthority } from "../../../../src/infra/providers/llm/usage/usage-authority.js";
+import { installedCredentialSlotClassifier } from "../../../../src/orchestration/module-contract/module-composition.js";
 
 // Each login runs a shipped provider definition whose round trip with the
 // provider is replaced, through the flow that clients call, against a real

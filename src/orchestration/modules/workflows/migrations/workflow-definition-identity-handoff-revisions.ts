@@ -1,18 +1,18 @@
 import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
-import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
-import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
-import { createSqliteEventReadSurface } from "../../../../infra/sqlite-event-read-surface.js"
-import { replayWorkflowControl } from "../../../../workflows/vm/fact-fold.js"
+import { admitPrivateDatabaseFiles } from "../../../../infra/platform/files/private-path.js"
+import { createSqliteEventInserter } from "../../../../infra/substrate/store/sqlite-event-store-core.js"
+import { createSqliteEventReadSurface } from "../../../../infra/substrate/store/sqlite-event-read-surface.js"
+import { replayWorkflowControl } from "../../../../workflows/vm/recovery/fact-fold.js"
 import {
   DEFINITION_IDENTITY_COMMAND_CITATION_MIGRATION_ID,
   DEFINITION_IDENTITY_RUNTIME_WORDING_MIGRATION_ID,
   isLegacyDefinitionIdentity,
   type DefinitionIdentity,
   type DefinitionIdentityMigrationId,
-} from "../../../../workflows/vm/definition-identity.js"
-import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/vm/session-facts.js"
-import { checkedThrough, headPosition, recordChecked, tableExists } from "../../../migrations/engine.js"
+} from "../../../../workflows/control-facts/definition-identity.js"
+import { buildDefinitionIdentityMigratedFact } from "../../../../workflows/control-facts/family.js"
+import { checkedThrough, headPosition, recordChecked, tableExists } from "../../../workspace-state/migrations/engine.js"
 import { MIGRATED_FACT_TYPE, recordSkippedWorkflowMigrationCandidate } from "./workflow-identity-chain.js"
 
 const BUSY_TIMEOUT_MS = 5000

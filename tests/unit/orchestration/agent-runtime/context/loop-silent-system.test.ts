@@ -1,19 +1,21 @@
 import { describe, expect, test } from "bun:test";
 
-import { messageInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js";
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { messageInput, type AgentLoopInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
+import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js";
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
-import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/run-lifecycle.js";
-import type { ConversationMessage, StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/loop/turn/run-lifecycle.js";
+import type { StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeCaptureClient, makeFakeLLMClient, throwLoopError, waitUntil } from "./_loop-fixtures.js";
 import type { AgentLoopTerminal } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
-import { consumeAgentLoopInput } from "../../../../../src/orchestration/agent-runtime/agent-loop-input-consumer.js";
+import { consumeAgentLoopInput } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-input-consumer.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
+import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
 
 function cloneAgentMessage(message: ConversationMessage): ConversationMessage {
   return structuredClone(message);

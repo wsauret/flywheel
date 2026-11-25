@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { createDefinitionOverridesProtocol } from "../../../../src/orchestration/modules/definition-overrides/protocol.js"
 import type { DefinitionOverrideOperations, DefinitionStalenessReport } from "../../../../src/workflows/definitions/override-staleness.js"
 import { fixedDefinitions } from "../../../helpers/project-definitions.js"

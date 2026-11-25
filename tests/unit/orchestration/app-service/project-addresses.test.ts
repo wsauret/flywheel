@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
-import { keepProjectAddresses, type ProjectAddresses, type ProjectAddressReading } from "../../../../src/orchestration/app-service/web-serving/project-addresses.js"
+import { keepProjectAddresses, type ProjectAddresses, type ProjectAddressReading } from "../../../../src/orchestration/app-service/account/web-serving/project-addresses.js"
 
 const ROOT = "/scratch/flywheel-addresses/app"
 const HUB = "http://127.0.0.1:41000"

@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import type { AgentLoopTerminal } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
-import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js";
-import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type ProviderStreamEvent, type StreamOptions, type TurnModelClient } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/run-lifecycle.js";
+import { CONTINUATION_MESSAGES, interruptedTurnMessage } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
+import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type StreamOptions, type TurnModelClient } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
+import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/loop/turn/run-lifecycle.js";
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
-import { interruptedTurnMessage } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
-import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/injection-queue.js";
+import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/execution/injection-queue.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
-import type { RequestToolSurfaceOwner } from "../../../../../src/orchestration/agent-runtime/request-tool-surface.js";
+import type { RequestToolSurfaceOwner } from "../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
 import { chain, fakeAvailability, singletonCandidate } from "../llm/_provider-chain-harness.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";

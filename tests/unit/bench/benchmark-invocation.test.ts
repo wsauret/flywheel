@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import type { UsageEntry } from "../../../src/infra/llm/usage-entry.js";
+import type { UsageEntry } from "../../../src/infra/providers/llm/usage/usage-entry.js";
 import type { Agent, AgentFactory, AgentOptions, AgentRunResult, OmitAgentOptions, RuntimeToolSurfaces } from "../../../src/orchestration/agent-runtime/types.js";
-import { createBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting.js";
-import { invokeBenchmarkAgent } from "../../../src/orchestration/modules/development/benchmark/invocation.js";
+import { createBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/accounting.js";
+import { invokeBenchmarkAgent } from "../../../src/orchestration/modules/development/benchmark/execution/invocation.js";
 
 const BASE_USAGE: UsageEntry = {
   attemptId: "00000000-0000-4000-8000-000000000001",
@@ -46,7 +46,8 @@ describe("benchmark usage accounting", () => {
     expect(accounting.observe()).toEqual({
       estimatedUsd: { kind: "observed", value: 0.75 },
       billedUsd: { kind: "observed", value: 0.5 },
-      tokens: { kind: "observed", value: 42 },
+      // Output includes reasoning (ARCH-PROVIDERS-076), so reasoning adds nothing to the total.
+      tokens: { kind: "observed", value: 40 },
       providers: { kind: "observed", value: ["anthropic"] },
       pricedEntryCount: 2,
       unpricedEntryCount: 0,
@@ -87,7 +88,7 @@ describe("benchmark usage accounting", () => {
 
     const observed = accounting.observe();
     expect(observed.estimatedUsd).toEqual({ kind: "unavailable", reason: expect.stringContaining(unmeasured), atLeast: 0.25 });
-    expect(observed.tokens).toEqual({ kind: "unavailable", reason: expect.stringContaining(unmeasured), atLeast: 21 });
+    expect(observed.tokens).toEqual({ kind: "unavailable", reason: expect.stringContaining(unmeasured), atLeast: 20 });
     expect(observed.billedUsd).toEqual({ kind: "observed", value: 0 });
     expect([observed.pricedEntryCount, observed.unpricedEntryCount]).toEqual([1, 1]);
   });
@@ -99,7 +100,7 @@ describe("benchmark usage accounting", () => {
     const observed = accounting.observe();
     expect(observed.estimatedUsd).toMatchObject({ kind: "unavailable", atLeast: 0.25 });
     expect(observed.billedUsd).toMatchObject({ kind: "unavailable", atLeast: 0.25 });
-    expect(observed.tokens).toMatchObject({ kind: "unavailable", atLeast: 21 });
+    expect(observed.tokens).toMatchObject({ kind: "unavailable", atLeast: 20 });
   });
 });
 

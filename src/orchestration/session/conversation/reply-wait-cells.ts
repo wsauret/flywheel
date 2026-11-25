@@ -1,7 +1,7 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightRecord, InFlightWrite } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightRecord, InFlightWrite } from "../../../infra/substrate/store/event-store-types.js"
 import { heldBackgroundNotificationPut } from "./queued-background-notifications.js"
-import { Log } from "../../../infra/log.js"
-import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js"
 
 /** The in-flight kind of one open reply wait. The waiter holds it in its own
  *  session, keyed by the addressee and the call that opened the wait, so a
@@ -12,6 +12,9 @@ import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
  *  notice of any other end retires it in the commit that makes the notice
  *  durable in the waiter's conversation. */
 export const REPLY_WAIT_IN_FLIGHT_KIND = "session.reply_wait"
+
+/** The tool whose call with `wait` opens a reply wait. */
+export const MESSAGE_SESSION_TOOL_NAME = "message_session"
 
 const log = Log.create({ service: "reply-wait-cells" })
 

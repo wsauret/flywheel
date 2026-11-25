@@ -4,7 +4,7 @@ import type { FrontendExperimentRun, FrontendExperimentView } from "../../../../
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
 import { renderDashboardLines, type DashboardLine } from "../../../../src/tui/modules/experiments/dashboard-lines.js"
-import { chunkDisplayWidth } from "../../../../src/tui/output-blocks/tool-row-wrap.js"
+import { chunkDisplayWidth } from "../../../../src/tui/transcript/output-blocks/tools/tool-row-wrap.js"
 
 const theme = resolveTheme(flywheelTheme, "dark")
 

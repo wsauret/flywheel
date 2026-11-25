@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { versionsDir } from "../../../src/infra/paths.js";
+import { versionsDir } from "../../../src/infra/platform/files/paths.js";
 import { buildExecutable } from "../../../src/infra/update/build-identity.js";
 import { collectBuildTrees } from "../../../src/infra/update/build-retention.js";
 import { temporaryDirectories } from "../../helpers/directories.js";

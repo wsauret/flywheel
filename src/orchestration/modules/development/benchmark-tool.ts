@@ -13,14 +13,15 @@
  */
 
 import { basename } from "node:path";
-import { mergeAbortSignals } from "../../../infra/abort.js";
-import { stripControlCharacters } from "../../../infra/control-characters.js";
-import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
-import { EFFORT_VALUES } from "../../../infra/workflow-types.js";
-import { admitBenchmark, benchmarkModelSeats, benchmarkPreflightReport, personaCampaignJudge, type BenchmarkAdmission, type JudgeSelection, type BenchmarkAdmissionDeps, type ProviderPlanReport } from "./benchmark/admission.js";
+import { mergeAbortSignals } from "../../../infra/timing/abort.js";
+import { stripControlCharacters } from "../../../infra/substrate/output/control-characters.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
+import { Log } from "../../../infra/diagnostics/log.js";
+import { EFFORT_VALUES } from "../../../infra/definitions/workflow/workflow-types.js";
+import { admitBenchmark, benchmarkModelSeats, benchmarkPreflightReport, personaCampaignJudge, type BenchmarkAdmission, type BenchmarkAdmissionDeps, type ProviderPlanReport } from "./benchmark/persona/admission.js";
+import type { BenchmarkPlan, JudgeSelection } from "./benchmark/persona/benchmark-plan.js";
 import { createBenchmarkCatalog, type BenchmarkCatalog } from "./benchmark/catalog.js";
-import { runningSourceIdentity } from "./benchmark/content-identity.js";
+import { runningSourceIdentity } from "./benchmark/campaign/content-identity.js";
 import {
   loadBenchmarkPersona,
   planPersonaBenchmark,
@@ -28,11 +29,10 @@ import {
   type BenchmarkEvent,
   type BenchmarkOptions,
   type BenchmarkOutcome,
-  type BenchmarkPlan,
-} from "./benchmark/persona-benchmark.js";
-import { formatOverheadAccounting } from "./benchmark/report-accounting.js";
+} from "./benchmark/persona/persona-benchmark.js";
+import { formatOverheadAccounting } from "./benchmark/accounting/report-accounting.js";
 import { variantSeat, type VariantSpec } from "./benchmark/variant.js";
-import type { BackgroundWorkResult } from "../../agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../session/control/background-work/background-work-types.js";
 import { toolCallIdentity, type RuntimeTool, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js";
 
 interface BenchmarkInput {

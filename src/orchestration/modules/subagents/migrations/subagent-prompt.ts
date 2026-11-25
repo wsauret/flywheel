@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { parseSubagentRunFact } from "../facts.js"
-import { migrateFactVersions, type FactMigrationResult } from "../../../migrations/engine.js"
+import { migrateFactVersions, type FactMigrationResult } from "../../../workspace-state/migrations/engine.js"
 
 const SUBAGENT_PROMPT_MIGRATION_ID = "subagent-prompt-task-v3"
 

@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { wakeInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js";
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { wakeInput, type AgentLoopInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
+import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/llm/routing/runtime-errors.js";
 import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { FUNCTION_TOOL_PRESENTATION, type ContentBlock, type ConversationMessage, type LLMClient, type ModelClient, type ProviderStreamEvent, type StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ModelClient, type ProviderStreamEvent, type StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
 import { makeCaptureClient, makeFakeLLMClient } from "./_loop-fixtures.js";

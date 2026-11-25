@@ -1,20 +1,20 @@
 import type { Accessor, JSX } from "solid-js"
-import type { RuntimeClient, RuntimeHealth } from "../protocol/app-service-types.js"
-import type { RuntimeFaultCopy } from "../protocol/client/runtime-fault-copy.js"
-import type { ModuleId } from "../protocol/module-ids.js"
-import type { RuntimeAuthView } from "../protocol/auth-status-protocol-types.js"
+import type { RuntimeClient, RuntimeHealth } from "../protocol/runtime/app-service-types.js"
+import type { RuntimeFaultCopy } from "../protocol/client/runtime/copy/runtime-fault-copy.js"
+import type { ModuleId } from "../protocol/runtime/module-ids.js"
+import type { RuntimeAuthView } from "../protocol/auth/auth-status-protocol-types.js"
 import type { ModalContext } from "./components/modal-stack.js"
 import type { DomainReader, ModuleRow } from "../protocol/protocol-module.js"
-import type { ListModalKeyEvent } from "./components/modal-list-keys.js"
-import type { ModalScrollController } from "./components/modal-scroll-controller.js"
+import type { ListModalKeyEvent } from "./components/modal/select/modal-list-keys.js"
+import type { ModalScrollController } from "./components/modal/scroll/modal-scroll-controller.js"
 import type { ToastInput } from "./context/toast.js"
-import type { OpenSettingsDestination } from "./settings-destination.js"
-import type { Clipboard } from "./utils/clipboard.js"
+import type { OpenSettingsDestination } from "./modals/settings/settings-destination.js"
+import type { Clipboard } from "./terminal/clipboard.js"
 
 /** The terminal client's module contract. A module contributes its presence
  *  through the slot map (ARCH-PROTOCOL-034): declarative rows come from its protocol
  *  home, and the component slots below are written once for this client.
- *  The slot host in `hooks/create-module-slots.tsx` renders every registered
+ *  The slot host in `hooks/overlays/create-module-slots.tsx` renders every registered
  *  module from this shape and names none. */
 
 /** What every slot component receives: the session it renders for and a

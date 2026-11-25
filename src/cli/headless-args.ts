@@ -1,4 +1,4 @@
-import { canonicalModelId } from "../infra/llm/model-id.js"
+import { canonicalModelId } from "../infra/providers/model-id.js"
 
 const AUTH_FLAGS = "[--auth-profile <profile>] [--auth-snapshot <absolute-path>]"
 

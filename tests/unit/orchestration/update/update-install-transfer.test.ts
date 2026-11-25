@@ -6,8 +6,8 @@ import { describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { DebugLogRecordInput } from "../../../../src/infra/debug-log.js";
-import { Log } from "../../../../src/infra/log.js";
+import type { DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log.js";
+import { Log } from "../../../../src/infra/diagnostics/log.js";
 import { account, ASSET_URL, bodyOf, buildArchive, cutBody, cutRangeOf, GIVE_UP_MS, harness, pieces, POSIX_HOST, rangeFrom, rangeOf, redirectTo, rejection, releaseOf, settleOnFakeTime, shortRangeOf, STALL_MS, stallingBody, VERSION, versionsEntries, useFreshAccount } from "./_update-install-harness.js";
 
 useFreshAccount();

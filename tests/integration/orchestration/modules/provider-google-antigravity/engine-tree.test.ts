@@ -8,7 +8,8 @@
  */
 import { describe, expect, test } from "bun:test"
 import { LlmStreamError, RouteUnavailableError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
-import type { ConversationMessage, ToolDef } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ToolDef } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { engineCall, openClientRig, result, send, sendFailing, user, type Agent, type ClientRig } from "./_client.js"
 import { eventually, expectNoEngineLeft, openEngineHarness, type EngineHarness, type HarnessLogin } from "./_engine.js"

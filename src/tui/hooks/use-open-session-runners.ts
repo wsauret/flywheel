@@ -1,5 +1,5 @@
 import { createEffect, onCleanup, untrack, type Accessor } from "solid-js"
-import type { OpenSessionKeeper } from "../../protocol/client/open-session-keeper.js"
+import type { OpenSessionKeeper } from "../../protocol/client/session/open-session-keeper.js"
 import type { TabInfo } from "./create-tabs.js"
 
 /** Waits for the shown view's reactive readiness. Disposal releases pending

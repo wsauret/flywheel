@@ -1,6 +1,6 @@
-import { createRuntimeConfigProjection } from "../../src/orchestration/app-service/runtime-config-projection.js"
+import { createRuntimeConfigProjection } from "../../src/orchestration/app-service/projections/runtime-config-projection.js"
 import type { RuntimeConfigOwner, RuntimeConfigSnapshot } from "../../src/orchestration/config/runtime-config-owner.js"
-import type { RuntimeConfigView } from "../../src/protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigView } from "../../src/protocol/settings/runtime-config-protocol-types.js"
 
 const unused = (): never => { throw new Error("a static config owner serves only its snapshot") }
 

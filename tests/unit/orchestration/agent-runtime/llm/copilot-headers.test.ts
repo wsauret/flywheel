@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "bun:test";
 import { buildCopilotDynamicHeaders } from "../../../../../src/orchestration/modules/provider-github-copilot/headers.js";
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 
 const PNG = { type: "image" as const, mediaType: "image/png", data: "AAA" };
 

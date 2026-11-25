@@ -1,14 +1,14 @@
 import type { JSX } from "solid-js"
-import type { LaunchModalRoute } from "../infra/launch-state.js"
-import type { AgentGroupBlock } from "../infra/output-blocks.js"
-import type { RuntimeClient, SessionRow } from "../protocol/app-service-types.js"
-import type { ChildSessionViewerProps } from "./components/child-session-viewer.js"
+import type { LaunchModalRoute } from "../infra/update/distribution/launch-state.js"
+import type { AgentGroupBlock } from "../infra/substrate/events/output-blocks.js"
+import type { RuntimeClient, SessionRow } from "../protocol/runtime/app-service-types.js"
+import type { ChildSessionViewerProps } from "./child-viewer/child-session-viewer.js"
 import type { ViewerContext } from "./components/modal-stack.js"
-import type { ModuleDomainIntakes } from "./hooks/create-module-domain-intakes.js"
-import type { ShellSignals } from "./hooks/shell-state.js"
-import type { AgentGroupBlockProps } from "./output-blocks/agent-group-block.js"
-import type { ChildPlaces } from "./hooks/create-child-viewer-opener.js"
-import type { BackgroundWorkTarget } from "../protocol/background-index-protocol-types.js"
+import type { ModuleDomainIntakes } from "./hooks/state/domains/create-module-domain-intakes.js"
+import type { ShellSignals } from "./hooks/state/shell-state.js"
+import type { AgentGroupBlockProps } from "./transcript/output-blocks/agents/agent-group-block.js"
+import type { ChildPlaces } from "./child-viewer/create-child-viewer-opener.js"
+import type { BackgroundWorkTarget } from "../protocol/session/background-index-protocol-types.js"
 /** The shell lends modules its ordinary child-body and navigation capabilities. */
 export interface TuiModuleClientHost {
   readonly domains: ModuleDomainIntakes

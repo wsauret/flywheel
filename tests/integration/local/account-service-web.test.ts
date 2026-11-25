@@ -5,10 +5,10 @@ import * as path from "node:path"
 import { Redacted } from "effect"
 
 import type { LauncherContext } from "../../../src/infra/process-supervisor.js"
-import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
-import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account-project-registry.js"
-import { createAccountServiceRuntime, type AccountServiceRuntimeOptions } from "../../../src/orchestration/app-service/account-service-runtime.js"
-import { createLoginShellPath } from "../../../src/infra/login-shell-path.js"
+import { createPersistentProcessManager } from "../../../src/infra/supervision/persistent/persistent-process-manager.js"
+import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account/account-project-registry.js"
+import { createAccountServiceRuntime, type AccountServiceRuntimeOptions } from "../../../src/orchestration/app-service/account/account-service-runtime.js"
+import { createLoginShellPath } from "../../../src/infra/environment/login-shell-path.js"
 
 let temporaryRoot: string | undefined
 
@@ -62,6 +62,7 @@ function zeroProjectAccount(prefix: string) {
     retireIfSuperseded: async () => "busy",
     answerCutover: async () => "busy",
     retire: () => {},
+    restartRefusal: () => "nothing would start it",
     recordTrustedAttach: async () => {},
     prepareProject: async () => {},
     loginShellPath: createLoginShellPath(),

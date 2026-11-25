@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
-import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/llm/subscription-usage.js"
-import { createSubscriptionUsageStore } from "../../../../../src/infra/llm/subscription-usage-store.js"
-import { createUsageAuthority } from "../../../../../src/infra/llm/usage-authority.js"
+import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/providers/llm/usage/subscription-usage.js"
+import { createSubscriptionUsageStore } from "../../../../../src/infra/providers/llm/usage/subscription-usage-store.js"
+import { createUsageAuthority } from "../../../../../src/infra/providers/llm/usage/usage-authority.js"
 import { createSubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { createProfileFixture, definition, readerFor, registry, report, writeAccounts } from "./_service-fixtures.js"
 

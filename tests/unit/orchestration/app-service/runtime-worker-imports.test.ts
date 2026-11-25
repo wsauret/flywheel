@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { sep } from "node:path"
 import { Schema } from "effect"
-import { RuntimeBackgroundRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeBackgroundRpc } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 
 describe("runtime server imports", () => {
   test("background RPCs route every request by canonical project root", async () => {
@@ -29,7 +29,7 @@ describe("runtime server imports", () => {
   })
 
   test("server entry modules do not import TUI/OpenTUI/JSX surfaces directly", async () => {
-    for (const file of ["src/orchestration/app-service/account-service-runtime.ts", "src/orchestration/app-service/project-execution-runtime.ts"]) {
+    for (const file of ["src/orchestration/app-service/account/account-service-runtime.ts", "src/orchestration/app-service/executor/execution/project-execution-runtime.ts"]) {
       const source = await Bun.file(file).text()
       expect(source).not.toContain("@opentui")
       expect(source).not.toContain("/tui/")
@@ -39,8 +39,8 @@ describe("runtime server imports", () => {
 
   test("first-class runtime isolation uses Workers, with dedicated owned and persistent subprocess boundaries", async () => {
     for (const file of [
-      "src/orchestration/app-service/account-service-runtime.ts",
-      "src/orchestration/app-service/runtime-background-lane.ts",
+      "src/orchestration/app-service/account/account-service-runtime.ts",
+      "src/orchestration/app-service/background/runtime-background-lane.ts",
     ]) {
       const source = await Bun.file(file).text()
       expect(source).not.toContain("Bun.spawn")
@@ -57,9 +57,9 @@ describe("runtime server imports", () => {
     // Detachment is an ownership decision. Only the owned-process backends and
     // the dedicated persistent-process boundary may request it.
     expect(detachedOwners.toSorted()).toEqual([
-      "src/infra/owned-subprocess-backend.ts",
-      "src/infra/persistent-subprocess.ts",
       "src/infra/process-supervisor.ts",
+      "src/infra/supervision/launch/owned-subprocess-backend.ts",
+      "src/infra/supervision/persistent/persistent-subprocess.ts",
     ])
   })
 })

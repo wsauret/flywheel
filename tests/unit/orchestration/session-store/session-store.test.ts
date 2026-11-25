@@ -10,18 +10,16 @@
 
 import { afterAll, describe, it, expect, mock, spyOn } from "bun:test"
 import { createRoot } from "solid-js"
-import type { AnyBlock } from "../../../../src/infra/output-blocks"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types"
-import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime"
-import { DebugLog, type DebugLogRecordInput } from "../../../../src/infra/debug-log"
-import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/event-store-effect"
+import { NO_MODULE_RUNTIMES } from "../../../../src/infra/definitions/modules/module-runtime"
+import { DebugLog, type DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log"
+import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/substrate/store/event-store-effect"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store"
-import { createOutputSession } from "../../../../src/orchestration/runner/output-session"
+import { createOutputSession } from "../../../../src/orchestration/session-store/output-session"
 import { createSessionStoreTestContext } from "./_session-store-fixtures"
-import { registerLiveSessionControl } from "../../../../src/orchestration/session/live-session-control.js"
-import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/foreground-bash-hold.js"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work"
 
 const { runtime, cleanup } = createSessionStoreTestContext()
 afterAll(cleanup)
@@ -42,6 +40,7 @@ function createMockChatRunner(sessionId: string): ChatRunner & { calls: string[]
     releaseForegroundBash: () => false,
     transferForegroundForReplacement: async () => {},
     adoptHandedOver: async () => {},
+    adoptHeldInput: async () => {},
     dispose: async () => { calls.push("dispose") },
     send: async (text: string) => { calls.push(`send:${text}`); return "accepted" },
     deliverHeldMessage: async () => ({ status: "held", reason: "no_reader" }), messageState: async () => "at_rest",
@@ -99,16 +98,23 @@ describe("Reactive SessionStore — store-backed", () => {
     }
   })
 
-  it("routes targeted background termination to the exact chat runner without interrupting the turn", async () => {
+  it("gives the active runner of an attached session only, and none once its removal starts", async () => {
     const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
-    const runner = createMockChatRunner("chat-bg")
-    attachChat(sessionStore, "chat-bg", runner)
+    const runner = createMockChatRunner("chat-active")
+    const release = Promise.withResolvers<void>()
+    runner.dispose = async () => { await release.promise }
+    sessionStore.openSessionRuntime({ sessionId: "chat-active", conversationId: "conv-chat-active" })
+    expect(sessionStore.activeRunner("chat-active")).toBeNull()
 
-    sessionStore.terminateBackgroundWork("other-session", "target")
-    sessionStore.terminateBackgroundWork("chat-bg", "wrong")
-    sessionStore.terminateBackgroundWork("chat-bg", "target")
-    expect(runner.calls).toEqual(["terminate:wrong", "terminate:target"])
-    await sessionStore.remove("chat-bg")
+    expect(sessionStore.attachChatRunner("chat-active", runner)).toBe(true)
+    expect(sessionStore.activeRunner("chat-active")).toBe(runner)
+    expect(sessionStore.activeRunner("other-session")).toBeNull()
+
+    const removing = sessionStore.remove("chat-active")
+    expect(sessionStore.get("chat-active")).toBeDefined()
+    expect(sessionStore.activeRunner("chat-active")).toBeNull()
+    release.resolve()
+    await removing
   })
 
   it("reports active sessions that reject dependency refresh", async () => {
@@ -136,46 +142,6 @@ describe("Reactive SessionStore — store-backed", () => {
     expect(other.calls).toEqual([])
   })
 
-  it("routes foreground Bash release to the exact live workflow member and projects its active IDs", async () => {
-    const reader = runtime.runSync(EventReaderService)
-    const sessionStore = createSessionStore(runtime, reader)
-    const sessionId = "workflow-foreground-bash"
-    sessionStore.openSessionRuntime({ sessionId, kind: "workflow-agent", workflowId: "workflow", conversationId: "agent-conversation" })
-    const controller = createForegroundBashHoldController(ids => sessionStore.updateEntry(sessionId, { activeForegroundBashToolCallIds: ids }))
-    const unregister = registerLiveSessionControl(reader, {
-      sessionId, state: async () => "running", deliver: async (_input, decide) => decide("running"), notify: async () => false,
-      member: {
-        workflowId: "workflow", modules: async () => NO_MODULE_RUNTIMES, backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
-        compact: async () => false, interrupt: () => false, terminateBackgroundWork: () => {},
-        releaseForegroundBash: id => controller.release(id), transferForegroundForReplacement: () => controller.transferForReplacement(),
-      },
-    })
-    const hold = controller.register("toolu_workflow_bash")
-
-    expect(sessionStore.get(sessionId)?.activeForegroundBashToolCallIds).toEqual(["toolu_workflow_bash"])
-    expect(sessionStore.releaseForegroundBash(sessionId, "toolu_workflow_bash")).toBe(true)
-    expect(sessionStore.get(sessionId)?.activeForegroundBashToolCallIds).toEqual([])
-    await expect(hold.released).resolves.toBe("user_detach")
-    expect(sessionStore.releaseForegroundBash(sessionId, "toolu_workflow_bash")).toBe(false)
-    expect(sessionStore.releaseForegroundBash("missing", "toolu_workflow_bash")).toBe(false)
-
-    // The detached command reports once the registry tracks it. A planned
-    // replacement's move then reaches the same controller.
-    hold.cleanup()
-    const held = controller.register("toolu_workflow_replaced")
-    const moved = sessionStore.transferForegroundForReplacement(sessionId)
-    await expect(held.released).resolves.toBe("replacement")
-    expect(sessionStore.get(sessionId)?.activeForegroundBashToolCallIds).toEqual([])
-    held.cleanup()
-    await moved
-    await sessionStore.transferForegroundForReplacement("missing")
-
-    unregister()
-    controller.dispose()
-    await sessionStore.remove(sessionId)
-    expect(sessionStore.releaseForegroundBash(sessionId, "toolu_workflow_bash")).toBe(false)
-  })
-
   it("opens and controls a subagent through the shared conversation runtime", () => {
     const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const baseRunner = createMockChatRunner("child")
@@ -199,7 +165,7 @@ describe("Reactive SessionStore — store-backed", () => {
       runner: null,
     })
     expect(sessionStore.attachChatRunner("child", runner)).toBe(true)
-    expect(sessionStore.interrupt("child", "person")).toBe(true)
+    expect(sessionStore.activeRunner("child")?.interrupt()).toBe(true)
     expect(runner.calls).toEqual(["interrupt"])
   })
 
@@ -227,50 +193,6 @@ describe("Reactive SessionStore — store-backed", () => {
         await removing
         expect(runner.calls).toEqual(["dispose:start", "dispose:done"])
         expect(sessionStore.get("remove-await-001")).toBeUndefined()
-        dispose()
-        resolve()
-      })
-    })
-  })
-
-  it("compactConversation does not dispose an idle chat before any conversation exists", async () => {
-    await new Promise<void>((resolve) => {
-      createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
-
-        attachChat(sessionStore, "empty-compact-001", createMockChatRunner("empty-compact-001"))
-
-        expect(sessionStore.get("empty-compact-001")?.runnerState).toBe("idle")
-        const compacted = await sessionStore.compactConversation("empty-compact-001")
-
-        expect(compacted).toBe(false)
-        expect(sessionStore.get("empty-compact-001")).toBeDefined()
-
-        dispose()
-        resolve()
-      })
-    })
-  })
-
-  it("interrupt() does not eagerly write runnerState — settlement path owns the transition", async () => {
-    await new Promise<void>((resolve) => {
-      createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
-        attachChat(sessionStore, "interrupt-001", {
-          ...createMockChatRunner("interrupt-001"),
-          interrupt: () => true,
-        })
-
-        // Simulate the runner attached and streaming.
-        sessionStore.updateChatEntry("interrupt-001", { runnerState: "streaming" })
-        expect(sessionStore.get("interrupt-001")!.runnerState).toBe("streaming")
-
-        // interrupt() forwards to the runner but must not flip the activity —
-        // the runner parks at prepareWaitForInput and detachRunner (chat) or
-        // workflow.run.completed/failed (workflow) drives the transition.
-        expect(sessionStore.interrupt("interrupt-001", "person")).toBe(true)
-        expect(sessionStore.get("interrupt-001")!.runnerState).toBe("streaming")
-
         dispose()
         resolve()
       })

@@ -1,9 +1,9 @@
-import { canonicalize } from "../../infra/canonical-name.js";
-import { buildCustomProviderSlice, publishCustomProviderSlice, type CustomProviderDefinition, type CustomProviderRejection, type CustomProviderSlice } from "../../infra/llm/custom-provider-registry.js";
-import { catalogCredentialProviderIds } from "../credential-provider-modules.js";
-import { modelIdHasTerminalControl } from "../../infra/llm/model-catalog-resolution.js";
-import { Log } from "../../infra/log.js";
-import type { FlywheelConfig } from "./schema.js";
+import { canonicalize } from "../../infra/providers/canonical-name.js";
+import { buildCustomProviderSlice, publishCustomProviderSlice, type CustomProviderDefinition, type CustomProviderRejection, type CustomProviderSlice } from "../../infra/providers/llm/custom-provider-registry.js";
+import { catalogCredentialProviderIds } from "../module-contract/module-composition.js";
+import { modelIdHasTerminalControl } from "../../infra/providers/model-catalog-rows.js";
+import { Log } from "../../infra/diagnostics/log.js";
+import type { FlywheelConfig } from "./schema/schema.js";
 
 /** Lowercase, starts with a letter, at most 32 chars: the id doubles as the
  *  access-provider identity and the auth.json credential key. */

@@ -1,12 +1,12 @@
-import { applyHistoryLowering, lowerProviderHistory, planHistoryLowering } from "../../../../../src/orchestration/agent-runtime/llm/provider-history.js";
+import { applyHistoryLowering, lowerProviderHistory, planHistoryLowering } from "../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js";
 import { describe, expect, test } from "bun:test";
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { toOpenAIResponsesRequestInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 import { toAnthropicMessagesRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { toGoogleGenerativeAiRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/google-generative-ai.js";
-import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions-messages.js";
+import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions-messages.js";
 import { ProviderIdConversionError } from "../../../../../src/orchestration/agent-runtime/llm/conversions/provider-id.js";
-import { openAIResponsesTarget } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
+import { openAIResponsesTarget } from "../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
 
 const openai = { sharedHost: false, accessProvider: "openai_api" as const, provider: "openai" as const, api: "openai-responses" as const, model: "o4" };
 const anthropic = { sharedHost: false, accessProvider: "anthropic_api" as const, provider: "anthropic" as const, api: "anthropic-messages" as const, model: "claude-sonnet-5-5" };

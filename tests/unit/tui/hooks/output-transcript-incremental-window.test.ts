@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
+import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { fakeRuntimeClient, flushRecovery, liveView, textBlock } from "./_output-transcript-cache-fixtures.js"
 import { asScrollBox, fakeScrollBox, mountController } from "../../../fixtures/output-scroll-harness.js"
-import type { TranscriptLayoutSlot } from "../../../../src/tui/output-window/output-window-scroll.js"
+import type { TranscriptLayoutSlot } from "../../../../src/tui/transcript/output-window/output-window-scroll.js"
 
 /** Item 18a: the 16ms delta path maintains the window incrementally -- the
  *  estimate array is never rebuilt (its identity is the height-index seeding
@@ -19,7 +19,7 @@ describe("incremental window recompute (live delta path)", () => {
         cache.retain("s1")
         await cache.open("s1")
         const slot: TranscriptLayoutSlot = {}
-        const controller = mountController(slot, () => cache.visibleRange("s1"), { visibleMessageCount: () => cache.visibleMessageCount("s1") })
+        const controller = mountController(slot, () => cache.visibleRange("s1"), { transcript: cache.bindSession(() => "s1") })
         const box = fakeScrollBox()
         controller.attach(asScrollBox(box))
         box.scrollHeight = 60
@@ -30,7 +30,7 @@ describe("incremental window recompute (live delta path)", () => {
         const baseline = controller.returnToLatestBaseline()
         const top = box.scrollTop
         if (!anchor) throw new Error("expected a protected reading identity")
-        cache.protectReader("s1", { following: false, blockIds: [anchor] })
+        cache.bindSession(() => "s1").protectReader({ following: false, blockIds: [anchor] })
         fake.invalidate("s1", "rebase")
         await flushRecovery()
         box.frame(16)
@@ -63,7 +63,7 @@ describe("incremental window recompute (live delta path)", () => {
       const epochBefore = seeded.seedEpoch
       const rowsBefore = seeded.window.estimatedRows
       expect(rowsBefore).toBe(3)
-      cache.takeEstimateUpdates("s1")
+      cache.bindSession(() => "s1").takeEstimateUpdates()
 
       // Append enough text to cross the low-bias content-size threshold: +2 rows, same estimate array.
       clock += 20
@@ -75,9 +75,9 @@ describe("incremental window recompute (live delta path)", () => {
       expect(grown.seedEpoch).toBe(epochBefore)
 
       // The changed block surfaced as one point update at its absolute index.
-      expect(cache.takeEstimateUpdates("s1")).toEqual([[0, 5]])
+      expect(cache.bindSession(() => "s1").takeEstimateUpdates()).toEqual([[0, 5]])
       // Drained: a second take is empty until the next change.
-      expect(cache.takeEstimateUpdates("s1")).toEqual([])
+      expect(cache.bindSession(() => "s1").takeEstimateUpdates()).toEqual([])
 
       // A new tail block extends the window and sums in its own estimate.
       clock += 20
@@ -88,7 +88,7 @@ describe("incremental window recompute (live delta path)", () => {
       expect(extended.window.endBlockIndex).toBe(1)
       expect(extended.totalBlocks).toBe(2)
       expect(extended.heightEstimates).toBe(estimatesBefore)
-      expect(cache.takeEstimateUpdates("s1")).toEqual([[1, 3]])
+      expect(cache.bindSession(() => "s1").takeEstimateUpdates()).toEqual([[1, 3]])
 
       dispose()
     })
@@ -107,7 +107,7 @@ describe("incremental window recompute (live delta path)", () => {
       if (!before) throw new Error("expected a snapshot")
       const epochBefore = before.seedEpoch
 
-      cache.evictBefore("s1", 6)
+      cache.bindSession(() => "s1").evictBefore(6)
       const after = cache.visibleRange("s1")
       if (!after) throw new Error("expected the evicted snapshot")
       expect(after.window.startBlockIndex).toBe(6)
@@ -128,7 +128,7 @@ describe("incremental window recompute (live delta path)", () => {
       expect(tail.content).toBe("line 9 grown")
 
       // The cut can never consume the whole window.
-      cache.evictBefore("s1", 99)
+      cache.bindSession(() => "s1").evictBefore(99)
       expect(cache.visibleRange("s1")?.blocks.length).toBe(4)
 
       dispose()
@@ -159,7 +159,7 @@ describe("incremental window recompute (live delta path)", () => {
       expect(after.heightEstimates).toEqual([{ blockIndex: 0, rows: 3 }])
       expect(after.window.estimatedRows).toBe(3)
       // The pre-reset point update was superseded by the repave.
-      expect(cache.takeEstimateUpdates("s1")).toEqual([])
+      expect(cache.bindSession(() => "s1").takeEstimateUpdates()).toEqual([])
 
       dispose()
     })

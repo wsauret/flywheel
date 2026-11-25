@@ -15,18 +15,18 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createEnvCaptureResolver } from "../../../src/infra/env-detection.js";
-import { NO_MODULE_RUNTIMES } from "../../../src/infra/module-runtime.js";
+import { createEnvCaptureResolver } from "../../../src/infra/environment/env-detection.js";
+import { NO_MODULE_RUNTIMES } from "../../../src/infra/definitions/modules/module-runtime.js";
 import { ownedCommandRunner } from "../../../src/infra/owned-command.js";
-import { runAgentLoop } from "../../../src/orchestration/agent-runtime/agent-loop.js";
+import { runAgentLoop } from "../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import type { AgentLoopTerminal } from "../../../src/orchestration/agent-runtime/agent-loop-types.js";
-import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";
-import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
+import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import type { StreamEvent } from "../../../src/orchestration/agent-runtime/llm/types.js";
-import { createRequestToolSurface } from "../../../src/orchestration/agent-runtime/request-tool-surface.js";
-import { buildSystemPrompt } from "../../../src/orchestration/agent-runtime/system-prompt.js";
-import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { createRequestToolSurface } from "../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
+import { buildSystemPrompt } from "../../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
+import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../helpers/request-tool-surface.js";
 import { liveDirectories, withLiveClient, type LiveRun } from "./_live-client.js";
 import { promptOptions } from "../../helpers/prompt-capabilities.js";
@@ -71,6 +71,7 @@ async function runLoop({ client, launcher }: LiveRun, input: { instruction: stri
           purpose,
           servingModel: { model: client.model, modelFamily: client.modelFamily },
           backgroundTasks: background.tasks,
+          shell: background.shell,
           foregroundBashHold,
         }),
         modules: NO_MODULE_RUNTIMES,

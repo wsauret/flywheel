@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { TOOL_OUTCOME_VALUES } from "../../../infra/tool-outcome.js"
+import { TOOL_OUTCOME_VALUES } from "../../../infra/substrate/runtime-facts/tool-outcome.js"
 import { isJsonSchema } from "./descriptors.js"
 
 // The messages between the executor (host) and one pooled invocation Worker

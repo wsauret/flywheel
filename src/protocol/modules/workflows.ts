@@ -1,11 +1,11 @@
 import { Schema } from "effect"
-import { RoleAssignmentSnapshotSchema } from "../../infra/role-settings.js"
-import { ToolPresentationSchema } from "../../infra/output-blocks.js"
-import { RuntimeAuthViewSchema } from "../auth-status-protocol-schemas.js"
-import { ActivitySchema } from "../session-catalog-protocol-schemas.js"
+import { RoleAssignmentSnapshotSchema } from "../../infra/providers/role-settings.js"
+import { ToolPresentationSchema } from "../../infra/substrate/events/output-blocks.js"
+import { RuntimeAuthViewSchema } from "../auth/auth-status-protocol-schemas.js"
+import { ActivitySchema } from "../session/session-catalog-protocol-schemas.js"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation } from "../protocol-module.js"
-import type { FrontendWorkflowView, WorkflowLiveView, WorkflowTree } from "../workflow-view-protocol-types.js"
-import type { RuntimeWorkflowCursorIdentity } from "../runtime-ui-protocol-types.js"
+import type { FrontendWorkflowView, WorkflowLiveView, WorkflowTree } from "../session/workflow-view-protocol-types.js"
+import type { RuntimeWorkflowCursorIdentity } from "../runtime/runtime-ui-protocol-types.js"
 
 export function workflowViewCursor(workflowId: string): RuntimeWorkflowCursorIdentity & { readonly domain: "workflow_view" } {
   return { scope: "workflow", domain: "workflow_view", workflowId }

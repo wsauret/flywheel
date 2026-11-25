@@ -1,5 +1,5 @@
-import { contentEvidence } from "../../../../src/infra/content-evidence.js"
-import type { WorkflowControllerDeps } from "../../../../src/orchestration/workflow-host/controller.js"
+import { contentEvidence } from "../../../../src/infra/substrate/runtime-facts/content-evidence.js"
+import type { WorkflowControllerDeps } from "../../../../src/orchestration/workflow-host/lifecycle/controller.js"
 
 /** Seeds the model's launching call with the production workflow tool's identity. */
 export async function seedModelWorkflowCall(deps: Pick<WorkflowControllerDeps, "eventWriter">, parentSessionId: string, toolUseId: string, description: string) {

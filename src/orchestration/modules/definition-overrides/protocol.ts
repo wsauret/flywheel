@@ -1,5 +1,5 @@
 import { definitionOverridesProtocol, type RuntimeDefinitionStalenessView } from "../../../protocol/modules/definition-overrides.js"
-import { workspaceDomainCursor } from "../../../protocol/runtime-ui-protocol-types.js"
+import { workspaceDomainCursor } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { DefinitionStalenessReport } from "../../../workflows/definitions/override-staleness.js"
 import type { ModuleProtocolRuntime, ModuleProtocolServices } from "../../app-service/module-protocol-host.js"
 

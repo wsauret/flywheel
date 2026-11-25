@@ -175,7 +175,7 @@ Each entry: the canonical term, its definition, and the synonyms it retires. Ret
 
 - **provider request audit**: the session-lifetime fact set for one model request, including prompt assembly, tool-surface selection, request and response evidence, usage, and the aggregate stream summary. Reconstruction and diagnostic projections replay it. Raw stream events remain debug-log telemetry.
 - **telemetry**: provider stream timing only. The aggregate summary is durable when a session projection reads it; raw provider, watchdog, and normalized stream observations are diagnostics. UI performance measurements are diagnostics, and diagnostic keys never take the dotted shape of fact types.
-- **debug log**: the retention-bounded JSONL diagnostics stream under `.flywheel/log/` (`*.jsonl`), written by `infra/debug-log.ts`; `Log.*` calls land there as `log.<level>` records. No projection, replay, resume, recovery, or product behavior reads it. Retires: text log, verbose log.
+- **debug log**: the retention-bounded JSONL diagnostics stream under `.flywheel/log/` (`*.jsonl`), written by `infra/diagnostics/debug-log.ts`; `Log.*` calls land there as `log.<level>` records. No projection, replay, resume, recovery, or product behavior reads it. Retires: text log, verbose log.
 
 ### Config, CLI, UI, directories
 

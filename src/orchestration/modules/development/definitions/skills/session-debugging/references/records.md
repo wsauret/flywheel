@@ -8,7 +8,7 @@ For a run that recovered from a provider's content refusal, or ended with it, se
 
 ## Unattended recovery
 
-For an unattended run that recovered from a provider fault, or ended with one: `flywheel events search --session <sessionId> --type agent.unattended.recovery`. The unattended recovery policy (`src/orchestration/agent-runtime/unattended-recovery.ts`, ARCH-RUNTIME-003) writes one INFO record for each decision on a failed run of a workflow agent, a subagent child, or a headless task:
+For an unattended run that recovered from a provider fault, or ended with one: `flywheel events search --session <sessionId> --type agent.unattended.recovery`. The unattended recovery policy (`src/orchestration/agent-runtime/runner/unattended-recovery.ts`, ARCH-RUNTIME-003) writes one INFO record for each decision on a failed run of a workflow agent, a subagent child, or a headless task:
 
 - `caller`: one of `workflow-agent`, `subagent`, or `headless`.
 - `runId`: the attempt id, the child run id, or the headless conversation id. It also names the run's wait notice scope, `unattended:wait:<runId>`.

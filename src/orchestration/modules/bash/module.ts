@@ -1,10 +1,10 @@
 import { fileURLToPath } from "node:url"
-import { advertisedBashTool, bashShellCommand, createBashDefinition } from "../../agent-runtime/tools/bash.js"
+import { advertisedBashTool, bashShellCommand, createBashDefinition } from "../../agent-runtime/tools/bash/bash.js"
 import type { KernelToolDeps } from "../../agent-runtime/tools/kernel-tool-deps.js"
-import type { ToolDeclaration } from "../../agent-runtime/tools/tool-registry.js"
-import type { FirstPartyModule } from "../../modules.js"
-import { backgroundShellModuleRequirements } from "../../module-requirements.js"
-import { moduleDisabledReason } from "../../../protocol/module-ids.js"
+import type { ToolDeclaration } from "../../module-contract/module-seams.js"
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js"
+import { backgroundShellModuleRequirements } from "../../module-contract/module-requirements.js"
+import { moduleDisabledReason } from "../../../protocol/runtime/module-ids.js"
 
 function holdMs(kernel: KernelToolDeps): number | undefined {
   const seconds = kernel.foregroundBashHoldSeconds

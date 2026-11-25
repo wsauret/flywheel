@@ -4,17 +4,17 @@
  * the open tool call, with no dispatch; every other input, and a notice that no result can carry, dispatches.
  */
 import { afterEach, describe, expect, test } from "bun:test";
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { formatChildInterruptedNotification, formatSubagentNotificationBatch } from "../../../../../src/orchestration/agent-runtime/background-work-notifications.js";
-import { formatRuntimeNotification } from "../../../../../src/orchestration/agent-runtime/runtime-notifications.js";
-import { captureForkMessages } from "../../../../../src/orchestration/agent-runtime/agent-loop-history.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
+import { formatChildInterruptedNotification, formatSubagentNotificationBatch } from "../../../../../src/orchestration/session/control/background-work/background-work-notifications.js";
+import { formatRuntimeNotification } from "../../../../../src/orchestration/session/control/background-work/runtime-notifications.js";
+import { captureForkMessages } from "../../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history.js";
 import { toOpenAIResponsesRequestInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
-import { openAIResponsesTarget, resolveOpenAISystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
+import { openAIResponsesTarget, resolveOpenAISystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
 import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { conversationTierEntry, ENGINE_INSTRUCTIONS } from "../../../../helpers/hosted-engine-text.js";
-import { parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
+import { parseRuntimeReminder } from "../../../../../src/infra/providers/llm/runtime-reminder-format.js";
 import { processAgentHosts } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
-import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { agentLoop, dispatchedIds, hostScript, isDispatcher, LOOKUP, SYSTEM, textOf, TREE, wireMessages, type WireBlock } from "./_agent-host.js";
 import { captureDiagnostics, onFakeHost, removeEngineProbes, streamedToolCalls, type FakeHostRun, type StreamResult } from "./_claude-sdk-client.js";

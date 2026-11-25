@@ -1,13 +1,13 @@
 import { describe, expect, it } from "bun:test"
 import { Effect, Exit, Fiber, Scope } from "effect"
-import type { PersistenceWriteRefused, InFlightPayload } from "../../../../src/infra/event-store-types.js"
+import type { PersistenceWriteRefused, InFlightPayload } from "../../../../src/infra/substrate/store/event-store-types.js"
 
-import { createTurnDispatcher, type SettledToolBatch } from "../../../../src/orchestration/agent-runtime/agent-loop-tools.js"
+import { createTurnDispatcher, type SettledToolBatch } from "../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-loop-tools.js"
 import { fixedTurnOutputBound } from "../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js"
-import { settleTurn } from "../../../../src/orchestration/agent-runtime/agent-turn-settlement.js"
+import { settleTurn } from "../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-turn-settlement.js"
 import type { RuntimeTool, ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import type { ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { ToolResultEntry } from "../../../../src/orchestration/agent-runtime/agent-state.js"
+import type { ToolResultEntry } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js"
 import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 
 function makeTool(execute: RuntimeTool["execute"], name: string, extra: Partial<RuntimeTool> = {}): RuntimeTool {

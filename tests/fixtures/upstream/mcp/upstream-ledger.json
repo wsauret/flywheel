@@ -55,7 +55,7 @@
       "fixture": "account-identity.txt",
       "firstLine": 123,
       "lastLine": 165,
-      "target": "src/orchestration/modules/mcp/credentials.ts",
+      "target": "src/orchestration/modules/mcp/oauth/credentials.ts",
       "replacements": [
         "Existing account credential store remains unchanged: server name plus SHA-256 URL, no scope in identity.",
         "Do not copy upstream JSON auth storage, namespace normalization, legacy URL migration or refresh locks."

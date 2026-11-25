@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Log } from "../src/infra/log.js";
+import { Log } from "../src/infra/diagnostics/log.js";
 import { renderConfigurationDocs } from "./render-config-docs.js";
 import { renderCliReference, renderCommandReference, renderKeyReference } from "./render-reference-docs.js";
 

@@ -1,6 +1,6 @@
 /**
  * Reader for the JSONL diagnostics stream a scenario run leaves behind in
- * <workDir>/.flywheel/log/*.jsonl (written by src/infra/debug-log.ts). This is
+ * <workDir>/.flywheel/log/*.jsonl (written by src/infra/diagnostics/debug-log.ts). This is
  * forensic tooling over an already-finished run, so a malformed line is
  * skipped rather than fatal: the metrics that matter assert on the presence
  * of well-formed records, and a truncated final line is normal when the

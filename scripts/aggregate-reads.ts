@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Node } from "web-tree-sitter";
-import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js";
+import { loadTreeSitterParser } from "../src/infra/parsing/tree-sitter-parser.js";
 
 // Derived state is advanced, never recomputed (AGENTS.md section 7).
 //
@@ -38,7 +38,7 @@ import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js";
 // - Runtime values or mutations of query objects. A visible `undefined` or
 //   `void` bound does not count; other opaque bound values are trusted.
 
-/** Every key a FactQuery declares, in src/infra/event-store-types.ts. */
+/** Every key a FactQuery declares, in src/infra/substrate/store/event-store-types.ts. */
 const FACT_QUERY_KEYS = new Set([
   "aggregateId", "aggregateIds", "aggregatePrefix", "sessionId", "positions", "types", "afterPosition",
   "beforePosition", "fromSeq", "parentToolUseIds", "toolUseIds", "order", "limit", "limitPerAggregate",

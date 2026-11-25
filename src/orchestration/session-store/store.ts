@@ -1,13 +1,12 @@
-import { errorMessage } from "../../infra/error-message.js"
-import { EventReaderService, EventStoreWriterService, type EventStoreRuntime } from "../../infra/event-store-effect.js"
-import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
-import { Log } from "../../infra/log.js"
-import { recordBackgroundFailure } from "../../infra/operation-log.js"
-import type { AnyBlock } from "../../infra/output-blocks.js"
-import { isVisibleMessageBlock } from "../../infra/output-blocks.js"
-import { probeLoopUnit } from "../../infra/event-loop-lag.js"
-import { EMPTY_OUTPUT_CHANGE_BATCH, NO_CHANGED_TOOLS, mergeOutputChangeBatches, type OutputChangeBatch } from "../../infra/output/output-block-delta.js"
-import type { AgentInputAnswers } from "../../protocol/question-protocol-types.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import { EventReaderService, EventStoreWriterService, type EventStoreRuntime } from "../../infra/substrate/store/event-store-effect.js"
+import type { AsyncEventStateReadSurface } from "../../infra/substrate/store/event-store-types.js"
+import { Log } from "../../infra/diagnostics/log.js"
+import { recordBackgroundFailure } from "../../infra/diagnostics/operation-log.js"
+import type { AnyBlock } from "../../infra/substrate/events/output-blocks.js"
+import { isVisibleMessageBlock } from "../../infra/substrate/events/output-blocks.js"
+import { probeLoopUnit } from "../../infra/diagnostics/event-loop-lag.js"
+import { EMPTY_OUTPUT_CHANGE_BATCH, NO_CHANGED_TOOLS, mergeOutputChangeBatches, type OutputChangeBatch } from "../../infra/substrate/output/output-block-delta.js"
 import type { ChatRunner } from "../chat/runner-types.js"
 import type {
   ConversationSessionEntry,
@@ -19,10 +18,8 @@ import { appendSessionOrder, orderedSessionIds, removeSessionOrder, reorderSessi
 import { entryRuntimeDefaults } from "./entry-defaults.js"
 import { createSessionEntryPatcher } from "./entry-patcher.js"
 import { currentAccumulatedActiveMs, recordSessionDuration } from "./duration.js"
-import { turnInFlight } from "./view.js"
-import type { ControlInterruption, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
-import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
-import { liveSessionControl } from "../session/live-session-control.js"
+import { turnInFlight } from "./activity.js"
+import { liveSessionControl } from "../session/control/live-session-control.js"
 
 /** The identity of a chat's one startup failure notice. */
 const STARTUP_FAILURE_BLOCK_ID = "startup-failure"
@@ -255,32 +252,8 @@ export function createSessionStore(runtime: EventStoreRuntime, projectionReader:
     return true
   }
 
-  function prepareForShutdown(sessionId: string, by: RuntimeInterruption): void {
-    const entry = activeEntry(sessionId)
-    entry?.runner.prepareForShutdown(by)
-  }
-
-  function interrupt(sessionId: string, by: ControlInterruption, _address?: WorkflowDeliveryAddress): boolean {
-    const entry = activeEntry(sessionId)
-    return entry?.runner.interrupt() ?? member(sessionId)?.interrupt(by) ?? false
-  }
-
-  async function interruptForReplacement(sessionId: string): Promise<boolean> {
-    return await activeEntry(sessionId)?.runner.interruptForReplacement() ?? false
-  }
-
-  async function transferForegroundForReplacement(sessionId: string): Promise<void> {
-    await activeEntry(sessionId)?.runner.transferForegroundForReplacement()
-    await member(sessionId)?.transferForegroundForReplacement()
-  }
-
-  function releaseForegroundBash(sessionId: string, toolUseId: string): boolean {
-    return activeEntry(sessionId)?.runner.releaseForegroundBash(toolUseId) ?? member(sessionId)?.releaseForegroundBash(toolUseId) ?? false
-  }
-
-  function terminateBackgroundWork(sessionId: string, toolUseId: string): void {
-    activeEntry(sessionId)?.runner.terminateBackgroundWork(toolUseId)
-    member(sessionId)?.terminateBackgroundWork(toolUseId)
+  function activeRunner(sessionId: string): ChatRunner | null {
+    return activeEntry(sessionId)?.runner ?? null
   }
 
   async function doDispose(sessionId: string, propagateFailure = false): Promise<void> {
@@ -322,31 +295,6 @@ export function createSessionStore(runtime: EventStoreRuntime, projectionReader:
     terminating.set(sessionId, promise)
     try { await promise } finally { if (terminating.get(sessionId) === promise) terminating.delete(sessionId) }
   }
-
-  // Only a chat asks the person (PI-AGENT-024), so only a chat runner takes
-  // an answer.
-  function answerQuestion(sessionId: string, toolUseId: string, answers: AgentInputAnswers): boolean {
-    const entry = activeEntry(sessionId)
-    if (entry?.kind !== "chat") return false
-    entry.runner.answerQuestion(toolUseId, answers)
-    return true
-  }
-
-  function cancelQuestion(sessionId: string, toolUseId: string): boolean {
-    const entry = activeEntry(sessionId)
-    if (entry?.kind !== "chat") return false
-    entry.runner.cancelQuestion(toolUseId)
-    return true
-  }
-
-  async function compactConversation(sessionId: string): Promise<boolean> {
-    return activeEntry(sessionId)?.runner.compact() ?? member(sessionId)?.compact() ?? false
-  }
-
-  function learnFromSession(sessionId: string): boolean {
-    return activeEntry(sessionId)?.runner.learn?.() ?? false
-  }
-
 
   function runningCount(): number {
     return [...entries].filter(([id, entry]) => entry.runner && !terminating.has(id)).length
@@ -423,5 +371,5 @@ export function createSessionStore(runtime: EventStoreRuntime, projectionReader:
     return () => { listeners.delete(probed) }
   }
 
-  return { openSessionRuntime, replaceChatDisplaySeed, attachChatRunner, appendPreRunnerOutput, showStartupFailure, get, has, isRunning, allIds, abort, prepareForShutdown, interruptForReplacement, transferForegroundForReplacement, interrupt, releaseForegroundBash, terminateBackgroundWork, remove, answerQuestion, cancelQuestion, compactConversation, learnFromSession, reorder, updateEntry, updateChatEntry, runningCount, revision, drainOutputChanges, disposeAll, onChange, refreshDeps }
+  return { openSessionRuntime, replaceChatDisplaySeed, attachChatRunner, appendPreRunnerOutput, showStartupFailure, get, has, isRunning, allIds, abort, activeRunner, remove, reorder, updateEntry, updateChatEntry, runningCount, revision, drainOutputChanges, disposeAll, onChange, refreshDeps }
 }

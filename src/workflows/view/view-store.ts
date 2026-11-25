@@ -1,13 +1,13 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type AsyncEventWriter, type StoredFact } from "../../infra/event-store-types.js"
-import { errorMessage } from "../../infra/error-message.js"
-import { createLiveWorkflowView, createWorkflowQueueProjection, QUEUE_STATUS_FACT_TYPES, normalizedWorkflowView } from "./view-projection.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type AsyncEventWriter, type StoredFact } from "../../infra/substrate/store/event-store-types.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import { QUEUE_STATUS_FACT_TYPES } from "./view-projection.js"
 import type { WorkflowView } from "./types.js"
-import { selectWorkflowFactSource } from "../session-fact-source.js"
-import { createEventProjection, parseProjectionFact } from "../../infra/event-projection.js"
-import { heldProjection } from "../../infra/projection-registry.js"
-import { WORKFLOW_ROOT_FACT_TYPES, workflowFamilyBoundary } from "../workflow-root.js"
-import { WORKFLOW_RUN_FACT_TYPES } from "../run-facts.js"
-import { InvariantViolation } from "../../infra/invariant.js"
+import { selectWorkflowFactSource } from "../control-facts/session-fact-source.js"
+import { createEventProjection, parseProjectionFact } from "../../infra/substrate/projection/event-projection.js"
+import { heldProjection } from "../../infra/substrate/projection/projection-registry.js"
+import { WORKFLOW_ROOT_FACT_TYPES, workflowFamilyBoundary } from "../control-facts/workflow-root.js"
+import { WORKFLOW_RUN_FACT_TYPES } from "../run/run-facts.js"
+import { InvariantViolation } from "../../infra/guards/invariant.js"
 import { parseWorkflowQueueFact } from "./view-facts.js"
 
 interface WorkflowStateResult {
@@ -172,12 +172,6 @@ function parseStatusRow(event: StatusRow): ParsedStatusRow {
   }
 }
 
-export async function loadQueueSnapshotFromReader(reader: AsyncEventStateReadSurface, sessionId: string): Promise<WorkflowView | null> {
-  const projection = createWorkflowQueueProjection(reader, sessionId)
-  const state = await projection.replay()
-  return normalizedWorkflowView(reader, sessionId, state, projection.getReadPosition())
-}
-
 /** Drops the superseded rows of the view's replace-only families.
  *
  *  `queue.state.changed`, `queue.plan.changed`, `queue.tree.changed`, and
@@ -210,35 +204,4 @@ export async function pruneSupersededWorkflowViewFacts(reader: AsyncEventStateRe
   pruned += await writer.pruneSupersededKeyedEvents(aggregateId, "step.resume_revert.recorded", "$.attemptId")
   pruned += await writer.pruneSupersededKeyedEvents(aggregateId, "queue.tree.node.changed", "$.node.id")
   return pruned
-}
-
-export interface WorkflowViewStore {
-  loadQueue(): Promise<WorkflowView | null>
-  applyStoredFact(events: StoredFact | readonly StoredFact[]): Promise<void>
-  dispose(): void
-}
-
-interface WorkflowViewStoreDeps {
-  sessionId: string
-  reader: AsyncEventStateReadSurface
-}
-
-export function createWorkflowViewStore(deps: WorkflowViewStoreDeps): WorkflowViewStore {
-  const { sessionId, reader } = deps
-  const view = createLiveWorkflowView(reader, sessionId)
-  let disposed = false
-
-  function loadQueue(): Promise<WorkflowView | null> {
-    return view.read()
-  }
-
-  async function applyStoredFact(events: StoredFact | readonly StoredFact[]): Promise<void> {
-    if (!disposed) await view.apply(events)
-  }
-
-  function dispose(): void {
-    disposed = true
-  }
-
-  return { loadQueue, applyStoredFact, dispose }
 }

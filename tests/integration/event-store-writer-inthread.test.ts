@@ -5,8 +5,8 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js"
-import { asAsyncEventWriter, type EventStoreAppend } from "../../src/infra/event-store-types.js"
+import { createSqliteEventStore } from "../../src/infra/substrate/store/sqlite-event-store.js"
+import { asAsyncEventWriter, type EventStoreAppend } from "../../src/infra/substrate/store/event-store-types.js"
 
 const TMP_ROOT = path.join(os.tmpdir(), `flywheel-event-store-writer-inthread-${process.pid}-${Date.now()}`)
 const RUN_WRITER_STRESS = process.env.FLYWHEEL_EVENT_STORE_STRESS === "1"

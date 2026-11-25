@@ -1,28 +1,28 @@
-import type { SkillRecommendation, SkillSemanticAuditResult } from "../../../agent-runtime/review-types.js";
+import type { SkillRecommendation, SkillSemanticAuditResult } from "../../../agent-runtime/request/module-services/review-types.js";
 /** The `skill_manage` write tool: the write surface of the managed skill
  *  library. A separate sibling of the read-only `skill` loader, so external
  *  packages stay untrusted read-only artifacts while managed packages have
  *  exactly one write path whoever the author is (the user's "save that as a
  *  skill", the agent mid-task, or the learning review). */
 
-import type { LearningScope } from "../../../../infra/learning-scope.js";
-import type { MutationEvidence } from "../../../../infra/mutation-evidence.js";
-import { buildMutationDiffEvidence } from "../../../../infra/mutation-diff-evidence.js";
-import { Log } from "../../../../infra/log.js";
-import type { ToolResultAction } from "../../../../infra/tool-result-action.js";
-import { normalizeSkillId } from "../../../../infra/skill-id.js";
-import { errorMessage } from "../../../../infra/error-message.js";
-import type { DefinitionReload } from "../../../../workflows/definition-registry.js";
-import { NEW_SKILL_TRIGGER_MAX_CHARS, type SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
-import { skillRecommendationRecordedFact } from "../../../../workflows/skill-facts.js";
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
-import { discardPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../learning-journal.js";
-import { readConsentClaims, reconcileGlobalSkillOperations } from "../global-skill-mutation.js";
-import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
-import { admitSkillMutationPlan, planSkillMutation, storeRootDirs } from "../skill-mutation-plan.js";
-import { publishSkillMutation } from "../skill-mutation-publisher.js";
-import { refuseBackgroundGlobalWrite, refuseUncontainedSkillStores } from "../skill-store.js";
-import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin,  } from "../skill-store-types.js";
+import type { LearningScope } from "../../../../infra/definitions/learning/learning-scope.js";
+import type { MutationEvidence } from "../../../../infra/substrate/file-mutations/mutation-evidence.js";
+import { buildMutationDiffEvidence } from "../../../../infra/substrate/file-mutations/mutation-diff-evidence.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
+import type { ToolResultAction } from "../../../../infra/substrate/events/tool-result-action.js";
+import { normalizeSkillId } from "../../../../infra/definitions/learning/skill-id.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import type { DefinitionReload } from "../../../../workflows/definitions/definition-registry.js";
+import { NEW_SKILL_TRIGGER_MAX_CHARS, type SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
+import { skillRecommendationRecordedFact } from "../../../../workflows/skills/skill-facts.js";
+import type { AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js";
+import { discardPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../skills/learning-journal.js";
+import { readConsentClaims, reconcileGlobalSkillOperations } from "../skills/global-skill-mutation.js";
+import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
+import { admitSkillMutationPlan, planSkillMutation, storeRootDirs } from "../skills/skill-mutation-plan.js";
+import { publishSkillMutation } from "../skills/skill-mutation-publisher.js";
+import { refuseBackgroundGlobalWrite, refuseUncontainedSkillStores } from "../skills/skill-store.js";
+import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin,  } from "../skills/skill-store-types.js";
 
 import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../../../agent-runtime/tools/types.js";
 
@@ -76,7 +76,7 @@ export interface SkillManageToolDeps {
    *  returns. Absent where no composition observes the skill roots. */
   publishDefinitions?: () => Promise<DefinitionReload | undefined>;
   /** Audits the exact writer-prepared package against the pinned revision. */
-  onCandidate?: (candidate: import("../../../agent-runtime/review-types.js").PreparedPackage, revision: SkillRegistryRevision) => Promise<SkillSemanticAuditResult>;
+  onCandidate?: (candidate: import("../../../agent-runtime/request/module-services/review-types.js").PreparedPackage, revision: SkillRegistryRevision) => Promise<SkillSemanticAuditResult>;
   /** Reports each landed write with its bounded display evidence. */
   onWritten?: (action: { name: string; action: string; reach: LearningScope; mutationEvidence?: MutationEvidence }) => void;
   /** Reports each recorded recommendation; the review delivers it to the

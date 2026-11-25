@@ -8,10 +8,11 @@ import { engineBump, LIVE_AUTH_PROFILE_UNSET, liveAuthProfile } from "./claude-e
 import { antigravityEngineBump } from "./antigravity-engine-release.js";
 import { parseAntigravityPin, PIN_FILE } from "./antigravity-engine-asset.js";
 import { FRESHNESS_BLOCKED_EXIT, type EngineBump } from "./engine-freshness.js";
-import { parseReleaseLoginStatus, RELEASE_LOGIN_SETTING, WINDOWS_HOST_SETTING, WINDOWS_RELEASE_LOGIN_FOLDER } from "./readiness-login.js";
-import { selectStartupDirectories } from "../src/infra/directory-authorities.js";
+import { parseReleaseLoginStatus, RELEASE_LOGIN_SETTING, WINDOWS_HOST_SETTING, WINDOWS_RELEASE_LOGIN_FOLDER, type ReleaseEngine } from "./readiness-login.js";
+import { selectStartupDirectories } from "../src/infra/platform/files/directory-authorities.js";
 import { buildExecutable } from "../src/infra/update/build-identity.js";
 import { CLAUDE_AGENT_SDK_LOGIN_COMMAND } from "../src/orchestration/modules/provider-claude-agent-sdk/names.js";
+import { GOOGLE_ANTIGRAVITY_LOGIN_COMMAND } from "../src/orchestration/modules/provider-google-antigravity/names.js";
 
 type Status = "pass" | "fail" | "blocked" | "skip";
 export interface Check { readonly name: string; readonly status: Status; readonly detail: string }
@@ -28,13 +29,35 @@ export interface ReadinessDependencies {
   readonly log: (message: string) => void;
 }
 
-const LIVE_QUALIFICATION = "Claude engine live qualification";
-const LIVE_LOGIN = "Claude engine live login";
-/** The live tier that an engine bump owes: only the Claude engine's live file (scripts/test-integration.ts). */
-const LIVE_TIER = "test:integration:claude-engine";
-/** The Antigravity CLI has no live tier yet. Its fake-host tier rides in the no-api suite on every host, so on a Mac
- *  only its Linux container is a separate check. */
+/** The Antigravity CLI's fake-host tier rides in the no-api suite on every host, so on a Mac only its Linux container
+ *  is a separate check. */
 const ANTIGRAVITY_QUALIFICATION = "Antigravity engine fake-host qualification";
+
+/** One engine whose bump owes its live tier on each host's release login: the tier's checks, its integration mode
+ *  (only that engine's live file, scripts/test-integration.ts), and how its login is named and added. */
+interface LiveEngine {
+  readonly engine: ReleaseEngine;
+  readonly qualification: string;
+  readonly loginCheck: string;
+  readonly tier: string;
+  /** The login, as a person reads it. */
+  readonly login: string;
+  /** What a home without a usable login lacks. */
+  readonly missing: string;
+  readonly loginCommand: string;
+}
+
+const CLAUDE_LIVE: LiveEngine = {
+  engine: "claude", qualification: "Claude engine live qualification", loginCheck: "Claude engine live login", tier: "test:integration:claude-engine",
+  login: "a Claude login", missing: "no Claude login with a stored token", loginCommand: CLAUDE_AGENT_SDK_LOGIN_COMMAND,
+};
+const ANTIGRAVITY_LIVE: LiveEngine = {
+  engine: "antigravity", qualification: "Antigravity engine live qualification", loginCheck: "Antigravity engine live login", tier: "test:integration:antigravity",
+  login: "a Google Antigravity login", missing: "no Google Antigravity login", loginCommand: GOOGLE_ANTIGRAVITY_LOGIN_COMMAND,
+};
+
+/** The words that select `engine` in a readiness-login command; Claude is its default. */
+const engineWords = (engine: ReleaseEngine): readonly string[] => engine === "claude" ? [] : [engine];
 
 const TOKENIZER_MANIFEST = "crates/tokenizer/tokenizer-prebuilt.json";
 
@@ -88,10 +111,10 @@ export interface ReadinessOptions {
   readonly antigravityVersion: string;
   /** The home of this host's account, whose live auth profile the live tier reads without a release login home. */
   readonly accountHome: string;
-  /** The auth profile that `LIVE_AUTH_PROFILE_SETTING` names, whose Claude logins the live tier runs on, or undefined
+  /** The auth profile that `LIVE_AUTH_PROFILE_SETTING` names, whose logins the live tiers run on, or undefined
    *  when the setting is unset. */
   readonly liveAuthProfile: string | undefined;
-  /** The release login home that `RELEASE_LOGIN_SETTING` names. Only the live Claude engine tier reads it. */
+  /** The release login home that `RELEASE_LOGIN_SETTING` names. Only the live tiers read it. */
   readonly releaseLoginHome: string | undefined;
 }
 export interface ReadinessOutcome { readonly exitCode: 0 | 1; readonly checks: readonly Check[] }
@@ -136,17 +159,22 @@ interface LoginLocation {
   readonly remedy: string;
 }
 
-/** The location of this host's live tier login in the auth profile `profile`. A release login home on Windows is
+/** The location of this host's login of `live` in the auth profile `profile`. A release login home on Windows is
  *  logged in to from the release machine, which reaches the Windows machine over SSH, and the helper logs in to one
  *  folder of the real profile, which the setting must name. */
-function hostLoginLocation(options: ReadinessOptions, profile: string): LoginLocation {
-  if (options.releaseLoginHome === undefined) return { where: `the account home ${options.accountHome}`, remedy: `\`FLYWHEEL_AUTH_PROFILE=${profile} ${CLAUDE_AGENT_SDK_LOGIN_COMMAND}\`` };
+function hostLoginLocation(options: ReadinessOptions, profile: string, live: LiveEngine): LoginLocation {
+  if (options.releaseLoginHome === undefined) return { where: `the account home ${options.accountHome}`, remedy: `\`FLYWHEEL_AUTH_PROFILE=${profile} ${live.loginCommand}\`` };
   return {
     where: `the release login home ${options.releaseLoginHome}`,
     remedy: options.platform === "win32"
-      ? `\`bun run readiness:login windows\` (run it on the release machine, with ${WINDOWS_HOST_SETTING} naming the SSH host of this machine); it logs in to %LOCALAPPDATA%\\${WINDOWS_RELEASE_LOGIN_FOLDER} of the real profile, so ${RELEASE_LOGIN_SETTING} must name that folder`
-      : `\`bun run readiness:login --in-home ${options.releaseLoginHome}\``,
+      ? `\`${["bun run readiness:login windows", ...engineWords(live.engine)].join(" ")}\` (run it on the release machine, with ${WINDOWS_HOST_SETTING} naming the SSH host of this machine); it logs in to %LOCALAPPDATA%\\${WINDOWS_RELEASE_LOGIN_FOLDER} of the real profile, so ${RELEASE_LOGIN_SETTING} must name that folder`
+      : `\`${["bun run readiness:login --in-home", options.releaseLoginHome, ...engineWords(live.engine)].join(" ")}\``,
   };
+}
+
+/** Where the Linux release logins are, and the command that adds the login of `live` there. */
+function linuxLoginLocation(live: LiveEngine): LoginLocation {
+  return { where: `the Docker volume ${RELEASE_LOGIN_VOLUME}`, remedy: `\`${["bun run readiness:login linux", ...engineWords(live.engine)].join(" ")}\`` };
 }
 
 /** Where the live tier still runs after its logins were checked: on this host, and in a Linux container through the
@@ -157,7 +185,6 @@ interface LiveTiers {
 }
 
 const NO_LIVE_TIER: LiveTiers = { host: false, linux: undefined };
-const LINUX_LOGIN_LOCATION: LoginLocation = { where: `the Docker volume ${RELEASE_LOGIN_VOLUME}`, remedy: "`bun run readiness:login linux`" };
 
 /** Own the ordered readiness sequence and classify every required result. */
 export function runReadiness(options: ReadinessOptions, dependencies: ReadinessDependencies): ReadinessOutcome {
@@ -181,51 +208,52 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
   const withDocker = (command: readonly string[], docker: string) => command.map((part, index) => index === 0 ? docker : part);
   /** Records what one login status read found, and whether the live tier still runs on that login. A missing login
    *  blocks the tier here, before the long gates, and a login that the engine can stop renewing fails here. */
-  const loginReady = (prefix: string, location: LoginLocation, profile: string, bump: EngineBump, result: CommandResult, unanswered: (result: CommandResult) => string): boolean => {
+  const loginReady = (live: LiveEngine, prefix: string, location: LoginLocation, profile: string, bump: EngineBump, result: CommandResult, unanswered: (result: CommandResult) => string): boolean => {
     const token = result.exitCode === 0 ? parseReleaseLoginStatus(result.stdout) : undefined;
     if (token === undefined) {
-      record(`${prefix}${LIVE_QUALIFICATION}`, "blocked", `${bump.detail}; the login check of ${location.where} did not answer: ${unanswered(result)}`);
+      record(`${prefix}${live.qualification}`, "blocked", `${bump.detail}; the login check of ${location.where} did not answer: ${unanswered(result)}`);
       return false;
     }
     switch (token.kind) {
       case "absent":
-        record(`${prefix}${LIVE_QUALIFICATION}`, "blocked", `${bump.detail}; ${location.where} holds no Claude login with a stored token in the auth profile "${profile}": run ${location.remedy}`);
+        record(`${prefix}${live.qualification}`, "blocked", `${bump.detail}; ${location.where} holds ${live.missing} in the auth profile "${profile}": run ${location.remedy}`);
         return false;
       case "ending":
-        record(`${prefix}${LIVE_LOGIN}`, "fail", `${location.where} holds a Claude login in the auth profile "${profile}" that the engine can stop renewing at any time, by ${token.endsAt.slice(0, 10)}, after which it refuses every request: run ${location.remedy}`);
+        record(`${prefix}${live.loginCheck}`, "fail", `${location.where} holds ${live.login} in the auth profile "${profile}" that the engine can stop renewing at any time, by ${token.endsAt.slice(0, 10)}, after which it refuses every request: run ${location.remedy}`);
         return false;
       case "present":
-        record(`${prefix}${LIVE_LOGIN}`, "pass", `${location.where} holds a Claude login in the auth profile "${profile}", with its token in ${token.store === "file" ? "the credentials file" : "the macOS keychain"}`);
+        record(`${prefix}${live.loginCheck}`, "pass", `${location.where} holds ${live.login} in the auth profile "${profile}", with its token in ${token.store === "file" ? "the credentials file" : "the macOS keychain"}`);
+        return true;
+      case "held":
+        record(`${prefix}${live.loginCheck}`, "pass", `${location.where} holds ${live.login} in the auth profile "${profile}"; the engine keeps its token, and the live tier decides whether it still signs in`);
         return true;
       case "unchecked":
-        record(`${prefix}${LIVE_LOGIN}`, "skip", `${location.where}: its token was not checked, because ${token.reason}; the live tier decides`);
+        record(`${prefix}${live.loginCheck}`, "skip", `${location.where}: its token was not checked, because ${token.reason}; the live tier decides`);
         return true;
     }
   };
-  /** On an engine bump, settles the live tier's logins and returns where the tier still runs. */
-  const liveLogins = (tag: string | undefined): LiveTiers => {
-    const bump = pinnedEngineBump(dependencies.run, tag);
-    if (bump instanceof Error) { record(LIVE_QUALIFICATION, "fail", bump.message); return NO_LIVE_TIER; }
-    if (!bump.bumped) { record(LIVE_QUALIFICATION, "skip", bump.detail); return NO_LIVE_TIER; }
+  /** On a bump of `live`'s engine, settles the live tier's logins and returns where the tier still runs. */
+  const liveLogins = (live: LiveEngine, bump: EngineBump | Error): LiveTiers => {
+    if (bump instanceof Error) { record(live.qualification, "fail", bump.message); return NO_LIVE_TIER; }
+    if (!bump.bumped) { record(live.qualification, "skip", bump.detail); return NO_LIVE_TIER; }
     const profile = options.liveAuthProfile;
-    if (profile === undefined) { record(LIVE_QUALIFICATION, "blocked", `${bump.detail}; ${LIVE_AUTH_PROFILE_UNSET}`); return NO_LIVE_TIER; }
+    if (profile === undefined) { record(live.qualification, "blocked", `${bump.detail}; ${LIVE_AUTH_PROFILE_UNSET}`); return NO_LIVE_TIER; }
     // The status read and the host's live tier inherit the setting from this process; a container is given it.
-    const status = dependencies.run([bun, "run", "scripts/readiness-login.ts", "--status", options.releaseLoginHome ?? options.accountHome]);
-    const host = loginReady("", hostLoginLocation(options, profile), profile, bump, status, (result) => `${result.stderr}\n${result.stdout}`.trim() || `exit ${result.exitCode}`);
-    const live = plan.linuxClaudeLive;
-    if (live === undefined) return { host, linux: undefined };
-    const prefix = `${live.target} `;
+    const status = dependencies.run([bun, "run", "scripts/readiness-login.ts", "--status", options.releaseLoginHome ?? options.accountHome, ...engineWords(live.engine)]);
+    const host = loginReady(live, "", hostLoginLocation(options, profile, live), profile, bump, status, (result) => `${result.stderr}\n${result.stdout}`.trim() || `exit ${result.exitCode}`);
+    const target = plan.linuxLive;
+    if (target === undefined) return { host, linux: undefined };
+    const prefix = `${target.target} `;
     const docker = dependencies.which("docker");
     if (!docker) {
-      record(`${prefix}${LIVE_QUALIFICATION}`, "blocked", `${bump.detail}; Docker CLI is unavailable; install Docker Desktop`);
+      record(`${prefix}${live.qualification}`, "blocked", `${bump.detail}; Docker CLI is unavailable; install Docker Desktop`);
       return { host, linux: undefined };
     }
-    const linuxStatus = runCandidateContainer(docker, (candidate) => releaseLoginContainerCommand({ dockerPlatform: live.dockerPlatform, bunVersion: options.bunVersion, candidate, liveAuthProfile: profile, step: "status" }));
-    return { host, linux: loginReady(prefix, LINUX_LOGIN_LOCATION, profile, bump, linuxStatus, dockerFailureDetail) ? { docker, live, profile } : undefined };
+    const linuxStatus = runCandidateContainer(docker, (candidate) => releaseLoginContainerCommand({ dockerPlatform: target.dockerPlatform, bunVersion: options.bunVersion, candidate, liveAuthProfile: profile, engine: live.engine, step: "status" }));
+    return { host, linux: loginReady(live, prefix, linuxLoginLocation(live), profile, bump, linuxStatus, dockerFailureDetail) ? { docker, live: target, profile } : undefined };
   };
   /** On an Antigravity CLI bump, returns the Linux container that its fake-host tier still owes, if any. */
-  const antigravityLinuxTier = (tag: string | undefined): { readonly docker: string; readonly target: LinuxContainerTarget } | undefined => {
-    const bump = pinnedAntigravityBump(dependencies.run, tag);
+  const antigravityLinuxTier = (bump: EngineBump | Error): { readonly docker: string; readonly target: LinuxContainerTarget } | undefined => {
     if (bump instanceof Error) { record(ANTIGRAVITY_QUALIFICATION, "fail", bump.message); return undefined; }
     if (!bump.bumped) { record(ANTIGRAVITY_QUALIFICATION, "skip", bump.detail); return undefined; }
     const target = plan.linuxAntigravityFakeHost;
@@ -249,13 +277,16 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
       rmSync(scratch, { recursive: true, force: true });
     }
   };
-  /** Runs the live tier in a Linux container on the release login volume. It needs no build of this run, so it runs
-   *  beside the host's live tier, before any later stop of the pass can drop its row. */
-  const runLinuxLive = (linux: NonNullable<LiveTiers["linux"]>) => {
-    const name = `${linux.live.target} ${LIVE_QUALIFICATION}`;
+  /** Runs the live tier of `live` on this host's release login, and in a Linux container on the release login volume.
+   *  Neither needs a build of this run, so both run before any later stop of the pass can drop their rows. */
+  const runLive = (live: LiveEngine, tiers: LiveTiers) => {
+    if (tiers.host) run(live.qualification, [bun, "run", live.tier], options.releaseLoginHome === undefined ? undefined : { HOME: options.releaseLoginHome });
+    const linux = tiers.linux;
+    if (linux === undefined) return;
+    const name = `${linux.live.target} ${live.qualification}`;
     const diagnostic = dependencies.run([linux.docker, "info"]);
     if (diagnostic.exitCode !== 0) { record(name, "blocked", dockerFailureDetail(diagnostic)); return; }
-    settle(name, runCandidateContainer(linux.docker, (candidate) => releaseLoginContainerCommand({ dockerPlatform: linux.live.dockerPlatform, bunVersion: options.bunVersion, candidate, liveAuthProfile: linux.profile, step: "live" })));
+    settle(name, runCandidateContainer(linux.docker, (candidate) => releaseLoginContainerCommand({ dockerPlatform: linux.live.dockerPlatform, bunVersion: options.bunVersion, candidate, liveAuthProfile: linux.profile, engine: live.engine, step: "live" })));
   };
   /** Runs the Antigravity CLI's fake-host tier in a Linux container. Like the Linux live tier, it needs no build of this
    *  run, so it runs before any later stop of the pass can drop its row. */
@@ -293,10 +324,12 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
   else record("clean worktree", "pass");
   const commitContract = run("commit contract", [bun, "run", "check:commits", "--upstream", "--head", "HEAD"]);
   if (!cleanTree || !commitContract) return finish();
-  // The live tier's logins are read before the long gates, so a missing login is known in seconds.
+  // The live tiers' logins are read before the long gates, so a missing login is known in seconds.
   const tag = options.quick ? undefined : lastReleaseTag(dependencies.run);
-  const live = options.quick ? NO_LIVE_TIER : liveLogins(tag);
-  const antigravityLinux = options.quick ? undefined : antigravityLinuxTier(tag);
+  const claudeLive = options.quick ? NO_LIVE_TIER : liveLogins(CLAUDE_LIVE, pinnedEngineBump(dependencies.run, tag));
+  const antigravityBump = options.quick ? undefined : pinnedAntigravityBump(dependencies.run, tag);
+  const antigravityLinux = antigravityBump === undefined ? undefined : antigravityLinuxTier(antigravityBump);
+  const antigravityLive = antigravityBump === undefined ? NO_LIVE_TIER : liveLogins(ANTIGRAVITY_LIVE, antigravityBump);
   run("dependencies", [bun, "install", "--frozen-lockfile", "--dry-run"]);
   freshness("Claude engine freshness", "check:claude-engine", "claude engine");
   freshness("Antigravity engine freshness", "check:antigravity-engine", "antigravity engine");
@@ -308,13 +341,14 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
     record("integration suite", "skip", "--quick omits heavyweight and artifact evidence");
     record("release builds", "skip", "--quick omits heavyweight and artifact evidence");
   } else {
-    // The no-api suite holds both engines' fake-host tiers. A release that ships a new Claude engine also owes the live
-    // tier, on this host's Claude login (scripts/claude-engine-release.ts). Only the live tier reads the release login
-    // home. On a Mac, a new Antigravity CLI also owes its fake-host tier in a Linux container.
+    // The no-api suite holds both engines' fake-host tiers. A release that ships a new engine also owes its live tier,
+    // on this host's login of that engine (scripts/claude-engine-release.ts, scripts/antigravity-engine-release.ts).
+    // Only the live tiers read the release login home. On a Mac, a new Antigravity CLI also owes its fake-host tier in
+    // a Linux container.
     run("integration suite", [bun, "run", "test:integration:no-api"]);
-    if (live.host) run(LIVE_QUALIFICATION, [bun, "run", LIVE_TIER], options.releaseLoginHome === undefined ? undefined : { HOME: options.releaseLoginHome });
-    if (live.linux !== undefined) runLinuxLive(live.linux);
+    runLive(CLAUDE_LIVE, claudeLive);
     if (antigravityLinux !== undefined) runLinuxAntigravity(antigravityLinux);
+    runLive(ANTIGRAVITY_LIVE, antigravityLive);
     if (!plan.host) record("host release target", "blocked", `${options.platform}-${options.arch} is not in the release target matrix`);
     const tokenizer = dependencies.run([bun, "run", "build:tokenizer"]);
     if (tokenizer.exitCode !== 0) {

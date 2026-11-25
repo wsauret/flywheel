@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, jest, mock, spyOn, test } from
 import { Effect, Exit, Stream } from "effect"
 import { Socket } from "effect/socket"
 
-import * as connection from "../../../../../src/protocol/client/connection.js"
+import * as backoff from "../../../../../src/protocol/runtime/reconnect-backoff.js"
 import * as channel from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import { canCreateProject, creationOn, machineStatus, needsRuntime, projectPlacements, projectStatus, selectedMachine, type MachinePickerSnapshot, type RemoteRuntimeSummary } from "../../../../../src/protocol/modules/remote/machine-picker.js"
 import * as creating from "../../../../../src/protocol/modules/remote/project-creation.js"
@@ -110,8 +110,8 @@ beforeEach(async () => {
     watches.push(args)
     return { close() {} }
   })
-  const backoff = spyOn(connection, "reconnectBackoffMs").mockReturnValue(0)
-  restores.push(() => watch.mockRestore(), () => backoff.mockRestore())
+  const reconnect = spyOn(backoff, "reconnectBackoffMs").mockReturnValue(0)
+  restores.push(() => watch.mockRestore(), () => reconnect.mockRestore())
   client = await createRelayClient(await deviceStore())
 })
 

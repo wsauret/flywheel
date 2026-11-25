@@ -1,11 +1,11 @@
 /** How a refusal that a request proved reaches the profile's eligibility: saved, republished at a new revision
  *  after any owned discovery, then handed to the host. */
 import { describe, expect, test } from "bun:test"
-import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js"
-import { authDir } from "../../../../src/infra/paths.js"
-import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/eligibility-preparation.js"
-import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
+import { captureProviderConnection } from "../../../../src/infra/providers/auth/auth-context.js"
+import { authDir } from "../../../../src/infra/platform/files/paths.js"
+import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/auth/models/eligibility-preparation.js"
+import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"

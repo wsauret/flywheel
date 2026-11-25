@@ -1,25 +1,25 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import type { AgentOptions } from "../../../src/orchestration/agent-runtime/types.js";
 import { createBenchmarkCatalog, RESEARCH_SNAPSHOT } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/judge.js";
+import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import {
   planPersonaBenchmark,
   runPersonaBenchmark,
   type BenchmarkEvent,
-} from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
-import { runGroups } from "../../../src/orchestration/modules/development/benchmark/matrix-runner.js";
-import { scoreResearch, type SnapshotLines } from "../../../src/orchestration/modules/development/benchmark/research-scoring.js";
-import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
+} from "../../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
+import { runGroups } from "../../../src/orchestration/modules/development/benchmark/campaign/matrix-runner.js";
+import { scoreResearch, type SnapshotLines } from "../../../src/orchestration/modules/development/benchmark/scoring/research-scoring.js";
+import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
-import { loadAllCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
-import type { BenchmarkRuntime } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
-import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
+import { loadAllCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
+import type { BenchmarkRuntime } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
+import { createForegroundBashHoldController } from "../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
+import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
 import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
 import { roleCapture } from "../../helpers/role-capture.js";

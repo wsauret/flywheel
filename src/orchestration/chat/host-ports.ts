@@ -1,12 +1,12 @@
-import type { CapabilityCheck } from "../../infra/capability-text.js"
-import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
-import type { ModuleRuntimes } from "../../infra/module-runtime.js"
+import type { CapabilityCheck } from "../../infra/definitions/capability-text.js"
+import type { ChatInput, ChatInputLike } from "../../infra/substrate/events/chat-input.js"
+import type { ModuleRuntimes } from "../../infra/definitions/modules/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
-import type { DeliveryOutcome, LiveRecipientState } from "../session/live-session-control.js"
+import type { DeliveryOutcome, LiveRecipientState } from "../session/message-disposition.js"
 import type { ChatTurnEnding, createChatInvocationCompletion } from "./runner-completion.js"
 import type { TurnCut } from "./runner-wait-state.js"
 import type { TurnInterruption } from "../session/conversation/turn-end-record.js"
-import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import type { BackgroundWorkTracking } from "../session/control/background-work/background-work.js"
 
 /** Interactive controls and projections layered over the shared runner host. */
 export interface ChatPorts {
@@ -81,8 +81,12 @@ export interface ChatPorts {
    *  (`SessionEngines.servingChanged`). */
   servingChanged(): void
   abortGeneration(): void
-  /** Queues manual compaction behind active work. Returns false when it starts immediately. */
-  requestCompact(): boolean
+  /** Queues manual compaction behind active work, or behind a question
+   *  that waits for the person, which starts no turn. Says which it did. */
+  requestCompact(): "started" | "queued" | "behind_question"
+  /** When a question waits, takes the input held behind it into the
+   *  mailbox in arrival order (`ChatRunner.adoptHeldInput`). */
+  adoptHeldInput(): Promise<void>
   learn(): boolean
   settle(): Promise<void>
   readonly pendingTurnSettlement: Promise<void> | undefined

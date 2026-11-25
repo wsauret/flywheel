@@ -1,10 +1,10 @@
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
-import { captureExperimentTree } from "../git-operations.js"
+import { captureExperimentTree } from "../git/git-operations.js"
 import {
   runExperimentCommands,
-} from "../experiment-command-runner.js"
+} from "../measurement/experiment-command-runner.js"
 import type { ExperimentOperation } from "../operation-owner.js"
-import type { ExperimentSnapshot } from "../projection.js"
+import type { ExperimentSnapshot } from "../state/projection.js"
 import { runExperimentSchema } from "../../../agent-runtime/tools/experiment-schemas.js"
 import type { RuntimeTool, RuntimeToolInput } from "../../../agent-runtime/tools/types.js"
 

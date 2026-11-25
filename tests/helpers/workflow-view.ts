@@ -1,4 +1,4 @@
-import type { WorkflowTree, WorkflowTreeNode } from "../../src/protocol/workflow-view-protocol-types.js"
+import type { WorkflowTree, WorkflowTreeNode } from "../../src/protocol/session/workflow-view-protocol-types.js"
 import type { AttemptRow } from "../../src/workflows/view/types.js"
 
 /** A current view of plain agents, each a single phase of its own, for

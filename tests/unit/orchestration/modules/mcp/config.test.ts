@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Redacted, Result, Schema } from "effect";
 import { loadConfig } from "../../../../../src/orchestration/config/loader.js";
-import { configSection } from "../../../../../src/orchestration/config/config-section.js";
+import { configSection } from "../../../../../src/orchestration/config/schema/config-section.js";
 import {
   McpServerConfigSchema,
   McpConfigSchema,

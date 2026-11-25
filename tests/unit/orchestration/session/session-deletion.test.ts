@@ -9,16 +9,16 @@ import {
   deleteStoredSession,
   readStoredSession,
 } from "./_session-metadata-test-helpers";
-import type { Session } from "../../../../src/orchestration/session/schemas";
+import type { Session } from "../../../../src/orchestration/session/metadata/schemas";
 import {
   createSessionManager,
   type SessionManagerDeps,
 } from "../../../../src/orchestration/session/manager";
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
+import type { LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
 import { finalizeTestSessionDeletion } from "./_session-manager-fixtures";
-import { writeArtifactBreadcrumb } from "../../../../src/orchestration/session/session-artifacts";
+import { writeArtifactBreadcrumb } from "../../../../src/orchestration/session/persistence/storage/session-artifacts";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

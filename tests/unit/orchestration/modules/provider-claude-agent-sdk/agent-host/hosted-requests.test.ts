@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import Anthropic from "@anthropic-ai/sdk";
-import { classifyAnthropicError } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic-adapter-helpers.js";
+import { classifyAnthropicError } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";
 import { LlmStreamError, ProviderRequestValidationError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { isFailoverFailure, normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { isFailoverFailure, normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { hostedRequests } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/hosted-requests.js";
-import { wireFailure } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/service-requests.js";
-import { debugLineReader, silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
+import { wireFailure } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/service-requests.js";
+import { debugLineReader, silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.js";
 import { apiErrorLine, forwardDiagnostics, payloads, responseBlock, sentBlock, streamErrorLine } from "../_bridge-harness.js";
 
 forwardDiagnostics();

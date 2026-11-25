@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { campaignToolExclusionEvidence } from "../../../bench/chat-ab/campaign-tool-evidence.js";
 import { providerRequestFacts } from "../orchestration/session/_provider-request-audit-fixtures.js";
-import type { ExecutionEvidence } from "../../../src/protocol/execution-evidence.js";
+import type { ExecutionEvidence } from "../../../src/protocol/session/execution-evidence.js";
 
 const evidence: ExecutionEvidence = {
   version: 2, projectRoot: "/scratch", rootSessionId: "root", descendantDiscovery: "current-metadata", metadataGaps: [],

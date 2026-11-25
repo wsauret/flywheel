@@ -3,7 +3,7 @@ import { POSIX_FAILURE_STAGING } from "../../../helpers/posix-failure-staging.js
 import * as path from "node:path";
 import * as fs from "node:fs";
 import * as os from "node:os";
-import { Log } from "../../../../src/infra/log";
+import { Log } from "../../../../src/infra/diagnostics/log";
 import { loadConfig } from "../../../../src/orchestration/config/loader";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 

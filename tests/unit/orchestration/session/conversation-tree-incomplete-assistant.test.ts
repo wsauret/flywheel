@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context";
+import { buildSessionContext } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context";
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
 import { message, nextTimestamp, resetTimestamps, systemNotice } from "./_conversation-tree-entries";
 

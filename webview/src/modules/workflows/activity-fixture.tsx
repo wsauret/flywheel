@@ -1,11 +1,11 @@
-import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
-import { mountAgentGroup } from "../../app/render-ownership-fixture.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
+import { mountAgentGroup } from "../../app/transcript/render-ownership-fixture.js"
 import { fakeWebModuleHost } from "../../app/client-context-fixture.js"
 import type { WebModuleClient } from "../../web-module-client.js"
 import { WorkflowsProvider, type WorkflowsClient } from "./context.js"
 import { WorkflowActivity } from "./activity.js"
 import { createSignal } from "solid-js"
-import type { WorkflowCardChoices } from "../../../../src/protocol/client/workflow-card.js"
+import type { WorkflowCardChoices } from "../../../../src/protocol/client/work/workflow/workflow-card.js"
 
 /** Mounts module activity through the same extension slot the ordinary transcript uses. */
 export function mountWorkflowActivity(initial: Extract<FrontendOutputBlock, { kind: "agentGroup" }>, options?: Pick<WorkflowsClient, "subscribe"> & Partial<Pick<WorkflowsClient, "control">>) {

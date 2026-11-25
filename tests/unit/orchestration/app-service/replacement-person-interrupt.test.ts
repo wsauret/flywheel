@@ -1,32 +1,33 @@
 import { describe, expect, test } from "bun:test"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import { interruptLiveChild, registerTestChildRun } from "../../../helpers/live-child-run"
-import { liveChildRun } from "../../../../src/orchestration/session/live-session-control.js"
+import { liveChildRun } from "../../../../src/orchestration/session/control/live-session-control.js"
 
-import { EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
-import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
-import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
-import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
-import type { ConversationMessage, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { SessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile.js"
-import type { WorkflowDeps } from "../../../../src/orchestration/workflow-host/deps.js"
+import { EventStoreWriterService } from "../../../../src/infra/substrate/store/event-store-effect.js"
+import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { NO_MODULE_SERVICES } from "../../../../src/infra/definitions/modules/module-service.js"
+import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js"
+import type { SessionAuthAdmission } from "../../../../src/orchestration/auth/session-auth-profile.js"
+import type { WorkflowDeps } from "../../../../src/orchestration/agent-runtime/runner/workflow-deps.js"
 import { createChatRunner } from "../../../../src/orchestration/chat/runner.js"
 import { composeModuleProtocolRuntimes } from "../../../../src/orchestration/app-service/module-protocol-host.js"
-import { continueAfterReplacement } from "../../../../src/orchestration/app-service/replacement-continuation.js"
-import type { ChatHostAttach } from "../../../../src/orchestration/app-service/executor-command-handover.js"
-import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
+import { continueAfterReplacement } from "../../../../src/orchestration/app-service/executor/execution/replacement-continuation.js"
+import type { ChatHostAttach } from "../../../../src/orchestration/app-service/executor/execution/executor-command-handover.js"
+import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { subagentsModule } from "../../../../src/orchestration/modules/subagents.js"
 import { buildDurableSubagentCreated, buildSubagentPaused } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
-import { readChatTurnEnd } from "../../../../src/orchestration/session/chat-session-run-evidence.js"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { readChatTurnEnd } from "../../../../src/orchestration/session/control/chat-session-run-evidence.js"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
-import { authorizePlannedSessionContinuation, awaitsPlannedContinuation, createContinuationLanes, interruptChildForReplacement, readPlannedSessionContinuationAsync, recordOwedPersonInterrupt } from "../../../../src/orchestration/session/planned-session-continuation.js"
-import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { authorizePlannedSessionContinuation, awaitsPlannedContinuation, createContinuationLanes, interruptChildForReplacement, readPlannedSessionContinuationAsync, recordOwedPersonInterrupt } from "../../../../src/orchestration/session/control/planned-session-continuation.js"
+import { prepareSessionFactAppend } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
-import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/app-service/projections/session-view.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
 import { createSupervisorTestContext, mockRunner, mockWorkflowRunner, supervisorBaseDeps, testSessionAuthAdmission, resumeDispatch, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
@@ -291,7 +292,7 @@ describe("a person's interrupt of a session a successor owes its continuation", 
         runnerState: "idle",
         runner: mockRunner(chat.sessionId, { interruptPlannedCut: async () => "ended" }),
       }
-      const store: SessionStore = { ...ctx.sessionStore, get: (sessionId) => sessionId === chat.sessionId ? entry : undefined, interrupt: () => false }
+      const store: SessionStore = { ...ctx.sessionStore, get: (sessionId) => sessionId === chat.sessionId ? entry : undefined, activeRunner: () => null }
       const supervisor = createRuntimeSupervisor(supervisorBaseDeps(ctx, store))
 
       expect(await supervisor.interruptSession(chat.sessionId, "person")).toBe(true)
@@ -371,9 +372,9 @@ describe("a person's interrupt of a session a successor owes its continuation", 
         description: chat.sessionId,
         conversationId: chat.conversationId,
         runnerState: "streaming",
-        runner: mockRunner(chat.sessionId, { interruptPlannedCut: async () => "running" }),
+        runner: mockRunner(chat.sessionId, { interruptPlannedCut: async () => "running", interrupt: () => { interrupts.push(chat.sessionId); return true } }),
       }
-      const store: SessionStore = { ...ctx.sessionStore, get: (sessionId) => sessionId === chat.sessionId ? entry : undefined, interrupt: (sessionId) => { interrupts.push(sessionId); return true } }
+      const store: SessionStore = { ...ctx.sessionStore, get: (sessionId) => sessionId === chat.sessionId ? entry : undefined, activeRunner: (sessionId) => sessionId === chat.sessionId ? entry.runner : null }
       const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx, store), continuationLanes: lanes })
       // The successor has dispatched its resume, which holds the session's
       // lane past the limit.

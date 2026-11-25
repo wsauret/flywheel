@@ -15,8 +15,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, spyOn, test } from "
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { DebugLog, listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../../src/infra/debug-log.js";
-import { updateAuthorityDbFile, versionsDir } from "../../../../src/infra/paths.js";
+import { DebugLog, listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../../src/infra/diagnostics/debug-log.js";
+import { updateAuthorityDbFile, versionsDir } from "../../../../src/infra/platform/files/paths.js";
 import type { GuardianControl, GuardianGeneration } from "../../../../src/infra/process-supervisor.js";
 import * as retention from "../../../../src/infra/update/build-retention.js";
 import type { SelectedRelease } from "../../../../src/infra/update/release-manifest.js";
@@ -28,7 +28,7 @@ import { createUpdateWorkerInstaller } from "../../../../src/orchestration/updat
 import { activatePlacedBuild, placeBuild } from "../../../helpers/placed-build.js";
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-update-worker-"));
-const WORKER_URL = new URL("../../../../src/orchestration/app-service/worker-entry.ts", import.meta.url).href;
+const WORKER_URL = new URL("../../../../src/cli/composition/worker-entry.ts", import.meta.url).href;
 const ASSET = "flywheel-darwin-arm64.tar.gz";
 /** An archive one byte longer than every fixture release states. The transfer
  *  refuses it at once as the publisher's answer. A missing file would read as a

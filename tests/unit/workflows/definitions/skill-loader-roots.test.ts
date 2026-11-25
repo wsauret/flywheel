@@ -2,10 +2,10 @@ import { afterAll, describe, expect, it } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ContainedPathError, type ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
-import type { SkillDirectoryEntries } from "../../../../src/workflows/skill-context.js";
-import { SKILL_LIMITS } from "../../../../src/workflows/skill-schema.js";
-import { loadSkillDefinitions } from "../../../../src/workflows/skills.js";
+import { ContainedPathError, type ContainedDirectory } from "../../../../src/infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import type { SkillDirectoryEntries } from "../../../../src/workflows/skills/skill-context.js";
+import { SKILL_LIMITS } from "../../../../src/workflows/skills/skill-schema.js";
+import { loadSkillDefinitions } from "../../../../src/workflows/skills/skills.js";
 
 /** One entry that a directory lister yields. */
 type SkillDirectoryEntry = ReturnType<SkillDirectoryEntries> extends Iterable<infer Entry> ? Entry : never;

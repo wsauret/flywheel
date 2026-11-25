@@ -1,12 +1,11 @@
 import { describe, expect, it, spyOn } from "bun:test"
-import { createEffect, createMemo, createRoot } from "solid-js"
+import { createEffect, createMemo, createRoot, createSignal } from "solid-js"
 import { unwrap } from "solid-js/store"
-import { Log } from "../../../../src/infra/log.js"
-import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
-import { atTranscriptHead } from "../../../../src/tui/transcript-store/output-transcript-cache-types.js"
-import { createTranscriptWindowProjector } from "../../../../src/tui/output-window/output-window-projection.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
+import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
+import { createTranscriptWindowProjector } from "../../../../src/tui/transcript/output-window/output-window-projection.js"
 import { INSTANT_BACKOFF, content, fakeRuntimeClient, flushRecovery, gen, liveView, rangeOk, rangeUnavailable, seedComplete, seedTail, textBlock, toolEntry, userMessageBlock, windowTotal } from "./_output-transcript-cache-fixtures.js"
 
 const run = (scenario: (dispose: () => void) => Promise<void>): Promise<void> => createRoot(async (dispose) => { try { await scenario(dispose) } finally { dispose() } })
@@ -30,7 +29,7 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       } else await seedComplete(cache, fake, "s1")
       expect(readings.at(-1)).toBe(true)
       if (place === "history") {
-        const opening = cache.loadAround("s1", "target")
+        const opening = cache.bindSession(() => "s1").loadAround("target")
         fake.settleTotal(1, 100)
         fake.settleRange(1, {
           ...rangeOk([toolEntry("target")], { startBlockIndex: 40, endBlockIndex: 40, hasBefore: true, hasAfter: true }),
@@ -87,7 +86,6 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       expect(started?.source.kind).toBe("live")
       expect(started?.totalBlocks).toBe(0)
       expect(started?.blocks.length).toBe(0)
-      expect(atTranscriptHead(cache.visibleRange("s1"))).toBe(true)
       expect(fake.outputWindowCalls()).toBe(1)
 
       fake.liveDelta("s1", { visibleMessageCount: 2, blocks: [{ kind: "insert", index: 1, blockId: "text:live", block: textBlock("live", "after create") }] })
@@ -153,7 +151,7 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       const before = cache.visibleRange("s1")!
       const generation = before.generation
       const block = before.blocks[0]
-      const refreshing = cache[action]("s1")
+      const refreshing = action === "refresh" ? cache.refresh("s1") : cache.bindSession(() => "s1").jumpToLatest()
       expect(cache.visibleRange("s1")!.blocks).toEqual(before.blocks)
       fake.settleTotal(fake.totalCalls().length - 1, windowTotal({ startBlockIndex: 99, hasBefore: true }))
       await Promise.resolve()
@@ -204,7 +202,7 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       const fake = fakeRuntimeClient()
       const cache = createOutputTranscriptCache({ appService: fake.client, now: () => 1000 })
       await seedTail(cache, fake, "s1")
-      const loading = cache.loadAround("s1", "tool-target")
+      const loading = cache.bindSession(() => "s1").loadAround("tool-target")
       const request = fake.outputWindowRequests().at(-1)!.request
       expect(request.range.anchor).toEqual({ kind: "around", entryId: "tool-target" })
       fake.settleTotal(fake.totalCalls().length - 1, windowTotal({ startBlockIndex: 40, hasBefore: true, hasAfter: true }))
@@ -218,7 +216,7 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       fake.liveDelta("s1", { visibleMessageCount: 1, blocks: [{ kind: "upsert", index: 99, blockId: "text:live", block: textBlock("live", "live") }] })
       expect(cache.visibleRange("s1")!.blocks.map((block) => "id" in block ? block.id : "")).toEqual(["tool-target"])
       // An entry the runtime cannot place is served as the tail, which is then the window.
-      const missing = cache.loadAround("s1", "absent")
+      const missing = cache.bindSession(() => "s1").loadAround("absent")
       fake.settleTotal(fake.totalCalls().length - 1, windowTotal({ startBlockIndex: 99, hasBefore: true }))
       await Promise.resolve()
       fake.settleRange(fake.rangeCalls().length - 1, rangeOk([textBlock("b99", "tail again")], { startBlockIndex: 99, endBlockIndex: 99, hasBefore: true }))
@@ -254,9 +252,36 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       const paging = cache.loadPage("s1", "older")
       fake.settleRange(fake.rangeCalls().length - 1, rangeOk([textBlock("b98", "older")], { startBlockIndex: 98, endBlockIndex: 98, hasBefore: true, hasAfter: true }))
       await paging
-      expect(cache.disclosure("s1", "text:b99")).toBe(true)
+      expect(cache.bindSession(() => "s1").disclosure("text:b99")).toBe(true)
       await seedComplete(cache, fake, "s2")
-      expect(cache.disclosure("s1", "text:b99")).toBeUndefined()
+      expect(cache.bindSession(() => "s1").disclosure("text:b99")).toBeUndefined()
+    })
+  })
+
+  it("follows the session its one bound view names at each call, and keeps disclosure intent session-local", async () => {
+    await run(async () => {
+      const fake = fakeRuntimeClient()
+      const cache = createOutputTranscriptCache({ appService: fake.client, now: () => 1000 })
+      await seedTail(cache, fake, "s1")
+      await seedComplete(cache, fake, "s2")
+      const [shown, show] = createSignal<string | undefined>("s1")
+      const view = cache.bindSession(shown)
+      expect(view.visibleRange()?.window.startBlockIndex).toBe(99)
+      view.setDisclosure("text:b99", true)
+      show("s2")
+      expect(view.visibleRange()?.blocks).toEqual([textBlock("b0", "s2")])
+      expect(view.disclosure("text:b99")).toBeUndefined()
+      view.setDisclosure("text:b0", false)
+      show(undefined)
+      expect(view.visibleRange()).toBeUndefined()
+      expect(view.disclosure("text:b0")).toBeUndefined()
+      view.setDisclosure("text:b0", true)
+      show("s1")
+      expect(view.visibleRange()?.window.startBlockIndex).toBe(99)
+      expect(view.disclosure("text:b99")).toBe(true)
+      expect(view.disclosure("text:b0")).toBeUndefined()
+      expect(cache.disclosures("s1")).toEqual({ "text:b99": true })
+      expect(cache.disclosures("s2")).toEqual({ "text:b0": false })
     })
   })
 
@@ -295,8 +320,8 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       expect(snap.status.kind).toBe("complete")
       expect(snap.totalBlocks).toBe(2)
       expect(adopted).toEqual(["a", "b"])
-      expect(cache.takeEstimateUpdates("s1")).toEqual([[1, 3]])
-      expect(cache.takeEstimateUpdates("s1")).toEqual([])
+      expect(cache.bindSession(() => "s1").takeEstimateUpdates()).toEqual([[1, 3]])
+      expect(cache.bindSession(() => "s1").takeEstimateUpdates()).toEqual([])
       expect(cache.streamingOutputChars("s1")).toBe(0)
       clock += 100
       fake.liveDelta("s1", { blocks: [], streamingOutputChars: 40 })
@@ -416,7 +441,7 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       const cache = createOutputTranscriptCache({ appService: fake.client })
       cache.retain("s1")
       await cache.open("s1")
-      cache.protectReader("s1", { following: false, blockIds: ["text:b"] })
+      cache.bindSession(() => "s1").protectReader({ following: false, blockIds: ["text:b"] })
       cache.setDisclosure("s1", "text:b", true)
       const generation = cache.visibleRange("s1")?.generation
       fake.invalidate("s1", "rebase")
@@ -428,7 +453,7 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       await flushRecovery()
       const after = cache.visibleRange("s1")
       expect((after?.window.startBlockIndex ?? 0) + (after?.blocks.findIndex((block) => blockIdentity(block) === "text:b") ?? -1)).toBe(2)
-      expect(cache.disclosure("s1", "text:b")).toBe(true)
+      expect(cache.bindSession(() => "s1").disclosure("text:b")).toBe(true)
       expect(cache.isCurrent("s1")).toBe(true)
     })
   })
@@ -447,7 +472,7 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       expect(cache.isCurrent("s1")).toBe(false)
       // The window it had stays on screen.
       expect(snap.blocks.map(content)).toEqual(["before"])
-      expect(cache.freshness("s1")?.source).toBe("status")
+      expect(cache.bindSession(() => "s1").freshness()?.source).toBe("status")
     })
   })
 
@@ -487,7 +512,7 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
         const failure = new Error("original failure")
         let thrown: unknown
         try {
-          cache.reportProjectionFailure("s1", failure)
+          cache.bindSession(() => "s1").reportProjectionFailure(failure)
         } catch (caught) {
           thrown = caught
         }
@@ -585,7 +610,7 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       const cache = createOutputTranscriptCache({ appService: fake.client, now: () => 1000 })
       const blocks: FrontendOutputBlock[] = Array.from({ length: 5 }, (_, i) => textBlock(`b${i}`, `block ${i}`))
       await fake.live(cache, "s1", liveView(blocks))
-      cache.evictBefore("s1", 3)
+      cache.bindSession(() => "s1").evictBefore(3)
       const snap = cache.visibleRange("s1")!
       expect(snap.blocks.map(content)).toEqual(["block 3", "block 4"])
       expect(snap.window).toMatchObject({ startBlockIndex: 3, endBlockIndex: 4, hasBefore: true })

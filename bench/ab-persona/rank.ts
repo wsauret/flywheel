@@ -5,15 +5,17 @@
 // runtime, no profile, no provider request. It prints the policy that the
 // records imply and leaves ROLE_MODEL_DEFAULTS to an approved change.
 
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../../scripts/shipped-modules.js";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { selectStartupDirectories } from "../../src/infra/directory-authorities.js";
-import { modelPriceTier } from "../../src/orchestration/config/model-tiers.js";
-import { ROLE_MODEL_DEFAULTS, roleModelDefault } from "../../src/orchestration/config/role-model-defaults.js";
-import { loadAllCampaignRecords } from "../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import { selectStartupDirectories } from "../../src/infra/platform/files/directory-authorities.js";
+import { modelPriceTier } from "../../src/orchestration/config/models/model-tiers.js";
+import { ROLE_MODEL_DEFAULTS, roleModelDefault } from "../../src/orchestration/config/models/role-model-defaults.js";
+import { loadAllCampaignRecords } from "../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
 import { benchmarkMode, createBenchmarkCatalog } from "../../src/orchestration/modules/development/benchmark/catalog.js";
-import { planTasks, scoringVersion } from "../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
-import { rankBenchmarkRecords, rankingCorpus, renderRanking, type RankingCorpus, type RankingFamily } from "../../src/orchestration/modules/development/benchmark/ranking.js";
+import { planTasks, scoringVersion } from "../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
+import { rankBenchmarkRecords, rankingCorpus, renderRanking, type RankingCorpus, type RankingFamily } from "../../src/orchestration/modules/development/benchmark/records/ranking.js";
 import { parseVariant } from "../../src/orchestration/modules/development/benchmark/variant.js";
 import { getPersonaMetadataIndex } from "../../src/workflows/agents/agent-roles.js";
 

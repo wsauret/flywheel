@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import { InvariantViolation } from "../../../../src/infra/invariant"
-import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts"
-import { hashSystemPrompt, hashToolSurface } from "../../../../src/orchestration/session/provider-request-audit-hash"
-import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/provider-request-audit-projection"
+import { InvariantViolation } from "../../../../src/infra/guards/invariant"
+import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-facts"
+import { hashSystemPrompt, hashToolSurface } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-hash"
+import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-projection"
 
 describe("provider-request-audit projection of retained context applications", () => {
   // Builds before 2026-11-16 wrote one empty context.application.recorded

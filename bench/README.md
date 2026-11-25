@@ -2,7 +2,7 @@
 
 The benchmarks measure how well a model, an effort level, and Flywheel's guidance do real coding work, so that the maintainer can select role defaults from evidence. A live run sends real model requests through a Flywheel auth profile, so it spends API money or subscription quota. You do not need to run a benchmark to contribute to Flywheel: the harness unit tests in `tests/unit/bench/` run with `bun run test`, and the commands in [Validation](#validation) check a harness change without spend. To run a benchmark, start with the [coding benchmark menu](#coding-benchmark-menu) and [`chat-ab/README.md`](chat-ab/README.md), or with [`harbor/README.md`](harbor/README.md) for Harbor Hub benchmarks such as Terminal-Bench. The rest of this page is the maintainer's record of methods and observed results.
 
-This directory contains Flywheel's benchmark harnesses, fixtures, tasks, raw run artifacts, and the runtime/cost menu below. Detailed comparative findings live in `bench/findings/`. The coded role policy lives in `src/orchestration/config/role-model-defaults.ts`.
+This directory contains Flywheel's benchmark harnesses, fixtures, tasks, raw run artifacts, and the runtime/cost menu below. Detailed comparative findings live in `bench/findings/`. The coded role policy lives in `src/orchestration/config/models/role-model-defaults.ts`.
 
 Every runnable fixture works in a public clone. A fixture depends only on content in the public repository: a commit in its history, files inside the task (a vendored `project/` folder), or an empty tree. A patch and setup commands can change any of these sources. `bun run lint:bench-pins`, a step of `bun run lint`, fails when a fixture names a commit that is not an ancestor of HEAD, and it fails in a shallow clone. Tasks that fetch a public upstream source download it at run time.
 
@@ -288,7 +288,7 @@ Across all 11 tests in the 2026-10-23 run, Flywheel took 0.83 to 0.95 of Claude 
 
 ## Persona launch faces: the CLI and the benchmark tool
 
-`ab-persona` has one service and two faces. Both faces read the same catalog for every task, fixture and results path (`src/orchestration/modules/development/benchmark/catalog.ts`), and both plan and run the matrix through `planPersonaBenchmark` and `runPersonaBenchmark` (`src/orchestration/modules/development/benchmark/persona-benchmark.ts`). Nothing above the catalog recomputes a bench path, and neither face holds benchmark logic of its own.
+`ab-persona` has one service and two faces. Both faces read the same catalog for every task, fixture and results path (`src/orchestration/modules/development/benchmark/catalog.ts`), and both plan and run the matrix through `planPersonaBenchmark` and `runPersonaBenchmark` (`src/orchestration/modules/development/benchmark/persona/persona-benchmark.ts`). Nothing above the catalog recomputes a bench path, and neither face holds benchmark logic of its own.
 
 - The console face is `bench/ab-persona/bench.ts`, shown above. It reads argv, owns one runtime generation, and renders the service events.
 - The agent face is the `benchmark` runtime tool (`src/orchestration/modules/development/benchmark-tool.ts`). A host wires it only where a benchmark belongs; everywhere else the tool exposure planner omits it and states the reason.
@@ -378,7 +378,7 @@ Persona judges use the live profile's `benchmark-judge` setting, then its coded 
 1. Raw run artifacts stay in `bench/*/results/<run>/` (configuration, strict ledgers, and reports) on the machine that ran them. Git ignores that folder, so they are not published, and they are never summarized in place.
 2. A completed persona campaign writes its compact record file to `bench/ab-persona/records/<persona>/`. Commit it with the findings: it is what `bench:rank` and `--rejudge` read on every clone.
 3. Findings are written to `bench/findings/<seat>-results.md`: setup, per-variant tables, conclusions, a decision section, caveats, and scoring notes, citing each run by its run id, never by a results path that readers cannot open. When a measured surface is removed, its findings leave `bench/findings/` for the maintainer's dated records.
-4. Approved role-policy changes go to `ROLE_MODEL_DEFAULTS` in `src/orchestration/config/role-model-defaults.ts`. Keep measured findings separate from current policy. Update the owning resolver tests and rebuild the binary (`bun run install:local`).
+4. Approved role-policy changes go to `ROLE_MODEL_DEFAULTS` in `src/orchestration/config/models/role-model-defaults.ts`. Keep measured findings separate from current policy. Update the owning resolver tests and rebuild the binary (`bun run install:local`).
 
 A challenge that loses still gets recorded in the findings document, so the next audit knows the variant was tested and dominated.
 

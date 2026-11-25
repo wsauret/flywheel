@@ -2,11 +2,11 @@
  *  the test drives by hand, and the owner over them. */
 
 import type { OwnershipClosure } from "../../../../src/infra/process-supervisor.js"
-import type { RuntimeExecutorState } from "../../../../src/protocol/app-service-types.js"
-import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import type { ProjectExecutorClient, ProjectExecutorStop } from "../../../../src/orchestration/app-service/project-executor-client.js"
-import { createProjectExecutorGenerations } from "../../../../src/orchestration/app-service/project-executor-generations.js"
-import type { RuntimeFaultReporter } from "../../../../src/orchestration/app-service/runtime-fault-reporting.js"
+import type { RuntimeExecutorState } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
+import type { ProjectExecutorClient, ProjectExecutorStop } from "../../../../src/orchestration/app-service/executor/project-executor-client.js"
+import { createProjectExecutorGenerations } from "../../../../src/orchestration/app-service/executor/project-executor-generations.js"
+import type { RuntimeFaultReporter } from "../../../../src/orchestration/app-service/executor/runtime-fault-reporting.js"
 
 type ProjectExecutorGenerationEnd = Awaited<ProjectExecutorClient["closed"]>
 type Execution = Parameters<typeof createProjectExecutorGenerations>[0]["execution"]

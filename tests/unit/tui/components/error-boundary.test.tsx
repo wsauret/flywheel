@@ -2,9 +2,10 @@
 import { describe, expect, it, mock } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createSignal } from "solid-js"
-import type { FrontendMutation, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, RuntimeClient } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { BugReportResult } from "../../../../src/protocol/modules/bug-reports.js"
 import { ErrorComponent } from "../../../../src/tui/components/error-boundary.js"
+import { createTuiErrorReports } from "../../../../src/tui/modules.js"
 import { ThemeProvider } from "../../../../src/tui/context/theme.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
@@ -20,7 +21,7 @@ async function crashScreen(crash = new TypeError("render failed")) {
   const [version, setVersion] = createSignal("1.2.3")
   const result = await testRender(() => <ThemeProvider mode="dark">
     <ErrorComponent error={crash} appService={client} appVersion={version()} sessionId="chat-1"
-      clipboard={{ copy, readImage: async () => null }} onExit={() => {}} />
+      clipboard={{ copy, readImage: async () => null }} onExit={() => {}} createReports={createTuiErrorReports} />
   </ThemeProvider>, { width: 130, height: 28 })
   return { ...result, sending, dispatch, copy, error: crash, setVersion }
 }

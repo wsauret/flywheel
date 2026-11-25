@@ -1,5 +1,5 @@
 import { Result, Schema, SchemaIssue } from "effect";
-import { exactStruct } from "../../infra/exact-struct.js";
+import { exactStruct } from "../../infra/guards/exact-struct.js";
 
 /** The closed field grammar of an output contract.
  *

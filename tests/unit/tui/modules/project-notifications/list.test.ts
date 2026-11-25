@@ -1,13 +1,13 @@
 import { describe, expect, it, mock } from "bun:test"
 import { Schema } from "effect"
 import { createRoot, createSignal } from "solid-js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import { projectNotificationsDomain, type ProjectNotificationEpisode } from "../../../../../src/protocol/modules/project-notifications.js"
-import { createModalScrollController } from "../../../../../src/tui/components/modal-scroll-controller.js"
+import { createModalScrollController } from "../../../../../src/tui/components/modal/scroll/modal-scroll-controller.js"
 import { projectNotificationsTui } from "../../../../../src/tui/modules/project-notifications/index.js"
 import { notificationCursor, resetNotificationCursor } from "../../../../../src/tui/modules/project-notifications/list.js"
 import type { TuiSurfaceHost } from "../../../../../src/tui/tui-module.js"
-import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
 
 const [surface] = projectNotificationsTui.surfaces

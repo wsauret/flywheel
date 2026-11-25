@@ -9,19 +9,19 @@
 // masking, or an idle gap long enough for the cache to expire.
 
 import * as fs from "node:fs"
-import { CliArgsError, type CliArgsResult, parseArgsResult, requiredValue } from "../../../../infra/cli-args.js"
-import { createSqliteEventStore } from "../../../../infra/sqlite-event-store.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { CliArgsError, type CliArgsResult, parseArgsResult, requiredValue } from "../../../../infra/parsing/cli-args.js"
+import { createSqliteEventStore } from "../../../../infra/substrate/store/sqlite-event-store.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { formatTokens } from "../../../../protocol/client/format.js"
-import { resolveEventStoreDbFile } from "../../../../infra/paths.js"
-import { loadProviderRequestAuditFromEvents } from "../../../session/provider-request-audit-projection.js"
+import { resolveEventStoreDbFile } from "../../../../infra/platform/files/paths.js"
+import { loadProviderRequestAuditFromEvents } from "../../../session/diagnostics/provider-request-audit-projection.js"
 import {
   buildTurnReport,
   LOW_HIT_RATIO_THRESHOLD,
   PREFIX_READBACK_THRESHOLD,
   type TurnCacheReport,
 } from "../../../session/diagnostics/cache-report-analysis.js"
-import type { CliVerb } from "../../../cli-contribution.js"
+import type { CliVerb } from "../../../module-contract/cli-contribution.js"
 
 interface CliOptions {
   sessionId?: string

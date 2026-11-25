@@ -23,31 +23,31 @@ import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import * as yaml from "js-yaml";
 
-import { Log } from "../src/infra/log.js";
-import { isRecord } from "../src/infra/record.js";
-import { renderCapabilityText, type CapabilityCheck } from "../src/infra/capability-text.js";
+import { Log } from "../src/infra/diagnostics/log.js";
+import { isRecord } from "../src/infra/guards/record.js";
+import { renderCapabilityText, type CapabilityCheck } from "../src/infra/definitions/capability-text.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
-import { renderChatBody } from "../src/orchestration/agent-runtime/model-chat-body.js";
-import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { renderChatBody } from "../src/orchestration/agent-runtime/request/prompt/model-chat-body.js";
+import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { personaToolEntries } from "../src/orchestration/agent-runtime/tools/tool-registry.js";
-import { codedRolePreference } from "../src/orchestration/config/role-model-defaults.js";
-import { SHIPPED_MODULES } from "../src/orchestration/modules.js";
-import { createToolRegistry } from "../src/orchestration/tool-catalog.js";
-import type { AgentDefinition } from "../src/infra/agent-definition.js";
+import { personaToolEntries } from "../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
+import { codedRolePreference } from "../src/orchestration/config/models/role-model-defaults.js";
+import { SHIPPED_MODULES } from "./shipped-modules.js";
+import { createToolRegistry } from "../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
+import type { AgentDefinition } from "../src/infra/definitions/agent-definition.js";
 import { loadStandalonePersonaRegistry } from "../src/workflows/agents/registry.js";
-import { resolveSkillClosure } from "../src/workflows/skill-closure.js";
-import { resolveSkillBody } from "../src/workflows/skill-references.js";
-import { publishSkillRevision, type SkillDefinition } from "../src/workflows/skill-schema.js";
-import { BUNDLED_SKILL_DIR } from "../src/workflows/skill-source-inventory.js";
-import { loadSkillDefinitions } from "../src/workflows/skills.js";
+import { resolveSkillClosure } from "../src/workflows/skills/skill-closure.js";
+import { resolveSkillBody } from "../src/workflows/skills/skill-references.js";
+import { publishSkillRevision, type SkillDefinition } from "../src/workflows/skills/skill-schema.js";
+import { BUNDLED_SKILL_DIR } from "../src/workflows/skills/skill-source-inventory.js";
+import { loadSkillDefinitions } from "../src/workflows/skills/skills.js";
 import { CLAUDE_MARKETPLACE_FILE, CLAUDE_PLUGIN, CLAUDE_PLUGIN_ARCHIVE, claudeMarketplace } from "./release-contract.js";
 import { CLAUDE_PLUGIN_HOST, HOST_REWRITES, NATIVE_TOOLS, qualifyPluginNames, translateForHost } from "./claude-plugin-host.js";
 import { zipArchive } from "./zip-archive.js";
 
 const ROOT = join(import.meta.dir, "..");
 const PERSONA_DIR = join(ROOT, "src", "workflows", "agents", "personas");
-const DOCTRINE = join(ROOT, "src", "infra", "agent-assets", "engineering-doctrine.md");
+const DOCTRINE = join(ROOT, "src", "infra", "definitions", "agent-assets", "engineering-doctrine.md");
 
 /** Methods that drive Flywheel's own runtime: its publication delegate. The host has none of it, so the
  *  plugin leaves them out. A method that only one module runs ships in that module's definition bundle, which

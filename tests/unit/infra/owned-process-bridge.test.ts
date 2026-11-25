@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 
 import { connectOwnedProcessBridge, serveOwnedProcessBridge } from "../../../src/infra/owned-process-bridge.js"
-import { createMessagePortProcessEndpoint } from "../../../src/infra/internal-process-channel.js"
-import type { GuardianCommand } from "../../../src/infra/process-guardian-protocol.js"
+import { createMessagePortProcessEndpoint } from "../../../src/infra/process/channels/internal-process-channel.js"
+import type { GuardianCommand } from "../../../src/infra/supervision/guardian/process-guardian-protocol.js"
 import type { GuardianGeneration, OwnershipClosure } from "../../../src/infra/process-supervisor.js"
 
 const GUARDIAN_PID = 4_242

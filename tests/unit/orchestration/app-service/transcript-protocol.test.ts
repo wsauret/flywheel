@@ -3,14 +3,14 @@ import { Schema } from "effect"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
-import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache.js"
-import { HydratedOutputBlockBodySchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
+import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
+import { HydratedOutputBlockBodySchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript/transcript-protocol-schemas.js"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { WorkflowView, AttemptRow } from "../../../../src/workflows/view/types.js"
 import { plainAgentTree } from "../../../helpers/workflow-view.js"
@@ -22,9 +22,9 @@ async function openExistingTree(options: Parameters<typeof tryOpenConversationTr
   if (!tree) throw new Error(`expected conversation tree ${options.conversationId}`)
   return tree
 }
-import { hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody } from "../../../../src/orchestration/app-service/transcript-queries.js"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
-import type { HydratedOutputGroupChildren, HydratedOutputGroupChildrenBatch } from "../../../../src/protocol/transcript-protocol-types.js"
+import { hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
+import type { HydratedOutputGroupChildren, HydratedOutputGroupChildrenBatch } from "../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { workflowControlInitializedEvent } from "../../workflows/vm/_workflow-control-fixtures.js"
 import { historicalSessionCreatedFacts } from "../../../fixtures/tolerant-reprojection-fixtures.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
@@ -129,7 +129,7 @@ describe("bounded output history protocol", () => {
   })
 
   it("preserves mutation artifacts on hydrated group children", async () => {
-    const { buildMutationDiffEvidence } = await import("../../../../src/infra/mutation-diff-evidence.js")
+    const { buildMutationDiffEvidence } = await import("../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js")
     const mutationEvidence = await buildMutationDiffEvidence({
       version: 1, files: [{ path: ".flywheel/memory/project.md", change: "modified", unifiedDiff: "--- a\n+++ b\n@@ -1 +1 @@\n-old\n+new" }], omissions: [],
     }, "memory-1", async () => {})

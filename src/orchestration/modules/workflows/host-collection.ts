@@ -1,13 +1,13 @@
-import type { EventStoreRuntime } from "../../../infra/event-store-effect.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
-import type { AttachChildSessionProjection } from "../../module-seams.js"
+import type { EventStoreRuntime } from "../../../infra/substrate/store/event-store-effect.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
+import type { AttachChildSessionProjection } from "../../module-contract/module-seams.js"
 import type { WorkflowInterruption } from "../../session/conversation/turn-end-record.js"
 import type { WorkflowHosts } from "../../workflow-host/host-collection.js"
 import { WorkflowPreflightError, type WorkflowRunner } from "../../workflow-host/runner-types.js"
-import { Log } from "../../../infra/log.js"
-import { recordBackgroundFailure } from "../../../infra/operation-log.js"
-import { workflowRelativeDir } from "../../../infra/paths.js"
-import { ensureDirectoryUnder } from "../../../infra/write-file-under.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { recordBackgroundFailure } from "../../../infra/diagnostics/operation-log.js"
+import { workflowRelativeDir } from "../../../infra/platform/files/paths.js"
+import { ensureDirectoryUnder } from "../../../infra/platform/files/write-file-under.js"
 import { writeOwnerPid, removeOwnerPid } from "../../session/pid-lock.js"
 
 /** Holds each run through preflight, execution, durable acknowledgement, and disposal. */
@@ -53,7 +53,7 @@ export function createWorkflowHosts(input: {
       try {
         ensureDirectoryUnder(options.projectRoot, workflowRelativeDir(id))
         writeOwnerPid(id, options.projectRoot, "workflow")
-        const { createWorkflowRunner } = await import("../../workflow-host/runner.js")
+        const { createWorkflowRunner } = await import("../../workflow-host/execution/runner.js")
         const onCoreCompleted = options.onCoreCompleted
         const created = createWorkflowRunner({
           ...options, runtime: input.runtime, projectionReader: input.projectionReader,

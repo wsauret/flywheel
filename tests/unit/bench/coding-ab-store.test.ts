@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { codingLedger, requireWritableCodingCampaign, type CodingCampaign, type CodingEvent, type CodingOutcomeRecord } from "../../../bench/chat-ab/coding-ab-store.js";
 import { campaignIdentity, campaignSchedule } from "../../../bench/chat-ab/campaign-store.js";
-import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
+import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { renderCodingReport } from "../../../bench/chat-ab/coding-ab-report.js";
 import { campaignHeadlessOutcome } from "../../../bench/chat-ab/campaign-execution.js";
-import type { HeadlessBenchmarkExecution } from "../../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
+import type { HeadlessBenchmarkExecution } from "../../../src/orchestration/modules/development/benchmark/execution/headless-execution-contract.js";
 import { benchmarkInfrastructureIdentity } from "../../../bench/chat-ab/benchmark-infrastructure.js";
 import { REPO_ROOT } from "../../../bench/chat-ab/harness-paths.js";
 import { parseCodingDesign } from "../../../bench/chat-ab/coding-ab-design.js";
@@ -252,8 +252,8 @@ describe("coding campaign resume", () => {
 
 test("pins adapter bytes and decoded protocol contracts in controller infrastructure identity", async () => {
   const root = temporary("coding-infrastructure-");
-  for (const path of ["src/infra", "src/cli", "scripts", "src/orchestration"]) await mkdir(join(root, path), { recursive: true });
-  for (const path of ["package.json", "bun.lock", "scripts/source-cli.ts", "src/orchestration/module-catalog.ts"]) {
+  for (const path of ["src/infra", "src/cli", "scripts", "src/orchestration/module-contract"]) await mkdir(join(root, path), { recursive: true });
+  for (const path of ["package.json", "bun.lock", "scripts/source-cli.ts", "src/orchestration/module-contract/module-catalog.ts"]) {
     await cp(join(REPO_ROOT, path), join(root, path));
   }
   const benchmark = "src/orchestration/modules/development/benchmark";
@@ -273,6 +273,6 @@ test("pins adapter bytes and decoded protocol contracts in controller infrastruc
   expect(harnessChanged).not.toBe(claudeChanged);
   await writeFile(join(root, "bench/chat-ab/results/result.json"), "new result");
   expect(await benchmarkInfrastructureIdentity(root)).toBe(harnessChanged);
-  await writeFile(join(root, "src/protocol/acp.ts"), "changed protocol bytes");
+  await writeFile(join(root, "src/protocol/rpc/acp.ts"), "changed protocol bytes");
   expect(await benchmarkInfrastructureIdentity(root)).not.toBe(harnessChanged);
 });

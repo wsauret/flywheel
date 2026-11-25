@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 import { createSignal, onCleanup } from "solid-js"
-import { probe } from "../../infra/render-probe.js"
+import { probe } from "../../infra/substrate/output/render-probe.js"
 
 interface TickEntry {
   readonly tick: Accessor<number>

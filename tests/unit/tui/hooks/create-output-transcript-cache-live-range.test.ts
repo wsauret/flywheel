@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
+import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { content, fakeRuntimeClient, gen, windowTotal, rangeOk, rangeUnavailable, textBlock } from "./_output-transcript-cache-fixtures.js"
 
 describe("createOutputTranscriptCache (live deltas on historical ranges)", () => {
@@ -14,7 +14,7 @@ describe("createOutputTranscriptCache (live deltas on historical ranges)", () =>
 
       fake.liveDelta("s1", { visibleMessageCount: 2, blocks: [] })
 
-      expect(cache.visibleMessageCount("s1")).toBe(2)
+      expect(cache.bindSession(() => "s1").visibleMessageCount()).toBe(2)
       expect(cache.visibleRange("s1")).toBe(range)
       expect(cache.visibleRange("s1")?.blocks.map(content)).toEqual(["one"])
       dispose()

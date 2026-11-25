@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import { completeAttempt, prepareExecution, startExecution } from "../../../../src/workflows/vm/attempt-transitions.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
-import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
-import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
-import type { ReassessmentProposal } from "../../../../src/workflows/vm/events.js";
-import { withNodeState } from "../../../../src/workflows/vm/graph-changes.js";
-import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
+import { completeAttempt, prepareExecution, startExecution } from "../../../../src/workflows/vm/transitions/attempt-transitions.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
+import { compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile.js";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js";
+import type { ReassessmentProposal } from "../../../../src/workflows/control-facts/events.js";
+import { withNodeState } from "../../../../src/workflows/vm/graph/graph-changes.js";
+import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";
+import { WorkflowDefinitionSchema } from "../../../../src/workflows/schema/workflow-schema.js";
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
 import { acknowledge } from "./_machine-semantics-fixtures.js";
 import { attemptOf, branch, completePlan, itemList, items, MAP_GROUP, mapSkills, mapWorkflow, PLAN, runPrepared, stage, TAIL } from "./_map-fixtures.js";
 import { SqliteVmDriver } from "./_sqlite-vm-driver.js";
-import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/session-facts.js";
+import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/control-facts/family.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 // Production machine semantics of phase, list, and item containers:

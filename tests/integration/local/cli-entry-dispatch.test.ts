@@ -15,10 +15,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types.js";
-import { resolveEventStoreDbFile } from "../../../src/infra/paths.js";
-import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js";
-import { createConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/substrate/store/event-store-types.js";
+import { resolveEventStoreDbFile } from "../../../src/infra/platform/files/paths.js";
+import { createSqliteEventStore } from "../../../src/infra/substrate/store/sqlite-event-store.js";
+import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 
 const ENTRY = join(import.meta.dir, "..", "..", "..", "src", "cli", "index.ts");
 

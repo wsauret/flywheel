@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { createGhostText } from "../../../../src/tui/hooks/create-ghost-text.js"
+import { createGhostText } from "../../../../src/tui/components/composer/suggestions/create-ghost-text.js"
 
 describe("createGhostText", () => {
   it("returns completion suffix for unique prefix match", () => {

@@ -1,6 +1,6 @@
-import type { ModelFamily } from "../../src/infra/llm/model-family.js";
-import type { ModelInfo, ModelsClient } from "../../src/infra/llm/models.js";
-import { canonicalCatalogModelId, canonicalModelId } from "../../src/infra/llm/model-id.js";
+import type { ModelFamily } from "../../src/infra/providers/llm/models/model-family.js";
+import type { ModelInfo, ModelsClient } from "../../src/infra/providers/llm/models/models.js";
+import { canonicalCatalogModelId, canonicalModelId } from "../../src/infra/providers/model-id.js";
 
 export const tierModelIds = {
   anthropic: {

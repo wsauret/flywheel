@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import type { AuthProviderStatus } from "../../../../src/protocol/auth-status-protocol-types.js"
+import type { AuthProviderStatus } from "../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { awaitsSettlement, initialLoginStep, loginConfirmation, loginOutcome, loginSettlement } from "../../../../src/protocol/client/auth-login.js"
 
 /** The login flow's decisions, held to the shapes the runtime answers with, so

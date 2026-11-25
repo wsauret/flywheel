@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { authStatusPresentation, providerModuleValue } from "../../../../src/tui/auth-status-presentation.js"
+import { authStatusPresentation, providerModuleValue } from "../../../../src/tui/modals/auth/auth-status-presentation.js"
 
 describe("shared auth status presentation", () => {
   it("classifies source and expiry without credentials", () => {

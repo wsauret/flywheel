@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { Schema } from "effect";
-import { canonicalModelId } from "../../src/infra/llm/model-id.js";
-import { RuntimeSessionModelPlanResultSchema } from "../../src/protocol/model-assignment-protocol-schemas.js";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { canonicalModelId } from "../../src/infra/providers/model-id.js";
+import { RuntimeSessionModelPlanResultSchema } from "../../src/protocol/auth/model-assignment-protocol-schemas.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { codingRedaction, type JudgeJob } from "./block-judge.js";
 import { codingLedger } from "./coding-ab-store.js";
 import { campaignIdentity, campaignCellKey, type CampaignTreatmentRecord } from "./campaign-store.js";
@@ -127,7 +127,7 @@ export async function judgeCodingCampaign(options: CampaignJudgeOptions, depende
   const roleComparisons: RoleComparison[] = baseline || own.manifest.version !== 2 ? [] : await campaignRoleComparisons(directory, own.manifest.treatments.filter(({ id }) => id === a || id === b), native(own));
   const code = await Promise.all([
     "./coding-ab-judge.ts", "./campaign-pair-judge.ts", "./campaign-artifacts.ts", "./campaign-role-evidence.ts", "./block-judge.ts", "./judge-inputs.ts", "./pair-judge.ts", "./coding-task.ts",
-    "../../src/orchestration/modules/development/benchmark/judge.ts",
+    "../../src/orchestration/modules/development/benchmark/scoring/judge.ts",
   ].map(async (path) => hash(await readFile(new URL(path, import.meta.url)))));
   const jobs = new Map<string, { job: JudgeJob; identity: string }>();
   const skipped: { task: string; repeat: number; reason: string }[] = [];

@@ -1,5 +1,5 @@
 import { Redacted } from "effect";
-import { apiKey, type AuthContext } from "../../src/infra/auth/auth-context.js";
+import { apiKey, type AuthContext } from "../../src/infra/providers/auth/auth-context.js";
 
 /** The per-credential state the providers map holds, derived from the context so the test helper names no source-private type. */
 type ProviderAuthState = AuthContext["providers"] extends ReadonlyMap<string, infer State> ? State : never;

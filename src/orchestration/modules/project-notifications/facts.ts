@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { defineFact } from "../../../infra/event-registry.js"
-import { NotificationActionSchema } from "../../../infra/notification-episode.js"
+import { defineFact } from "../../../infra/substrate/facts/event-registry.js"
+import { NotificationActionSchema } from "../../../infra/substrate/events/notification-episode.js"
 
 const ProjectNotificationSeveritySchema = Schema.Union([Schema.Literal("warning"), Schema.Literal("alert")])
 

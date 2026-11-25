@@ -1,4 +1,4 @@
-import type { FrontendMutation, MutationResult, RuntimeClient, RuntimeQuery, RuntimeQueryResult } from "../../src/protocol/app-service-types.js";
+import type { FrontendMutation, MutationResult, RuntimeClient, RuntimeQuery, RuntimeQueryResult } from "../../src/protocol/runtime/app-service-types.js";
 
 type QueryType = RuntimeQuery["type"];
 type Queries = { readonly [Type in QueryType]: Extract<RuntimeQuery, { readonly type: Type }> };

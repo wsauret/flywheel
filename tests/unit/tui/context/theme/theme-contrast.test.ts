@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { contrastRatio } from "../../../../../src/tui/context/theme/color-contrast.js"
-import { resolveTheme, type TuiTheme, type ThemeJson } from "../../../../../src/tui/context/theme/resolve.js"
+import { resolveTheme, type ThemeJson } from "../../../../../src/tui/context/theme/resolve.js"
+import type { TuiTheme } from "../../../../../src/tui/context/theme/tui-theme.js"
 import { generateSystemTheme } from "../../../../../src/tui/context/theme/system-theme.js"
 import { rgbToOklab, type RgbColor } from "../../../../../src/tui/context/theme/oklab.js"
 import { RGBA } from "@opentui/core"

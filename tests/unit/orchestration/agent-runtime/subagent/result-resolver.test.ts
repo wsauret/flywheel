@@ -5,11 +5,11 @@ import {
   failedRunResult,
   resolveSubagentResult,
   type SubagentResultContext,
-} from "../../../../../src/orchestration/modules/subagents/execution/result-resolver.js";
-import { createSubagentStats } from "../../../../../src/orchestration/modules/subagents/execution/stream-filter.js";
+} from "../../../../../src/orchestration/modules/subagents/execution/result/result-resolver.js";
+import { createSubagentStats } from "../../../../../src/orchestration/modules/subagents/execution/result/stream-filter.js";
 import type { AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
-import type { SubagentToolCallRecord } from "../../../../../src/orchestration/modules/subagents/execution/work-log.js";
+import type { RuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-types.js";
+import type { SubagentToolCallRecord } from "../../../../../src/orchestration/modules/subagents/execution/result/work-log.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();

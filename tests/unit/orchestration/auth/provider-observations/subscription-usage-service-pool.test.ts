@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { isAbortError } from "../../../../../src/infra/abort.js"
+import { isAbortError } from "../../../../../src/infra/timing/abort.js"
 import { createSubscriptionUsageServicePool } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
 import type { SubscriptionUsageProfile, SubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 

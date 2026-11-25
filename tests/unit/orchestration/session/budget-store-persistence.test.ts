@@ -1,11 +1,11 @@
 import { describe, it, expect, afterEach } from "bun:test";
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, type AsyncEventReadSurface } from "../../../../src/infra/event-store-types";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import { createSessionBudgetStore } from "../../../../src/orchestration/session/budget-store";
-import type { EmitFn } from "../../../../src/infra/event-bus";
-import { skillLoadedFact } from "../../../../src/workflows/skill-facts";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
+import { asAsyncEventReadSurface, type AsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
+import { createSessionBudgetStore } from "../../../../src/orchestration/session/runtime-facts/budget-store";
+import type { EmitFn } from "../../../../src/infra/substrate/events/event-bus";
+import { skillLoadedFact } from "../../../../src/workflows/skills/skill-facts";
 import { countStateRequests } from "../../../helpers/state-requests";
 
 import {

@@ -11,9 +11,9 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "bun:test";
-import { startModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
-import { globalConfigFile } from "../../../../src/infra/paths.js";
-import { moduleRequirementsForContribution } from "../../../../src/orchestration/module-requirements.js";
+import { startModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
+import { globalConfigFile } from "../../../../src/infra/platform/files/paths.js";
+import { moduleRequirementsForContribution } from "../../../../src/orchestration/module-contract/module-requirements.js";
 
 const created: string[] = [];
 
@@ -64,13 +64,13 @@ describe("a runtime composition root's capability startup", () => {
  *  startup chain may carry a copy of it. */
 describe("startup chains carry no capability copy", () => {
   const owners = {
-    "runtime launch options": "src/cli/runtime-launch.ts",
-    "runtime server options": "src/orchestration/app-service/account-service-runtime.ts",
-    "runtime composition": "src/orchestration/app-service/project-execution-runtime.ts",
-    "TUI app props": "src/tui/app.tsx",
-    "TUI shell props": "src/tui/shell.tsx",
-    "Settings store": "src/tui/hooks/create-settings-store.ts",
-    "runtime supervisor": "src/orchestration/app-service/runtime-supervisor.ts",
+    "runtime launch options": "src/cli/account-service/runtime-launch.ts",
+    "runtime server options": "src/orchestration/app-service/account/account-service-runtime.ts",
+    "runtime composition": "src/orchestration/app-service/executor/execution/project-execution-runtime.ts",
+    "TUI app props": "src/tui/shell/app.tsx",
+    "TUI shell props": "src/tui/shell/shell.tsx",
+    "Settings store": "src/tui/hooks/state/create-settings-store.ts",
+    "runtime supervisor": "src/orchestration/app-service/supervisor/runtime-supervisor.ts",
   };
 
   for (const [owner, file] of Object.entries(owners)) {
@@ -85,11 +85,11 @@ describe("startup chains carry no capability copy", () => {
    *  selected set reaches the client as a runtime publication, never as a
    *  startup value threaded through them. */
   const capabilityFreeOwners = {
-    "runtime launch options": "src/cli/runtime-launch.ts",
-    "runtime server options": "src/orchestration/app-service/account-service-runtime.ts",
-    "TUI app props": "src/tui/app.tsx",
-    "TUI shell props": "src/tui/shell.tsx",
-    "Settings store": "src/tui/hooks/create-settings-store.ts",
+    "runtime launch options": "src/cli/account-service/runtime-launch.ts",
+    "runtime server options": "src/orchestration/app-service/account/account-service-runtime.ts",
+    "TUI app props": "src/tui/shell/app.tsx",
+    "TUI shell props": "src/tui/shell/shell.tsx",
+    "Settings store": "src/tui/hooks/state/create-settings-store.ts",
   };
 
   for (const [owner, file] of Object.entries(capabilityFreeOwners)) {

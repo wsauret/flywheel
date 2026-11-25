@@ -4,11 +4,11 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createSubscriptionUsageStore } from "../../../src/infra/llm/subscription-usage-store.js";
-import { subscriptionUsageAuthorityDbFile } from "../../../src/infra/paths.js";
-import { SubscriptionUsageSpendSourceSchema, type SubscriptionUsageReport } from "../../../src/infra/llm/subscription-usage.js";
-import { CREATE_USAGE_LEDGER } from "../../../src/infra/llm/usage-authority-codec.js";
-import { createUsageAuthority } from "../../../src/infra/llm/usage-authority.js";
+import { createSubscriptionUsageStore } from "../../../src/infra/providers/llm/usage/subscription-usage-store.js";
+import { subscriptionUsageAuthorityDbFile } from "../../../src/infra/platform/files/paths.js";
+import { SubscriptionUsageSpendSourceSchema, type SubscriptionUsageReport } from "../../../src/infra/providers/llm/usage/subscription-usage.js";
+import { CREATE_USAGE_LEDGER } from "../../../src/infra/providers/llm/usage/usage-authority-codec.js";
+import { createUsageAuthority } from "../../../src/infra/providers/llm/usage/usage-authority.js";
 
 const roots: string[] = [];
 const ALL_HISTORY = { startMs: 0, endMs: Number.MAX_SAFE_INTEGER } as const;

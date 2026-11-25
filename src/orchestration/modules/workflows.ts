@@ -6,7 +6,7 @@ import { titleWorkflowAgentSessions } from "./workflows/migrations/workflow-agen
 import { convertWorkflowAgentSessions, workflowAgentSessionsNeedConversion } from "./workflows/migrations/workflow-agent-sessions.js"
 import { workflowsProtocol } from "../../protocol/modules/workflows.js"
 import { moduleProtocol } from "../app-service/module-protocol-host.js"
-import { createWorkflowsProtocol, workflowBackgroundReaders, workflowProtocolServices } from "./workflows/protocol.js"
+import { createWorkflowsProtocol, workflowBackgroundReaders, workflowProtocolServices } from "./workflows/protocol/protocol.js"
 import { invalidateSupersededQueueFacts } from "./workflows/queue-maintenance.js"
 import { migrateLegacyStepCatalog } from "./workflows/migrations/legacy-step-catalog-filesystem.js"
 import { migrateQueueStepSkillId } from "./workflows/migrations/queue-step-skill-id.js"
@@ -26,33 +26,33 @@ import { migrateWorkflowDefinitionIdentityRetiredBlocked } from "./workflows/mig
 import { migrateWorkflowDefinitionIdentityPersonaShell } from "./workflows/migrations/workflow-definition-identity-persona-shell.js"
 import { HANDOFF_REVISION_MIGRATIONS, migrateHandoffRevisions } from "./workflows/migrations/workflow-definition-identity-handoff-revisions.js"
 import { dropLegacyWorkflowPruneEvidence } from "./workflows/migrations/workflow-prune-evidence.js"
-import { DefinitionProvenanceFactSchemas } from "../../workflows/definition-provenance-facts.js"
+import { DefinitionProvenanceFactSchemas } from "../../workflows/provenance/definition-provenance-facts.js"
 import { HandoffFactSchemas } from "../../workflows/output-contract/facts.js"
-import { isWorkflowExecutionFact } from "../../workflows/output-contract/workflow-completion.js"
+import { isWorkflowExecutionFact } from "../../workflows/vm/recovery/workflow-completion.js"
 import { fileURLToPath } from "node:url"
-import { Log } from "../../infra/log.js"
-import { moduleRuntimeHandle, type ModuleRuntimes } from "../../infra/module-runtime.js"
+import { Log } from "../../infra/diagnostics/log.js"
+import { moduleRuntimeHandle, type ModuleRuntimes } from "../../infra/definitions/modules/module-runtime.js"
 import type { KernelToolDeps } from "../agent-runtime/tools/kernel-tool-deps.js"
-import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-services.js"
+import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js"
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
 import { ORCHESTRATION_REMINDER, orchestrationSection } from "./workflows/orchestration.js"
-import type { LaunchingSessionAuthority } from "../workflow-host/path-workflow.js"
-import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
-import { moduleDisabledReason } from "../../protocol/module-ids.js"
-import type { WorkflowToolDeps } from "../agent-runtime/tools/workflow-tool.js"
-import { createWorkflowTool, WORKFLOW_RUNTIME_INVOCATION_TOOL } from "../agent-runtime/tools/workflow.js"
+import type { LaunchingSessionAuthority } from "../workflow-host/lifecycle/path-workflow.js"
+import type { DefinitionAvailabilitySnapshot } from "../config/policy/definition-availability.js"
+import type { ToolDeclaration } from "../module-contract/module-seams.js"
+import { moduleDisabledReason } from "../../protocol/runtime/module-ids.js"
+import type { WorkflowToolDeps } from "../agent-runtime/tools/definitions/workflow-tool.js"
+import { createWorkflowTool, WORKFLOW_RUNTIME_INVOCATION_TOOL } from "../agent-runtime/tools/definitions/workflow.js"
 import { createModelsTool, MODELS_TOOL_DEFINITION } from "./workflows/models.js"
-import type { FirstPartyModule } from "../modules.js"
-import type { CliNounContribution } from "../cli-contribution.js"
-import { workflowLaunchTargets } from "../workflow-host/launch-origin.js"
-import { createBudgetAwarenessObserver, createContextPressureObserver } from "../agent-runtime/batch-observers.js"
+import type { FirstPartyModule } from "../module-contract/module-catalog.js"
+import type { CliNounContribution } from "../module-contract/cli-contribution.js"
+import { workflowLaunchTargets } from "../workflow-host/lifecycle/launch-origin.js"
+import { createBudgetAwarenessObserver, createContextPressureObserver } from "../agent-runtime/loop/batch-observers.js"
 import { workflowLaunchRetainedOperation } from "./workflows/launch-operation.js"
 import { workflowWorkControl, workflowWorkState } from "./workflows/child-session.js"
-import { parseProjectionFact } from "../../infra/event-projection.js"
-import { parseSessionRuntimeFact } from "../../infra/runtime-fact-parser.js"
-import { WorkflowRunFactSchemas, type WorkflowRunFact } from "../../workflows/run-facts.js"
-import { createWorkflowPlacements, createWorkflowRunReader, createWorkflowSettingsReader } from "./workflows/run-record.js"
+import { parseProjectionFact } from "../../infra/substrate/projection/event-projection.js"
+import { parseSessionRuntimeFact } from "../../infra/substrate/runtime-facts/runtime-fact-parser.js"
+import { WorkflowRunFactSchemas, type WorkflowRunFact } from "../../workflows/run/run-facts.js"
+import { createWorkflowPlacements, createWorkflowRunReader, createWorkflowSettingsReader } from "./workflows/runs/run-record.js"
 import { createWorkflowRunWriter, workflowRegistration, startedWorkflowAttempt, workflowAdoption, workflowAccounting, workflowDeletion, workflowSettlement, workflowCutAppend, workflowIsDeleted } from "./workflows/run-facts.js"
 import { settleWorkflowDeletion } from "./workflows/deletion.js"
 import { createWorkflowHosts } from "./workflows/host-collection.js"
@@ -264,8 +264,8 @@ export const workflowsModule = {
     settle: async (input) => {
       if (input.session.kind !== "workflow") throw new Error("Workflow deletion requires workflow metadata")
       const [{ recordChildWorkflowStop }, { reconcileChildSessionCompletions }] = await Promise.all([
-        import("../session/child-workflow-result.js"),
-        import("../session/child-session-reconciliation.js"),
+        import("../session/control/children/child-workflow-result.js"),
+        import("../session/control/children/child-session-reconciliation.js"),
       ])
       const binding = input.session.launchedFrom
       // Deletion stops the child as a person's Stop does, unless its call
@@ -314,7 +314,7 @@ export const workflowsModule = {
     { domain: "tools", id: "models", value: { kind: "tool", name: "models", declaration: models } },
     { domain: "promptFragments", id: "workflow-orchestration", value: { order: 2, render: (input) => orchestrates(input) ? orchestrationSection(input.capabilities) : undefined } },
     { domain: "turnReminders", id: "workflow-orchestration", value: { ...ORCHESTRATION_REMINDER, holds: orchestrates } },
-    { domain: "definitions", id: "workflows", value: { kind: "workflows" } },
+    { domain: "definitions", id: "workflows", value: { kind: "workflow" } },
     // The workflow-authoring method writes files that only the workflow tool runs (ARCH-STRUCTURE-031).
     { domain: "definitions", id: "workflows-bundle", value: { kind: "bundle", root: fileURLToPath(new URL("workflows/definitions", import.meta.url)) } },
     { domain: "settings", id: "workflows", value: { control: "workflow-mode", label: "Workflows", description: "Allow agents to launch workflows" } },

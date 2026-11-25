@@ -4,10 +4,10 @@ import { join } from "node:path";
 import * as os from "node:os";
 
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
-import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../../../src/workflows/definition-registry.js";
-import { renderSkillClosure } from "../../../../../src/workflows/skill-render.js";
-import type { SkillRegistryRevision } from "../../../../../src/workflows/skill-schema.js";
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
+import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../../../src/workflows/definitions/definition-registry.js";
+import { renderSkillClosure } from "../../../../../src/workflows/skills/skill-render.js";
+import type { SkillRegistryRevision } from "../../../../../src/workflows/skills/skill-schema.js";
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js";
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { buildRegistry, grantOf, makeContext, makeDeps, makeMockRunnerFactory, TEST_RATIONALE, childTask } from "./_fixtures.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../../helpers/directories.js";

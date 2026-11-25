@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { PRIVATE_TEMPORARY_ROOT_STEMS, privateTemporaryRootName } from "../src/infra/private-temporary-root.js";
+import { PRIVATE_TEMPORARY_ROOT_STEMS, privateTemporaryRootName } from "../src/infra/platform/files/private-temporary-root.js";
 import { removeWhenReleased } from "../tests/helpers/remove-when-released.js";
 
 // Flywheel keeps these roots in the temporary directory for good and removes

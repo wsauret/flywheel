@@ -9,7 +9,7 @@
       // The unit tests reach knip through the test script it parses; the
       // integration suites run through scripts it does not follow, so they are
       // entries by name and the exports only they reach stay accounted for.
-      "entry": ["src/orchestration/app-service/worker-entry.ts", "src/infra/internal-process-channel.ts", "src/orchestration/app-service/project-executor-protocol.ts", "tests/integration/**/*.test.ts"],
+      "entry": ["src/cli/composition/worker-entry.ts", "src/infra/process/channels/internal-process-channel.ts", "src/orchestration/app-service/executor/project-executor-protocol.ts", "tests/integration/**/*.test.ts"],
       "project": ["src/**/*.{ts,tsx}"],
       // A vendored review fixture keeps the raw bytes of its source files,
       // including tests whose imports name files left out of the copy.

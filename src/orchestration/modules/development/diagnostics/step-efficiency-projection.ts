@@ -1,11 +1,11 @@
-import { retainedExecutionDiagnostics, type ChildExecutionMetrics, type AttemptExecutionHistory, type ConversationAttemptStart } from "../../../module-diagnostics.js"
-import { installedModules } from "../../../module-catalog.js"
+import { retainedExecutionDiagnostics, type ChildExecutionMetrics, type AttemptExecutionHistory, type ConversationAttemptStart } from "../../../module-contract/module-diagnostics.js"
+import { installedModules } from "../../../module-contract/module-catalog.js"
 import type { AttemptStatus } from "../../../../workflows/view/types.js"
-import type { StoredFact } from "../../../../infra/event-store-types.js"
-import { loadProviderRequestAuditFromEvents } from "../../../session/provider-request-audit-projection.js"
-import type { ProviderRequestAuditEntry } from "../../../session/provider-request-audit-types.js"
-import { loadToolExecutionTimelineFromEvents } from "../../../session/tool-execution-projection.js"
-import type { ToolExecutionEntry } from "../../../session/tool-execution-types.js"
+import type { StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
+import { loadProviderRequestAuditFromEvents } from "../../../session/diagnostics/provider-request-audit-projection.js"
+import type { ProviderRequestAuditEntry } from "../../../session/runtime-facts/provider-request-audit-types.js"
+import { loadToolExecutionTimelineFromEvents } from "../../../session/runtime-facts/tool-execution-projection.js"
+import type { ToolExecutionEntry } from "../../../session/runtime-facts/tool-execution-types.js"
 
 export interface StepEfficiencyInterval {
   after?: number
@@ -58,7 +58,7 @@ export function loadStepEfficiencyFromEvents(
   events: readonly StoredFact[],
   interval: StepEfficiencyInterval = {},
 ): StepEfficiencyEntry[] {
-  const history = retainedExecutionDiagnostics(events, installedModules())
+  const history = retainedExecutionDiagnostics(events, installedModules().flatMap((module) => module.retainedDiagnostics ?? []))
   const execution = history.attempts
   if (!execution) return []
 

@@ -1,8 +1,8 @@
-import type { CapabilityCheck } from "../../infra/capability-text.js";
-import { Log } from "../../infra/log.js";
-import type { ResolvedAgent } from "../agent-resolution.js";
-import type { SkillRegistryRevision } from "../skill-schema.js";
-import { renderSkillClosure } from "../skill-render.js";
+import type { CapabilityCheck } from "../../infra/definitions/capability-text.js";
+import { Log } from "../../infra/diagnostics/log.js";
+import type { ResolvedAgent } from "../definitions/agent-resolution.js";
+import type { SkillRegistryRevision } from "../skills/skill-schema.js";
+import { renderSkillClosure } from "../skills/skill-render.js";
 import type { AttemptRow } from "../view/types.js";
 
 const log = Log.create({ service: "prompt-assembly" });

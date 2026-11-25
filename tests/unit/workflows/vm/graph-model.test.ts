@@ -1,14 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import { WorkflowGraphSchema } from "../../../../src/workflows/vm/graph-types.js";
+import { WorkflowGraphSchema } from "../../../../src/workflows/control-facts/graph-types.js";
 import {
   CommittedWorkflowControlSchema,
   parseCommittedWorkflowControl,
-} from "../../../../src/workflows/vm/committed-control.js";
-import { parseWorkflowCommand } from "../../../../src/workflows/vm/commands.js";
-import { WorkflowProposalEventSchema } from "../../../../src/workflows/vm/events.js";
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
+} from "../../../../src/workflows/control-facts/committed-control.js";
+import { parseWorkflowCommand } from "../../../../src/workflows/vm/control/commands.js";
+import { WorkflowProposalEventSchema } from "../../../../src/workflows/control-facts/events.js";
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
 
 const decodeWorkflowGraph = Schema.decodeUnknownSync(WorkflowGraphSchema, { onExcessProperty: "error" });
 const decodeProposalEvent = Schema.decodeUnknownSync(WorkflowProposalEventSchema, { onExcessProperty: "error" });

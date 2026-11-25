@@ -1,12 +1,12 @@
 /** @jsxImportSource @opentui/solid */
 import type { SideQuestionModel } from "./model.js"
 import { Show } from "solid-js"
-import { Button } from "../../components/button.js"
-import { ComposerBody } from "../../components/composer-frame.js"
-import { ModalFrame, MODAL_FRAME_HORIZONTAL_INSET } from "../../components/modal-frame.js"
-import { useModalDimensions } from "../../hooks/use-modal-dimensions.js"
+import { Button } from "../../components/controls/button.js"
+import { ComposerBody } from "../../components/composer/frame/composer-frame.js"
+import { ModalFrame, MODAL_FRAME_HORIZONTAL_INSET } from "../../components/modal/modal-frame.js"
+import { useModalDimensions } from "../../components/modal/use-modal-dimensions.js"
 import { useTheme } from "../../context/theme.js"
-import { MarkdownBody } from "../../output-blocks/markdown/markdown-body.js"
+import { MarkdownBody } from "../../transcript/output-blocks/markdown/markdown-body.js"
 import { SIDE_QUESTION_COMMAND_NAME } from "../../../protocol/modules/side-question.js"
 
 /** A bounded answer viewport leaves the follow-up composer and actions visible. */

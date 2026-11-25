@@ -1,6 +1,6 @@
-import { createSkillTool, SKILL_TOOL_DEFINITION } from "../agent-runtime/tools/skill.js"
-import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
-import type { FirstPartyModule } from "../modules.js"
+import { createSkillTool, SKILL_TOOL_DEFINITION } from "../agent-runtime/tools/definitions/skill.js"
+import type { ToolDeclaration } from "../module-contract/module-seams.js"
+import type { FirstPartyModule } from "../module-contract/module-catalog.js"
 
 const skill = {
   category: "ambient",
@@ -46,14 +46,14 @@ export const skillsModule = {
   contributions: [
     { domain: "tools", id: "skill", value: { kind: "tool", name: "skill", declaration: skill, associatedPromptRosterIds: ["skills"] } },
     { domain: "promptRosters", id: "skills", value: { definition: "skills", visibility: "model-invocable" } },
-    { domain: "definitions", id: "skills", value: { kind: "skills", retainInstalled: true } },
+    { domain: "definitions", id: "skills", value: { kind: "skill", retainInstalled: true } },
     { domain: "settings", id: "skills", value: { control: "binary", label: "Skills", description: "Load and manage reusable skill packages" } },
     { domain: "health", id: "skills", value: {
       title: "Skill library",
       check: async (host) => {
         // Loaded on use: the check builds a definition registry, which is
         // startup weight the catalog's import closure must not carry.
-        const { summariseSkillHealth } = await import("../definition-health.js")
+        const { summariseSkillHealth } = await import("./skills/health.js")
         return summariseSkillHealth(host.directories)
       },
     } },

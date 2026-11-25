@@ -1,23 +1,23 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test"
 import type { SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, mockWorkflowRunner, supervisorBaseDeps } from "../../../fixtures/runtime-supervisor-fixtures.js"
-import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
+import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import { registerTestChildRun } from "../../../helpers/live-child-run"
-import { registerLiveSessionControl } from "../../../../src/orchestration/session/live-session-control.js"
-import { authorizePlannedSessionContinuation, continuationTargetId, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, plannedContinuationsFor, readPlannedSessionContinuationAsync } from "../../../../src/orchestration/session/planned-session-continuation.js"
+import { registerLiveSessionControl } from "../../../../src/orchestration/session/control/live-session-control.js"
+import { authorizePlannedSessionContinuation, continuationTargetId, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, plannedContinuationsFor, readPlannedSessionContinuationAsync } from "../../../../src/orchestration/session/control/planned-session-continuation.js"
 import type { RuntimeInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND, writeCommandHandover } from "../../../../src/orchestration/session/command-handover.js"
-import { DebugLog } from "../../../../src/infra/debug-log.js"
-import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
-import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { DebugLog } from "../../../../src/infra/diagnostics/debug-log.js"
+import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/substrate/store/event-store-effect.js"
+import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
 import type { SessionEntry, SessionEntryBase, SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { WorkflowRunner } from "../../../../src/orchestration/workflow-host/runner-types.js"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
-import { turnInFlight } from "../../../../src/orchestration/session-store/view.js"
+import { turnInFlight } from "../../../../src/orchestration/session-store/activity.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"
-import { WORKFLOW_LAUNCH_OPERATION_KIND } from "../../../../src/orchestration/workflow-host/launch-operation-contract.js"
+import { WORKFLOW_LAUNCH_OPERATION_KIND } from "../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract.js"
 
 type RunnerState = SessionEntryBase["runnerState"]
 
@@ -66,7 +66,7 @@ function storeWith(ctx: SupervisorTestContext, entries: readonly (SessionEntry |
     ...ctx.sessionStore,
     allIds: () => [...byId.keys()],
     get: (sessionId) => byId.get(sessionId),
-    interruptForReplacement: async (sessionId) => await byId.get(sessionId)?.runner?.interruptForReplacement() ?? false,
+    activeRunner: (sessionId) => byId.get(sessionId)?.runner ?? null,
     disposeAll: async () => {},
   }
 }
@@ -354,16 +354,18 @@ describe("RuntimeSupervisor planned replacement", () => {
     let cutState: RunnerState = "streaming"
     let lateState: RunnerState = "idle"
     let transfer = Promise.withResolvers<void>()
-    const store: SessionStore = {
-      ...storeWith(ctx, [
-        { ...chat("streaming-chat", "idle", true, order), get runnerState() { return cutState } },
-        { ...workflow("running-workflow", "idle", false, order), get runnerState() { return cutState } },
-        { ...chat("late-chat", "idle", true, order), get runnerState() { return lateState } },
-      ]),
-      transferForegroundForReplacement: async (sessionId) => {
-        order.push(`transfer:${sessionId}`)
-        await transfer.promise
-      },
+    const store = storeWith(ctx, [
+      { ...chat("streaming-chat", "idle", true, order), get runnerState() { return cutState } },
+      { ...workflow("running-workflow", "idle", false, order), get runnerState() { return cutState } },
+      { ...chat("late-chat", "idle", true, order), get runnerState() { return lateState } },
+    ])
+    const recordedTransfer = (sessionId: string) => async () => {
+      order.push(`transfer:${sessionId}`)
+      await transfer.promise
+    }
+    for (const sessionId of store.allIds()) {
+      const runner = store.activeRunner(sessionId)
+      if (runner) runner.transferForegroundForReplacement = recordedTransfer(sessionId)
     }
     const workflowHost = ctx.workflowHosts.get("running-workflow")
     if (!workflowHost) throw new Error("Missing workflow host")

@@ -1,4 +1,4 @@
-import type { FirstPartyModule } from "../modules.js"
+import type { FirstPartyModule } from "../module-contract/module-catalog.js"
 
 
 export const backgroundCommandsModule = {

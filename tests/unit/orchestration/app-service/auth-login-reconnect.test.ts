@@ -5,16 +5,16 @@ import { mkdirSync, mkdtempSync, rmSync, renameSync, writeFileSync } from "node:
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { createAuthLoginService, type AuthLoginService } from "../../../../src/orchestration/app-service/auth-login-service.js";
-import { dispatchAuthMutation } from "../../../../src/orchestration/app-service/auth-mutations.js";
+import { createAuthLoginService, type AuthLoginService } from "../../../../src/orchestration/app-service/auth/login/auth-login-service.js";
+import { dispatchAuthMutation } from "../../../../src/orchestration/app-service/auth/login/auth-mutations.js";
 import { providerLoginFlow, type ProviderOAuthLogin } from "../../../../src/orchestration/auth/auth-actions.js";
-import { FrontendMutationSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
+import { FrontendMutationSchema } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js";
 import { testAuthContext } from "../../../helpers/auth-context.js";
-import type { AuthOperationNotice } from "../../../../src/protocol/auth-status-protocol-types.js";
-import { startModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
+import type { AuthOperationNotice } from "../../../../src/protocol/auth/auth-status-protocol-types.js";
+import { startModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
 import { defaultModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
-import { createAuthStatusProjection } from "../../../../src/orchestration/app-service/auth-status-projection.js";
-import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../src/orchestration/modules.js";
+import { createAuthStatusProjection } from "../../../../src/orchestration/app-service/auth/auth-status-projection.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 import { observedLogins } from "../../../helpers/login-observations.js";
 

@@ -1,5 +1,6 @@
-import { moduleServiceHandle } from "../../../infra/module-service.js"
-import type { ControlModuleServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
+import { moduleServiceHandle } from "../../../infra/definitions/modules/module-service.js"
+import type { ModuleServiceInstance } from "../../app-service/executor/execution/module-service-host.js"
+import type { ControlModuleServices } from "../../app-service/account/projects/account-module-services.js"
 import { createProjectNotificationJournal, type ProjectNotificationJournal } from "./journal.js"
 import { createProjectNotificationPublisher, type ProjectNotificationPublisher } from "./publisher.js"
 import { createProjectNotificationSink, type ProjectNotificationSink } from "./sink.js"

@@ -1,14 +1,14 @@
 /** @jsxImportSource @opentui/solid */
 import { createEffect, createMemo, createRoot, createSignal, on, onCleanup, Show } from "solid-js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { describeReclaimOutcome, previewShowsView, RECLAIM_STORAGE_COMMAND_NAME, storageDomain } from "../../../protocol/modules/reclaim-storage.js"
 import { formatStorageBytes, type StorageReclaimPreview } from "../../../protocol/store-reclaim.js"
-import { Button } from "../../components/button.js"
-import type { ListModalKeyEvent } from "../../components/modal-list-keys.js"
-import { ModalFrame } from "../../components/modal-frame.js"
+import { Button } from "../../components/controls/button.js"
+import type { ListModalKeyEvent } from "../../components/modal/select/modal-list-keys.js"
+import { ModalFrame } from "../../components/modal/modal-frame.js"
 import type { ModalHandle } from "../../components/modal-stack.js"
 import { useTheme } from "../../context/theme.js"
-import { useModalDimensions } from "../../hooks/use-modal-dimensions.js"
+import { useModalDimensions } from "../../components/modal/use-modal-dimensions.js"
 import type { TuiControllerHost } from "../../tui-module.js"
 
 type Host = Pick<TuiControllerHost, "client" | "read" | "modal">

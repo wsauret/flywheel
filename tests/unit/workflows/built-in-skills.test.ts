@@ -1,18 +1,18 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isQualifiedSkillId } from "../../../src/infra/skill-id.js";
-import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
+import { isQualifiedSkillId } from "../../../src/infra/definitions/learning/skill-id.js";
+import type { AgentDefinition } from "../../../src/infra/definitions/agent-definition.js";
 import { loadStandalonePersonaRegistry } from "../../../src/workflows/agents/registry.js";
-import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/skill.js";
-import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js";
+import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/definitions/skill.js";
+import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-resolution.js";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, repoDefinitions, workflowIn } from "../../helpers/project-definitions.js";
-import { loadSkillDefinitions } from "../../../src/workflows/skills.js";
+import { loadSkillDefinitions } from "../../../src/workflows/skills/skills.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
-import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
-import { renderSkillClosure } from "../../../src/workflows/skill-render.js";
-import { skillClosureIds } from "../../../src/workflows/skill-closure.js";
-import { publishSkillRevision, type SkillRegistryRevision } from "../../../src/workflows/skill-schema.js";
+import { installedDefinitionBundles } from "../../../src/orchestration/module-contract/module-catalog.js";
+import { renderSkillClosure } from "../../../src/workflows/skills/skill-render.js";
+import { skillClosureIds } from "../../../src/workflows/skills/skill-closure.js";
+import { publishSkillRevision, type SkillRegistryRevision } from "../../../src/workflows/skills/skill-schema.js";
 import { bodyFor, bundled, bundledLoad, bundleRoots, SKILL_ROOTS } from "./_bundled-skills.js";
 
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");

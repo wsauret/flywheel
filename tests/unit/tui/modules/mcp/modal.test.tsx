@@ -9,9 +9,9 @@ const { createMcpSurface } = await import("../../../../../src/tui/modules/mcp/su
 const { createModalStack } = await import("../../../../../src/tui/components/modal-stack.js")
 const { createTextAttributes } = await import("@opentui/core")
 import { mcpDomain, type McpStatusRow } from "../../../../../src/protocol/modules/mcp.js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
-import type { FrontendMutation } from "../../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { TuiControllerHost } from "../../../../../src/tui/tui-module.js"
 
 const global: McpStatusRow = { name: "work", status: "needs_auth", toolCount: 0, definitionScope: "global", enabledScope: "global", enabled: true, hasGlobalFallback: false, expected: "reviewed" }

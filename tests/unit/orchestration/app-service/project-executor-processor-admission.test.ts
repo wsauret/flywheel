@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
-import { createProcessorGovernor } from "../../../../src/orchestration/app-service/processor-governor.js"
+import { createProcessorGovernor } from "../../../../src/orchestration/app-service/executor/processor-governor.js"
 import { closeExecutorFixtures, fixture } from "./_project-executor-fixture.js"
 
 afterEach(closeExecutorFixtures)

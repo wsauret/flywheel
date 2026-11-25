@@ -2,19 +2,18 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
-import { migrateLegacyCapabilityModules } from "../../../../src/orchestration/modules.js";
-import { MODULE_IDS } from "../../../../src/protocol/module-ids.js";
+import { migrateLegacyCapabilityModules, decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
+import { MODULE_IDS } from "../../../../src/protocol/runtime/module-ids.js";
 import { ConfigWriteError } from "../../../../src/orchestration/config/writer.js";
-import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { decodeCanonicalConfigText } from "../../../../src/orchestration/config/loader.js";
-import { startModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
+import { startModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
 import {
   applyModulePreset,
   migrateCapabilityModules,
   updateModuleMember,
   updateCapabilityModules,
   updateWorkflowsMode,
-} from "../../../../src/orchestration/config/module-selection-writer.js";
+} from "../../../../src/orchestration/config/policy/module-selection-writer.js";
 
 const providerModules = MODULE_IDS.filter((id) => id.startsWith("provider-"));
 

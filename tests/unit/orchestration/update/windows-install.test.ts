@@ -14,9 +14,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { Win32ContainedDirectoryOperations } from "../../../../src/infra/descriptor-directory-win32.js";
-import { updateAuthorityDbFile, versionsDir } from "../../../../src/infra/paths.js";
-import type { ProcessRow } from "../../../../src/infra/process-table.js";
+import type { Win32ContainedDirectoryOperations } from "../../../../src/infra/platform/files/descriptor-directory/descriptor-directory-win32.js";
+import { updateAuthorityDbFile, versionsDir } from "../../../../src/infra/platform/files/paths.js";
+import type { ProcessRow } from "../../../../src/infra/process/container/process-table.js";
 import { computeBuildId, decodeBuildMetadata } from "../../../../src/infra/update/build-identity.js";
 import { recordBuildProved } from "../../../../src/infra/update/service-start-record.js";
 import { createUpdateAuthority, UPDATE_PROTOCOL_VERSION } from "../../../../src/infra/update/update-authority.js";

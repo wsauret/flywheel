@@ -1,5 +1,5 @@
-import type { CapabilityCheck } from "../../src/infra/capability-text.js"
-import type { ComposeAttemptBrief } from "../../src/workflows/vm/attempt-runner.js"
+import type { CapabilityCheck } from "../../src/infra/definitions/capability-text.js"
+import type { ComposeAttemptBrief } from "../../src/workflows/vm/host/attempt-runner.js"
 
 /** A brief that composes the same user prompt and task for every check of the agent's run. */
 export function attemptBrief(userPrompt: string, task = ""): ComposeAttemptBrief {
