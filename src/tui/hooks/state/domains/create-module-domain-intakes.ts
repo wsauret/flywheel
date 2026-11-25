@@ -1,6 +1,6 @@
 import { createSignal, onCleanup, type Accessor } from "solid-js"
 import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
-import { MODULE_DOMAIN_BINDINGS, moduleDomainReader, type ModuleDomainBinding } from "../../../../protocol/client/module-domain.js"
+import { MODULE_DOMAIN_BINDINGS, moduleDomainReader, type ModuleDomainBinding } from "../../../../protocol/client/modules/module-domain.js"
 import { PROTOCOL_MODULE_DOMAINS, PROTOCOL_MODULE_SESSION_DOMAINS, type ProtocolModuleDomainName, type ProtocolModuleEntry, type ProtocolModuleSessionDomain, type ProtocolModuleView, type ProtocolModuleWorkspaceDomain } from "../../../../protocol/modules.js"
 import { protocolDomainTable, type DomainReader } from "../../../../protocol/protocol-module.js"
 import { sessionDomainCursor, workspaceDomainCursor, type RuntimeUiPatchPayload } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"

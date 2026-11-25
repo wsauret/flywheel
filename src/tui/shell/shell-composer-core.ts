@@ -1,7 +1,7 @@
 import { useRenderer } from "@opentui/solid"
 import { createMemo, onCleanup } from "solid-js"
 import { useKeymap } from "@tui/context/keymap"
-import { usesPerCommand } from "../../protocol/client/command-menu.js"
+import { usesPerCommand } from "../../protocol/client/commands/command-menu.js"
 import { launchOutbox, type LaunchState } from "../../infra/distribution/launch-state.js"
 import type { AttachedRuntimeClient } from "../../protocol/runtime/app-service-types.js"
 import { commandSpecs, commandsToOptions } from "../commands/command-catalog.js"

@@ -1,4 +1,4 @@
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import { createReadRetry } from "../../../../../src/protocol/client/background-reads.js"
 
 /** Reads workspace metadata without replacing retained state after disposal or a failed read.

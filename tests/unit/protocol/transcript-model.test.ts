@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../src/protocol/runtime/app-service-types.js"
 import type { ToolAction } from "../../../src/infra/workflow-types.js"
-import { foldReadRuns } from "../../../src/protocol/client/tool-run-category.js"
-import { blockEnd, closesToolStretch, foldTranscript, runEnd, toolActivity, waitsForProcessor, type TranscriptModel } from "../../../src/protocol/client/transcript-model.js"
+import { foldReadRuns } from "../../../src/protocol/client/transcript/tool-run-category.js"
+import { closesToolStretch, foldTranscript, runEnd, toolActivity, waitsForProcessor, type TranscriptModel } from "../../../src/protocol/client/transcript/transcript-model.js"
 
 type Status = FrontendToolEntry["status"]
 
@@ -159,9 +159,6 @@ describe("work ends", () => {
   })
   it("keeps today's ends for a command that is still running or whose end was never recorded", () => {
     expect(stretchEnd([background("b1", 1000), text("started", 1860)])).toBe(1860)
-    expect(blockEnd(background("b1", 1000), 1860)).toBe(1860)
-    expect(blockEnd(background("b1", 1000, 46_600), 1860)).toBe(46_600)
-    expect(blockEnd(text("t1", 2000), 2000)).toBeUndefined()
   })
 })
 

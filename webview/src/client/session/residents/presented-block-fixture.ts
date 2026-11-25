@@ -1,5 +1,5 @@
 import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
-import { foldTranscript } from "../../../../../src/protocol/client/transcript-model.js"
+import { foldTranscript } from "../../../../../src/protocol/client/transcript/transcript-model.js"
 import { presentWebTranscript, type PresentedWebBlock } from "./tool-runs.js"
 
 /** The block as the web transcript admits it, as its own row or as a member

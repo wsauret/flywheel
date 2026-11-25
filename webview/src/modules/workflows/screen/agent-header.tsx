@@ -1,9 +1,9 @@
 import { createEffect, createMemo, createSignal, Index, onCleanup, Show, untrack, type Accessor, type JSX } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentLine, workflowNextAgentLabel, type WorkflowAgentHeaderDrop, type WorkflowAgentLine, type WorkflowAgentModel } from "../../../../../src/protocol/client/workflow-agent.js"
-import { workflowOutline } from "../../../../../src/protocol/client/workflow-outline.js"
-import { workflowRunName } from "../../../../../src/protocol/client/workflow-card.js"
-import { workflowAgentAddress } from "../../../../../src/protocol/client/workflow-addresses.js"
+import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentLine, type WorkflowAgentHeaderDrop, type WorkflowAgentLine, type WorkflowAgentModel } from "../../../../../src/protocol/client/workflow/workflow-agent.js"
+import { workflowOutline } from "../../../../../src/protocol/client/workflow/workflow-outline.js"
+import { workflowRunName } from "../../../../../src/protocol/client/workflow/workflow-card.js"
+import { workflowAgentAddress } from "../../../../../src/protocol/client/workflow/workflow-addresses.js"
 import type { WebModuleClientHost } from "../../../web-module-client.js"
 import { summaryOf } from "../../../client/session/view-state.js"
 import { createSessionReading } from "../../../app/transcript/blocks/agents/session-reading.js"
@@ -104,7 +104,7 @@ export function AgentHeader(props: {
         }</Key></span>
       </p>
       <span class="workflow-agent-controls">
-        <Show when={props.model()}>{model => <button class="workflow-agent-next" title="Open the next agent of the workflow (])" aria-keyshortcuts="]" onClick={props.next}>{workflowNextAgentLabel(model())}</button>}</Show>
+        <Show when={props.model()}>{model => <button class="workflow-agent-next" title="Open the next agent of the workflow (])" aria-keyshortcuts="]" onClick={props.next}>{model().next}</button>}</Show>
         <Key each={props.model()?.history} by="sessionId">{(past, index) => <button class="workflow-agent-next" onClick={() => props.history(past().sessionId)}>{`Earlier session ${index() + 1}`}</button>}</Key>
         <Show when={historical() && props.place().target.kind === "agent"}><button class="workflow-agent-next" onClick={() => props.history(undefined)}>Latest session</button></Show>
       </span>

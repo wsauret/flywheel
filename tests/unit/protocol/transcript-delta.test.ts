@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../src/protocol/runtime/app-service-types.js"
-import { applyOutputDelta, buildBlockIndex, type MutableOutputView } from "../../../src/protocol/client/transcript-delta.js"
+import { applyOutputDelta, buildBlockIndex, type MutableOutputView } from "../../../src/protocol/client/transcript/transcript-delta.js"
 
 function child(id: string, status: "pending" | "streaming" | "completed" | "interrupted" = "completed"): FrontendToolEntry {
   return { kind: "tool", id, name: "read", presentation: { name: "Read", detail: `${id}.ts` }, status, timestamp: 1 }

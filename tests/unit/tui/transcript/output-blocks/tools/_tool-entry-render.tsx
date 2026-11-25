@@ -5,7 +5,7 @@ import type { RuntimeConfigView } from "../../../../../../src/protocol/settings/
 import type { BlockDisclosureChannel } from "../../../../../../src/tui/context/transcript/block-disclosure.js"
 import type { RowProcessControls } from "../../../../../../src/tui/transcript/output-blocks/stop-affordance.js"
 import type { ToolRun } from "../../../../../../src/tui/transcript/output-blocks/visible-output-blocks.js"
-import type { MutationEvidenceReader } from "../../../../../../src/protocol/client/mutation-evidence.js"
+import type { MutationEvidenceReader } from "../../../../../../src/protocol/client/transcript/mutation-evidence.js"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { processStatus } from "../../../../../helpers/runtime-views.js"
 

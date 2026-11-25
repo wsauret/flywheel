@@ -1,5 +1,5 @@
 import { brandTileSvg } from "../../src/protocol/client/brand.js"
-import type { ClientSummary } from "../../src/protocol/client/host-contract.js"
+import type { ClientSummary } from "../../src/protocol/client/host/host-contract.js"
 
 /** What the tab says about the project at a glance: the session is working,
  *  the page has lost the runtime, or neither. */

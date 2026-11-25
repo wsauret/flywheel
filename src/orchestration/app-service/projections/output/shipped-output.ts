@@ -3,7 +3,7 @@ import type { StreamingToolTextOp } from "../../../../infra/output/output-block-
 import { diffStreamingEntry, diffValues } from "../../../../infra/output/streaming/streaming-text-diff.js"
 import type { FrontendOutputBlock } from "../../../../protocol/runtime/app-service-types.js"
 import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
-import { appendText, editableBlock } from "../../../../protocol/client/streaming-text-edits.js"
+import { appendText, editableBlock } from "../../../../protocol/client/transcript/streaming-text-edits.js"
 import { outputCursor, type OutputBlockDelta, type OutputDelta } from "../../../../protocol/transcript/output-protocol-types.js"
 import type { HydratedOutputRange } from "../../../../protocol/transcript/transcript-protocol-types.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"

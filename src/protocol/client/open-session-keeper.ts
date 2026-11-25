@@ -1,7 +1,7 @@
 import type { FrontendEvent } from "../runtime/app-service-types.js"
-import type { RuntimeConnection } from "./connection.js"
+import type { RuntimeConnection } from "./runtime/connection.js"
 import { reconnectBackoffMs } from "../runtime/reconnect-backoff.js"
-import { lostWithLane } from "./connection-failures.js"
+import { lostWithLane } from "./runtime/connection-failures.js"
 import { isLaneBreak } from "./cursor-intake.js"
 
 /** Keeps a runner attached to every chat session this client shows.

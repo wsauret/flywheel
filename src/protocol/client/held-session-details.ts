@@ -1,9 +1,10 @@
 import { errorMessage } from "../../infra/error-message.js"
-import type { ChildSessionRow, RuntimeClient, SessionCatalogRow, SessionRow } from "../runtime/app-service-types.js"
+import type { AttachedRuntimeClient, ChildSessionRow, SessionCatalogRow, SessionRow } from "../runtime/app-service-types.js"
+import { isGlobalRuntimeInvalidation } from "../rpc/runtime-invalidation.js"
 import type { RuntimeUiPatch } from "../runtime/runtime-ui-protocol-types.js"
 import type { RuntimeSessionDetailView } from "../session/session-detail-protocol-types.js"
 import { createReadRetry, type ReadTimers } from "./background-reads.js"
-import { lostWithLane } from "./connection-failures.js"
+import { lostWithLane } from "./runtime/connection-failures.js"
 import { createCursorIntake, isLaneBreak } from "./cursor-intake.js"
 import { releaseAfterLastRead } from "./held-read-release.js"
 
@@ -53,10 +54,10 @@ export async function resolveSessionRoute(
 /** Ordered detail held for the sessions a client shows. Each held session
  *  follows its own `session_detail` cursor from the snapshot that seeded it,
  *  so a rename, an admission change, or a deletion reaches the held view in
- *  order, and a session nobody holds costs no read. The owner routes every
- *  patch through `accept`, a lane break among them, and calls `refresh` when
- *  a new lane opens or the runtime invalidates every cursor; a break alone
- *  reads nothing. A read that fails counts toward the shared background-read
+ *  order, and a session nobody holds costs no read. It follows the client's
+ *  lanes itself: each new lane, and each invalidation of every cursor that
+ *  is not a lane break, reads every held session again; a break alone reads
+ *  nothing. A read that fails counts toward the shared background-read
  *  notice and reads again by itself after a backoff (ARCH-PROTOCOL-019); a
  *  lane break or `dispose` cancels the pending retry. */
 export interface HeldSessionDetails {
@@ -92,17 +93,14 @@ export interface HeldSessionDetails {
   /** Keeps each of `sessionIds` and its parent chain, and forgets every
    *  other hold. */
   retainChains(sessionIds: Iterable<string>): void
-  /** Reads the named held sessions again, ignoring unknown ids. With no ids,
-   * reads every held session, for a new lane or an invalidation. */
-  refresh(sessionIds?: Iterable<string>): void
-  accept(patch: RuntimeUiPatch): void
   dispose(): void
 }
 
 export interface HeldSessionDetailsOptions {
-  /** Reads snapshots and sends `session_detail.release`, which a host can
-   *  route around any limit it puts on snapshot reads. */
-  readonly client: Pick<RuntimeClient, "query" | "dispatch">
+  /** Reads snapshots, sends `session_detail.release`, which a host can
+   *  route around any limit it puts on snapshot reads, and delivers the
+   *  lanes and patches that the held details follow. */
+  readonly client: Pick<AttachedRuntimeClient, "query" | "dispatch" | "subscribe" | "onLane">
   /** Called with the held session whose view or read state changed, so a
    *  binding can wake only that session's readers. */
   readonly onChange: (sessionId: string) => void
@@ -261,6 +259,22 @@ export function createHeldSessionDetails(options: HeldSessionDetailsOptions): He
   function refreshReadings(sessionIds: Iterable<string> = readings.keys()): void {
     for (const id of sessionIds) void readings.get(id)?.refresh()
   }
+  function accept(patch: RuntimeUiPatch): void {
+    if (isLaneBreak(patch)) {
+      // A retry now would only fail with the lane; the next lane reads
+      // every held session again.
+      retry.dispose()
+      retry = makeRetry()
+      return
+    }
+    if (patch.cursor.scope === "session" && patch.cursor.domain === "session_detail") readings.get(patch.cursor.sessionId)?.accept(patch)
+  }
+  const stopLanes = options.client.onLane(() => { refreshReadings() })
+  const unsubscribe = options.client.subscribe((event) => {
+    if (event.type !== "patch") return
+    if (isGlobalRuntimeInvalidation(event.patch) && !isLaneBreak(event.patch)) refreshReadings()
+    else accept(event.patch)
+  })
   return {
     get rows() { return [...readings.values()].flatMap(({ view }) => view && view.row.kind !== "chat" ? [view.row] : []) },
     get(sessionId) { const row = rowOf(sessionId); return row?.kind === "chat" ? undefined : row },
@@ -294,17 +308,12 @@ export function createHeldSessionDetails(options: HeldSessionDetailsOptions): He
       }
       for (const id of readings.keys()) if (!retained.has(id)) forget(id)
     },
-    refresh: refreshReadings,
-    accept(patch) {
-      if (isLaneBreak(patch)) {
-        // A retry now would only fail with the lane; the next lane reads
-        // every held session again.
-        retry.dispose()
-        retry = makeRetry()
-        return
-      }
-      if (patch.cursor.scope === "session" && patch.cursor.domain === "session_detail") readings.get(patch.cursor.sessionId)?.accept(patch)
+    dispose() {
+      disposed = true
+      stopLanes()
+      unsubscribe()
+      retry.dispose()
+      for (const id of readings.keys()) forget(id)
     },
-    dispose() { disposed = true; retry.dispose(); for (const id of readings.keys()) forget(id) },
   }
 }

@@ -1,4 +1,4 @@
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import { createReadRetry } from "../../../../../src/protocol/client/background-reads.js"
 import { createCursorIntake, isLaneBreak } from "../../../../../src/protocol/client/cursor-intake.js"
 import { rolesCursor, type RoleAssignmentView } from "../../../../../src/protocol/auth/role-protocol-types.js"

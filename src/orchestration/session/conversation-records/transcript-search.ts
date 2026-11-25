@@ -6,7 +6,7 @@ import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact 
 import { countTranscriptIndex, indexedToolUseId, rankConversationsByBestMessage, searchTranscriptIndex, type TranscriptIndexHit } from "../../../infra/store/conversation-recall-search.js"
 import type { ChatSearchRequest, ChatSearchResult, FoundChat, TranscriptSearchHit, TranscriptSearchRequest, TranscriptSearchResult } from "../../../protocol/transcript/transcript-protocol-types.js"
 import type { ReplayedSession } from "../metadata/schemas.js"
-import { contentSearchable } from "../../../protocol/client/chat-content-search.js"
+import { contentSearchable } from "../../../protocol/client/search/chat-content-search.js"
 import { buildFtsMatch, typedWordIsPrefix } from "./conversation-recall.js"
 import { parseConversationCheckpointFact } from "../persistence/conversation-checkpoint-facts.js"
 import { parseConversationTreeFact } from "../conversation/conversation-facts.js"

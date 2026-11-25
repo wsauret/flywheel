@@ -1,6 +1,6 @@
 import { batch, createEffect, createMemo, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
-import { workflowAgentModel, workflowAgentMove, type WorkflowAgentTarget } from "../../../../src/protocol/client/workflow-agent.js"
-import { workflowParked, workflowStateLabel } from "../../../../src/protocol/client/session-controls.js"
+import { workflowAgentModel, workflowAgentMove, type WorkflowAgentTarget } from "../../../../src/protocol/client/workflow/workflow-agent.js"
+import { workflowRunState } from "../../../../src/protocol/client/workflow/workflow-card.js"
 import { LEVEL_KEY, SESSION_KEY, pushedOver, sessionOf, type HistoryEntryState } from "../../app/screens/screen-stack.js"
 import type { WorkflowReading } from "./inspection.js"
 import type { SessionSummary } from "../../client/session/view-state.js"
@@ -75,9 +75,7 @@ function entry(state: unknown, place: WorkflowPlace | undefined, shown: string |
   return { ...(state instanceof Object ? state : {}), [LEVEL_KEY]: place, [SESSION_KEY]: shown }
 }
 export function workflowCut(reading: WorkflowReading) {
-  const detail = reading.detail
-  const parked = workflowParked(reading.live, detail)
-  return workflowStateLabel(reading.view?.attemptsStatus === "loaded" ? reading.view.state : undefined, detail, parked)
+  return workflowRunState(reading.view?.attemptsStatus === "loaded" ? reading.view.state : undefined, reading.detail, reading.live).label
 }
 
 /** Where the person is in a workflow's views: the place of the history entry

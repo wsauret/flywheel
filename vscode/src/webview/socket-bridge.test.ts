@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 
-import type { HostMessage } from "../../../src/protocol/client/editor-host.js"
+import type { HostMessage } from "../../../src/protocol/client/host/editor-host.js"
 import { SocketBridge } from "./socket-bridge.js"
 
 /** One account service that answers every attach with `answer` and records what it received. */

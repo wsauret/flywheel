@@ -5,7 +5,7 @@ import type { WebModuleClient } from "../../web-module-client.js"
 import { WorkflowsProvider, type WorkflowsClient } from "./context.js"
 import { WorkflowActivity } from "./activity.js"
 import { createSignal } from "solid-js"
-import type { WorkflowCardChoices } from "../../../../src/protocol/client/workflow-card.js"
+import type { WorkflowCardChoices } from "../../../../src/protocol/client/workflow/workflow-card.js"
 
 /** Mounts module activity through the same extension slot the ordinary transcript uses. */
 export function mountWorkflowActivity(initial: Extract<FrontendOutputBlock, { kind: "agentGroup" }>, options?: Pick<WorkflowsClient, "subscribe"> & Partial<Pick<WorkflowsClient, "control">>) {

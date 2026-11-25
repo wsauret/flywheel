@@ -3,7 +3,7 @@ import { createEffect, createSignal, ErrorBoundary, For, on, onCleanup, onMount,
 import { Dynamic } from "solid-js/web"
 import { webModuleEnabled, type WebModule } from "../web-module.js"
 
-import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import { createSurfaceOpener, type CaptureSurfaceOpener, type SurfaceOpening } from "../../../src/protocol/client/surface-presentation.js"
 import type { ClientActions } from "../client/actions.js"
 import { actionKey } from "../client/action-key.js"
@@ -11,7 +11,7 @@ import type { ReadingPlace } from "../client/input/reading-place.js"
 import type { RuntimeSession } from "../client/session/session.js"
 import { createViewProjection, summaryOf } from "../client/session/view-state.js"
 import { createQuestionPager } from "../client/questions/question-pager.js"
-import type { ClientCommand, ClientSheetId, SheetFocus } from "../../../src/protocol/client/host-contract.js"
+import type { ClientCommand, ClientSheetId, SheetFocus } from "../../../src/protocol/client/host/host-contract.js"
 import { createWebSurfaces } from "./sheets/commands/surfaces.js"
 import type { ClientHost } from "../host.js"
 import type { ModuleId } from "../../../src/protocol/runtime/module-ids.js"
@@ -131,8 +131,7 @@ export function App(props: AppProps) {
   const lifetime = new AbortController()
   const composerReturns = createComposerReturns({
     client: props.connection,
-    ownsSubmission: (id) => props.session.ownsSubmission(id),
-    settled: (ids) => props.session.settleReturned(ids),
+    submissions: () => props.session.submissions,
     append: (sessionId, item) => { composer?.appendInput(sessionId, item.input); report("info", `${item.sourceName} finished. Its unread message is in the parent chat transcript and composer.`) },
     report: (message) => report("warning", message),
   })

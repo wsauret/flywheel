@@ -1,5 +1,5 @@
 import type { RuntimeExecutorState, RuntimeServiceState, SessionCatalogError, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import { createFamilyIntake } from "../../../../../src/protocol/client/family-intake.js"
 import { mergeCatalogRow } from "../../../../../src/protocol/client/known-totals.js"
 import { sessionCursor, workspaceDomainCursor, type RuntimeUiPatch } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"

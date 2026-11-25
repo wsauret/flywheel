@@ -1,4 +1,4 @@
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import { createHeldView } from "../../../../../src/protocol/client/held-view.js"
 import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../../../../src/protocol/git/git-ai-attribution-protocol-types.js"
 import { updatesCursor, type UpdateStatusView } from "../../../../../src/protocol/runtime/update-protocol-types.js"

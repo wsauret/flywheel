@@ -1,6 +1,6 @@
 import { createComponent } from "solid-js"
 
-import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
+import { RuntimeLaneLost } from "../../../../src/protocol/client/runtime/connection-failures.js"
 import type { UsageAccountsResult, UsageMutationResult, UsageSpendResult } from "../../../../src/protocol/modules/subscription-usage.js"
 import { fakeLanes } from "../../../../tests/helpers/fake-lanes.js"
 import { mountClientSheet } from "../../test-support/budget-render-fixture.js"

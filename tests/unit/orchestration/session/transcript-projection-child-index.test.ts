@@ -28,7 +28,7 @@ import { publishTestWorkflow, startTestWorkflowMember } from "./_session-manager
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold"
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition"
 import { composeControlRestatement } from "../../../../src/workflows/vm/control/companions"
-import { workflowCardHeaderParts } from "../../../../src/protocol/client/workflow-card"
+import { workflowCardHeaderParts } from "../../../../src/protocol/client/workflow/workflow-card"
 import { Schema } from "effect"
 import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript/transcript-protocol-schemas"
 import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"

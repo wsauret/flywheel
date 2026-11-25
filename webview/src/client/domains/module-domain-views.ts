@@ -1,6 +1,6 @@
 import type { RuntimeHealth } from "../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
-import { MODULE_DOMAIN_BINDINGS, moduleDomainReader, type ModuleDomainBinding } from "../../../../src/protocol/client/module-domain.js"
+import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
+import { MODULE_DOMAIN_BINDINGS, moduleDomainReader, type ModuleDomainBinding } from "../../../../src/protocol/client/modules/module-domain.js"
 import type { DomainReader } from "../../../../src/protocol/protocol-module.js"
 import { PROTOCOL_MODULE_SESSION_DOMAINS, PROTOCOL_MODULE_WORKSPACE_DOMAINS, type ProtocolModuleDomainName, type ProtocolModuleSessionDomain, type ProtocolModuleView, type ProtocolModuleWorkspaceDomain } from "../../../../src/protocol/modules.js"
 import { createModuleDomainMonitor, type ModuleDomainMonitor } from "./module-domain-monitor.js"

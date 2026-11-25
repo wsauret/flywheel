@@ -19,7 +19,7 @@ import type { GitAiAttributionService } from "../../../../../../../src/orchestra
 import { temporaryDirectories } from "../../../../../../helpers/directories.js";
 import { makeMockOwnedProcess, type MergeFileFake, type OwnedExit } from "../_bash-fixtures.js";
 import { bashMutationHarness, settled } from "./_bash-mutations-harness.js";
-import { conflictMarkersNotice, notAppliedNotice } from "../../../../../../../src/protocol/client/file-change-body.js";
+import { conflictMarkersNotice, notAppliedNotice } from "../../../../../../../src/protocol/client/transcript/file-change-body.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../../src/infra/store/event-store-types.js";
 import { undoSessionChanges } from "../../../../../../../src/orchestration/app-service/projections/changes/session-undo.js";
 import { RetainedFileEditAuthority } from "../../../../../../../src/orchestration/agent-runtime/tools/file-edits/retained-file-edit-host.js";

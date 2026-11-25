@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test"
 import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createHeldView, type HeldView } from "../../../../src/protocol/client/held-view.js"
 import { createResidency, type ResidentLanes } from "../../../../src/protocol/client/residency.js"
-import { createTranscriptStore, type TranscriptStore } from "../../../../src/protocol/client/transcript-store.js"
+import { createTranscriptStore, type TranscriptStore } from "../../../../src/protocol/client/transcript/transcript-store.js"
 import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import { updatesCursor } from "../../../../src/protocol/runtime/update-protocol-types.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
-import { deltaPatch, fakeConnection, SESSION, settle, textBlock } from "./_transcript-store-fixtures.js"
+import { deltaPatch, fakeConnection, SESSION, settle, textBlock } from "./transcript/_transcript-store-fixtures.js"
 
 interface Bundle { readonly id: string; readonly lanes: ResidentLanes }
 

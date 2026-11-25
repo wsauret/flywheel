@@ -3,6 +3,7 @@ import { RpcClientError } from "effect/rpc"
 import { Socket } from "effect/socket"
 import type { FrontendMutation, MutationResult } from "../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
+import { FANOUT, FANOUT_COMPLETED, fanoutView } from "./workflow/_workflow-card-fixtures.js"
 import {
   dispatchInterrupt,
   isInterruptible,
@@ -106,9 +107,11 @@ describe("session controls", () => {
     expect(workflowCardControls(both, true, false)).toEqual({ primary: "interrupt", resumeFailed: false, stop: true })
     expect(workflowCardControls(both, true, true)).toEqual({ primary: "resume", resumeFailed: false, stop: true })
     // A failed agent's Resume shows beside the Interrupt of its running siblings.
-    expect(workflowCardControls(both, true, false, true)).toEqual({ primary: "interrupt", resumeFailed: true, stop: true })
-    expect(workflowCardControls(both, true, true, true)).toEqual({ primary: "resume", resumeFailed: false, stop: true })
-    expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.interrupt", "workflow.delete"] }, true, false, true)).toEqual({ primary: "interrupt", resumeFailed: false, stop: true })
+    const failing = fanoutView(FANOUT.reviewsFailing)
+    expect(workflowCardControls(both, true, false, failing)).toEqual({ primary: "interrupt", resumeFailed: true, stop: true })
+    expect(workflowCardControls(both, true, false, fanoutView(FANOUT_COMPLETED))).toEqual({ primary: "interrupt", resumeFailed: false, stop: true })
+    expect(workflowCardControls(both, true, true, failing)).toEqual({ primary: "resume", resumeFailed: false, stop: true })
+    expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.interrupt", "workflow.delete"] }, true, false, failing)).toEqual({ primary: "interrupt", resumeFailed: false, stop: true })
     expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.interrupt", "workflow.delete"] }, true, true)).toEqual({ resumeFailed: false, stop: true })
     expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.resume", "workflow.delete"] }, false, false)).toEqual({ primary: "resume", resumeFailed: false, stop: false })
     expect(workflowCardControls(undefined, false, false)).toEqual({ resumeFailed: false, stop: false })

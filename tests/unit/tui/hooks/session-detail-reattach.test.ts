@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import { createRuntimeConnection } from "../../../../src/protocol/client/connection.js"
+import { createRuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
 import { createSessionDetailCache } from "../../../../src/tui/adapters/session-detail-cache.js"
-import { heartbeatRuntime, heldBackoff, waitFor } from "../../protocol/client/_connection-fixtures.js"
+import { heartbeatRuntime, heldBackoff, waitFor } from "../../protocol/client/runtime/_connection-fixtures.js"
 
 /** A detail hold over a real connection, across the reattach that the
  *  connection's lane rules shape. */

@@ -12,10 +12,10 @@ import { createQuestionInteractions, QuestionPanel } from "../../app/composer/qu
 import { SessionNotices } from "../../app/sessions/session-notices.js"
 import { ProviderModelsSheet } from "../../app/sheets/providers/provider-models-sheet.js"
 import { AgentHeader } from "./screen/agent-header.js"
-import type { WorkflowAgentModel } from "../../../../src/protocol/client/workflow-agent.js"
+import type { WorkflowAgentModel } from "../../../../src/protocol/client/workflow/workflow-agent.js"
 import { WorkflowCard } from "./card.js"
-import { workflowCard } from "../../../../src/protocol/client/workflow-card.js"
-import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
+import { workflowCard } from "../../../../src/protocol/client/workflow/workflow-card.js"
+import { workflowOutline } from "../../../../src/protocol/client/workflow/workflow-outline.js"
 import { ToolbarBadges } from "../../app/toolbar/toolbar-badges.js"
 import { SettingsSheet } from "../../app/sheets/settings/settings-sheet.js"
 import { StatusSheet } from "../../app/sheets/workspace/status-sheet.js"
@@ -361,7 +361,7 @@ export function mountWorkflowAgent() {
     const root = createElement("root")
     const [state, setState] = createSignal(fakeViewState({ sessionId: "workflow", interruptible: false, windowCurrent: true }))
     const [live, setLive] = createSignal<readonly WorkflowAgentLive[]>([])
-    const [model, setModel] = createSignal<WorkflowAgentModel>({ agentNodeId: "leaf", follow: true, attemptId: "attempt", kind: "list", phaseId: "map", position: "1/1", state: "running", stateText: "running", emptyText: "No output yet", label: "alpha", definitionId: "work", name: "Agent", running: true, current: true, history: [] })
+    const [model, setModel] = createSignal<WorkflowAgentModel>({ agentNodeId: "leaf", follow: true, attemptId: "attempt", kind: "list", phaseId: "map", next: "Next agent 1/1", state: "running", stateText: "running", emptyText: "No output yet", label: "alpha", definitionId: "work", name: "Agent", running: true, current: true, history: [] })
     let queries = 0
     const connection = fakeRuntimeConnection({ onQuery: () => { queries += 1 } })
     const actions = fakeClientActions({ working: () => false, canOpenFiles: false, openFile() {}, interrupt() {}, resume() {}, selectSession() {} }, fakeRuntimeSession(), connection)

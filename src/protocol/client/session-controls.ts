@@ -8,10 +8,10 @@
 
 import { isActiveActivity, type FrontendMutation, type RuntimeClient, type ChatSessionAction, type SessionCatalogRow, type SessionRow, type StoppedBy, type SubagentSessionAction, type WorkflowDefinitionDrift, type WorkflowSessionAction } from "../runtime/app-service-types.js"
 import type { StatusView } from "../session/status-protocol-types.js"
-import type { LoadedWorkflowView, WorkflowAgentLive } from "../session/workflow-view-protocol-types.js"
+import type { FrontendWorkflowView, LoadedWorkflowView, WorkflowAgentLive } from "../session/workflow-view-protocol-types.js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { AgentGroupBlock, PausedBy } from "../../infra/output-blocks.js"
-import { lostToCleanClose } from "./connection-failures.js"
+import { lostToCleanClose } from "./runtime/connection-failures.js"
 import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, PARTIAL_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/output/run-labels.js"
 interface WorkControlOwner {
   readonly workflowId: string
@@ -37,7 +37,7 @@ export interface SessionControls {
   readonly stop: boolean
 }
 
-type ControlRow = Pick<SessionRow, "kind" | "admittedActions"> | WorkControlOwner
+export type ControlRow = Pick<SessionRow, "kind" | "admittedActions"> | WorkControlOwner
 
 export function sessionControls(row: ControlRow | undefined): SessionControls {
   const actions: readonly SessionAction[] = row?.admittedActions ?? []
@@ -175,19 +175,20 @@ export interface WorkflowCardControls {
  *  workflow's own control is Resume; otherwise it is Interrupt, else Resume,
  *  as the row admits them. Cancel ends the parent's call, which the card's
  *  block can stop while its run goes on and the row admits while the call
- *  still waits. */
-export function workflowCardControls(row: ControlRow | undefined, inFlight: boolean, parked: boolean, failedAgents = false): WorkflowCardControls {
+ *  still waits. `view` is the workflow's view, which says whether an agent
+ *  failed. */
+export function workflowCardControls(row: ControlRow | undefined, inFlight: boolean, parked: boolean, view?: FrontendWorkflowView): WorkflowCardControls {
   const admitted = sessionControls(row)
   const primary = workflowPrimaryControl(admitted, parked)
   // While other agents run, the row admits Resume for an agent that failed
   // (PI-AGENT-072), so the card offers it beside the Interrupt.
-  const resumeFailed = primary === "interrupt" && admitted.resume && failedAgents
+  const resumeFailed = primary === "interrupt" && admitted.resume && view?.attemptsStatus === "loaded" && workflowHoldsFailedAgent(view)
   return { ...(primary === undefined ? {} : { primary }), resumeFailed, stop: inFlight || admitted.stop }
 }
 
 /** Whether an agent of the workflow failed, which a Resume runs again. */
-export function workflowHoldsFailedAgent(view: Pick<LoadedWorkflowView, "tree"> | undefined): boolean {
-  return view?.tree.nodes.some((node) => node.kind === "agent" && node.disposition === "failed") ?? false
+function workflowHoldsFailedAgent(view: Pick<LoadedWorkflowView, "tree">): boolean {
+  return view.tree.nodes.some((node) => node.kind === "agent" && node.disposition === "failed")
 }
 
 /** A parked workflow offers Resume, never Interrupt. */

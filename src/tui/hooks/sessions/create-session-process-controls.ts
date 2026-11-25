@@ -1,6 +1,6 @@
 import { errorMessage } from "../../../infra/error-message.js"
 import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
-import { toolProcess } from "../../../protocol/client/transcript-model.js"
+import { toolProcess } from "../../../protocol/client/transcript/transcript-model.js"
 import type { RowProcessControls } from "../../transcript/output-blocks/stop-affordance.js"
 import type { ShellServices, ShellSignals } from "../state/shell-state.js"
 

@@ -3,7 +3,7 @@ import { expect, test } from "bun:test"
 import { CATALOG_PALETTE_COMMANDS } from "../../../vscode/src/catalog-commands.js"
 import manifest from "../../../vscode/package.json"
 import { publishedCommands } from "../../helpers/command-catalog.js"
-import { HOST_ACTION_NAMES } from "../../../src/protocol/client/host-action-names.js"
+import { HOST_ACTION_NAMES } from "../../../src/protocol/client/host/host-action-names.js"
 
 test("each editor palette command that is a catalog command carries the catalog name", () => {
   const catalog = new Map(publishedCommands().map((command) => [command.id, command.title]))

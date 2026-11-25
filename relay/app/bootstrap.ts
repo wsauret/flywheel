@@ -1,4 +1,4 @@
-import { HOST_CONTRACT_VERSION } from "../../src/protocol/client/host-contract.js"
+import { HOST_CONTRACT_VERSION } from "../../src/protocol/client/host/host-contract.js"
 import { readNotificationAddress } from "../../src/protocol/modules/remote/notification-address.js"
 import type { PhoneBootstrap } from "../../src/protocol/modules/remote/phone-bootstrap.js"
 import { pairDevice } from "../../src/protocol/modules/remote/relay-pairing.js"

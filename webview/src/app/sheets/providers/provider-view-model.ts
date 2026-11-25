@@ -1,6 +1,6 @@
 import type { RuntimeAuthStatusSnapshotResult, RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
-import { accountStatusInput, authStatusState } from "../../../../../src/protocol/client/auth-status-state.js"
-import { accountRepairLabel, accountTitle, disconnectConsequence, paidUseEvidence } from "../../../../../src/protocol/client/provider-account-copy.js"
+import { authStatusState } from "../../../../../src/protocol/client/auth/auth-status-state.js"
+import { accountReading, disconnectConsequence, paidUseEvidence } from "../../../../../src/protocol/client/auth/provider-account-copy.js"
 import { paidModeAwaitsAnswer, subscriptionSpendConsentEnvelopeIds, type SubscriptionSpendConsentMutation } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 
 /** The provider list as the Authentication sheet shows it: every model provider,
@@ -65,16 +65,17 @@ export function buildProviderViewState(auth: RuntimeAuthView): ProviderViewState
       const accounts = provider.accounts.map((account): ProviderViewAccount => {
         const accountCorrelationId = account.accountCorrelationId
         const capability = capabilities.find((candidate) => candidate.providerId === provider.providerId && candidate.accountCorrelationId === accountCorrelationId)
-        const repair = accountRepairLabel(account)
-        const state = authStatusState(accountStatusInput(provider, account))
+        const reading = accountReading(provider, account)
+        const { repair } = reading
+        const state = authStatusState(reading.status)
         return {
           id: accountCorrelationId,
-          label: accountTitle(account),
+          label: reading.title,
           status: state === "needs-attention" ? "Needs attention" : capability === undefined ? (state === "expired" ? "Expired" : "Connected") : includedQuotaStatus(capability.providerStatus),
           ...(account.attention === undefined ? {} : { problem: account.attention.message }),
           ...(repair === undefined ? {} : { repair }),
           renamable: provider.loginProgram === undefined,
-          disconnectDetail: disconnectConsequence(provider, account),
+          disconnectDetail: reading.disconnect,
           ...(capability?.billingUrl === undefined ? {} : { billingUrl: capability.billingUrl }),
           modes: capability?.modes.map((mode): ProviderViewMode => ({
             envelopeId: mode.envelopeId,

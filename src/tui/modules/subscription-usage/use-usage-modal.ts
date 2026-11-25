@@ -1,6 +1,6 @@
 import { createEffect, createSignal, on, onCleanup, type Accessor, type JSX } from "solid-js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { explainedByConnection } from "../../../protocol/client/connection-failures.js"
+import { explainedByConnection } from "../../../protocol/client/runtime/connection-failures.js"
 import type { RuntimeAuthStatusScope, RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import { type UsageMetadataResult, type UsageAccountsQuery, type UsageAccountsResult, type UsageHistoryQuery, type UsageHistoryRange, type UsageHistoryResult, type UsageApplyResetMutation, type UsageApplyResetResult, type UsageMutationResult, type UsageOpenMutation, type UsageReadFailure, type UsageSpendQuery, type UsageSpendResult, USAGE_HISTORY_RANGES } from "../../../protocol/modules/subscription-usage.js"
 

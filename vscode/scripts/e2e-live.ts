@@ -24,7 +24,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Redacted } from "effect"
 
-import { createRuntimeConnection } from "../../src/protocol/client/connection.js"
+import { createRuntimeConnection } from "../../src/protocol/client/runtime/connection.js"
 import { nodeSocketLayer } from "../src/runtime/connection/node-socket.js"
 import { SocketBridge } from "../src/webview/socket-bridge.js"
 import { ViewBridge, postMessageSocketLayer } from "../../webview/editor/post-message-socket.js"

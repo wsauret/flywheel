@@ -2,8 +2,8 @@ import { createContext, useContext } from "solid-js"
 import type { WorkflowPlace, WorkflowAgentViewTarget } from "./navigation.js"
 import type { WorkflowInspectionSubscription, WorkflowReading } from "./inspection.js"
 import type { WebModuleClientHost } from "../../web-module-client.js"
-import type { WorkflowCardChoices } from "../../../../src/protocol/client/workflow-card.js"
-import type { WorkflowSurface } from "../../../../src/protocol/client/workflow-surface.js"
+import type { WorkflowCardChoices } from "../../../../src/protocol/client/workflow/workflow-card.js"
+import type { WorkflowSurface } from "../../../../src/protocol/client/workflow/workflow-surface.js"
 
 export interface WorkflowsClient {
   choices(key: string): WorkflowCardChoices | undefined

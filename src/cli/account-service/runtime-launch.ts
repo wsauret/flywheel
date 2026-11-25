@@ -5,7 +5,7 @@ import { lockCommandSupervisorEntry } from "../../infra/supervision/launch/comma
 import { createLauncherScope, createProcessSupervisor, guardianCommand, type LauncherContext, type ProcessSupervisor } from "../../infra/process-supervisor.js"
 import { startupTrace } from "../../infra/diagnostics/startup-trace.js"
 import type { AttachedRuntimeClient } from "../../protocol/runtime/app-service-types.js"
-import type { RuntimeIdentity as DisplayedRuntimeIdentity } from "../../protocol/client/runtime-identity.js"
+import type { RuntimeIdentity as DisplayedRuntimeIdentity } from "../../protocol/client/runtime/runtime-identity.js"
 import type { RemoteAttach } from "../../orchestration/terminal-remote.js"
 import type { TerminalAttach } from "../../tui/terminal-attach.js"
 import type { AccountRuntimeAttach } from "./runtime-attach.js"

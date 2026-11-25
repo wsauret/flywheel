@@ -8,7 +8,7 @@ import { createStartupTimeline } from "../../../infra/diagnostics/startup-timeli
 import { startupTrace } from "../../../infra/diagnostics/startup-trace.js"
 import { mergeCatalogRow } from "../../../protocol/client/known-totals.js"
 import { runtimeSnapshotScopeKey } from "../../../protocol/client/family-intake.js"
-import type { RuntimeIdentity } from "../../../protocol/client/runtime-identity.js"
+import type { RuntimeIdentity } from "../../../protocol/client/runtime/runtime-identity.js"
 import { createOrderedPatchReceiver } from "./create-ordered-patch-receiver.js"
 
 interface SessionCatalogCache {

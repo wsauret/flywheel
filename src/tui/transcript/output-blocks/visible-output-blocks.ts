@@ -1,7 +1,7 @@
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../protocol/runtime/app-service-types.js"
 import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
-import { toolRunCategoryFor, type ToolRunCategory } from "../../../protocol/client/tool-run-category.js"
-import { foldTranscript, runEnd, type ToolStretch, type TranscriptModel, type TranscriptWindow } from "../../../protocol/client/transcript-model.js"
+import { toolRunCategoryFor, type ToolRunCategory } from "../../../protocol/client/transcript/tool-run-category.js"
+import { foldTranscript, runEnd, type ToolStretch, type TranscriptModel, type TranscriptWindow } from "../../../protocol/client/transcript/transcript-model.js"
 import { messageDisclosureEntry } from "../../../protocol/client/message-sender.js"
 import type { ToolRenderEntry } from "./tool-entry-helpers.js"
 

@@ -20,7 +20,7 @@ import type { createStartupTimeline } from "../../infra/diagnostics/startup-time
 import { probeDrain, renderProbeEnabled, renderProbeFrame } from "../../infra/render-probe.js"
 import { fontInstallSummary, getFontStatus, installBundledFont } from "../terminal/font-installer.js"
 import type { AttachedRuntimeClient } from "../../protocol/runtime/app-service-types.js"
-import type { RuntimeIdentity } from "../../protocol/client/runtime-identity.js"
+import type { RuntimeIdentity } from "../../protocol/client/runtime/runtime-identity.js"
 import { ErrorComponent } from "../components/error-boundary.js"
 import { createTuiErrorReports } from "../modules.js"
 import { setExitHandler, setRendererHandoff } from "../terminal/exit.js"

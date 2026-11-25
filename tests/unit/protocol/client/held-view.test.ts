@@ -1,6 +1,6 @@
 import { describe, expect, jest, spyOn, test } from "bun:test"
 import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
-import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
+import { RuntimeLaneLost } from "../../../../src/protocol/client/runtime/connection-failures.js"
 import { RuntimeCallTimeout } from "../../../../src/protocol/rpc/runtime-client-deadlines.js"
 import { createHeldView, type HeldViewOptions } from "../../../../src/protocol/client/held-view.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"

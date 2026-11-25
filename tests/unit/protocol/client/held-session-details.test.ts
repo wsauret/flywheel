@@ -1,11 +1,11 @@
 import { describe, expect, jest, test } from "bun:test"
-import type { RuntimeClient, SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendEvent, RuntimeClient, SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import { backgroundReads, type ReadTimers } from "../../../../src/protocol/client/background-reads.js"
-import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
+import { RuntimeLaneLost } from "../../../../src/protocol/client/runtime/connection-failures.js"
 import { createHeldSessionDetails, resolveSessionRoute } from "../../../../src/protocol/client/held-session-details.js"
 import type { RuntimeUiPatch } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import type { RuntimeSessionDetailSnapshotResult, RuntimeSessionDetailView } from "../../../../src/protocol/session/session-detail-protocol-types.js"
-import { LANE_BREAK } from "../../../helpers/fake-lanes.js"
+import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
 const kindOf = (id: string): SessionRow["kind"] => id === "root" ? "chat" : id === "workflow" ? "workflow-agent" : "subagent"
@@ -35,9 +35,23 @@ function view(id: string, title = id, current = row(id, title)): RuntimeSessionD
   return { ...detail, kind: current.kind, row: current }
 }
 
-/** A detail client whose only read is the detail snapshot `answer` serves. */
-function detailClient(answer: (sessionIds: readonly string[]) => Promise<RuntimeSessionDetailSnapshotResult>, dispatch: RuntimeClient["dispatch"] = runtimeDispatch({ "session_detail.release": async () => ({ ok: true }) })): Pick<RuntimeClient, "query" | "dispatch"> {
-  return { query: runtimeQuery({ sessionDetailSnapshot: (request) => answer(request.sessionIds) }), dispatch }
+/** A detail client whose only read is the detail snapshot `answer` serves.
+ *  `deliver` publishes a patch on its lane, and `openLane` opens the next lane. */
+function detailClient(answer: (sessionIds: readonly string[]) => Promise<RuntimeSessionDetailSnapshotResult>, dispatch: RuntimeClient["dispatch"] = runtimeDispatch({ "session_detail.release": async () => ({ ok: true }) })) {
+  const lanes = fakeLanes()
+  const listeners = new Set<(event: FrontendEvent) => void>()
+  const subscribe: AttachedRuntimeClient["subscribe"] = (listener) => {
+    listeners.add(listener)
+    return () => { listeners.delete(listener) }
+  }
+  return {
+    query: runtimeQuery({ sessionDetailSnapshot: (request) => answer(request.sessionIds) }),
+    dispatch,
+    subscribe,
+    onLane: lanes.onLane,
+    deliver(patch: RuntimeUiPatch): void { for (const listener of listeners) listener({ type: "patch", patch }) },
+    openLane: lanes.open,
+  }
 }
 
 function fixture() {
@@ -105,7 +119,7 @@ function failingClient() {
 }
 
 describe("held session details", () => {
-  test("targeted refresh reads only named held sessions, not their healthy parents or unknown ids", async () => {
+  test("a new lane reads every held session again and clears a failed read's error", async () => {
     const runtime = fixture()
     const original = runtime.client.query
     let fails = false
@@ -118,36 +132,32 @@ describe("held session details", () => {
     try {
       await held.hold("leaf")
       fails = true
-      held.refresh(["leaf"])
+      runtime.client.openLane()
       await settled()
       expect(held.state("leaf")?.error).toBe("unavailable")
       fails = false
       const before = runtime.reads.length
-      held.refresh(["leaf", "unheld"])
+      runtime.client.openLane()
       await settled()
-      expect(runtime.reads.slice(before)).toEqual(["leaf"])
+      expect(runtime.reads.slice(before)).toEqual(["leaf", "workflow", "root"])
       expect(held.state("leaf")?.error).toBeUndefined()
-      expect(held.has("unheld")).toBe(false)
-      held.refresh()
-      await settled()
-      expect(runtime.reads.slice(before + 1)).toEqual(["leaf", "workflow", "root"])
     } finally { held.dispose() }
   })
   test("held workflow chains follow ordered detail without reading unseen children", async () => {
     const runtime = fixture()
     const held = createHeldSessionDetails({ client: runtime.client, onChange() {} })
     try {
-      held.accept(runtime.patch("unseen", 9, row("unseen", "Unseen")))
+      runtime.client.deliver(runtime.patch("unseen", 9, row("unseen", "Unseen")))
       expect(runtime.reads).toEqual([])
       await held.hold("leaf")
       expect(runtime.reads).toEqual(["leaf", "workflow", "root"])
       expect(held.get("workflow")?.kind).toBe("workflow-agent")
-      held.accept(runtime.patch("workflow", 1, row("workflow", "Renamed")))
+      runtime.client.deliver(runtime.patch("workflow", 1, row("workflow", "Renamed")))
       expect(held.get("workflow")?.title).toBe("Renamed")
       // A row change keeps the rest of the detail its read seeded.
       expect(held.view("workflow")).toMatchObject({ source: "durable", row: { title: "Renamed" } })
       held.retainChains(["root"])
-      held.refresh()
+      runtime.client.openLane()
       await Promise.resolve()
       expect(runtime.reads).toEqual(["leaf", "workflow", "root", "root"])
       expect(held.rows).toEqual([])
@@ -162,11 +172,11 @@ describe("held session details", () => {
       expect(await held.holdSession("leaf")).toEqual({ kind: "held" })
       expect(runtime.reads).toEqual(["leaf"])
       expect(held.state("leaf")).toEqual({ loaded: true })
-      held.accept(runtime.patch("leaf", 1, row("leaf", "Workflow member now", "workflow-agent")))
+      runtime.client.deliver(runtime.patch("leaf", 1, row("leaf", "Workflow member now", "workflow-agent")))
       await settled()
       expect(runtime.reads).toEqual(["leaf", "leaf"])
       // The read that the kind change started seeded the cursor again.
-      held.accept(runtime.patch("leaf", 1, null))
+      runtime.client.deliver(runtime.patch("leaf", 1, null))
       expect(held.view("leaf")).toBeUndefined()
       expect(held.lost("leaf")?.id).toBe("leaf")
     } finally { held.dispose() }
@@ -178,7 +188,7 @@ describe("held session details", () => {
     try {
       runtime.block()
       const first = held.hold("root")
-      held.accept(runtime.patch("root", 1, row("root", "Current")))
+      runtime.client.deliver(runtime.patch("root", 1, row("root", "Current")))
       runtime.unblock()
       await first
       expect(held.detail("root")?.title).toBe("Current")
@@ -238,7 +248,7 @@ describe("held session details", () => {
       const superseded = held.hold("child")
       await Promise.resolve()
       answer = "row"
-      held.refresh()
+      client.openLane()
       for (const release of gates) release()
       expect(await superseded).toEqual({ kind: "held" })
       expect(held.detail("child")?.title).toBe("child")
@@ -254,9 +264,9 @@ describe("held session details", () => {
       runtime.block()
       const holding = held.holdSession("leaf")
       await Promise.resolve()
-      held.accept(runtime.patch("leaf", 1, row("leaf", "early")))
+      runtime.client.deliver(runtime.patch("leaf", 1, row("leaf", "early")))
       jest.advanceTimersByTime(2_000)
-      held.accept(runtime.patch("leaf", 2, row("leaf", "later")))
+      runtime.client.deliver(runtime.patch("leaf", 2, row("leaf", "later")))
       expect(runtime.reads).toEqual(["leaf"])
       runtime.unblock()
       expect(await holding).toEqual({ kind: "held" })
@@ -276,7 +286,7 @@ describe("held session details", () => {
     const held = createHeldSessionDetails({ client, onChange() {} })
     try {
       const holding = held.holdSession("leaf")
-      held.accept(fixture().patch("leaf", 1, row("leaf", "early")))
+      client.deliver(fixture().patch("leaf", 1, row("leaf", "early")))
       expect((await holding).kind).toBe("failed")
       jest.advanceTimersByTime(2_000)
       for (let turn = 0; turn < 5; turn += 1) await Promise.resolve()
@@ -298,7 +308,7 @@ describe("held session details", () => {
       const opening = held.hold("leaf")
       await settled()
       // The next lane reads every held detail again.
-      held.refresh()
+      client.openLane()
       expect(await opening).toEqual({ kind: "held" })
       expect(diagnostics).toEqual([])
       expect(backgroundReads(client).failing).toBe(false)
@@ -335,7 +345,7 @@ describe("held session details", () => {
       await held.holdSession("leaf")
       expect(clock.pending).toBe(1)
       if (LANE_BREAK.type !== "patch") throw new Error("the lane break is a patch")
-      held.accept(LANE_BREAK.patch)
+      runtime.client.deliver(LANE_BREAK.patch)
       expect(clock.pending).toBe(0)
       // The connection's health explains a broken lane, not the notice.
       expect(backgroundReads(runtime.client).failing).toBe(false)

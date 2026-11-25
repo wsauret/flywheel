@@ -1,7 +1,7 @@
 import type { AttachedRuntimeClient } from "../runtime/app-service-types.js"
 import type { RuntimeSessionCursorIdentity, RuntimeSessionViewsResult, RuntimeUiPatch, RuntimeUiPatchPayload } from "../runtime/runtime-ui-protocol-types.js"
 import { isGlobalRuntimeInvalidation, isRuntimeInvalidationPayload } from "../rpc/runtime-invalidation.js"
-import { lostWithLane } from "./connection-failures.js"
+import { lostWithLane } from "./runtime/connection-failures.js"
 import { isLaneBreak } from "./cursor-intake.js"
 import { createFamilyIntake, runtimeSnapshotScopeKey } from "./family-intake.js"
 

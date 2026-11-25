@@ -1,4 +1,4 @@
-import type { DesktopNotice } from "../../../src/protocol/client/question-pages.js"
+import type { DesktopNotice } from "../../../src/protocol/client/questions/question-pages.js"
 import type { InlineSettingAction, SettingOutcome } from "./settings-actions.js"
 
 /** Whether this page may show operating-system notifications: the browser's

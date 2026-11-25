@@ -3,9 +3,9 @@ import { test } from "node:test"
 
 import { createRuntimeSession } from "../session/session.js"
 import type { FrontendMutation, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
 import type { CommandOutcome } from "../../../../src/protocol/commands/command-catalog-protocol-types.js"
-import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/slash-route.js"
+import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/commands/slash-route.js"
 import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 import { authView, settle } from "../../test-support/session-connection-fixture.js"
 

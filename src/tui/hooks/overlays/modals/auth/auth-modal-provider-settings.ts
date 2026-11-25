@@ -11,7 +11,7 @@ import { buildAuthRows, buildProviderOptions, type AuthView, type ProviderOption
 import type { SubscriptionSpendConsentControl } from "./use-subscription-spend-consent-control.js"
 import type { SubscriptionAccountTarget } from "./auth-modal-types.js"
 import { automaticDialogsEnabled } from "../../questions/automatic-dialogs.js"
-import { PAID_USE_SETTINGS_LOAD_FAILURE } from "../../../../../protocol/client/provider-account-copy.js"
+import { PAID_USE_SETTINGS_LOAD_FAILURE } from "../../../../../protocol/client/auth/provider-account-copy.js"
 
 type ProviderSettingsView = Extract<AuthView, { kind: "provider-settings" }>
 type PaidUseQuestionView = Extract<AuthView, { kind: "paid-use-question" }>

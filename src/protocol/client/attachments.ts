@@ -97,14 +97,6 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, "")} MB`
 }
 
-/** Base64 without a Buffer, so the same encoder runs in a browser. */
-export function bytesToBase64(bytes: Uint8Array): string {
-  let binary = ""
-  const step = 0x8000
-  for (let offset = 0; offset < bytes.length; offset += step) binary += String.fromCharCode(...bytes.subarray(offset, offset + step))
-  return btoa(binary)
-}
-
 /** How many bytes a base64 string encodes: the size a message carries. */
 export function base64ByteLength(data: string): number {
   const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0

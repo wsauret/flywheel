@@ -2,12 +2,12 @@ import { Key } from "@solid-primitives/keyed"
 import { createSignal, Show, type JSX } from "solid-js"
 
 import type { AuthProviderStatus } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
-import { formatModuleNumberList, parseModuleNumberList } from "../../../../../src/protocol/client/module-number-list.js"
+import { formatModuleNumberList, parseModuleNumberList } from "../../../../../src/protocol/client/modules/module-number-list.js"
 import { formatAutoDeleteSessionDays, parseAutoDeleteSessionDays } from "../../../../../src/protocol/client/format.js"
 import { gitAiAttributionReading } from "../../../../../src/protocol/client/git-ai-attribution-copy.js"
 import { moduleUnavailableReason } from "../../../../../src/protocol/client/capabilities.js"
-import { autoInstallOverride, persistentProcessesOverride } from "../../../../../src/protocol/client/runtime-policy-copy.js"
-import { describeUpdateStatus } from "../../../../../src/protocol/client/update-status-copy.js"
+import { autoInstallCopy, persistentProcessesCopy } from "../../../../../src/protocol/client/runtime/runtime-policy-copy.js"
+import { describeUpdateStatus } from "../../../../../src/protocol/client/runtime/update-status-copy.js"
 import { MODULE_SETTING_GROUPS, type ModuleConfigSettingControl, type ModuleProtocolRow, type RuntimeModulesView } from "../../../../../src/protocol/runtime/module-protocol-types.js"
 import { renderSettingEntries, SETTING_SECTIONS, settingCatalogRow, settingGroupHead, shownOn, type InPlaceSettingRowId, type SettingCatalogEntry, type SettingEntryIdOn, type SettingRenderers, type SettingRowId } from "../../../../../src/protocol/settings/setting-catalog.js"
 import { WRITE_SYNTAX_THEME_OPTIONS } from "../../../../../src/protocol/settings/write-syntax-theme.js"
@@ -320,7 +320,7 @@ function browserSettingParts(client: ClientContextValue, state: SettingRowState,
     "diff-colors": { kind: "choice", read: () => ({ ...shownFor("diff-colors", "diff-colors", "diffColors"), value: current().diffColors, options: [choice("theme", "Theme", { kind: "set-diff-colors", mode: "theme" }), choice("standard", "Standard", { kind: "set-diff-colors", mode: "standard" })] }) },
     "auto-install": { kind: "switch", read: () => {
       const autoInstall = client.state().update?.autoInstall
-      return { ...shownFor("auto-install", "updates", "autoInstall", autoInstall === undefined ? undefined : autoInstallOverride(autoInstall)), on: autoInstall?.persisted ?? false, disabled: false, set: () => { void state.apply({ kind: "toggle-auto-install" }) } }
+      return { ...shownFor("auto-install", "updates", "autoInstall", autoInstall === undefined ? undefined : autoInstallCopy(autoInstall).override), on: autoInstall?.persisted ?? false, disabled: false, set: () => { void state.apply({ kind: "toggle-auto-install" }) } }
     } },
     "proactive-compaction-threshold": { kind: "field", read: () => ({
       ...shownFor("proactive-compaction-threshold", "compaction", "proactiveCompactionThreshold"),
@@ -345,7 +345,7 @@ function browserSettingParts(client: ClientContextValue, state: SettingRowState,
     }) },
     "workflow-mode": { kind: "choice", read: () => ({ ...shownFor("workflow-mode", "workflow-mode"), value: current().workflowMode, options: WORKFLOWS_MODE_OPTIONS.map(({ value, label }) => choice(value, label, { kind: "set-workflow-mode", mode: value })) }) },
     "allow-persistent-processes": { kind: "switch", read: () => ({
-      ...shownFor("allow-persistent-processes", "persistent", "allowPersistentProcesses", persistentProcessesOverride(current().persistentProcesses)),
+      ...shownFor("allow-persistent-processes", "persistent", "allowPersistentProcesses", persistentProcessesCopy(current().persistentProcesses).override),
       on: current().persistentProcesses.persisted,
       disabled: false,
       set: () => { void state.apply({ kind: "toggle-persistent-processes" }) },

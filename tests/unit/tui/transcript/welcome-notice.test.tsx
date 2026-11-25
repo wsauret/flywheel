@@ -5,7 +5,7 @@ import { createSignal, type Accessor } from "solid-js"
 import { createComponent } from "solid-js/web"
 import { displayWidth } from "../../../../src/tui/terminal/text.js"
 import type { ModuleRow } from "../../../../src/protocol/protocol-module.js"
-import type { RuntimeIdentity } from "../../../../src/protocol/client/runtime-identity.js"
+import type { RuntimeIdentity } from "../../../../src/protocol/client/runtime/runtime-identity.js"
 import type { UpdateStatusView } from "../../../../src/protocol/runtime/update-protocol-types.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"

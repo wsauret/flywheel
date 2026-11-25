@@ -1,4 +1,4 @@
-import type { TranscriptStore } from "../../../../../src/protocol/client/transcript-store.js"
+import type { TranscriptStore } from "../../../../../src/protocol/client/transcript/transcript-store.js"
 import { describeFailure } from "../../format/failure-message.js"
 import type { HoldOutcome } from "../../../../../src/protocol/client/held-session-details.js"
 

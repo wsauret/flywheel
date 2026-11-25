@@ -3,7 +3,7 @@ import { describe, test } from "node:test"
 import { createMemo, createRoot } from "solid-js"
 
 import type { FrontendMutation } from "../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import { actionKey, controlActionKey } from "./action-key.js"
 import { createClientActions } from "./actions.js"
 import { createCommandRoster } from "./commands/command-choices.js"

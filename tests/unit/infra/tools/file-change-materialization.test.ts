@@ -4,7 +4,7 @@ import { OutputProjector } from "../../../../src/infra/output/projector/output-p
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
 import { StructuredOutputBuilder } from "../../../../src/infra/output/projector/structured-output-builder.js";
 import type { ToolEntry } from "../../../../src/infra/output-blocks.js";
-import { selectFileChangeBody } from "../../../../src/protocol/client/file-change-body.js";
+import { selectFileChangeBody } from "../../../../src/protocol/client/transcript/file-change-body.js";
 import { buildMutationEvidence } from "../../../../src/infra/mutation-evidence.js";
 import { createRecordingFileMutationStore } from "../../orchestration/agent-runtime/tools/_fixtures.js";
 

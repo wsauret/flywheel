@@ -4,7 +4,7 @@ import type { RuntimeConfigView } from "../../../../../src/protocol/settings/run
 import { createTranscriptVisibilityRefresh } from "../../../../../src/tui/hooks/transcript/create-transcript-visibility-refresh.js"
 import { createOutputTranscriptCache } from "../../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { configValues } from "../../modals/settings/_settings-modal-fixtures.js"
-import { fakeRuntimeClient, textBlock } from "../_output-transcript-cache-fixtures.js"
+import { fakeRuntimeClient, INSTANT_BACKOFF, textBlock } from "../_output-transcript-cache-fixtures.js"
 
 function config(revision: number, showThinking: boolean): RuntimeConfigView {
   return {
@@ -34,7 +34,6 @@ describe("transcript visibility refresh", () => {
         createTranscriptVisibilityRefresh({
           config: view,
           transcriptCache,
-          onFailure: () => { throw new Error("refresh failed") },
         })
         await flushEffects()
         const baseline = runtime.outputWindowCalls()
@@ -55,25 +54,20 @@ describe("transcript visibility refresh", () => {
     })
   })
 
-  it("reports refresh failures for each resident transcript", async () => {
+  it("marks a resident whose refresh read keeps failing as recovery-failed", async () => {
     await createRoot(async (dispose) => {
       try {
+        const runtime = fakeRuntimeClient({ foreground: [textBlock("foreground", "loaded")] })
+        const transcriptCache = createOutputTranscriptCache({ appService: runtime.client, recoveryBackoff: INSTANT_BACKOFF })
+        await transcriptCache.open("foreground")
         const [view, publish] = createSignal(config(1, false))
-        const failures: { sessionId: string; cause: unknown }[] = []
-        createTranscriptVisibilityRefresh({
-          config: view,
-          transcriptCache: {
-            residentSessionIds: () => ["foreground", "background"],
-            refresh: async () => { throw new Error("refresh failed") },
-          },
-          onFailure: (sessionId, cause) => { failures.push({ sessionId, cause }) },
-        })
+        createTranscriptVisibilityRefresh({ config: view, transcriptCache })
         await flushEffects()
 
+        runtime.failOutputWindow(10)
         publish(config(2, true))
-        await flushEffects()
-        expect(failures.map(({ sessionId }) => sessionId)).toEqual(["foreground", "background"])
-        expect(failures.every(({ cause }) => cause instanceof Error)).toBe(true)
+        for (let tick = 0; tick < 10 && transcriptCache.visibleRange("foreground")?.status.kind !== "recovery-failed"; tick++) await flushEffects()
+        expect(transcriptCache.visibleRange("foreground")?.status.kind).toBe("recovery-failed")
       } finally {
         dispose()
       }

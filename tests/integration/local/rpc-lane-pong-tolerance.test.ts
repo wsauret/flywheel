@@ -17,7 +17,7 @@ import { socketRpcServerLayer } from "../../helpers/socket-rpc-server.js"
 import { runtimeHandlers } from "../../../src/orchestration/app-service/account/connections/runtime-protocol-handlers.js"
 import { createOutputWatches } from "../../../src/orchestration/app-service/account/projects/output-watches.js"
 import { runtimeProtocolSocketServer } from "../../../src/orchestration/app-service/account/connections/runtime-protocol-socket-server.js"
-import { createRuntimeConnection } from "../../../src/protocol/client/connection.js"
+import { createRuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 
 /** The event lane's liveness is the runtime heartbeat and the client's silence
  *  deadline, and nothing else. A phone on a relay answers a request-level ping

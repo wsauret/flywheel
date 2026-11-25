@@ -1,7 +1,7 @@
 import { expect, it, spyOn } from "bun:test"
 import { createRoot } from "solid-js"
 import { Socket } from "effect/socket"
-import { UNANSWERED_ACTION } from "../../../../../src/protocol/client/runtime-fault-copy.js"
+import { UNANSWERED_ACTION } from "../../../../../src/protocol/client/runtime/runtime-fault-copy.js"
 import type { FrontendMutation, RuntimeClient } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeRemoteView } from "../../../../../src/protocol/modules/remote.js"
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"

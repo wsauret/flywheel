@@ -1,5 +1,5 @@
 import type { FrontendOutputBlock, SessionRow } from "../../src/protocol/runtime/app-service-types.js"
-import type { ProcessStatus } from "../../src/protocol/client/transcript-model.js"
+import type { ProcessStatus } from "../../src/protocol/client/transcript/transcript-model.js"
 import type { RuntimeModulesView } from "../../src/protocol/runtime/module-protocol-types.js"
 import type { WorkflowDetail } from "../../src/protocol/modules/workflows.js"
 import type { RuntimeConfigValues, RuntimeConfigView } from "../../src/protocol/settings/runtime-config-protocol-types.js"

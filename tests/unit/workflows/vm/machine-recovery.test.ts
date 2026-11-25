@@ -8,7 +8,7 @@ import { compileWorkflowControl, launchGuardrailLimits } from "../../../../src/w
 import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/control/commands.js";
 import type { DecodedWorkflowEvent, WorkflowProposalEncoding } from "../../../../src/workflows/control-facts/events.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
-import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/client/workflow-progress.js";
+import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/client/workflow/workflow-progress.js";
 import { frontendView } from "./_tree-fixtures.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../../helpers/project-definitions.js";

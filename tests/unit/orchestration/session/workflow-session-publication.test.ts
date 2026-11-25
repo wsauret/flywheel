@@ -15,7 +15,7 @@ import { commitWorkflowEvent, publishWorkerAttempt } from "../workflow-host/_wor
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog";
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/vm/recovery/workflow-view";
 import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts";
-import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent";
+import { workflowAgentModel } from "../../../../src/protocol/client/workflow/workflow-agent";
 import { readWorkflowLiveView } from "../../../../src/orchestration/modules/workflows/protocol/live-protocol";
 import { readAttemptStarts } from "../../../../src/workflows/vm/host/attempt-conversations";
 

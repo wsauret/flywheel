@@ -23,7 +23,7 @@ import { requireReducer } from "../../../../workflows/reducers/registry.js"
 import type { ReducerOutput, SelectionEntry } from "../../../../workflows/reducers/reducer.js"
 import type { FieldMap } from "../../../../workflows/output-contract/grammar.js"
 import type { CommittedWorkflowControl } from "../../../../workflows/control-facts/committed-control.js"
-import { coverageText, selectionText, roundTarget } from "../../../../protocol/client/workflow-progress.js"
+import { coverageText, selectionText, roundTarget } from "../../../../protocol/client/workflow/workflow-progress.js"
 import { prepareWorkspaceState } from "../../../workspace-state/workspace-state.js"
 import { createInstalledDefinitionRegistry } from "../../../app-service/definitions/definition-catalog.js"
 

@@ -1,7 +1,7 @@
 import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
 import type { AttachedRuntimeClient, FrontendOutputBlock } from "../runtime/app-service-types.js"
-import { lostWithLane } from "./connection-failures.js"
-import type { TranscriptChange } from "./transcript-store.js"
+import { lostWithLane } from "./runtime/connection-failures.js"
+import type { TranscriptChange } from "./transcript/transcript-store.js"
 import { returnedInputSubmissionId } from "../transcript/composer-returns.js"
 
 /** Where one message is on its way to the runtime. `waiting` is a message

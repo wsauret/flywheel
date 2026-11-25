@@ -3,7 +3,7 @@ import { createSessionStore } from "../../../../src/orchestration/session-store/
 import { createOutputProjection } from "../../../../src/orchestration/app-service/projections/output/output-projection.js"
 import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js"
 import { EventReaderService } from "../../../../src/infra/store/event-store-effect.js"
-import { applyOutputDelta, buildBlockIndex, type MutableOutputView } from "../../../../src/protocol/client/transcript-delta.js"
+import { applyOutputDelta, buildBlockIndex, type MutableOutputView } from "../../../../src/protocol/client/transcript/transcript-delta.js"
 import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/projections/output/frontend-output-blocks.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"

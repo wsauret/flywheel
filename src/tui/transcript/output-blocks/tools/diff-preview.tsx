@@ -6,7 +6,7 @@ import { diffOmittedLinesForFile } from "../../../../protocol/transcript/diff-om
 import { RGBA, ScrollBoxRenderable, StyledText, bg as stBg, fg as stFg, type BoxRenderable, type TextChunk } from "@opentui/core"
 import { renderHunk, renderTypedDiffRows, type DiffSyntaxHighlighter } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff, type Hunk, type TypedDiffRow } from "@tui/adapters/diff-parser"
-import { fileDiffFiles, removedDirectoryGroups, removedDirectoryLabel, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../../../protocol/client/file-change-body.js"
+import { fileDiffFiles, removedDirectoryGroups, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../../../protocol/client/transcript/file-change-body.js"
 import { useBlockDisclosure } from "@tui/context/transcript/block-disclosure.js"
 import type { MutationEvidence } from "../../../../infra/mutation-evidence.js"
 import { useMutationEvidence } from "@tui/context/mutation-evidence.js"
@@ -516,7 +516,7 @@ export function MutationEvidencePreview(props: {
           const toggle = useUnifiedToggle(() => true, () => disclosure.setDisclosure(directoryKey(group().directory.path), !expanded()), () => false)
           return <box flexDirection="column" flexShrink={0} marginTop={index > 0 ? 1 : 0}>
             <box flexShrink={0} {...toggle.handlers}>
-              <text fg={toggle.hovered() ? theme.text : theme.textMuted}>{`   ${removedDirectoryLabel(group().directory)} ${expanded() ? "▾" : "▸"}`}</text>
+              <text fg={toggle.hovered() ? theme.text : theme.textMuted}>{`   ${group().label} ${expanded() ? "▾" : "▸"}`}</text>
             </box>
             <Show when={expanded()}><box flexDirection="column" flexShrink={0} paddingLeft={2}><EntryDiffs indexes={group().members} /></box></Show>
           </box>

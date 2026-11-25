@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 
 import type { SourceSnapshotLocation } from "../../infra/cli-subprocess.js"
 import { decodeHolderFields, type ProcessHolder } from "../../infra/process/process-holder.js"
-import type { RuntimeIdentity as DisplayedRuntimeIdentity } from "../../protocol/client/runtime-identity.js"
+import type { RuntimeIdentity as DisplayedRuntimeIdentity } from "../../protocol/client/runtime/runtime-identity.js"
 
 /** A lane's identity record: the service that published its address. The
  *  record lives while that service serves, so a record whose holder is gone

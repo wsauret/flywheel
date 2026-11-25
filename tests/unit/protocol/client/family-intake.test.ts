@@ -1,5 +1,5 @@
 import { describe, expect, it, jest, spyOn } from "bun:test"
-import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
+import { RuntimeLaneLost } from "../../../../src/protocol/client/runtime/connection-failures.js"
 import { RuntimeCallTimeout } from "../../../../src/protocol/rpc/runtime-client-deadlines.js"
 import type { FrontendEvent, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"

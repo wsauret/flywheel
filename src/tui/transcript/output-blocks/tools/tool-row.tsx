@@ -22,7 +22,7 @@ import { chunkDisplayWidth, wrapToolRowChunks } from "./tool-row-wrap.js"
 import { processControlChunks, processorWaitChunks, rowProcessControl, rowWaitsForProcessor, type RowProcessControl, type RowProcessControls } from "../stop-affordance.js"
 import { LIVE_EXECUTION_OUTPUT_TAIL_LIMIT, tailExecutionOutputLines, type ToolRenderEntry } from "../tool-entry-helpers.js"
 import { syntaxBodyStyledText } from "@tui/components/syntax-code.js"
-import { fileChangeDetail, isShellMutationRunning, rowPresentation } from "../../../../protocol/client/file-change-body.js"
+import { fileChangeDetail, isShellMutationRunning, rowPresentation } from "../../../../protocol/client/transcript/file-change-body.js"
 import { splitLines } from "../markdown/format-token.js"
 
 const BULLET = "•"

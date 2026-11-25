@@ -7,7 +7,7 @@ import { NetAddress } from "effect/net"
 import { Socket, SocketServer } from "effect/socket"
 
 import { runtimeProtocolSocketServer } from "../../../../../../src/orchestration/app-service/account/connections/runtime-protocol-socket-server.js"
-import { socketProtocolLayer } from "../../../../../../src/protocol/client/socket-protocol.js"
+import { socketProtocolLayer } from "../../../../../../src/protocol/client/runtime/socket-protocol.js"
 import { stringRequestId } from "../../../../../../src/protocol/rpc/rpc-request-id.js"
 
 /** The runtime's server protocol lets a stream's chunks travel ahead of the

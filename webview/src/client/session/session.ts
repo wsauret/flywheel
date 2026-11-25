@@ -4,10 +4,10 @@ import type { CommandOutcome } from "../../../../src/protocol/commands/command-c
 import { isActiveActivity, type FrontendActivity, type FrontendEvent, type FrontendMutation, type RuntimeTransportHealth, type SessionCatalogRow, type SessionRow, type SessionTitlePatch } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createWorkspaceStatusViews, WORKSPACE_STATUS_DOMAINS } from "./workspace/workspace-status-views.js"
 import type { GitView } from "../../../../src/protocol/git/git-protocol-types.js"
-import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
 import { isLaneBreak } from "../../../../src/protocol/client/cursor-intake.js"
-import { runtimeHealth } from "../../../../src/protocol/client/runtime-health.js"
-import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/slash-route.js"
+import { runtimeHealth } from "../../../../src/protocol/client/runtime/runtime-health.js"
+import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/commands/slash-route.js"
 import { isGlobalRuntimeInvalidation } from "../../../../src/protocol/rpc/runtime-invalidation.js"
 import { createCommandRoster } from "../commands/command-choices.js"
 import { readWorkspaceSettings, type PanelSettings, type WorkspaceSettings } from "../session-settings.js"
@@ -29,7 +29,7 @@ import { withDetailEvidence } from "../../../../src/protocol/client/session-cont
 import { createSessionInput, NEW_CHAT_ENTRIES, type SessionInput } from "./session-input.js"
 import type { SessionNoticeSummary, SessionState } from "./session-state.js"
 import { openChat } from "../../../../src/protocol/client/chat-open.js"
-import { adoptedBlocks, type UnsentChatSubmission } from "../../../../src/protocol/client/chat-submissions.js"
+import { adoptedBlocks, type ChatSubmissions, type UnsentChatSubmission } from "../../../../src/protocol/client/chat-submissions.js"
 import { createSessionNavigation, type SessionLink, type SessionMove } from "./navigation/session-navigation.js"
 import { backgroundReads } from "../../../../src/protocol/client/background-reads.js"
 
@@ -57,9 +57,9 @@ const PANE_NOTICE_SCOPE = "client.pane-move"
  *  controls it dispatches (`SessionInput`), and its own navigation and
  *  catalog controls. */
 export interface RuntimeSession extends SessionState, SessionInput {
-  ownsSubmission(id: string): boolean
-  settleReturned(submissionIds: readonly string[]): void
-  onTranscriptChange?(listener: (sessionId: string, change: import("../../../../src/protocol/client/transcript-store.js").TranscriptChange) => void): () => void
+  /** Which returned inputs this window sent, for its composer returns. */
+  readonly submissions: Pick<ChatSubmissions, "ownsSubmission" | "settleReturned">
+  onTranscriptChange?(listener: (sessionId: string, change: import("../../../../src/protocol/client/transcript/transcript-store.js").TranscriptChange) => void): () => void
   /** Counts pane moves, including a return to the same session after navigation. */
   readonly navigationVersion: number
   /** Runs the built-in command `name` names, by id or alias, in `sessionId`.
@@ -154,7 +154,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
   let restoredNewChat = options.initialNewChat === true
   const { connection } = options
   const listeners = new Set<() => void>()
-  const transcriptListeners = new Set<(sessionId: string, change: import("../../../../src/protocol/client/transcript-store.js").TranscriptChange) => void>()
+  const transcriptListeners = new Set<(sessionId: string, change: import("../../../../src/protocol/client/transcript/transcript-store.js").TranscriptChange) => void>()
   const diagnostic = options.onDiagnostic === undefined ? {} : { onDiagnostic: options.onDiagnostic }
   backgroundReads(connection).diagnose(options.onDiagnostic, connection.reportDiagnostic)
 
@@ -454,13 +454,12 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
 
   /** Reads every workspace reading again, because the runtime may have
    *  changed any of them while this page could not hear it. The auth and
-   *  update views read themselves. */
+   *  update views and the held session details read themselves. */
   // Each lane seeds the page, and nothing reads before the first lane opens.
   // A cold load opens the session its address names beside the catalog read,
   // not after it: the connection sends the transcript read first, and the
   // open reads the settings and the seat for that session itself.
   function seedWorkspace(): void {
-    children.refresh()
     roles.refresh()
     // A seat may have changed while this page could not hear it: the shown
     // one reads now, a hidden one when it is shown.
@@ -478,7 +477,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
     if (disposed || event.type !== "patch") return
     if (isGlobalRuntimeInvalidation(event.patch)) {
       // A lane break reads nothing: the next lane reads everything.
-      if (isLaneBreak(event.patch)) { catalog.accept(event.patch); children.accept(event.patch) }
+      if (isLaneBreak(event.patch)) catalog.accept(event.patch)
       else seedWorkspace()
       return
     }
@@ -510,11 +509,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
       return
     }
     const { patch } = event
-    if (patch.cursor.domain === "session") {
-      catalog.accept(patch)
-      return
-    }
-    children.accept(patch)
+    if (patch.cursor.domain === "session") catalog.accept(patch)
   })
 
   const unsubscribeState = connection.onHealthChange((next) => {
@@ -667,8 +662,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
     async loadOlder() {
       return await visible()?.transcript.loadOlder() ?? false
     },
-    ownsSubmission: submissions.ownsSubmission,
-    settleReturned: submissions.settleReturned,
+    submissions,
     onTranscriptChange(listener) { transcriptListeners.add(listener); return () => { transcriptListeners.delete(listener) } },
     onChange(listener) {
       listeners.add(listener)

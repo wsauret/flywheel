@@ -5,7 +5,7 @@ import { webModuleEnabled, type WebModule } from "../../web-module.js"
 import { pageDomainReader } from "../../client/domains/module-domain-views.js"
 import { moduleComposerStatus } from "../../../../src/protocol/modules.js"
 import type { ModuleComposerStatus } from "../../../../src/protocol/protocol-module.js"
-import { runtimeFaultCopy, type FaultReach } from "../../../../src/protocol/client/runtime-fault-copy.js"
+import { runtimeFaultCopy, type FaultReach } from "../../../../src/protocol/client/runtime/runtime-fault-copy.js"
 import { useClient } from "../client-context.js"
 import { backgroundReads } from "../../../../src/protocol/client/background-reads.js"
 

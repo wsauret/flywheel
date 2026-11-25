@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { fileURLToPath } from "node:url"
 
-import type { RuntimeConnection } from "../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../src/protocol/client/runtime/connection.js"
 import type { ClientHandle, ClientHost } from "./host.js"
 import { importBuiltModule } from "./test-support/import-built-module.js"
 import type { RuntimeSession } from "./client/session/session.js"

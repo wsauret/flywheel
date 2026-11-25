@@ -6,7 +6,7 @@ import type { Keymap } from "../terminal/keymap/keymap.js"
 import type { BuiltInCommandContext, BuiltInCommandDefinition, FontCommandContext } from "./command-types.js"
 import type { BuiltInCommandDescriptor } from "../../protocol/commands/command-catalog-protocol-types.js"
 import { bindRuntimeCommandDefinitions } from "./runtime-command-bindings.js"
-import { commandMenuGroups } from "../../protocol/client/command-menu.js"
+import { commandMenuGroups } from "../../protocol/client/commands/command-menu.js"
 
 export async function handleFontCommand(context: FontCommandContext, action: string | undefined): Promise<void> {
   switch ((action ?? "status").toLowerCase()) {

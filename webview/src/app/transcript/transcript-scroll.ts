@@ -1,4 +1,4 @@
-import type { ReadingState } from "../../../../src/protocol/client/reading-state.js"
+import type { ReadingState } from "../../client/input/reading-state.js"
 import { rowHolding, rowIdentity, type TranscriptViewRow } from "../../client/session/residents/tool-runs.js"
 
 export interface ReaderExpansionState {

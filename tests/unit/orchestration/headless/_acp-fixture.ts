@@ -10,7 +10,7 @@ import type { UsageSessionStats } from "../../../../src/protocol/modules/subscri
 import type { PendingQuestionView } from "../../../../src/protocol/session/question-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import type { ChatSettlementOutcome, ChatTurnEnding } from "../../../../src/protocol/session/chat-settlement-protocol-types.js"
-import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
+import { RuntimeLaneLost } from "../../../../src/protocol/client/runtime/connection-failures.js"
 import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/projections/output/frontend-output-blocks.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { serveChatSettlement } from "../../../../src/orchestration/app-service/supervisor/runtime-work-settlement.js"

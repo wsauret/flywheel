@@ -45,7 +45,7 @@ const isEvidenceQuery = Schema.is(Schema.Union([MutationFilesQuerySchema, Mutati
  *  The acknowledgement stays end to end. The client sends one `Ack` for each
  *  chunk, in chunk order, only after the chunk enters its bounded stream
  *  buffer; the counterpart that keeps this contract for Flywheel's clients is
- *  `src/protocol/client/socket-protocol.ts`, and ARCH-PROTOCOL-022 states it. This
+ *  `src/protocol/client/runtime/socket-protocol.ts`, and ARCH-PROTOCOL-022 states it. This
  *  protocol reads every `Ack` itself and reports `supportsAck: false`, so
  *  `RpcServer` keeps no latch of its own and the window is the one owner of
  *  stream flow control. */

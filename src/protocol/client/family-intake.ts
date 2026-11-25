@@ -3,7 +3,7 @@ import { cursorKey, type RuntimeCursorIdentity, type RuntimeInvalidationReason, 
 import { isRuntimeInvalidationPayload, isGlobalRuntimeInvalidation } from "../rpc/runtime-invalidation.js"
 import { createCursorIntake, isLaneBreak, type CursorIntake, type RecoveryRequest } from "./cursor-intake.js"
 import { createReadRetry } from "./background-reads.js"
-import { lostWithLane } from "./connection-failures.js"
+import { lostWithLane } from "./runtime/connection-failures.js"
 
 /** Ordered intake of a family of cursors that share their authoritative reads.
  *

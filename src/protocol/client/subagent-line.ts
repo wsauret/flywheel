@@ -1,10 +1,11 @@
 import { isAgentInFlight, type AgentGroupBlock, type WorkflowAgentState } from "../../infra/output-blocks.js"
-import { agentGroupInitializing } from "./agent-group-summary.js"
+import type { RoleAssignmentView } from "../auth/role-protocol-types.js"
+import { agentGroupInitializing, agentGroupModelLabel } from "./agent-group-summary.js"
 import { formatElapsed } from "./format.js"
 import { activeTimeMs } from "./session-time.js"
 import { runStatusLabel, type ChildCardStatus } from "./session-controls.js"
-import { workflowAgentDetail, type WorkflowAgentDetail, type WorkflowCardHeaderPart } from "./workflow-card.js"
-import { workflowAgentGlyph } from "./workflow-outline.js"
+import { workflowAgentDetail, type WorkflowAgentDetail, type WorkflowCardHeaderPart } from "./workflow/workflow-card.js"
+import { workflowAgentGlyph } from "./workflow/workflow-outline.js"
 
 export interface SubagentLine {
   readonly state: WorkflowAgentState | "partial"
@@ -89,4 +90,28 @@ export function subagentHeaderParts(block: AgentGroupBlock, model: string | unde
   if (time) parts.push({ kind: "time", text: time, tone: "muted", rank: Infinity })
   if (block.totalToolCount > 0) parts.push({ kind: "operations", text: `${block.totalToolCount} ${block.totalToolCount === 1 ? "operation" : "operations"}`, tone: "muted", rank: 1 })
   return parts
+}
+
+/** What a subagent card shows: whether it still initializes, its agent line,
+ *  and its header parts. */
+export interface SubagentCard {
+  /** A card that initializes shows only its persona and goal, and offers no
+   *  open or control. */
+  readonly initializing: boolean
+  readonly line: SubagentLine
+  readonly header: readonly SubagentHeaderPart[]
+}
+
+/** The card of one subagent run. The model is the serving selection that the
+ *  child's role reading names, else the launch label. `timedHeader` puts the
+ *  line's elapsed time into the header, for a client that shows no other
+ *  time beside the card. */
+export function subagentCard(block: AgentGroupBlock, reading: { readonly roles: RoleAssignmentView | undefined; readonly child: ChildCardStatus | undefined; readonly now: number; readonly timedHeader?: boolean }): SubagentCard {
+  const served = { ...block, model: agentGroupModelLabel(block.model, reading.roles) }
+  const initializing = agentGroupInitializing(served)
+  const line = subagentLine(served, reading.child, reading.now)
+  const header = initializing
+    ? subagentHeaderParts({ ...block, model: "" }).filter(({ kind }) => kind === "persona" || kind === "goal")
+    : subagentHeaderParts(served, served.model, reading.timedHeader === true ? line.time : undefined)
+  return { initializing, line, header }
 }

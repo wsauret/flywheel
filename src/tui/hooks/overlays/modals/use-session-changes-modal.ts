@@ -1,6 +1,6 @@
 import type { Renderable, ScrollBoxRenderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, on, onCleanup, type Accessor, type JSX } from "solid-js"
-import { sessionChangesRows, type SessionChangesRow } from "../../../../protocol/client/session-changes-copy.js"
+import { sessionChangesRows, type SessionChangesRow } from "../../../../protocol/client/changes/session-changes-copy.js"
 import type { SessionChangeFile } from "../../../../protocol/session/session-changes-protocol-types.js"
 import { createListModalKeys } from "../../../components/modal/select/modal-list-keys.js"
 import { createModalScrollController } from "../../../components/modal/scroll/modal-scroll-controller.js"

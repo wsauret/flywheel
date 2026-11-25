@@ -80,7 +80,7 @@ describe("child session viewer input owner", () => {
       const returned = { noticeId: `returned-input:child:person:${id}`, sourceSessionId: "child", sourceName: "Child", input: submitted }
       const coordinator = createComposerReturns({
         client: { ...lanes, dispatch: async (claim) => { claims.push([...claim.submissionIds]); return { ok: true, kind: "claimed", items: [returned] } } },
-        ownsSubmission: submissions.ownsSubmission, settled: submissions.settleReturned,
+        submissions: () => submissions,
         append: (_parent, item) => { appended.push(item.input.text) }, report: () => {},
       })
       coordinator.own(["parent"])

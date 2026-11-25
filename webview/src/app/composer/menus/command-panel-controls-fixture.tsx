@@ -1,7 +1,7 @@
 import { createComponent, createRoot } from "solid-js"
 
 import type { ChildSessionRow, SessionCatalogRow, SessionRow } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
 import { detailView, statusView } from "../../../../../tests/helpers/runtime-views.js"
 import { fakeClient, fakeClientHost, fakePanelSettings } from "../../client-context-fixture.js"

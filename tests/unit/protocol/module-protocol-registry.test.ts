@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import type { RuntimeQuery, RuntimeQueryResult } from "../../../src/protocol/runtime/app-service-types.js"
 import { runtimeQuery } from "../../helpers/runtime-dispatch.js"
-import { MODULE_DOMAIN_BINDINGS } from "../../../src/protocol/client/module-domain.js"
+import { MODULE_DOMAIN_BINDINGS } from "../../../src/protocol/client/modules/module-domain.js"
 import { moduleHostCommand, PROTOCOL_BACKGROUND_DOMAINS, protocolBackgroundSchema } from "../../../src/protocol/modules.js"
 import type { FrontendExperimentView } from "../../../src/protocol/modules/experiments.js"
 import {

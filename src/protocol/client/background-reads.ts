@@ -1,5 +1,5 @@
 import { reconnectBackoffMs } from "../runtime/reconnect-backoff.js"
-import { explainedByConnection, lostWithLane } from "./connection-failures.js"
+import { explainedByConnection, lostWithLane } from "./runtime/connection-failures.js"
 import type { RuntimeClientDiagnostic } from "../runtime/runtime-client-diagnostics.js"
 
 interface ReadFailures {

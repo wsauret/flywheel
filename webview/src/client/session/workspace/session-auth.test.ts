@@ -4,7 +4,7 @@ import { createRuntimeSession } from "../session.js"
 import { authView, fakeConnection, provider, settle } from "../../../test-support/session-connection-fixture.js"
 import type { FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeAuthStatusSnapshotResult } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import { runtimeQuery } from "../../../../../tests/helpers/runtime-dispatch.js"
 
 test("auth intake holds early settlement patches and rejects stale ones", async () => {

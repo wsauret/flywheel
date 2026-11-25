@@ -3,7 +3,7 @@ import type { Socket } from "effect/socket"
 
 import type { FrontendMutation } from "../../src/protocol/runtime/app-service-types.js"
 import type { MachinePicker, MachinePickerSnapshot } from "../../src/protocol/modules/remote/machine-picker.js"
-import type { ChangesReviewTarget, ClientCommand, ClientSummary } from "../../src/protocol/client/host-contract.js"
+import type { ChangesReviewTarget, ClientCommand, ClientSummary } from "../../src/protocol/client/host/host-contract.js"
 import type { InputReloadStorage } from "./client/input/input-reload-checkpoint.js"
 
 /** The contract between the web client and whatever hosts it.
@@ -16,7 +16,7 @@ import type { InputReloadStorage } from "./client/input/input-reload-checkpoint.
  *  host drives. Nothing in the client asks which host it is in.
  *
  *  The shapes that cross to a host built from another tree (the summary, the
- *  commands, the review target) live in `src/protocol/client/host-contract.ts`;
+ *  commands, the review target) live in `src/protocol/client/host/host-contract.ts`;
  *  this file holds only what a host hands the client at mount. */
 
 /** Host commands the client may ask for by id.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
 import { adoptedBlocks, createChatSubmissions, undeliveredNotice, type ChatSubmissionResult, type ChatSubmissionsDeps } from "../../../../src/protocol/client/chat-submissions.js"
-import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
+import { RuntimeLaneLost } from "../../../../src/protocol/client/runtime/connection-failures.js"
 import { createComposerReturns } from "../../../../src/protocol/client/composer-returns.js"
 import type { ClaimComposerReturnsResult } from "../../../../src/protocol/transcript/composer-returns.js"
 
@@ -52,11 +52,11 @@ describe("shared chat submissions", () => {
     const requests: PromiseWithResolvers<ClaimComposerReturnsResult>[] = []
     const claimedIds: string[][] = []
     const inserted: string[] = []
-    const coordinator = createComposerReturns({ client: { ...lanes, dispatch: async (mutation) => { claimedIds.push([...mutation.submissionIds]); const request = Promise.withResolvers<ClaimComposerReturnsResult>(); requests.push(request); return request.promise } }, ownsSubmission: submissions.ownsSubmission, settled: (ids) => submissions.settleReturned(ids), append: (_id, item) => { inserted.push(item.input.text) }, report: () => {} })
+    const coordinator = createComposerReturns({ client: { ...lanes, dispatch: async (mutation) => { claimedIds.push([...mutation.submissionIds]); const request = Promise.withResolvers<ClaimComposerReturnsResult>(); requests.push(request); return request.promise } }, submissions: () => submissions, append: (_id, item) => { inserted.push(item.input.text) }, report: () => {} })
     let otherClaims = 0
     const otherInserted: string[] = []
     const otherSubmissions = submissionsOf({ dispatch: async () => ({ ok: true }) })
-    const other = createComposerReturns({ client: { ...lanes, dispatch: async () => { otherClaims++; return { ok: true, kind: "empty" } } }, ownsSubmission: otherSubmissions.ownsSubmission, settled: (ids) => otherSubmissions.settleReturned(ids), append: (_id, item) => { otherInserted.push(item.input.text) }, report: () => {} })
+    const other = createComposerReturns({ client: { ...lanes, dispatch: async () => { otherClaims++; return { ok: true, kind: "empty" } } }, submissions: () => otherSubmissions, append: (_id, item) => { otherInserted.push(item.input.text) }, report: () => {} })
     other.own(["parent"])
     coordinator.own(["parent", "other"])
     await drainMicrotasks()

@@ -6,8 +6,7 @@ import type { TranscriptResidency } from "../../transcript/transcript-store/outp
 /** Refreshes resident transcripts when server-side visibility changes require hydration or row re-estimation. */
 export function createTranscriptVisibilityRefresh(deps: {
   readonly config: Accessor<RuntimeConfigView | undefined>
-  readonly transcriptCache: Pick<TranscriptResidency, "refresh" | "residentSessionIds">
-  readonly onFailure: (sessionId: string, cause: unknown) => void
+  readonly transcriptCache: Pick<TranscriptResidency, "refreshResidents">
 }): void {
   let previousShowThinking: boolean | undefined
 
@@ -20,8 +19,6 @@ export function createTranscriptVisibilityRefresh(deps: {
     previousShowThinking = showThinking
     if (!refresh) return
 
-    for (const sessionId of deps.transcriptCache.residentSessionIds()) {
-      void deps.transcriptCache.refresh(sessionId).catch((cause: unknown) => { deps.onFailure(sessionId, cause) })
-    }
+    deps.transcriptCache.refreshResidents()
   })
 }

@@ -24,8 +24,7 @@ export function createTerminalComposerReturns(deps: {
   }
   const claims = createComposerReturns({
     client: deps.client,
-    ownsSubmission: (id) => deps.submissions().ownsSubmission(id),
-    settled: (ids) => deps.submissions().settleReturned(ids),
+    submissions: deps.submissions,
     append: (id, item) => {
       append(id, item.input)
       const title = deps.row(id)?.title ?? "the parent chat"

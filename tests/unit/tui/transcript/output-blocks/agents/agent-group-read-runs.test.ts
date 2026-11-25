@@ -6,10 +6,10 @@ import { getToolDisplay, resolveToolRowPresentation } from "../../../../../../sr
 import type { RoleAssignmentView } from "../../../../../../src/protocol/auth/role-protocol-types.js"
 import { createSignal } from "solid-js"
 import { resolvedTheme, sameColor, spanColor } from "../../../components/composer/frame/prompt-border-fixtures.js"
-import { workflowCard as foldWorkflowCard } from "../../../../../../src/protocol/client/workflow-card.js"
+import { workflowCard as foldWorkflowCard } from "../../../../../../src/protocol/client/workflow/workflow-card.js"
 import { displayWidth } from "../../../../../../src/tui/terminal/text.js"
 import type { RowProcessControls } from "../../../../../../src/tui/transcript/output-blocks/stop-affordance.js"
-import { FANOUT, FANOUT_FAILED, timedFanoutOutline, type FanoutFixture } from "../../../../protocol/client/_workflow-card-fixtures.js"
+import { FANOUT, FANOUT_FAILED, timedFanoutOutline, type FanoutFixture } from "../../../../protocol/client/workflow/_workflow-card-fixtures.js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"
 import { renderToolGroup } from "./_agent-group-render.js"
 

@@ -2,8 +2,8 @@ import { createMemo, Show, useContext } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
 import type { FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
-import { rowPresentation } from "../../../../../src/protocol/client/file-change-body.js"
-import { readRowLabel, readRowPath, type RunRow } from "../../../../../src/protocol/client/tool-run-category.js"
+import { rowPresentation } from "../../../../../src/protocol/client/transcript/file-change-body.js"
+import { readRowLabel, readRowPath, type RunRow } from "../../../../../src/protocol/client/transcript/tool-run-category.js"
 import { RowTime, TranscriptClock } from "../reading/row-time.js"
 import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"
 

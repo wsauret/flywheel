@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { Schema } from "effect"
 import { createRoot, createSignal } from "solid-js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import { projectNotificationsDomain, type ProjectNotificationEpisode } from "../../../../../src/protocol/modules/project-notifications.js"
 import { createModalScrollController } from "../../../../../src/tui/components/modal/scroll/modal-scroll-controller.js"
 import { projectNotificationsTui } from "../../../../../src/tui/modules/project-notifications/index.js"

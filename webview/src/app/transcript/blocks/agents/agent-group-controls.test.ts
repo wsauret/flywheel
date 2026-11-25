@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { jest } from "bun:test"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../../src/protocol/runtime/app-service-types.js"
-import { settle } from "../../../../../../tests/unit/protocol/client/_session-changes-fixtures.js"
+import { settle } from "../../../../../../tests/unit/protocol/client/changes/_session-changes-fixtures.js"
 import { mountAgentGroup } from "../../render-ownership-loader-fixture.js"
 
 const group: Extract<FrontendOutputBlock, { kind: "agentGroup" }> = {

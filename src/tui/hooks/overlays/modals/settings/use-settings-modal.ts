@@ -28,7 +28,7 @@ import { groupDigits, parseDigits, sanitizeDigitInput, sanitizeDigitPaste } from
 import { createGitAiAttributionRow } from "./settings-git-ai-attribution-row.js"
 import { createProviderSettingRow } from "./settings-provider-setting-row.js"
 import { createTrainingRoutesRow } from "./settings-training-routes-row.js"
-import { autoInstallSaved, persistentProcessesSaved } from "../../../../../protocol/client/runtime-policy-copy.js"
+import { autoInstallCopy, persistentProcessesCopy } from "../../../../../protocol/client/runtime/runtime-policy-copy.js"
 
 interface SettingsModalDeps {
   /** Account directories the font rows and the config writes resolve from. */
@@ -481,7 +481,7 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
         void saveRuntimePolicy({
           save: () => deps.setUpdateAutoInstall(policy.persisted, enabled),
           label: settingCatalogRow("auto-install").label,
-          success: autoInstallSaved(policy, enabled),
+          success: autoInstallCopy(policy).saved,
         })
       }),
     })],
@@ -544,7 +544,7 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
         void saveRuntimePolicy({
           save: () => deps.capabilities.setPersistentProcesses(policy.persisted, enabled),
           label: settingCatalogRow("allow-persistent-processes").label,
-          success: persistentProcessesSaved(policy, enabled),
+          success: persistentProcessesCopy(policy).saved,
         })
       }),
     })],

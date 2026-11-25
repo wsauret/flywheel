@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
-import { restartNoSuccessorReason } from "../../../../../src/protocol/client/service-restart-copy.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
+import { restartNoSuccessorReason } from "../../../../../src/protocol/client/runtime/service-restart-copy.js"
 import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"
 import { restartService } from "./service-restart.js"
 

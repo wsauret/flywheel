@@ -2,9 +2,9 @@ import { Key } from "@solid-primitives/keyed"
 import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack } from "solid-js"
 
 import type { SessionCatalogError } from "../../../../src/protocol/runtime/app-service-types.js"
-import { contentRows, contentSettled, createContentSearch, type ContentAnswer } from "../../../../src/protocol/client/chat-content-search.js"
-import { snippetParts } from "../../../../src/protocol/client/search-snippet.js"
-import { sessionTitleMatcher } from "../../../../src/protocol/client/session-title-match.js"
+import { contentResults, createContentSearch, type ContentAnswer } from "../../../../src/protocol/client/search/chat-content-search.js"
+import { snippetParts } from "../../../../src/protocol/client/search/search-snippet.js"
+import { sessionTitleMatcher } from "../../../../src/protocol/client/search/session-title-match.js"
 import type { ChatSearchRequest, ChatSearchResult, FoundChat } from "../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { formatTimeAgo } from "../../client/format/format-time.js"
 import type { SessionSummary } from "../../client/session/view-state.js"
@@ -100,15 +100,15 @@ export function SessionList(props: {
     if (props.actions.searchChats === undefined) return
     contentSearch.update(query, untrack(() => rows().map((row) => row.session.id)))
   })
+  const content = createMemo(() => contentResults(contentAnswer(), props.filter ?? "", new Set(rows().map((row) => row.session.id))))
   const found = createMemo(() => {
     const listed = new Map(props.sessions.map((session) => [session.id, session]))
-    const shown = new Set(rows().map((row) => row.session.id))
-    return contentRows(contentAnswer(), shown).flatMap((chat) => {
+    return content().chats.flatMap((chat) => {
       const session = listed.get(chat.sessionId)
       return session ? [{ chat, session }] : []
     })
   })
-  const searchingMessages = () => props.actions.searchChats !== undefined && !contentSettled(contentAnswer(), props.filter ?? "")
+  const searchingMessages = () => props.actions.searchChats !== undefined && content().searching
 
   const [tray, setTray] = createSignal<Tray | undefined>(undefined)
   let revealedSelected = false

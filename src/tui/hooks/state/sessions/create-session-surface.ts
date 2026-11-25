@@ -53,7 +53,7 @@ export interface SessionSurface {
 export interface SessionSurfaceDeps {
   readonly detailCache: SessionDetailCache
   readonly appService: Pick<RuntimeClient, "query">
-  readonly transcriptCache: OutputTranscriptCache
+  readonly transcriptCache: Pick<OutputTranscriptCache, "mount" | "loadPage">
   readonly statusCache: StatusCache
   readonly budgetCache: BudgetCache
   readonly questionCache: Pick<QuestionCache, "ensure" | "view">
@@ -66,17 +66,9 @@ export interface SessionSurfaceDeps {
   readonly onTranscriptFailure: (sessionId: string, cause: unknown) => void
 }
 
-/** What a surface reads beyond its session's detail, status, and budget. A
- *  workflow has no transcript, so its card and its agent views read none:
- *  each agent view reads its own agent's transcript. */
-export interface SessionSurfaceOptions {
-  readonly transcript?: boolean
-}
-
 /** Bind the shared session caches to one mounted transcript surface. The caller
  * owns the Solid lifetime; cleanup releases only this surface's retention. */
-export function createSessionSurface(deps: SessionSurfaceDeps, sessionId: Accessor<string | undefined>, options: SessionSurfaceOptions = {}): SessionSurface {
-  const readsTranscript = options.transcript !== false
+export function createSessionSurface(deps: SessionSurfaceDeps, sessionId: Accessor<string | undefined>): SessionSurface {
   // Only a session the catalog does not list holds detail: a child, or a
   // session that is gone. A listed chat reads its row from the catalog, so
   // the runtime reads nothing more for the chat a client shows (C5).
@@ -108,49 +100,30 @@ export function createSessionSurface(deps: SessionSurfaceDeps, sessionId: Access
     return id ? deps.row(id) ?? detail()?.row ?? null : null
   }
 
-  createEffect(() => {
-    const id = sessionId()
-    if (!id || !readsTranscript) return
-    const retention = deps.transcriptCache.retain(id)
-    let mounted = true
-    onCleanup(() => {
-      mounted = false
-      retention.release()
-    })
-    untrack(() => {
-      void deps.transcriptCache.open(id)
-        .then(() => mounted ? deps.hydrateToHead(id, () => mounted && untrack(sessionId) === id) : undefined)
-        .catch((cause: unknown) => { if (mounted) deps.onTranscriptFailure(id, cause) })
-    })
+  const lifecycleActive = () => summary()?.lifecycleState === "active"
+  const transcript = deps.transcriptCache.mount({
+    sessionId,
+    live: () => detail()?.source === "live" || lifecycleActive(),
+    lifecycleActive,
+    hydrateToHead: deps.hydrateToHead,
+    onFailure: deps.onTranscriptFailure,
   })
 
   createEffect(() => {
     const id = sessionId()
     if (!id) return
-    const active = detail()?.source === "live" || summary()?.lifecycleState === "active"
     untrack(() => {
       deps.budgetCache.ensure(id)
       deps.questionCache.ensure(id)
       deps.statusCache.ensure(id)
-      if (active && readsTranscript) deps.transcriptCache.ensure(id)
     })
-  })
-
-  let reactivationBaseline: { id: string; wasActive: boolean } | undefined
-  createEffect(() => {
-    const id = sessionId()
-    if (!id) { reactivationBaseline = undefined; return }
-    const isActive = summary()?.lifecycleState === "active"
-    const wasActive = reactivationBaseline?.id === id ? reactivationBaseline.wasActive : isActive
-    reactivationBaseline = { id, wasActive: isActive }
-    if (wasActive !== isActive && isActive && readsTranscript) untrack(() => { void deps.transcriptCache.refresh(id) })
   })
 
   const bound = <T>(read: (id: string) => T | undefined): Accessor<T | undefined> => () => {
     const id = sessionId()
     return id ? read(id) : undefined
   }
-  const outputView = bound(deps.transcriptCache.view)
+  const outputView = transcript.outputView
   const cachedStatus = bound(deps.statusCache.view)
   const status = cachedStatus
 
@@ -165,24 +138,19 @@ export function createSessionSurface(deps: SessionSurfaceDeps, sessionId: Access
   const sessionKind = () => summary()?.kind ?? detail()?.kind ?? null
   const elapsed = () => sessionActiveMs(status() ?? undefined, deps.now())
 
-  const transcript = deps.transcriptCache.bindSession(sessionId)
-
   const pager = createForegroundOutputPager({ foregroundId: sessionId, transcriptCache: deps.transcriptCache, onFailure: deps.onTranscriptFailure })
   return {
     sessionId,
     summary,
     detail,
     loadResult: remoteView,
-    transcript,
+    transcript: transcript.view,
     outputView,
     status,
     budget,
     pendingQuestion,
     streamingToolText,
-    streamingOutputChars: () => {
-      const id = sessionId()
-      return id ? deps.transcriptCache.streamingOutputChars(id) : undefined
-    },
+    streamingOutputChars: transcript.streamingOutputChars,
     agentState,
     interruptible: () => isInterruptible(status()),
     activeSubagentCount: () => status()?.activeSubagentCount ?? 0,

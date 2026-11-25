@@ -1,4 +1,4 @@
-import { formatModuleNumberList, parseModuleNumberList } from "../../../../../protocol/client/module-number-list.js"
+import { formatModuleNumberList, parseModuleNumberList } from "../../../../../protocol/client/modules/module-number-list.js"
 import type { Accessor } from "solid-js"
 import type { RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import { MODULE_SETTING_GROUPS, type BinaryModule, type ModuleConfigBooleanSettingId, type ModuleConfigNumberListControl, type ModuleConfigSettingControl, type ModuleProtocolRow, type ModuleSettingGroup, type RuntimeModulesView, type WorkflowsMode } from "../../../../../protocol/runtime/module-protocol-types.js"

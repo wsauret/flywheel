@@ -1,15 +1,25 @@
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"
-import { isShellMutationEntry, presentsAsFileChange } from "../../../../../src/protocol/client/file-change-body.js"
-import type { ReadRun } from "../../../../../src/protocol/client/tool-run-category.js"
-import type { StretchMember, ToolStretch, TranscriptModel } from "../../../../../src/protocol/client/transcript-model.js"
+import { isShellMutationEntry, presentsAsFileChange } from "../../../../../src/protocol/client/transcript/file-change-body.js"
+import type { ReadRun } from "../../../../../src/protocol/client/transcript/tool-run-category.js"
+import type { StretchMember, ToolStretch, TranscriptModel } from "../../../../../src/protocol/client/transcript/transcript-model.js"
 import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
-import { blockEnd, foldTranscript, runEnd, toolActivity, toolProcess } from "../../../../../src/protocol/client/transcript-model.js"
+import { foldTranscript, runEnd, toolActivity, toolProcess } from "../../../../../src/protocol/client/transcript/transcript-model.js"
 import { agentGroupClockRuns } from "../../../../../src/protocol/client/agent-group-summary.js"
 import { messageDisclosureEntry } from "../../../../../src/protocol/client/message-sender.js"
-import type { MutationFilesView } from "../../../../../src/protocol/client/mutation-evidence.js"
+import type { MutationFilesView } from "../../../../../src/protocol/client/transcript/mutation-evidence.js"
 
 declare const presented: unique symbol
+
+/** When a block's work ended, given when the next block starts. A call whose
+ *  work outlived it, such as a background command, ends when that work
+ *  ended; any other block ends where the next one starts. Nothing when no
+ *  later block has started. */
+function blockEnd(block: FrontendOutputBlock, nextTimestamp: number | undefined): number | undefined {
+  if (block.kind === "tool" && block.endedAt !== undefined) return block.endedAt
+  return nextTimestamp !== undefined && nextTimestamp > block.timestamp ? nextTimestamp : undefined
+}
+
 export type PresentedWebBlock = FrontendOutputBlock & { readonly [presented]: true }
 
 function presentBlock<Block extends FrontendOutputBlock>(block: Block): Block & { readonly [presented]: true } {

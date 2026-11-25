@@ -1,6 +1,6 @@
 import { createEffect, untrack } from "solid-js"
 import type { RuntimeAuthView } from "../../../../protocol/auth/auth-status-protocol-types.js"
-import { loginQuestions } from "../../../../protocol/client/auth-status-state.js"
+import { loginQuestions } from "../../../../protocol/client/auth/auth-status-state.js"
 import { automaticDialogsEnabled } from "./automatic-dialogs.js"
 
 interface LoginQuestionDeps {

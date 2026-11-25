@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { ToolStreamingTextSchema, type ProvisionalDiff } from "../../../src/infra/output-blocks.js"
-import { conflictMarkersNotice, notAppliedNotice, fileDiffFiles, rowPresentation, rowWritePolicy, selectFileChangeBody, showsShellMutationOutput } from "../../../src/protocol/client/file-change-body.js"
+import { conflictMarkersNotice, notAppliedNotice, fileDiffFiles, rowPresentation, rowWritePolicy, selectFileChangeBody, showsShellMutationOutput } from "../../../src/protocol/client/transcript/file-change-body.js"
 import { buildMutationEvidence, buildMutationFileEvidence, type MutationEvidence, type MutationFileEvidence } from "../../../src/infra/mutation-evidence.js"
 import type { FrontendToolEntry } from "../../../src/protocol/runtime/app-service-types.js"
 import { createRuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-factory.js"
@@ -10,7 +10,7 @@ import { RuntimeEventProjector } from "../../../src/infra/output/runtime-event-p
 import { createProvisionalDiffInput } from "../../../src/infra/output/streaming/provisional-diff-input.js"
 import { mutationEvidenceFixture } from "../../fixtures/mutation-evidence-fixture.js"
 import type { MutationDiff } from "../../../src/infra/mutation-diff.js"
-import type { FileWritePolicy } from "../../../src/protocol/client/file-change-body.js"
+import type { FileWritePolicy } from "../../../src/protocol/client/transcript/file-change-body.js"
 
 async function diffModels(diff: MutationDiff, expanded: boolean | ((file: { readonly id: string; readonly path?: string }) => boolean), writes: FileWritePolicy = "none") {
   const fixture = await mutationEvidenceFixture(diff)

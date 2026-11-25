@@ -1,4 +1,4 @@
-import { authStatusState, type AuthStatusInput } from "../../../protocol/client/auth-status-state.js"
+import { authStatusState, type AuthStatusInput } from "../../../protocol/client/auth/auth-status-state.js"
 
 export interface AuthStatusPresentation {
   readonly configured: boolean

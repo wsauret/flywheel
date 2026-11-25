@@ -7,7 +7,7 @@ import { createCommandDispatch } from "../../../../src/tui/commands/command-disp
 import type { CommandDeps } from "../../../../src/tui/hooks/composer/use-commands.js"
 import { useCommands } from "../../../../src/tui/hooks/composer/use-commands.js"
 import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
-import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/slash-route.js"
+import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/commands/slash-route.js"
 import { runtimeDispatch, type DispatchAnswers } from "../../../helpers/runtime-dispatch.js"
 import type { ShellServices, ShellSignals } from "../../../../src/tui/hooks/state/shell-state.js"
 import { createLauncherScope } from "../../../../src/infra/process-supervisor.js"

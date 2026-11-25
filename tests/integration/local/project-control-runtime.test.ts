@@ -14,7 +14,7 @@ import { listenInternalProcessChannel } from "../../../src/infra/process/channel
 import { resolveConversationSearchDbFile } from "../../../src/infra/paths.js"
 import { DeadlineExceeded, withDeadline } from "../../../src/infra/with-deadline.js"
 import { RuntimeProtocolRpc } from "../../../src/protocol/rpc/runtime-protocol-schemas.js"
-import { createRuntimeConnection } from "../../../src/protocol/client/connection.js"
+import { createRuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import { createProjectControlRuntime } from "../../../src/orchestration/app-service/account/projects/project-control-runtime.js"
 import { createMaintenanceQueue } from "../../../src/orchestration/app-service/background/runtime-maintenance-owner.js"
 import { runtimeProtocolSocketServer } from "../../../src/orchestration/app-service/account/connections/runtime-protocol-socket-server.js"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { moduleDomainReader } from "../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../src/protocol/client/modules/module-domain.js"
 import { EMPTY_REMOTE_VIEW, remoteDomain, remoteProtocol, REMOTE_COMMAND_NAME, REMOTE_SURFACE, type RuntimeRemoteView } from "../../../../src/protocol/modules/remote.js"
 import { moduleComposerStatus, moduleRows } from "../../../../src/protocol/modules.js"
 

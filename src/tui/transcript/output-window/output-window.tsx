@@ -36,7 +36,7 @@ import { SessionIntroBlock, type SessionIntroProps } from "../welcome-notice.js"
 import { undeliveredNotice, type LocalChatSubmission } from "../../../protocol/client/chat-submissions.js"
 import { UserMessageBlock } from "../output-blocks/messages/user-message-block.js"
 import { Button } from "../../components/controls/button.js"
-import { returnToLatestLabel, unseenMessageCount } from "../../../protocol/client/return-to-latest.js"
+import { returnToLatestLabel, unseenMessageCount } from "../../../protocol/client/transcript/return-to-latest.js"
 import type { RoleAssignmentView } from "../../../protocol/auth/role-protocol-types.js"
 import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 

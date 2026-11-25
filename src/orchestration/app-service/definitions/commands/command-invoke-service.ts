@@ -14,7 +14,7 @@ import type { CommandCatalogProjection } from "./command-catalog-projection.js"
 import type { CommandHost, CommandSession } from "./command-host.js"
 import type { DefinitionAvailabilityOwner } from "../definition-availability.js"
 import { skillMethod } from "./skill-method.js"
-import { offCommandRefusal } from "../../../../protocol/client/off-command.js"
+import { offCommandRefusal } from "../../../../protocol/client/commands/off-command.js"
 import { builtInCommandDeclarations, offCommandDescriptors } from "./kernel-commands.js"
 import type { RuntimeSupervisor } from "../../supervisor/runtime-supervisor-types.js"
 

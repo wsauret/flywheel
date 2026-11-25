@@ -1,5 +1,5 @@
 import { onCleanup, type Accessor } from "solid-js"
-import type { AgentViewKind } from "../../../protocol/client/slash-route.js"
+import type { AgentViewKind } from "../../../protocol/client/commands/slash-route.js"
 
 /** One agent transcript the terminal shows over the foreground chat. */
 interface ShownTranscript {

@@ -1,24 +1,13 @@
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { sessionChangeNamesPath, type ChangesUndoState, type SessionChangesController } from "../../../../../src/protocol/client/session-changes.js"
-import { pathInside, sessionChangeFolderLabel, sessionChangeDiffStatusLine, sessionChangePathLabel, sessionChangesRows, sessionChangeWritersLabel, undoResultLine, type SessionChangesRow } from "../../../../../src/protocol/client/session-changes-copy.js"
+import { sessionChangeNamesPath, type SessionChangesController } from "../../../../../src/protocol/client/changes/session-changes.js"
+import { pathInside, sessionChangeFileView, sessionChangeFolderLabel, sessionChangesRows, type SessionChangesRow } from "../../../../../src/protocol/client/changes/session-changes-copy.js"
 import type { SessionChangeFile, SessionChangesResult } from "../../../../../src/protocol/session/session-changes-protocol-types.js"
-import type { ChangesReviewTarget } from "../../../../../src/protocol/client/host-contract.js"
+import type { ChangesReviewTarget } from "../../../../../src/protocol/client/host/host-contract.js"
 import { changesLabel } from "../../../client/format/changes-label.js"
 import { FileDiff } from "../../transcript/blocks/text/file-diff.js"
 import { Icon, ICONS } from "../../controls/icons.js"
 import { preserveReaderAnchor, survivingReaderAnchor } from "../../transcript/transcript-scroll.js"
-
-/** The one line under a file's header while its Undo is in flight or settled.
- *  A transport failure is an unknown outcome, never a refusal. */
-function undoStateLine(undo: ChangesUndoState): string | undefined {
-  switch (undo.status) {
-    case "confirming": return undefined
-    case "submitting": return "Undoing..."
-    case "unknown": return "Undo outcome unknown; refreshing"
-    case "result": return undoResultLine(undo.result)
-  }
-}
 
 /** Shared sheet and editor-area content: every net-changed file with its
  *  header, collapsed net diff, and Undo. The controller owns proof and Undo. */
@@ -186,25 +175,15 @@ export function ChangesContent(props: {
 
   const FileSection = (file: Accessor<SessionChangeFile>, executionCwd: () => string) => {
     const fileId = () => file().fileId
-    const currentFile = () => files().find(candidate => candidate.fileId === fileId()) ?? file()
-    const label = () => sessionChangePathLabel(currentFile().path, executionCwd())
-    const diff = () => state().diffs.get(fileId())
-    const mutation = () => { const current = diff(); return current?.status === "ready" ? current.diff : undefined }
-    const moreBytes = () => { const current = diff(); return current?.status === "ready" && !current.complete }
-    const lineCounts = () => { const current = diff(); return current?.status === "ready" ? current.lineCounts : undefined }
+    const review = createMemo(() => sessionChangeFileView(controller, state(), file(), executionCwd()))
+    const currentFile = () => review().file
+    const label = () => review().label
+    const mutation = () => review().diff?.diff
+    const moreBytes = () => review().diff?.complete === false
+    const lineCounts = () => review().diff?.lineCounts
     const pathParts = createMemo(() => { const path = label(); const split = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1; return { directory: path.slice(0, split), name: path.slice(split) } })
-    const statusLine = () => { const current = diff(); return current?.status === "ready" ? undefined : sessionChangeDiffStatusLine(current) }
-    const undo = () => { const current = state().undo; return current?.fileId === fileId() ? current : undefined }
-    const resultLine = () => { const current = undo(); return current ? undoStateLine(current) : undefined }
-    const canUndo = () => { state(); return controller.canUndo(fileId()) }
-    const canConfirmUndo = () => { state(); return controller.canConfirmUndo() }
-    const undoUnavailableReason = () => { state(); return controller.undoUnavailableReason(fileId()) }
-    const viewedMutation = () => { const current = state().viewed; return current?.fileId === fileId() ? current : undefined }
-    const viewedMessage = () => {
-      const current = viewedMutation()
-      if (current?.status === "refused") return `Viewed refused: ${current.error}`
-      if (current?.status === "unknown") return "Viewed outcome unknown; refreshing"
-    }
+    const canUndo = () => review().canUndo
+    const canConfirmUndo = () => review().canConfirmUndo
     const viewed = () => currentFile().review.status === "viewed"
     const activateHeader = () => {
       if (viewed()) void controller.setViewed(fileId(), false)
@@ -219,34 +198,34 @@ export function ChangesContent(props: {
           onCopy={event => { event.clipboardData?.setData("text/plain", label()); event.preventDefault() }}>
           <span class="changes-file-directory"><bdi>{pathParts().directory}</bdi></span><span class="changes-file-name">{pathParts().name}</span>
         </span>
-        <Show when={sessionChangeWritersLabel(currentFile())}>{writers => <span class="changes-file-writers" title={currentFile().writers.map(writer => writer.title).join(", ")}>{writers()}</span>}</Show>
+        <Show when={review().writers}>{writers => <span class="changes-file-writers" title={currentFile().writers.map(writer => writer.title).join(", ")}>{writers()}</span>}</Show>
         <Show when={lineCounts()}>{counts => <span class="changes-file-counts"><span class="changes-file-change-added">+{counts().added}</span><span class="changes-file-change-removed">-{counts().removed}</span></span>}</Show>
         {/* The controller owns the one Viewed write in flight, here and in the
             editor's review, which has no actions layer; the tapped file's
             label shows that it works until the runtime answers. */}
-        <label class="changes-file-viewed" aria-busy={viewedMutation()?.status === "submitting" || undefined} onClick={event => event.stopPropagation()}>
-          <input type="checkbox" checked={viewed()} disabled={!controller.canSetViewed(fileId())}
+        <label class="changes-file-viewed" aria-busy={review().viewedSubmitting || undefined} onClick={event => event.stopPropagation()}>
+          <input type="checkbox" checked={viewed()} disabled={!review().canSetViewed}
             onChange={event => { event.stopPropagation(); void controller.setViewed(fileId(), event.currentTarget.checked) }} />
           <span>{currentFile().review.status === "unknown" ? "Review unknown" : "Viewed"}</span>
         </label>
         <button class="changes-file-undo" disabled={!canUndo()} onClick={event => { event.stopPropagation(); controller.requestUndo(fileId()) }}>Undo</button>
-        <Show when={!canUndo() && undoUnavailableReason()}>{reason => <span class="changes-file-status">{reason()}</span>}</Show>
+        <Show when={!canUndo() && review().undoUnavailableReason}>{reason => <span class="changes-file-status">{reason()}</span>}</Show>
         <Show when={pathInside(currentFile().path, executionCwd()) === undefined ? undefined : props.onOpenFile}>
           {open => <button class="changes-file-open" aria-label={`Open ${label()} in editor`} onClick={event => { event.stopPropagation(); open()(currentFile().path, executionCwd()) }} title="Open in editor"><Icon path={ICONS.arrowUpRight} /></button>}
         </Show>
       </header>
-      <Show when={viewedMessage()}>{message => <p class="changes-file-status" role="status">{message()}</p>}</Show>
-      <Show when={undo()?.status === "confirming"}>
+      <Show when={review().viewedMessage}>{message => <p class="changes-file-status" role="status">{message()}</p>}</Show>
+      <Show when={review().undo?.status === "confirming"}>
         <div class="changes-file-confirm" role="alertdialog" aria-label="Confirm Undo">
           <span>Undo all changes to {label()}?</span>
           <button aria-disabled={!canConfirmUndo() || undefined} onClick={() => { if (canConfirmUndo()) void controller.confirmUndo() }}>Confirm</button>
           <button onClick={() => controller.cancelUndo()}>Cancel</button>
-          <Show when={!canConfirmUndo()}><span role="status">{undoUnavailableReason()}</span></Show>
+          <Show when={!canConfirmUndo()}><span role="status">{review().undoUnavailableReason}</span></Show>
         </div>
       </Show>
-      <Show when={resultLine()}>{line => <p class="changes-file-status" role="status">{line()}</p>}</Show>
+      <Show when={review().undoLine}>{line => <p class="changes-file-status" role="status">{line()}</p>}</Show>
       <Show when={!viewed()}>
-      <Show when={mutation()} fallback={<p class="changes-file-status" role="status">{statusLine()}</p>}>
+      <Show when={mutation()} fallback={<p class="changes-file-status" role="status">{review().statusLine}</p>}>
         {value => <div class="changes-file-body">
           <FileDiff body={{ kind: "net", diff: value() }} moreBytes={moreBytes()} hideHeading fileExpanded={() => expanded().has(fileId())} onToggleFile={() => toggle(fileId())} />
         </div>}

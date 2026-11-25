@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import type { RuntimeLivenessPolicy } from "../../../src/protocol/runtime-liveness.js"
-import { createRuntimeConnection } from "../../../src/protocol/client/connection.js"
+import { createRuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import { accountServeSocketPath } from "../../../src/infra/paths.js"
 import { readOrCreateAccountAttachToken } from "../../../src/orchestration/app-service/account/account-attach-token.js"

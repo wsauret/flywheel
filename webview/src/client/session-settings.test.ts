@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import type { ModuleProtocolRow } from "../../../src/protocol/runtime/module-protocol-types.js"
 import { readWorkspaceSettings } from "./session-settings.js"
 import { createSeatReading } from "./session/residents/session-seat.js"

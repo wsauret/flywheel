@@ -3,7 +3,7 @@ import { RpcClientError } from "effect/rpc"
 import { Socket } from "effect/socket"
 
 import type { FrontendEvent, FrontendMutation, MutationResult } from "../../../../src/protocol/runtime/app-service-types.js"
-import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
+import { RuntimeLaneLost } from "../../../../src/protocol/client/runtime/connection-failures.js"
 import { createOpenSessionKeeper } from "../../../../src/protocol/client/open-session-keeper.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"

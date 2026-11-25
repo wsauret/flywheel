@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { paidUseQuestionFooterRows, paidUseQuestionLines, subscriptionSpendFooterRows } from "../../../../../src/tui/modals/auth/subscription-spend-consent-modal.js"
-import { paidUseEvidence } from "../../../../../src/protocol/client/provider-account-copy.js"
+import { paidUseEvidence } from "../../../../../src/protocol/client/auth/provider-account-copy.js"
 
 describe("subscription spend consent presentation", () => {
   it("presents provider evidence and inactive account controls", () => {

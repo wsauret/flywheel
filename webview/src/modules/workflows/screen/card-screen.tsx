@@ -3,10 +3,10 @@ import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack, 
 import type { LoadedWorkflowView } from "../../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { formatElapsed } from "../../../../../src/protocol/client/format.js"
 import { activeTimeMs } from "../../../../../src/protocol/client/session-time.js"
-import { workflowCardControls, workflowHoldsFailedAgent, workflowParked, workflowResumeTitle, workflowStateLabel } from "../../../../../src/protocol/client/session-controls.js"
-import { workflowCard, workflowCardChoice, workflowCardNotice, workflowCardSettled, workflowRunName, workflowViewCardStatus, type WorkflowCardChoices } from "../../../../../src/protocol/client/workflow-card.js"
-import { workflowOutline } from "../../../../../src/protocol/client/workflow-outline.js"
-import { workflowAgentOpenTarget } from "../../../../../src/protocol/client/workflow-agent.js"
+import { workflowCardControls, workflowResumeTitle } from "../../../../../src/protocol/client/session-controls.js"
+import { workflowCard, workflowCardChoice, workflowCardNotice, workflowCardSettled, workflowRunName, workflowRunState, type WorkflowCardChoices } from "../../../../../src/protocol/client/workflow/workflow-card.js"
+import { workflowOutline } from "../../../../../src/protocol/client/workflow/workflow-outline.js"
+import { workflowAgentOpenTarget } from "../../../../../src/protocol/client/workflow/workflow-agent.js"
 import { actionKey, controlActionKey } from "../../../client/action-key.js"
 import type { WorkflowAgentViewTarget } from "../navigation.js"
 import { WORKFLOW_CONTROLS, WorkflowCard } from "../card.js"
@@ -36,9 +36,10 @@ export function WorkflowCardScreen(props: {
   const sessionId = () => props.workflowId
   const row = () => props.reading().detail
   const live = () => props.reading().live
-  const parked = () => workflowParked(live(), row())
-  const status = createMemo(() => workflowViewCardStatus(props.view()?.state, row(), parked()))
-  const stateWord = () => workflowStateLabel(props.view()?.state, row(), parked())
+  const run = createMemo(() => workflowRunState(props.view()?.state, row(), live()))
+  const parked = () => run().parked
+  const status = () => run().status
+  const stateWord = () => run().label
   const outline = createMemo(() => { const view = props.view(); return view === undefined ? undefined : workflowOutline(view, stateWord(), live(), row() ?? undefined) })
   const [choices, setChoices] = createSignal<WorkflowCardChoices>()
   const card = createMemo(() => {
@@ -75,7 +76,7 @@ export function WorkflowCardScreen(props: {
     const word = stateWord() ?? ""
     return [word === "" ? "" : `${word[0]?.toUpperCase() ?? ""}${word.slice(1)}`, elapsed >= 1000 ? formatElapsed(elapsed) : ""].filter(Boolean)
   })
-  const controls = () => workflowCardControls(row(), false, parked(), workflowHoldsFailedAgent(props.view()))
+  const controls = () => workflowCardControls(row(), false, parked(), props.view())
 
   return (
     <div class="workflow-card-screen">

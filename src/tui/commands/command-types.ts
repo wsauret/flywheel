@@ -4,7 +4,7 @@ import type { Accessor } from "solid-js"
 import type { RuntimeClient, SessionInputMode } from "../../protocol/runtime/app-service-types.js"
 import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigView } from "../../protocol/settings/runtime-config-protocol-types.js"
 import type { CaptureSurfaceOpener } from "../../protocol/client/surface-presentation.js"
-import type { AgentViewKind } from "../../protocol/client/slash-route.js"
+import type { AgentViewKind } from "../../protocol/client/commands/slash-route.js"
 import type { ShellServices } from "../hooks/state/shell-state.js"
 import type { OpenSurface } from "./command-surfaces.js"
 

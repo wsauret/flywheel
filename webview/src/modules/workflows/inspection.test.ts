@@ -9,7 +9,7 @@ import type { WorkflowDetail } from "../../../../src/protocol/modules/workflows.
 import assert from "node:assert/strict"
 import { rendered } from "../../app/transcript/blocks/blocks-render-loader-fixture.js"
 import { loadSemanticRowsFixture } from "../../test-support/semantic-rows-loader-fixture.js"
-import { REVIEW_KEYS } from "../../../../tests/unit/protocol/client/_workflow-card-fixtures.js"
+import { REVIEW_KEYS } from "../../../../tests/unit/protocol/client/workflow/_workflow-card-fixtures.js"
 import { fileURLToPath } from "node:url"
 import { loadSolidFixture } from "../../test-support/solid-transform.js"
 import { importBuiltModule } from "../../test-support/import-built-module.js"

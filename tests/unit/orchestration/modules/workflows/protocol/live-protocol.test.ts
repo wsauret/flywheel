@@ -12,7 +12,7 @@ import { workflowMembershipReader } from "../../../../../../src/orchestration/se
 import type { SessionEntry } from "../../../../../../src/orchestration/session-store/types.js"
 import type { RuntimeUiPatchInput } from "../../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import type { WorkflowLiveView } from "../../../../../../src/protocol/session/workflow-view-protocol-types.js"
-import { MODULE_DOMAIN_BINDINGS } from "../../../../../../src/protocol/client/module-domain.js"
+import { MODULE_DOMAIN_BINDINGS } from "../../../../../../src/protocol/client/modules/module-domain.js"
 import { recoverWorkflowControl } from "../../../../../../src/workflows/vm/recovery/recovery.js"
 import { WORKFLOW_ROOT_FACT_TYPES } from "../../../../../../src/workflows/control-facts/workflow-root.js"
 import { temporaryDirectories } from "../../../../../helpers/directories.js"

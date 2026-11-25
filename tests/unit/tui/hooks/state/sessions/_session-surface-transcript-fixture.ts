@@ -1,42 +1,30 @@
-import type { OutputTranscriptCache } from "../../../../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"
+import type { SessionSurfaceDeps } from "../../../../../../src/tui/hooks/state/sessions/create-session-surface.js"
 
+/** A transcript cache that holds no session: these surface tests read
+ *  detail, status, and budget, never the transcript. */
 export function transcriptCache() {
-  const retained: string[] = []
-  const released: string[] = []
-  const opened: string[] = []
-  const cache: OutputTranscriptCache = {
-    isCurrent: () => false,
-    bindSession: () => ({
-      protectReader: () => {},
-      mutationEvidence: () => undefined,
-      reportProjectionFailure: (error): never => { throw error },
-      visibleRange: () => undefined,
-      visibleMessageCount: () => 0,
-      jumpToLatest: async () => {},
-      freshness: () => undefined,
-      loadAround: async () => {},
-      takeEstimateUpdates: () => [],
-      evictBefore: () => {},
-      disclosure: () => undefined,
-      setDisclosure: () => {},
-      hydrateBlockBody: () => {},
-    }),
-    view: () => undefined,
-    ensure: () => {},
-    startKnownEmpty: () => {},
-    open: async (id) => { opened.push(id) },
-    refresh: async () => {},
-    residentSessionIds: () => [],
-    loadPage: async () => "skipped",
-    retain: (id) => {
-      retained.push(id)
-      return { release: () => { released.push(id) } }
-    },
-    visibleRange: () => undefined,
-    streamingOutputChars: () => undefined,
-    historyMetadata: () => undefined,
-    disclosures: () => ({}),
-    setDisclosure: () => {},
+  return {
+    cache: {
+      mount: () => ({
+        view: {
+          protectReader: () => {},
+          mutationEvidence: () => undefined,
+          reportProjectionFailure: (error): never => { throw error },
+          visibleRange: () => undefined,
+          visibleMessageCount: () => 0,
+          jumpToLatest: async () => {},
+          freshness: () => undefined,
+          loadAround: async () => {},
+          takeEstimateUpdates: () => [],
+          evictBefore: () => {},
+          disclosure: () => undefined,
+          setDisclosure: () => {},
+          hydrateBlockBody: () => {},
+        },
+        outputView: () => undefined,
+        streamingOutputChars: () => undefined,
+      }),
+      loadPage: async () => "skipped",
+    } satisfies SessionSurfaceDeps["transcriptCache"],
   }
-  return { cache, retained, released, opened }
 }

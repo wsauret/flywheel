@@ -23,7 +23,7 @@ import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { fakeManager, fakeSessionStore } from "../../app-service/app-service-doubles.js"
 import type { DomainReader } from "../../../../../src/protocol/protocol-module.js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js"
 import { moduleProcessServices } from "../../../../helpers/module-kernel.js"
 import { refusingEventWriter } from "../../../../helpers/event-writer-doubles.js"

@@ -9,11 +9,11 @@ import {
   type BackgroundWorkRow,
   type BackgroundWorkStatus,
 } from "../session/background-index-protocol-types.js"
-import { lostWithLane } from "./connection-failures.js"
+import { lostWithLane } from "./runtime/connection-failures.js"
 import { releaseAfterLastRead } from "./held-read-release.js"
 import { formatDuration } from "./format.js"
 import { createSessionReadingFamily, type SessionReadingFamily, type SessionViewStore } from "./session-reading-family.js"
-import { workflowProgressCount } from "./workflow-progress.js"
+import { workflowProgressCount } from "./workflow/workflow-progress.js"
 import { WAITING_ON_PARENT } from "./session-controls.js"
 
 /** Active work only, or every row the chat ever started. */
@@ -103,11 +103,6 @@ const COMMAND_END_LABELS = { stopped: STOPPED_LABEL, cancelled: CANCELED_LABEL }
 /** The status of a row in the words both clients show. */
 function backgroundStatusLabel(row: BackgroundWorkRow): string {
   return row.kind === "command" && (row.status === "stopped" || row.status === "cancelled") ? COMMAND_END_LABELS[row.status] : STATUS_LABELS[row.status]
-}
-
-/** The word of a row's end control: Stop for a command, Cancel for a child. */
-export function backgroundStopWord(row: Pick<BackgroundWorkRow, "kind">): "Stop" | "Cancel" {
-  return row.kind === "command" ? "Stop" : "Cancel"
 }
 
 /** How many names of running agents a workflow row lists before it counts the rest. */

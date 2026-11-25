@@ -3,7 +3,7 @@ import type { WorkflowView } from "../../view/types.js"
 import type { WorkflowTransitionResult } from "../control/commands.js"
 import { WorkflowCommitStorageError } from "./commit-host.js"
 import { publishedDefinitionDrift, WorkflowDefinitionDriftError } from "../../control-facts/definition-identity.js"
-import { workflowDriftExplanation } from "../../../protocol/client/workflow-drift-copy.js"
+import { workflowDriftExplanation } from "../../../protocol/client/workflow/workflow-drift-copy.js"
 import {
   WorkflowAttemptRefusedError,
   WorkflowDriftEvidencePersistenceError,

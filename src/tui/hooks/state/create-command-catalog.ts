@@ -8,7 +8,7 @@ import {
   type RuntimeCommandCatalog,
 } from "../../../protocol/commands/command-catalog-protocol-types.js"
 import { createHeldView } from "../../../protocol/client/held-view.js"
-import type { CommandCatalogReadiness } from "../../../protocol/client/slash-route.js"
+import type { CommandCatalogReadiness } from "../../../protocol/client/commands/slash-route.js"
 
 export interface CommandCatalogCache extends CommandCatalogReadiness {
   /** Metadata contributed by enabled capability modules. Empty until the

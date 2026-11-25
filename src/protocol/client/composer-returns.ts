@@ -1,15 +1,16 @@
 import type { AttachedRuntimeClient, FrontendMutation } from "../runtime/app-service-types.js"
 import { returnedInputSubmissionId, type ComposerReturn, type ClaimComposerReturnsResult } from "../transcript/composer-returns.js"
-import type { TranscriptChange } from "./transcript-store.js"
-import { lostWithLane } from "./connection-failures.js"
-import { adoptedBlocks } from "./chat-submissions.js"
+import type { TranscriptChange } from "./transcript/transcript-store.js"
+import { lostWithLane } from "./runtime/connection-failures.js"
+import { adoptedBlocks, type ChatSubmissions } from "./chat-submissions.js"
 
 /** Returns input only to its sending window, then retires its sender ownership
  * after a successful claim response, including an empty or unmatched claim. */
 export function createComposerReturns(deps: {
   readonly client: Pick<AttachedRuntimeClient, "onLane"> & { dispatch(mutation: Extract<FrontendMutation, { type: "session.claim_composer_returns" }>): Promise<ClaimComposerReturnsResult> }
-  readonly ownsSubmission: (id: string) => boolean
-  readonly settled: (submissionIds: readonly string[]) => void
+  /** The window's submission owner, read when a return arrives, because a
+   *  client can build it after this. */
+  readonly submissions: () => Pick<ChatSubmissions, "ownsSubmission" | "settleReturned">
   readonly append: (sessionId: string, item: ComposerReturn) => void
   readonly report: (message: string) => void
 }) {
@@ -35,7 +36,7 @@ export function createComposerReturns(deps: {
         const result = await deps.client.dispatch({ type: "session.claim_composer_returns", sessionId, submissionIds: ids })
         if (disposed) return
         if (!result.ok) { deps.report(result.error); return }
-        deps.settled(ids)
+        deps.submissions().settleReturned(ids)
         const held = returns.get(sessionId)
         for (const id of ids) held?.delete(id)
         if (held?.size === 0) returns.delete(sessionId)
@@ -57,7 +58,7 @@ export function createComposerReturns(deps: {
       let matched = false
       for (const block of adoptedBlocks(change)) {
         const id = block.kind === "system" ? returnedInputSubmissionId(block.id) : undefined
-        if (id === undefined || !deps.ownsSubmission(id)) continue
+        if (id === undefined || !deps.submissions().ownsSubmission(id)) continue
         let ids = returns.get(sessionId)
         if (!ids) { ids = new Set(); returns.set(sessionId, ids) }
         ids.add(id)

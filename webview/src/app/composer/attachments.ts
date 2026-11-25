@@ -2,9 +2,17 @@ import { createSignal } from "solid-js"
 
 import type { ProtocolChatAttachment } from "../../../../src/protocol/runtime/app-service-types.js"
 import {
-  ACCEPTED_IMAGE_TYPES, ATTACHMENT_LIMITS, attachmentKind, attachmentMarker, attachmentRefusalMessage, base64ByteLength, bytesToBase64, decodeUtf8Text,
+  ACCEPTED_IMAGE_TYPES, ATTACHMENT_LIMITS, attachmentKind, attachmentMarker, attachmentRefusalMessage, base64ByteLength, decodeUtf8Text,
   nextAttachmentOrdinal, type AttachmentKind, type AttachmentRefusal,
 } from "../../../../src/protocol/client/attachments.js"
+
+/** Base64 without a Buffer, which a browser does not have. */
+export function bytesToBase64(bytes: Uint8Array): string {
+  let binary = ""
+  const step = 0x8000
+  for (let offset = 0; offset < bytes.length; offset += step) binary += String.fromCharCode(...bytes.subarray(offset, offset + step))
+  return btoa(binary)
+}
 
 /** An attachment waiting in the composer, with what its chip shows. */
 export interface ComposerAttachment extends ProtocolChatAttachment {

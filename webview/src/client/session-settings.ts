@@ -1,11 +1,22 @@
 import type { ModuleId } from "../../../src/protocol/runtime/module-ids.js"
-import { configProblemText } from "../../../src/protocol/client/config-problem-copy.js"
-import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
+import { configProblemText } from "../../../src/protocol/client/runtime/config-problem-copy.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import type { ModelSelectionSlot } from "../../../src/protocol/auth/model-assignment-protocol-types.js"
-import type { ModuleConfigBooleanControl, ModuleConfigNumberListControl, RuntimeModulesView } from "../../../src/protocol/runtime/module-protocol-types.js"
-import { capabilityPreset, switchableModules, type CapabilityPresetReading } from "../../../src/protocol/client/capabilities.js"
+import type { ModuleConfigBooleanControl, ModuleConfigNumberListControl, ModuleProtocolRow, RuntimeModulesView } from "../../../src/protocol/runtime/module-protocol-types.js"
+import { capabilityPreset, type CapabilityPresetReading } from "../../../src/protocol/client/capabilities.js"
 import type { WriteSyntaxThemeId } from "../../../src/protocol/settings/write-syntax-theme.js"
 import type { RuntimeServingSeat } from "../../../src/protocol/auth/role-protocol-types.js"
+
+/** The modules a person can turn on or off here: installed, with a control. */
+function switchableModules(view: Pick<RuntimeModulesView, "modules">): readonly ModuleProtocolRow[] {
+  return view.modules.filter((module) => module.installed && module.setting !== undefined)
+}
+
+/** Whether the selection has every model provider turned off. Then no
+ *  provider can be connected, and the way back is the Capabilities control. */
+export function everyProviderOff(view: Pick<RuntimeModulesView, "modules">): boolean {
+  return !view.modules.some((module) => module.effective && module.setting?.group === "Model providers")
+}
 
 /** One effort stop the chat seat can be set to, as the panel's slider shows it. */
 interface PanelEffortOption {

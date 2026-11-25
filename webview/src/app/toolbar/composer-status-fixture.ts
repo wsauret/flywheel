@@ -9,7 +9,7 @@ import { fakeClient, fakePanelSettings, fakeViewState } from "../client-context-
 import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 import type { ModuleDomainViews } from "../../client/domains/module-domain-views.js"
 import { backgroundReads, createReadRetry } from "../../../../src/protocol/client/background-reads.js"
-import type { FaultReach } from "../../../../src/protocol/client/runtime-fault-copy.js"
+import type { FaultReach } from "../../../../src/protocol/client/runtime/runtime-fault-copy.js"
 
 export function renderComposerStatus(enabled: readonly ModuleId[] | undefined, health: RuntimeHealth = { kind: "faulted", since: 1 }, views?: Partial<ModuleDomainViews>, failedReads = 0, reach?: FaultReach) {
   const connection = fakeRuntimeConnection()

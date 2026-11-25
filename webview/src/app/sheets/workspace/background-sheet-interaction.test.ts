@@ -112,6 +112,11 @@ test("Cancel asks first, then ends the row's launching call", async () => {
   const mounted = await mountBackgroundSheet(ROWS)
   try {
     await mounted.ready()
+    // A person stops a command but cancels a child.
+    assert.throws(() => mounted.click("Stop", "Reviewer"))
+    mounted.click("Stop", "bun run dev")
+    mounted.settleConfirmation(false)
+    await mounted.ready()
     mounted.click("Cancel", "Reviewer")
     await mounted.ready()
     assert.deepEqual(mounted.mutations(), [])

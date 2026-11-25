@@ -1,5 +1,5 @@
 import type { SessionRow } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import { createOpenSessionKeeper } from "../../../../../src/protocol/client/open-session-keeper.js"
 import type { Residency } from "../../../../../src/protocol/client/residency.js"
 import type { HeldSessionDetails } from "../../../../../src/protocol/client/held-session-details.js"

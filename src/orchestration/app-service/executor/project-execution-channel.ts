@@ -17,7 +17,7 @@ import type {
   RuntimeQueryResult,
 } from "../../../protocol/runtime/app-service-types.js"
 import { RuntimeCallTimeout, runtimeCallPolicies } from "../../../protocol/rpc/runtime-client-deadlines.js"
-import { decodeRuntimeEventFrame } from "../../../protocol/client/runtime-event-intake.js"
+import { decodeRuntimeEventFrame } from "../../../protocol/client/runtime/runtime-event-intake.js"
 import {
   FrontendMutationSchema,
   RuntimeQuerySchema,

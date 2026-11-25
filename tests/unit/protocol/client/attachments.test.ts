@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test"
 
 import {
-  ATTACHMENT_LIMITS, attachmentKind, attachmentMarker, attachmentRefusalMessage, base64ByteLength, bytesToBase64, decodeUtf8Text, formatBytes, nextAttachmentOrdinal,
+  ATTACHMENT_LIMITS, attachmentKind, attachmentMarker, attachmentRefusalMessage, base64ByteLength, decodeUtf8Text, formatBytes, nextAttachmentOrdinal,
 } from "../../../../src/protocol/client/attachments.js"
+import { bytesToBase64 } from "../../../../webview/src/app/composer/attachments.js"
 
 describe("attachmentKind", () => {
   it("reads images and text from the declared type", () => {

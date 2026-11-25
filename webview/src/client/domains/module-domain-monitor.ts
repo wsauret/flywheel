@@ -1,7 +1,7 @@
-import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
 import { createReadRetry, type ReadTimers } from "../../../../src/protocol/client/background-reads.js"
 import { createCursorIntake, type CursorIntake } from "../../../../src/protocol/client/cursor-intake.js"
-import type { ModuleDomainBinding } from "../../../../src/protocol/client/module-domain.js"
+import type { ModuleDomainBinding } from "../../../../src/protocol/client/modules/module-domain.js"
 
 /** One module domain's live view, for the session it follows or for the
  *  workspace, built from the domain's registry binding.

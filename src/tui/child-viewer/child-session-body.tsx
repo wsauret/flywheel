@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { AgentViewKind } from "../../protocol/client/slash-route.js"
+import type { AgentViewKind } from "../../protocol/client/commands/slash-route.js"
 import { createEffect, createSignal, onCleanup, Show, untrack, type Accessor, type JSX } from "solid-js"
 import type { TextareaRenderable } from "@opentui/core"
 import { selectPrimarySessionNotice, sessionNoticeChannel } from "../../infra/session-notice.js"

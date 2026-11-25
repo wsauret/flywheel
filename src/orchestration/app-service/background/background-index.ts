@@ -23,7 +23,7 @@ import type { BackgroundCommandRecord } from "../../../infra/runtime-facts/runti
 import type { BackgroundWorkProgress, BackgroundWorkRow, BackgroundWorkStatus } from "../../../protocol/session/background-index-protocol-types.js"
 import type { StoppedBy } from "../../../protocol/runtime/app-service-types.js"
 import type { ActiveBackgroundCommandView, ReplyWaitView } from "../../../protocol/session/status-protocol-types.js"
-import { workflowProgress } from "../../../protocol/client/workflow-progress.js"
+import { workflowProgress } from "../../../protocol/client/workflow/workflow-progress.js"
 import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { readWorkflowStatees } from "../../../workflows/view/view-store.js"
 import { readBackgroundCommands } from "../../session/runtime-facts/background-index-projection.js"

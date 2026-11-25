@@ -1,6 +1,6 @@
 import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { OutputTranscriptView, TranscriptSnapshot } from "../../../../../src/tui/transcript/transcript-store/output-transcript-cache-types.js"
-import type { MutationEvidenceReader } from "../../../../../src/protocol/client/mutation-evidence.js"
+import type { MutationEvidenceReader } from "../../../../../src/protocol/client/transcript/mutation-evidence.js"
 import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"
 import { mutationEvidenceFixture } from "../../../../fixtures/mutation-evidence-fixture.js"
 import type { ScrollBoxRenderable } from "@opentui/core"

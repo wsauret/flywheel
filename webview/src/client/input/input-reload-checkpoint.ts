@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { ReadingStateSchema } from "../../../../src/protocol/client/reading-state.js"
+import { ReadingStateSchema } from "./reading-state.js"
 import { attachmentKind } from "../../../../src/protocol/client/attachments.js"
 import type { UnsentChatSubmission } from "../../../../src/protocol/client/chat-submissions.js"
 

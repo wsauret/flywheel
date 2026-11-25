@@ -34,7 +34,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Redacted } from "effect"
 
-import { createRuntimeConnection } from "../../src/protocol/client/connection.js"
+import { createRuntimeConnection } from "../../src/protocol/client/runtime/connection.js"
 import { installedLauncherPath } from "../../src/protocol/installation.js"
 import { releaseRepository } from "../../scripts/release-contract.js"
 import { describeInstallFailure, installFlywheel } from "../src/runtime/bootstrap-install.js"

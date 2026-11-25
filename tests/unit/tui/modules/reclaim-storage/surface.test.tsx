@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { expect, test } from "bun:test"
 import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import { storageDomain, type RuntimeStorageView, type StorageReclaimResult } from "../../../../../src/protocol/modules/reclaim-storage.js"
 import type { StorageReclaimPreview } from "../../../../../src/protocol/store-reclaim.js"
 import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"

@@ -4,7 +4,7 @@ import { createComponent, createEffect, createMemo, createSignal, ErrorBoundary,
 import { errorMessage } from "../../../infra/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
-import { readModuleStatusRows, sameModuleStatusScope, type ModuleStatusScope } from "../../../protocol/client/module-status.js"
+import { readModuleStatusRows, sameModuleStatusScope, type ModuleStatusScope } from "../../../protocol/client/modules/module-status.js"
 import { moduleComposerStatus, moduleRows } from "../../../protocol/modules.js"
 import type { ModuleComposerStatus, ModuleRow } from "../../../protocol/protocol-module.js"
 import { createLazyTuiView } from "../../components/lazy-tui-view.js"
