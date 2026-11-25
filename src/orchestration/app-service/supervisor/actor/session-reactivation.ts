@@ -10,6 +10,8 @@ import type { ChatSessionView } from "../../projections/session-view.js"
 import { turnInFlight } from "../../../session-store/activity.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { durationMs } from "../../../../infra/operation-log.js"
+import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
+import { isInvocationBoundaryId } from "../../../session/conversation/transcript/invocation-boundary.js"
 import { reactivationShellOptions } from "./reactivation-shell-options.js"
 import type { SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
 
@@ -25,10 +27,14 @@ type DisplaySeedDeps = Pick<SessionRuntimeActorContext, "projectionReader"> & {
 }
 type OpenDisplayDeps = DisplaySeedDeps & Pick<SessionRuntimeActorContext, "sessionStore" | "manager" | "directories">
 type DisplaySeed = Awaited<ReturnType<typeof readBoundedChatDisplaySeed>>
+type RefreshOptions = { readonly keep: "turnInFlight" | "runningTurn" }
+
+// The last refresh of each open chat, per session store, until it settles.
+const refreshChains = new WeakMap<OpenDisplayDeps["sessionStore"], Map<string, Promise<void>>>()
 
 export type DurableChatActivation =
   | { readonly status: "already-active" | "unavailable" }
-  | { readonly status: "opened"; readonly completedLeaf: boolean }
+  | { readonly status: "opened"; readonly completedLeaf: boolean; readonly protectedPending: boolean }
 
 /** Load a durable chat's view and open its shell with a bounded display tail.
  *  Callers serialize this (the actor mailbox), so the has-check is authoritative
@@ -99,7 +105,7 @@ export async function activateDurableChat(deps: ReactivationDeps, sessionId: str
     workflowAggregateReads: childWorkflows.workflowAggregateReads,
     transcriptBuildDurationMs: durationMs(transcriptStart),
   })
-  return { status: "opened", completedLeaf: agentInput.completedLeaf }
+  return { status: "opened", completedLeaf: agentInput.completedLeaf, protectedPending: agentInput.protectedPending }
 }
 
 /** Puts `seed` in place of the open chat's display in the store. */
@@ -116,7 +122,8 @@ export async function readOpenChatDisplaySeed(deps: OpenDisplayDeps, sessionId: 
 /** Puts the bounded durable display tail in place of the open chat's display,
  *  in the store and in its runner's block list. The display falls behind the
  *  log when work commits without its runner, such as a child completion that
- *  a reconciliation settles.
+ *  a reconciliation settles. The queued rows of the display stay after the
+ *  new tail.
  *
  *  With `keep`, a runner whose turn holds a display ahead of the log keeps
  *  it: text that streamed and tools that run reach the log only at the
@@ -129,8 +136,25 @@ export async function readOpenChatDisplaySeed(deps: OpenDisplayDeps, sessionId: 
  *    after the turn's output, so a turn parked on background work shows
  *    nothing the log lacks, and its display takes the new record.
  *  The check runs in the synchronous frame that replaces the display, after
- *  the read, so a turn that starts during the read also keeps its display. */
-export async function refreshOpenChatDisplay(deps: OpenDisplayDeps, sessionId: string, options?: { readonly keep: "turnInFlight" | "runningTurn" }): Promise<void> {
+ *  the read, so a turn that starts during the read also keeps its display.
+ *
+ *  Refreshes of one chat run in order: each reads only after the previous
+ *  one wrote, so the last write comes from the latest read. The release of
+ *  a question refreshes outside the actor mailbox, so it can overlap a
+ *  refresh that the mailbox runs. A failed refresh rejects its own call
+ *  only. */
+export function refreshOpenChatDisplay(deps: OpenDisplayDeps, sessionId: string, options?: RefreshOptions): Promise<void> {
+  let chains = refreshChains.get(deps.sessionStore)
+  if (!chains) refreshChains.set(deps.sessionStore, chains = new Map())
+  const previous = chains.get(sessionId)
+  const refresh = previous ? previous.then(() => refreshOnce(deps, sessionId, options)) : refreshOnce(deps, sessionId, options)
+  const settled = refresh.then(() => {}, () => {})
+  chains.set(sessionId, settled)
+  void settled.then(() => { if (chains.get(sessionId) === settled) chains.delete(sessionId) })
+  return refresh
+}
+
+async function refreshOnce(deps: OpenDisplayDeps, sessionId: string, options: RefreshOptions | undefined): Promise<void> {
   const entry = deps.sessionStore.get(sessionId)
   if (entry?.kind !== "chat") return
   const refreshed = await readOpenChatDisplaySeed(deps, sessionId, entry.conversationId)
@@ -142,8 +166,21 @@ export async function refreshOpenChatDisplay(deps: OpenDisplayDeps, sessionId: s
     log.debug("open display refresh", { sessionId, keep: options.keep, runner: current.runner !== null, runnerState: current.runnerState, waitingOnBackgroundWork: current.waitingOnBackgroundWork, refreshed: !kept })
     if (kept) return
   }
-  current.runner?.seedDisplayBlocks(refreshed.tail, refreshed.blockCount - refreshed.tail.length)
-  replaceDisplaySeed(deps, sessionId, refreshed)
+  // A queued row shows input that waits in its cell until its commit gives
+  // the tail a row under the same id, so the tail does not hold it. It stays
+  // after the tail: without it the display loses the message, the commit
+  // has no row to mark sent, and a recall has no row to take back. The
+  // divider of a queued invocation stays with it: it has the id that its
+  // commit gives it, and it follows every block that the tail holds. A
+  // stored divider that left the tail comes before such a block.
+  const blocks = current.outputBlocks()
+  const stored = new Set(refreshed.tail.map(blockIdentity))
+  const lastStored = blocks.findLastIndex((block) => stored.has(blockIdentity(block)))
+  const queued = blocks.filter((block, index) => !stored.has(blockIdentity(block))
+    && ((block.kind === "userMessage" && block.pending) || (block.kind === "divider" && index > lastStored && isInvocationBoundaryId(block.id))))
+  const seed = queued.length === 0 ? refreshed : { ...refreshed, tail: [...refreshed.tail, ...queued], blockCount: refreshed.blockCount + queued.length }
+  current.runner?.seedDisplayBlocks(seed.tail, seed.blockCount - seed.tail.length)
+  replaceDisplaySeed(deps, sessionId, seed)
 }
 
 /** Read the bounded display tail from durable projections without repairing or

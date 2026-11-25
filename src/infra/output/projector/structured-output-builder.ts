@@ -408,9 +408,9 @@ export class StructuredOutputBuilder implements StandaloneToolSink {
     this.enforceBlocksCap();
     this.notifyChange();
   }
-  pushDivider(label: string, timestamp: number): void {
+  pushDivider(label: string, timestamp: number, id?: string): void {
     this.completeThinking(timestamp);
-    this.insertBlock({ kind: "divider", id: this.mintId(), label, timestamp });
+    this.insertBlock({ kind: "divider", id: id ?? this.mintId(), label, timestamp });
     this.enforceBlocksCap();
     this.notifyChange();
   }

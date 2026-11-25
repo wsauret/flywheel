@@ -308,6 +308,11 @@ const PRODUCERS: readonly Producer[] = [
     what: "refused question settlements",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
+  {
+    file: "src/orchestration/session/history/agent-input-reconciliation.ts",
+    what: "question settlements delivered late, behind entries an earlier build committed after the ask",
+    pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
+  },
 ];
 
 function readFile(relative: string): string {

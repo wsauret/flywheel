@@ -117,7 +117,7 @@ export class OutputProjector {
         this.builder.pushSystemMessage(event.message, event.timestamp, { id: event.id, level: event.level, mutationEvidence: event.mutationEvidence, watch: event.watch });
         return;
       case "push-divider":
-        this.builder.pushDivider(event.label, event.timestamp);
+        this.builder.pushDivider(event.label, event.timestamp, event.id);
         return;
       case "tool-use":
         if (!event.parentToolUseId) this.builder.setStreamPhase("generating", event.timestamp);

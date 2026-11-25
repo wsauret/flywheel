@@ -1,6 +1,5 @@
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/store/event-store-types.js"
 import { completionWorkIds } from "../../agent-runtime/background-work/background-work-notifications.js"
-import type { ChatRunner } from "../../chat/runner-types.js"
 import { createConversationTreeWriterController } from "../../chat/tree-writer.js"
 import type { SessionEntry, SessionStore } from "../../session-store/types.js"
 import type { ParentNotificationDelivery } from "../../module-seams.js"
@@ -27,14 +26,16 @@ interface BackgroundNotificationDeliveryContext {
  *  reconciliation held while no runner was attached drain the same way. */
 export interface BackgroundNotificationDelivery {
   deliver(entry: NotifiableEntry, notification: HeldBackgroundNotification): Promise<boolean>
-  drainHeld(entry: NotifiableEntry): Promise<void>
+  /** Delivers every held notice. With no runner attached, answers whether a
+   *  question waits, which keeps every notice held, and whether the drain
+   *  committed a notice (`landed`). No runner shows what such a commit lands,
+   *  which includes each held message that it lands ahead of the notice, so
+   *  the caller reads the open display again. */
+  drainHeld(entry: NotifiableEntry): Promise<{ readonly questionWaits: boolean; readonly landed: boolean }>
 }
 
 export function createBackgroundNotificationDelivery(ctx: BackgroundNotificationDeliveryContext): BackgroundNotificationDelivery {
-  async function commit(
-    conversationId: string,
-    notification: Parameters<ChatRunner["deliverBackgroundNotification"]>[0],
-  ): Promise<boolean> {
+  async function withWriter<T>(conversationId: string, use: (treeWriter: ReturnType<typeof createConversationTreeWriterController>) => Promise<T>): Promise<T> {
     const treeWriter = createConversationTreeWriterController({
       conversationId,
       sessionId: ctx.sessionId,
@@ -44,16 +45,14 @@ export function createBackgroundNotificationDelivery(ctx: BackgroundNotification
       writer: ctx.eventWriter,
     })
     try {
-      return await treeWriter.commitBackgroundNotification(notification) !== null
+      return await use(treeWriter)
     } finally {
       await treeWriter.dispose()
     }
   }
 
-  async function deliver(entry: NotifiableEntry, notification: HeldBackgroundNotification): Promise<boolean> {
-    if (!ctx.admitsDelivery()) return false
-    if (entry.runner) return entry.runner.deliverBackgroundNotification(notification)
-    const committed = await commit(entry.conversationId, notification)
+  async function commit(treeWriter: ReturnType<typeof createConversationTreeWriterController>, notification: HeldBackgroundNotification): Promise<boolean> {
+    const committed = await treeWriter.commitBackgroundNotification(notification) !== null
     // A workflow's runner waits for a parent sweep that reads its completion
     // in the conversation (`offerChildCompletion`). Without one, the next
     // runner of this session tracks the finished workflow again as work it
@@ -63,10 +62,29 @@ export function createBackgroundNotificationDelivery(ctx: BackgroundNotification
     return committed
   }
 
-  async function drainHeld(entry: NotifiableEntry): Promise<void> {
-    for (const notification of await readConversationBackgroundNotifications(ctx.projectionReader, ctx.sessionId, entry.conversationId)) {
-      await deliver(entry, notification)
+  async function deliver(entry: NotifiableEntry, notification: HeldBackgroundNotification): Promise<boolean> {
+    if (!ctx.admitsDelivery()) return false
+    if (entry.runner) return entry.runner.deliverBackgroundNotification(notification)
+    return withWriter(entry.conversationId, (treeWriter) => commit(treeWriter, notification))
+  }
+
+  async function drainHeld(entry: NotifiableEntry): Promise<{ readonly questionWaits: boolean; readonly landed: boolean }> {
+    if (entry.runner) {
+      for (const notification of await readConversationBackgroundNotifications(ctx.projectionReader, ctx.sessionId, entry.conversationId)) await deliver(entry, notification)
+      return { questionWaits: false, landed: false }
     }
+    // One writer decides the hold once: behind a waiting question every
+    // notice stays in its cell, and the drain reads none of them
+    // (ARCH-SESSIONS-050).
+    return withWriter(entry.conversationId, async (treeWriter) => {
+      if (await treeWriter.awaitsAnswer()) return { questionWaits: true, landed: false }
+      let landed = false
+      for (const notification of await readConversationBackgroundNotifications(ctx.projectionReader, ctx.sessionId, entry.conversationId)) {
+        if (!ctx.admitsDelivery()) break
+        if (await commit(treeWriter, notification)) landed = true
+      }
+      return { questionWaits: false, landed }
+    })
   }
 
   return { deliver, drainHeld }

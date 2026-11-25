@@ -10,7 +10,7 @@ import type { RecallPort, RecallInput, RecallResult } from "../../protocol/trans
 import { buildSessionContextWork, type SessionContext } from "../session/conversation/tree/conversation-tree-context.js"
 import type { CompactionEntry, ConversationEntry } from "../session/conversation/conversation-entry-types.js"
 import { createConversationTree, tryOpenConversationTree } from "../session/conversation/tree/conversation-tree-handle.js"
-import { dropQueuedUserInput as dropQueuedInput, holdQueuedUserInput as holdQueuedInput, personMessageKey, type QueuedUserInputCell, type QueuedUserInputCommitResult } from "../session/conversation/queued-user-inputs.js"
+import { decodeQueuedUserInput, dropQueuedUserInput as dropQueuedInput, holdQueuedUserInput as holdQueuedInput, personMessageKey, QUEUED_USER_INPUT_IN_FLIGHT_KIND, type QueuedUserInputCell, type QueuedUserInputCommitResult } from "../session/conversation/queued-user-inputs.js"
 import { conversationPersonMessage, type PersonMessageRecord } from "../session/conversation/person-message-ledger.js"
 import { dropQueuedBackgroundNotification, holdQueuedBackgroundNotification, type HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
 import { createConversationTreeWriter, type ConversationTreeWriter } from "../session/conversation/tree/conversation-tree-writer.js"
@@ -20,6 +20,7 @@ import type { FinalizedCheckpointSwap, RecordCompaction } from "../agent-runtime
 import { recoverFinalizedToolResultCheckpoints } from "../session/history/finalized-tool-result-checkpoint.js"
 import type { HeldRetainedOperation } from "../module-seams.js"
 import { noteBackgroundNotificationHeld } from "../session/control/messaging/reply-waits.js"
+import type { HeldMessage } from "./turn-mailbox.js"
 
 interface ConversationTreeWriterDeps {
   conversationId: string
@@ -82,6 +83,28 @@ export interface ConversationTreeWriterController {
    * active turns and storage failures; reports exact-cell contention without delivery. */
   commitQueuedUserInput(cell: QueuedUserInputCell): Promise<QueuedUserInputCommitResult>
   acceptRetainedOperation(operation: HeldRetainedOperation): Promise<void>
+  /** Whether a question waits for the person, as this writer last read the
+   *  conversation: its last exchange holds an `ask_user` call with no
+   *  result. The conversation then takes only that exchange's results, and
+   *  every other input stays in its durable hold and starts no turn
+   *  (ARCH-SESSIONS-050). No read, so a gate can decide in its caller's
+   *  tick. False before the writer opens the tree: a gate that can meet an
+   *  unopened writer awaits `awaitsAnswer` instead. A stale answer can only
+   *  hold: a settlement's result is appended by its own continuation. The
+   *  history repair of an activation gives an ask call whose question was
+   *  never asked an interrupted result, so such a call holds nothing. */
+  holdsForQuestion(): boolean
+  /** `holdsForQuestion` once the writer has opened the tree. */
+  awaitsAnswer(): Promise<boolean>
+  /** The messages that wait in the held cells of this conversation, in the
+   *  order they arrived, for a queue that lets the person recall one. */
+  readHeldMessages(): Promise<HeldMessage[]>
+  /** The release after a question settled and its result landed: commits
+   *  every held cell no live reader owns, in the order the cells arrived,
+   *  and then what this writer held behind the turn (ARCH-SESSIONS-050).
+   *  `notificationKeys` are the held notices the caller's queue gave up for
+   *  this release; their commit waiters resolve once they land. */
+  releaseHeldInput(notificationKeys?: readonly string[]): Promise<void>
   /** Commit a SYSTEM-PRODUCED user-role turn (background/subagent notification,
    *  continuation nudge, assembled brief) outside a running agent loop.
    *  Routes through redactMessage so masking and the origin="system" provenance
@@ -91,7 +114,8 @@ export interface ConversationTreeWriterController {
   /** Commit one held background notification without changing human-turn
    *  semantics. A keyed notification the conversation already committed
    *  commits nothing again: its entry id answers, and a cell a repeat left
-   *  under its key is retired. */
+   *  under its key is retired. Behind a waiting question it commits nothing
+   *  and answers null: the notice stays in its cell. */
   commitBackgroundNotification(notification: HeldBackgroundNotification): Promise<string | null>
   /** Commit a transcript-only system message. It appends immediately while
    *  idle and queues behind the current turn while foreground work is active.
@@ -134,7 +158,9 @@ export interface ConversationTreeWriterController {
    *  the running turn, or a held cell. Undefined when it holds none. */
   recordedPersonMessage(key: string): Promise<PersonMessageRecord | undefined>
   /** Commits one held message between turns under its cell key, retiring
-   *  the cell: the input carries that key as its one dispatch id. */
+   *  the cell: the input carries that key as its one dispatch id. Behind a
+   *  waiting question it commits nothing and answers null: the message
+   *  stays in its cell. */
   commitHeldMessage(input: ChatInputLike): Promise<string | null>
   /** Durably hold and canonicalize produced background input before mailbox
    *  admission. Nothing for a keyed notification the conversation already
@@ -222,6 +248,14 @@ export function createConversationTreeWriterController(
       ownsQueuedUserInput: (key) => deps.ownsQueuedUserInput?.(key) === true || liveQueuedInputOwner?.(key) === true,
       ownsBackgroundNotification: (key) => liveNotificationKeys.has(key),
       releaseBackgroundNotification: releaseNotification,
+      holdBehindQuestion: async (message, id) => {
+        // A message from a held cell keeps waiting in that cell.
+        if (message.kind === "user" && (message.backgroundNotificationIds?.length || message.dispatchIds?.length)) return
+        if (id !== undefined && await tree.getEntry(id)) return
+        if ((message.kind !== "user" && message.kind !== "system") || typeof message.content !== "string") throw new Error(`A ${message.kind} commit behind a waiting question has no text to hold`)
+        await holdQueuedBackgroundNotification(deps.writer, deps.sessionId, deps.conversationId, message.content, id,
+          message.kind === "system" ? (message.mutationEvidence ? { mutationEvidence: message.mutationEvidence } : {}) : undefined)
+      },
       abandonBackgroundNotification: (key) => {
         liveNotificationKeys.delete(key)
         notificationCommits.get(key)?.reject(new Error("Background notification turn was discarded before commit"))
@@ -272,6 +306,38 @@ export function createConversationTreeWriterController(
     await writer.acceptRetainedOperation(operation)
   }
 
+  function holdsForQuestion(): boolean {
+    return resolved?.tree.awaitsAnswer() === true
+  }
+
+  async function awaitsAnswer(): Promise<boolean> {
+    return (await ensureResolved()).tree.awaitsAnswer()
+  }
+
+  async function readHeldMessages(): Promise<HeldMessage[]> {
+    const held: HeldMessage[] = []
+    for (const row of await deps.projectionReader.readInFlight(deps.sessionId, QUEUED_USER_INPUT_IN_FLIGHT_KIND)) {
+      const cell = decodeQueuedUserInput(row, deps.sessionId, deps.conversationId)
+      if (!cell) continue
+      held.push({ key: cell.key, input: {
+        text: cell.text,
+        ...(cell.attachments?.length ? { attachments: cell.attachments } : {}),
+        ...(cell.invocation ? { invocation: cell.invocation } : {}),
+        ...(cell.submissionIds?.length ? { submissionIds: cell.submissionIds } : {}),
+        ...(cell.producer ? { producer: cell.producer } : {}),
+        dispatchIds: [cell.key],
+      } })
+    }
+    return held
+  }
+
+  async function releaseHeldInput(notificationKeys: readonly string[] = []): Promise<void> {
+    for (const key of notificationKeys) liveNotificationKeys.delete(key)
+    await (await ensureResolved()).writer.commitHeldInput()
+    for (const key of notificationKeys) releaseNotification(key)
+  }
+
+
   async function commitSystemTurn(text: string, idempotencyKey?: string): Promise<string | null> {
     const { writer } = await ensureResolved()
     return writer.commitUserTurn(redactMessage({ kind: "user", content: text }, false), idempotencyKey)
@@ -291,6 +357,7 @@ export function createConversationTreeWriterController(
 
   async function commitBackgroundNotification(notification: HeldBackgroundNotification): Promise<string | null> {
     if (notification.key !== undefined && await retireIfCommitted(notification.key)) return notification.key
+    if (await awaitsAnswer()) return null
     const { writer } = await ensureResolved()
     return writer.commitUserTurn({
       kind: "user",
@@ -377,6 +444,7 @@ export function createConversationTreeWriterController(
   }
 
   async function commitHeldMessage(input: ChatInputLike): Promise<string | null> {
+    if (await awaitsAnswer()) return null
     const { writer } = await ensureResolved()
     const message = toUserMessage(input)
     return writer.commitUserTurn(message, message.dispatchIds?.length === 1 ? message.dispatchIds[0] : undefined)
@@ -494,7 +562,7 @@ export function createConversationTreeWriterController(
     }
   }
 
-  return { commitUserTurn, commitQueuedUserInput, acceptRetainedOperation, commitSystemTurn, commitBackgroundNotification, commitSystemMessage, commitTurnEnd, beginTurn, endTurn, recordCanonicalMessage, reserveMessageId, releaseMessageId, suspendPending, settleSuspendedTurn, holdQueuedUserInput, recordedPersonMessage, commitHeldMessage, holdBackgroundNotification, waitForBackgroundNotification, holdsBackgroundNotification: (key) => liveNotificationKeys.has(key), dropQueuedUserInputs, ownQueuedUserInputs: (owns) => { liveQueuedInputOwner = owns }, flushSavePoint, buildContext, captureCommittedForkMessages, captureRawLiveMessages, recordCompaction, getLeafId, getState, recall, dispose }
+  return { commitUserTurn, commitQueuedUserInput, acceptRetainedOperation, holdsForQuestion, awaitsAnswer, readHeldMessages, releaseHeldInput, commitSystemTurn, commitBackgroundNotification, commitSystemMessage, commitTurnEnd, beginTurn, endTurn, recordCanonicalMessage, reserveMessageId, releaseMessageId, suspendPending, settleSuspendedTurn, holdQueuedUserInput, recordedPersonMessage, commitHeldMessage, holdBackgroundNotification, waitForBackgroundNotification, holdsBackgroundNotification: (key) => liveNotificationKeys.has(key), dropQueuedUserInputs, ownQueuedUserInputs: (owns) => { liveQueuedInputOwner = owns }, flushSavePoint, buildContext, captureCommittedForkMessages, captureRawLiveMessages, recordCompaction, getLeafId, getState, recall, dispose }
 }
 
 /** Post-compaction working history, computed from a hypothetical rebuild BEFORE

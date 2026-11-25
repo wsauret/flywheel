@@ -103,6 +103,7 @@ export function createMockChatRunner(sessionId: string): ChatRunner {
     releaseForegroundBash: () => false,
     transferForegroundForReplacement: async () => {},
     adoptHandedOver: async () => {},
+    adoptHeldInput: async () => {},
     prepareForShutdown: () => {},
     terminateBackgroundWork: () => {},
     seedDisplayBlocks: () => {},

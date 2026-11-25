@@ -108,7 +108,14 @@ export function createLearningReviewSpawner(input: ChatModuleHostInput): (spec: 
         mailbox.enqueueSilentSystem(renderSkillRecommendationNotification(recommendation))
       },
       recordSystemMessage: async (notice) => {
-        await deps.treeWriter.commitSystemMessage(notice)
+        // A chat at rest records the notice at once unless its question
+        // waits. The notice then waits in its durable hold, and it becomes a
+        // row when the settlement's release lands it and the display reads
+        // the conversation again (ARCH-SESSIONS-050). A running turn queues
+        // the notice behind itself and lands it without another event, so
+        // its row shows now.
+        const atRest = !hasActiveTurn()
+        if (await deps.treeWriter.commitSystemMessage(notice) === null && atRest) return
         emit("agent.system_message.recorded", { sessionId, data: { message: notice.content, ...(notice.mutationEvidence ? { mutationEvidence: notice.mutationEvidence } : {}) } })
       },
     }

@@ -1,5 +1,6 @@
 import type { SessionChangesUndo, SessionChangesUndoResult } from "../../../../protocol/session/session-changes-protocol-types.js"
-import type { ChatInputLike } from "../../../../infra/chat-input.js"
+import { normalizeChatInput, type ChatInputLike } from "../../../../infra/chat-input.js"
+import { holdQueuedUserInput, queuedUserInputKey } from "../../../session/conversation/queued-user-inputs.js"
 import { errorDetail, errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
@@ -17,13 +18,12 @@ import { createSessionContinuation } from "./session-continuation.js"
 import { finalizeDisposition, prepareDeactivation, prepareDisposition, shouldTombstone } from "./session-runtime-disposition.js"
 import type { ActorLifecycle, DispatchOutcome, DispatchResult, RunnerStartup, SessionMutation, SessionRuntimeActor, SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
 import { loadAgentInputProjection } from "../../../session/agent-input/agent-input-projection.js"
-import { createSessionFactWriter } from "../../../session/persistence/session-fact-writer.js"
 import { holdChildReconciliationIndex } from "../../../session/control/children/child-reconciliation-index.js"
 import { createBackgroundNotificationDelivery } from "../session-background-notifications.js"
 import { executionCwdFromSession } from "../../../session/metadata/session-execution-directory.js"
 import { reconcileAgentInput } from "../../../session/history/agent-input-reconciliation.js"
 import { moduleRequirementsForContribution } from "../../../module-requirements.js"
-import { chatInputParts, observeSessionDispatch, questionSettlementDisplay, questionSettlementFact, runnerSendOutcome, settleWithin, validAgentInputAnswers } from "./session-runtime-actor-helpers.js"
+import { chatInputParts, observeSessionDispatch, questionSettlementDisplay, recordQuestionSettlement, runnerSendOutcome, settleWithin, validAgentInputAnswers } from "./session-runtime-actor-helpers.js"
 import type { ChildSessionDeletionPlan } from "../../../session/control/children/child-session-deletion.js"
 import { createChatSessionControl } from "../chat-session-control.js"
 import { chatRunnerDeps } from "./chat-runner-deps.js"
@@ -132,6 +132,9 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
         if (!admitsWork()) throw new StaleStartupError(sessionId)
         replaceDisplaySeed(ctx, sessionId, refreshed)
         if (!ctx.sessionStore.attachChatRunner(sessionId, runner)) throw new StaleStartupError(sessionId)
+        // Input held behind a waiting question joins the runner's queue
+        // before any later input, in the order it arrived (ARCH-SESSIONS-050).
+        await runner.adoptHeldInput()
         inputControl.attach()
         if (ctx.isShown(sessionId)) runner.setShown(true)
       })
@@ -448,9 +451,9 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       log.debug("send completion sweep failed", { sessionId, error: errorMessage(error) })
       return undefined
     })
-    if (!entry.runner) await backgroundNotifications.drainHeld(entry)
+    const drained = entry.runner ? undefined : await backgroundNotifications.drainHeld(entry)
     if (activeOutcome) return () => activeOutcome
-    if ((reconciliation?.reconciledCount ?? 0) > 0) await refreshOpenChatDisplay(ctx, sessionId)
+    if ((reconciliation?.reconciledCount ?? 0) > 0 || drained?.landed) await refreshOpenChatDisplay(ctx, sessionId)
     const attached = ctx.sessionStore.get(sessionId)
     if (attached?.kind === "chat" && attached.runner) {
       const capabilities = await ctx.runnerCapabilities()
@@ -464,15 +467,26 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     // captures it. The commit's continuation may then resume after an attach;
     // the tail's ensureChatRunner reuses the attached runner and drains the
     // pending delivery, so the input still reaches the model exactly once.
-    renderPreRunnerTurn(ctx.sessionStore, sessionId, input)
+    // Behind a waiting question the message waits in its cell and starts
+    // nothing: the runner takes the cell at attach, and the answer's turn
+    // lands it after the question's result (ARCH-SESSIONS-050).
+    const { producer, submissionIds } = normalizeChatInput(input)
+    const heldKey = drained?.questionWaits ? queuedUserInputKey(producer, submissionIds) : undefined
+    const showsQueued = entry.outputBlocks().some((block) => block.kind === "userMessage" && block.pending)
+    renderPreRunnerTurn(ctx.sessionStore, sessionId, input, heldKey)
     try {
-      await commitPreReadinessTurn(entry.conversationId, input)
+      if (heldKey === undefined) await commitPreReadinessTurn(entry.conversationId, input)
+      else await holdQueuedUserInput(ctx.eventWriter, sessionId, { target: "conversation", conversationId: entry.conversationId }, input, heldKey)
     } catch (err) {
       const message = errorMessage(err)
       const reason = renderUnsavedPreRunnerTurn(ctx.sessionStore, sessionId, message)
       ctx.onRunnerError(sessionId, message)
       return () => Promise.resolve({ ok: false, reason })
     }
+    // With no question to wait behind, the commit also landed every message
+    // that an earlier send held, ahead of this one, and no runner marks
+    // their queued rows sent. The display reads the conversation again.
+    if (heldKey === undefined && showsQueued) await refreshOpenChatDisplay(ctx, sessionId)
     void ensureChatRunner().catch(() => {})
     return () => Promise.resolve({ ok: true })
   }
@@ -548,8 +562,9 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
    *  Activation is stationary: it repairs the durable tree (terminal input
    *  committed after the shell closed gets its tool-result batch appended) but
    *  never starts a model turn. Only a user input wakes the continuation, so
-   *  question settlement passes wake: true. */
-  async function runActivation(options?: { wake: boolean }): Promise<() => Promise<boolean>> {
+   *  question settlement passes `wake`, with `late` when its settlement
+   *  landed as its own entry (`settleLateQuestion`). */
+  async function runActivation(options?: { readonly wake: { readonly late: boolean } }): Promise<() => Promise<boolean>> {
     if (lifecycle.kind !== "open" || ctx.isDisposed()) return ready(false)
     clearFailure()
     const activation = await activateDurableChat(ctx, sessionId)
@@ -564,12 +579,19 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     if (activation.status !== "unavailable") {
       const entry = ctx.sessionStore.get(sessionId)
       if (entry?.kind === "chat") {
-        await backgroundNotifications.drainHeld(entry)
         const recovered = activation.status === "opened" ? activation
           : await reconcileAgentInput({ conversationId: entry.conversationId, sessionId, store: ctx.projectionReader, projectionReader: ctx.projectionReader, writer: ctx.eventWriter })
         // The settlement above is already durable; the wake reports whether a
-        // runner resumed it.
+        // runner resumed it. Its turn lands the input held behind the
+        // question after the result, in arrival order (ARCH-SESSIONS-050).
         if (options?.wake && recovered.completedLeaf) return continuation.continueCommitted((runner) => runner.resumeCommitted())
+        // A question that an earlier build left behind later entries has no
+        // place for its result: its settlement arrived as its own entry.
+        if (options?.wake.late && !recovered.protectedPending) return continuation.continueCommitted((runner) => runner.resumeCommitted())
+        // Behind a question that still waits, the writer keeps each notice
+        // in its cell. A drain that committed without a runner leaves the
+        // display behind the log, with a queued row for a message it landed.
+        if ((await backgroundNotifications.drainHeld(entry)).landed) await refreshOpenChatDisplay(ctx, sessionId)
         // A session a client shows holds its runner (ARCH-SESSIONS-038): activation
         // attaches it idle before acknowledging the tab. Startup joins the
         // mailbox after this ordered section; waiting here would deadlock.
@@ -629,12 +651,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     const retiredWorkflowId = session?.kind === "workflow-agent" ? session.workflowMembership.workflowId : undefined
     const retiredAgentQuestion = retiredWorkflowId !== undefined
     if (kind !== "chat" && !retiredAgentQuestion) return refuseQuestion(command.toolUseId, "not_chat")
-    const writer = createSessionFactWriter({ sessionId, writer: ctx.eventWriter })
-    try {
-      await writer.record(questionSettlementFact(interaction.interactionId, command))
-    } finally {
-      writer.dispose()
-    }
+    const late = await recordQuestionSettlement(ctx, sessionId, interaction, command, retiredAgentQuestion)
     if (retiredAgentQuestion) {
       // The durable fact above is the authority; the resume folds it into the
       // agent's conversation before any agent of the workflow re-enters.
@@ -649,6 +666,9 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     // moved on) has no waiter to show it, and the reseed below keeps the
     // display of a turn in flight, so nothing else would.
     const waiting = ctx.sessionStore.get(sessionId)
+    // A live loop parked on the newer question takes the held settlement
+    // into its queue, so it follows that question's result.
+    if (late.kind === "held" && waiting?.runner) await waiting.runner.deliverBackgroundNotification(late.notice)
     waiting?.runner?.applyProjectionEvent(questionSettlementDisplay(command))
     // Only a chat asks the person (PI-AGENT-024), so only a chat runner
     // takes an answer.
@@ -659,7 +679,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       return ready({ ok: true })
     }
     try {
-      const wake = await runActivation({ wake: true })
+      const wake = await runActivation({ wake: { late: late.kind === "appended" } })
       return async () => {
         try { await wake() }
         catch (error) { ctx.onRunnerError(sessionId, errorMessage(error)) }
@@ -788,8 +808,8 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
           ? { deliverNotification: (notification) => backgroundNotifications.deliver(currentEntry, notification) }
           : undefined,
       )
-      if (currentEntry && !currentEntry.runner) await backgroundNotifications.drainHeld(currentEntry)
-      if (outcome.reconciledCount > 0) await refreshOpenChatDisplay(ctx, sessionId)
+      const drained = currentEntry && !currentEntry.runner ? await backgroundNotifications.drainHeld(currentEntry) : undefined
+      if (outcome.reconciledCount > 0 || drained?.landed) await refreshOpenChatDisplay(ctx, sessionId)
       return outcome
     })
   }

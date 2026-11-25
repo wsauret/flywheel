@@ -28,6 +28,7 @@ const runnerDeps: ChatRunnerDeps = {
   accountHome: "/scratch/account",
   definitions: fixedDefinitions(),
   updateEntry: () => {},
+  refreshDisplay: async () => {},
   runtime,
   projectionReader: asAsyncEventReadSurface(inMemoryEventReader([])),
   manager: {

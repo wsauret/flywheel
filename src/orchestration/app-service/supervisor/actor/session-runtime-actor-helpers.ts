@@ -6,17 +6,44 @@ import { Log } from "../../../../infra/diagnostics/log.js"
 import { formatAgentInputAnswers, formatQuestionChoiceAnswer } from "../../../../protocol/session/question-protocol-types.js"
 import type { OutputProjectionEvent } from "../../../../infra/output/output-projection-events.js"
 import type { AgentInputEntry } from "../../../session/agent-input/agent-input-projection.js"
-import type { SessionFact } from "../../../session/persistence/session-fact-writer.js"
-import type { AgentInputAnswers, DispatchOutcome, SessionMutation } from "./session-runtime-actor-types.js"
+import { createSessionFactWriter, type SessionFact } from "../../../session/persistence/session-fact-writer.js"
+import { settleLateQuestion, type LateQuestionSettlement } from "../../../session/history/agent-input-reconciliation.js"
+import type { AgentInputAnswers, DispatchOutcome, SessionMutation, SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
 import type { SendChatOutcome } from "../runtime-supervisor-types.js"
 
 type QuestionSettlement = Extract<SessionMutation, { kind: "question.answer" | "question.cancel" }>
 
 /** The durable fact that records a person's answer or skip of one question. */
-export function questionSettlementFact(interactionId: string, command: QuestionSettlement): SessionFact {
+function questionSettlementFact(interactionId: string, command: QuestionSettlement): SessionFact {
   return command.kind === "question.answer"
     ? { type: "agent_input.answered", version: 3, actor: "user", payload: { interactionId, answers: command.answers } }
     : { type: "agent_input.cancelled", version: 1, actor: "user", payload: { interactionId, reason: "user_cancelled" } }
+}
+
+/** Records a person's answer or skip of one pending question. A chat's
+ *  question first places its settlement in the conversation when an
+ *  earlier build left it behind later entries (`settleLateQuestion`); the
+ *  question of a retired workflow agent records only its fact. Answers how
+ *  the settlement reaches the agent. */
+export async function recordQuestionSettlement(
+  ctx: Pick<SessionRuntimeActorContext, "projectionReader" | "eventWriter">,
+  sessionId: string,
+  interaction: Extract<AgentInputEntry, { kind: "pending" }>,
+  command: QuestionSettlement,
+  retiredAgentQuestion: boolean,
+): Promise<LateQuestionSettlement> {
+  const late = retiredAgentQuestion ? { kind: "in_place" as const } : await settleLateQuestion(
+    { conversationId: interaction.conversationId, sessionId, store: ctx.projectionReader, projectionReader: ctx.projectionReader, writer: ctx.eventWriter },
+    interaction,
+    command.kind === "question.answer" ? { kind: "answered", answers: command.answers } : { kind: "cancelled" },
+  )
+  const writer = createSessionFactWriter({ sessionId, writer: ctx.eventWriter })
+  try {
+    await writer.record(questionSettlementFact(interaction.interactionId, command))
+  } finally {
+    writer.dispose()
+  }
+  return late
 }
 
 /** The live display change that follows a committed answer or skip. */

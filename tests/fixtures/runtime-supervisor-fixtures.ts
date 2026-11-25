@@ -271,6 +271,7 @@ export function mockRunner(sessionId: string, overrides: Partial<ChatRunner> = {
     releaseForegroundBash: () => false,
     transferForegroundForReplacement: async () => {},
     adoptHandedOver: async () => {},
+    adoptHeldInput: async () => {},
     awaitTurnSettlement: async () => {},
     awaitLogicalTurnDurability: async () => {},
     compact: async () => false,
