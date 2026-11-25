@@ -22,8 +22,8 @@ import type { ContainedFileMetadata } from "../../../../../infra/platform/files/
 import { DebugLog } from "../../../../../infra/diagnostics/debug-log.js";
 import { errorMessage } from "../../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
-import { buildMutationBytesEvidence, type MutationEvidenceEntry } from "../../../../../infra/substrate/mutation-evidence.js";
-import { formatConflictMarkers, formatFileSamples, formatNotAppliedFiles, summarizeFileSamples, summarizeNotAppliedFiles, type NotAppliedFile } from "../../../../../infra/substrate/not-applied-files.js";
+import { buildMutationBytesEvidence, type MutationEvidenceEntry } from "../../../../../infra/substrate/file-mutations/mutation-evidence.js";
+import { formatConflictMarkers, formatFileSamples, formatNotAppliedFiles, summarizeFileSamples, summarizeNotAppliedFiles, type NotAppliedFile } from "../../../../../infra/substrate/file-mutations/not-applied-files.js";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import type { FileEditAuthority, FileEditPublication, FileEditPublicationOutcome, PlannedFileEdit } from "../../file-edits/file-edit-operation.js";
 import { RetainedFileEditAuthority } from "../../file-edits/retained-file-edit-host.js";

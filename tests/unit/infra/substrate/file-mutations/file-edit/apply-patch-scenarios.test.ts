@@ -2,14 +2,14 @@ import { describe, expect, it } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import { FileEditPlanError } from "../../../../src/infra/file-edit/contract.js";
-import { type PatchPlan, planPreparedPatch } from "../../../../src/infra/file-edit/patch-plan.js";
-import { type PreparedPatch, preparePatch } from "../../../../src/infra/file-edit/patch-parser.js";
+import { FileEditPlanError } from "../../../../../../src/infra/substrate/file-mutations/file-edit/contract.js";
+import { type PatchPlan, planPreparedPatch } from "../../../../../../src/infra/substrate/file-mutations/file-edit/patch-plan.js";
+import { type PreparedPatch, preparePatch } from "../../../../../../src/infra/substrate/file-mutations/file-edit/patch-parser.js";
 
 // The apply-patch end-to-end corpus that THIRD-PARTY-NOTICES.md credits, kept
 // byte for byte. Each scenario is an input tree, one patch, and the expected
 // tree after the patch applied.
-const SCENARIOS = resolve(import.meta.dir, "../../../fixtures/apply-patch-scenarios");
+const SCENARIOS = resolve(import.meta.dir, "../../../../../fixtures/apply-patch-scenarios");
 
 function snapshotTree(root: string): Map<string, string> {
   const files = new Map<string, string>();

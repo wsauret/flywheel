@@ -11,7 +11,7 @@ import type { SessionLifecycleState } from "../../session/metadata/types.js"
 import type { RoleSettings as RoleAssignments } from "../../session/metadata/schemas.js"
 import { effectiveRoleAssignments } from "../../config/models/session-role-resolver.js"
 import type { SessionEntry } from "../../session-store/types.js"
-import type { WorkflowMembership } from "../../../infra/workflow/session-workflow-membership.js"
+import type { WorkflowMembership } from "../../../infra/definitions/workflow/session-workflow-membership.js"
 import { entryActivity } from "../../session-store/activity.js"
 
 interface SessionViewBase {

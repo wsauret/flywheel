@@ -7,7 +7,7 @@ import type { TurnParkedContext } from "../../../infra/substrate/events/agent-lo
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/substrate/store/event-store-types.js"
 import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js"
 import type { ControlInterruption, PlannedCutInterrupt, TurnInterruption } from "../../session/conversation/turn-end-record.js"
-import type { ModuleRuntimes } from "../../../infra/modules/module-runtime.js"
+import type { ModuleRuntimes } from "../../../infra/definitions/modules/module-runtime.js"
 import type { RecallInput, RecallResult } from "../../../protocol/transcript/conversation-recall.js"
 import { resolveSessionDir } from "../../../infra/platform/files/paths.js"
 import type { AttemptRow } from "../../../workflows/view/types.js"

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadAssetResolution } from "../../../src/infra/agent-assets/loader.js";
+import { loadAssetResolution } from "../../../src/infra/definitions/agent-assets/loader.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 describe("whole-file agent asset resolution", () => {

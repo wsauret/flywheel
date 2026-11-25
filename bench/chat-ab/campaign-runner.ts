@@ -11,7 +11,7 @@ import { campaignArtifactReference } from "./campaign-artifacts.js";
 import { campaignHeadlessOutcome, type CampaignSettlement } from "./campaign-execution.js";
 import type { CampaignCell, CampaignExecutionOutcome, CampaignManifestFields, CampaignManifest, CampaignOutcome, CampaignRoles, createCampaignLedger } from "./campaign-store.js";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
-import type { Effort } from "../../src/infra/workflow/workflow-types.js";
+import type { Effort } from "../../src/infra/definitions/workflow/workflow-types.js";
 import { REPO_ROOT, RESULTS_ROOT } from "./harness-paths.js";
 import { resolveCampaignSubject, type CampaignInvocationCapture, type CampaignTreatment, type CampaignSubjectKind, type PreparedCampaignSubject } from "./campaign-subject.js";
 import { benchmarkCommandRunner } from "./benchmark-command.js";

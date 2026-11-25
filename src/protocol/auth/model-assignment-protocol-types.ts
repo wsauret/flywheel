@@ -1,4 +1,4 @@
-import type { EffortSchema } from "../../infra/workflow/workflow-types.js"
+import type { EffortSchema } from "../../infra/definitions/workflow/workflow-types.js"
 import type { AccessProviderCandidate, ModelUnavailableMissing } from "../../infra/providers/llm/access/access-provider.js"
 import type { RuntimeConfigExpected } from "../settings/runtime-config-protocol-types.js"
 

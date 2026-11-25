@@ -6,7 +6,7 @@ import type { RuntimeModelRolesResult } from "../../../../protocol/auth/model-ro
 import { modelRoleAdmission, publishedModelRoles } from "./model-role-projection.js"
 import type { ModelPickerConfigDeps } from "../../../config/models/model-assignment-types.js"
 import type { FlywheelConfig } from "../../../config/schema/schema.js"
-import { EffortSchema } from "../../../../infra/workflow/workflow-types.js"
+import { EffortSchema } from "../../../../infra/definitions/workflow/workflow-types.js"
 import { Schema } from "effect"
 import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js"

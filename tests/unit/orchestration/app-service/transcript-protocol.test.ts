@@ -129,7 +129,7 @@ describe("bounded output history protocol", () => {
   })
 
   it("preserves mutation artifacts on hydrated group children", async () => {
-    const { buildMutationDiffEvidence } = await import("../../../../src/infra/substrate/mutation-diff-evidence.js")
+    const { buildMutationDiffEvidence } = await import("../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js")
     const mutationEvidence = await buildMutationDiffEvidence({
       version: 1, files: [{ path: ".flywheel/memory/project.md", change: "modified", unifiedDiff: "--- a\n+++ b\n@@ -1 +1 @@\n-old\n+new" }], omissions: [],
     }, "memory-1", async () => {})

@@ -1,4 +1,4 @@
-import { NO_MODULE_RUNTIMES } from "../../src/infra/modules/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../src/infra/definitions/modules/module-runtime.js";
 import { bashExecution } from "../unit/orchestration/agent-runtime/tools/bash/_bash-fixtures.js";
 import type { ToolExposurePlan } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { createRequestToolSurface, type PlannedRequest, type RequestToolSurfaceOwner } from "../../src/orchestration/agent-runtime/request/request-tool-surface.js";

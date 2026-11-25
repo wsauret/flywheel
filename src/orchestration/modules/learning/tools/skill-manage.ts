@@ -5,12 +5,12 @@ import type { SkillRecommendation, SkillSemanticAuditResult } from "../../../age
  *  exactly one write path whoever the author is (the user's "save that as a
  *  skill", the agent mid-task, or the learning review). */
 
-import type { LearningScope } from "../../../../infra/learning/learning-scope.js";
-import type { MutationEvidence } from "../../../../infra/substrate/mutation-evidence.js";
-import { buildMutationDiffEvidence } from "../../../../infra/substrate/mutation-diff-evidence.js";
+import type { LearningScope } from "../../../../infra/definitions/learning/learning-scope.js";
+import type { MutationEvidence } from "../../../../infra/substrate/file-mutations/mutation-evidence.js";
+import { buildMutationDiffEvidence } from "../../../../infra/substrate/file-mutations/mutation-diff-evidence.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import type { ToolResultAction } from "../../../../infra/substrate/events/tool-result-action.js";
-import { normalizeSkillId } from "../../../../infra/learning/skill-id.js";
+import { normalizeSkillId } from "../../../../infra/definitions/learning/skill-id.js";
 import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import type { DefinitionReload } from "../../../../workflows/definitions/definition-registry.js";
 import { NEW_SKILL_TRIGGER_MAX_CHARS, type SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";

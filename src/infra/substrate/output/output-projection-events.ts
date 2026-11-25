@@ -1,4 +1,4 @@
-import type { MutationEvidence } from "../mutation-evidence.js";
+import type { MutationEvidence } from "../file-mutations/mutation-evidence.js";
 import type { LlmToolOutputPart } from "../../providers/llm/tool-output-part-schema.js";
 import type { StreamPhase, QuestionEntry, PausedBy, UserMessageImage, MessageSender, SystemWatch } from "../events/output-blocks.js";
 import type { ToolOutcome } from "../runtime-facts/tool-outcome.js";

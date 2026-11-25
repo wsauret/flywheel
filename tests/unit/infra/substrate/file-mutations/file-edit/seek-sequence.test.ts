@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { applyIndentDelta, indentDelta, seekSequence } from "../../../../src/infra/file-edit/seek-sequence.js";
+import { applyIndentDelta, indentDelta, seekSequence } from "../../../../../../src/infra/substrate/file-mutations/file-edit/seek-sequence.js";
 
 describe("seek sequence", () => {
   // The first four cases are the Codex CLI's own seek_sequence tests

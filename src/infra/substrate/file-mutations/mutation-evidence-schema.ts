@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { SessionContentManifestReferenceSchema, SessionContentReferenceSchema } from "./session-content-schema.js"
+import { SessionContentManifestReferenceSchema, SessionContentReferenceSchema } from "../session-content-schema.js"
 
 const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const Hash = Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/))

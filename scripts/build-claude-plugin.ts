@@ -47,7 +47,7 @@ import { zipArchive } from "./zip-archive.js";
 
 const ROOT = join(import.meta.dir, "..");
 const PERSONA_DIR = join(ROOT, "src", "workflows", "agents", "personas");
-const DOCTRINE = join(ROOT, "src", "infra", "agent-assets", "engineering-doctrine.md");
+const DOCTRINE = join(ROOT, "src", "infra", "definitions", "agent-assets", "engineering-doctrine.md");
 
 /** Methods that drive Flywheel's own runtime: its publication delegate. The host has none of it, so the
  *  plugin leaves them out. A method that only one module runs ships in that module's definition bundle, which

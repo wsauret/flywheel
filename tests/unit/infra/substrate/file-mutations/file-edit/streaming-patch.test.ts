@@ -1,8 +1,8 @@
 import { describe, expect, it, spyOn } from "bun:test";
 
-import { FileEditPlanError } from "../../../../src/infra/file-edit/contract.js";
-import { PatchOperationParser } from "../../../../src/infra/file-edit/patch-parser.js";
-import { StreamingPatch } from "../../../../src/infra/file-edit/streaming-patch.js";
+import { FileEditPlanError } from "../../../../../../src/infra/substrate/file-mutations/file-edit/contract.js";
+import { PatchOperationParser } from "../../../../../../src/infra/substrate/file-mutations/file-edit/patch-parser.js";
+import { StreamingPatch } from "../../../../../../src/infra/substrate/file-mutations/file-edit/streaming-patch.js";
 
 describe("streaming patch", () => {
   it("does not invent a final line or patch terminator", () => {

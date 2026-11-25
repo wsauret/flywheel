@@ -7,7 +7,7 @@ import { applySqliteBusyTimeout, applySqliteDurabilityPragmas } from "../../plat
 import { admitPrivateDatabaseFiles } from "../../platform/files/private-path.js"
 import { assertChatEntriesToolContentReferences } from "../runtime-facts/tool-content.js"
 import { assertSessionContentNodeChildren, parseSessionContentNodeRow, SESSION_CONTENT_STAGE_BYTES, type SessionContentNodeRow } from "../session-content.js"
-import { assertMutationEvidence, assertMutationFileEvidence } from "../mutation-evidence.js"
+import { assertMutationEvidence, assertMutationFileEvidence } from "../file-mutations/mutation-evidence.js"
 import { isRecord } from "../../guards/record.js"
 
 export interface SqliteEventInsert extends GuardedEventStoreAppend {

@@ -4,7 +4,7 @@ import { displayWidth, truncateToWidth } from "../../terminal/text.js"
 import type { ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort } from "../../../protocol/auth/model-assignment-protocol-types.js"
 import type { RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import { isModelTierReference } from "../../../protocol/auth/model-tier-reference.js"
-import { EFFORT_VALUES } from "../../../infra/workflow/workflow-types.js"
+import { EFFORT_VALUES } from "../../../infra/definitions/workflow/workflow-types.js"
 
 export function modelAssignmentText(row: ModelAssignmentRow, selected: boolean, theme: TuiTheme, labelWidth: number, width: number, labelStyle: "plain" | "heading" = "plain", auth?: RuntimeAuthView): StyledText {
   const headingLabel = labelStyle === "heading"

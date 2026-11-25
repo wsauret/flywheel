@@ -7,7 +7,7 @@ import { captureProviderConnection } from "../../../../../src/infra/providers/au
 import { CHATGPT_BACKEND_API_BASE } from "../../../../../src/infra/providers/auth/openai/openai-auth-types.js";
 import type { AuthContext } from "../../../../../src/infra/providers/auth/auth-context.js";
 import { createWebTool } from "../../../../../src/orchestration/agent-runtime/tools/web.js";
-import { composeModuleRuntimes } from "../../../../../src/infra/modules/module-runtime.js";
+import { composeModuleRuntimes } from "../../../../../src/infra/definitions/modules/module-runtime.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { composeFirstPartyModules, type ModuleId } from "../../../../../src/orchestration/modules.js";

@@ -2,7 +2,7 @@ import type { CommandHandover } from "../../../../../infra/supervision/launch/co
 import { createStreamingSanitizer } from "../../../../../infra/substrate/output/control-characters.js";
 import type { HandoverAnswer, OwnedProcess } from "../../../../../infra/supervision/launch/owned-subprocess.js";
 import { formatDuration } from "../../../../../protocol/client/format.js";
-import { formatNotAppliedFiles } from "../../../../../infra/substrate/not-applied-files.js";
+import { formatNotAppliedFiles } from "../../../../../infra/substrate/file-mutations/not-applied-files.js";
 import type { BackgroundWorkRegistry, SettledProjectMutation } from "../../../background-work/background-work.js";
 import type { BackgroundKillSource, BackgroundWorkResult, CommandExit, ToolCallIdentity } from "../../../background-work/background-work-types.js";
 import { boundedExecutionOutputTail, createShellOutputAccumulator, createTailEmitter, readBackgroundProcessOutput, readSpoolGrowth, type SettledShellOutput, shellObservation } from "./bash-output-tail.js";

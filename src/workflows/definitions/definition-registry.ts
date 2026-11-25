@@ -16,7 +16,7 @@ import { loadSkillDefinitions, skillStoreRoots } from "../skills/skills.js";
 import { BUNDLED_SKILL_DIR } from "../skills/skill-source-inventory.js";
 import { createPersonaRegistryOwner, type PersonaRegistryRevision, type PersonaToolRegistryEntry } from "../agents/registry.js";
 import type { AgentDefinition } from "../../infra/definitions/agent-definition.js";
-import { loadEngineeringDoctrineResolution, loadSystemPromptResolution } from "../../infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrineResolution, loadSystemPromptResolution } from "../../infra/definitions/agent-assets/system-prompt.js";
 import type { DefinitionOverrideOperations } from "./override-staleness.js";
 
 const log = Log.create({ service: "skill-registry" });

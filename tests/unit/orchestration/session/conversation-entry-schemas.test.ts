@@ -1,4 +1,4 @@
-import { buildMutationDiff, type MutationDiff } from "../../../../src/infra/substrate/mutation-diff.js";
+import { buildMutationDiff, type MutationDiff } from "../../../../src/infra/substrate/file-mutations/mutation-diff.js";
 import { parseSchema, safeParse } from "../../../helpers/schema-assertions.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { describe, expect, it } from "bun:test";

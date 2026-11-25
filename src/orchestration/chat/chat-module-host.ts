@@ -1,6 +1,6 @@
 import type { StoredFact } from "../../infra/substrate/store/event-store-types.js"
 import type { createEmit } from "../../infra/substrate/events/event-bus.js"
-import { composeModuleRuntimes, type ModuleRuntimes, type ModuleRuntimeHandle } from "../../infra/modules/module-runtime.js"
+import { composeModuleRuntimes, type ModuleRuntimes, type ModuleRuntimeHandle } from "../../infra/definitions/modules/module-runtime.js"
 import type { BackgroundExecutionOwner } from "../agent-runtime/background-execution/background-execution-owner.js"
 import type { ForegroundBashHoldController } from "../agent-runtime/background-work/foreground-bash-hold.js"
 import type { ConversationMessage } from "../agent-runtime/llm/types.js"

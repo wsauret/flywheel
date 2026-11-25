@@ -6,7 +6,7 @@ import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
 import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/rpc/runtime-cursor-schemas.js"
 import { ProviderModelViewSchema, RuntimeProviderModelsQuerySchema, RuntimeSetProviderModelMutationSchema } from "../../../../src/protocol/auth/provider-model-preference-protocol-schemas.js"
 import { runtimeDispatchResultSchema } from "../../../../src/protocol/rpc/runtime-dispatch-result-schemas.js"
-import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/mutation-diff-evidence.js"
+import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 
 const contractFiles = [

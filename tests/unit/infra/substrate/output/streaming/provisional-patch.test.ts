@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { preparePatch } from "../../../../../../src/infra/file-edit/patch-parser.js";
+import { preparePatch } from "../../../../../../src/infra/substrate/file-mutations/file-edit/patch-parser.js";
 import { ProvisionalPatchParser } from "../../../../../../src/infra/substrate/output/streaming/provisional-patch.js";
 
 function rows(parser: ProvisionalPatchParser): Array<[string, string]> {

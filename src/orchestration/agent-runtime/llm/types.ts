@@ -6,7 +6,7 @@ import type { CacheRetentionPolicy, ProviderRequestOptions } from "../../../infr
 import type { CompletedStopReason, LlmApi, LlmStopReason, LlmToolOutputPart } from "./messages.js";
 import type { ToolOutcome } from "../../../infra/substrate/runtime-facts/tool-outcome.js";
 import type { ModelInfo, ReasoningEffort } from "../../../infra/providers/llm/models/models.js";
-import type { MutationEvidence } from "../../../infra/substrate/mutation-evidence.js";
+import type { MutationEvidence } from "../../../infra/substrate/file-mutations/mutation-evidence.js";
 import type { ContentRepair } from "../../../infra/providers/llm/content-repair.js";
 export type { CompletedStopReason, LlmStopReason } from "./messages.js";
 import type { StreamAttemptStartEvent } from "./stream/stream-attempt.js";

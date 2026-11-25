@@ -5,7 +5,7 @@ import { describe, expect, it } from "bun:test"
 import { Cause, Effect, Exit, Scope } from "effect"
 
 import { canonicalDirectory } from "../../../../../src/infra/platform/files/directory-authorities.js"
-import { buildMutationEvidence, buildMutationFileEvidence } from "../../../../../src/infra/substrate/mutation-evidence.js"
+import { buildMutationEvidence, buildMutationFileEvidence } from "../../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
 import type { StageSessionContentNodes } from "../../../../../src/infra/substrate/session-content.js"
 import { asRecord } from "../../../../../src/infra/guards/record.js"
 import { createTurnDispatcher } from "../../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-loop-tools.js"

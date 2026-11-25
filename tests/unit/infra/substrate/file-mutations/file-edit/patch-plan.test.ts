@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 
-import { FILE_EDIT_LIMITS } from "../../../../src/infra/file-edit/contract.js";
-import { PatchPlanningCursor, type FileSnapshot, planPreparedPatch } from "../../../../src/infra/file-edit/patch-plan.js";
-import { preparePatch } from "../../../../src/infra/file-edit/patch-parser.js";
+import { FILE_EDIT_LIMITS } from "../../../../../../src/infra/substrate/file-mutations/file-edit/contract.js";
+import { PatchPlanningCursor, type FileSnapshot, planPreparedPatch } from "../../../../../../src/infra/substrate/file-mutations/file-edit/patch-plan.js";
+import { preparePatch } from "../../../../../../src/infra/substrate/file-mutations/file-edit/patch-parser.js";
 
 function plan(patch: string, snapshots: readonly FileSnapshot[], limits = FILE_EDIT_LIMITS) {
   return planPreparedPatch(preparePatch(patch), snapshots, limits);

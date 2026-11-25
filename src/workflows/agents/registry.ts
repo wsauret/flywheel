@@ -4,7 +4,7 @@ import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Schema } from "effect";
 import type { AgentDefinition } from "../../infra/definitions/agent-definition.js";
-import type { ToolAction } from "../../infra/workflow/workflow-types.js";
+import type { ToolAction } from "../../infra/definitions/workflow/workflow-types.js";
 import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import { parseFrontmatter } from "../../infra/parsing/yaml/frontmatter.js";
 import { Log } from "../../infra/diagnostics/log.js";

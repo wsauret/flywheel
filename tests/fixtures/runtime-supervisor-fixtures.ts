@@ -12,7 +12,7 @@ import { createTranscriptProjectionCache } from "../../src/orchestration/app-ser
 import { createSessionViewLoader } from "../../src/orchestration/app-service/projections/session-view.js"
 import type { ChatRunnerDeps } from "../../src/orchestration/chat/runner.js"
 import type { ChatRunner } from "../../src/orchestration/chat/runner-types.js"
-import { NO_MODULE_RUNTIMES } from "../../src/infra/modules/module-runtime.js"
+import { NO_MODULE_RUNTIMES } from "../../src/infra/definitions/modules/module-runtime.js"
 import { createSessionManager, type SessionManager } from "../../src/orchestration/session/manager.js"
 import { createContinuationLanes, type ContinuationLanes } from "../../src/orchestration/session/control/planned-session-continuation.js"
 import { createSessionStore } from "../../src/orchestration/session-store/store.js"

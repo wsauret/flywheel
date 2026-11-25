@@ -5,7 +5,7 @@ import { resolveToolRowPresentation } from "../../../../../../src/infra/substrat
 import { renderToolEntry } from "./_tool-entry-render.js"
 import { writeEntry } from "./_write-entry-fixture.js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"
-import { buildMutationDiff } from "../../../../../../src/infra/substrate/mutation-diff.js"
+import { buildMutationDiff } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff.js"
 
 function provisionalFileEntry(path?: string): ToolEntryType {
   return {

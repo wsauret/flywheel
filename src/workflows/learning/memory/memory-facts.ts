@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineFact } from "../../../infra/substrate/facts/event-registry.js"
-import { LearningScopeSchema } from "../../../infra/learning/learning-scope.js"
+import { LearningScopeSchema } from "../../../infra/definitions/learning/learning-scope.js"
 
 // memory.written records one mutation of a bounded memory store through the
 // memory tool. `target` is the learning reach (ARCH-LEARNING-005): project memory or

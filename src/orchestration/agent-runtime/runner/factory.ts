@@ -7,7 +7,7 @@ import { captureAccountConnection, createAdmittedClient, createClient, type Admi
 import { LiveAgent } from "./runner.js";
 import { planCapabilitiesOfRun, prepareRunRequest, type CapabilityPlanner, type RequestPreparer } from "../loop/turn/request-preparation.js";
 import type { AgentFactory, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "../types.js";
-import type { ModuleServices } from "../../../infra/modules/module-service.js";
+import type { ModuleServices } from "../../../infra/definitions/modules/module-service.js";
 import type { EnvCaptureResolver } from "../../../infra/environment/env-detection.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import type { CommandHandoverAuthority } from "../background-execution/command-handover.js";

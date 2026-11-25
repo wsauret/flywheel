@@ -5,7 +5,7 @@ import { privateTemporaryRoot } from "../../../infra/platform/files/private-temp
 import type { ClaudeLoginEngines } from "../../../infra/providers/claude-engine.js";
 import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../infra/providers/llm/access/access-provider.js";
 import type { AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
-import { moduleServiceHandle } from "../../../infra/modules/module-service.js";
+import { moduleServiceHandle } from "../../../infra/definitions/modules/module-service.js";
 import type { ModuleServiceInstance, PortableModuleServices } from "../../app-service/module-service-host.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { SEVEN_DAY_METRIC } from "./account-usage.js";

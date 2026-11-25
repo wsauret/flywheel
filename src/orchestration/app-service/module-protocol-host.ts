@@ -1,7 +1,7 @@
 import type { Schema } from "effect"
 import type { ChatInputLike } from "../../infra/substrate/events/chat-input.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter, EventReader, StoredFact } from "../../infra/substrate/store/event-store-types.js"
-import type { ModuleServices } from "../../infra/modules/module-service.js"
+import type { ModuleServices } from "../../infra/definitions/modules/module-service.js"
 import type { ProtocolBackgroundDomain, ProtocolBackgroundSnapshot, ProtocolModuleMutation, ProtocolModuleMutationResult, ProtocolModuleMutationType, ProtocolModuleQuery, ProtocolModuleQueryResult, ProtocolModuleQueryType, ProtocolRegistryModule } from "../../protocol/modules.js"
 import type { BackgroundSnapshotOf, ProtocolDomainQuery, ProtocolDomainSnapshot, ProtocolModule, ProtocolMutationOf, ProtocolMutationRequest, ProtocolMutationResult, ProtocolQueryOf, ProtocolQueryRequest, ProtocolQueryResult } from "../../protocol/protocol-module.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../protocol/runtime/runtime-ui-protocol-types.js"

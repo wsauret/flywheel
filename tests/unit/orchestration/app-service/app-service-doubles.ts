@@ -13,7 +13,7 @@ import type { AdmittedModelAssignmentService } from "../../../../src/orchestrati
 import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
-import { NO_MODULE_SERVICES } from "../../../../src/infra/modules/module-service.js"
+import { NO_MODULE_SERVICES } from "../../../../src/infra/definitions/modules/module-service.js"
 import { createMemoryStore } from "../../workflows/vm/host-test-support.js"
 import { workflowsModule } from "../../../../src/orchestration/modules/workflows.js"
 import { workflowProtocolServices } from "../../../../src/orchestration/modules/workflows/protocol/protocol.js"

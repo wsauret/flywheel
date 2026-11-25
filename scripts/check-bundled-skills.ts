@@ -23,7 +23,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bundledAgentAsset, type AgentAssetName } from "../src/infra/agent-assets/system-prompt.js";
+import { bundledAgentAsset, type AgentAssetName } from "../src/infra/definitions/agent-assets/system-prompt.js";
 import { renderCapabilityText } from "../src/infra/definitions/capability-text.js";
 import { errorMessage } from "../src/infra/diagnostics/error-message.js";
 import { inspectSkillLibrary } from "../src/workflows/skills/skill-health.js";

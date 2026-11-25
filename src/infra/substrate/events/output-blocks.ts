@@ -1,6 +1,6 @@
-import { MutationEvidenceSchema } from "../mutation-evidence-schema.js"
+import { MutationEvidenceSchema } from "../file-mutations/mutation-evidence-schema.js"
 import { ToolResultActionSchema } from "./tool-result-action.js"
-import { ToolActionSchema } from "../../workflow/workflow-types.js"
+import { ToolActionSchema } from "../../definitions/workflow/workflow-types.js"
 import { Schema } from "effect"
 import type { MessageProducer } from "./chat-input.js"
 import { SessionRelationSchema } from "./chat-input-schema.js"

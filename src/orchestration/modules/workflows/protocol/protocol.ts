@@ -19,7 +19,7 @@ import { createWorkflowRunReader } from "../runs/run-record.js"
 import { advanceWorkflowMemberTotals } from "../../../workflow-host/member-totals.js"
 import { onPlannedContinuationRetired } from "../../../session/control/planned-session-continuation.js"
 import { BUDGET_FACT_TYPES } from "../../../session/runtime-facts/budget-projection.js"
-import { composeModuleServices, moduleServiceHandle } from "../../../../infra/modules/module-service.js"
+import { composeModuleServices, moduleServiceHandle } from "../../../../infra/definitions/modules/module-service.js"
 import type { ModuleWorkflowRuns } from "../../../module-seams.js"
 
 type WorkflowProtocolInputs = Parameters<ModuleWorkflowRuns["protocolServices"]>[0]

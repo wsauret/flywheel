@@ -230,7 +230,7 @@ describe("SessionEventAdapter", () => {
     adapter = chatAdapter(patches)
     adapter.connect(bus)
 
-    const { buildMutationDiffEvidence } = await import("../../../../src/infra/substrate/mutation-diff-evidence.js")
+    const { buildMutationDiffEvidence } = await import("../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js")
     const mutationEvidence = await buildMutationDiffEvidence({
       version: 1, files: ["provider-quirks", "new-package"].map(path => ({ path, change: "modified", unifiedDiff: "@@ -1 +1 @@\n-old\n+new" })), omissions: [],
     }, "review", async () => {})

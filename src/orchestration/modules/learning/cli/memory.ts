@@ -6,8 +6,8 @@
 
 import type { ProjectDirectories } from "../../../../infra/platform/files/directory-authorities.js"
 import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
-import type { LearningScope } from "../../../../infra/learning/learning-scope.js"
-import { LEARNING_REACHES } from "../../../../infra/learning/learning-scope.js"
+import type { LearningScope } from "../../../../infra/definitions/learning/learning-scope.js"
+import { LEARNING_REACHES } from "../../../../infra/definitions/learning/learning-scope.js"
 import {
   createMemoryStoreConfig,
   MEMORY_CHAR_LIMITS,

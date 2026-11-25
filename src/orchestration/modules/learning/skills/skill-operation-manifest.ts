@@ -24,9 +24,9 @@ import { writeFileAtomic } from "../../../../infra/platform/files/atomic-write.j
 import { ContainedFileTooLargeError, ContainedPathError } from "../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "../../../../infra/platform/files/descriptor-directory.js";
 import { readFileUnder } from "../../../../infra/platform/files/write-file-under.js";
-import { LearningScopeSchema } from "../../../../infra/learning/learning-scope.js";
+import { LearningScopeSchema } from "../../../../infra/definitions/learning/learning-scope.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { MutationDiffSchema } from "../../../../infra/substrate/mutation-diff.js";
+import { MutationDiffSchema } from "../../../../infra/substrate/file-mutations/mutation-diff.js";
 import { readManifestPackage } from "../../../../workflows/skills/skill-context.js";
 import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js";
 import { packagePathRefusal } from "../../../../workflows/skills/skill-package-path.js";

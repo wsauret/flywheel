@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { composeModuleServices } from "../../../../../src/infra/modules/module-service.js"
-import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../../src/infra/modules/retained-operation-hosts.js"
+import { composeModuleServices } from "../../../../../src/infra/definitions/modules/module-service.js"
+import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../../src/infra/definitions/modules/retained-operation-hosts.js"
 import type { AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js"
 import { createChildSessionControl } from "../../../../../src/orchestration/session/control/messaging/child-session-control.js"

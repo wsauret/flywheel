@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { closeSync, existsSync, ftruncateSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, symlinkSync } from "node:fs"
 import { join } from "node:path"
-import { ToolActionSchema, type ToolAction } from "../../../../../src/infra/workflow/workflow-types.js"
+import { ToolActionSchema, type ToolAction } from "../../../../../src/infra/definitions/workflow/workflow-types.js"
 import {
   describeDefinitionRefusal,
   loadPathWorkflow,

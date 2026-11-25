@@ -30,7 +30,7 @@ import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.
 import { roleCapture } from "../../../../helpers/role-capture.js";
 import { canonicalModelId } from "../../../../../src/infra/providers/model-id.js";
 import { Schema } from "effect";
-import { EffortSchema } from "../../../../../src/infra/workflow/workflow-types.js";
+import { EffortSchema } from "../../../../../src/infra/definitions/workflow/workflow-types.js";
 import { createEmit, EventBus } from "../../../../../src/infra/substrate/events/event-bus.js";
 import { subscribeSessionRuntimeFacts } from "../../../../../src/orchestration/session/persistence/create-session-infra.js";
 import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";

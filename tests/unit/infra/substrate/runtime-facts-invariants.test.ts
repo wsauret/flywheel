@@ -9,7 +9,7 @@ import { parseSessionRuntimeFact } from "../../../../src/orchestration/session/r
 import { RUNTIME_EVENT_DEFINITIONS, RUNTIME_EVENT_TYPES } from "../../../../src/infra/substrate/runtime-facts/runtime-event-types"
 import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../../src/infra/substrate/runtime-facts/runtime-fact-types"
 import { RETIRED_FACT_TYPES } from "../../../../src/orchestration/session/persistence/storage/event-store-maintenance.js"
-import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/mutation-diff-evidence.js"
+import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js"
 import { sessionContentFixture } from "../../../helpers/session-content.js"
 
 function requireInvariant(value: unknown): InvariantViolation {

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { AccessProviderDefinition } from "../../../../../src/infra/providers/llm/access/access-provider.js"
-import { composeModules } from "../../../../../src/infra/module-descriptor.js"
+import { composeModules } from "../../../../../src/infra/definitions/module-descriptor.js"
 import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/providers/llm/usage/subscription-usage.js"
 
 import { accessProviderRegistry, type AccessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js"

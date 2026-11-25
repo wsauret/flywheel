@@ -5,7 +5,7 @@ import { temporaryDirectories, testDirectories } from "../../helpers/directories
 import { createSqliteEventStore } from "../../../src/infra/substrate/store/sqlite-event-store.js"
 import { resolveEventStoreDbFile } from "../../../src/infra/platform/files/paths.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state/workspace-state.js"
-import { assertMutationEvidence } from "../../../src/infra/substrate/mutation-evidence.js"
+import { assertMutationEvidence } from "../../../src/infra/substrate/file-mutations/mutation-evidence.js"
 import { inspectUpgradeFixture } from "../../release/fixtures/workflow-agent-previous-shape.js"
 import snapshot from "../../release/fixtures/workflow-agent-small-previous-shape.json"
 import { firstOpenEvidence, readUpgradeMemoryEvidence, readUpgradeState, secondOpenFailures, upgradeMemoryMetrics, upgradeReadiness } from "../../release/scenarios/workflow-agent-upgrade.js"

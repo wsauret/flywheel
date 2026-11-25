@@ -10,7 +10,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/substrate/runtime-f
 import type { RuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-types.js";
 import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
-import { composeModuleRuntimes } from "../../../../../src/infra/modules/module-runtime.js";
+import { composeModuleRuntimes } from "../../../../../src/infra/definitions/modules/module-runtime.js";
 import { testCapabilityModules, testDefinitionAvailability, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { makeContext as toolContext } from "../tools/_fixtures.js";

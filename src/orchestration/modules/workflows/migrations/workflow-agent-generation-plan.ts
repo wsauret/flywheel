@@ -3,7 +3,7 @@ import { generateSessionId } from "../../../../infra/substrate/session-id.js"
 import { committedWorkflowEvent, workflowRootControl } from "../../../../workflows/control-facts/family.js"
 import { parseWorkflowSessionFact } from "../../../../workflows/vm/facts/session-facts.js"
 import { workflowRecoveryBasis } from "../../../../workflows/vm/recovery/recovery.js"
-import type { WorkflowMembership } from "../../../../infra/workflow/session-workflow-membership.js"
+import type { WorkflowMembership } from "../../../../infra/definitions/workflow/session-workflow-membership.js"
 
 export interface ImportedWorkflowGeneration {
   readonly sessionId: string

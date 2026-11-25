@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import type { MutationEvidence } from "../../../../src/infra/substrate/mutation-evidence.js"
+import type { MutationEvidence } from "../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
 import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { createTranscriptStore } from "../../../../src/protocol/client/transcript-store.js"
 import { outputCursor } from "../../../../src/protocol/transcript/output-protocol-types.js"

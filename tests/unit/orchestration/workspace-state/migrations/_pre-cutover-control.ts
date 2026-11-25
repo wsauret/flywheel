@@ -9,7 +9,7 @@
  *  2027-04-30, together with the passes that this fixture serves. */
 
 import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js"
-import type { ToolScoping } from "../../../../../src/infra/workflow/workflow-types.js"
+import type { ToolScoping } from "../../../../../src/infra/definitions/workflow/workflow-types.js"
 import { hashContent, hashDefinition } from "../../../../../src/workflows/provenance/definition-hash.js"
 import { renderSkillContext } from "../../../../../src/workflows/skills/skill-render.js"
 import type { StepGrammarWorkflow, WorkflowStep } from "../../../../../src/workflows/schema/retired-step-grammar/schema.js"

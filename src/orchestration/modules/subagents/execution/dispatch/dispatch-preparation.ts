@@ -14,7 +14,7 @@ import { dispatchableAgents, grantedSubagentTypes, personaToolNames } from "../.
 import { personaInstructions } from "../../../../../workflows/agents/persona-instructions.js"
 import { attendedClosureMembers } from "../../../../../workflows/skills/skill-closure.js"
 import type { PromptKind } from "../../../../agent-runtime/request/prompt/system-prompt.js"
-import { CHECKPOINT_TOOL_NAMES } from "../../../../../infra/agent-assets/session-notes.js"
+import { CHECKPOINT_TOOL_NAMES } from "../../../../../infra/definitions/agent-assets/session-notes.js"
 import { availableToolNames, isReadOnlyPersona } from "../../../../agent-runtime/request/prompt/persona-tool-rules.js"
 
 interface PreparedDispatch {

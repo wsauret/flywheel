@@ -67,8 +67,8 @@ describe("binary manifest generation", () => {
     await withTempManifest(async (dest) => {
       await writeAgentAssetsManifest(dest);
       const generated = readFileSync(dest, "utf-8");
-      const sourceText = readFileSync(join(REPO_ROOT, "src", "infra", "agent-assets", "system-prompt.md"), "utf-8");
-      const doctrineText = readFileSync(join(REPO_ROOT, "src", "infra", "agent-assets", "engineering-doctrine.md"), "utf-8");
+      const sourceText = readFileSync(join(REPO_ROOT, "src", "infra", "definitions", "agent-assets", "system-prompt.md"), "utf-8");
+      const doctrineText = readFileSync(join(REPO_ROOT, "src", "infra", "definitions", "agent-assets", "engineering-doctrine.md"), "utf-8");
 
       expect(generated).toContain("export const systemPromptText");
       expect(generated).toContain(JSON.stringify(sourceText));

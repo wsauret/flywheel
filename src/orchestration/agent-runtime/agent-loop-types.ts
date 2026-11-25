@@ -24,7 +24,7 @@ import type {
 import type { SystemPromptTiers } from "./llm/system-prompt-tiers.js";
 import type { PromptPrefixHold } from "./loop/turn/prompt-prefix-hold.js";
 import type { ModelInteractionProfile } from "./request/prompt/model-interaction-profile.js";
-import type { ModuleRuntimes } from "../../infra/modules/module-runtime.js";
+import type { ModuleRuntimes } from "../../infra/definitions/modules/module-runtime.js";
 import type { CapabilityAccess, ToolAttributionIdentity } from "./tools/types.js";
 import type { RequestToolSurfaceOwner } from "./request/request-tool-surface.js";
 import type { CurrentTurnInterruption } from "./loop/turn/run-lifecycle.js";

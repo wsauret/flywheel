@@ -4,8 +4,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Schema } from "effect";
-import { readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/mutation-evidence.js";
-import { MutationEvidenceSchema } from "../../../../../../src/infra/substrate/mutation-evidence-schema.js";
+import { readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js";
+import { MutationEvidenceSchema } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence-schema.js";
 import { parseFileMutationOperationHeader, readFileMutationOperation } from "../../../../../../src/orchestration/session/file-mutations/file-mutation-operation.js";
 
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";

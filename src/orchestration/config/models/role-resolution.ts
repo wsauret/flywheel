@@ -12,7 +12,7 @@ import { Log } from "../../../infra/diagnostics/log.js";
 import type { AdmittedFailoverPlan, AccessProviderModelEligibility, AccessProviderSelection } from "../../../infra/providers/llm/access/access-provider.js";
 import type { ProviderConnection } from "../../../infra/providers/auth/auth-context.js";
 import type { ModelInfo } from "../../../infra/providers/llm/models/models.js";
-import { EFFORT_VALUES } from "../../../infra/workflow/workflow-types.js";
+import { EFFORT_VALUES } from "../../../infra/definitions/workflow/workflow-types.js";
 import { clampReasoningEffort, newestLaterModelVersion } from "../../agent-runtime/llm/model-compat.js";
 import { parseBriefRoleId, briefPersonaRoleId } from "../../../protocol/auth/brief-role-id.js";
 import { beginTierResolutionOperation, modelPriceTier, resolveModelForTierAcrossFamilies, type TierResolutionOptions } from "./model-tiers.js";

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { createStore } from "solid-js/store"
-import type { MutationEvidenceEntry } from "../../../../src/infra/substrate/mutation-evidence.js"
+import type { MutationEvidenceEntry } from "../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
 import type { SessionContentReference } from "../../../../src/infra/substrate/session-content.js"
 import type { RuntimeQuery } from "../../../../src/protocol/runtime/app-service-types.js"
 import { createMutationEvidenceReader } from "../../../../src/protocol/client/mutation-evidence.js"

@@ -1,4 +1,4 @@
-import type { MutationEvidence } from "../../../../infra/substrate/mutation-evidence.js"
+import type { MutationEvidence } from "../../../../infra/substrate/file-mutations/mutation-evidence.js"
 import type { AgentFailureDisplay } from "../../../../infra/substrate/events/output-blocks.js"
 import type { ToolResultAction } from "../../../../infra/substrate/events/tool-result-action.js"
 import type { ToolOutcome } from "../../../../infra/substrate/runtime-facts/tool-outcome.js"

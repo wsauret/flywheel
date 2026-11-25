@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/modules/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/definitions/modules/module-runtime.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";

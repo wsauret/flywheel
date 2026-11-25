@@ -1,8 +1,8 @@
 import { describe, it, expect } from "bun:test";
 import { getToolDisplay, resolveToolRowPresentation } from "../../../../../../src/infra/substrate/output/tools/tool-display-registry.js";
-import { normalizeSkillId } from "../../../../../../src/infra/learning/skill-id.js";
+import { normalizeSkillId } from "../../../../../../src/infra/definitions/learning/skill-id.js";
 import { testBaseTools, testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";
-import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/modules/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/definitions/modules/module-runtime.js";
 import { bashExecution } from "../../../../orchestration/agent-runtime/tools/bash/_bash-fixtures.js";
 import type { ToolRegistration } from "../../../../../../src/orchestration/module-seams.js";
 

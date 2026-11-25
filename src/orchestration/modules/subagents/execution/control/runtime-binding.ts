@@ -1,4 +1,4 @@
-import { moduleRuntimeHandle } from "../../../../../infra/modules/module-runtime.js"
+import { moduleRuntimeHandle } from "../../../../../infra/definitions/modules/module-runtime.js"
 import type { ServingModel } from "../../../../agent-runtime/tools/kernel-tool-deps.js"
 import type { DefinitionAvailabilitySnapshot } from "../../../../app-service/definitions/definition-availability.js"
 import type { SubagentDispatchDeps } from "../dispatch/dispatch-deps.js"

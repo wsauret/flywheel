@@ -5,7 +5,7 @@ import type { DurableSessionCatalogRow } from "../../../../src/orchestration/ses
 import type { SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
-import { NO_MODULE_RUNTIMES } from "../../../../src/infra/modules/module-runtime.js"
+import { NO_MODULE_RUNTIMES } from "../../../../src/infra/definitions/modules/module-runtime.js"
 import type { WorkflowRunner } from "../../../../src/orchestration/workflow-host/runner-types.js"
 import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/substrate/output/output-block-delta.js"
 import type { SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"

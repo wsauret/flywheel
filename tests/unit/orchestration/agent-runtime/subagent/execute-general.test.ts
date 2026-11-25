@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { NO_MODULE_SERVICES } from "../../../../../src/infra/modules/module-service.js";
+import { NO_MODULE_SERVICES } from "../../../../../src/infra/definitions/modules/module-service.js";
 
 import * as os from "node:os";
 import * as path from "node:path";
@@ -14,7 +14,7 @@ import type { SubagentDispatchDeps } from "../../../../../src/orchestration/modu
 import { buildRegistry, grantOf, makeContext, makeDeps, makeMockRunnerFactory, runnerEffort, TEST_RATIONALE, childTask } from "./_fixtures.js";
 import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.js";
 import type { ContinuationTarget } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/control-actions.js";
-import { canUseCheckpoint } from "../../../../../src/infra/agent-assets/session-notes.js";
+import { canUseCheckpoint } from "../../../../../src/infra/definitions/agent-assets/session-notes.js";
 import { noSkills } from "../../../../helpers/project-definitions.js";
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js";
 

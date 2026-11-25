@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { EffortSchema } from "../../src/infra/workflow/workflow-types.js";
+import { EffortSchema } from "../../src/infra/definitions/workflow/workflow-types.js";
 import { requireAuthProfile } from "./campaign-args.js";
 import { CampaignDisabledToolsSchema, CampaignMessageSchema, CampaignRolesSchema } from "./campaign-store.js";
 import { BenchmarkPatchPath } from "./source-treatment.js";

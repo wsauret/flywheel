@@ -3,7 +3,7 @@ import type { HandoffToolSchema } from "../../../../../../src/orchestration/work
 import type { ConversationCheckpointOwner } from "../../../../../../src/orchestration/session/conversation-records/conversation-checkpoint.js";
 import type { RuntimeTool } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testSkill } from "../../../../../helpers/skill-fixtures.js";
-import { composeModuleRuntimes } from "../../../../../../src/infra/modules/module-runtime.js";
+import { composeModuleRuntimes } from "../../../../../../src/infra/definitions/modules/module-runtime.js";
 import { planToolExposure } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";
 import { makeContext } from "../_fixtures.js";

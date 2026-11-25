@@ -1,6 +1,6 @@
 import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest, ModulePolicy } from "../../config/policy/module-policy.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
-import type { ToolAction } from "../../../infra/workflow/workflow-types.js";
+import type { ToolAction } from "../../../infra/definitions/workflow/workflow-types.js";
 import type { SessionFactWriter } from "../../session/persistence/session-fact-writer.js";
 import type { ToolOutcome } from "../../../infra/substrate/runtime-facts/tool-outcome.js";
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
@@ -16,7 +16,7 @@ import type { HandoffRejection } from "../../workflow-host/attempt/handoff-tool-
 
 import type { PersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-bridge.js";
-import type { ModuleRuntimes } from "../../../infra/modules/module-runtime.js";
+import type { ModuleRuntimes } from "../../../infra/definitions/modules/module-runtime.js";
 import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
 import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js";
 import { canonicalModuleIds, MODULE_IDS, type ModuleId } from "../../../protocol/runtime/module-ids.js";

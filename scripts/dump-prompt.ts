@@ -34,7 +34,7 @@ import { buildSubagentTask, SUBAGENT_HANDOFF_SCHEMA } from "../src/orchestration
 import type { SystemPromptPart } from "../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import { readModuleMemory } from "../src/orchestration/agent-runtime/request/prompt/request-system-prompt.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../src/infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../src/infra/definitions/agent-assets/system-prompt.js";
 import { personaToolEntries, toolRegistryFromComposition } from "../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import { captureRuntimeConfigRequest } from "../src/orchestration/agent-runtime/request/request-config.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";

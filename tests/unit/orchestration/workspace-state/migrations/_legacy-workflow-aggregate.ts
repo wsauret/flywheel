@@ -11,7 +11,7 @@ import { createSqliteEventStore } from "../../../../../src/infra/substrate/store
 import type { EventPayload } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../../src/workflows/definitions/agent-resolution.js"
 import { hashDefinition } from "../../../../../src/workflows/provenance/definition-hash.js"
-import { ToolScopingSchema } from "../../../../../src/infra/workflow/workflow-types.js"
+import { ToolScopingSchema } from "../../../../../src/infra/definitions/workflow/workflow-types.js"
 import { ArtifactContractsFrontmatterSchema } from "../../../../../src/workflows/schema/artifact-contracts.js"
 import type { SkillDefinition } from "../../../../../src/workflows/skills/skill-schema.js"
 import type { RetiredBinding } from "../../../../../src/workflows/definitions/retired-bindings.js"

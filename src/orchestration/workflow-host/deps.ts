@@ -23,7 +23,7 @@ import type { ModulePolicy } from "../config/policy/module-policy.js"
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js"
 import { installedCredentialProviderIds } from "../credential-provider-modules.js"
 
-import type { ModuleServices } from "../../infra/modules/module-service.js"
+import type { ModuleServices } from "../../infra/definitions/modules/module-service.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { CommandHandoverAuthority } from "../agent-runtime/background-execution/command-handover.js"
 import type { ChildSessionControl } from "../session/control/messaging/child-session-control.js"

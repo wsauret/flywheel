@@ -1,6 +1,6 @@
 import { Effect, Result, Schema } from "effect";
-import { isQualifiedSkillId } from "../../infra/learning/skill-id.js";
-import { isBriefId } from "../../infra/workflow/workflow-identifiers.js";
+import { isQualifiedSkillId } from "../../infra/definitions/learning/skill-id.js";
+import { isBriefId } from "../../infra/definitions/workflow/workflow-identifiers.js";
 import { definitionAssets, describeAsset, isBundledAssetRef, resolveAssetRef, type AssetLocation, type DefinitionAssetReader } from "./definition-assets.js";
 import { resolveSkillBody } from "../skills/skill-references.js";
 import { FORMER_STEP_SKILLS } from "./retired-bindings.js";

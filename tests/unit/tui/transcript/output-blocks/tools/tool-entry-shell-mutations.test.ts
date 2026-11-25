@@ -7,7 +7,7 @@ import flywheelThemeJson from "../../../../../../src/tui/context/theme/flywheel.
 import { resolveTheme } from "../../../../../../src/tui/context/theme/resolve.js"
 import { highlightShellCommand } from "../../../../../../src/tui/adapters/shell-command-highlight.js"
 import { renderToolEntry as renderEntry, type RenderToolEntryOptions } from "./_tool-entry-render.js"
-import type { MutationDiff } from "../../../../../../src/infra/substrate/mutation-diff.js"
+import type { MutationDiff } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff.js"
 import { RGBA } from "@opentui/core"
 import { getWriteSyntaxColors } from "../../../../../../src/protocol/settings/write-syntax-theme.js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"

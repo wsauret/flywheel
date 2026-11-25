@@ -9,7 +9,7 @@ import {
   readToolResultDisplayMeta,
 } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta"
 import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/history/mutation-evidence-recovery.js"
-import { readMutationEvidenceFiles } from "../../../../src/infra/substrate/mutation-evidence.js"
+import { readMutationEvidenceFiles } from "../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
 import { completePatch, resolveRetainedPatch } from "../../../../src/orchestration/session/metadata/catalog/session-change-sources.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
 

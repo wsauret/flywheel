@@ -5,9 +5,9 @@ import {
   buildSessionContent, buildSessionContentManifest, readSessionContentRange,
   type SessionContentNode, type SessionContentNodeRow,
 } from "../../../../src/infra/substrate/session-content.js"
-import { buildMutationEvidence, buildMutationFileEvidence, readMutationEvidenceFiles, type MutationEvidenceEntry } from "../../../../src/infra/substrate/mutation-evidence.js"
-import { MutationEvidenceSchema } from "../../../../src/infra/substrate/mutation-evidence-schema.js"
-import { formatFileSamples, formatNotAppliedFiles, summarizeNotAppliedFiles } from "../../../../src/infra/substrate/not-applied-files.js"
+import { buildMutationEvidence, buildMutationFileEvidence, readMutationEvidenceFiles, type MutationEvidenceEntry } from "../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
+import { MutationEvidenceSchema } from "../../../../src/infra/substrate/file-mutations/mutation-evidence-schema.js"
+import { formatFileSamples, formatNotAppliedFiles, summarizeNotAppliedFiles } from "../../../../src/infra/substrate/file-mutations/not-applied-files.js"
 
 function memoryContent() {
   const nodes = new Map<string, SessionContentNode>()

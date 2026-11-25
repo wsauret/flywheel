@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
-import { FILE_EDIT_LIMITS, FileEditPlanError } from "../../../../src/infra/file-edit/contract.js";
-import { PatchOperationParser, preparePatch } from "../../../../src/infra/file-edit/patch-parser.js";
+import { FILE_EDIT_LIMITS, FileEditPlanError } from "../../../../../../src/infra/substrate/file-mutations/file-edit/contract.js";
+import { PatchOperationParser, preparePatch } from "../../../../../../src/infra/substrate/file-mutations/file-edit/patch-parser.js";
 
 describe("patch parser", () => {
   it("exposes completed operations without treating EOF as an operation boundary", () => {

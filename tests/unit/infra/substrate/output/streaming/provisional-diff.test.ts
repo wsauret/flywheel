@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
 
-import { MutationDiffSchema } from "../../../../../../src/infra/substrate/mutation-diff.js";
+import { MutationDiffSchema } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff.js";
 import { ProvisionalDiffSchema } from "../../../../../../src/infra/substrate/events/output-blocks.js";
 import { createProvisionalDiffInput } from "../../../../../../src/infra/substrate/output/streaming/provisional-diff-input.js";
 import { TopLevelJsonStringDecoder } from "../../../../../../src/infra/substrate/output/streaming/partial-json.js";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isQualifiedSkillId } from "../../../src/infra/learning/skill-id.js";
+import { isQualifiedSkillId } from "../../../src/infra/definitions/learning/skill-id.js";
 import type { AgentDefinition } from "../../../src/infra/definitions/agent-definition.js";
 import { loadStandalonePersonaRegistry } from "../../../src/workflows/agents/registry.js";
 import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/definitions/skill.js";

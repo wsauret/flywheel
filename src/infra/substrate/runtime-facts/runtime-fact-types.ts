@@ -1,11 +1,11 @@
 import { Schema, SchemaTransformation } from "effect";
-import { MutationDiffSchema } from "../mutation-diff.js";
+import { MutationDiffSchema } from "../file-mutations/mutation-diff.js";
 import { ModelUsagePayloadV1, ModelUsagePayloadV2, ModelUsagePayloadV3, ModelUsagePayloadV4, ModelUsagePayloadV5, ModelUsagePayloadV6 } from "./usage-measured-payloads.js";
 import { evidenceResultPayload, evidenceOutputPayload, nestedContentWithinCap } from "./runtime-mutation-evidence.js";
-import { NotAppliedFilesSchema } from "../not-applied-files.js";
+import { NotAppliedFilesSchema } from "../file-mutations/not-applied-files.js";
 import { ToolContentReferenceSchema, type ToolContentReference } from "./tool-content.js";
 import { TOOL_OUTCOME_VALUES } from "./tool-outcome.js";
-import { WorkflowLaunchAgentModelsSchema } from "../../workflow/workflow-types.js";
+import { WorkflowLaunchAgentModelsSchema } from "../../definitions/workflow/workflow-types.js";
 
 const UnknownRecordSchema = Schema.Record(Schema.String, Schema.Unknown);
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));

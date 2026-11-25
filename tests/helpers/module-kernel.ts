@@ -1,5 +1,5 @@
 import { asAsyncEventReadSurface } from "../../src/infra/substrate/store/event-store-types.js"
-import { NO_MODULE_SERVICES } from "../../src/infra/modules/module-service.js"
+import { NO_MODULE_SERVICES } from "../../src/infra/definitions/modules/module-service.js"
 import type { ModuleProcessServices } from "../../src/orchestration/app-service/module-service-host.js"
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js"
 import type { SessionManager } from "../../src/orchestration/session/manager.js"

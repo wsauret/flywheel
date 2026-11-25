@@ -4,9 +4,9 @@ import {
   type InFlightRecord, type StoredFact,
 } from "../../../infra/substrate/store/event-store-types.js"
 import { asRecord } from "../../../infra/guards/record.js"
-import { MutationDiffSchema, type MutationDiff } from "../../../infra/substrate/mutation-diff.js"
-import { buildMutationDiffEntries } from "../../../infra/substrate/mutation-diff-evidence.js"
-import { buildMutationEvidence, type MutationEvidenceEntry, type MutationFileEvidence } from "../../../infra/substrate/mutation-evidence.js"
+import { MutationDiffSchema, type MutationDiff } from "../../../infra/substrate/file-mutations/mutation-diff.js"
+import { buildMutationDiffEntries } from "../../../infra/substrate/file-mutations/mutation-diff-evidence.js"
+import { buildMutationEvidence, type MutationEvidenceEntry, type MutationFileEvidence } from "../../../infra/substrate/file-mutations/mutation-evidence.js"
 import type { StageSessionContentNodes } from "../../../infra/substrate/session-content.js"
 import { ReviewNoticeMutationSchema } from "../../../infra/substrate/events/review-notice.js"
 import { AgentSystemMessageV1DataSchema, AgentSystemMessageV2DataSchema } from "../../../infra/substrate/events/events.js"

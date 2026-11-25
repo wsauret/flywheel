@@ -2,7 +2,7 @@ import type { SessionDiffStats } from "../../../../protocol/runtime/app-service-
 import type { SessionForkRecord } from "../session-fork-projection.js"
 import type { SessionLifecycleState } from "../types.js"
 import type { ReplayedSession } from "../schemas.js"
-import type { WorkflowMembership } from "../../../../infra/workflow/session-workflow-membership.js"
+import type { WorkflowMembership } from "../../../../infra/definitions/workflow/session-workflow-membership.js"
 
 export interface SessionLaunchedFrom {
   parentSessionId: string

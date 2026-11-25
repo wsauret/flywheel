@@ -1,12 +1,12 @@
-import { buildMutationEvidence, type MutationEvidenceEntry, type MutationFileEvidence } from "../../src/infra/substrate/mutation-evidence.js"
+import { buildMutationEvidence, type MutationEvidenceEntry, type MutationFileEvidence } from "../../src/infra/substrate/file-mutations/mutation-evidence.js"
 import { buildSessionContent, readSessionContentRange, type SessionContentNode, type StageSessionContentNodes } from "../../src/infra/substrate/session-content.js"
 import { createMutationEvidenceReader, type MutationEvidenceHandle } from "../../src/protocol/client/mutation-evidence.js"
 import type { RuntimeConnection } from "../../src/protocol/client/connection.js"
 import type { RuntimeQuery } from "../../src/protocol/runtime/app-service-types.js"
-import { unifiedDiffPreview, type MutationDiff } from "../../src/infra/substrate/mutation-diff.js"
+import { unifiedDiffPreview, type MutationDiff } from "../../src/infra/substrate/file-mutations/mutation-diff.js"
 import { MUTATION_FILE_PREVIEW_BYTES, type MutationFilesEntry, type MutationFilesQuery, type MutationFilesResult, type MutationPatchWindowQuery, type MutationPatchWindowResult } from "../../src/protocol/session/mutation-evidence-protocol-types.js"
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../src/infra/substrate/events/output-blocks.js"
-import { buildMutationDiffEntries } from "../../src/infra/substrate/mutation-diff-evidence.js"
+import { buildMutationDiffEntries } from "../../src/infra/substrate/file-mutations/mutation-diff-evidence.js"
 import { runtimeQuery } from "../helpers/runtime-dispatch.js"
 
 /** The collapsed preview the runtime serves for a patch's leading bytes, so a

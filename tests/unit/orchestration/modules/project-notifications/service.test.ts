@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { join } from "node:path"
 
-import { composeModules } from "../../../../../src/infra/module-descriptor.js"
+import { composeModules } from "../../../../../src/infra/definitions/module-descriptor.js"
 import type { NotificationEpisodeInput } from "../../../../../src/infra/substrate/events/notification-episode.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"

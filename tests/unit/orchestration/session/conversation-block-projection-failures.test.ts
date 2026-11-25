@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "bun:test"
-import { buildMutationDiff } from "../../../../src/infra/substrate/mutation-diff"
-import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/mutation-diff-evidence.js"
+import { buildMutationDiff } from "../../../../src/infra/substrate/file-mutations/mutation-diff"
+import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 import { branchBlocks } from "../../../helpers/branch-blocks"
 import type { MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"

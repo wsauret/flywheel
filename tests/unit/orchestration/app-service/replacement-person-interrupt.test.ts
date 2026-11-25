@@ -5,7 +5,7 @@ import { liveChildRun } from "../../../../src/orchestration/session/control/live
 
 import { EventStoreWriterService } from "../../../../src/infra/substrate/store/event-store-effect.js"
 import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types.js"
-import { NO_MODULE_SERVICES } from "../../../../src/infra/modules/module-service.js"
+import { NO_MODULE_SERVICES } from "../../../../src/infra/definitions/modules/module-service.js"
 import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { ConversationMessage, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { SessionAuthAdmission } from "../../../../src/orchestration/session/metadata/session-auth-profile.js"

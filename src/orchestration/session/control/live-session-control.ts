@@ -3,7 +3,7 @@ import type { ChatInput, ChatInputLike } from "../../../infra/substrate/events/c
 import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import type { HeldBackgroundNotification } from "../conversation/queued-background-notifications.js"
 import type { TurnInterruption } from "../conversation/turn-end-record.js"
-import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/modules/module-runtime.js"
+import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/definitions/modules/module-runtime.js"
 import type { SessionMetadataReader } from "../metadata/schemas.js"
 import type { SessionStore } from "../../session-store/types.js"
 import type { ChatRunner } from "../../chat/runner-types.js"

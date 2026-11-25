@@ -1,7 +1,7 @@
 import { homedir } from "node:os"
 import { Schema } from "effect"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { moduleServiceHandle } from "../../../infra/modules/module-service.js"
+import { moduleServiceHandle } from "../../../infra/definitions/modules/module-service.js"
 import { readAppVersion } from "../../../infra/update/distribution/app-version.js"
 import { redactSecrets } from "../../../infra/redact-secrets.js"
 import { BUG_REPORT_MAX_BYTES, BugReportReceiptSchema, BugReportSchema, NOT_RELEASE_REPORT_STATUS, sanitizeBugReportInput, type BugReportInput, type BugReportResult } from "../../../protocol/modules/bug-reports.js"

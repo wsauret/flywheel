@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
-import { FILE_EDIT_LIMITS, FileEditPlanError } from "../../../../src/infra/file-edit/contract.js";
-import { planStringEdits, type StringEdit } from "../../../../src/infra/file-edit/string-edit.js";
+import { FILE_EDIT_LIMITS, FileEditPlanError } from "../../../../../../src/infra/substrate/file-mutations/file-edit/contract.js";
+import { planStringEdits, type StringEdit } from "../../../../../../src/infra/substrate/file-mutations/file-edit/string-edit.js";
 
 function edit(oldString: string, newString: string, replaceAll = false): StringEdit {
   return replaceAll ? { oldString, newString, replaceAll } : { oldString, newString };

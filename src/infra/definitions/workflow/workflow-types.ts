@@ -1,6 +1,6 @@
 import { Effect, Schema, SchemaTransformation } from "effect"
-import { ProviderRequestOptionsSchema } from "../providers/llm/access/provider-options.js"
-import { canonicalModelId } from "../providers/model-id.js"
+import { ProviderRequestOptionsSchema } from "../../providers/llm/access/provider-options.js"
+import { canonicalModelId } from "../../providers/model-id.js"
 
 export const EFFORT_VALUES = ["low", "medium", "high", "xhigh", "max", "ultra"] as const
 

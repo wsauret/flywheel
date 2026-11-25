@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { applyPatch, parsePatch } from "diff";
 import { tmpdir } from "node:os";
 import type { StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js";
-import { buildMutationDiff } from "../../../../../src/infra/substrate/mutation-diff.js";
+import { buildMutationDiff } from "../../../../../src/infra/substrate/file-mutations/mutation-diff.js";
 import { buildSessionChildLinkedFact, buildSessionCreatedFact } from "../../../../../src/orchestration/session/metadata/session-metadata-facts.js";
 import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js";
 import { buildArtifactContext, type ArtifactContextDeps } from "../../../../../src/orchestration/workflow-host/attempt/artifact-context.js";

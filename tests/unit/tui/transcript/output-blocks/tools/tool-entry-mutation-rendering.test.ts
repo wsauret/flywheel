@@ -10,7 +10,7 @@ import { editDiff } from "./_edit-diff-fixture.js"
 import { writeEntry } from "./_write-entry-fixture.js"
 import { createSignal } from "solid-js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"
-import { buildMutationDiff } from "../../../../../../src/infra/substrate/mutation-diff.js"
+import { buildMutationDiff } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff.js"
 import { TextAttributes } from "@opentui/core"
 
 const CWD = "/workspace"

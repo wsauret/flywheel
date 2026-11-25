@@ -9,10 +9,10 @@
 import { Effect, Scope } from "effect";
 import { resolveConversationResources } from "../../session/conversation-records/conversation-resources.js";
 import { ownedCommandRunner } from "../../../infra/owned-command.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../infra/definitions/agent-assets/system-prompt.js";
 import { canonicalize } from "../../../infra/providers/canonical-name.js";
 import { REASONING_EFFORTS, type ReasoningEffort } from "../../../infra/providers/llm/models/models.js";
-import { composeModuleRuntimes, type ModuleRuntimes } from "../../../infra/modules/module-runtime.js";
+import { composeModuleRuntimes, type ModuleRuntimes } from "../../../infra/definitions/modules/module-runtime.js";
 import type { AgentLoopOptions } from "../agent-loop-types.js";
 import type { ConversationMessage, ModelClient, ProviderSessionLifetime, ServingAttempt } from "../llm/types.js";
 import { stableSystemPrompt, type SystemPromptTiers } from "../llm/system-prompt-tiers.js";

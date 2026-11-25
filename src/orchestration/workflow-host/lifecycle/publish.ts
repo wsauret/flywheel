@@ -26,7 +26,7 @@ import type { RoleSettings } from "../../session/metadata/schemas.js"
 import { buildWorkflowDefinitionLineageFacts } from "./definition-lineage.js"
 import type { WorkflowDeps } from "../deps.js"
 import type { CommittedWorkflowControl } from "../../../workflows/control-facts/committed-control.js"
-import type { WorkflowLaunchAgentModels } from "../../../infra/workflow/workflow-types.js"
+import type { WorkflowLaunchAgentModels } from "../../../infra/definitions/workflow/workflow-types.js"
 
 /** A launch whose agents require a package the captured registry revision does
  *  not install. Startup validation cannot decide this: packages hot reload, so

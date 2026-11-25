@@ -2,7 +2,7 @@ import { createRuntimeEvent } from "../../../infra/substrate/runtime-facts/runti
 import { redactDurableToolInput } from "../../../infra/substrate/runtime-facts/durable-tool-input.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
 import type { ContentBlock } from "../../../infra/substrate/runtime-facts/runtime-content-blocks.js";
-import type { MutationEvidence } from "../../../infra/substrate/mutation-evidence.js";
+import type { MutationEvidence } from "../../../infra/substrate/file-mutations/mutation-evidence.js";
 import type { BackgroundCommandRecord } from "../../../infra/substrate/runtime-facts/runtime-fact-types.js";
 import type { RuntimeEvent, UsageData } from "../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import type { LlmToolOutputPart } from "../llm/messages.js";

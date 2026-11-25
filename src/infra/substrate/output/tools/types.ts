@@ -1,6 +1,6 @@
 import type { ToolEntry, ToolPresentation } from "../../events/output-blocks.js";
 import type { LlmToolOutputPart } from "../../../providers/llm/tool-output-part-schema.js";
-import type { ToolAction } from "../../../workflow/workflow-types.js";
+import type { ToolAction } from "../../../definitions/workflow/workflow-types.js";
 
 export type { ToolPresentation } from "../../events/output-blocks.js";
 

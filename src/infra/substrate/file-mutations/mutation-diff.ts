@@ -13,7 +13,7 @@
 
 import { createPatch } from "diff";
 import { Schema } from "effect";
-import { redactSecrets } from "../redact-secrets.js";
+import { redactSecrets } from "../../redact-secrets.js";
 
 const MUTATION_DIFF_VERSION = 1;
 

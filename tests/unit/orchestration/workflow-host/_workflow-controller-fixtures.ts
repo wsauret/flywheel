@@ -13,7 +13,7 @@ import {
   type WorkflowControllerDeps,
 } from "../../../../src/orchestration/workflow-host/lifecycle/controller"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types"
-import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../src/infra/modules/retained-operation-hosts"
+import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../src/infra/definitions/modules/retained-operation-hosts"
 import type { HeldRetainedOperation, RetainedOperationAcceptance, RetainedOperationCommitResult } from "../../../../src/orchestration/module-seams"
 import { bindRetainedOperations } from "../../../../src/orchestration/session/control/module-session-operations"
 import { workflowLaunchHost, type WorkflowLaunchHost } from "../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract"

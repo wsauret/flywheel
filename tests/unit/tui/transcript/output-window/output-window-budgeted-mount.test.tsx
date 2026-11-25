@@ -18,7 +18,7 @@ import { widenTowards } from "../../../../../src/tui/transcript/output-window/mo
 import { scrollFrameHook } from "../../../../helpers/scroll-frame-hook.js"
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../src/infra/substrate/events/output-blocks.js"
 import { ManualClock } from "@opentui/core/testing"
-import { buildMutationDiff } from "../../../../../src/infra/substrate/mutation-diff.js"
+import { buildMutationDiff } from "../../../../../src/infra/substrate/file-mutations/mutation-diff.js"
 import { getToolDisplay, resolveToolRowPresentation } from "../../../../../src/infra/substrate/output/tools/tool-display-registry.js"
 import { createBlockDisclosureChannel } from "../../../../../src/tui/context/transcript/block-disclosure.js"
 import { mutationEvidenceFixture } from "../../../../fixtures/mutation-evidence-fixture.js"

@@ -5,8 +5,8 @@ import { OutputProjector } from "../../../../../../src/infra/substrate/output/pr
 import { RuntimeEventProjector } from "../../../../../../src/infra/substrate/output/projector/runtime-event-projector";
 import type { RuntimeEvent } from "../../../../../../src/infra/substrate/runtime-facts/runtime-event-types";
 import type { ToolEntry } from "../../../../../../src/infra/substrate/events/output-blocks";
-import { buildMutationDiffEvidence, buildMutationDiffEntries } from "../../../../../../src/infra/substrate/mutation-diff-evidence";
-import { buildMutationEvidence, readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/mutation-evidence";
+import { buildMutationDiffEvidence, buildMutationDiffEntries } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff-evidence";
+import { buildMutationEvidence, readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence";
 import { readSessionContentRange } from "../../../../../../src/infra/substrate/session-content";
 import { sessionContentFixture } from "../../../../../helpers/session-content";
 

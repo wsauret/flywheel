@@ -5,7 +5,7 @@
 
 import { capturedFacts, type AsyncEventWriter, type AsyncEventStateReadSurface, type StoredFact } from "../../../../infra/substrate/store/event-store-types.js";
 import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
-import type { LearningScope } from "../../../../infra/learning/learning-scope.js";
+import type { LearningScope } from "../../../../infra/definitions/learning/learning-scope.js";
 import { createOrderedLane, type OrderedLane } from "../../../../infra/async/ordered-lane.js";
 import { createEventProjection, parseProjectionFact } from "../../../../infra/substrate/projection/event-projection.js";
 import { heldProjection } from "../../../../infra/substrate/projection/projection-registry.js";

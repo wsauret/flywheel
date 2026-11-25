@@ -177,7 +177,7 @@ How the B2 review worked:
 
 ### Question
 
-An audit found that about 65% of Flywheel's extra model requests per Terminal-Bench trial, against another agent on Haiku, come before the first deliverable, and that most of them are throwaway probe scripts: 4.05 per trial against 1.66. The suspected source is the shell branch of the first `CONSTRAINTS` bullet of the core prompt (`src/infra/agent-assets/system-prompt.md`), which asks for a probe before each design step and again after it, and says that a cheap probe "is not optional". E4 never changed that rule, and E4 had no A/A control. Does a probe rule scoped to the decision that it serves (probe-scoped), or E4's deliverable-first rule (deliverable-first), cut model requests on another model family without a loss of passes, measured against an A/A noise floor?
+An audit found that about 65% of Flywheel's extra model requests per Terminal-Bench trial, against another agent on Haiku, come before the first deliverable, and that most of them are throwaway probe scripts: 4.05 per trial against 1.66. The suspected source is the shell branch of the first `CONSTRAINTS` bullet of the core prompt (`src/infra/definitions/agent-assets/system-prompt.md`), which asks for a probe before each design step and again after it, and says that a cheap probe "is not optional". E4 never changed that rule, and E4 had no A/A control. Does a probe rule scoped to the decision that it serves (probe-scoped), or E4's deliverable-first rule (deliverable-first), cut model requests on another model family without a loss of passes, measured against an A/A noise floor?
 
 ### Setup
 

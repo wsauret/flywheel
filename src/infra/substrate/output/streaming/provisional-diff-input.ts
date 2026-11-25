@@ -1,13 +1,13 @@
 import { structuredPatch } from "diff";
 import { createStreamingSanitizer, sanitizeExternalText, type StreamingSanitizer } from "../control-characters.js";
-import { MUTATION_DIFF_RENDERED_LINE_LIMIT } from "../../mutation-diff.js";
+import { MUTATION_DIFF_RENDERED_LINE_LIMIT } from "../../file-mutations/mutation-diff.js";
 import type {
   ProvisionalDiff,
   ProvisionalDiffHunk,
   ProvisionalDiffLine,
   ProvisionalDiffUnavailableReason,
 } from "../../events/output-blocks.js";
-import { editInputEntries } from "../../../file-edit/edit-input.js";
+import { editInputEntries } from "../../file-mutations/file-edit/edit-input.js";
 import { MAX_STREAMING_TOOL_INPUT_BYTES } from "./partial-json.js";
 import { ProvisionalPatchParser } from "./provisional-patch.js";
 

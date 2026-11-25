@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { EffortSchema } from "../../infra/workflow/workflow-types.js"
+import { EffortSchema } from "../../infra/definitions/workflow/workflow-types.js"
 import { AccessProviderCandidateSchema } from "./auth-status-protocol-schemas.js"
 import type { RuntimeRoleAssignmentEntry } from "./role-protocol-types.js"
 import type {

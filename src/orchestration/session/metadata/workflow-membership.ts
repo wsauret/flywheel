@@ -2,7 +2,7 @@ import { createEventProjection } from "../../../infra/substrate/projection/event
 import type { AsyncEventReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import { heldProjection } from "../../../infra/substrate/projection/projection-registry.js"
 import { reduceSessionMetadataEvent } from "./session-metadata-projection.js"
-import type { WorkflowMembership } from "../../../infra/workflow/session-workflow-membership.js"
+import type { WorkflowMembership } from "../../../infra/definitions/workflow/session-workflow-membership.js"
 
 export interface WorkflowMember {
   readonly sessionId: string

@@ -1,7 +1,7 @@
 import { Schema } from "effect"
-import { MutationEvidenceSchema } from "../../infra/substrate/mutation-evidence-schema.js"
+import { MutationEvidenceSchema } from "../../infra/substrate/file-mutations/mutation-evidence-schema.js"
 import { AgentFailureDisplaySchema, ContainerKindSchema, DegradedBlockSchema, DiffOmissionSchema, MessageSenderSchema, ProvisionalDiffSchema, SystemWatchSchema, ToolPresentationSchema, ToolStreamingTextSchema, UserMessageImageSchema, WorkflowCardSchema } from "../../infra/substrate/events/output-blocks.js"
-import { ToolActionSchema } from "../../infra/workflow/workflow-types.js"
+import { ToolActionSchema } from "../../infra/definitions/workflow/workflow-types.js"
 import { ToolResultActionSchema } from "../../infra/substrate/events/tool-result-action.js"
 import type {
   HydratedOutputBlockBody,

@@ -8,7 +8,7 @@ import type { ChatPorts } from "../../../../src/orchestration/chat/host-ports"
 import type { OutputSession } from "../../../../src/orchestration/session-store/output-session"
 import type { Agent } from "../../../../src/orchestration/agent-runtime/types"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
-import { NO_MODULE_RUNTIMES } from "../../../../src/infra/modules/module-runtime"
+import { NO_MODULE_RUNTIMES } from "../../../../src/infra/definitions/modules/module-runtime"
 import { isRuntimeInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record"
 
 function outputSessionStub(calls: string[], phase: () => OutputSession["streamPhase"], echoedEntryIds?: (string | undefined)[], echoedQueued?: boolean[]): OutputSession {

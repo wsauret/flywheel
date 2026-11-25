@@ -1,5 +1,5 @@
 import type { ProvisionalDiff } from "../events/output-blocks.js";
-import type { MutationEvidence, MutationEvidenceEntry } from "../mutation-evidence.js";
+import type { MutationEvidence, MutationEvidenceEntry } from "../file-mutations/mutation-evidence.js";
 import { formatRelativePath } from "./tools/detail-helpers.js";
 
 function relativePath(path: string, executionCwd: string): string {

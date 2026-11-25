@@ -1,5 +1,5 @@
 import { strField, type ToolInput } from "../detail-helpers.js";
-import { normalizeSkillId } from "../../../../learning/skill-id.js";
+import { normalizeSkillId } from "../../../../definitions/learning/skill-id.js";
 import type { ToolDisplay, ToolPresentationResolution } from "../types.js";
 
 const PRESENTATION_NAMES = {

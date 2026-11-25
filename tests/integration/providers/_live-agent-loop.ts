@@ -16,7 +16,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createEnvCaptureResolver } from "../../../src/infra/environment/env-detection.js";
-import { NO_MODULE_RUNTIMES } from "../../../src/infra/modules/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../../src/infra/definitions/modules/module-runtime.js";
 import { ownedCommandRunner } from "../../../src/infra/owned-command.js";
 import { runAgentLoop } from "../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import type { AgentLoopTerminal } from "../../../src/orchestration/agent-runtime/agent-loop-types.js";

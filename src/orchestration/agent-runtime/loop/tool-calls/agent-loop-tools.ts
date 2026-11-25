@@ -40,7 +40,7 @@ import type { ToolOutcome } from "../../../../infra/substrate/runtime-facts/tool
 import { publishFileMutationAttribution } from "../../tools/edit/file-mutation-artifact.js";
 import { redactDeep, redactSecrets } from "../../../../infra/redact-secrets.js";
 import { truncateUtf8Prefix } from "../../../../infra/substrate/output/text/truncate-output.js";
-import { MutationEvidenceSchema } from "../../../../infra/substrate/mutation-evidence-schema.js";
+import { MutationEvidenceSchema } from "../../../../infra/substrate/file-mutations/mutation-evidence-schema.js";
 import { asRecord } from "../../../../infra/guards/record.js";
 import {
   checkpointFinalizedToolResult,

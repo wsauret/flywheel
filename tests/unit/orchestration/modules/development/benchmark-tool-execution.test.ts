@@ -32,7 +32,7 @@ import { testDirectories } from "../../../../helpers/directories.js";
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
 import { DEVELOPMENT_MODULES } from "../../../../../src/orchestration/development-modules.js";
 import { withRequestAdmission } from "../../agent-runtime/_model-client.js";
-import { composeModuleRuntimes } from "../../../../../src/infra/modules/module-runtime.js";
+import { composeModuleRuntimes } from "../../../../../src/infra/definitions/modules/module-runtime.js";
 import { testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 
 import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";

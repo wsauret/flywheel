@@ -16,7 +16,7 @@ import { ContextLengthExceededError } from "../../../../../src/orchestration/age
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { Schema } from "effect";
 import { CompactionEntrySchema, MessageEntrySchema } from "../../../../../src/orchestration/session/conversation/conversation-entry-schemas.js";
-import { renderSessionNotesGuidance } from "../../../../../src/infra/agent-assets/session-notes.js";
+import { renderSessionNotesGuidance } from "../../../../../src/infra/definitions/agent-assets/session-notes.js";
 import { withSessionNotes } from "./_loop-fixtures.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { createConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-records/conversation-checkpoint.js";

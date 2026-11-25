@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { isQualifiedSkillId, normalizeSkillId, requireQualifiedSkillId } from "../../../../src/infra/learning/skill-id.js";
+import { isQualifiedSkillId, normalizeSkillId, requireQualifiedSkillId } from "../../../../../src/infra/definitions/learning/skill-id.js";
 
 describe("qualified skill id", () => {
   it("accepts one-segment package ids and dotted definition ids", () => {

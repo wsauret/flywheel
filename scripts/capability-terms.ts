@@ -288,8 +288,8 @@ export function findCapabilityTableDrift(repoRoot: string, table: CapabilityPhra
 }
 
 /** Bundled markdown and YAML that a model reads, and the TypeScript roots whose literals hold model text. */
-const MARKDOWN_ROOTS = ["src/agent-skills", "src/workflows/agents/personas", "src/infra/agent-assets", "src/orchestration/modules"];
-const TEXT_ROOTS = ["src/orchestration/agent-runtime", "src/infra/agent-assets", "src/workflows/output-contract", "src/workflows/agents", "src/orchestration/modules"];
+const MARKDOWN_ROOTS = ["src/agent-skills", "src/workflows/agents/personas", "src/infra/definitions/agent-assets", "src/orchestration/modules"];
+const TEXT_ROOTS = ["src/orchestration/agent-runtime", "src/infra/definitions/agent-assets", "src/workflows/output-contract", "src/workflows/agents", "src/orchestration/modules"];
 const TEXT_FILES = /^src\/workflows\/skill-[^/]+\.ts$/;
 const MARKDOWN_FILE = /\.(?:md|ya?ml)$/;
 const MODULE_DEFINITIONS = /^src\/orchestration\/modules\/[^/]+\/definitions\//;

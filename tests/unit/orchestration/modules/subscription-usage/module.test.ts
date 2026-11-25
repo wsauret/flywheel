@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { NO_MODULE_SERVICES } from "../../../../../src/infra/modules/module-service.js"
+import { NO_MODULE_SERVICES } from "../../../../../src/infra/definitions/modules/module-service.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { subscriptionUsageModule } from "../../../../../src/orchestration/modules/subscription-usage/module.js"
 import { subscriptionUsageProtocol, subscriptionUsageStatusRows } from "../../../../../src/protocol/modules/subscription-usage.js"

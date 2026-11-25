@@ -31,7 +31,7 @@ import { bindRetainedOperations, bindSessionStops } from "../../../session/contr
 import { attachedRunnerDelivery } from "../../supervisor/session-background-notifications.js"
 import { createChildSessionControl } from "../../../session/control/messaging/child-session-control.js"
 import { childSessionProjectionAttachment } from "../../../session-store/child-session-projection.js"
-import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../infra/modules/retained-operation-hosts.js"
+import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../infra/definitions/modules/retained-operation-hosts.js"
 import { workflowLaunchHost } from "../../../workflow-host/lifecycle/launch-operation-contract.js"
 import { createRuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import { publishCustomProvidersFromConfig } from "../../../config/custom-providers.js"

@@ -1,4 +1,4 @@
-import { MUTATION_DIFF_RENDERED_LINE_LIMIT } from "../../mutation-diff.js";
+import { MUTATION_DIFF_RENDERED_LINE_LIMIT } from "../../file-mutations/mutation-diff.js";
 import type {
   ProvisionalDiff,
   ProvisionalDiffFile,
@@ -15,7 +15,7 @@ import {
   HEREDOC_OPENERS,
   MOVE_TO_MARKER,
   patchOperationHeader,
-} from "../../../file-edit/patch-syntax.js";
+} from "../../file-mutations/file-edit/patch-syntax.js";
 
 interface MutableFile {
   id: string;

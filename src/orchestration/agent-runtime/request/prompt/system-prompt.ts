@@ -10,10 +10,10 @@
  */
 
 import { SYSTEM_PROMPT_SEPARATOR, type SystemPromptTiers } from "../../llm/system-prompt-tiers.js";
-import { canUseCheckpoint, renderSessionNotesGuidance } from "../../../../infra/agent-assets/session-notes.js";
+import { canUseCheckpoint, renderSessionNotesGuidance } from "../../../../infra/definitions/agent-assets/session-notes.js";
 import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines, type GlobalGuidelineId } from "./global-guidelines.js";
-import { systemPromptText as bundledSystemPrompt } from "../../../../infra/agent-assets/manifest.js";
-import { bundledAgentAsset, type AgentAssetName } from "../../../../infra/agent-assets/system-prompt.js";
+import { systemPromptText as bundledSystemPrompt } from "../../../../infra/definitions/agent-assets/manifest.js";
+import { bundledAgentAsset, type AgentAssetName } from "../../../../infra/definitions/agent-assets/system-prompt.js";
 import type { RuntimeTool } from "../../tools/types.js";
 import { renderCapabilityText, type CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import type { SessionIdentity } from "../../../session/control/messaging/session-messaging.js";

@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import { readdirSync, readFileSync, realpathSync } from "node:fs"
 import { renderCapabilityText } from "../../../src/infra/definitions/capability-text.js"
 import { join } from "node:path"
-import { ToolActionSchema } from "../../../src/infra/workflow/workflow-types.js"
+import { ToolActionSchema } from "../../../src/infra/definitions/workflow/workflow-types.js"
 import {
   describeDefinitionRefusal,
   loadPathWorkflow,

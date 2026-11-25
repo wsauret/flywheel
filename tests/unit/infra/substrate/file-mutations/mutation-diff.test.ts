@@ -7,7 +7,7 @@ import {
   buildMutationDiff,
   MutationDiffSchema,
   type MutationDiff,
-} from "../../../../src/infra/substrate/mutation-diff.js";
+} from "../../../../../src/infra/substrate/file-mutations/mutation-diff.js";
 
 function decoded(diff: MutationDiff): MutationDiff {
   return Schema.decodeUnknownSync(MutationDiffSchema, { onExcessProperty: "error" })(JSON.parse(JSON.stringify(diff)));

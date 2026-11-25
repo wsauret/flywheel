@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../../../../src/infra/modules/module-runtime.js";
+import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../../../../src/infra/definitions/modules/module-runtime.js";
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
 import { createToolRegistry } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
@@ -12,7 +12,7 @@ import { codeModeRuntimeOver } from "../../../../../helpers/code-mode-worker.js"
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";
 import { unusedSessionMessaging } from "../../../../../helpers/child-session-control.js";
-import type { ToolAction } from "../../../../../../src/infra/workflow/workflow-types.js";
+import type { ToolAction } from "../../../../../../src/infra/definitions/workflow/workflow-types.js";
 import { bashExecution } from "../bash/_bash-fixtures.js";
 const toolRegistrations = Object.fromEntries(createToolRegistry());
 

@@ -1,5 +1,5 @@
 import { expectTypeOf, test } from "bun:test";
-import type { ModuleDescriptor } from "../../../src/infra/module-descriptor.js";
+import type { ModuleDescriptor } from "../../../src/infra/definitions/module-descriptor.js";
 
 interface Contributions { readonly tools: { readonly name: string } }
 interface Observers { readonly turn: (event: string) => void }

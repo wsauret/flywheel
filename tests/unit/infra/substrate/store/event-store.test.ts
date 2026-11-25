@@ -13,7 +13,7 @@ import { createSqliteEventInserter } from "../../../../../src/infra/substrate/st
 import type { ToolContentRow } from "../../../../../src/infra/substrate/runtime-facts/tool-content.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { buildSessionContent, type SessionContentNodeRow } from "../../../../../src/infra/substrate/session-content.js"
-import { buildMutationEvidence, type MutationFileEvidence } from "../../../../../src/infra/substrate/mutation-evidence.js"
+import { buildMutationEvidence, type MutationFileEvidence } from "../../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
 import { canObserveSqliteLocks, sqliteLocksSeenByOtherProcesses } from "../../../../helpers/sqlite-locks.js"
 
 let tmpDir: string

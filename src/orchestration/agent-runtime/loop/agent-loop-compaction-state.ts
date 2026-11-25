@@ -1,4 +1,4 @@
-import { canUseCheckpoint, renderSessionNotesAutoCompactFallback, CHECKPOINT_TOOL_NAMES } from "../../../infra/agent-assets/session-notes.js";
+import { canUseCheckpoint, renderSessionNotesAutoCompactFallback, CHECKPOINT_TOOL_NAMES } from "../../../infra/definitions/agent-assets/session-notes.js";
 import type { ExecutionWhitelist } from "../tools/dispatch/tool-policy.js";
 import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
 import type { ConversationCheckpoint } from "../../session/persistence/conversation-checkpoint-facts.js";

@@ -5,9 +5,9 @@ import { createConversationTreeWriter } from "../../../../src/orchestration/sess
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import { recoverFinalizedToolResultCheckpoints, retireLegacyFinalizedToolResultCheckpoints } from "../../../../src/orchestration/session/history/finalized-tool-result-checkpoint";
-import { buildMutationEvidence, buildMutationFileEvidence } from "../../../../src/infra/substrate/mutation-evidence";
+import { buildMutationEvidence, buildMutationFileEvidence } from "../../../../src/infra/substrate/file-mutations/mutation-evidence";
 import { hydrateToolContentFact } from "../../../../src/infra/substrate/store/tool-content-hydration";
-import { buildMutationDiff } from "../../../../src/infra/substrate/mutation-diff";
+import { buildMutationDiff } from "../../../../src/infra/substrate/file-mutations/mutation-diff";
 import { retireRecordedFinalizedToolResultCheckpointPage } from "../../../../src/orchestration/workspace-state/migrations/finalized-tool-result-checkpoints";
 import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
 import {

@@ -3,7 +3,7 @@ import type { CapabilityCheck } from "../../infra/definitions/capability-text.js
 import type { ChatInput, ChatInputLike } from "../../infra/substrate/events/chat-input.js"
 import type { Runner } from "../agent-runtime/runner/turn-host/types.js"
 import type { AgentInputAnswers } from "../../protocol/session/question-protocol-types.js"
-import type { ModuleRuntimes } from "../../infra/modules/module-runtime.js"
+import type { ModuleRuntimes } from "../../infra/definitions/modules/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
 import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
 import type { HeldRetainedOperation } from "../module-seams.js"

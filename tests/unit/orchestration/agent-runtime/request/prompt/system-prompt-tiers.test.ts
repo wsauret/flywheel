@@ -9,7 +9,7 @@ import type { ModelInfo } from "../../../../../../src/infra/providers/llm/models
 import { resolveOpenAISystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
 import type { AgentPurpose } from "../../../../../../src/orchestration/agent-runtime/types.js";
 import { promptOptions, type ToolPromptFields } from "../../../../../helpers/prompt-capabilities.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../../src/infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../../src/infra/definitions/agent-assets/system-prompt.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../../../helpers/directories.js";
 
 const realm = testDirectories(fileTemporaryDirectory("system-prompt-tiers-"));

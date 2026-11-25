@@ -11,7 +11,7 @@ import { createAgentGeneration } from "../../../agent-runtime/runner/turn-host/h
 import { AgentTurnAborted } from "../../../agent-runtime/runner/turn-host/agent-turn-types.js";
 import { createSubagentRunInputs } from "./run-inputs.js";
 import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work/background-work-types.js";
-import type { ModuleRuntimes } from "../../../../infra/modules/module-runtime.js";
+import type { ModuleRuntimes } from "../../../../infra/definitions/modules/module-runtime.js";
 import { createChildBackgroundExecution } from "./child-background.js";
 import { isReadOnlyPersona } from "../../../agent-runtime/request/prompt/persona-tool-rules.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "./prompts.js";

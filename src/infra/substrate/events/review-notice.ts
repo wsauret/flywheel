@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { LearningScopeSchema } from "../../learning/learning-scope.js";
-import { MutationDiffSchema } from "../mutation-diff.js";
-import { MutationEvidenceSchema } from "../mutation-evidence-schema.js";
+import { LearningScopeSchema } from "../../definitions/learning/learning-scope.js";
+import { MutationDiffSchema } from "../file-mutations/mutation-diff.js";
+import { MutationEvidenceSchema } from "../file-mutations/mutation-evidence-schema.js";
 
 /** One durable skill write a learning review notice reports: the
  *  package it wrote, the action it took, and the canonical artifact of what the

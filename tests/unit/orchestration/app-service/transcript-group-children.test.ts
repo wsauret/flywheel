@@ -403,7 +403,7 @@ describe("agent-update child of an agent group across settlement", () => {
     appendChildMemoryCall(store)
     appendChildMemoryResult(store, "ok")
     const { createMutationEvidenceRecovery } = await import("../../../../src/orchestration/session/history/mutation-evidence-recovery.js")
-    const { readMutationEvidenceFiles } = await import("../../../../src/infra/substrate/mutation-evidence.js")
+    const { readMutationEvidenceFiles } = await import("../../../../src/infra/substrate/file-mutations/mutation-evidence.js")
     const { completePatch, resolveRetainedPatch } = await import("../../../../src/orchestration/session/metadata/catalog/session-change-sources.js")
     const reader = createMutationEvidenceRecovery(asAsyncEventReadSurface(store), asAsyncEventWriter(store)).reader
     const children = (await createToolResultDisplayMetaCursorReader(reader, SESSION_ID).replay()).children(PARENT_TOOL_USE_ID, {

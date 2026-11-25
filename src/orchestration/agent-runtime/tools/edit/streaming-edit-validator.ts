@@ -1,10 +1,10 @@
-import { FileEditPlanError } from "../../../../infra/file-edit/contract.js";
-import type { FileSnapshot } from "../../../../infra/file-edit/patch-plan.js";
-import { PatchPlanningCursor } from "../../../../infra/file-edit/patch-plan.js";
-import type { PreparedOperation } from "../../../../infra/file-edit/patch-parser.js";
-import { editInputEntries, parseStringEdits } from "../../../../infra/file-edit/edit-input.js";
-import { assertStringEditable, matchStringEdit, planStringEdits } from "../../../../infra/file-edit/string-edit.js";
-import { StreamingPatch } from "../../../../infra/file-edit/streaming-patch.js";
+import { FileEditPlanError } from "../../../../infra/substrate/file-mutations/file-edit/contract.js";
+import type { FileSnapshot } from "../../../../infra/substrate/file-mutations/file-edit/patch-plan.js";
+import { PatchPlanningCursor } from "../../../../infra/substrate/file-mutations/file-edit/patch-plan.js";
+import type { PreparedOperation } from "../../../../infra/substrate/file-mutations/file-edit/patch-parser.js";
+import { editInputEntries, parseStringEdits } from "../../../../infra/substrate/file-mutations/file-edit/edit-input.js";
+import { assertStringEditable, matchStringEdit, planStringEdits } from "../../../../infra/substrate/file-mutations/file-edit/string-edit.js";
+import { StreamingPatch } from "../../../../infra/substrate/file-mutations/file-edit/streaming-patch.js";
 import { declaredFieldName, TopLevelJsonStringDecoder } from "../../../../infra/substrate/output/streaming/partial-json.js";
 
 export type StreamingEditValidationResult =

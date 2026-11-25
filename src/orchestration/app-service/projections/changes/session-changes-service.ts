@@ -6,7 +6,7 @@ import { FLYWHEEL_DIR_NAME } from "../../../../infra/platform/files/directory-au
 import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js"
 import { isReviewableSessionFile, pathInside } from "../../../../protocol/client/session-changes-copy.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js"
-import { buildMutationDiff, mutationDiffLineCounts, type MutationDiffEndpoint } from "../../../../infra/substrate/mutation-diff.js"
+import { buildMutationDiff, mutationDiffLineCounts, type MutationDiffEndpoint } from "../../../../infra/substrate/file-mutations/mutation-diff.js"
 import { buildSessionContent } from "../../../../infra/substrate/session-content.js"
 import { SESSION_CONTENT_WINDOW_BYTES } from "../../../../infra/substrate/session-content-schema.js"
 import { fitMutationEvidenceWindow } from "../../../../protocol/session/mutation-evidence-window.js"

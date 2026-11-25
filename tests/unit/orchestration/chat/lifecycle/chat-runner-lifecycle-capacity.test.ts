@@ -4,7 +4,7 @@ import type { TurnParkState } from "../../../../../src/infra/substrate/events/ag
 import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log"
 import { asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types"
 import type { AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types"
-import { composeModuleRuntimes } from "../../../../../src/infra/modules/module-runtime"
+import { composeModuleRuntimes } from "../../../../../src/infra/definitions/modules/module-runtime"
 import { registerCapacityWaits } from "../../../../../src/orchestration/session/control/capacity-wait"
 import { authorizePlannedSessionContinuation, capacityContinuations } from "../../../../../src/orchestration/session/control/planned-session-continuation"
 import { exhaustedProvidersCopy, type CapacityHold } from "../../../../../src/infra/providers/llm/errors/provider-error-copy"

@@ -13,7 +13,7 @@ import { FUNCTION_TOOL_PRESENTATION, type AdmittedModelRequest, type Conversatio
 import type { ProviderRequestAuditWriter } from "../../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js"
 import type { RuntimeTool, ToolAttributionIdentity } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { asModelClient, ownHistoryTarget } from "../_model-client.js"
-import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/modules/module-runtime.js"
+import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/definitions/modules/module-runtime.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
 import { RequestToolMap, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js"
 import type { GitAiAttributionService } from "../../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"

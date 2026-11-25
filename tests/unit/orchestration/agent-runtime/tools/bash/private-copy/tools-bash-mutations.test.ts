@@ -7,8 +7,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { Schema } from "effect";
-import { readMutationEvidenceFiles, type MutationEvidence } from "../../../../../../../src/infra/substrate/mutation-evidence.js";
-import { MutationEvidenceSchema } from "../../../../../../../src/infra/substrate/mutation-evidence-schema.js";
+import { readMutationEvidenceFiles, type MutationEvidence } from "../../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js";
+import { MutationEvidenceSchema } from "../../../../../../../src/infra/substrate/file-mutations/mutation-evidence-schema.js";
 import { readSessionContentRange, type ReadSessionContentNode } from "../../../../../../../src/infra/substrate/session-content.js";
 import type { OwnedProcess } from "../../../../../../../src/infra/supervision/launch/owned-subprocess.js";
 import { asRecord } from "../../../../../../../src/infra/guards/record.js";

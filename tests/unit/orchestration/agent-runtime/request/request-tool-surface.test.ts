@@ -6,7 +6,7 @@ import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestrat
 import { NO_CAPABILITY_ACCESS } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { fixedRequestToolSurface, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
-import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/modules/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/definitions/modules/module-runtime.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot, SHIPPED_MODULES, type FirstPartyModule } from "../../../../../src/orchestration/modules.js";
 import { hashToolInputFormat } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-hash.js";
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";

@@ -1,14 +1,14 @@
 /** @jsxImportSource @opentui/solid */
 
 import { TOOL_PREVIEW_LINE_LIMIT, type DiffOmission, type ProvisionalDiffFile } from "@infra/substrate/events/output-blocks"
-import type { MutationDiff } from "@infra/substrate/mutation-diff.js"
+import type { MutationDiff } from "@infra/substrate/file-mutations/mutation-diff.js"
 import { diffOmittedLinesForFile } from "../../../../protocol/transcript/diff-omission.js"
 import { RGBA, ScrollBoxRenderable, StyledText, bg as stBg, fg as stFg, type BoxRenderable, type TextChunk } from "@opentui/core"
 import { renderHunk, renderTypedDiffRows, type DiffSyntaxHighlighter } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff, type Hunk, type TypedDiffRow } from "@tui/adapters/diff-parser"
 import { fileDiffFiles, removedDirectoryGroups, removedDirectoryLabel, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../../../protocol/client/file-change-body.js"
 import { useBlockDisclosure } from "@tui/context/transcript/block-disclosure.js"
-import type { MutationEvidence } from "../../../../infra/substrate/mutation-evidence.js"
+import type { MutationEvidence } from "../../../../infra/substrate/file-mutations/mutation-evidence.js"
 import { useMutationEvidence } from "@tui/context/mutation-evidence.js"
 import { useRowGeometry } from "@tui/context/transcript/row-geometry.js"
 import { useRenderer } from "@opentui/solid"

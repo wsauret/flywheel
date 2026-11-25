@@ -6,7 +6,7 @@ import {
   assertSessionContentReferenceSync, assertSessionContentManifestSync,
   type ReadSessionContentNodeSync,
   type ReadSessionContentNode, type StageSessionContentNodes, type SessionContentUnavailable,
-} from "./session-content.js"
+} from "../session-content.js"
 import {
   MutationFileEvidenceSchema, MutationDisplayFileEvidenceSchema, MutationEvidenceEntrySchema,
   MutationEvidenceSchema, MutationEvidenceSampleSchema, MUTATION_EVIDENCE_SUMMARY_BYTES,

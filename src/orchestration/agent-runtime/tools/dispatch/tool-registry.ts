@@ -1,4 +1,4 @@
-import type { ToolAction } from "../../../../infra/workflow/workflow-types.js";
+import type { ToolAction } from "../../../../infra/definitions/workflow/workflow-types.js";
 import { canonicalModuleIds, MODULE_IDS, moduleDisabledReason, type ModuleId } from "../../../../protocol/runtime/module-ids.js";
 import type { RegisteredTool, ToolDeclaration, ToolDeps, ToolExposureCategory, ToolFactoryResult, ToolPolicy, ToolRegistration } from "../../../module-seams.js";
 import type { FirstPartyModuleComposition } from "../../../modules.js";

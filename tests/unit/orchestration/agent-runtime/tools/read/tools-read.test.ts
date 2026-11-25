@@ -10,7 +10,7 @@ import { executePreparedTool, prepareToolCall } from "../../../../../../src/orch
 import type { RuntimeToolInput } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { planToolExposure } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import type { AgentPurpose } from "../../../../../../src/orchestration/agent-runtime/types.js";
-import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/modules/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/definitions/modules/module-runtime.js";
 import { testKernelToolDeps, admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
 import { canonicalMutationPath } from "../../../../../../src/infra/process/locks/file-mutation-queue.js";

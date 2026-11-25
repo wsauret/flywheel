@@ -5,7 +5,7 @@ import { RuntimeEventProjector } from "../../../../../../src/infra/substrate/out
 import { StructuredOutputBuilder } from "../../../../../../src/infra/substrate/output/projector/structured-output-builder.js";
 import type { ToolEntry } from "../../../../../../src/infra/substrate/events/output-blocks.js";
 import { selectFileChangeBody } from "../../../../../../src/protocol/client/file-change-body.js";
-import { buildMutationEvidence } from "../../../../../../src/infra/substrate/mutation-evidence.js";
+import { buildMutationEvidence } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js";
 import { createRecordingFileMutationStore } from "../../../../orchestration/agent-runtime/tools/_fixtures.js";
 
 function tool(projector: OutputProjector): ToolEntry {

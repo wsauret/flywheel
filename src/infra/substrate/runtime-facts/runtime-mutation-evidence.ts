@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { MutationEvidenceSchema } from "../mutation-evidence-schema.js";
+import { MutationEvidenceSchema } from "../file-mutations/mutation-evidence-schema.js";
 import { TOOL_OUTCOME_VALUES } from "./tool-outcome.js";
 import type { ToolContentReference } from "./tool-content.js";
 

@@ -14,7 +14,7 @@ import type { ProviderRequestOptions } from "../../../../infra/providers/llm/acc
 import type { UsageEntry } from "../../../../infra/providers/llm/usage/usage-entry.js";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
-import { NO_MODULE_SERVICES, type ModuleServices } from "../../../../infra/modules/module-service.js";
+import { NO_MODULE_SERVICES, type ModuleServices } from "../../../../infra/definitions/modules/module-service.js";
 import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";

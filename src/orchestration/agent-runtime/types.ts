@@ -13,7 +13,7 @@ import type { ConnectionState } from "../../infra/substrate/events/output-blocks
 import type { WebSearchPort, WebSearchProviderId } from "./web-search/types.js";
 import type { SessionNoticeOperation } from "../../infra/substrate/events/session-notice.js";
 import type { AgentLoopWakeInput, InputSource, LogicalTurnStartedContext, TurnEndedContext, TurnParkedContext } from "../../infra/substrate/events/agent-loop-events.js";
-import type { ToolAction } from "../../infra/workflow/workflow-types.js";
+import type { ToolAction } from "../../infra/definitions/workflow/workflow-types.js";
 import type { BriefScope } from "../config/models/role-selection.js";
 import type { RoleResolver } from "../config/roles.js";
 import type { RoleSettingEntry } from "../session/metadata/schemas.js";
@@ -36,10 +36,10 @@ import type { UsageSettlementAuthorityLease } from "./request/usage/usage-settle
 import type { ChildSlotRegistry } from "./request/module-services/child-slot-registry.js";
 import type { StartModelWorkflow } from "./tools/definitions/workflow-tool.js";
 import type { CapabilityAccess, ToolProfile } from "./tools/types.js";
-import type { ModuleRuntimes } from "../../infra/modules/module-runtime.js";
+import type { ModuleRuntimes } from "../../infra/definitions/modules/module-runtime.js";
 import type { AgentLoopMaintenance, AgentLoopPersistence, AgentLoopTerminal, FinalizedCheckpointSwap, RestoredAgentWait } from "./agent-loop-types.js";
 import type { RecallPort } from "../../protocol/transcript/conversation-recall.js";
-import type { ModuleServices } from "../../infra/modules/module-service.js";
+import type { ModuleServices } from "../../infra/definitions/modules/module-service.js";
 import type { EnvCaptureResolver } from "../../infra/environment/env-detection.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import type { PersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-manager.js";

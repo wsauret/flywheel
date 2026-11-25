@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { mergeAbortSignals } from "../../../infra/timing/abort.js"
-import { moduleServiceHandle } from "../../../infra/modules/module-service.js"
+import { moduleServiceHandle } from "../../../infra/definitions/modules/module-service.js"
 import { createSessionFairAdmission } from "../../../infra/process/session-fair-admission.js"
 import type { ModuleServiceInstance } from "../../app-service/module-service-host.js"
 import type { ToolContext, ToolResult } from "../../agent-runtime/tools/types.js"

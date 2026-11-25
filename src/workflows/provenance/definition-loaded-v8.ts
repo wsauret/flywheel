@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect"
-import { isWorkflowLocalId } from "../../infra/workflow/workflow-identifiers.js"
-import { EffortSchema } from "../../infra/workflow/workflow-types.js"
+import { isWorkflowLocalId } from "../../infra/definitions/workflow/workflow-identifiers.js"
+import { EffortSchema } from "../../infra/definitions/workflow/workflow-types.js"
 import { ArtifactContractFrontmatterItemSchema, ArtifactContractsFrontmatterSchema } from "../schema/artifact-contracts.js"
 import { DefinitionProvenanceSchema } from "./definition-provenance.js"
 import { StepGrammarWorkflowSchema } from "../schema/retired-step-grammar/schema.js"

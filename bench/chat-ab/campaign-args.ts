@@ -1,7 +1,7 @@
 // The options of a chat-ab campaign (bench.ts).
 import { resolve } from "node:path";
 import { BASELINE_ARM_ID } from "./arms.js";
-import { EFFORT_VALUES, type Effort } from "../../src/infra/workflow/workflow-types.js";
+import { EFFORT_VALUES, type Effort } from "../../src/infra/definitions/workflow/workflow-types.js";
 
 interface ChatOptions {
   readonly subject?: "flywheel" | "claude-code";

@@ -16,8 +16,8 @@
 import { join } from "node:path";
 import type { AgentDefinition } from "../src/infra/definitions/agent-definition.js";
 import type { CapabilityCheck } from "../src/infra/definitions/capability-text.js";
-import { composeModuleRuntimes, type ModuleRuntimes } from "../src/infra/modules/module-runtime.js";
-import { composeModuleServices } from "../src/infra/modules/module-service.js";
+import { composeModuleRuntimes, type ModuleRuntimes } from "../src/infra/definitions/modules/module-runtime.js";
+import { composeModuleServices } from "../src/infra/definitions/modules/module-service.js";
 import { createBackgroundWorkRegistry } from "../src/orchestration/agent-runtime/background-work/background-work.js";
 import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import { createChildSlotRegistry } from "../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js";

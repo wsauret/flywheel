@@ -1,5 +1,5 @@
-import type { MutationEvidence } from "../../../../../infra/substrate/mutation-evidence.js";
-import type { NotAppliedFilesSummary } from "../../../../../infra/substrate/not-applied-files.js";
+import type { MutationEvidence } from "../../../../../infra/substrate/file-mutations/mutation-evidence.js";
+import type { NotAppliedFilesSummary } from "../../../../../infra/substrate/file-mutations/not-applied-files.js";
 import type { CommandHandoverHost } from "../../../background-execution/command-handover.js";
 import type { ForegroundBashHoldController } from "../../../background-work/foreground-bash-hold.js";
 import type { ForegroundView } from "./bash-output-tail.js";

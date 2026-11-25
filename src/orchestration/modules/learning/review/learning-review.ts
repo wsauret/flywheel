@@ -14,9 +14,9 @@ import type { SkillRecommendation } from "../../../agent-runtime/request/module-
  *  fork's own host wires no review, so a review can never spawn a review. */
 
 import { randomUUID } from "node:crypto";
-import type { LearningScope } from "../../../../infra/learning/learning-scope.js";
+import type { LearningScope } from "../../../../infra/definitions/learning/learning-scope.js";
 import { runInTaskSlices } from "../../../../infra/process/task-scheduling.js";
-import { buildMutationEvidence, readMutationEvidenceFiles, type MutationEvidence, type MutationEvidenceEntry } from "../../../../infra/substrate/mutation-evidence.js";
+import { buildMutationEvidence, readMutationEvidenceFiles, type MutationEvidence, type MutationEvidenceEntry } from "../../../../infra/substrate/file-mutations/mutation-evidence.js";
 import type { ReadSessionContentNode } from "../../../../infra/substrate/session-content.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";

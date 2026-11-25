@@ -1,4 +1,4 @@
-import { truncateUnifiedDiff } from "../../../../infra/substrate/mutation-diff.js"
+import { truncateUnifiedDiff } from "../../../../infra/substrate/file-mutations/mutation-diff.js"
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../infra/substrate/events/output-blocks.js"
 import { getToolDisplay } from "../../../../infra/substrate/output/tools/tool-display-registry.js"
 import { compactGroupChild, projectFrontendOutputBlocks } from "./frontend-output-blocks.js"

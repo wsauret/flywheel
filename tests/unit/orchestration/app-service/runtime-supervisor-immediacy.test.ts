@@ -3,7 +3,7 @@ import { createRuntimeSupervisor } from "../../../../src/orchestration/app-servi
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import { EventReaderService } from "../../../../src/infra/substrate/store/event-store-effect.js"
-import { NO_MODULE_RUNTIMES } from "../../../../src/infra/modules/module-runtime.js"
+import { NO_MODULE_RUNTIMES } from "../../../../src/infra/definitions/modules/module-runtime.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js"
 import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js"
 import { registerLiveSessionControl } from "../../../../src/orchestration/session/control/live-session-control.js"

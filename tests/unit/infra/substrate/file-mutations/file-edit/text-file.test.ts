@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { LineEndingRestorer, scanSourceLines, SourceFile, utf8ByteOffsets } from "../../../../src/infra/file-edit/text-file.js";
+import { LineEndingRestorer, scanSourceLines, SourceFile, utf8ByteOffsets } from "../../../../../../src/infra/substrate/file-mutations/file-edit/text-file.js";
 
 describe("text file model", () => {
   it("scans every ending style and keeps an unterminated tail and a BOM as text", () => {

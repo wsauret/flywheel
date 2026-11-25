@@ -112,11 +112,14 @@ describe("protocol package closure", () => {
       .filter((file) => !roots.has(file))
       .map((file) => relative(SRC, file).replaceAll("\\", "/"))
       .toSorted()).toEqual([
+        "infra/definitions/learning/skill-id.ts",
+        "infra/definitions/workflow/session-workflow-membership.ts",
+        "infra/definitions/workflow/workflow-identifiers.ts",
+        "infra/definitions/workflow/workflow-types.ts",
         "infra/diagnostics/error-message.ts",
         "infra/guards/exact-struct.ts",
         "infra/guards/invariant.ts",
         "infra/guards/record.ts",
-        "infra/learning/skill-id.ts",
         "infra/providers/canonical-name.ts",
         "infra/providers/llm/access/provider-options.ts",
         "infra/providers/llm/usage/subscription-usage.ts",
@@ -129,8 +132,8 @@ describe("protocol package closure", () => {
         "infra/substrate/events/notification-episode.ts",
         "infra/substrate/events/output-blocks.ts",
         "infra/substrate/events/tool-result-action.ts",
-        "infra/substrate/mutation-evidence-schema.ts",
-        "infra/substrate/not-applied-files.ts",
+        "infra/substrate/file-mutations/mutation-evidence-schema.ts",
+        "infra/substrate/file-mutations/not-applied-files.ts",
         "infra/substrate/output/run-labels.ts",
         "infra/substrate/output/text/summary-line.ts",
         "infra/substrate/session-content-schema.ts",
@@ -141,9 +144,6 @@ describe("protocol package closure", () => {
         "infra/timing/with-deadline.ts",
         "infra/update/version-order.ts",
         "infra/update/wrapper-directory.ts",
-        "infra/workflow/session-workflow-membership.ts",
-        "infra/workflow/workflow-identifiers.ts",
-        "infra/workflow/workflow-types.ts",
       ]);
   });
 });

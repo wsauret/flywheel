@@ -1,6 +1,6 @@
 import { mutationDiffLineCounts, type MutationDiff } from "./mutation-diff.js"
 import { buildMutationEvidence, type MutationEvidence, type MutationEvidenceEntry } from "./mutation-evidence.js"
-import { buildSessionContent, type StageSessionContentNodes } from "./session-content.js"
+import { buildSessionContent, type StageSessionContentNodes } from "../session-content.js"
 
 type DisplayEntry = Extract<MutationEvidenceEntry, { kind: "display" | "omitted" }>
 

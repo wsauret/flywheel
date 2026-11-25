@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
-import type { MutationEvidence } from "../../../../src/infra/substrate/mutation-evidence.js"
-import { AgentSystemMessageV2DataSchema } from "../../../../src/infra/substrate/events/events.js"
-import { ToolExecutionOutputRecordedDataV2Schema } from "../../../../src/infra/substrate/runtime-facts/runtime-event-payload-types.js"
-import { parseSessionRuntimeFact, parseStoredSessionRuntimeFact } from "../../../../src/infra/substrate/runtime-facts/runtime-fact-parser.js"
-import { extractToolContentFact } from "../../../../src/infra/substrate/runtime-facts/tool-content-extraction.js"
-import { hydrateToolContentFact } from "../../../../src/infra/substrate/store/tool-content-hydration.js"
-import { parseConversationTreeFact, chatEntriesFacts } from "../../../../src/orchestration/session/conversation/conversation-facts.js"
-import { extractTreeFactContent } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-content-extraction.js"
+import type { MutationEvidence } from "../../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
+import { AgentSystemMessageV2DataSchema } from "../../../../../src/infra/substrate/events/events.js"
+import { ToolExecutionOutputRecordedDataV2Schema } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-payload-types.js"
+import { parseSessionRuntimeFact, parseStoredSessionRuntimeFact } from "../../../../../src/infra/substrate/runtime-facts/runtime-fact-parser.js"
+import { extractToolContentFact } from "../../../../../src/infra/substrate/runtime-facts/tool-content-extraction.js"
+import { hydrateToolContentFact } from "../../../../../src/infra/substrate/store/tool-content-hydration.js"
+import { parseConversationTreeFact, chatEntriesFacts } from "../../../../../src/orchestration/session/conversation/conversation-facts.js"
+import { extractTreeFactContent } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-content-extraction.js"
 
 const evidence = {
   version: 2,

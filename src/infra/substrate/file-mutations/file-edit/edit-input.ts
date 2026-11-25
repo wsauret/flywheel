@@ -1,4 +1,4 @@
-import { readJsonValue } from "../providers/llm/json-parse.js";
+import { readJsonValue } from "../../../providers/llm/json-parse.js";
 import type { StringEdit } from "./string-edit.js";
 
 interface EditInput {

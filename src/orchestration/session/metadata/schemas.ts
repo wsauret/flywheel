@@ -6,7 +6,7 @@ import { canonicalRoleId } from "../../config/retired-config-names.js";
 import { parseBriefRoleId } from "../../../protocol/auth/brief-role-id.js";
 import { SessionLifecycleStateSchema } from "./types.js";
 import { RoleAssignmentSnapshotSchema, RoleSettingEntrySchema, RoleSettingsSchema } from "../../../infra/providers/role-settings.js";
-import { WorkflowMembershipSchema } from "../../../infra/workflow/session-workflow-membership.js";
+import { WorkflowMembershipSchema } from "../../../infra/definitions/workflow/session-workflow-membership.js";
 
 const NonEmptyString = Schema.NonEmptyString;
 

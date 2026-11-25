@@ -11,7 +11,7 @@
  */
 
 import { canonicalize } from "../../../providers/canonical-name.js";
-import type { ToolAction } from "../../../workflow/workflow-types.js";
+import type { ToolAction } from "../../../definitions/workflow/workflow-types.js";
 import { sanitizePresentationText } from "../control-characters.js";
 import { isRecord } from "../../../guards/record.js";
 import { isHandoffPath } from "../../../platform/files/paths.js";

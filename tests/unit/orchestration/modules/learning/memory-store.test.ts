@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileTemporaryDirectory } from "../../../../helpers/directories.js";
-import type { LearningScope } from "../../../../../src/infra/learning/learning-scope.js";
+import type { LearningScope } from "../../../../../src/infra/definitions/learning/learning-scope.js";
 import {
   applyMemoryBatch,
   applyMemoryOperation,

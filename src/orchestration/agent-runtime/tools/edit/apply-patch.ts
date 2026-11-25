@@ -1,7 +1,7 @@
 import type { ContainedFileMetadata } from "../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
 import type { LineRange } from "../files/file-read-ledger.js";
-import { type PatchPlan, planPreparedPatch } from "../../../../infra/file-edit/patch-plan.js";
-import { type PreparedOperation, type PreparedPatch, preparePatch } from "../../../../infra/file-edit/patch-parser.js";
+import { type PatchPlan, planPreparedPatch } from "../../../../infra/substrate/file-mutations/file-edit/patch-plan.js";
+import { type PreparedOperation, type PreparedPatch, preparePatch } from "../../../../infra/substrate/file-mutations/file-edit/patch-parser.js";
 import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js";
 import type { AdmittedFileEdit, PlannedFileEdit } from "../file-edits/file-edit-operation.js";
 import { boundedMutationReport, publishToolFileEdits } from "./file-edit-tool-adapter.js";

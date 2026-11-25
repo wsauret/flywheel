@@ -5,8 +5,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FLYWHEEL_DIR_NAME } from "../platform/files/directory-authorities.js";
-import type { DefinitionResolution } from "../definitions/definition-resolution.js";
+import { FLYWHEEL_DIR_NAME } from "../../platform/files/directory-authorities.js";
+import type { DefinitionResolution } from "../definition-resolution.js";
 import { loadAssetResolution } from "./loader.js";
 import { engineeringDoctrineText as bundledEngineeringDoctrine, systemPromptText as bundledSystemPrompt } from "./manifest.js";
 

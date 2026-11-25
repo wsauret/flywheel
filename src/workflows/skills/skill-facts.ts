@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { defineFact } from "../../infra/substrate/facts/event-registry.js"
-import { LearningScopeSchema, type LearningScope } from "../../infra/learning/learning-scope.js"
+import { LearningScopeSchema, type LearningScope } from "../../infra/definitions/learning/learning-scope.js"
 
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const PositiveInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))

@@ -2,7 +2,7 @@ import { Schema } from "effect";
 import { createHash } from "node:crypto";
 import type { ContentEvidence } from "../../infra/substrate/runtime-facts/content-evidence.js";
 import { sanitizeExternalText } from "../../infra/substrate/output/control-characters.js";
-import type { LearningScope } from "../../infra/learning/learning-scope.js";
+import type { LearningScope } from "../../infra/definitions/learning/learning-scope.js";
 
 /** The body file of every skill package, bundled or installed. */
 export const SKILL_FILE = "SKILL.md";
@@ -265,7 +265,7 @@ function bundledCorpusIdentity(corpus: ReadonlyMap<string, BundledSkillPackage>)
 /** A lazy context package: the trigger is advertised, the body is loaded only
  *  when the package is selected. */
 export interface SkillDefinition {
-  /** Qualified skill id (see infra/learning/skill-id.ts). Unique across the catalog. */
+  /** Qualified skill id (see infra/definitions/learning/skill-id.ts). Unique across the catalog. */
   readonly id: string;
   readonly name: string;
   /** Frontmatter `description`: the routing surface, advertised without the body. */

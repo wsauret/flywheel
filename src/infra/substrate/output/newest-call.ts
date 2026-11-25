@@ -1,7 +1,7 @@
 import { truncateUtf8Prefix } from "./text/truncate-output.js"
 import type { AnyBlock, ToolPresentation } from "../events/output-blocks.js"
-import type { MutationEvidence } from "../mutation-evidence.js"
-import { formatFileSamples, mutationEvidenceItems } from "../not-applied-files.js"
+import type { MutationEvidence } from "../file-mutations/mutation-evidence.js"
+import { formatFileSamples, mutationEvidenceItems } from "../file-mutations/not-applied-files.js"
 import { fileSubject } from "./tools/detail-helpers.js"
 
 /** A line draws at most 100 columns. Bound long shell commands before they

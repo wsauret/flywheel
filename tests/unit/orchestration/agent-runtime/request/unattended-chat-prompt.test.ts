@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { plannedCapabilities, planPromptRequest, promptParts, type PromptAssembly } from "../../../../../scripts/prompt-assembly.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../src/infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../src/infra/definitions/agent-assets/system-prompt.js";
 import { captureRuntimeConfigRequest } from "../../../../../src/orchestration/agent-runtime/request/request-config.js";
 import type { AgentPurpose } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { loadConfig } from "../../../../../src/orchestration/config/loader.js";

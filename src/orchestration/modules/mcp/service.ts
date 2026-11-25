@@ -1,5 +1,5 @@
 import type { ClaudeLoginEngines } from "../../../infra/providers/claude-engine.js"
-import { moduleServiceHandle } from "../../../infra/modules/module-service.js"
+import { moduleServiceHandle } from "../../../infra/definitions/modules/module-service.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { accountAuthDir } from "../../../infra/platform/files/paths.js"
 import { createOrderedLane } from "../../../infra/async/ordered-lane.js"

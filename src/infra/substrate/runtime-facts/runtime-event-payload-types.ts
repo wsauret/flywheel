@@ -3,7 +3,7 @@ import { UsageEntrySchema } from "../../providers/llm/usage/usage-entry.js";
 import { LlmToolOutputPartSchema } from "../../providers/llm/tool-output-part-schema.js";
 import { ContentBlockSchema } from "./runtime-content-blocks.js";
 import { TOOL_OUTCOME_VALUES } from "./tool-outcome.js";
-import { MutationEvidenceSchema } from "../mutation-evidence-schema.js";
+import { MutationEvidenceSchema } from "../file-mutations/mutation-evidence-schema.js";
 // External boundary (agent/provider runtime streams): `.passthrough()` is the contract —
 // provider events carry extra fields we must not reject (ARCH-BOUNDARIES-001). Each payload type is the
 // schema's inferred `.Type`, so the schema is the single source of truth for both shape and parse.

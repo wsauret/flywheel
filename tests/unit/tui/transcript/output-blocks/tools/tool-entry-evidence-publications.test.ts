@@ -4,7 +4,7 @@ import type { MutationEvidenceHandle, MutationPatchHandle, MutationPatchView } f
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"
 import { renderToolEntries } from "./_tool-entry-render.js"
-import { buildMutationDiff } from "../../../../../../src/infra/substrate/mutation-diff.js"
+import { buildMutationDiff } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff.js"
 
 /** A two-hunk patch of `hunkLines` rendered rows behind file and hunk headers. */
 function editDiff(hunkLines: number): string {

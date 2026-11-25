@@ -1,5 +1,5 @@
-import { isQualifiedSkillId } from "../../infra/learning/skill-id.js"
-import { isBriefId, isWorkflowLocalId } from "../../infra/workflow/workflow-identifiers.js"
+import { isQualifiedSkillId } from "../../infra/definitions/learning/skill-id.js"
+import { isBriefId, isWorkflowLocalId } from "../../infra/definitions/workflow/workflow-identifiers.js"
 
 /** The brief-role-id codec: how the model seat of an agent of a workflow is
  *  addressed.

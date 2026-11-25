@@ -1,7 +1,7 @@
 import { tmpdir } from "node:os"
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
-import { NO_MODULE_SERVICES } from "../../../../src/infra/modules/module-service.js"
+import { NO_MODULE_SERVICES } from "../../../../src/infra/definitions/modules/module-service.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { createMemoryStore } from "../../workflows/vm/host-test-support.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"

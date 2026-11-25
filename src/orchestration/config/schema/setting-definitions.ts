@@ -1,7 +1,7 @@
 import { Effect, Schema, SchemaTransformation } from "effect";
 import { parseReleaseVersion } from "../../../infra/update/version-order.js";
 import { isAuthProfileName } from "../../../infra/platform/files/paths.js";
-import { TierConfigSchema } from "../../../infra/workflow/workflow-types.js";
+import { TierConfigSchema } from "../../../infra/definitions/workflow/workflow-types.js";
 import { CacheRetentionPolicySchema } from "../../../infra/providers/llm/access/provider-options.js";
 import { DEFAULT_BUDGET } from "../../../workflows/run/budget.js";
 import { MODULE_IDS } from "../../../protocol/runtime/module-ids.js";

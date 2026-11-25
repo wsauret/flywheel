@@ -13,9 +13,9 @@ import type { AsyncEventStateReadSurface } from "../../../../infra/substrate/sto
 import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import { normalizeMemoryTitle } from "../../../../infra/substrate/output/tools/memory-title.js";
-import type { LearningScope } from "../../../../infra/learning/learning-scope.js";
-import type { MutationEvidence } from "../../../../infra/substrate/mutation-evidence.js";
-import { buildMutationDiffEvidence } from "../../../../infra/substrate/mutation-diff-evidence.js";
+import type { LearningScope } from "../../../../infra/definitions/learning/learning-scope.js";
+import type { MutationEvidence } from "../../../../infra/substrate/file-mutations/mutation-evidence.js";
+import { buildMutationDiffEvidence } from "../../../../infra/substrate/file-mutations/mutation-diff-evidence.js";
 import { openPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../skills/learning-journal.js";
 import { requireContainedDirectory } from "../../../../infra/platform/files/write-file-under.js";
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";

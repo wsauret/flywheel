@@ -4,7 +4,7 @@ import type { ResolvedAgent } from "../../../workflows/definitions/agent-resolut
 import { agentRecords, type AgentRecordKeys, type WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"
 import type { ProviderConnectionCapture } from "../../agent-runtime/request/model-runtime-capture.js"
 import type { RoleSettings } from "../../session/metadata/schemas.js"
-import type { WorkflowLaunchAgentModels } from "../../../infra/workflow/workflow-types.js"
+import type { WorkflowLaunchAgentModels } from "../../../infra/definitions/workflow/workflow-types.js"
 import { resolveSessionRoles } from "./session-role-resolver.js"
 import { personaRoleChain, resolveWorkflowAgentRole } from "./role-selection.js"
 

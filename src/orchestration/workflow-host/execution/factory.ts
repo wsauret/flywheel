@@ -1,7 +1,7 @@
 import { createEmit, type EventBus, type EmitFn } from "../../../infra/substrate/events/event-bus.js"
 import { personaRoleIds } from "../../../workflows/definitions/definition-registry.js"
 import type { ControlInterruption, PlannedCutInterrupt, TurnInterruption } from "../../session/conversation/turn-end-record.js"
-import type { ModuleRuntimes } from "../../../infra/modules/module-runtime.js"
+import type { ModuleRuntimes } from "../../../infra/definitions/modules/module-runtime.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter, StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import type { SessionManager } from "../../session/manager.js"
 import { createSessionMessaging } from "../../session/control/messaging/session-messaging.js"

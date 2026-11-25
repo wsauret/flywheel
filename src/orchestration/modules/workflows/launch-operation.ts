@@ -1,5 +1,5 @@
 import { Result, Schema, SchemaTransformation } from "effect"
-import { WorkflowLaunchAgentModelsSchema } from "../../../infra/workflow/workflow-types.js"
+import { WorkflowLaunchAgentModelsSchema } from "../../../infra/definitions/workflow/workflow-types.js"
 import type { InFlightRecord } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"

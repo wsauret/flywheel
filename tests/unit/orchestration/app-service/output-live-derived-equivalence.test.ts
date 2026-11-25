@@ -23,7 +23,7 @@ import { createConversationTree, tryOpenConversationTree } from "../../../../src
 import { corpusProjectDir, strictProjectionAgreementFixtures, tolerantReprojectionFixtures } from "../../../fixtures/tolerant-reprojection-fixtures.js"
 import { assertOutputBlocksEquivalent, outputSeamBlocks } from "../session-store/_output-session-fixtures.js"
 import { plainAgentTree } from "../../../helpers/workflow-view.js"
-import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/mutation-diff-evidence.js"
+import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js"
 import { tailRequest } from "./_output-projection-fixtures.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 

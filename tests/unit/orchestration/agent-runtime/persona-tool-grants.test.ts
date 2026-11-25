@@ -7,7 +7,7 @@ import { temporaryDirectories, testDirectories } from "../../../helpers/director
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { composeModuleRuntimes } from "../../../../src/infra/modules/module-runtime.js";
+import { composeModuleRuntimes } from "../../../../src/infra/definitions/modules/module-runtime.js";
 import { planToolExposure } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
 import { codeModeRuntimeOver } from "../../../helpers/code-mode-worker.js";
@@ -39,7 +39,7 @@ const shippedPersonaToolEntries = personaToolEntries(shippedToolRegistry);
 const PersonaDefinitionSchema = createPersonaDefinitionSchema(shippedPersonaToolEntries.map(({ name }) => name));
 
 const PERSONA_DIR = fileURLToPath(new URL("../../../../src/workflows/agents/personas", import.meta.url));
-const DOCTRINE_PATH = fileURLToPath(new URL("../../../../src/infra/agent-assets/engineering-doctrine.md", import.meta.url));
+const DOCTRINE_PATH = fileURLToPath(new URL("../../../../src/infra/definitions/agent-assets/engineering-doctrine.md", import.meta.url));
 const OPTIONAL_MODULE_TOOLS = new Set(["bash", "web", "code"]);
 // Every subagent can compact, so every persona holds the checkpoint tools.
 const CHECKPOINT_TOOLS = ["checkpoint_read", "checkpoint_replace", "checkpoint_decide"];

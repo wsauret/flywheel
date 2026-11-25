@@ -4,7 +4,7 @@ import { join, relative } from "node:path";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
 import { ownedCommandRunner } from "../../src/infra/owned-command.js";
 import type { LauncherScope } from "../../src/infra/process-supervisor.js";
-import type { Effort } from "../../src/infra/workflow/workflow-types.js";
+import type { Effort } from "../../src/infra/definitions/workflow/workflow-types.js";
 import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { canonicalModelId } from "../../src/infra/providers/model-id.js";
 import { executeClaudeCodeBenchmark } from "../../src/orchestration/modules/development/benchmark/execution/claude-code-execution.js";
