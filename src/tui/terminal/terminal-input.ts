@@ -1,4 +1,5 @@
-import { errnoCode, errorDetail, errorMessage } from "../../infra/error-message.js"
+import { errorDetail, errorMessage } from "../../infra/diagnostics/error-message.js"
+import { errnoCode } from "../../infra/platform/files/system-error.js"
 import { Log } from "../../infra/diagnostics/log.js"
 
 const log = Log.create({ service: "terminal-input" })

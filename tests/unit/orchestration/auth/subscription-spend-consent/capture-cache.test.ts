@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { SubscriptionSpendConsentRevision } from "../../../../../src/infra/auth/subscription/subscription-spend-consent-store.js";
+import type { SubscriptionSpendConsentRevision } from "../../../../../src/infra/providers/auth/subscription/subscription-spend-consent-store.js";
 import { createSubscriptionSpendConsentCaptureCache } from "../../../../../src/orchestration/auth/subscription-spend-consent/capture-cache.js";
 
 interface Capture {

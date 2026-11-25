@@ -24,7 +24,7 @@ import {
   type WorkflowsMode,
 } from "../../../protocol/runtime/module-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
-import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
+import type { NotificationEpisodeInput } from "../../../infra/substrate/events/notification-episode.js"
 
 const MODULE_WARNING_SOURCE = "runtime:module-warning"
 const MODULE_WARNING = { sourceId: MODULE_WARNING_SOURCE, title: "Module configuration needs attention", message: "Some modules could not be configured. Open Settings for details.", severity: "warning", action: { kind: "open-settings" } } as const

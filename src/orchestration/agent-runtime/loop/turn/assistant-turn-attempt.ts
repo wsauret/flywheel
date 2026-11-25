@@ -1,21 +1,21 @@
 /** One wire attempt, its partial canonical content, and its audit and usage closure. */
 
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
-import { errorDetail, errorMessage } from "../../../../infra/error-message.js";
-import { mergeAbortSignals } from "../../../../infra/abort.js";
-import type { ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";
-import type { MeasuredUsageEntry, UsageEntry } from "../../../../infra/llm/usage/usage-entry.js";
+import { errorDetail, errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import { mergeAbortSignals } from "../../../../infra/timing/abort.js";
+import type { ProviderRequestOptions } from "../../../../infra/providers/llm/access/provider-options.js";
+import type { MeasuredUsageEntry, UsageEntry } from "../../../../infra/providers/llm/usage/usage-entry.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import type { ReasoningEffort } from "../../../../infra/llm/models/models.js";
-import { durationMs } from "../../../../infra/operation-log.js";
+import type { ReasoningEffort } from "../../../../infra/providers/llm/models/models.js";
+import { durationMs } from "../../../../infra/diagnostics/operation-log.js";
 import { probeLoopUnit } from "../../../../infra/diagnostics/event-loop-lag.js";
-import { summarizeProviderError, type ProviderErrorDiagnostic } from "../../../../infra/llm/errors/provider-error-diagnostic.js";
-import { classifyApiError } from "../../../../infra/llm/errors/provider-error-copy.js";
+import { summarizeProviderError, type ProviderErrorDiagnostic } from "../../../../infra/providers/llm/errors/provider-error-diagnostic.js";
+import { classifyApiError } from "../../../../infra/providers/llm/errors/provider-error-copy.js";
 import { type AgentRuntimeError, ApiError, fromStreamError, ProviderAuditSettlementError, StreamStalled } from "../../llm/routing/runtime-errors.js";
 import { ProviderAttemptFailure, type ProviderFailure } from "../../llm/stream/provider-failure.js";
 import { type AssistantMetadata, type LLMClient, type ProviderRequestAttribution, providerRequestAttribution, presentToolHistory, type ProviderStreamEvent, type RepetitionGuard, type ServingAttempt, type StreamOptions } from "../../llm/types.js";
-import { type LlmStopReason, modelFamilyApi } from "../../../../infra/llm/conversation/messages.js";
-import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import { type LlmStopReason, modelFamilyApi } from "../../../../infra/providers/llm/conversation/messages.js";
+import type { ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import { ContextLengthExceededError, StreamIdleTimeoutError } from "../../llm/errors.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "../../llm/system-prompt-tiers.js";
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "../../llm/provider-request-audit.js";

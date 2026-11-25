@@ -1,4 +1,4 @@
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { createSubscriptionUsageService, type SubscriptionUsageProfile } from "./subscription-usage-service.js"
 import { createSubscriptionUsageServicePool, type SubscriptionUsageServicePool } from "./subscription-usage-service-pool.js"

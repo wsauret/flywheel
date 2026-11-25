@@ -1,12 +1,13 @@
 import { createHash, randomBytes } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
-import { openContainedDirectory } from "../../../../infra/descriptor-directory.js"
+import { openContainedDirectory } from "../../../../infra/platform/files/descriptor-directory.js"
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
-import { errnoCode, errorMessage } from "../../../../infra/error-message.js"
-import { sessionScratchDir } from "../../../../infra/paths.js"
-import { WORKFLOW_FILE_EXTENSION, workflowContentFileName, type WorkflowCallSource } from "../../../../infra/tools/workflow-call-source.js"
-import { WORKFLOW_FILE_MAX_BYTES } from "../../../../infra/yaml/workflow-yaml.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import { errnoCode } from "../../../../infra/platform/files/system-error.js"
+import { sessionScratchDir } from "../../../../infra/platform/files/paths.js"
+import { WORKFLOW_FILE_EXTENSION, workflowContentFileName, type WorkflowCallSource } from "../../../../infra/substrate/output/tools/workflow-call-source.js"
+import { WORKFLOW_FILE_MAX_BYTES } from "../../../../infra/parsing/yaml/workflow-yaml.js"
 import { resolveToolPath } from "../files/tool-paths.js"
 
 /** The one directory a session's workflow files launch from. */

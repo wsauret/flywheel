@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 
-import type { EmitFn } from "../../../../../../src/infra/event-bus.js";
-import type { FlywheelEvent } from "../../../../../../src/infra/events.js";
-import type { QuestionEntry } from "../../../../../../src/infra/output-blocks.js";
+import type { EmitFn } from "../../../../../../src/infra/substrate/events/event-bus.js";
+import type { FlywheelEvent } from "../../../../../../src/infra/substrate/events/events.js";
+import type { QuestionEntry } from "../../../../../../src/infra/substrate/events/output-blocks.js";
 import { createAskUserController, type AskUserController } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller.js";
 
 type AskUserHost = Parameters<typeof createAskUserController>[0]["host"];

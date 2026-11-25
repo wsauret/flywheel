@@ -10,10 +10,10 @@ import {
   type InFlightRecord,
   type StoreAssignment,
   type StoredFact,
-} from "../../../infra/store/event-store-types.js"
-import { ToolContentReferenceSchema } from "../../../infra/runtime-facts/tool-content.js"
-import { InvariantViolation } from "../../../infra/invariant.js"
-import type { ProjectDirectories } from "../../../infra/directory-authorities.js"
+} from "../../../infra/substrate/store/event-store-types.js"
+import { ToolContentReferenceSchema } from "../../../infra/substrate/runtime-facts/tool-content.js"
+import { InvariantViolation } from "../../../infra/guards/invariant.js"
+import type { ProjectDirectories } from "../../../infra/platform/files/directory-authorities.js"
 import type { SessionMetadataChange } from "../../session/manager.js"
 import { CorruptRowSchema, fromCorruptRow, fromStateError, invariantFields, InvariantSchema, StateErrorSchema, toStateError } from "./project-state-errors.js"
 import {
@@ -23,8 +23,8 @@ import {
 } from "./project-state-sessions.js"
 import type { ProjectStateContentReference, ProjectStateOperation } from "./project-state-operation.js"
 import { decodeProjectStatePayloads, encodeProjectStatePayloads, WireSessionCommand, WireWriteItem } from "./project-state-payload.js"
-import { SessionContentNodeSchema, SessionContentNodeRowSchema, SESSION_CONTENT_STAGE_BYTES, type SessionContentNode, type SessionContentRange, type SessionContentReference, type SessionContentUnavailable } from "../../../infra/session-content.js"
-import { SessionContentReferenceSchema, SESSION_CONTENT_WINDOW_BYTES } from "../../../infra/session-content-schema.js"
+import { SessionContentNodeSchema, SessionContentNodeRowSchema, SESSION_CONTENT_STAGE_BYTES, type SessionContentNode, type SessionContentRange, type SessionContentReference, type SessionContentUnavailable } from "../../../infra/substrate/session-content.js"
+import { SessionContentReferenceSchema, SESSION_CONTENT_WINDOW_BYTES } from "../../../infra/substrate/session-content-schema.js"
 
 export const PROJECT_STATE_MAX_QUEUED_ITEMS = 4_096
 

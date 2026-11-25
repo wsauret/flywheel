@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js"
 import { resolveWorkflowAgents } from "../../../../../src/workflows/definitions/agent-resolution.js"
 import {
   buildDefinitionIdentity,

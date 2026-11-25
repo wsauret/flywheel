@@ -1,6 +1,6 @@
-import type { TurnParkState } from "../../infra/agent-loop-events.js"
+import type { TurnParkState } from "../../infra/substrate/events/agent-loop-events.js"
 import type { AgentLoopMaintenance } from "../agent-runtime/agent-loop-types.js"
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import type { ChatTurnLease, ChatTurnSlot } from "./turn-slot.js"
 import type { LiveRecipientState } from "../session/message-disposition.js"

@@ -4,9 +4,9 @@ import * as path from "node:path";
 
 import type { DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log";
 import { Log } from "../../../../src/infra/diagnostics/log";
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
 import { createSessionManager, type SessionMetadataChange } from "../../../../src/orchestration/session/manager";
 import { readStoredSession } from "./_session-metadata-test-helpers";
 import { removeOwnerPid } from "../../../../src/orchestration/session/pid-lock";

@@ -1,5 +1,5 @@
-import { newestCall } from "../../../../infra/output/newest-call.js"
-import { isAgentInFlight, type AnyBlock } from "../../../../infra/output-blocks.js"
+import { newestCall } from "../../../../infra/substrate/output/newest-call.js"
+import { isAgentInFlight, type AnyBlock } from "../../../../infra/substrate/events/output-blocks.js"
 import type { WorkflowAgentLive } from "../../../../protocol/session/workflow-view-protocol-types.js"
 import type { FrontendActivity } from "../../../../protocol/runtime/app-service-types.js"
 

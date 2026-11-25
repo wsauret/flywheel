@@ -1,5 +1,5 @@
 import type { ChildSessionRow, FrontendEvent, FrontendMutation, FrontendOutputBlock, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import { CONNECTED_PROVIDER, fakeConnection } from "../../../test-support/session-connection-fixture.js"
 import { detailView, tailWindow } from "../../../../../tests/helpers/runtime-views.js"
 import { fakeLanes, LANE_BREAK } from "../../../../../tests/helpers/fake-lanes.js"

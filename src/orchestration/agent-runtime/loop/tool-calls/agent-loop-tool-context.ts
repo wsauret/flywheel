@@ -3,7 +3,7 @@ import type { RequestToolSurfaceOwner } from "../../request/request-tool-surface
 import { FileReadLedger } from "../../tools/files/file-read-ledger.js"
 import type { ToolContext, ToolNameMap } from "../../tools/types.js"
 import type { ServingAttempt } from "../../llm/types.js"
-import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js"
+import type { ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js"
 import { prepareRequestPrompt } from "../turn/request-preparation.js"
 import type { ModelInteractionProfile } from "../../request/prompt/model-interaction-profile.js"
 

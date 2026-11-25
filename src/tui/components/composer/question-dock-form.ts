@@ -1,7 +1,7 @@
-import type { QuestionBlock, QuestionChoice, QuestionEntry } from "@infra/output-blocks"
+import type { QuestionBlock, QuestionChoice, QuestionEntry } from "@infra/substrate/events/output-blocks"
 import { formatQuestionChoiceAnswer, type AgentInputAnswer } from "../../../protocol/session/question-protocol-types.js"
 import { type Accessor, batch, createEffect, createSignal, on } from "solid-js"
-import { questionSkip } from "../../../protocol/client/question-settlement.js"
+import { questionSkip } from "../../../protocol/client/chat/questions/question-settlement.js"
 import { createControlledTextEditor, MULTILINE_TEXT_ENTRY_POLICY, type TextEditorPresentation, type TextEntryVisualLine } from "../../terminal/keymap/text-entry.js"
 
 /** The unsent input of one question form, which the draft cache keeps per

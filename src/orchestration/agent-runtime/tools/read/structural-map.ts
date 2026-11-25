@@ -1,6 +1,6 @@
 import { basename } from "node:path";
 import type { Node } from "web-tree-sitter";
-import type { TreeSitterLanguage } from "../../../../infra/tree-sitter-parser.js";
+import type { TreeSitterLanguage } from "../../../../infra/parsing/tree-sitter-parser.js";
 import { type TreeSitterSource, withTreeSitterTree } from "./tree-sitter-code.js";
 
 interface SymbolInfo {

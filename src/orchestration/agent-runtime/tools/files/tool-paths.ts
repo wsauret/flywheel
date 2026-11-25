@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, normalize, parse, relative, resolve, sep } from "node:path";
 
 import { listFiles } from "./ripgrep.js";
-import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js";
 import type { RuntimeToolInput, ToolAdmissionContext, ToolResult } from "../types.js";
 
 /**

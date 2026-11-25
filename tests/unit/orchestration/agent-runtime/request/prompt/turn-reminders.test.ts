@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { turnReminders, type TurnReminderState } from "../../../../../../src/orchestration/agent-runtime/request/prompt/turn-reminders.js"
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js"
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 
 const mode = (holds: boolean, wording = "Mode"): TurnReminderState => ({
   id: "probe-mode", on: () => `${wording} is on.`, still: () => `${wording} is still on.`, off: (has) => `${wording} is off.${has("probe-tool") ? " Use the probe tool." : ""}`, every: 2, holds,

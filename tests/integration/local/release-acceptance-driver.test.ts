@@ -245,13 +245,13 @@ describe("the tagged source of a served client", () => {
     tag("v0.2.0", {
       "README.md": "first",
       "src/unrelated.ts": "export const unrelated = 1;\n",
-      "src/orchestration/update/update-install.ts": 'import { confine } from "../../infra/descriptor-directory.js";\nexport const install = async () => (await import("./install-engine.js")).engine(confine);\n',
+      "src/orchestration/update/update-install.ts": 'import { confine } from "../../infra/platform/files/descriptor-directory.js";\nexport const install = async () => (await import("./install-engine.js")).engine(confine);\n',
       "src/orchestration/update/install-engine.ts": "export const engine = (confine: number) => confine;\n",
-      "src/infra/descriptor-directory.ts": "export const confine = 1;\n",
+      "src/infra/platform/files/descriptor-directory.ts": "export const confine = 1;\n",
       "package.json": "{}\n",
     });
     tag("v0.2.1", { "README.md": "second", "src/unrelated.ts": "export const unrelated = 2;\n" });
-    tag("v0.2.2", { "src/infra/descriptor-directory.ts": "export const confine = 2;\n" });
+    tag("v0.2.2", { "src/infra/platform/files/descriptor-directory.ts": "export const confine = 2;\n" });
     tag("v0.2.3", { "src/orchestration/update/install-engine.ts": "export const engine = (confine: number) => confine + 1;\n" });
     tag("v0.2.4", { "package.json": '{ "dependencies": { "effect": "1.0.0" } }\n' });
 

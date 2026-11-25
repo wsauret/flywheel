@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { NotificationActionSchema, type NotificationAction, type NotificationSeverity } from "../../infra/notification-episode.js"
+import { NotificationActionSchema, type NotificationAction, type NotificationSeverity } from "../../infra/substrate/events/notification-episode.js"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, type ModuleRow } from "../protocol-module.js"
 import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 

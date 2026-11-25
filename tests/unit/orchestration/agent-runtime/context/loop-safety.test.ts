@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
 import { budgetCaptureSurface, makeCaptureClient } from "./_loop-fixtures.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
@@ -11,7 +11,7 @@ import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runti
 import { estimateConversationTokens, tokenCountingPolicy } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import { createAgentRunTally } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-state.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
-import { messageInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js";
+import { messageInput, type AgentLoopInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 
 const loopIdentity = { userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", providerSessionKey: "loop-safety", promptCacheKey: "loop-safety", artifactScopeId: "loop-safety", retrievalSessionId: "loop-safety" };
 

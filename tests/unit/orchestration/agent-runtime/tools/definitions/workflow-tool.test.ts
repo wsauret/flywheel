@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
 import { resolve } from "node:path";
-import { asRecord } from "../../../../../../src/infra/record.js";
+import { asRecord } from "../../../../../../src/infra/guards/record.js";
 import { fullAuthority } from "../../../../../helpers/launch-authority.js";
 import {
   createWorkflowToolCore,
@@ -12,14 +12,14 @@ import { createWorkflowTool } from "../../../../../../src/orchestration/agent-ru
 import type { RuntimeToolInput } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { approvalRefusal } from "../../../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js";
 import type { ResolveWorkflowLaunchTarget } from "../../../../../../src/orchestration/agent-runtime/tools/definitions/workflow-launch.js";
-import type { RuntimeEvent } from "../../../../../../src/infra/runtime-facts/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../../../src/infra/substrate/runtime-facts/runtime-event-types.js";
 import { buildSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import { renderSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
 import { capabilityAccessHolding, makeContext as makeToolContext } from "../_fixtures.js";
 import { promptOptions } from "../../../../../helpers/prompt-capabilities.js";
-import type { CapabilityCheck } from "../../../../../../src/infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../../../src/infra/definitions/capability-text.js";
 
 /** One launch that the workflow tool asks its host to start. */
 type ModelWorkflowLaunch = Parameters<StartModelWorkflow>[0];

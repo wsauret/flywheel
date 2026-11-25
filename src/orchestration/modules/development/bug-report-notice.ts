@@ -1,5 +1,5 @@
 import type { OwnedCommandRunner } from "../../../infra/owned-command.js"
-import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
+import type { NotificationEpisodeInput } from "../../../infra/substrate/events/notification-episode.js"
 import type { ModuleServiceInstance } from "../../app-service/executor/execution/module-service-host.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 

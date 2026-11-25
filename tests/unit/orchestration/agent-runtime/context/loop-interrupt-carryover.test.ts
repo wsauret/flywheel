@@ -4,7 +4,7 @@ import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loo
 import type { AgentLoopTerminal } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
 import { CONTINUATION_MESSAGES, interruptedTurnMessage } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
 import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type StreamOptions, type TurnModelClient } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/loop/turn/run-lifecycle.js";
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
 import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/execution/injection-queue.js";

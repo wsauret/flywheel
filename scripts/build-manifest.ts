@@ -4,7 +4,7 @@
 //   src/workflows/provenance/asset-manifest.ts    persona markdown, skill packages, shared
 //     reference assets, workflow output contract files, and the skill
 //     packages of every shipped module definition bundle
-//   src/infra/agent-assets/manifest.ts the runner-universal system prompt
+//   src/infra/definitions/agent-assets/manifest.ts the runner-universal system prompt
 //
 // Invoked by scripts/build-binary.ts before bundling, then restored to the
 // checked-in empty defaults after bundling.
@@ -17,7 +17,7 @@ import { BUNDLED_REFERENCE_DIR, BUNDLED_SKILL_DIR } from "../src/workflows/skill
 
 const ROOT = join(import.meta.dir, "..");
 const WORKFLOWS_SRC = join(ROOT, "src", "workflows");
-const AGENT_ASSETS_SRC = join(ROOT, "src", "infra", "agent-assets");
+const AGENT_ASSETS_SRC = join(ROOT, "src", "infra", "definitions", "agent-assets");
 
 interface TextByPath {
   [path: string]: string;

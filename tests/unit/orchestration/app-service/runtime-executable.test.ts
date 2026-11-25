@@ -4,10 +4,10 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
 
-import { versionsDir } from "../../../../src/infra/paths.js"
+import { versionsDir } from "../../../../src/infra/platform/files/paths.js"
 import { executableBuild } from "../../../../src/infra/update/live-builds.js"
 import { installedBuild, installedBuildId, installedExecutable, runningBuildId } from "../../../../src/orchestration/app-service/runtime-executable.js"
-import { processRunningBuild, runningDisplayBuildId, type RunningBuild } from "../../../../src/infra/distribution/running-build.js"
+import { processRunningBuild, runningDisplayBuildId, type RunningBuild } from "../../../../src/infra/update/distribution/running-build.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { useWin32ContainedDirectories } from "../../../helpers/win32-contained-directories.js"

@@ -7,7 +7,7 @@ import { engineModelId, createClaudeReminders, environmentFacts } from "../../ag
 import { credentialForCandidate, providerAdapter, type AccessProviderBuild } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import { FUNCTION_TOOL_PRESENTATION, type ProviderAdapter, type ToolPresentation } from "../../agent-runtime/llm/types.js";
-import { trailingRuntimeNotices } from "../../../infra/llm/conversation/conversation-message.js";
+import { trailingRuntimeNotices } from "../../../infra/providers/llm/conversation/conversation-message.js";
 import { processUsageReadings } from "./account-usage.js";
 import { makeBridge } from "./bridge/bridge.js";
 import type { BridgeConfig } from "./bridge/bridge-state.js";
@@ -23,7 +23,7 @@ import { createHostedAgent, type HostedAgent, type HostedBinding } from "./agent
 import { createHostedAgentEntries } from "./agent-host/engine-text.js";
 import { cliView } from "./cli-view.js";
 import { processAgentHosts } from "./agent-host/host-registry.js";
-import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js";
+import { accessProviderAccountKey } from "../../../infra/providers/auth/provider-account.js";
 
 /** The gate that runs the fake-host self-test of each listed CLI version once per process for the bridge's model. */
 function selfTestedGate(config: SelfTestConfig): InPlaceGate {

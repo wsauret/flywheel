@@ -1,7 +1,7 @@
-import type { ProviderConnection } from "../../../../infra/auth/auth-context.js";
-import type { SubscriptionSpendAuthorization } from "../../../../infra/auth/subscription/subscription-spend-consent.js";
-import { createSubscriptionAccountIdentity } from "../../../../infra/auth/subscription/subscription-account-identity.js";
-import type { AccessProviderCandidate } from "../../../../infra/llm/access/access-provider.js";
+import type { ProviderConnection } from "../../../../infra/providers/auth/auth-context.js";
+import type { SubscriptionSpendAuthorization } from "../../../../infra/providers/auth/subscription/subscription-spend-consent.js";
+import { createSubscriptionAccountIdentity } from "../../../../infra/providers/auth/subscription/subscription-account-identity.js";
+import type { AccessProviderCandidate } from "../../../../infra/providers/llm/access/access-provider.js";
 import type { RequestAdmission, SubscriptionAdmissionCapture } from "./provider-availability-types.js";
 
 /** Builds the request admission that one subscription capture states for `connection`: only a paid-use authorization that names one of its accounts admits a paid spend mode. */

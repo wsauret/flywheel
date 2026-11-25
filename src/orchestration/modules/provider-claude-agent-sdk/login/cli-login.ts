@@ -1,19 +1,19 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, type Dirent } from "node:fs";
 import { basename, isAbsolute, join, relative, sep } from "node:path";
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
-import { errorMessage } from "../../../../infra/error-message.js";
-import { openContainedDirectory, openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "../../../../infra/platform/files/descriptor-directory.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { osAccount } from "../../../../infra/os-account.js";
-import type { ExternalLoginPorts } from "../../../../infra/llm/access/access-provider.js";
+import { osAccount } from "../../../../infra/platform/os-account.js";
+import type { ExternalLoginPorts } from "../../../../infra/providers/llm/access/access-provider.js";
 import { runOwnedCommand } from "../../../../infra/owned-command.js";
-import { isAuthProfileName } from "../../../../infra/paths.js";
+import { isAuthProfileName } from "../../../../infra/platform/files/paths.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
-import type { EngineHost } from "../../../../infra/claude-engine.js";
+import type { EngineHost } from "../../../../infra/providers/claude-engine.js";
 import { cliLoginEnvironment } from "../engine/cli-environment.js";
 import type { LoginKey } from "../login-observations.js";
 import { globalConfigPath, LOGIN_ACCOUNTS_DIRECTORY } from "../names.js";
-import type { ExternalAccount } from "../../../../infra/auth/provider-account.js";
+import type { ExternalAccount } from "../../../../infra/providers/auth/provider-account.js";
 
 const REFERENCE_SUFFIX = ".reference.json";
 const log = Log.create({ service: "provider-claude-agent-sdk" });

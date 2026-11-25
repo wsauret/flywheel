@@ -1,9 +1,9 @@
 import { join, relative } from "node:path";
-import { FLYWHEEL_DIR_NAME } from "../../../infra/directory-authorities.js";
-import { isReviewableSessionFile } from "../../../protocol/client/session-changes-copy.js";
+import { FLYWHEEL_DIR_NAME } from "../../../infra/platform/files/directory-authorities.js";
+import { isReviewableSessionFile } from "../../../protocol/client/session/changes/session-changes-copy.js";
 import { Result, Schema } from "effect";
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js";
-import { canonicalMutationPath } from "../../../infra/locks/file-mutation-queue.js";
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js";
+import { canonicalMutationPath } from "../../../infra/process/locks/file-mutation-queue.js";
 import { Log } from "../../../infra/diagnostics/log.js";
 import type { ArtifactWriter } from "../../../workflows/context-bundle/attempt-artifacts.js";
 import { fieldSchema } from "../../../workflows/output-contract/compile.js";

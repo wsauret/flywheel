@@ -2,7 +2,7 @@ import { Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
 import { formatDateTime } from "../../../../src/protocol/client/format.js"
-import { notificationAction, type NotificationActionView } from "../../../../src/protocol/client/host-contract.js"
+import { notificationAction, type NotificationActionView } from "../../../../src/protocol/client/host/host-contract.js"
 import { projectNotificationsDomain, visibleNotifications, type ProjectNotificationEpisode, NOTIFICATIONS_COMMAND_NAME } from "../../../../src/protocol/modules/project-notifications.js"
 import { actionKey } from "../../client/action-key.js"
 import { describeFailure } from "../../client/format/failure-message.js"

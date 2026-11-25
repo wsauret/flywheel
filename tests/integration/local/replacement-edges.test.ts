@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test"
 
 import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
-import { declinedByPausedProject } from "../../../src/protocol/client/connection-failures.js"
+import { declinedByPausedProject } from "../../../src/protocol/client/runtime/connection-failures.js"
 import { joinIsolatedAccountService } from "./_account-service.js"
 import { createReplacementHarness, launchWorkflow, openChat, sessionRow, startHeldChat, systemRows, until } from "./_replacement-harness.js"
 import { TASKS, type TaskKey } from "./_replacement-provider.js"

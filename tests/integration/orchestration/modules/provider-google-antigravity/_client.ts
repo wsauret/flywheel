@@ -4,11 +4,11 @@
  * names its tree and login and the registry decides which engine process serves it.
  */
 import { Effect, Exit, Scope } from "effect"
-import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js"
+import { providerModelInfo } from "../../../../../src/infra/providers/llm/catalog/provider-model-info.js"
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"
 import { lowerProviderHistory } from "../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js"
 import type { LLMClient, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js"
+import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 import type { ProviderTransportContext } from "../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 import { createAntigravityClient } from "../../../../../src/orchestration/modules/provider-google-antigravity/client.js"
 import type { EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-process.js"

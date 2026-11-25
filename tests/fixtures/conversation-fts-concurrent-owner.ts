@@ -1,7 +1,7 @@
 import * as fs from "node:fs"
 
-import { acquireConversationSearchIndex } from "../../src/infra/store/conversation-fts.js"
-import type { AsyncEventReadSurface, StoredFact } from "../../src/infra/store/event-store-types.js"
+import { acquireConversationSearchIndex } from "../../src/infra/substrate/store/conversation-fts.js"
+import type { AsyncEventReadSurface, StoredFact } from "../../src/infra/substrate/store/event-store-types.js"
 
 const [dbFile, coordinationDir, ownerId] = process.argv.slice(2)
 if (!dbFile || !coordinationDir || !ownerId) throw new Error("Expected database, coordination directory, and owner id")

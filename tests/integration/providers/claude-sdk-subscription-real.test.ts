@@ -21,7 +21,7 @@ import { streamAssistantTurn } from "../../../src/orchestration/agent-runtime/lo
 import type { AssistantTurnResult } from "../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js";
 import { estimateMessageTokens } from "../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import type { ServingAttempt, StreamOptions } from "../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { resolveModelInteractionProfile } from "../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js";
 import { composePortableModuleServices } from "../../../src/orchestration/app-service/executor/execution/module-service-host.js";

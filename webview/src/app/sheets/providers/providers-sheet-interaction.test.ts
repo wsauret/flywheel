@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
-import { BROWSER_LOGIN_COPY } from "../../../../../src/protocol/client/provider-account-copy.js"
+import { BROWSER_LOGIN_COPY } from "../../../../../src/protocol/client/auth/provider-account-copy.js"
 import { importBuiltModule } from "../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../test-support/solid-transform.js"
 import type { SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"

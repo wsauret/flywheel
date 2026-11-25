@@ -2,8 +2,8 @@
 
 import { describe, expect, test } from "bun:test";
 import { createProviderAvailability, observeChatGptQuotaFrame } from "../../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
-import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../../src/infra/auth/openai/openai-auth-types.js";
-import type { AccessProviderCandidate } from "../../../../../../src/infra/llm/access/access-provider.js";
+import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../../src/infra/providers/auth/openai/openai-auth-types.js";
+import type { AccessProviderCandidate } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
 import {
   CHATGPT,
   GOOGLE_API,

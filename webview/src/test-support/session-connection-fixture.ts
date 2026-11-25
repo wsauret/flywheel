@@ -1,5 +1,5 @@
 import type { AuthProviderStatus, RuntimeAuthView } from "../../../src/protocol/auth/auth-status-protocol-types.js"
-import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { fakeRuntimeConnection } from "./runtime-connection-fixture.js"
 

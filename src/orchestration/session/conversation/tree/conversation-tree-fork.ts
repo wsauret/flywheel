@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util"
 
-import type { AsyncEventAppender, AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
-import { runInTaskSlices } from "../../../../infra/task-scheduling.js"
+import type { AsyncEventAppender, AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js"
+import { runInTaskSlices } from "../../../../infra/process/task-scheduling.js"
 import { validateRawForkBranchWork } from "./conversation-tree-context.js"
 import {
   ConversationTreeStorage,

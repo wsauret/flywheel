@@ -1,22 +1,22 @@
 import { Scope } from "effect"
-import { EventBus } from "../../../../src/infra/event-bus"
-import { chatInputContent, type ChatInputLike } from "../../../../src/infra/chat-input"
-import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types"
+import { EventBus } from "../../../../src/infra/substrate/events/event-bus"
+import { chatInputContent, type ChatInputLike } from "../../../../src/infra/substrate/events/chat-input"
+import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader"
-import type { AnyBlock } from "../../../../src/infra/output-blocks"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks"
 import type { SessionEntryBasePatch } from "../../../../src/orchestration/session-store/types"
 import type { SessionBudgetStore } from "../../../../src/orchestration/session/runtime-facts/budget-store-types"
-import type { AuthContext } from "../../../../src/infra/auth/auth-context"
+import type { AuthContext } from "../../../../src/infra/providers/auth/auth-context"
 import { createChatSession } from "../../../../src/orchestration/chat/session"
 import type { ChatSessionDeps } from "../../../../src/orchestration/chat/types"
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
-import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message"
+import type { ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
 import { asModelClient } from "../agent-runtime/_model-client"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { interruptedTurnMessage, turnEndEntryId, turnEndOfEntry, type TurnEnd } from "../../../../src/orchestration/session/conversation/turn-end-record"
-import { redactMessage } from "../../../../src/orchestration/session/conversation/redact-message"
+import { redactMessage } from "../../../../src/orchestration/session/conversation/redact-message.js"
 import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"
 import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import type { AskUserController } from "../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller"
@@ -36,13 +36,17 @@ export function makeMemoryTreeWriter(): ConversationTreeWriterController {
   // accumulating idle user turns and canonical in-loop messages, so
   // `buildContext()` returns the model-visible history the same way a real
   // tree would.
-  const messages: import("../../../../src/infra/llm/conversation/conversation-message").ConversationMessage[] = []
+  const messages: import("../../../../src/infra/providers/llm/conversation/conversation-message").ConversationMessage[] = []
   const keys = new Set<string>()
   let entryId = 0
   return {
     recordedPersonMessage: async () => undefined,
     reserveMessageId: async () => crypto.randomUUID(),
     releaseMessageId() {},
+    holdsForQuestion: () => false,
+    awaitsAnswer: async () => false,
+    readHeldMessages: async () => [],
+    releaseHeldInput: async () => {},
     async commitUserTurn(input: ChatInputLike) {
       messages.push({ kind: "user", content: chatInputContent(input) })
       entryId += 1
@@ -300,6 +304,7 @@ export function createTestChatSessionDeps(
     treeWriter: makeMemoryTreeWriter(),
     onTreeFailure: noopOnTreeFailure,
     updateEntry: () => {},
+    refreshDisplay: async () => {},
     refreshEnvironment: async () => {},
     ...overrides,
   }

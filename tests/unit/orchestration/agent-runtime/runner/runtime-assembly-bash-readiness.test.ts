@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
 import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 
-import { canonicalPathWithMissingTail } from "../../../../../src/infra/canonical-path.js";
+import { canonicalPathWithMissingTail } from "../../../../../src/infra/platform/files/canonical-path.js";
 import { createLauncherScope } from "../../../../../src/infra/process-supervisor.js";
-import { accountAuthDir } from "../../../../../src/infra/paths.js";
+import { accountAuthDir } from "../../../../../src/infra/platform/files/paths.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";

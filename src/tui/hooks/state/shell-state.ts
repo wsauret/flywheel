@@ -1,15 +1,15 @@
 import { createBackgroundIndexFollower, type BackgroundIndexView } from "./create-background-index.js"
 import type { Accessor } from "solid-js"
 import { batch, createContext, createEffect, createMemo, createSignal, onCleanup, untrack, useContext } from "solid-js"
-import type { BackoffOptions } from "../../../infra/backoff.js"
-import { errorMessage as extractErrorMessage } from "../../../infra/error-message.js"
-import type { ToolStreamingText } from "../../../infra/output-blocks.js"
+import type { BackoffOptions } from "../../../infra/timing/backoff.js"
+import { errorMessage as extractErrorMessage } from "../../../infra/diagnostics/error-message.js"
+import type { ToolStreamingText } from "../../../infra/substrate/events/output-blocks.js"
 import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
 import type { OutputTranscriptCache, OutputTranscriptView } from "../../transcript/transcript-store/output-transcript-cache-types.js"
 import type { RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { BudgetView } from "../../../protocol/session/budget-protocol-types.js"
 import { waitingSessionsCursor, type PendingQuestionView, type WaitingSessionsView } from "../../../protocol/session/question-protocol-types.js"
-import { noticeText, selectPrimarySessionNotice, sessionNoticeChannel, type SessionNotice } from "../../../infra/session-notice.js"
+import { noticeText, selectPrimarySessionNotice, sessionNoticeChannel, type SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 import { createToastPresenter } from "../../context/toast-presenter.js"
 import type { RuntimeChatDefault, SessionCatalogError, SessionCatalogRow, SessionInputMode, SessionRow, AttachedRuntimeClient, RuntimeClient, RuntimeHealth, RuntimeStartupStatus } from "../../../protocol/runtime/app-service-types.js"
 import type { RoleAssignmentView } from "../../../protocol/auth/role-protocol-types.js"
@@ -19,15 +19,15 @@ import type { RuntimeModulesView } from "../../../protocol/runtime/module-protoc
 import type { RuntimeConfigValues } from "../../../protocol/settings/runtime-config-protocol-types.js"
 import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../../protocol/git/git-ai-attribution-protocol-types.js"
 import { gitCursor, type GitView } from "../../../protocol/git/git-protocol-types.js"
-import type { RuntimeIdentity } from "../../../protocol/client/runtime-identity.js"
-import type { CommandCatalogReadiness } from "../../../protocol/client/slash-route.js"
+import type { RuntimeIdentity } from "../../../protocol/client/runtime/runtime-identity.js"
+import type { CommandCatalogReadiness } from "../../../protocol/client/commands/slash-route.js"
 import { commandUsageCursor, type CommandUsageView } from "../../../protocol/commands/command-usage-protocol-types.js"
 import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../../protocol/commands/command-catalog-protocol-types.js"
 import type { SessionLifecycleState } from "../../../orchestration/session/metadata/types.js"
 import type { RuntimeDomainIntakeBindings } from "../../../protocol/rpc/runtime-delivery-policy.js"
-import { createHeldView } from "../../../protocol/client/held-view.js"
-import { childCardStatus, type ChildCardStatus } from "../../../protocol/client/session-controls.js"
-import { runtimeHealth as deriveRuntimeHealth } from "../../../protocol/client/runtime-health.js"
+import { createHeldView } from "../../../protocol/client/runtime/held-view.js"
+import { childCardStatus, type ChildCardStatus } from "../../../protocol/client/work/session-controls.js"
+import { runtimeHealth as deriveRuntimeHealth } from "../../../protocol/client/runtime/runtime-health.js"
 import { createOutputTranscriptCache } from "../../transcript/transcript-store/create-output-transcript-cache.js"
 import { createBudgetCache } from "./sessions/create-budget-cache.js"
 import { createModuleDomainIntakes, ensureModuleSessionDomains, type ModuleDomainIntakes } from "./domains/create-module-domain-intakes.js"
@@ -51,7 +51,7 @@ import { createSessionChangesIntake } from "./create-session-changes.js"
 import type { SessionChangesView } from "../../modals/session-changes-modal-types.js"
 import { createSettingsStore, type SettingsStore } from "./create-settings-store.js"
 import type { RuntimeConfigCache } from "./runtime/create-runtime-config-cache.js"
-import { createSessionSurface, type SessionSurface, type SessionSurfaceOptions } from "./sessions/create-session-surface.js"
+import { createSessionSurface, type SessionSurface } from "./sessions/create-session-surface.js"
 import { createSessionDetailCache, type SessionDetailCache } from "../../adapters/session-detail-cache.js"
 import { isEmptyNewChat } from "./session-empty-state.js"
 import type { SpinnerStatusSource } from "../../components/activity/create-spinner-status.js"
@@ -231,7 +231,7 @@ export interface ShellServices {
   /** Whether the command catalog has arrived, for routing a slash command typed before it. */
   commandCatalogReadiness: CommandCatalogReadiness
   appService: Pick<RuntimeClient, "query" | "dispatch">
-  createSessionSurface: (sessionId: Accessor<string | undefined>, options?: SessionSurfaceOptions) => SessionSurface
+  createSessionSurface: (sessionId: Accessor<string | undefined>) => SessionSurface
   /** Any session's resident transcript and disclosure intent, which a
    *  terminal hands to the build that replaces it. */
   transcripts: Pick<OutputTranscriptCache, "visibleRange" | "disclosures" | "setDisclosure" | "isCurrent">
@@ -473,7 +473,6 @@ export function createShellState(deps: {
   createTranscriptVisibilityRefresh({
     config: config.view,
     transcriptCache,
-    onFailure: showTranscriptFailure,
   })
 
   const backgroundHydration = createBackgroundHydration({ transcriptCache, residentBlockBudget: RESIDENT_BLOCK_BUDGET })
@@ -686,11 +685,7 @@ export function createShellState(deps: {
     sessionDetails: intake.session_detail,
     settings,
     observeOutput: (observer: TranscriptCacheObserver) => { outputObserver = observer },
-    createSessionSurface: (id: Accessor<string | undefined>, options?: SessionSurfaceOptions) => createSessionSurface(
-      { ...sessionSurfaceDeps, onTranscriptFailure: showMountedTranscriptFailure },
-      id,
-      options,
-    ),
+    createSessionSurface: (id: Accessor<string | undefined>) => createSessionSurface({ ...sessionSurfaceDeps, onTranscriptFailure: showMountedTranscriptFailure }, id),
   }
 
   return { signals, services }

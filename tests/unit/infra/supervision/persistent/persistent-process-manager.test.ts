@@ -4,7 +4,7 @@ import { connectPersistentProcessBridge, servePersistentProcessBridge } from "..
 import type { InternalProcessEndpoint } from "../../../../../src/infra/process/channels/internal-process-channel.js"
 import { createPersistentProcessManager } from "../../../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import type { PersistentSubprocess } from "../../../../../src/infra/supervision/persistent/persistent-subprocess.js"
-import { DeadlineExceeded } from "../../../../../src/infra/with-deadline.js"
+import { DeadlineExceeded } from "../../../../../src/infra/timing/with-deadline.js"
 
 function fakeProcess(pid: number): PersistentSubprocess & { stops: number; releases: number; finish(): void } {
   const exit = Promise.withResolvers<number>()

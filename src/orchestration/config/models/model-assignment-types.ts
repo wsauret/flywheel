@@ -1,16 +1,16 @@
-import type { AuthContext } from "../../../infra/auth/auth-context.js";
+import type { AuthContext } from "../../../infra/providers/auth/auth-context.js";
 import type { FirstPartyModuleSnapshot } from "../../module-contract/module-catalog.js";
-import type { KeyResolver } from "../../../infra/auth/resolve-key.js";
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
-import type { ModelListingClient } from "../../../infra/llm/access/model-listing.js";
-import type { ModelInfo, ModelsClient } from "../../../infra/llm/models/models.js";
-import type { ResolvedProviderModels } from "../../../infra/auth/provider-models/provider-model-preferences.js";
-import type { AccessProviderId } from "../../../infra/llm/access/access-provider.js";
+import type { KeyResolver } from "../../../infra/providers/auth/resolve-key.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
+import type { ModelListingClient } from "../../../infra/providers/llm/access/model-listing.js";
+import type { ModelInfo, ModelsClient } from "../../../infra/providers/llm/models/models.js";
+import type { ResolvedProviderModels } from "../../../infra/providers/auth/provider-models/provider-model-preferences.js";
+import type { AccessProviderId } from "../../../infra/providers/llm/access/access-provider.js";
 import type { PickerModelEligibility } from "./provider-model-eligibility.js";
 import type { ConfigValidity } from "../writer.js";
 import type { FlywheelConfig } from "../schema/schema.js";
 import type { ModelOptionProvider, ModelSelectionSlot } from "../../../protocol/auth/model-assignment-protocol-types.js";
-import type { CatalogDataUse } from "../../../infra/model-id.js";
+import type { CatalogDataUse } from "../../../infra/providers/model-id.js";
 import type { RoleAssignmentSnapshot } from "../../session/metadata/schemas.js";
 import type { AgentPersonaRoles } from "./role-selection.js";
 

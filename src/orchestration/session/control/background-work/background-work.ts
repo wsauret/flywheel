@@ -10,11 +10,11 @@
  * (SQLite chat tree facts, session runtime events, subagent artifacts).
  */
 
-import { errorMessage } from "../../../../infra/error-message.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import type { PausedBy } from "../../../../infra/output-blocks.js";
-import type { BackgroundCommandRecord } from "../../../../infra/runtime-facts/runtime-fact-types.js";
-import { watchEventKey } from "../../../../infra/watch-notices.js";
+import type { PausedBy } from "../../../../infra/substrate/events/output-blocks.js";
+import type { BackgroundCommandRecord } from "../../../../infra/substrate/runtime-facts/runtime-fact-types.js";
+import { watchEventKey } from "../../../../infra/substrate/events/watch-notices.js";
 import {
   createBackgroundNotificationDelivery,
   completionWorkIds,

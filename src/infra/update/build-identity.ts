@@ -18,8 +18,8 @@ import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Schema } from "effect";
-import { errorMessage } from "../error-message.js";
-import { versionsDir } from "../paths.js";
+import { errorMessage } from "../diagnostics/error-message.js";
+import { versionsDir } from "../platform/files/paths.js";
 import { sha256FileSync } from "./file-digest.js";
 import { isDirectoryName, parseReleaseVersion, type ReleaseVersion } from "./version-order.js";
 

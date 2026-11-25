@@ -1,4 +1,4 @@
-import { formatAgentFailureDisplay } from "../../../../src/infra/output/output-formatter.js"
+import { formatAgentFailureDisplay } from "../../../../src/infra/substrate/output/output-formatter.js"
 import { describe, expect, it } from "bun:test"
 
 import type { MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"

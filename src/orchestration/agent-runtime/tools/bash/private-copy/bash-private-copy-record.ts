@@ -22,7 +22,7 @@ import type { MutationGuardKind } from "./bash-mutation-guard.js";
 import type { MirroredFile } from "./bash-private-copy-mirror.js";
 import type { RepositoryState } from "./bash-copy-repository-state.js";
 import type { StateDigest } from "./bash-copy-state-digest.js";
-import { PRIVATE_COPY_RECORD } from "../../../../../infra/paths.js";
+import { PRIVATE_COPY_RECORD } from "../../../../../infra/platform/files/paths.js";
 
 /** A real project file's state when the copy was taken, pinned by hash when it changed too recently for its timestamps alone. */
 type RealFileState = MirroredFile["source"];

@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 import { createSignal, onCleanup } from "solid-js"
-import { createHeldView } from "../../../../protocol/client/held-view.js"
+import { createHeldView } from "../../../../protocol/client/runtime/held-view.js"
 import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 import { runtimeConfigCursor, type RuntimeConfigMutation, type RuntimeConfigView } from "../../../../protocol/settings/runtime-config-protocol-types.js"
 

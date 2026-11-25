@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
-import { createFactParser } from "../../../../src/infra/event-registry";
-import { messageInput } from "../../../../src/infra/agent-loop-events";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
+import { createFactParser } from "../../../../src/infra/substrate/facts/event-registry";
+import { messageInput } from "../../../../src/infra/substrate/events/agent-loop-events";
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/loop/agent-loop";
-import { redactMessage } from "../../../../src/orchestration/session/conversation/redact-message";
-import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message";
+import { redactMessage } from "../../../../src/orchestration/session/conversation/redact-message.js";
+import type { ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer";
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox";
 import { ConversationTreeFactSchemas, parseConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts";

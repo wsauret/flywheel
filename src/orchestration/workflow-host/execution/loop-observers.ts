@@ -15,8 +15,8 @@ import type {
   AgentLoopInput,
   InputSource,
   TurnEndedContext,
-} from "../../../infra/agent-loop-events.js";
-import type { EmitFn } from "../../../infra/event-bus.js";
+} from "../../../infra/substrate/events/agent-loop-events.js";
+import type { EmitFn } from "../../../infra/substrate/events/event-bus.js";
 import { Log } from "../../../infra/diagnostics/log.js";
 import type { BackgroundWorkRegistry } from "../../session/control/background-work/background-work.js";
 import { HandoffCorrectionExhausted } from "../../agent-runtime/handoff-correction-exhausted.js";

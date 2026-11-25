@@ -1,6 +1,6 @@
-import type { AgentLoopInput } from "../../../infra/agent-loop-events.js";
-import { chatInputContent } from "../../../infra/chat-input.js";
-import type { ContentBlock } from "../../../infra/llm/conversation/conversation-message.js";
+import type { AgentLoopInput } from "../../../infra/substrate/events/agent-loop-events.js";
+import { chatInputContent } from "../../../infra/substrate/events/chat-input.js";
+import type { ContentBlock } from "../../../infra/providers/llm/conversation/conversation-message.js";
 import type { LoopUserMetadata } from "./turn/agent-loop-history.js";
 import { CONTINUATION_MESSAGES } from "../../session/conversation/turn-end-record.js";
 import { completionWorkIds } from "../../session/control/background-work/background-work-notifications.js";

@@ -1,4 +1,4 @@
-import { assertNever } from "../../../infra/assert-never.js";
+import { assertNever } from "../../../infra/guards/assert-never.js";
 import type { SkillDefinition } from "../../../workflows/skills/skill-schema.js";
 import { attendedClosureMembers } from "../../../workflows/skills/skill-closure.js";
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js";
@@ -7,7 +7,7 @@ import { canonicalModuleIds } from "../../../protocol/runtime/module-ids.js";
 import { disabledAgentTypes, type FirstPartyModuleComposition, type ModuleId } from "../../module-contract/module-catalog.js";
 import { contributedToolIdentities, treeCapabilityCheck } from "./prompt/capability-checks.js";
 import type { CapabilityAccess } from "../tools/types.js";
-import type { AgentDefinition } from "../../../infra/agent-definition.js";
+import type { AgentDefinition } from "../../../infra/definitions/agent-definition.js";
 import type { BackgroundExecutionOwner } from "../background-execution/background-execution-owner.js";
 import type { ModelInteractionProfile } from "./prompt/model-interaction-profile.js";
 import type { RuntimeConfigRequestCapture } from "../../config/request-config.js";

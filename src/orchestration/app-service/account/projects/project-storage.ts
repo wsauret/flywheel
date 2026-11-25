@@ -1,5 +1,5 @@
-import type { StartupDirectories } from "../../../../infra/directory-authorities.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import type { StartupDirectories } from "../../../../infra/platform/files/directory-authorities.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import type { StoreUsage } from "../../../session/persistence/storage/event-store-maintenance.js"
 import type { AccountService } from "../account-service.js"

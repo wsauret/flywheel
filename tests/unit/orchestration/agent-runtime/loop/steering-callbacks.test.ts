@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { type InputSource, messageInput } from "../../../../../src/infra/agent-loop-events.js";
+import { type InputSource, messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import type { ModelClient, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { asModelClient } from "../_model-client.js";
 import { testBaseTools } from "../../../../helpers/request-tool-surface.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

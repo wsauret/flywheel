@@ -1,9 +1,9 @@
 import { type Accessor, createEffect, createMemo, createSignal, type JSX, untrack } from "solid-js"
 import { formatAutoDeleteSessionDays, formatTokens, parseAutoDeleteSessionDays } from "../../../../../protocol/client/format.js"
-import type { AccountDirectories } from "../../../../../infra/directory-authorities.js"
+import type { AccountDirectories } from "../../../../../infra/platform/files/directory-authorities.js"
 import { ownedCommandRunner } from "../../../../../infra/owned-command.js"
 import type { LauncherScope } from "../../../../../infra/process-supervisor.js"
-import { errorMessage } from "../../../../../infra/error-message.js"
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js"
 import type { UpdateStatusView } from "../../../../../protocol/runtime/update-protocol-types.js"
 import type { BinaryModule, RuntimeModulesView, WorkflowsMode } from "../../../../../protocol/runtime/module-protocol-types.js"
 import type { RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
@@ -28,7 +28,7 @@ import { groupDigits, parseDigits, sanitizeDigitInput, sanitizeDigitPaste } from
 import { createGitAiAttributionRow } from "./settings-git-ai-attribution-row.js"
 import { createProviderSettingRow } from "./settings-provider-setting-row.js"
 import { createTrainingRoutesRow } from "./settings-training-routes-row.js"
-import { autoInstallSaved, persistentProcessesSaved } from "../../../../../protocol/client/runtime-policy-copy.js"
+import { autoInstallCopy, persistentProcessesCopy } from "../../../../../protocol/client/runtime/copy/runtime-policy-copy.js"
 
 interface SettingsModalDeps {
   /** Account directories the font rows and the config writes resolve from. */
@@ -481,7 +481,7 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
         void saveRuntimePolicy({
           save: () => deps.setUpdateAutoInstall(policy.persisted, enabled),
           label: settingCatalogRow("auto-install").label,
-          success: autoInstallSaved(policy, enabled),
+          success: autoInstallCopy(policy).saved,
         })
       }),
     })],
@@ -544,7 +544,7 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
         void saveRuntimePolicy({
           save: () => deps.capabilities.setPersistentProcesses(policy.persisted, enabled),
           label: settingCatalogRow("allow-persistent-processes").label,
-          success: persistentProcessesSaved(policy, enabled),
+          success: persistentProcessesCopy(policy).saved,
         })
       }),
     })],

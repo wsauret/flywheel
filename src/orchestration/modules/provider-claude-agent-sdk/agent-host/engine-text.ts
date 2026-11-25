@@ -1,5 +1,5 @@
 import type { ServingAttempt, StreamOptions, SystemOriginMessage } from "../../../agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import { SYSTEM_PROMPT_SEPARATOR, type SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js";
 import type { ProviderTransportAddition, ProviderTransportContext, ProviderTransportHiddenRequest } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import type { CliMessage, CliView } from "../cli-view.js";

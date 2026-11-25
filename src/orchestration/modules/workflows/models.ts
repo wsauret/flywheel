@@ -1,11 +1,11 @@
-import { candidateProviderId } from "../../../infra/llm/access/access-provider.js";
+import { candidateProviderId } from "../../../infra/providers/llm/access/access-provider.js";
 import { captureRoleCatalog, type CapturedRoleSelection } from "../../config/models/role-resolution.js";
-import { effortOptionsForMetadata } from "../../../infra/llm/models/model-compat.js";
+import { effortOptionsForMetadata } from "../../../infra/providers/llm/models/model-compat.js";
 import type { CaptureProviderConnection } from "../../agent-runtime/request/model-runtime-capture.js";
 import { claudeKnowledgeCutoff } from "../../agent-runtime/llm/history/runtime-reminders.js";
 import type { AdvertisedTool, RuntimeTool } from "../../agent-runtime/tools/types.js";
-import { readModelScores, scoresForModel } from "../../../infra/llm/models/model-scores.js";
-import type { ModelScoreSnapshot } from "../../../infra/llm/models/model-scores-document.js";
+import { readModelScores, scoresForModel } from "../../../infra/providers/llm/models/model-scores.js";
+import type { ModelScoreSnapshot } from "../../../infra/providers/llm/models/model-scores-document.js";
 import { scoreCatalogModels } from "../../config/models/model-score-scope.js";
 import { getSharedModelsClient } from "../../config/models/llm-clients.js";
 

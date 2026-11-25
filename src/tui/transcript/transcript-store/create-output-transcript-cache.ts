@@ -1,19 +1,20 @@
 import { batch, untrack } from "solid-js"
 import { createStore, produce, reconcile, unwrap } from "solid-js/store"
-import type { BackoffOptions } from "../../../infra/backoff.js"
-import { probe, probeGauge, probeToolRenderPhase } from "../../../infra/render-probe.js"
+import type { BackoffOptions } from "../../../infra/timing/backoff.js"
+import { probe, probeGauge, probeToolRenderPhase } from "../../../infra/substrate/output/render-probe.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import type { AttachedRuntimeClient, FrontendOutputBlock } from "../../../protocol/runtime/app-service-types.js"
 import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
-import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../../protocol/client/transcript-store.js"
-import type { BlockReplacement, TranscriptView } from "../../../protocol/client/transcript-view.js"
+import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../../protocol/client/chat/transcript/transcript-store.js"
+import type { BlockReplacement, TranscriptView } from "../../../protocol/client/chat/transcript/transcript-view.js"
 import type { HydratedOutputBlockBody } from "../../../protocol/transcript/transcript-protocol-types.js"
 import { estimateAppendedBlockRows, estimateFrontendOutputBlockRows, heightEstimatesFromBlocks } from "./output-height-estimates.js"
 import { RESIDENT_BLOCK_BUDGET, type LoadDirection, type LoadPageResult, type OutputTranscriptCache, type OutputTranscriptView, type TranscriptFreshness, type TranscriptSnapshot, type TranscriptStatus } from "./output-transcript-cache-types.js"
-import { transcriptIdentitySample } from "../../../protocol/client/transcript-delta.js"
-import { adoptedBlocks, type ChatSubmissionWindow } from "../../../protocol/client/chat-submissions.js"
-import { createResidency, type ResidentLanes } from "../../../protocol/client/residency.js"
+import { transcriptIdentitySample } from "../../../protocol/client/chat/transcript/transcript-delta.js"
+import { adoptedBlocks, type ChatSubmissionWindow } from "../../../protocol/client/chat/chat-submissions.js"
+import { createResidency, type ResidentLanes } from "../../../protocol/client/session/residency.js"
+import { mountTranscript } from "./transcript-mount.js"
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] }
 type MutableSnapshot = Omit<Mutable<TranscriptSnapshot>, "blocks" | "window" | "status"> & { blocks: FrontendOutputBlock[]; window: Mutable<TranscriptSnapshot["window"]>; status: TranscriptStatus }
@@ -39,7 +40,7 @@ const FRAME_MS = 16
 /** A resident session: the shared store that holds its window and the
  *  presentation stamps this client derives from what the store reports. */
 interface Resident {
-  reader?: import("../../../protocol/client/transcript-view.js").TranscriptReader
+  reader?: import("../../../protocol/client/chat/transcript/transcript-view.js").TranscriptReader
   readonly store: TranscriptStore
   unsubscribe: () => void
   /** Identity of the resident block-index space; see TranscriptSnapshot.generation. */
@@ -648,33 +649,52 @@ export function createOutputTranscriptCache(deps: {
     }
   }
 
+  function retain(id: string): { release(): void } {
+    const handle = residents.retain(id)
+    if (deferred.delete(id)) {
+      dirty.add(id)
+      flush("immediate", false)
+    }
+    return handle
+  }
+
+  async function open(id: string): Promise<void> {
+    const { store } = ensureResident(id)
+    await store.open()
+    // A first read that exhausted its retries is the caller's to report as
+    // well as the pane's: the shell toasts the cause.
+    if (recoveryFailed(store)) throw new Error(store.unavailable?.diagnostic ?? "Could not read this session's transcript.")
+  }
+
+  const ensure = (id: string): void => { ensureResident(id) }
+  const refresh = (id: string): Promise<void> => ensureResident(id).store.refresh()
+  const streamingOutputChars = (id: string): number | undefined => streamedChars[id]
+
+  // The live OutputView for a session = the one block list and its streaming
+  // tool text, composed from their stores.
+  function outputView(id: string): OutputView | undefined {
+    const snap = cache[id]
+    return snap === undefined ? undefined : { blocks: snap.blocks, streamingToolText: streamingCache[id] ?? {} }
+  }
+
   return {
+    mount: (session) => mountTranscript({ retain, open, ensure, refresh, bindSession, view: outputView, streamingOutputChars }, session),
     isCurrent: (id) => {
       void freshness[id]?.revision
       return residents.get(id)?.store.windowCurrent ?? false
     },
     startKnownEmpty: (id) => { ensureResident(id, true) },
-    open: async (id) => {
-      const { store } = ensureResident(id)
-      await store.open()
-      // A first read that exhausted its retries is the caller's to report as
-      // well as the pane's: the shell toasts the cause.
-      if (recoveryFailed(store)) throw new Error(store.unavailable?.diagnostic ?? "Could not read this session's transcript.")
-    },
-    refresh: (id) => ensureResident(id).store.refresh(),
+    open,
+    refresh,
     residentSessionIds: () => residents.ids(),
-    loadPage,
-    retain: (id) => {
-      const handle = residents.retain(id)
-      if (deferred.delete(id)) {
-        dirty.add(id)
-        flush("immediate", false)
-      }
-      return handle
+    refreshResidents: () => {
+      for (const id of residents.ids()) void refresh(id)
     },
+    loadPage,
+    retain,
     bindSession,
     visibleRange: snapshotOf,
-    streamingOutputChars: (id) => streamedChars[id],
+    streamingOutputChars,
     historyMetadata: (id) => {
       const consistent = snapshotOf(id)
       if (!consistent) return undefined
@@ -685,12 +705,7 @@ export function createOutputTranscriptCache(deps: {
       const prefix = childStateKey(id, "")
       return Object.fromEntries(Object.entries(disclosed).flatMap(([key, expanded]) => key.startsWith(prefix) ? [[key.slice(prefix.length), expanded]] : []))
     },
-    // The live OutputView for a session = the one block list and its streaming
-    // tool text, composed from their stores.
-    view: (id) => {
-      const snap = cache[id]
-      return snap === undefined ? undefined : { blocks: snap.blocks, streamingToolText: streamingCache[id] ?? {} }
-    },
-    ensure: (id) => { ensureResident(id) },
+    view: outputView,
+    ensure,
   }
 }

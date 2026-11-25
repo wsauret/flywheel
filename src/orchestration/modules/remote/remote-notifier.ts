@@ -1,6 +1,6 @@
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { sendWebPush, type WebPushMessage, type WebPushOutcome, type VapidKeys, type WebPushSubscription } from "../../../infra/web-push.js"
+import { sendWebPush, type WebPushMessage, type WebPushOutcome, type VapidKeys, type WebPushSubscription } from "../../../infra/substrate/output/notify/web-push.js"
 import type { FrontendEvent } from "../../../protocol/runtime/app-service-types.js"
 import type { PushTarget } from "./remote-access.js"
 

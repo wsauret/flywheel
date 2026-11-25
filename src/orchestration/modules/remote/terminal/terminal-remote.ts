@@ -1,5 +1,5 @@
 import type { FrontendEvent, RuntimeStartupStatus } from "../../../../protocol/runtime/app-service-types.js"
-import { createRuntimeConnection } from "../../../../protocol/client/connection.js"
+import { createRuntimeConnection } from "../../../../protocol/client/runtime/connection.js"
 import { canCreateProject, creationDetail, creationOn, machineStatus, projectPlacements, projectStatus, type MachinePickerSnapshot, type RemoteCreation } from "../../../../protocol/modules/remote/machine-picker.js"
 import { createRelayClient, type RelayClient } from "../../../../protocol/modules/remote/relay-client.js"
 import type { RemoteSelection } from "../../../../protocol/modules/remote/relay-device.js"

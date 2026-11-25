@@ -2,13 +2,13 @@ import type { RoleCaptureStore } from "../../../../src/orchestration/config/mode
 import type { SessionManager } from "../../../../src/orchestration/session/manager.js"
 import type { RoleSettings, RoleAssignments, RoleAssignmentSnapshot, Session } from "../../../../src/orchestration/session/metadata/schemas.js"
 import { normalizeRoleAssignments } from "../../../../src/orchestration/config/retired-config-names.js"
-import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
+import type { AgentDefinition } from "../../../../src/infra/definitions/agent-definition.js"
 import { createDefinitionAvailability, type DefinitionAvailabilityOwner } from "../../../../src/orchestration/config/policy/definition-availability.js"
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js"
 import type { ModuleId } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
-import type { ModelFamily } from "../../../../src/infra/llm/models/model-family.js"
+import type { ModelFamily } from "../../../../src/infra/providers/llm/models/model-family.js"
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"
 
 export const EXPLORER: Extract<AgentDefinition, { readonly kind: "persona" }> = {

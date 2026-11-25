@@ -5,7 +5,7 @@ import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../protocol/r
 import type { RuntimeSummaryProjection } from "./runtime-summary-projection.js"
 import { budgetViewFromRuntimeSummary } from "./runtime-summary-read.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
+import { recordBackgroundFailure } from "../../../../infra/diagnostics/operation-log.js"
 
 export interface BudgetProtocolProjection {
   snapshot(sessionId: string): Promise<BudgetView | null>

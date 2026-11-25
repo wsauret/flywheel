@@ -1,6 +1,6 @@
 import type { JSX } from "solid-js"
-import type { LaunchModalRoute } from "../infra/distribution/launch-state.js"
-import type { AgentGroupBlock } from "../infra/output-blocks.js"
+import type { LaunchModalRoute } from "../infra/update/distribution/launch-state.js"
+import type { AgentGroupBlock } from "../infra/substrate/events/output-blocks.js"
 import type { RuntimeClient, SessionRow } from "../protocol/runtime/app-service-types.js"
 import type { ChildSessionViewerProps } from "./child-viewer/child-session-viewer.js"
 import type { ViewerContext } from "./components/modal-stack.js"

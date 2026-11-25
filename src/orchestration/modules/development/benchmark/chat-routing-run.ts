@@ -1,11 +1,11 @@
-import type { AgentDefinition } from "../../../../infra/agent-definition.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
+import type { AgentDefinition } from "../../../../infra/definitions/agent-definition.js";
+import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import type { Agent, AgentFactory, AgentRunTerminal, RuntimeToolSurfaces } from "../../../agent-runtime/types.js";
 import { failureTerminal } from "../../../agent-runtime/types.js";
 import { agentTasksFromComposition, type ModuleAgentTasks } from "../../../module-contract/module-agent-tasks.js";
 import { composeFirstPartyModules } from "../../../module-contract/module-composition.js";
 import type { ToolRegistration } from "../../../module-contract/module-seams.js";
-import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../module-contract/module-catalog.js";
+import type { FirstPartyModuleSnapshot, FirstPartyModuleComposition } from "../../../module-contract/module-catalog.js";
 import { createAgentGeneration } from "../../../agent-runtime/runner/turn-host/host.js";
 import { createBenchmarkAccounting } from "./accounting/accounting.js";
 import type { BenchmarkAccounting } from "./accounting/evidence.js";

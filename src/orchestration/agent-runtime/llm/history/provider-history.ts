@@ -1,13 +1,13 @@
-import { isProgressUpdate } from "../../../../infra/llm/anthropic-narration.js";
-import type { AccessProviderId } from "../../../../infra/llm/access/access-provider.js";
-import { sessionMessageRecoveryNotice, type SessionInputProducer, type SessionMessageEnvelope } from "../../../../infra/chat-input.js";
-import type { ModelFamily } from "../../../../infra/llm/models/model-family.js";
+import { isProgressUpdate } from "../../../../infra/providers/llm/anthropic-narration.js";
+import type { AccessProviderId } from "../../../../infra/providers/llm/access/access-provider.js";
+import { sessionMessageRecoveryNotice, type SessionInputProducer, type SessionMessageEnvelope } from "../../../../infra/substrate/events/chat-input.js";
+import type { ModelFamily } from "../../../../infra/providers/llm/models/model-family.js";
 import type { PromptHistoryLowering } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import { IMAGE_REMOVED, imagesReplaced } from "./image-limit.js";
-import { isSameProviderReplay, type LlmApi } from "../../../../infra/llm/conversation/messages.js";
-import { maxImagesPerRequest } from "../../../../infra/llm/models/model-compat.js";
-import { isModelReminderOf } from "../../../../infra/llm/runtime-reminder-format.js";
-import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import { isSameProviderReplay, type LlmApi } from "../../../../infra/providers/llm/conversation/messages.js";
+import { maxImagesPerRequest } from "../../../../infra/providers/llm/models/model-compat.js";
+import { isModelReminderOf } from "../../../../infra/providers/llm/runtime-reminder-format.js";
+import type { ContentBlock, ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 
 const CONTINUATION_INSTRUCTION = "Continue the original request from the retained assistant output without repeating completed work.";
 

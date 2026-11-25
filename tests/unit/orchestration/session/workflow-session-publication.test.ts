@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type InFlightSwap } from "../../../../src/infra/store/event-store-types";
-import { resolveSessionDir } from "../../../../src/infra/paths";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type InFlightSwap } from "../../../../src/infra/substrate/store/event-store-types";
+import { resolveSessionDir } from "../../../../src/infra/platform/files/paths";
 import { chatSessionActions, readChatTurnEnd } from "../../../../src/orchestration/session/control/chat-session-run-evidence";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import { turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record";
@@ -12,10 +12,10 @@ import { briefEntryId, isBriefEntry } from "../../../../src/orchestration/sessio
 import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership";
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery/recovery";
 import { commitWorkflowEvent, publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures";
-import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog";
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js";
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/vm/recovery/workflow-view";
 import { frontendAttempts } from "../../../../src/orchestration/session/metadata/frontend-attempts";
-import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent";
+import { workflowAgentModel } from "../../../../src/protocol/client/work/workflow/workflow-agent";
 import { readWorkflowLiveView } from "../../../../src/orchestration/modules/workflows/protocol/live-protocol";
 import { readAttemptStarts } from "../../../../src/workflows/vm/host/attempt-conversations";
 

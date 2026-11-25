@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { executorStopSignalOf, listenForExecutorStopSignals } from "../../../../../src/orchestration/app-service/executor/executor-stop-signals.js"
-import type { ShutdownSignal } from "../../../../../src/infra/shutdown-signals.js"
+import type { ShutdownSignal } from "../../../../../src/infra/process/shutdown-signals.js"
 
 /** The process API as the listener sees it. A signal the process sends
  *  itself records the signal and how many listeners this process still had

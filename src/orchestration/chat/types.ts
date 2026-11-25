@@ -1,10 +1,10 @@
 import type { Scope } from "effect"
-import type { AuthContext } from "../../infra/auth/auth-context.js"
-import type { EnvCaptureResolver } from "../../infra/env-detection.js"
+import type { AuthContext } from "../../infra/providers/auth/auth-context.js"
+import type { EnvCaptureResolver } from "../../infra/environment/env-detection.js"
 import type { OwnedCommandRunner } from "../../infra/owned-command.js"
-import type { EventBus } from "../../infra/event-bus.js"
-import type { ModelFamily } from "../../infra/llm/models/model-family.js"
-import type { AgentDefinition } from "../../infra/agent-definition.js"
+import type { EventBus } from "../../infra/substrate/events/event-bus.js"
+import type { ModelFamily } from "../../infra/providers/llm/models/model-family.js"
+import type { AgentDefinition } from "../../infra/definitions/agent-definition.js"
 import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js"
 import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js"
 import type { LLMClientFactory } from "../agent-runtime/request/model-runtime-capture.js"
@@ -84,6 +84,12 @@ export interface ChatSessionDeps {
   sessionId: string
   conversationId: string
   updateEntry: (patch: ChatEntryPatch) => void
+  /** Puts the conversation's stored transcript in place of the chat's open
+   *  display, and resolves once it is in place. The runner asks for it after
+   *  its writer landed entries that no event of a turn shows, such as the
+   *  input held behind a settled question (ARCH-SESSIONS-050). The caller
+   *  asks only while its display shows nothing that the conversation lacks. */
+  refreshDisplay: () => Promise<void>
   metricsWriter?: MetricsWriter
   /** Persists chat metadata (provider continuation token) outside the live
    *  entry so a later process can resume the same prompt-cache slot. */

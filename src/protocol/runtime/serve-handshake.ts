@@ -1,4 +1,4 @@
-import type { ServeLane } from "../../infra/cli-subprocess.js"
+import type { ServeLane } from "../../infra/platform/cli-subprocess.js"
 
 interface ServeStartupProgress {
   readonly step: number

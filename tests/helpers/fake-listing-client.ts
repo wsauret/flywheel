@@ -1,6 +1,6 @@
-import type { ModelListingClient } from "../../src/infra/llm/access/model-listing.js";
-import type { ModelFamily } from "../../src/infra/llm/models/model-family.js";
-import type { AccessProviderId } from "../../src/infra/llm/access/access-provider.js";
+import type { ModelListingClient } from "../../src/infra/providers/llm/access/model-listing.js";
+import type { ModelFamily } from "../../src/infra/providers/llm/models/model-family.js";
+import type { AccessProviderId } from "../../src/infra/providers/llm/access/access-provider.js";
 
 const FAMILY_TO_PROVIDER = {
   anthropic: "anthropic_api",

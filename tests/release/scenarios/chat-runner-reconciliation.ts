@@ -9,7 +9,7 @@ import {
   RECONCILIATION_PARENT_MARKER,
   RECONCILIATION_PARENT_NAME,
 } from "../fixtures/generate-store.js"
-import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath } from "../../../src/infra/paths.js"
+import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath } from "../../../src/infra/platform/files/paths.js"
 import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"
 import { encodeAccountAttach } from "../../../src/protocol/runtime/account-attach.js"
 import type { RuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"

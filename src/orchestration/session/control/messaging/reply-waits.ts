@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js"
 import type { BackgroundWorkResult } from "../background-work/background-work-types.js"
@@ -12,7 +12,7 @@ import { liveSessionControl, liveWorkflowControl, onLiveSessionRemoved, onLiveWo
 import type { RecipientState } from "../../message-disposition.js"
 import { sessionDisplayName, type ReplayedSession } from "../../metadata/schemas.js"
 import type { ReplyWaitView } from "../../../../protocol/session/status-protocol-types.js"
-import type { PausedBy } from "../../../../infra/output-blocks.js"
+import type { PausedBy } from "../../../../infra/substrate/events/output-blocks.js"
 
 const log = Log.create({ service: "reply-waits" })
 

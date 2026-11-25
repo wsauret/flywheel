@@ -1,10 +1,10 @@
-import { createRuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-factory.js";
-import { asRecord } from "../../../../infra/record.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
-import { textField } from "../../../../infra/tools/json-field.js";
-import { workflowCallSource, workflowSource, workflowSourceLabel, type WorkflowCallSource, type WorkflowLaunchSource } from "../../../../infra/tools/workflow-call-source.js";
-import type { ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js";
-import type { AgentFailureDisplay } from "../../../../infra/output-blocks.js";
+import { createRuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-factory.js";
+import { asRecord } from "../../../../infra/guards/record.js";
+import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";
+import { textField } from "../../../../infra/substrate/output/tools/json-field.js";
+import { workflowCallSource, workflowSource, workflowSourceLabel, type WorkflowCallSource, type WorkflowLaunchSource } from "../../../../infra/substrate/output/tools/workflow-call-source.js";
+import type { ToolOutcome } from "../../../../infra/substrate/runtime-facts/tool-outcome.js";
+import type { AgentFailureDisplay } from "../../../../infra/substrate/events/output-blocks.js";
 import type { BackgroundKillSource, BackgroundWorkResult, ChildInterruption } from "../../../session/control/background-work/background-work-types.js";
 import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js";
 import { NO_WORKFLOW_DIRECTORY, type ModelWorkflowLaunchContext, type ModelWorkflowLaunchIntent, type ResolveWorkflowLaunchTarget, type WorkflowLaunchConfirmation, type WorkflowLaunchRefusal, workflowRefusalText, type WorkflowAgentModels } from "./workflow-launch.js";

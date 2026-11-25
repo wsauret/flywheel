@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import { CAPABILITIES_DETAIL, everyProviderOff } from "../../../../src/protocol/client/capabilities.js"
+import { CAPABILITIES_DETAIL } from "../../../../src/protocol/client/capabilities.js"
+import { everyProviderOff } from "../../../../webview/src/client/session-settings.js"
 import type { ModuleProtocolRow } from "../../../../src/protocol/runtime/module-protocol-types.js"
 
 const provider = { control: "binary", group: "Model providers", label: "OpenAI API Key", description: "OpenAI" } as const

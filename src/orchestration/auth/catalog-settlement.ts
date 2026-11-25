@@ -1,14 +1,14 @@
-import { resolveAuthContext, type AuthContext } from "../../infra/auth/auth-context.js"
-import type { KeyResolver } from "../../infra/auth/resolve-key.js"
+import { resolveAuthContext, type AuthContext } from "../../infra/providers/auth/auth-context.js"
+import type { KeyResolver } from "../../infra/providers/auth/resolve-key.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { AuthCatalogSettlement } from "./auth-actions.js"
 import { resolveProviderModelCatalog } from "../config/models/model-assignment-providers.js"
 import { type FirstPartyModuleSnapshot, credentialSlotClassifier } from "../module-contract/module-catalog.js"
 import { webAuthProviderDefinitions, installedCredentialProviderIds } from "../module-contract/module-composition.js"
-import type { AccessProviderDefinition } from "../../infra/llm/access/access-provider.js"
+import type { AccessProviderDefinition } from "../../infra/providers/llm/access/access-provider.js"
 
 import { accessProviderRegistry } from "../config/models/access-provider-registry.js"
-import { credentialIdOf, type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../infra/auth/provider-account.js"
+import { credentialIdOf, type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../infra/providers/auth/provider-account.js"
 
 export interface CatalogSettlementOptions {
   readonly userDataRoot: string

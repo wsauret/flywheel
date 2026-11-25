@@ -1,8 +1,8 @@
-import type { CapabilityCheck } from "../../infra/capability-text.js"
-import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
+import type { CapabilityCheck } from "../../infra/definitions/capability-text.js"
+import type { ChatInput, ChatInputLike } from "../../infra/substrate/events/chat-input.js"
 import type { Runner } from "../agent-runtime/runner/runner-types.js"
 import type { AgentInputAnswers } from "../../protocol/session/question-protocol-types.js"
-import type { ModuleRuntimes } from "../../infra/module-runtime.js"
+import type { ModuleRuntimes } from "../../infra/definitions/modules/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
 import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
 import type { HeldRetainedOperation } from "../module-contract/module-seams.js"
@@ -53,6 +53,8 @@ export interface ChatRunner extends Runner, PooledRunner {
   /** Admit already-durable module work to this runner's ordinary save point. */
   acceptRetainedOperation?(operation: HeldRetainedOperation): Promise<void>
   deliverBackgroundNotification(notification: HeldBackgroundNotification): Promise<boolean>
+  /** Runs one message with one-shot request context. False when the runner
+   *  refuses it, also while a question waits for the person. */
   requestWithContext(input: ChatInputLike, context: string): boolean
   /** The module runtimes the current runner generation was assembled with;
    *  absent on a runner that has not assembled one. A command handler reads
@@ -114,5 +116,12 @@ export interface ChatRunner extends Runner, PooledRunner {
    *  has settled, and never rejects: what it cannot adopt is left for a later
    *  host. Every turn waits for it before its first model request. */
   adoptHandedOver(): Promise<void>
+  /** When a question waits for the person, takes the input held behind it
+   *  in the conversation's durable holds into this runner's queue in the
+   *  order it arrived, where a recall can take a person's message back.
+   *  The attach runs it before the runner takes any input; it opens the
+   *  conversation writer, so the runner's question gates decide in their
+   *  caller's tick. */
+  adoptHeldInput(): Promise<void>
   publishCommittedNotice?(notice: { readonly id: string; readonly message: string; readonly timestamp: number }): void
 }

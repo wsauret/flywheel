@@ -2,7 +2,7 @@ import { type Accessor, createEffect, createMemo, createSignal, For, Index, on, 
 import { Key } from "@solid-primitives/keyed"
 import type { HydratedOutputBlockBody } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import type { FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { MutationEvidenceHandle, MutationEvidenceReader, MutationFilesView } from "../../../../../src/protocol/client/mutation-evidence.js"
+import type { MutationEvidenceHandle, MutationEvidenceReader, MutationFilesView } from "../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 import { turnCalls, turnChangedFiles } from "../../../client/session/residents/turn-folds.js"
 import type { TurnFold } from "../../../client/session/residents/tool-runs.js"
 import type { BlockDisclosure } from "./block-disclosure.js"

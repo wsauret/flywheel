@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../infra/error-message.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../infra/diagnostics/log.js";
 import { formatRuntimeNotification } from "../../session/control/background-work/runtime-notifications.js";
 

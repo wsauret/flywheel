@@ -1,7 +1,7 @@
-import { createEventProjection } from "../../../infra/projection/event-projection.js"
-import { heldProjection } from "../../../infra/projection/projection-registry.js"
-import { CorruptEventRowError, type AsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../infra/store/event-store-types.js"
-import type { MessageProducer } from "../../../infra/chat-input.js"
+import { createEventProjection } from "../../../infra/substrate/projection/event-projection.js"
+import { heldProjection } from "../../../infra/substrate/projection/projection-registry.js"
+import { CorruptEventRowError, type AsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import type { MessageProducer } from "../../../infra/substrate/events/chat-input.js"
 import { reduceSessionMetadataEvent } from "./session-metadata-projection.js"
 
 export interface SessionMessageSources {

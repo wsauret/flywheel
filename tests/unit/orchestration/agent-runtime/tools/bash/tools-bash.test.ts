@@ -14,8 +14,8 @@ import { createBackgroundWorkRegistry } from "../../../../../../src/orchestratio
 import { createForegroundBashHoldController } from "../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
-import { canonicalMutationPath } from "../../../../../../src/infra/locks/file-mutation-queue.js";
-import * as treeSitter from "../../../../../../src/infra/tree-sitter-parser.js";
+import { canonicalMutationPath } from "../../../../../../src/infra/process/locks/file-mutation-queue.js";
+import * as treeSitter from "../../../../../../src/infra/parsing/tree-sitter-parser.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import type { RuntimeToolInput } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { bashExecution, commandOutputOps, dispatchTool as dispatch, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe } from "./_bash-fixtures.js";

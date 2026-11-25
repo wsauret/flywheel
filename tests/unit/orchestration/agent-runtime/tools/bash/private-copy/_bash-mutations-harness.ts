@@ -14,9 +14,9 @@ import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext 
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry, type SettledProjectMutation } from "../../../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { createForegroundBashHoldController } from "../../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { backgroundLogPath } from "../../../../../../helpers/background-log-path.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../../src/infra/store/event-store-types.js";
-import { resolveEventStoreDbFile } from "../../../../../../../src/infra/paths.js";
-import { createSqliteEventStore } from "../../../../../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../../src/infra/substrate/store/event-store-types.js";
+import { resolveEventStoreDbFile } from "../../../../../../../src/infra/platform/files/paths.js";
+import { createSqliteEventStore } from "../../../../../../../src/infra/substrate/store/sqlite-event-store.js";
 import { createBackgroundExecutionOwner } from "../../../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { commandHandoversOfAsync } from "../../../../../../../src/orchestration/session/command-handover.js";
 import type { OutcomeRecordRead } from "../../../../../../../src/infra/supervision/launch/command-handover.js";

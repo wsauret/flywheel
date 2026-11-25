@@ -4,9 +4,9 @@ import { createSignal } from "solid-js"
 import { testRender, useKeyboard } from "@opentui/solid"
 import { ChildSessionViewer, createChildSessionViewerInput as createInput } from "../../../../src/tui/child-viewer/child-session-viewer.js"
 import { createTerminalChatSubmissions } from "../../../../src/tui/hooks/create-chat-submissions.js"
-import { createComposerReturns } from "../../../../src/protocol/client/composer-returns.js"
+import { createComposerReturns } from "../../../../src/protocol/client/chat/composer-returns.js"
 import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
-import { normalizeChatInput } from "../../../../src/infra/chat-input.js"
+import { normalizeChatInput } from "../../../../src/infra/substrate/events/chat-input.js"
 import { childBodyProps, viewerSurface } from "./_child-session-viewer-fixtures.js"
 import { transcriptOf } from "../transcript/output-window/_output-window-transcript.js"
 import { ComposerBody, ComposerFrame, composerBodyGeometry } from "../../../../src/tui/components/composer/frame/composer-frame.js"
@@ -80,7 +80,7 @@ describe("child session viewer input owner", () => {
       const returned = { noticeId: `returned-input:child:person:${id}`, sourceSessionId: "child", sourceName: "Child", input: submitted }
       const coordinator = createComposerReturns({
         client: { ...lanes, dispatch: async (claim) => { claims.push([...claim.submissionIds]); return { ok: true, kind: "claimed", items: [returned] } } },
-        ownsSubmission: submissions.ownsSubmission, settled: submissions.settleReturned,
+        submissions: () => submissions,
         append: (_parent, item) => { appended.push(item.input.text) }, report: () => {},
       })
       coordinator.own(["parent"])

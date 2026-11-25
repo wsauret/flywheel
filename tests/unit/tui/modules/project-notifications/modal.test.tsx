@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import type { ProjectNotificationEpisode } from "../../../../../src/protocol/modules/project-notifications.js"
 import { createModalScrollController } from "../../../../../src/tui/components/modal/scroll/modal-scroll-controller.js"
 import { projectNotificationsTui } from "../../../../../src/tui/modules/project-notifications/index.js"

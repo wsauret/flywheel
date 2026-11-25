@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted } from "effect";
 import { Log } from "../../../../../../../src/infra/diagnostics/log.js";
-import * as windowsAcl from "../../../../../../../src/infra/windows-private-directory-acl.js";
+import * as windowsAcl from "../../../../../../../src/infra/platform/files/windows/windows-private-directory-acl.js";
 import { createChatGPTClient } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/chatgpt-client.js";
 import { dumpFailedChatGptRequest } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-chatgpt.js";
 import { createProviderAvailability } from "../../../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
-import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../../../src/infra/auth/openai/openai-auth-types.js";
+import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../../../src/infra/providers/auth/openai/openai-auth-types.js";
 
 const DUMP_RELATIVE_DIR = join(".flywheel", "log", "chatgpt-adapter-failures");
 const CONNECTION = { authDir: join(tmpdir(), "flywheel-chatgpt-dump-auth"), oauthPersistence: "memory-only" as const };

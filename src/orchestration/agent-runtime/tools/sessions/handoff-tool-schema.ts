@@ -1,5 +1,5 @@
-import { readJsonValue } from "../../../../infra/llm/json-parse.js";
-import { isRecord, type UnknownRecord } from "../../../../infra/record.js";
+import { readJsonValue } from "../../../../infra/providers/llm/json-parse.js";
+import { isRecord, type UnknownRecord } from "../../../../infra/guards/record.js";
 import { acceptAgentOutput, type OutputAcceptance } from "../../../../workflows/output-contract/accept.js";
 import { objectJsonSchema, type CompiledOutput, type JsonSchema } from "../../../../workflows/output-contract/compile.js";
 import type { ReadCommandEvidence } from "../../../../workflows/output-contract/evidence.js";

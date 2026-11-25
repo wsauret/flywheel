@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
-import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
-import { createSqliteEventInserter } from "../../../../infra/store/sqlite-event-store-core.js"
-import { createSqliteEventReadSurface } from "../../../../infra/store/sqlite-event-read-surface.js"
+import { admitPrivateDatabaseFiles } from "../../../../infra/platform/files/private-path.js"
+import { createSqliteEventInserter } from "../../../../infra/substrate/store/sqlite-event-store-core.js"
+import { createSqliteEventReadSurface } from "../../../../infra/substrate/store/sqlite-event-read-surface.js"
 import { replayWorkflowControl } from "../../../../workflows/vm/recovery/fact-fold.js"
 import {
   DEFINITION_IDENTITY_RETIRED_BLOCKED_MIGRATION_ID,

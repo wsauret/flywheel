@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "bun:test"
 import { createOutputSession, type OutputSession } from "../../../../src/orchestration/session-store/output-session"
-import type { AnyBlock } from "../../../../src/infra/output-blocks"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks"
 import { createMocks, flushMicrotasks, makeAssistantEvent, makeAssistantTextEvent, makeAssistantThinkingEvent } from "./_output-session-fixtures"
 
 /** Every block snapshot the session synced to the store, in call order. */

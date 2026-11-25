@@ -22,14 +22,14 @@
 import { randomUUID } from "node:crypto"
 import { lstat, readdir, readFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
-import { decodeGitDirectory } from "../../../../infra/git-metadata.js"
-import type { ContainedDirectory } from "../../../../infra/descriptor-directory/descriptor-directory-contract.js"
-import { openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { decodeGitDirectory } from "../../../../infra/platform/git-metadata.js"
+import type { ContainedDirectory } from "../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js"
+import { openExistingContainedDirectory } from "../../../../infra/platform/files/descriptor-directory.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
-import { AGENT_OUTPUTS_DIR, PRIVATE_COPY_RECORD, requireSessionIdComponent, SCRATCH_MUTATION_GIT_DIR, SCRATCH_MUTATIONS_DIR, SESSIONS_DIR, sessionRelativeDir, workflowRelativeDir } from "../../../../infra/paths.js"
-import { directoryComponents, removeTreeUnder, writeFileUnder } from "../../../../infra/write-file-under.js"
+import { AGENT_OUTPUTS_DIR, PRIVATE_COPY_RECORD, requireSessionIdComponent, SCRATCH_MUTATION_GIT_DIR, SCRATCH_MUTATIONS_DIR, SESSIONS_DIR, sessionRelativeDir, workflowRelativeDir } from "../../../../infra/platform/files/paths.js"
+import { directoryComponents, removeTreeUnder, writeFileUnder } from "../../../../infra/platform/files/write-file-under.js"
 
 const log = Log.create({ service: "session-artifacts" })
 

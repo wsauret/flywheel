@@ -1,23 +1,23 @@
 import { createEffect, createMemo, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
 
 import { useClientExtensions } from "../../client-extensions.js"
-import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, watchRowView, type ProcessStatus } from "../../../../../src/protocol/client/transcript-model.js"
+import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, watchRowView, type ProcessStatus } from "../../../../../src/protocol/client/chat/transcript/transcript-model.js"
 import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
 import type { RoleAssignmentView } from "../../../../../src/protocol/auth/role-protocol-types.js"
-import { parseSessionLink } from "../../../../../src/protocol/client/session-links.js"
+import { parseSessionLink } from "../../../../../src/protocol/client/session/session-links.js"
 import { isReturnedInputNotice } from "../../../../../src/protocol/transcript/composer-returns.js"
 import { actionKey } from "../../../client/action-key.js"
 import type { FrontendOutputBlock, FrontendToolEntry, FrontendToolStreamingText } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { totalDiffOmittedLines } from "../../../../../src/protocol/transcript/diff-omission.js"
-import { conflictMarkersNotice, fileChangeDetail, isShellMutationEntry, notAppliedNotice, rowPresentation, rowWritePolicy, selectFileChangeBody, showsShellMutationOutput, type FileChangeBody } from "../../../../../src/protocol/client/file-change-body.js"
+import { fileChangeDetail, isShellMutationEntry, mutationEvidenceNotices, rowPresentation, rowWritePolicy, selectFileChangeBody, showsShellMutationOutput, type FileChangeBody } from "../../../../../src/protocol/client/chat/transcript/file-change-body.js"
 import type { WriteSyntaxThemeId } from "../../../../../src/protocol/settings/write-syntax-theme.js"
 
 import type { HydratedOutputBlockBody } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
-import type { MutationEvidenceReader, MutationFilesView } from "../../../../../src/protocol/client/mutation-evidence.js"
+import type { MutationEvidenceReader, MutationFilesView } from "../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 import type { BlockDisclosure } from "./block-disclosure.js"
 import { FileDiff } from "./text/file-diff.js"
 import { questionRecordRows } from "../../../client/questions/question-answer.js"
-import { readRowPath } from "../../../../../src/protocol/client/tool-run-category.js"
+import { readRowPath } from "../../../../../src/protocol/client/chat/transcript/tool-run-category.js"
 import { toolRowDetail } from "./compact-tool-row.js"
 import type { PresentedWebBlock, TurnFold } from "../../../client/session/residents/tool-runs.js"
 import { turnFoldSummary } from "../../../client/session/residents/turn-folds.js"
@@ -30,7 +30,7 @@ import { writeSyntaxPresentation } from "./text/write-syntax.js"
 import "../../../styles/blocks.css"
 import "../../../styles/markdown.css"
 import "../../../styles/write-syntax.css"
-import { messageDisclosureEntry } from "../../../../../src/protocol/client/message-sender.js"
+import { messageDisclosureEntry } from "../../../../../src/protocol/client/chat/message-sender.js"
 import { AgentGroup } from "./agents/agent-group.js"
 import { BlockTime } from "../reading/row-time.js"
 
@@ -514,12 +514,9 @@ export function createToolPresentation(props: ToolProps) {
       <Show when={fileBodyMode().advisory}>
         {(advisory) => <div class="tool-advisory">Preview check: {advisory()}</div>}
       </Show>
-      <Show when={(props.entry.mutationEvidence?.conflictMarkers ?? 0) > 0 ? props.entry.mutationEvidence : undefined}>
-        {(summary) => <div class="tool-notice">{conflictMarkersNotice(summary())}</div>}
-      </Show>
-      <Show when={(props.entry.mutationEvidence?.notApplied ?? 0) > 0 ? props.entry.mutationEvidence : undefined}>
-        {(summary) => <div class="tool-notice">{notAppliedNotice(summary())}</div>}
-      </Show>
+      <For each={mutationEvidenceNotices(props.entry.mutationEvidence)}>
+        {(notice) => <div class="tool-notice">{notice}</div>}
+      </For>
     </> },
     get body() { return <Show when={open() && hasBody()}>
         <div class="tool-body" classList={{ "write-syntax": writeSyntax().class !== undefined }} style={writeSyntax().style}>

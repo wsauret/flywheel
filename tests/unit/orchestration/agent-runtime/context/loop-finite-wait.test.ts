@@ -4,7 +4,7 @@ import { createBackgroundExecutionOwner } from "../../../../../src/orchestration
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js";
 import type { ProviderStreamEvent, ToolCall } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import type { RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentLoopTerminal } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
 import type { RestoredAgentWait } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { planHistoryLowering } from "../../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js";
 import { renderAppend, textHistoryTarget } from "../../../../../../src/orchestration/modules/provider-google-antigravity/request/history-text.js";
 

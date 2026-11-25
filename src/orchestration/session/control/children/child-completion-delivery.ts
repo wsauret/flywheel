@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, InFlightRecord } from "../../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, InFlightRecord } from "../../../../infra/substrate/store/event-store-types.js"
 import { completionWorkIds } from "../background-work/background-work-notifications.js"
 import { liveSessionControl } from "../live-session-control.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, decodeQueuedBackgroundNotification, type HeldBackgroundNotification } from "../../conversation/queued-background-notifications.js"

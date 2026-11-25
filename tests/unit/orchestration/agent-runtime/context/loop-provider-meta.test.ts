@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { makeFakeLLMClient } from "./_loop-fixtures.js";
 import { testBaseTools } from "../../../../helpers/request-tool-surface.js";
 import { mkdtempSync, rmSync } from "node:fs";

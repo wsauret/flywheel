@@ -1,4 +1,4 @@
-import { createStreamingSanitizer } from "../../../../infra/control-characters.js";
+import { createStreamingSanitizer } from "../../../../infra/substrate/output/control-characters.js";
 import type { PersistentProcessRecord } from "../../../../infra/supervision/persistent/persistent-process-manager.js";
 import type { ChildRow, ChildSessionControl, ChildStatus } from "../../../session/control/messaging/child-session-control.js";
 import type { BackgroundWorkRegistry } from "../../../session/control/background-work/background-work.js";

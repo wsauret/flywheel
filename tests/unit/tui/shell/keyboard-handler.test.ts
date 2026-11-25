@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 
-import { isInterruptible } from "../../../../src/protocol/client/session-controls.js"
+import { isInterruptible } from "../../../../src/protocol/client/work/session-controls.js"
 import type { StatusView } from "../../../../src/protocol/session/status-protocol-types.js"
 import { createKeyboardHandler } from "../../../../src/tui/shell/create-keyboard-handler.js"
 import { createKeymap } from "../../../../src/tui/terminal/keymap/keymap.js"

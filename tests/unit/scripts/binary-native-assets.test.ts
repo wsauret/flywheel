@@ -36,7 +36,7 @@ import {
 } from "../../../scripts/binary-native-assets.js";
 import { cargoRustFlags, embeddedLocalPaths, rustPathRemaps } from "../../../scripts/build-native-addon.js";
 import { RELEASE_TARGETS } from "../../../scripts/release-contract.js";
-import { windowsGitForwarderPath } from "../../../src/infra/native-assets.js";
+import { windowsGitForwarderPath } from "../../../src/infra/platform/native-assets.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();

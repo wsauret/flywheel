@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
-import { asAsyncEventReadSurface, type EventStoreAppend, type LocalSqliteEventStore } from "../../../../../../src/infra/store/event-store-types.js";
-import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, type EventStoreAppend, type LocalSqliteEventStore } from "../../../../../../src/infra/substrate/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../../src/infra/substrate/store/sqlite-event-store.js";
 import {
   createSkillCorpusCleanupState,
   SKILL_CORPUS_CLEANUP_LEASE_MS,

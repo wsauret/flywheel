@@ -19,7 +19,7 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { isProcessAlive } from "../src/infra/process-liveness.js";
+import { isProcessAlive } from "../src/infra/platform/process-liveness.js";
 
 export interface LaneTicket {
   readonly name: string;

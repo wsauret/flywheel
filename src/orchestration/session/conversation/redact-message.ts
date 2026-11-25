@@ -1,6 +1,6 @@
 import { redactDeep, redactSecrets } from "../../../infra/redact-secrets.js";
-import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
-import type { ContentBlock, ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
+import type { LlmToolOutputPart } from "../../../infra/providers/llm/tool-output-part-schema.js";
+import type { ContentBlock, ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js";
 
 interface ToolInput {
   [key: string]: unknown;

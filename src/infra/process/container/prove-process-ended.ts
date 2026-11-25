@@ -1,7 +1,7 @@
-import { errorMessage } from "../../error-message.js"
+import { errorMessage } from "../../diagnostics/error-message.js"
 import { Log } from "../../diagnostics/log.js"
 import { recordTermination } from "./process-container.js"
-import { withDeadline } from "../../with-deadline.js"
+import { withDeadline } from "../../timing/with-deadline.js"
 
 // The supervisor's service, because project executors relay its records by
 // service name.

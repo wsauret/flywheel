@@ -1,5 +1,5 @@
 import { Effect, Exit, Scope } from "effect"
-import { canonicalDirectory } from "../../../../src/infra/directory-authorities.js"
+import { canonicalDirectory } from "../../../../src/infra/platform/files/directory-authorities.js"
 import { createTurnDispatcher } from "../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-loop-tools.js"
 import { settleTurn } from "../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-turn-settlement.js"
 import type { BackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js"

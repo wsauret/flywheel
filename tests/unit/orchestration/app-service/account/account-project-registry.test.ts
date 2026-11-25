@@ -3,10 +3,10 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { canonicalPathWithMissingTail } from "../../../../../src/infra/canonical-path"
-import { asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types"
-import { accountEventStoreDbFile, resolveEventStoreDbFile } from "../../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store"
+import { canonicalPathWithMissingTail } from "../../../../../src/infra/platform/files/canonical-path"
+import { asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types"
+import { accountEventStoreDbFile, resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store"
 import { createAccountProjectRegistry, type AccountProjectRegistry } from "../../../../../src/orchestration/app-service/account/account-project-registry"
 
 const registries: AccountProjectRegistry[] = []

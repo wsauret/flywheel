@@ -1,4 +1,4 @@
-import { isVisibleMessageBlock, type AnyBlock } from "../../../../infra/output-blocks.js"
+import { isVisibleMessageBlock, type AnyBlock } from "../../../../infra/substrate/events/output-blocks.js"
 import type { ConversationTreeTranscriptEntry } from "../conversation-projection.js"
 import { TreeBlockProjection, type ToolBlockReader, type TreeBlockProjectionOptions } from "./conversation-block-projection.js"
 import type { IndexedGroupChildren } from "./tool-result-meta.js"

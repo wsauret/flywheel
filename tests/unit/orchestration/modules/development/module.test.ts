@@ -10,7 +10,7 @@ import { moduleSelectionFromConfig } from "../../../../../src/orchestration/conf
 import { RETIRED_MODULE_ID_SPELLINGS } from "../../../../../src/orchestration/modules.js";
 import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js";
 import { createToolRegistry, installedPersonaToolEntries } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
-import { composeModuleServices, NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js";
+import { composeModuleServices, NO_MODULE_SERVICES } from "../../../../../src/infra/definitions/modules/module-service.js";
 import { moduleRequirementsForContribution } from "../../../../../src/orchestration/module-contract/module-requirements.js";
 import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js";
 import { createProjectDefinitionRegistry } from "../../../../../src/workflows/definitions/definition-registry.js";

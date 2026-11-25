@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { defineFact } from "../../../infra/event-registry.js";
+import { defineFact } from "../../../infra/substrate/facts/event-registry.js";
 
 /** The authored setting that a pick answers: the role and the fields that a person or a workflow authored for it. */
 const RolePickSettingSchema = Schema.Struct({

@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { ComposerReturnSchema, returnedInputNoticeId, type ClaimComposerReturnsResult } from "../../../../protocol/transcript/composer-returns.js"
 import { owningChat } from "../../metadata/session-metadata-projection.js"

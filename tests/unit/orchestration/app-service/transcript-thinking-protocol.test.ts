@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
-import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
-import { applyOutputDelta, buildBlockIndex } from "../../../../src/protocol/client/transcript-delta.js"
+import { applyOutputDelta, buildBlockIndex } from "../../../../src/protocol/client/chat/transcript/transcript-delta.js"
 
 const settled: AnyBlock = { kind: "thinking", id: "t-1", content: "an earlier thought", status: "completed", timestamp: 1, completedAt: 2 }
 const streaming: AnyBlock = { kind: "thinking", id: "t-2", content: "the model is still", status: "streaming", timestamp: 3 }

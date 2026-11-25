@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { acquireSessionSummaryIndex, sessionSummaryFactTypes } from "../../../../src/orchestration/session/metadata/catalog/session-summary-index.js"
-import type { StoredFact } from "../../../../src/infra/store/event-store-types.js"
+import type { StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { usageV4Fact } from "../../../fixtures/session-summary-history.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
 import { dbFile, recorded, retired, removeIndexDirectories, sourceFor, streamSummaryFact } from "./_summary-index-fixtures.js"

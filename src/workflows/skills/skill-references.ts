@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { renderCapabilityText, type CapabilityCheck } from "../../infra/capability-text.js";
+import { renderCapabilityText, type CapabilityCheck } from "../../infra/definitions/capability-text.js";
 import { workflowAssets as manifestWorkflowAssets } from "../provenance/asset-manifest.js";
 import { BUNDLED_REFERENCE_DIR } from "./skill-source-inventory.js";
 import type { SkillDefinition } from "./skill-schema.js";

@@ -1,5 +1,5 @@
-import { createEmit } from "../../infra/event-bus.js"
-import { isVisibleMessageBlock, messageSenderOf } from "../../infra/output-blocks.js"
+import { createEmit } from "../../infra/substrate/events/event-bus.js"
+import { isVisibleMessageBlock, messageSenderOf } from "../../infra/substrate/events/output-blocks.js"
 import type { AttachChildSessionProjection } from "../module-contract/module-seams.js"
 import { SessionTranscriptProjection } from "../session/conversation/transcript/transcript-projection.js"
 import { SessionEventAdapter } from "./event-adapter.js"

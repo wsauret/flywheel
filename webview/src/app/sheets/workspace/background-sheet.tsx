@@ -5,18 +5,23 @@ import type { BackgroundWorkRow } from "../../../../../src/protocol/session/back
 import {
   backgroundIndexEntries,
   backgroundRowDetail,
-  backgroundStopWord,
   canStopBackgroundRow,
   stopBackgroundRow,
   type BackgroundIndexFilter,
   type BackgroundIndexEntry,
-} from "../../../../../src/protocol/client/background-index.js"
+} from "../../../../../src/protocol/client/work/background-index.js"
 import { actionKey } from "../../../client/action-key.js"
 import { useClient } from "../../client-context.js"
 import { SheetEmpty, SheetLoading, SheetRow } from "../sheet.js"
 import { WorkspaceSurface } from "./workspace-surface.js"
 import { useClientExtensions } from "../../client-extensions.js"
 import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/commands/command-names.js"
+
+/** The word of a row's end control: a person stops a command but cancels a
+ *  child, whose run ends for its parent. */
+function backgroundStopWord(row: Pick<BackgroundWorkRow, "kind">): "Stop" | "Cancel" {
+  return row.kind === "command" ? "Stop" : "Cancel"
+}
 
 /** The background index of the selected chat, as the terminal's `/bg` modal
  *  lists it: the chat's background commands and every child it started, in

@@ -1,26 +1,26 @@
-import { composeModules, createModuleCatalogSlot, type ModuleComposition, type ModuleDescriptor } from "../../infra/module-descriptor.js"
+import { composeModules, createModuleCatalogSlot, type ModuleComposition, type ModuleDescriptor } from "../../infra/definitions/module-descriptor.js"
 import type { DefinitionBundle } from "../../workflows/definitions/loader.js"
-import type { AnyFactSchema } from "../../infra/event-registry.js"
-import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
+import type { AnyFactSchema } from "../../infra/substrate/facts/event-registry.js"
+import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../../infra/substrate/store/event-store-types.js"
 import type { WorkflowRunReader, WorkflowRunWriter } from "../session/metadata/workflow-run-record.js"
 import type { SessionManager } from "../session/manager.js"
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { MODULE_IDS, type ModuleId as WireModuleId } from "../../protocol/runtime/module-ids.js"
 import type { RetiredServiceInstallation } from "../app-service/account/installation/account-service-platform.js"
-import type { ModuleRuntimeHandle, ModuleRuntimes } from "../../infra/module-runtime.js"
+import type { ModuleRuntimeHandle, ModuleRuntimes } from "../../infra/definitions/modules/module-runtime.js"
 import type { ChatModuleHostContribution } from "../chat/chat-module-host.js"
 import type { TerminalRemoteContribution } from "./terminal-remote.js"
-import type { ModuleServiceHandle, ModuleServices } from "../../infra/module-service.js"
-import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
+import type { ModuleServiceHandle, ModuleServices } from "../../infra/definitions/modules/module-service.js"
+import type { NotificationEpisodeInput } from "../../infra/substrate/events/notification-episode.js"
 import type { ModuleProtocolRow, ModuleProviderSetting, ModuleSetting, ModuleSettingControl } from "../../protocol/runtime/module-protocol-types.js"
 import type { KernelToolDeps } from "../agent-runtime/tools/kernel-tool-deps.js"
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
 import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js"
-import type { AccessProviderDefinition } from "../../infra/llm/access/access-provider.js"
-import type { AuthContext, ProviderConnection } from "../../infra/auth/auth-context.js"
-import type { CredentialSlot, CredentialSlotClassifier } from "../../infra/auth/store/auth-store-types.js"
-import type { WebProviderDefinition } from "../../infra/auth/web-providers.js"
-import type { SubscriptionUsageReader } from "../../infra/llm/usage/subscription-usage.js"
+import type { AccessProviderDefinition } from "../../infra/providers/llm/access/access-provider.js"
+import type { AuthContext, ProviderConnection } from "../../infra/providers/auth/auth-context.js"
+import type { CredentialSlot, CredentialSlotClassifier } from "../../infra/providers/auth/store/auth-store-types.js"
+import type { WebProviderDefinition } from "../../infra/providers/auth/web-providers.js"
+import type { SubscriptionUsageReader } from "../../infra/providers/llm/usage/subscription-usage.js"
 import type { WebSearchProvider, WebSearchProviderId } from "../agent-runtime/web-search/types.js"
 import type { CommandMenuPosition, CommandOutcome, CommandReading, CommandSurfaceTarget } from "../../protocol/commands/command-catalog-protocol-types.js"
 import type { ModuleHealthCheck } from "../app-service/definitions/commands/module-health.js"
@@ -35,7 +35,7 @@ import type { DefinitionContribution, DefinitionReconciliationInput, ToolDeclara
 import type { ModuleRetainedDiagnostics } from "./module-diagnostics.js"
 import type { ModuleAgentTasks } from "./module-agent-tasks.js"
 import type { ToolExecutionGate } from "../agent-runtime/tools/dispatch/tool-dispatch.js"
-import type { CapabilityCheck } from "../../infra/capability-text.js"
+import type { CapabilityCheck } from "../../infra/definitions/capability-text.js"
 import type { TurnReminderStatement, TurnReminderText } from "../agent-runtime/request/prompt/turn-reminders.js"
 
 /** What every installed module declares for its durable history. The catalog
@@ -402,7 +402,7 @@ interface FirstPartyContributionMap {
   readonly accountServices: AccountModuleServiceContribution
   readonly agentTasks: ModuleAgentTasks
   readonly providers:
-    { readonly definition: AccessProviderDefinition; readonly createClient: import("../agent-runtime/llm/routing/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../../infra/llm/usage/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("../agent-runtime/llm/routing/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("../agent-runtime/llm/routing/provider-availability-types.js").ProviderAllowanceFactory }
+    { readonly definition: AccessProviderDefinition; readonly createClient: import("../agent-runtime/llm/routing/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../../infra/providers/llm/usage/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("../agent-runtime/llm/routing/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("../agent-runtime/llm/routing/provider-availability-types.js").ProviderAllowanceFactory }
   readonly tools: { readonly kind: "tool"; readonly name: string; readonly declaration: ToolDeclaration<string>; readonly associatedPromptRosterIds?: readonly PromptRosterContribution["definition"][] }
   readonly promptFragments: PromptFragmentContribution
   readonly turnReminders: TurnReminderContribution

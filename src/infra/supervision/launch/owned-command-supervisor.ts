@@ -11,7 +11,7 @@ import {
 } from "./command-handover.js"
 import { parseCommandSupervisorArgv, type CommandSupervisorArgv } from "./owned-command-policy.js"
 import { markedContainer, ownContainerMark } from "../../process/container/container-mark.js"
-import { errorMessage } from "../../error-message.js"
+import { errorMessage } from "../../diagnostics/error-message.js"
 import { namedExitStatus } from "./exit-status.js"
 import { connectLines, serveLines, streamLines, type LineConnection, type LineServer } from "../../process/channels/line-channel.js"
 import { posixGuardianReads, watchGuardian, windowsGuardianReads, type GuardianReads } from "./guardian-watch.js"
@@ -31,7 +31,7 @@ import { LAUNCH_FAILED_EXIT_CODE } from "./owned-subprocess.js"
 import { windowsContainerName, windowsControlChannelName } from "../../process/container/windows-launch-names.js"
 import { formatDebugLogLine } from "../../diagnostics/debug-log.js"
 import { unsettledEmptyingStreak } from "../../process/process-probe-streak.js"
-import { MAX_TIMER_MS } from "../../timers.js"
+import { MAX_TIMER_MS } from "../../timing/timers.js"
 import { windowsJobApi } from "../../process/container/windows-job-object.js"
 
 const log = Log.create({ service: "command-supervisor" })
@@ -731,7 +731,7 @@ if (import.meta.main) {
   // supervisor's bundle, or follows a lock that failed, runs this module from
   // the snapshot of the dev service that launches it, so it holds that
   // snapshot as every process that runs from one does (ARCH-DISTRIBUTION-030).
-  const { runningSourceSnapshot } = await import("../../cli-subprocess.js")
-  if (runningSourceSnapshot() !== undefined) (await import("../../distribution/source-snapshot.js")).holdRunningSnapshot()
+  const { runningSourceSnapshot } = await import("../../platform/cli-subprocess.js")
+  if (runningSourceSnapshot() !== undefined) (await import("../../update/distribution/source-snapshot.js")).holdRunningSnapshot()
   await runCommandSupervisorMain(process.argv)
 }

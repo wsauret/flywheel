@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { errorDetail } from "../../../../../../src/infra/error-message.js";
-import { summarizeProviderError } from "../../../../../../src/infra/llm/errors/provider-error-diagnostic.js";
+import { errorDetail } from "../../../../../../src/infra/diagnostics/error-message.js";
+import { summarizeProviderError } from "../../../../../../src/infra/providers/llm/errors/provider-error-diagnostic.js";
 import { Log } from "../../../../../../src/infra/diagnostics/log.js";
 import { classifyProviderFailure, type ProviderFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { AcpRequestError } from "../../../../../../src/orchestration/modules/provider-google-antigravity/acp/connection.js";

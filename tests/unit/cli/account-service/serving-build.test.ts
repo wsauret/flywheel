@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { servingBuild, type ServingBuildInput } from "../../../../src/cli/account-service/serving-build.js"
-import { versionsDir } from "../../../../src/infra/paths.js"
+import { versionsDir } from "../../../../src/infra/platform/files/paths.js"
 
 const BUILD = "a".repeat(64)
 const roots: string[] = []

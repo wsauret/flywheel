@@ -6,7 +6,7 @@ import {
   createBackgroundIndexReadings,
   type BackgroundIndexState,
   type HeldBackgroundIndex,
-} from "../../../protocol/client/background-index.js"
+} from "../../../protocol/client/work/background-index.js"
 
 export interface BackgroundIndexView {
   /** Follows the background index of a session that a child viewer shows,

@@ -2,7 +2,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 
 import { darwinProcess } from "./kernel/darwin-process-api.js"
-import { canonicalAccountHome } from "../directory-authorities.js"
+import { canonicalAccountHome } from "../platform/files/directory-authorities.js"
 import type { ProcessRow } from "./container/process-table.js"
 import { windowsProcessApi } from "./kernel/windows-process-api.js"
 

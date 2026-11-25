@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSyn
 import { join } from "node:path"
 import { DebugLog } from "../../../src/infra/diagnostics/debug-log.js"
 import type { ContainerProbe } from "../../../src/infra/process/container/process-container.js"
-import { asRecord } from "../../../src/infra/record.js"
+import { asRecord } from "../../../src/infra/guards/record.js"
 import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js"
 import { createPrivateCopyPool, type PrivateCopyPool } from "../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-pool.js"
 import { hostGuard, powerShellWrite, repositoryHarness, type CopyCommand } from "./_bash-mutation-repository.js"

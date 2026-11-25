@@ -7,7 +7,7 @@ import type { BackgroundWorkResult } from "../../../../../src/orchestration/sess
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
 import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/loop/turn/run-lifecycle.js";
 import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { makeCaptureClient, throwLoopError, waitUntil, withSessionNotes } from "./_loop-fixtures.js";
 import type { AgentLoopTerminal } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";

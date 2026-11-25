@@ -9,9 +9,9 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/store/event-store-types.js";
-import { resolveEventStoreDbFile } from "../../../src/infra/paths.js";
-import { createSqliteEventStore } from "../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/substrate/store/event-store-types.js";
+import { resolveEventStoreDbFile } from "../../../src/infra/platform/files/paths.js";
+import { createSqliteEventStore } from "../../../src/infra/substrate/store/sqlite-event-store.js";
 import { buildSessionContext } from "../../../src/orchestration/session/conversation/tree/conversation-tree-context.js";
 import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { appendProviderRequestFacts } from "../../unit/orchestration/session/_provider-request-audit-fixtures.js";

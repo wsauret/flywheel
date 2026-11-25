@@ -1,4 +1,4 @@
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
 /**
  * Token estimation for agent runtime context management.
  *
@@ -16,16 +16,16 @@ import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
  * truth; see imageTokensForModel and countToolOutputPartsChars below.
  */
 
-import type { ContentBlock, ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
-import { modelFamilyApi, type LlmApi } from "../../../infra/llm/conversation/messages.js";
-import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
-import { keepsEarlierTurnReasoning } from "../../../infra/llm/models/model-compat.js";
+import type { ContentBlock, ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js";
+import { modelFamilyApi, type LlmApi } from "../../../infra/providers/llm/conversation/messages.js";
+import type { LlmToolOutputPart } from "../../../infra/providers/llm/tool-output-part-schema.js";
+import { keepsEarlierTurnReasoning } from "../../../infra/providers/llm/models/model-compat.js";
 import { deliberationReplays, type DeliberationReplay } from "../llm/history/provider-history.js";
-import { isProgressUpdate } from "../../../infra/llm/anthropic-narration.js";
-import type { AccessProviderId } from "../../../infra/llm/access/access-provider.js";
-import { assertNever } from "../../../infra/assert-never.js";
-import { localTokenizerForModel, type LocalTokenizerIdentity } from "../../../infra/local-tokenizer.js";
-import type { ClaudeTokenizerIdentity } from "../../../infra/model-id.js";
+import { isProgressUpdate } from "../../../infra/providers/llm/anthropic-narration.js";
+import type { AccessProviderId } from "../../../infra/providers/llm/access/access-provider.js";
+import { assertNever } from "../../../infra/guards/assert-never.js";
+import { localTokenizerForModel, type LocalTokenizerIdentity } from "../../../infra/providers/local-tokenizer.js";
+import type { ClaudeTokenizerIdentity } from "../../../infra/providers/model-id.js";
 
 export type TokenCountingPolicyIdentity =
   | `local:${LocalTokenizerIdentity}`

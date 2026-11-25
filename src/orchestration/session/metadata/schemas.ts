@@ -1,11 +1,11 @@
 import { Schema } from "effect";
 import { isAbsolute, resolve } from "node:path";
-import { ProviderRequestOptionsSchema } from "../../../infra/llm/access/provider-options.js";
+import { ProviderRequestOptionsSchema } from "../../../infra/providers/llm/access/provider-options.js";
 import { normalizeRoleAssignments } from "../../config/retired-config-names.js";
 import { parseBriefRoleId } from "../../../protocol/auth/brief-role-id.js";
 import { SessionLifecycleStateSchema } from "./types.js";
-import { RoleAssignmentSnapshotSchema, RoleSettingEntrySchema, RoleSettingsSchema } from "../../../infra/role-settings.js";
-import { WorkflowMembershipSchema } from "../../../infra/session-workflow-membership.js";
+import { RoleAssignmentSnapshotSchema, RoleSettingEntrySchema, RoleSettingsSchema } from "../../../infra/providers/role-settings.js";
+import { WorkflowMembershipSchema } from "../../../infra/definitions/workflow/session-workflow-membership.js";
 
 const NonEmptyString = Schema.NonEmptyString;
 

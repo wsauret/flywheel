@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test"
-import type { AgentGroupBlock, AnyBlock, ToolEntry } from "../../../../../../src/infra/output-blocks.js"
+import type { AgentGroupBlock, AnyBlock, ToolEntry } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import { compactGroupChild, projectFrontendOutputBlock } from "../../../../../../src/orchestration/app-service/projections/output/frontend-output-blocks.js"
 import { hydrateDerivedOutputBlockBody } from "../../../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
-import { rowPresentation } from "../../../../../../src/protocol/client/file-change-body.js"
-import type { MutationEvidence } from "../../../../../../src/infra/mutation-evidence.js"
-import { buildMutationDiffEvidence } from "../../../../../../src/infra/mutation-diff-evidence.js"
+import { rowPresentation } from "../../../../../../src/protocol/client/chat/transcript/file-change-body.js"
+import type { MutationEvidence } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
+import { buildMutationDiffEvidence } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js"
 
 function child(id: string): ToolEntry {
   return { kind: "tool", id, name: "read", presentation: { name: "Read", detail: `${id}.ts` }, status: "completed", timestamp: 1 }

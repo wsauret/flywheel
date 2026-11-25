@@ -2,16 +2,16 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
 import { Redacted } from "effect";
-import type { StoredTokens } from "../../../../../infra/auth/openai/openai-auth-types.js";
-import { extractAccountIdFromJwt } from "../../../../../infra/auth/openai/openai-jwt.js";
-import { errorDetail, errorMessage } from "../../../../../infra/error-message.js";
-import { durationMs } from "../../../../../infra/operation-log.js";
+import type { StoredTokens } from "../../../../../infra/providers/auth/openai/openai-auth-types.js";
+import { extractAccountIdFromJwt } from "../../../../../infra/providers/auth/openai/openai-jwt.js";
+import { errorDetail, errorMessage } from "../../../../../infra/diagnostics/error-message.js";
+import { durationMs } from "../../../../../infra/diagnostics/operation-log.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { redactSecrets } from "../../../../../infra/redact-secrets.js";
-import { LOG_DIR } from "../../../../../infra/paths.js";
-import { applyWindowsPrivateDirectoryAcl, windowsDirectoryIsOwnerOnly } from "../../../../../infra/windows-private-directory-acl.js";
-import { refreshAccessToken } from "../../../../../infra/llm/access/openai-oauth.js";
-import type { ProviderConnection } from "../../../../../infra/auth/auth-context.js";
+import { LOG_DIR } from "../../../../../infra/platform/files/paths.js";
+import { applyWindowsPrivateDirectoryAcl, windowsDirectoryIsOwnerOnly } from "../../../../../infra/platform/files/windows/windows-private-directory-acl.js";
+import { refreshAccessToken } from "../../../../../infra/providers/llm/access/openai-oauth.js";
+import type { ProviderConnection } from "../../../../../infra/providers/auth/auth-context.js";
 import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../stream/provider-failure.js";
 
 const log = Log.create({ service: "llm-openai-chatgpt" });
@@ -106,7 +106,7 @@ type ChatGPTCompareAndSet = (expected: StoredTokens, next: StoredTokens) => Prom
  *  and the person signs in again through /auth. */
 interface ChatGPTRotationOptions {
   readonly caller?: ChatGPTTokenCaller;
-  persistence?: import("../../../../../infra/auth/auth-context.js").OAuthPersistencePolicy;
+  persistence?: import("../../../../../infra/providers/auth/auth-context.js").OAuthPersistencePolicy;
   compareAndSet?: ChatGPTCompareAndSet;
   readonly normalizeRefreshFailure?: boolean;
 }
@@ -258,7 +258,7 @@ type ChatGPTTokenPhase =
 /** Owns the latest settled ChatGPT credential for one client and account. */
 export function createChatGPTTokenAccessor(options: {
   seed: StoredTokens;
-  persistence: import("../../../../../infra/auth/auth-context.js").OAuthPersistencePolicy;
+  persistence: import("../../../../../infra/providers/auth/auth-context.js").OAuthPersistencePolicy;
   compareAndSet?: ChatGPTCompareAndSet;
 }): ChatGPTTokenAccessor {
   let phase: ChatGPTTokenPhase = { kind: "settled", tokens: options.seed };

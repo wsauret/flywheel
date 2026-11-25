@@ -3,7 +3,7 @@ import { createFlywheelAppService } from "../../../../src/orchestration/app-serv
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"
 import { composeRoleProtocolProjection } from "../../../../src/orchestration/app-service/auth/models/role-protocol-projection.js"
 import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime/runtime-ownership.js"
-import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"

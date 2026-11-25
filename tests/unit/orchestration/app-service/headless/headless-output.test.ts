@@ -1,11 +1,11 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import { Schema } from "effect"
-import { PersistenceWriteRefused } from "../../../../../src/infra/store/event-store-types.js"
+import { PersistenceWriteRefused } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { runHeadlessTask } from "../../../../../src/orchestration/app-service/headless/run-headless-task.js"
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js"
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js"
 import { makeWorkflowDeps } from "./_headless-run-fixtures.js"
-import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js"
+import { createEmit, EventBus } from "../../../../../src/infra/substrate/events/event-bus.js"
 import {
   createHeadlessOutputObserver,
   encodeHeadlessOutputRecord,

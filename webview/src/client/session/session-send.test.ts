@@ -2,11 +2,11 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import { createRuntimeSession } from "./session.js"
-import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
 import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { CONNECTED_PROVIDER, settle } from "../../test-support/session-connection-fixture.js"
 import { selectionConnection, waitForSelection } from "./session-selection-fixture.js"
-import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
+import { RuntimeLaneLost } from "../../../../src/protocol/client/runtime/connection-failures.js"
 import { fakeLanes } from "../../../../tests/helpers/fake-lanes.js"
 import { runtimeQuery } from "../../../../tests/helpers/runtime-dispatch.js"
 

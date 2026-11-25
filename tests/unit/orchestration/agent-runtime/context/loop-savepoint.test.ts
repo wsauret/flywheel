@@ -7,7 +7,7 @@ import { SILENT_REPLY_NUDGE } from "../../../../../src/orchestration/agent-runti
 import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { makeCaptureClient } from "./_loop-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

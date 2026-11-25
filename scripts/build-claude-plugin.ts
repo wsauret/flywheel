@@ -24,8 +24,8 @@ import { parseArgs } from "node:util";
 import * as yaml from "js-yaml";
 
 import { Log } from "../src/infra/diagnostics/log.js";
-import { isRecord } from "../src/infra/record.js";
-import { renderCapabilityText, type CapabilityCheck } from "../src/infra/capability-text.js";
+import { isRecord } from "../src/infra/guards/record.js";
+import { renderCapabilityText, type CapabilityCheck } from "../src/infra/definitions/capability-text.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
 import { renderChatBody } from "../src/orchestration/agent-runtime/request/prompt/model-chat-body.js";
 import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
@@ -34,7 +34,7 @@ import { personaToolEntries } from "../src/orchestration/agent-runtime/tools/dis
 import { codedRolePreference } from "../src/orchestration/config/models/role-model-defaults.js";
 import { SHIPPED_MODULES } from "./shipped-modules.js";
 import { createToolRegistry } from "../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
-import type { AgentDefinition } from "../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../src/infra/definitions/agent-definition.js";
 import { loadStandalonePersonaRegistry } from "../src/workflows/agents/registry.js";
 import { resolveSkillClosure } from "../src/workflows/skills/skill-closure.js";
 import { resolveSkillBody } from "../src/workflows/skills/skill-references.js";
@@ -47,7 +47,7 @@ import { zipArchive } from "./zip-archive.js";
 
 const ROOT = join(import.meta.dir, "..");
 const PERSONA_DIR = join(ROOT, "src", "workflows", "agents", "personas");
-const DOCTRINE = join(ROOT, "src", "infra", "agent-assets", "engineering-doctrine.md");
+const DOCTRINE = join(ROOT, "src", "infra", "definitions", "agent-assets", "engineering-doctrine.md");
 
 /** Methods that drive Flywheel's own runtime: its publication delegate. The host has none of it, so the
  *  plugin leaves them out. A method that only one module runs ships in that module's definition bundle, which

@@ -1,5 +1,5 @@
 import { resolve } from "node:path"
-import { composeModules } from "../../../../infra/module-descriptor.js"
+import { composeModules } from "../../../../infra/definitions/module-descriptor.js"
 import { moduleDisabledReason } from "../../../../protocol/runtime/module-ids.js"
 import { personaToolEntries, registrationNamed, toolRegistryFromComposition, type ToolRegistry } from "./tool-registry.js"
 import type { RuntimeToolInput, ShellCommand } from "../types.js"

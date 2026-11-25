@@ -1,13 +1,13 @@
-import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
-import type { StoredFact } from "../../../../src/infra/store/event-store-types.js"
+import type { QuestionBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
+import type { StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 import type { SessionManager, SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 import type { SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
-import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js"
+import { NO_MODULE_RUNTIMES } from "../../../../src/infra/definitions/modules/module-runtime.js"
 import type { WorkflowRunner } from "../../../../src/orchestration/workflow-host/runner-types.js"
-import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta.js"
+import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/substrate/output/output-block-delta.js"
 import type { SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import { projectSessionCatalogRow } from "../../../../src/orchestration/session/control/session-catalog-row.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work.js"
@@ -143,6 +143,7 @@ export function chatRunner(sessionId: string): ChatRunner {
     releaseForegroundBash: () => false,
     transferForegroundForReplacement: async () => {},
     adoptHandedOver: async () => {},
+    adoptHeldInput: async () => {},
     answerQuestion: () => {},
     cancelQuestion: () => {},
     seedDisplayBlocks: () => {},

@@ -1,7 +1,7 @@
 import { Layer } from "effect"
 import { Socket } from "effect/socket"
 
-import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"
 import { fakeRuntimeConnection } from "../test-support/runtime-connection-fixture.js"
 import { createClientActions, type ClientActions } from "../client/actions.js"

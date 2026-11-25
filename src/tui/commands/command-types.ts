@@ -1,10 +1,10 @@
-import type { AccountDirectories } from "../../infra/directory-authorities.js"
+import type { AccountDirectories } from "../../infra/platform/files/directory-authorities.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { Accessor } from "solid-js"
 import type { RuntimeClient, SessionInputMode } from "../../protocol/runtime/app-service-types.js"
 import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigView } from "../../protocol/settings/runtime-config-protocol-types.js"
-import type { CaptureSurfaceOpener } from "../../protocol/client/surface-presentation.js"
-import type { AgentViewKind } from "../../protocol/client/slash-route.js"
+import type { CaptureSurfaceOpener } from "../../protocol/client/commands/surface-presentation.js"
+import type { AgentViewKind } from "../../protocol/client/commands/slash-route.js"
 import type { ShellServices } from "../hooks/state/shell-state.js"
 import type { OpenSurface } from "./command-surfaces.js"
 

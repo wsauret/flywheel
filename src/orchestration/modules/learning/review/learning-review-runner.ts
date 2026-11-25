@@ -2,10 +2,10 @@ import type { PreparedPackage, SkillSemanticAuditResult } from "../../../agent-r
 import { randomUUID } from "node:crypto";
 import { Effect, Exit, Scope } from "effect";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { errorMessage } from "../../../../infra/error-message.js";
-import type { StartupDirectories } from "../../../../infra/directory-authorities.js";
-import type { ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import type { StartupDirectories } from "../../../../infra/platform/files/directory-authorities.js";
+import type { ProviderRequestOptions } from "../../../../infra/providers/llm/access/provider-options.js";
+import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../../agent-runtime/request/prompt/model-interaction-profile.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/request/model-runtime-capture.js";

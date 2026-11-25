@@ -3,7 +3,7 @@ import { createContextAccumulator } from "../../../../../src/workflows/context-b
 import { assembleAgentPrompt } from "../../../../../src/workflows/context-bundle/prompt-assembly.js";
 import { renderWorkflowRequestSection } from "../../../../../src/workflows/context-bundle/workflow-request.js";
 import type { AttemptRow } from "../../../../../src/workflows/view/types.js";
-import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../../src/infra/definitions/capability-text.js";
 import { createAttemptExecutor } from "../../../../../src/workflows/vm/host/attempt-runner.js";
 import { testResolvedAgent } from "../../../../helpers/skill-fixtures.js";
 import { attempt, binding, committedControl, completed, deps, run, skills, workSkill } from "../attempt-runner-test-support.js";

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { claimAnsweredDecision, voidUnclaimedDecisions, type DecisionClaimRequest, type VoidDecisionsRequest } from "../../../../../src/orchestration/session/agent-input/agent-input-decision.js"
 import { parseAgentInputFact, type AgentInputDecision, type AgentInputFact } from "../../../../../src/orchestration/session/agent-input/agent-input-facts.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"

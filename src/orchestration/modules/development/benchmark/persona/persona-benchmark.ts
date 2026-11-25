@@ -1,6 +1,6 @@
 import { cp, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import type { AgentDefinition } from "../../../../../infra/agent-definition.js";
+import type { AgentDefinition } from "../../../../../infra/definitions/agent-definition.js";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import { loadStandalonePersonaRegistry } from "../../../../../workflows/agents/registry.js";
 import { benchmarkMode, RESEARCH_TASKS_CHANGED, type BenchmarkCatalog, type BenchmarkMode, type ImplementTask, type ResearchTask, type ReviewTask } from "../catalog.js";

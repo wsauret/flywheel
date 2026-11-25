@@ -13,7 +13,7 @@ import * as path from "node:path";
 import type { DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log.js";
 import { Log } from "../../../../src/infra/diagnostics/log.js";
 import type { OwnedCommandOptions, OwnedCommandResult } from "../../../../src/infra/owned-command.js";
-import { versionsDir } from "../../../../src/infra/paths.js";
+import { versionsDir } from "../../../../src/infra/platform/files/paths.js";
 import { computeBuildId } from "../../../../src/infra/update/build-identity.js";
 import { installBuild } from "../../../../src/orchestration/update/install-engine.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";

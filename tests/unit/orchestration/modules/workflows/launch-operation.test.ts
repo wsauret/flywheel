@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types";
 import { Log } from "../../../../../src/infra/diagnostics/log";
-import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../../src/infra/retained-operation-hosts";
+import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../../src/infra/definitions/modules/retained-operation-hosts";
 import { createLazyWorkflowController } from "../../../../../src/orchestration/app-service/executor/execution/lazy-workflow-controller";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work";
 import { workflowLaunchRetainedOperation } from "../../../../../src/orchestration/modules/workflows/launch-operation";

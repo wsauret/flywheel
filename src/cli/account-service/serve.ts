@@ -1,23 +1,23 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 
-import { readAppVersion } from "../../infra/app-version.js"
-import { serveLaneFor, type ServeLane } from "../../infra/cli-subprocess.js"
+import { readAppVersion } from "../../infra/update/distribution/app-version.js"
+import { serveLaneFor, type ServeLane } from "../../infra/platform/cli-subprocess.js"
 import { DebugLog, resolveDebugLogDirectory } from "../../infra/diagnostics/debug-log.js"
-import type { StartupDirectories } from "../../infra/directory-authorities.js"
-import { errorMessage } from "../../infra/error-message.js"
+import type { StartupDirectories } from "../../infra/platform/files/directory-authorities.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import { ownedCommandRunner, runOwnedCommand } from "../../infra/owned-command.js"
-import { processLoginShellPath, type LoginShellPath } from "../../infra/login-shell-path.js"
-import type { ServiceSource } from "../../infra/distribution/source-snapshot.js"
+import { processLoginShellPath, type LoginShellPath } from "../../infra/environment/login-shell-path.js"
+import type { ServiceSource } from "../../infra/update/distribution/source-snapshot.js"
 import { darwinProcess } from "../../infra/process/kernel/darwin-process-api.js"
-import { accountServeDir, accountServeLauncherExecutablePath, accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath } from "../../infra/paths.js"
-import { acquireLock, LockRefusal, releaseLock, type LockOwnership } from "../../infra/locks/ownership-file-lock.js"
+import { accountServeDir, accountServeLauncherExecutablePath, accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath } from "../../infra/platform/files/paths.js"
+import { acquireLock, LockRefusal, releaseLock, type LockOwnership } from "../../infra/process/locks/ownership-file-lock.js"
 import { processHolders } from "../../infra/process/process-holder.js"
 import type { LauncherContext, LauncherScope } from "../../infra/process-supervisor.js"
 import type { PersistentProcessManager } from "../../infra/supervision/persistent/persistent-process-manager.js"
 import { createProcessWatchdog, type ProcessWatchdog } from "../../infra/supervision/process-watchdog.js"
-import { shutdownSignals } from "../../infra/shutdown-signals.js"
+import { shutdownSignals } from "../../infra/process/shutdown-signals.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../protocol/runtime-liveness.js"
 import { encodeServeStartFailure, encodeServeStatusRecord, ServeStartupFailure, startHeldByHost, type ServeStartRefusal } from "../../protocol/runtime/serve-handshake.js"
 import { readOrCreateAccountAttachToken } from "../../orchestration/app-service/account/account-attach-token.js"
@@ -34,7 +34,7 @@ import { createAccountHubHandler, type AccountHubOptions, type Hub } from "../..
 import { releaseHarnessHub } from "./release-harness.js"
 import { retiredServiceInstallations } from "../../orchestration/module-contract/module-composition.js"
 import { installedBuild, runningBuildId, type InstalledBuild } from "../../orchestration/app-service/runtime-executable.js"
-import { processRunningBuild, runningDisplayBuildId } from "../../infra/distribution/running-build.js"
+import { processRunningBuild, runningDisplayBuildId } from "../../infra/update/distribution/running-build.js"
 import { confirmServiceStart, endServiceStart, failServiceStart, type ProbationSchedule, withdrawServiceStart } from "../../orchestration/update/service-start.js"
 import { lingerNotice } from "../../protocol/client/process-initiation-copy.js"
 import { SERVE_EXIT } from "./serve-contract.js"
@@ -259,7 +259,7 @@ export async function runServe(
   const lane = serveLaneFor(process.execPath)
   // A dev service names the snapshot of its checkout that it runs from
   // (ARCH-DISTRIBUTION-030). An installed service runs its build and loads none of this.
-  const source = (lane === "dev" ? (await import("../../infra/distribution/source-snapshot.js")).reportSourceEntry() : undefined) ?? NO_SNAPSHOT
+  const source = (lane === "dev" ? (await import("../../infra/update/distribution/source-snapshot.js")).reportSourceEntry() : undefined) ?? NO_SNAPSHOT
   // One answer for residency, the registration refresh, and the
   // registration that residency follows, each of which asks only when it
   // needs it.

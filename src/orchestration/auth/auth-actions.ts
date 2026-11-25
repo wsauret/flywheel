@@ -8,9 +8,9 @@
 
 import type { AuthAccountAttention, AuthProviderAttention } from "../../protocol/auth/auth-status-protocol-types.js";
 import { Redacted } from "effect";
-import { oauthCredentialDto, resolveAuthContext, runtimeCredential, type AuthContext } from "../../infra/auth/auth-context.js";
-import type { AuthProfileAccess } from "../../infra/auth/store/auth-profile-store.js";
-import type { KeyResolver } from "../../infra/auth/resolve-key.js";
+import { oauthCredentialDto, resolveAuthContext, runtimeCredential, type AuthContext } from "../../infra/providers/auth/auth-context.js";
+import type { AuthProfileAccess } from "../../infra/providers/auth/store/auth-profile-store.js";
+import type { KeyResolver } from "../../infra/providers/auth/resolve-key.js";
 import {
   appendCredentialInstanceWithReceipt,
   AuthStoreMutationError,
@@ -25,21 +25,21 @@ import {
   setMeteredCredentialWithReceipt,
   type AuthStoreMutationReceipt,
   type CredentialCollectionReview,
-} from "../../infra/auth/store/auth-store-mutations.js";
-import { loadAuthStoreWithDiagnostics, storedApiKeyHint, type AuthStoreCondition, type AuthStoreDiagnostic, type AuthStoreLoadResult } from "../../infra/auth/store/auth-store.js";
-import { isCredentialCollection, type AuthStore, type Credential, type CredentialInstance, type CredentialProviderId } from "../../infra/auth/store/auth-store-types.js";
-import { isWebProviderId } from "../../infra/auth/web-providers.js";
-import { storedTokensToCredential } from "../../infra/auth/openai/openai-auth-types.js";
-import { FREE_PLAN_REPLACE_QUESTION, isFreePlan } from "../../infra/llm/access/free-plan-accounts.js";
-import type { SubscriptionUsageReader, SubscriptionUsageReport } from "../../infra/llm/usage/subscription-usage.js";
-import { createUsageAuthority, type UsageAuthority } from "../../infra/llm/usage/usage-authority.js";
-import type { SubscriptionUsageSnapshot } from "../../infra/llm/usage/subscription-usage-store-codec.js";
+} from "../../infra/providers/auth/store/auth-store-mutations.js";
+import { loadAuthStoreWithDiagnostics, storedApiKeyHint, type AuthStoreCondition, type AuthStoreDiagnostic, type AuthStoreLoadResult } from "../../infra/providers/auth/store/auth-store.js";
+import { isCredentialCollection, type AuthStore, type Credential, type CredentialInstance, type CredentialProviderId } from "../../infra/providers/auth/store/auth-store-types.js";
+import { isWebProviderId } from "../../infra/providers/auth/web-providers.js";
+import { storedTokensToCredential } from "../../infra/providers/auth/openai/openai-auth-types.js";
+import { FREE_PLAN_REPLACE_QUESTION, isFreePlan } from "../../infra/providers/llm/access/free-plan-accounts.js";
+import type { SubscriptionUsageReader, SubscriptionUsageReport } from "../../infra/providers/llm/usage/subscription-usage.js";
+import { createUsageAuthority, type UsageAuthority } from "../../infra/providers/llm/usage/usage-authority.js";
+import type { SubscriptionUsageSnapshot } from "../../infra/providers/llm/usage/subscription-usage-store-codec.js";
 import { keptFreePlanMessage } from "../../protocol/client/auth-login.js";
-import { errorMessage } from "../../infra/error-message.js";
-import { apiKeyRejectionReason, type AccessProviderDefinition, type BrowserLoginPorts, type DeviceCodeLoginPorts, type ExternalLoginDefinition, type OAuthLoginResult } from "../../infra/llm/access/access-provider.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
+import { apiKeyRejectionReason, type AccessProviderDefinition, type BrowserLoginPorts, type DeviceCodeLoginPorts, type ExternalLoginDefinition, type OAuthLoginResult } from "../../infra/providers/llm/access/access-provider.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import { Log } from "../../infra/diagnostics/log.js";
-import { customProviderRejections } from "../../infra/llm/custom-provider-registry.js";
+import { customProviderRejections } from "../../infra/providers/llm/custom-provider-registry.js";
 // Auth reads the credential provider registry alone: a login loads the
 // provider definitions it needs and never a tool or another module. Each read
 // is per call, not at module load: the installed vocabulary includes
@@ -48,8 +48,8 @@ import { customProviderRejections } from "../../infra/llm/custom-provider-regist
 // Stored accounts keep their classification and labels while their module is
 // off. Login lookup describes a flow; CLI and runtime callers admit the provider
 // through their effective selection before they invoke it.
-import { installedAccessProviderDefinitions, installedAccessProviderSelection, installedCredentialProviderIds, installedCredentialSlotClassifier, installedUsageReader, installedWebAuthProviderDefinitions } from "../module-contract/module-composition.js";
-import { credentialIdOf, isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../infra/auth/provider-account.js";
+import { installedCredentialProviderIds, installedAccessProviderSelection, installedWebAuthProviderDefinitions, installedUsageReader, installedCredentialSlotClassifier, installedAccessProviderDefinitions } from "../module-contract/module-composition.js";
+import { credentialIdOf, isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../infra/providers/auth/provider-account.js";
 const destination = (authDir: string, writeAccess?: AuthProfileAccess) => writeAccess ?? authDir;
 const log = Log.create({ service: "auth-actions" });
 

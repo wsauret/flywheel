@@ -3,7 +3,7 @@ import { scrollEdges } from "../../controls/scroll-edges.js"
 
 import type { ProjectFileEntry } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import type { ClientContextValue } from "../../client-context.js"
-import type { MentionToken } from "../../../../../src/protocol/client/mention.js"
+import type { MentionToken } from "../../../../../src/protocol/client/chat/mention.js"
 
 const DEBOUNCE_MS = 100
 const ROW_LIMIT = 40

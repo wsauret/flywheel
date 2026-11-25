@@ -1,4 +1,4 @@
-import type { AsyncEventReadSurface } from "../../../../infra/store/event-store-types.js"
+import type { AsyncEventReadSurface } from "../../../../infra/substrate/store/event-store-types.js"
 import { RETIRED_COMPACTION_ROLE_IDS, normalizeRoleAssignments } from "../../../config/retired-config-names.js"
 import type { ResolvedRole, ResolvedRoles, RoleId, RoleResolver } from "../../../config/roles.js"
 import { captureRoleResolver } from "../../../config/models/role-resolution.js"

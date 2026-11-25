@@ -3,12 +3,12 @@ import * as fs from "node:fs"
 import { constants as osConstants } from "node:os"
 import * as path from "node:path"
 
-import { writeFileAtomic } from "../../atomic-write.js"
-import type { ServeLane } from "../../cli-subprocess.js"
-import { errorMessage } from "../../error-message.js"
+import { writeFileAtomic } from "../../platform/files/atomic-write.js"
+import type { ServeLane } from "../../platform/cli-subprocess.js"
+import { errorMessage } from "../../diagnostics/error-message.js"
 import { Log } from "../../diagnostics/log.js"
-import { accountServeDir } from "../../paths.js"
-import { isRecord, type UnknownRecord } from "../../record.js"
+import { accountServeDir } from "../../platform/files/paths.js"
+import { isRecord, type UnknownRecord } from "../../guards/record.js"
 
 /** The shapes a command handover carries from one build to the next.
  *

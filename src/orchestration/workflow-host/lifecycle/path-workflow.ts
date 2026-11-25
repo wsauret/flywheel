@@ -15,11 +15,12 @@
  *  refusal points the author at the `workflow-authoring` skill. */
 
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
-import { ContainedFileTooLargeError, ContainedPathError, type ContainedDirectory } from "../../../infra/descriptor-directory/descriptor-directory-contract.js"
-import { openExistingContainedDirectory } from "../../../infra/descriptor-directory.js"
-import { errnoCode, errorMessage } from "../../../infra/error-message.js"
-import { WORKFLOW_FILE_EXTENSION } from "../../../infra/tools/workflow-call-source.js"
-import type { ToolAction } from "../../../infra/workflow-types.js"
+import { ContainedFileTooLargeError, ContainedPathError, type ContainedDirectory } from "../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js"
+import { openExistingContainedDirectory } from "../../../infra/platform/files/descriptor-directory.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { errnoCode } from "../../../infra/platform/files/system-error.js"
+import { WORKFLOW_FILE_EXTENSION } from "../../../infra/substrate/output/tools/workflow-call-source.js"
+import type { ToolAction } from "../../../infra/definitions/workflow/workflow-types.js"
 import type { DefinitionAssetReader } from "../../../workflows/definitions/definition-assets.js"
 import { hashDefinition } from "../../../workflows/provenance/definition-hash.js"
 import { canonicalWorkflowRecord } from "../../../workflows/schema/definition-records.js"
@@ -39,7 +40,7 @@ import {
   workflowPhaseLocations,
   type WorkflowFileDiagnostic,
 } from "../../../workflows/vm/admission/workflow-file.js"
-import { WORKFLOW_FILE_MAX_BYTES } from "../../../infra/yaml/workflow-yaml.js"
+import { WORKFLOW_FILE_MAX_BYTES } from "../../../infra/parsing/yaml/workflow-yaml.js"
 import { agentLabel, agentRecords, DEFAULT_COUNTED_LIST_MAX, dotFreeSlugIssue, namedAgents, phaseLabel, walkPhases, type AgentRecordKeys, type AuthoredWorkflow, type WorkflowDefinition } from "../../../workflows/schema/workflow-schema.js"
 import type { WorkflowDefinitionRefusal, WorkflowDefinitionResolution } from "./workflow-admission.js"
 

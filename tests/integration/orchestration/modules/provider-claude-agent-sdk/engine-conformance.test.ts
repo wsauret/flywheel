@@ -11,8 +11,8 @@
  */
 import { describe, expect, test } from "bun:test";
 import { Effect, Redacted } from "effect";
-import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
-import type { ToolOutcome } from "../../../../../src/infra/runtime-facts/tool-outcome.js";
+import { providerModelInfo } from "../../../../../src/infra/providers/llm/catalog/provider-model-info.js";
+import type { ToolOutcome } from "../../../../../src/infra/substrate/runtime-facts/tool-outcome.js";
 import { toolResultMessages } from "../../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js";
 import { formatSubagentNotificationBatch } from "../../../../../src/orchestration/session/control/background-work/background-work-notifications.js";
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
@@ -20,7 +20,7 @@ import { createAnthropicAdapter, prepareAnthropicRequest } from "../../../../../
 import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import { interruptedToolText } from "../../../../../src/orchestration/session/conversation/tree/heal-messages.js";
 import type { ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { SILENT_REPLY_NUDGE } from "../../../../../src/orchestration/agent-runtime/loop/reply-nudge.js";
 import { formatRuntimeNotification } from "../../../../../src/orchestration/session/control/background-work/runtime-notifications.js";
 import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";

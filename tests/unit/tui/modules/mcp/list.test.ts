@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import { mcpDomain, type McpStatusRow } from "../../../../../src/protocol/modules/mcp.js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import { createMcpList } from "../../../../../src/tui/modules/mcp/list.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
 import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"

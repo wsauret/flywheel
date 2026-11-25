@@ -1,6 +1,6 @@
-import { parseProjectionFact, reduceEvents } from "../../infra/projection/event-projection.js"
-import { factTypes } from "../../infra/event-registry.js"
-import { readCapturedFacts, type AsyncEventReadSurface, type StoredFact } from "../../infra/store/event-store-types.js"
+import { parseProjectionFact, reduceEvents } from "../../infra/substrate/projection/event-projection.js"
+import { factTypes } from "../../infra/substrate/facts/event-registry.js"
+import { readCapturedFacts, type AsyncEventReadSurface, type StoredFact } from "../../infra/substrate/store/event-store-types.js"
 import {
   DefinitionProvenanceFactSchemas,
   parseDefinitionProvenanceFact,

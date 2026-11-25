@@ -11,9 +11,8 @@ import type { TextEditorPresentation } from "../../terminal/keymap/text-entry.js
 import { filterProviderModelRows, providerModelsCanDeselect, soleAccount, type AuthRow, type AuthView, type DisconnectConfirmation } from "./auth-modal-options.js"
 import type { RuntimeAuthLoginPrompt } from "../../../protocol/auth/auth-login-protocol-types.js"
 import type { AuthAccountAttention, AuthProviderAttention, AuthProviderSource, RuntimeAuthLoginQuestion } from "../../../protocol/auth/auth-status-protocol-types.js"
-import { accountStatusInput } from "../../../protocol/client/auth-status-state.js"
 import { REPLACING_FREE_PLAN } from "../../../protocol/client/auth-login.js"
-import { accountTitle, BROWSER_LOGIN_COPY, disconnectConsequence, LOGIN_QUESTION_COPY, paidUseEvidence } from "../../../protocol/client/provider-account-copy.js"
+import { accountReading, BROWSER_LOGIN_COPY, disconnectConsequence, LOGIN_QUESTION_COPY, paidUseEvidence } from "../../../protocol/client/auth/provider-account-copy.js"
 import type { ProviderCatalogDiscovery, ProviderModelRow } from "../../../protocol/auth/provider-model-preference-protocol-types.js"
 import { authStatusPresentation } from "./auth-status-presentation.js"
 import { ModalFooter } from "../../components/modal/modal-footer.js"
@@ -217,10 +216,11 @@ function AccountRow(props: { row: Extract<AuthRow, { kind: "account" }>; index: 
   const { theme } = useTheme()
   const active = createMemo(() => props.cursor === props.index)
   const content = createMemo(() => {
-    const accountState = authStatusPresentation(accountStatusInput(props.row.option, props.row.account))
+    const reading = accountReading(props.row.option, props.row.account)
+    const accountState = authStatusPresentation(reading.status)
     const capabilityStatus = props.row.capabilityAccount === undefined ? undefined : `usage ${usageStatusLabel(props.row.capabilityAccount.providerStatus)}`
     const status = props.row.saving ? "Saving..." : capabilityStatus === undefined ? accountState.text : `${accountState.text} · ${capabilityStatus}`
-    const label = truncateToWidth(`  └ ${accountTitle(props.row.account)}`, Math.max(0, props.rowWidth - displayWidth(status) - 2))
+    const label = truncateToWidth(`  └ ${reading.title}`, Math.max(0, props.rowWidth - displayWidth(status) - 2))
     const pad = Math.max(1, props.rowWidth - displayWidth(label) - displayWidth(status) - 1)
     const statusColor = accountState.tone === "healthy" ? theme.success : accountState.tone === "warning" ? theme.warning : theme.textMuted
     return new StyledText([stFg(active() ? theme.primary : theme.textMuted)(active() ? ">" : " "), stFg(theme.text)(label), stFg(theme.text)(" ".repeat(pad)), stFg(statusColor)(status)])
@@ -537,11 +537,12 @@ function LoginConfirmationView(props: { view: Extract<AuthView, { kind: "login-c
  *  copy, with the actions as buttons that name their keys. */
 function DisconnectConfirmationView(props: { confirmation: DisconnectConfirmation; onConfirm: () => void; onCancel: () => void }) {
   const { theme } = useTheme()
-  const label = () => props.confirmation.account === undefined ? props.confirmation.option.label : accountTitle(props.confirmation.account)
+  const reading = () => props.confirmation.account === undefined ? undefined : accountReading(props.confirmation.option, props.confirmation.account)
+  const label = () => reading()?.title ?? props.confirmation.option.label
   return (
     <box flexDirection="column" gap={1}>
       <text fg={theme.warning} attributes={BOLD} wrapMode="word">{`Disconnect ${label()}?`}</text>
-      <text fg={theme.text} wrapMode="word">{disconnectConsequence(props.confirmation.option, props.confirmation.account)}</text>
+      <text fg={theme.text} wrapMode="word">{reading()?.disconnect ?? disconnectConsequence(props.confirmation.option)}</text>
       <box flexDirection="row" gap={1}>
         <Button label="Disconnect" hotkey="y" onPress={props.onConfirm} />
         <Button label="Cancel" hotkey="esc" muted onPress={props.onCancel} />

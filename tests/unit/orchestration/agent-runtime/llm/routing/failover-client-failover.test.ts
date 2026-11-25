@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { AccessProviderId } from "../../../../../../src/infra/llm/access/access-provider.js";
+import type { AccessProviderId } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
 import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "../../../../../../src/orchestration/agent-runtime/runner/failure-message.js";
 import { toFailureReason } from "../../../../../../src/orchestration/agent-runtime/runner/errors.js";
 import type { ProviderAvailability, RequestAdmission, SubscriptionAllowanceAdmission } from "../../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js";
 import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { createSubscriptionSpendEnvelope } from "../../../../../../src/infra/auth/subscription/subscription-spend-consent.js";
+import { createSubscriptionSpendEnvelope } from "../../../../../../src/infra/providers/auth/subscription/subscription-spend-consent.js";
 import {
   chain,
   failoverFailure,

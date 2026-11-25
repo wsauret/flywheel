@@ -10,12 +10,12 @@
 
 import { afterAll, describe, it, expect, mock, spyOn } from "bun:test"
 import { createRoot } from "solid-js"
-import type { AnyBlock } from "../../../../src/infra/output-blocks"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types"
-import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime"
+import { NO_MODULE_RUNTIMES } from "../../../../src/infra/definitions/modules/module-runtime"
 import { DebugLog, type DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log"
-import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/store/event-store-effect"
+import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/substrate/store/event-store-effect"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store"
 import { createOutputSession } from "../../../../src/orchestration/session-store/output-session"
 import { createSessionStoreTestContext } from "./_session-store-fixtures"
@@ -40,6 +40,7 @@ function createMockChatRunner(sessionId: string): ChatRunner & { calls: string[]
     releaseForegroundBash: () => false,
     transferForegroundForReplacement: async () => {},
     adoptHandedOver: async () => {},
+    adoptHeldInput: async () => {},
     dispose: async () => { calls.push("dispose") },
     send: async (text: string) => { calls.push(`send:${text}`); return "accepted" },
     deliverHeldMessage: async () => ({ status: "held", reason: "no_reader" }), messageState: async () => "at_rest",

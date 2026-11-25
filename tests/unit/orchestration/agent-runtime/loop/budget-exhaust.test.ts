@@ -10,7 +10,7 @@ import { RequestToolMap, admitEveryTool } from "../../../../helpers/request-tool
 import { runBudgetExhaustionTurn } from "../../../../../src/orchestration/agent-runtime/loop/budget-exhaust.js";
 import { resolveModelInteractionProfile } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { FUNCTION_TOOL_PRESENTATION, type ModelClient, type ProviderStreamEvent, type ServingAttempt, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "../tools/_fixtures.js";
 import type { ToolResultEntry } from "../../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js";
@@ -19,7 +19,7 @@ import { AllCandidatesExhaustedError, QuotaExhaustedError } from "../../../../..
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { withRequestAdmission, ownHistoryTarget } from "../_model-client.js";
 import { tokenCountingPolicy, type TokenCountingPolicy } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
-import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.js";
+import { prepareLocalTokenizer } from "../../../../../src/infra/providers/local-tokenizer.js";
 import { handoffDefinition } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";

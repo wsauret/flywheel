@@ -25,12 +25,12 @@
 
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
-import type { ContainedDirectory } from "../descriptor-directory/descriptor-directory-contract.js";
-import { openContainedDirectory, openExistingContainedDirectory } from "../descriptor-directory.js";
-import { errorMessage } from "../error-message.js";
+import type { ContainedDirectory } from "../platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "../platform/files/descriptor-directory.js";
+import { errorMessage } from "../diagnostics/error-message.js";
 import { Log } from "../diagnostics/log.js";
-import { liveBuildsDir, versionsDir } from "../paths.js";
-import { isProcessAlive } from "../process-liveness.js";
+import { liveBuildsDir, versionsDir } from "../platform/files/paths.js";
+import { isProcessAlive } from "../platform/process-liveness.js";
 import { assertInstallLocation, BUILD_METADATA_FILE, type BuildRef, decodeBuildMetadata } from "./build-identity.js";
 
 const log = Log.create({ service: "live-builds" });

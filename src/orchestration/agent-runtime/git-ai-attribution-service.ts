@@ -1,10 +1,10 @@
 import { isAbsolute, resolve, sep } from "node:path"
-import { canonicalPathWithMissingTail } from "../../infra/canonical-path.js"
+import { canonicalPathWithMissingTail } from "../../infra/platform/files/canonical-path.js"
 import { Log } from "../../infra/diagnostics/log.js"
-import { processLoginShellPath, type LoginShellPath } from "../../infra/login-shell-path.js"
-import { createBackgroundLane } from "../../infra/ordered-lane.js"
+import { processLoginShellPath, type LoginShellPath } from "../../infra/environment/login-shell-path.js"
+import { createBackgroundLane } from "../../infra/diagnostics/operation-log.js"
 import type { OwnedCommandRunner } from "../../infra/owned-command.js"
-import { withDeadline } from "../../infra/with-deadline.js"
+import { withDeadline } from "../../infra/timing/with-deadline.js"
 import type { GitAiAttributionStatus } from "../../protocol/git/git-ai-attribution-protocol-types.js"
 
 const CHECKPOINT_ARGS = Object.freeze(["checkpoint", "agent-v1", "--hook-input", "stdin"])

@@ -1,9 +1,9 @@
 import { resolve } from "node:path";
-import type { AuthContext } from "../../../src/infra/auth/auth-context.js";
+import type { AuthContext } from "../../../src/infra/providers/auth/auth-context.js";
 import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
 import { moduleSelectionFromConfig, normalizeModuleSelection } from "../../../src/orchestration/config/module-descriptor.js";
 import { MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js";
-import { ToolActionSchema } from "../../../src/infra/workflow-types.js";
+import { ToolActionSchema } from "../../../src/infra/definitions/workflow/workflow-types.js";
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import type { ToolRegistration } from "../../../src/orchestration/module-contract/module-seams.js";
 import type { AdvertisedTool } from "../../../src/orchestration/agent-runtime/tools/types.js";
@@ -12,7 +12,7 @@ import { buildCommandCatalog } from "../../helpers/command-catalog.js";
 import { createWebSearch } from "../../../src/orchestration/agent-runtime/web-search/select.js";
 import type { WebSearchProvider, WebSearchProviderId } from "../../../src/orchestration/agent-runtime/web-search/types.js";
 import { learningModule } from "../../../src/orchestration/modules/learning.js";
-import { NO_MODULE_RUNTIMES } from "../../../src/infra/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../../src/infra/definitions/modules/module-runtime.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
 
 import { accessProviderRegistry } from "../../../src/orchestration/config/models/access-provider-registry.js";

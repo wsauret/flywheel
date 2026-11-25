@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import { createRoot } from "solid-js"
-import type { ChatInput } from "../../../../src/infra/chat-input.js"
-import { createChatSubmissions } from "../../../../src/protocol/client/chat-submissions.js"
+import { createRoot, createSignal } from "solid-js"
+import type { ChatInput } from "../../../../src/infra/substrate/events/chat-input.js"
+import { createChatSubmissions } from "../../../../src/protocol/client/chat/chat-submissions.js"
 import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { content, fakeRuntimeClient, liveView, rangeOk, seedComplete, textBlock } from "./_output-transcript-cache-fixtures.js"
 import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
@@ -33,6 +33,53 @@ describe("createOutputTranscriptCache (residency and fetch dedupe)", () => {
       expect(cache.visibleRange("s2")).toBeDefined()
       expect(cache.visibleRange("s3")).toBeDefined()
       s2.release()
+      dispose()
+    })
+  })
+
+  it("a mount retains and opens each session it shows, follows its reactivation, and releases only its own retention", async () => {
+    await createRoot(async (dispose) => {
+      const fake = fakeRuntimeClient({ parent: [textBlock("p", "parent")], child: [textBlock("c", "child")], other: [textBlock("o", "other")] })
+      const cache = createOutputTranscriptCache({ appService: fake.client, now: () => 1000, maxSessions: 1 })
+      const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+      const [shown, setShown] = createSignal("parent")
+      const [lifecycleActive, setLifecycleActive] = createSignal(false)
+      const hydrated: string[] = []
+      const surface = createRoot((disposeMount) => {
+        const mounted = cache.mount({ sessionId: shown, live: () => false, lifecycleActive, hydrateToHead: async (id) => { hydrated.push(id) }, onFailure: (_id, cause) => { throw cause } })
+        return { mounted, disposeMount }
+      })
+      await settle()
+      expect(surface.mounted.outputView()?.blocks.map(content)).toEqual(["parent"])
+      expect(surface.mounted.view.visibleRange()?.blocks.map(content)).toEqual(["parent"])
+      expect(hydrated).toEqual(["parent"])
+      // A shown session's streaming deltas land at the next output frame.
+      const frame = () => new Promise((resolve) => setTimeout(resolve, 20))
+      fake.liveDelta("parent", { blocks: [], streamingOutputChars: 7 })
+      await frame()
+      expect(surface.mounted.streamingOutputChars()).toBe(7)
+
+      setShown("child")
+      await settle()
+      expect(cache.visibleRange("parent")).toBeUndefined()
+      expect(surface.mounted.outputView()?.blocks.map(content)).toEqual(["child"])
+      expect(hydrated).toEqual(["parent", "child"])
+      // The shown session's count, never the session shown before it.
+      expect(surface.mounted.streamingOutputChars()).toBe(0)
+      fake.liveDelta("child", { blocks: [], streamingOutputChars: 3 })
+      await frame()
+      expect(surface.mounted.streamingOutputChars()).toBe(3)
+
+      const reads = fake.outputWindowCalls()
+      setLifecycleActive(true)
+      await settle()
+      expect(fake.outputWindowCalls()).toBe(reads + 1)
+
+      await cache.open("other")
+      expect(cache.visibleRange("child")).toBeDefined()
+      surface.disposeMount()
+      await cache.open("other")
+      expect(cache.visibleRange("child")).toBeUndefined()
       dispose()
     })
   })

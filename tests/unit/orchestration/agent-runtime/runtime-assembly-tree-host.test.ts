@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { Effect, Exit, Scope } from "effect"
 import type { ProviderSessionLifetime } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { ContentBlock, ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message.js"
+import type { ContentBlock, ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js"
 import type { AgentLoopOptions } from "../../../../src/orchestration/agent-runtime/agent-loop-types.js"
 import { seedAgentLoopTurn } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"

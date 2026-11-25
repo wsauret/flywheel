@@ -1,5 +1,5 @@
-import { canUseCheckpoint, renderSessionNotesGuidance } from "../../../infra/agent-assets/session-notes.js";
-import type { DurableOwner } from "../../../infra/durable-owner.js";
+import { canUseCheckpoint, renderSessionNotesGuidance } from "../../../infra/definitions/agent-assets/session-notes.js";
+import type { DurableOwner } from "../../../infra/substrate/facts/durable-owner.js";
 import { createConversationCheckpointOwner } from "../../session/conversation-records/conversation-checkpoint.js";
 import { importLegacyCheckpointNotes } from "../../session/conversation-records/checkpoint-note-conversion.js";
 import type { ConversationResources } from "../../session/conversation-records/conversation-resources.js";

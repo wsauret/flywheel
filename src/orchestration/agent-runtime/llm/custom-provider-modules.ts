@@ -1,9 +1,9 @@
 import { Redacted } from "effect";
-import { apiKey } from "../../../infra/auth/auth-context.js";
-import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
-import { customProviderModelInfo } from "../../../infra/llm/models/models.js";
-import { customProviderModelUnavailableReason, customProviders, type CustomProviderDefinition } from "../../../infra/llm/custom-provider-registry.js";
-import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js";
+import { apiKey } from "../../../infra/providers/auth/auth-context.js";
+import { providerRequestHeaders } from "../../../infra/providers/llm/provider-request-identity.js";
+import { customProviderModelInfo } from "../../../infra/providers/llm/models/models.js";
+import { customProviderModelUnavailableReason, customProviders, type CustomProviderDefinition } from "../../../infra/providers/llm/custom-provider-registry.js";
+import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
 import { ApiError } from "./routing/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "./routing/client-factory.js";
 import { describeProvider } from "./provider-description.js";

@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { createStatusProjection } from "../../../../src/orchestration/app-service/projections/catalog/status-projection.js"
-import { replyWaitLabel } from "../../../../src/protocol/client/session-controls.js"
+import { replyWaitLabel } from "../../../../src/protocol/client/work/session-controls.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { onReplyWaitsChanged, readReplyWaitViews } from "../../../../src/orchestration/session/control/messaging/reply-waits.js"
 import { dropReplyWait, holdReplyWait, REPLY_WAIT_IN_FLIGHT_KIND, replyWaitNoticeKey } from "../../../../src/orchestration/session/conversation/reply-wait-cells.js"
-import type { AsyncEventStateReadSurface } from "../../../../src/infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { entry, flush, NOTHING_OWED, sink, store, until } from "./_status-projection-fixtures.js"
 import { childWorkflow, cleanupReplyWaitTest, conversationOf, live, message, project } from "../session/_reply-wait-fixtures.js"
 

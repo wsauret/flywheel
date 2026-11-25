@@ -1,7 +1,7 @@
 import { createSignal, onCleanup } from "solid-js"
 import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 import { capabilitiesCursor, type RuntimeModulesView } from "../../../../protocol/runtime/module-protocol-types.js"
-import { createHeldView } from "../../../../protocol/client/held-view.js"
+import { createHeldView } from "../../../../protocol/client/runtime/held-view.js"
 
 export interface ModuleCache {
   /** The runtime's published capability view: the selected set, derived

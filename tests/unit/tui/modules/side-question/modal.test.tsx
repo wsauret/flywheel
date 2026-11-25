@@ -2,7 +2,7 @@
 import { expect, test } from "bun:test"
 import { sideQuestionProtocol, type SideQuestionView } from "../../../../../src/protocol/modules/side-question.js"
 import type { DomainReader } from "../../../../../src/protocol/protocol-module.js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
 import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { TuiControllerHost } from "../../../../../src/tui/tui-module.js"

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { RuntimeQuerySchema, runtimeQueryResultSchema, RUNTIME_READ_DOMAINS } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { runtimeCallPolicies } from "../../../../src/protocol/rpc/runtime-client-deadlines.js"
-import { OUTPUT_HISTORY_RPC_DEADLINE_MS } from "../../../../src/infra/with-deadline.js"
+import { OUTPUT_HISTORY_RPC_DEADLINE_MS } from "../../../../src/infra/timing/with-deadline.js"
 
 const hash = "a".repeat(64)
 const manifest = { version: 1 as const, root: hash, bytes: 1000, entries: 3 }

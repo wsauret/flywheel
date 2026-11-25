@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/slash-route.js"
+import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/commands/slash-route.js"
 import { mountComposerSubmission } from "./composer-submission-loader-fixture.js"
 import { textContent } from "../../test-support/render-ownership-host-fixture.js"
 

@@ -14,7 +14,7 @@
  *  abandoned, and one that keeps delivering always finishes. Each answer of
  *  the redirect chain and each byte of the body is delivery. */
 
-import { errorMessage } from "../../infra/error-message.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import { fetchOverHttps, selectReleaseAsset, type RepositoryIdentity, type SelectedRelease } from "../../infra/update/release-manifest.js";
 import { isLaterRelease, parseReleaseVersion, type ReleaseVersion } from "../../infra/update/version-order.js";
 

@@ -1,13 +1,13 @@
-import type { EventStoreRuntime } from "../../../infra/store/event-store-effect.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { EventStoreRuntime } from "../../../infra/substrate/store/event-store-effect.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import type { AttachChildSessionProjection } from "../../module-contract/module-seams.js"
 import type { WorkflowInterruption } from "../../session/conversation/turn-end-record.js"
 import type { WorkflowHosts } from "../../workflow-host/host-collection.js"
 import { WorkflowPreflightError, type WorkflowRunner } from "../../workflow-host/runner-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { recordBackgroundFailure } from "../../../infra/operation-log.js"
-import { workflowRelativeDir } from "../../../infra/paths.js"
-import { ensureDirectoryUnder } from "../../../infra/write-file-under.js"
+import { recordBackgroundFailure } from "../../../infra/diagnostics/operation-log.js"
+import { workflowRelativeDir } from "../../../infra/platform/files/paths.js"
+import { ensureDirectoryUnder } from "../../../infra/platform/files/write-file-under.js"
 import { writeOwnerPid, removeOwnerPid } from "../../session/pid-lock.js"
 
 /** Holds each run through preflight, execution, durable acknowledgement, and disposal. */

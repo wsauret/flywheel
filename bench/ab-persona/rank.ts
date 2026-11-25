@@ -9,7 +9,7 @@
 import "../../scripts/shipped-modules.js";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { selectStartupDirectories } from "../../src/infra/directory-authorities.js";
+import { selectStartupDirectories } from "../../src/infra/platform/files/directory-authorities.js";
 import { modelPriceTier } from "../../src/orchestration/config/models/model-tiers.js";
 import { ROLE_MODEL_DEFAULTS, roleModelDefault } from "../../src/orchestration/config/models/role-model-defaults.js";
 import { loadAllCampaignRecords } from "../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";

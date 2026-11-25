@@ -1,8 +1,8 @@
 import { createMemo, createSignal, Show, useContext } from "solid-js"
-import { agentGroupClockRuns, agentGroupInFlight, agentGroupInitializing, agentGroupModelLabel } from "../../../../../../src/protocol/client/agent-group-summary.js"
-import { childCardStatus, dispatchInterrupt, resumeMutation, subagentCardControls } from "../../../../../../src/protocol/client/session-controls.js"
-import { subagentHeaderParts, subagentLine } from "../../../../../../src/protocol/client/subagent-line.js"
-import { parseSessionLink } from "../../../../../../src/protocol/client/session-links.js"
+import { agentGroupClockRuns, agentGroupInFlight } from "../../../../../../src/protocol/client/work/agent-group-summary.js"
+import { childCardStatus, dispatchInterrupt, resumeMutation, subagentCardControls } from "../../../../../../src/protocol/client/work/session-controls.js"
+import { subagentCard } from "../../../../../../src/protocol/client/work/subagent-line.js"
+import { parseSessionLink } from "../../../../../../src/protocol/client/session/session-links.js"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import type { RoleAssignmentView } from "../../../../../../src/protocol/auth/role-protocol-types.js"
 import type { StatusView } from "../../../../../../src/protocol/session/status-protocol-types.js"
@@ -43,12 +43,10 @@ export function AgentGroup(props: {
   const roles = createSessionReading(linkedSession, props.roleAssignments)
   const status = createSessionReading(() => active() ? linkedSession() : undefined, props.statuses)
   const child = createMemo(() => childCardStatus(status(), props.sessionId))
-  const summaryBlock = () => ({ ...props.block, model: agentGroupModelLabel(props.block.model, roles()) })
-  const initializing = () => agentGroupInitializing(summaryBlock())
-  const line = createMemo(() => subagentLine(props.block, child(), now()))
-  const parts = () => initializing()
-    ? subagentHeaderParts(summaryBlock()).filter(part => part.kind === "persona" || part.kind === "goal")
-    : subagentHeaderParts(props.block, summaryBlock().model)
+  const card = createMemo(() => subagentCard(props.block, { roles: roles(), child: child(), now: now() }))
+  const initializing = () => card().initializing
+  const line = () => card().line
+  const parts = () => card().header
   const heldSession = createMemo(() => props.block.status === "completed" ? undefined : linkedSession())
   const row = createSessionReading(heldSession, {
     get: id => client?.sessionDetails?.get(id),

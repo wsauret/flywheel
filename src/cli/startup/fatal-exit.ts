@@ -1,6 +1,6 @@
 import { importComposing } from "../composition/module-registries.js"
-import { installCrashPolicy, type UncaughtKind } from "../../infra/crash-policy.js"
-import { errorDetail, errorMessage } from "../../infra/error-message.js"
+import { installCrashPolicy, type UncaughtKind } from "../../infra/process/crash-policy.js"
+import { errorDetail, errorMessage } from "../../infra/diagnostics/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
 
 /** The entry's one fatal path (ARCH-RUNTIME-030). A failure thrown to the entry's
@@ -102,10 +102,10 @@ function announce(kind: FatalKind, listened: boolean, message: string): void {
  *  Answers whether it refused. */
 async function returnedToProvedSource(message: string): Promise<boolean> {
   try {
-    const [{ runningSourceSnapshot }, { startsServiceProcess }] = await Promise.all([import("../../infra/cli-subprocess.js"), import("../account-service/serve-contract.js")])
+    const [{ runningSourceSnapshot }, { startsServiceProcess }] = await Promise.all([import("../../infra/platform/cli-subprocess.js"), import("../account-service/serve-contract.js")])
     const snapshot = runningSourceSnapshot()
     if (snapshot === undefined || !startsServiceProcess(process.argv)) return false
-    const { refuseFailedServiceStart } = await import("../../infra/distribution/source-snapshot.js")
+    const { refuseFailedServiceStart } = await import("../../infra/update/distribution/source-snapshot.js")
     return refuseFailedServiceStart(snapshot, message)
   } catch (error) {
     Log.Default.warn("the dev service failed to start and its snapshot could not be refused", { error: errorMessage(error) })

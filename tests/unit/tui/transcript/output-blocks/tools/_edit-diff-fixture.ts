@@ -1,4 +1,4 @@
-import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../../src/infra/output-blocks.js"
+import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 
 /** A two-hunk edit diff whose second hunk holds `hunkLines` rendered lines,
  *  six past the preview limit by default, so the preview truncates it. */

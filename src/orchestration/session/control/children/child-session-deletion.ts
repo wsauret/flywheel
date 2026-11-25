@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js"
 import type { ParentNotificationDelivery } from "../../../module-contract/module-seams.js"
 import { settleInstalledSessionDeletion } from "../module-session-operations.js"
 import { wakeAfterSettlement, type ReturnedNotice } from "../messaging/session-input-delivery.js"

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { contentEvidence } from "../../../../src/infra/runtime-facts/content-evidence.js"
-import { EventReaderService } from "../../../../src/infra/store/event-store-effect.js"
+import { contentEvidence } from "../../../../src/infra/substrate/runtime-facts/content-evidence.js"
+import { EventReaderService } from "../../../../src/infra/substrate/store/event-store-effect.js"
 import { reconcileChildSessionCompletions } from "../../../../src/orchestration/session/control/children/child-session-reconciliation.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { redactMessage } from "../../../../src/orchestration/session/conversation/redact-message.js"

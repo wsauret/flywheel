@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/definitions/modules/module-runtime.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
@@ -17,7 +17,7 @@ import { settleTurn } from "../../../../../src/orchestration/agent-runtime/loop/
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import type { StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { join } from "node:path";
-import { normalizeModelScores } from "../../../../../src/infra/llm/models/model-scores-document.js";
+import { normalizeModelScores } from "../../../../../src/infra/providers/llm/models/model-scores-document.js";
 import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
 import { capabilityAccessHolding } from "../../agent-runtime/tools/_fixtures.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";

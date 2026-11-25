@@ -6,9 +6,9 @@
 import { describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
-import { openContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
-import { versionsDir } from "../../../../src/infra/paths.js";
+import type { ContainedDirectory } from "../../../../src/infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openContainedDirectory } from "../../../../src/infra/platform/files/descriptor-directory.js";
+import { versionsDir } from "../../../../src/infra/platform/files/paths.js";
 import { ActivationError, activeBuildDir, openActiveBuild, publishActivation } from "../../../../src/infra/update/active-build.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { useWin32ContainedDirectories } from "../../../helpers/win32-contained-directories.js";

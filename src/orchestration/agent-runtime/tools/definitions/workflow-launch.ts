@@ -4,7 +4,7 @@
  *  `ask_user` asks for a workflow file, and the refusal words the model
  *  reads. The host that resolves and admits a launch reads this contract. */
 
-import type { WorkflowCallSource, WorkflowLaunchSource } from "../../../../infra/tools/workflow-call-source.js"
+import type { WorkflowCallSource, WorkflowLaunchSource } from "../../../../infra/substrate/output/tools/workflow-call-source.js"
 import type { WorkflowLaunchApprovalSource } from "../../../session/agent-input/agent-input-facts.js"
 import type { LaunchingSessionAuthority } from "../../../workflow-host/lifecycle/path-workflow.js"
 import type { CapabilityAccess } from "../types.js"

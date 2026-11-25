@@ -1,8 +1,8 @@
 // A worker realm loads the registries, which publish the module catalog.
 import "../../../../../scripts/shipped-modules.js"
 import { parentPort, workerData } from "node:worker_threads"
-import type { ProjectDirectories } from "../../../../../src/infra/directory-authorities.js"
-import { LockRefusal } from "../../../../../src/infra/locks/ownership-file-lock.js"
+import type { ProjectDirectories } from "../../../../../src/infra/platform/files/directory-authorities.js"
+import { LockRefusal } from "../../../../../src/infra/process/locks/ownership-file-lock.js"
 import { prepareWorkspaceState } from "../../../../../src/orchestration/workspace-state/workspace-state.js"
 
 /** A second thread that prepares the same workspace, so a test can race two

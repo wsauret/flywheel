@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { StoredFact } from "../../../../src/infra/store/event-store-types"
-import { InvariantViolation } from "../../../../src/infra/invariant"
+import type { StoredFact } from "../../../../src/infra/substrate/store/event-store-types"
+import { InvariantViolation } from "../../../../src/infra/guards/invariant"
 import { hashSystemPrompt, hashToolSurface } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-hash"
 import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-facts"
 import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-projection"

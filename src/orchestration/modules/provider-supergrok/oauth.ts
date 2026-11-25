@@ -1,11 +1,11 @@
 import { Redacted, Schema } from "effect";
 import { Log } from "../../../infra/diagnostics/log.js";
-import type { ExternalUrlOpener } from "../../../infra/open-external-url.js";
-import type { StoredTokens } from "../../../infra/auth/openai/openai-auth-types.js";
+import type { ExternalUrlOpener } from "../../../infra/substrate/output/notify/open-external-url.js";
+import type { StoredTokens } from "../../../infra/providers/auth/openai/openai-auth-types.js";
 import { XAI_DEVICE_CODE_URL, XAI_OAUTH_CLIENT_ID, XAI_OAUTH_SCOPES, XAI_TOKEN_URL } from "./auth-types.js";
-import { extractDisplayIdentityFromJwt } from "../../../infra/auth/openai/openai-jwt.js";
-import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
-import { oauthExpiryFromLifetimeSeconds } from "../../../infra/auth/oauth-expiry.js";
+import { extractDisplayIdentityFromJwt } from "../../../infra/providers/auth/openai/openai-jwt.js";
+import { readBoundedJson } from "../../../infra/providers/auth/bounded-json.js";
+import { oauthExpiryFromLifetimeSeconds } from "../../../infra/providers/auth/oauth-expiry.js";
 
 const log = Log.create({ service: "xai-oauth" });
 

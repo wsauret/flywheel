@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { harness, NOW_MS, SAFE_RECHECK_MS, availabilityFixtures } from "../_provider-availability-harness.js";
-import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../../src/infra/auth/openai/openai-auth-types.js";
+import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../../src/infra/providers/auth/openai/openai-auth-types.js";
 
 const { tempDbFile, createAuthority: createAvailabilityAuthority } = availabilityFixtures();
 

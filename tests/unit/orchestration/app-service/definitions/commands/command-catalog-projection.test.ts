@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import type { FirstPartyModuleComposition, ModuleId } from "../../../../../../src/orchestration/module-contract/module-catalog.js"
+import type { ModuleId, FirstPartyModuleComposition } from "../../../../../../src/orchestration/module-contract/module-catalog.js"
 import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-contract/module-composition.js"
 import { createCommandCatalogProjection } from "../../../../../../src/orchestration/app-service/definitions/commands/command-catalog-projection.js"
-import { composeModules } from "../../../../../../src/infra/module-descriptor.js"
+import { composeModules } from "../../../../../../src/infra/definitions/module-descriptor.js"
 import { fixedDefinitions, repoModules } from "../../../../../helpers/project-definitions.js"
 import { availabilityOwner } from "../../model-assignment-service-fixtures.js"
 

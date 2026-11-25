@@ -1,8 +1,8 @@
 import { bold as stBold, fg as stFg, underline as stUnderline, type RGBA, type TextChunk } from "@opentui/core"
-import type { ToolPresentation, WorkflowAgentState } from "../../../../infra/output-blocks.js"
-import type { WorkflowAgentDetail } from "../../../../protocol/client/workflow-card.js"
-import type { SubagentLine } from "../../../../protocol/client/subagent-line.js"
-import { workflowAgentGlyph } from "../../../../protocol/client/workflow-outline.js"
+import type { ToolPresentation, WorkflowAgentState } from "../../../../infra/substrate/events/output-blocks.js"
+import type { WorkflowAgentDetail } from "../../../../protocol/client/work/workflow/workflow-card.js"
+import type { SubagentLine } from "../../../../protocol/client/work/subagent-line.js"
+import { workflowAgentGlyph } from "../../../../protocol/client/work/workflow/workflow-outline.js"
 import { chunksWidth, displayWidth, fitChunks } from "../../../terminal/text.js"
 import { agentStateColor } from "./workflow-palette.js"
 

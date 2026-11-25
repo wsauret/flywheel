@@ -1,4 +1,4 @@
-import { loadAuthStoreWithDiagnostics, type AuthStoreLoadResult } from "../../src/infra/auth/store/auth-store.js"
+import { loadAuthStoreWithDiagnostics, type AuthStoreLoadResult } from "../../src/infra/providers/auth/store/auth-store.js"
 import { credentialSlotClassifier, type FirstPartyModuleSnapshot } from "../../src/orchestration/module-contract/module-catalog.js"
 import { installedCredentialProviderIds } from "../../src/orchestration/module-contract/module-composition.js"
 

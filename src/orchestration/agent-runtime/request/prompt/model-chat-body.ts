@@ -28,7 +28,7 @@
  *   Only blocks about the work itself can be agent blocks. Blocks about the conversation with the user stay in chat.
  */
 
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import { ASK_USER_DISCUSSION_RULE } from "../../tools/sessions/ask-user.js";
 
 /** What the body says about the agent host that runs it, for the capabilities `has` of the request. Every other line

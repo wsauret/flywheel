@@ -6,13 +6,13 @@
  *  `provider-availability-copilot-coordination.test.ts`. */
 
 import { describe, expect, test } from "bun:test";
-import { accessProviderCandidateKey } from "../../../../../../src/infra/llm/access/access-provider.js";
+import { accessProviderCandidateKey } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
 import {
   type AvailabilityAuthority,
   AvailabilityCorruptError,
   type AvailabilityKey,
   type AvailabilityObservation,
-} from "../../../../../../src/infra/llm/access/availability-store.js";
+} from "../../../../../../src/infra/providers/llm/access/availability-store.js";
 import {
   disposeSharedProviderAvailability,
   getSharedProviderAvailability,
@@ -26,7 +26,7 @@ import {
   subscription,
   availabilityFixtures,
 } from "../_provider-availability-harness.js";
-import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../../src/infra/auth/openai/openai-auth-types.js";
+import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../../../src/infra/providers/auth/openai/openai-auth-types.js";
 
 const { tempDbFile, createAuthority: createAvailabilityAuthority } = availabilityFixtures();
 

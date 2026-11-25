@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ModelFamily } from "../../../../src/infra/llm/models/model-family.js";
+import type { ModelFamily } from "../../../../src/infra/providers/llm/models/model-family.js";
 import { parseSchema } from "../../../helpers/schema-assertions.js";
 import { installedConfigSchema } from "../../../../src/orchestration/config/schema/schema.js";
 import {

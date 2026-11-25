@@ -2,9 +2,9 @@
 
 import { invalidateSupersededModuleFacts } from "../../orchestration/module-contract/module-catalog.js"
 import type { SupersededFactInvalidationResult } from "../../orchestration/module-contract/module-seams.js"
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
-import { resolveEventStoreDbFile } from "../../infra/paths.js"
+import { resolveEventStoreDbFile } from "../../infra/platform/files/paths.js"
 import {
   pruneRetiredFactFamilies,
   pruneSupersededFacts,
@@ -17,9 +17,9 @@ import {
   type VacuumResult,
 } from "../../orchestration/session/persistence/storage/event-store-maintenance.js"
 import { dedupToolContent, type ToolContentDedupResult } from "../../orchestration/workspace-state/migrations/tool-content-dedup.js"
-import { CliArgsError, type CliArgsResult, parseArgsResult } from "../../infra/cli-args.js"
-import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
-import { FLYWHEEL_DIR_NAME } from "../../infra/directory-authorities.js"
+import { CliArgsError, type CliArgsResult, parseArgsResult } from "../../infra/parsing/cli-args.js"
+import { openExistingContainedDirectory } from "../../infra/platform/files/descriptor-directory.js"
+import { FLYWHEEL_DIR_NAME } from "../../infra/platform/files/directory-authorities.js"
 import { acquireProjectStateGeneration, type ProjectStateLease } from "../../orchestration/workspace-state/project-state-lease.js"
 
 interface MaintainOptions {

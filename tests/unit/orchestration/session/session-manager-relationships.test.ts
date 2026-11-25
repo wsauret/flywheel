@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import type { LocalSqliteEventStore, EventStoreAppend, GuardedEventStoreAppend } from "../../../../src/infra/store/event-store-types";
+import type { LocalSqliteEventStore, EventStoreAppend, GuardedEventStoreAppend } from "../../../../src/infra/substrate/store/event-store-types";
 
-import { canonicalDirectory } from "../../../../src/infra/directory-authorities";
-import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types";
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
+import { canonicalDirectory } from "../../../../src/infra/platform/files/directory-authorities";
+import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
 import { createSessionManager, ParentPublicationContendedError } from "../../../../src/orchestration/session/manager";
 import { buildWorkflowPausedFact } from "../../../../src/workflows/vm/transitions/fact-drafts";
 import { readStoredSession } from "./_session-metadata-test-helpers";
 import { adoptTestWorkflow, cleanupTmpRoot, makeDeps, makeDepsWithStore, makeTmpDir, publishTestWorkflow, racingPublicationWriter } from "./_session-manager-fixtures";
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js";
 import { WorkflowParentRefusal } from "../../../../src/orchestration/session/control/children/child-session-publication";
-import { workflowRunReader, workflowRunWriter } from "../../../../src/orchestration/module-contract/module-catalog";
+import { workflowRunReader, workflowRunWriter } from "../../../../src/orchestration/module-contract/module-catalog.js";
 import { recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures";
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts";
 import { decodeSessionMetadataFactForReplay } from "../../../../src/orchestration/session/metadata/session-metadata-facts";

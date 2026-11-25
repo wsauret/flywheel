@@ -5,8 +5,9 @@ import { createRoot, createSignal } from "solid-js"
 import { createSessionChangesIntake, startSessionChangesWhenReady } from "../../../../../src/tui/hooks/state/create-session-changes.js"
 import { useSessionChangesModal } from "../../../../../src/tui/hooks/overlays/modals/use-session-changes-modal.js"
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
-import { sessionChangePathLabel, sessionChangesLabel, sessionChangesPromptLabel, undoResultLine } from "../../../../../src/protocol/client/session-changes-copy.js"
-import { deferred, fileA, fileB, fileC, retainedDiff, runtime, settle, waitForDiff } from "../../../protocol/client/_session-changes-fixtures.js"
+import { sessionChangePathLabel, sessionChangesLabel, undoResultLine } from "../../../../../src/protocol/client/session/changes/session-changes-copy.js"
+import { sessionChangesPromptLabel } from "../../../../../src/tui/hooks/composer/create-composer-border-layout.js"
+import { deferred, fileA, fileB, fileC, retainedDiff, runtime, settle, waitForDiff } from "../../../protocol/client/session/changes/_session-changes-fixtures.js"
 import type { SessionChangeDiffResult, SessionChangeSummaryResult } from "../../../../../src/protocol/session/session-changes-protocol-types.js"
 
 it("offers Changes as a per-file review without a keyboard override", () => {

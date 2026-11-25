@@ -5,9 +5,9 @@
  */
 
 import type { ToolCall } from "../../llm/types.js";
-import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
-import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-schema.js";
-import { toolOutcomeToProviderIsError, type ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js";
+import type { ContentBlock, ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
+import type { LlmToolOutputPart } from "../../../../infra/providers/llm/tool-output-part-schema.js";
+import { toolOutcomeToProviderIsError, type ToolOutcome } from "../../../../infra/substrate/runtime-facts/tool-outcome.js";
 
 export interface ToolResultEntry {
   toolUseId: string;

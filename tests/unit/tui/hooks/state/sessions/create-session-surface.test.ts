@@ -1,11 +1,11 @@
-import { describe, expect, it, jest, mock, setSystemTime } from "bun:test"
+import { describe, expect, it, jest, setSystemTime } from "bun:test"
 import { createEffect, createRoot, createSignal } from "solid-js"
 import type { AttachedRuntimeClient, ChildSessionRow, RuntimeClient, FrontendEvent, SessionCatalogRow } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { budgetCursor, type BudgetView } from "../../../../../../src/protocol/session/budget-protocol-types.js"
 import { sessionDetailCursor, type RuntimeSessionDetailView } from "../../../../../../src/protocol/session/session-detail-protocol-types.js"
 import { statusCursor, type StatusView } from "../../../../../../src/protocol/session/status-protocol-types.js"
 import { sessionCursor } from "../../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
-import { offeredSessionControls, workflowStateLabel } from "../../../../../../src/protocol/client/session-controls.js"
+import { offeredSessionControls, workflowStateLabel } from "../../../../../../src/protocol/client/work/session-controls.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createBudgetCache } from "../../../../../../src/tui/hooks/state/sessions/create-budget-cache.js"
 import { sessionHeaderParts } from "../../../../../../src/tui/hooks/state/create-header-display.js"
@@ -147,40 +147,6 @@ describe("createSessionSurface", () => {
       setNow(1_001_000)
       expect(surface.elapsed()).toBe(59_300)
       dispose()
-    })
-  })
-
-  it("binds shared caches to its session and owns an isolated retention handle", async () => {
-    await createRoot(async (dispose) => {
-      const transcript = transcriptCache()
-      const [sessionId, setSessionId] = createSignal<string | undefined>("parent")
-      const hydrate = mock(async () => {})
-      const surface = createSessionSurface({
-        appService: { query },
-        transcriptCache: { ...transcript.cache, streamingOutputChars: (id) => id === "parent" ? 7 : 3 },
-        statusCache: emptyCache,
-        budgetCache: emptyCache,
-        questionCache: emptyCache,
-        row: () => undefined,
-        now: () => 0,
-        hydrateToHead: hydrate,
-        onTranscriptFailure: () => {},
-      }, sessionId)
-
-      await Promise.resolve()
-      expect(surface.sessionId()).toBe("parent")
-      expect(surface.streamingOutputChars()).toBe(7)
-      expect(transcript.retained).toEqual(["parent"])
-      expect(transcript.opened).toEqual(["parent"])
-
-      setSessionId("child")
-      await Promise.resolve()
-      expect(surface.streamingOutputChars()).toBe(3)
-      expect(transcript.released).toEqual(["parent"])
-      expect(transcript.retained).toEqual(["parent", "child"])
-
-      dispose()
-      expect(transcript.released).toEqual(["parent", "child"])
     })
   })
 

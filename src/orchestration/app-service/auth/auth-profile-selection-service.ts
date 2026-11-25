@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import type { ConfigWriteResult } from "../../config/writer.js"
 import type { AuthProfileManager, AuthProfileResolution } from "../../auth/auth-profile-manager.js"
 import type { SessionManager } from "../../session/manager.js"

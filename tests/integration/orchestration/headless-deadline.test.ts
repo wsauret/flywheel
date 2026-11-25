@@ -9,7 +9,7 @@ import type { WorkflowDeps } from "../../../src/orchestration/agent-runtime/runn
 import { repoDefinitions } from "../../helpers/project-definitions.js";
 import { testDirectories } from "../../helpers/directories.js";
 import { testCapabilityModules, testProviderEligibility, testProviderRegistry } from "../../helpers/provider-authority.js";
-import { captureProviderConnection } from "../../../src/infra/auth/auth-context.js";
+import { captureProviderConnection } from "../../../src/infra/providers/auth/auth-context.js";
 import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
 import { createHeadlessDeadline, HeadlessDeadlineExpired } from "../../../src/orchestration/app-service/headless/headless-deadline.js";
 import { resolveHeadlessAuthProfile } from "../../../src/orchestration/app-service/auth/headless/headless-profile-runtime.js";

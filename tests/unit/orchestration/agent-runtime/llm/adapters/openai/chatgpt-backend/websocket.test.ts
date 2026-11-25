@@ -9,12 +9,12 @@ import { retainWebSocketSession } from "../../../../../../../../src/orchestratio
 import { ChatGptAdapterTransportError } from "../../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/chatgpt-adapter/types.js";
 import { createStaleToolResultMasker } from "../../../../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
 import { buildOpenAIResponseInput } from "../../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
-import type { ConversationMessage } from "../../../../../../../../src/infra/llm/conversation/conversation-message.js";
-import type { ModelInfo } from "../../../../../../../../src/infra/llm/models/models.js";
+import type { ConversationMessage } from "../../../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
+import type { ModelInfo } from "../../../../../../../../src/infra/providers/llm/models/models.js";
 import { prepareOpenAIResponsesRequest } from "../../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-responses.js";
 import { stableSystemPrompt } from "../../../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { Log } from "../../../../../../../../src/infra/diagnostics/log.js";
-import * as windowsAcl from "../../../../../../../../src/infra/windows-private-directory-acl.js";
+import * as windowsAcl from "../../../../../../../../src/infra/platform/files/windows/windows-private-directory-acl.js";
 
 interface UnknownRecord {
   [key: string]: unknown;

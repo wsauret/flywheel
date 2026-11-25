@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { defineFact, factTypes } from "../../infra/event-registry.js"
-import { RoleAssignmentSnapshotSchema } from "../../infra/role-settings.js"
+import { defineFact, factTypes } from "../../infra/substrate/facts/event-registry.js"
+import { RoleAssignmentSnapshotSchema } from "../../infra/providers/role-settings.js"
 
 /** The one aggregate that holds a workflow run's control and run facts. */
 export function workflowAggregateId(sessionId: string): string {

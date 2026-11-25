@@ -1,9 +1,9 @@
-import { runToCompletion } from "../../../../infra/task-scheduling.js";
-import { conversationRole, trailingAlternatingMessage, type ContentBlock, type ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import { runToCompletion } from "../../../../infra/process/task-scheduling.js";
+import { type ContentBlock, type ConversationMessage, trailingAlternatingMessage, conversationRole } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import type { CompactionEntry, MessageEntry, ConversationEntry } from "../conversation-entry-types.js";
 import type { DegradedTranscriptRecord } from "../conversation-projection.js";
 import { repairToolAdjacencyWork } from "./conversation-tool-adjacency.js";
-import { parseRuntimeReminder } from "../../../../infra/llm/runtime-reminder-format.js";
+import { parseRuntimeReminder } from "../../../../infra/providers/llm/runtime-reminder-format.js";
 import { installedModules } from "../../../module-contract/module-catalog.js";
 import type { ModuleHistoricalFraming } from "../../../module-contract/module-seams.js";
 

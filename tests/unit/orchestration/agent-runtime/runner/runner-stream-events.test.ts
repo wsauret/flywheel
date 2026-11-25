@@ -2,11 +2,11 @@ import { describe, it, expect } from "bun:test";
 
 import { emitAgentStreamEvent } from "../../../../../src/orchestration/agent-runtime/runner/stream-events/runner-stream-events.js";
 import { emitTurnAssistant } from "../../../../../src/orchestration/agent-runtime/runner/emit.js";
-import { OutputProjector } from "../../../../../src/infra/output/projector/output-projector.js";
-import { RuntimeEventProjector } from "../../../../../src/infra/output/runtime-event-projector.js";
+import { OutputProjector } from "../../../../../src/infra/substrate/output/projector/output-projector.js";
+import { RuntimeEventProjector } from "../../../../../src/infra/substrate/output/projector/runtime-event-projector.js";
 import { createTurnUsageTracker } from "../../../../../src/orchestration/agent-runtime/request/usage/turn-usage-tracker.js";
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../src/infra/runtime-facts/runtime-fact-mapper.js";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-types.js";
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../src/infra/substrate/runtime-facts/runtime-fact-mapper.js";
+import type { RuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-types.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js";
 import { branchBlocks } from "../../../../helpers/branch-blocks.js";

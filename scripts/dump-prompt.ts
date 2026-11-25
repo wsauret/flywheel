@@ -36,13 +36,13 @@ import { buildSubagentTask, SUBAGENT_HANDOFF_SCHEMA } from "../src/orchestration
 import type { SystemPromptPart } from "../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import { readModuleMemory } from "../src/orchestration/agent-runtime/request/prompt/request-system-prompt.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../src/infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../src/infra/definitions/agent-assets/system-prompt.js";
 import { personaToolEntries, toolRegistryFromComposition } from "../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import { captureRuntimeConfigRequest } from "../src/orchestration/config/request-config.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
 import { composeFirstPartyModules } from "../src/orchestration/module-contract/module-composition.js";
 import { loadConfig } from "../src/orchestration/config/loader.js";
-import type { AgentDefinition } from "../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../src/infra/definitions/agent-definition.js";
 import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import { grantedSubagentTypes, personaToolNames } from "../src/workflows/agents/subagent-reachability.js";
 import { planPromptRequest, plannedCapabilities, promptParts, type PlanInput, type PlannedRequest, type PromptAssembly } from "./prompt-assembly.js";

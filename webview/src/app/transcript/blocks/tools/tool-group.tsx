@@ -3,8 +3,8 @@ import { type Accessor, createMemo, type JSX, Match, on, Show, Switch } from "so
 
 import type { FrontendToolEntry } from "../../../../../../src/protocol/runtime/app-service-types.js"
 import { blockIdentity } from "../../../../../../src/protocol/transcript/block-identity.js"
-import { foldReadRuns, type ReadRun, type RunRow } from "../../../../../../src/protocol/client/tool-run-category.js"
-import { toolActivity, toolProcess } from "../../../../../../src/protocol/client/transcript-model.js"
+import { foldReadRuns, type ReadRun, type RunRow } from "../../../../../../src/protocol/client/chat/transcript/tool-run-category.js"
+import { toolActivity, toolProcess } from "../../../../../../src/protocol/client/chat/transcript/transcript-model.js"
 import { rowIdentity, toolGroupKeys, toolGroupSummaryParts, type ToolGroup, type PresentedWebBlock } from "../../../../client/session/residents/tool-runs.js"
 import type { BlockProps, createToolPresentation } from "../blocks.js"
 import { CompactToolRow } from "../compact-tool-row.js"

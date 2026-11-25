@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import type { ResolvedRole, ResolvedRoles } from "../../../../../../src/orchestration/config/roles.js";
 import {
   resolveReviewRoute,

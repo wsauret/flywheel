@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import type { ChatSettlementOutcome } from "../../../protocol/session/chat-settlement-protocol-types.js"
 import { assembleProjectRuntime, type RuntimeComposition, type RuntimeCompositionOptions } from "../executor/execution/project-execution-runtime.js"
 import { createRuntimeChatKernel } from "../supervisor/runtime-chat-kernel.js"

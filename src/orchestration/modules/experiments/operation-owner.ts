@@ -1,7 +1,7 @@
 import { Schema } from "effect"
-import type { InFlightRecord, InFlightWrite, StoredFact, InFlightPayload } from "../../../infra/store/event-store-types.js"
+import type { InFlightRecord, InFlightWrite, StoredFact, InFlightPayload } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { createOrderedLane } from "../../../infra/ordered-lane.js"
+import { createOrderedLane } from "../../../infra/async/ordered-lane.js"
 import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 import type { ExperimentFact } from "./state/facts.js"
 

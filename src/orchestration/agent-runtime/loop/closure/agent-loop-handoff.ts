@@ -18,7 +18,7 @@ import type { ToolResultEntry } from "../turn/agent-state.js";
 import type { TurnOutcome } from "../turn/assistant-turn-result.js";
 import { HandoffCorrectionExhausted } from "../../handoff-correction-exhausted.js";
 import type { ToolCall } from "../../llm/types.js";
-import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-schema.js";
+import type { LlmToolOutputPart } from "../../../../infra/providers/llm/tool-output-part-schema.js";
 import type { HandoffBlock } from "../../../session/control/background-work/background-work-readiness.js";
 import type { ToolResult } from "../../tools/types.js";
 import type { BackgroundWorkRegistry } from "../../../session/control/background-work/background-work.js";

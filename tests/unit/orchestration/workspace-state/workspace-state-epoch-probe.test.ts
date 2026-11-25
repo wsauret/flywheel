@@ -9,11 +9,11 @@ import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state/workspace-state.js"
 import { WORKSPACE_STATE_EPOCH } from "../../../../src/orchestration/workspace-state/workspace-state-retirement.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import type { ProjectDirectories } from "../../../../src/infra/directory-authorities.js"
+import type { ProjectDirectories } from "../../../../src/infra/platform/files/directory-authorities.js"
 
 const tmpRoot = path.join(os.tmpdir(), `flywheel-epoch-probe-${process.pid}-${Date.now()}`)
 

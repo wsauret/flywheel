@@ -1,4 +1,4 @@
-import { createOrderedLane } from "../../../infra/ordered-lane.js"
+import { createOrderedLane } from "../../../infra/async/ordered-lane.js"
 import { installedModules, type FirstPartyModule } from "../../module-contract/module-catalog.js"
 import type { ModuleSessionHistory, SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../module-contract/module-seams.js"
 

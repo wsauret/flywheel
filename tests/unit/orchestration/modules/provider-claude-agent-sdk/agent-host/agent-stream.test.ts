@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setSystemTime, test } from "bun:test";
 import type Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
-import type { ModelInfo } from "../../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../../src/infra/providers/llm/models/models.js";
 import { createAnthropicAdapter } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { LlmStreamError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { ProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";

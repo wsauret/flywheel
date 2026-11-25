@@ -1,7 +1,7 @@
 import { basename } from "node:path"
 
 import type { ImageResizeResult } from "../../../../orchestration/agent-runtime/tools/read/image-resize.js"
-import { ATTACHMENT_LIMITS, attachmentKind, decodeUtf8Text, type AttachmentRefusal } from "../../../../protocol/client/attachments.js"
+import { ATTACHMENT_LIMITS, attachmentKind, decodeUtf8Text, type AttachmentRefusal } from "../../../../protocol/client/chat/attachments.js"
 
 /** An attachment before the prompt gives it a marker: the bytes, their type,
  *  and the file's own name when it had one. A clipboard image has none. */

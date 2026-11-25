@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import type { PausedBy } from "../../../../../../src/infra/output-blocks.js";
+import type { PausedBy } from "../../../../../../src/infra/substrate/events/output-blocks.js";
 import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
 
 describe("createBackgroundWorkRegistry (workflow interruption)", () => {

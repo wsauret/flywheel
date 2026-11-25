@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { declaredFactRetentionTypes, declaredRetiredFactTypes, factOwner, factRetention, type FactOwner, type FactRetention } from "../src/infra/store/fact-retention-registry.js";
+import { declaredFactRetentionTypes, declaredRetiredFactTypes, factOwner, factRetention, type FactOwner, type FactRetention } from "../src/infra/substrate/store/fact-retention-registry.js";
 import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js";
 import { SHIPPED_MODULES } from "./shipped-modules.js";
 import type { FirstPartyModule } from "../src/orchestration/module-contract/module-catalog.js";
@@ -8,7 +8,7 @@ import { RETIRED_FACT_TYPES } from "../src/orchestration/session/persistence/sto
 import { isUnderAny, moduleFactHomes } from "./module-homes.js";
 
 // Every durable fact family must declare its retention policy and its owner
-// in src/infra/store/fact-retention-registry.ts. The policy decides whether a family
+// in src/infra/substrate/store/fact-retention-registry.ts. The policy decides whether a family
 // accumulates: a per-revision family declared "history" by omission is how
 // 90,335 chat provisionals and a lease renewed every ~100 seconds piled up
 // with no reader. The owner decides where the family lives: a module's
@@ -70,7 +70,7 @@ export function findFactRetentionViolations(repoRoot: string, registry: FactRete
 
   for (const [type, file] of defined) {
     if (!registry.retention(type)) {
-      failures.push(`undeclared fact family: "${type}" (${file}) has no retention policy in src/infra/store/fact-retention-registry.ts`);
+      failures.push(`undeclared fact family: "${type}" (${file}) has no retention policy in src/infra/substrate/store/fact-retention-registry.ts`);
       continue;
     }
     const owner = registry.owner(type);
@@ -90,7 +90,7 @@ export function findFactRetentionViolations(repoRoot: string, registry: FactRete
     if (!defined.has(type)) {
       const retention = registry.retention(type)
       if (retention?.policy === "retired" && registry.prunable.includes(type)) continue
-      failures.push(`stale declaration: "${type}" is classified in src/infra/store/fact-retention-registry.ts but no defineFact/defineRuntimeFact schema defines it`);
+      failures.push(`stale declaration: "${type}" is classified in src/infra/substrate/store/fact-retention-registry.ts but no defineFact/defineRuntimeFact schema defines it`);
     }
   }
 
@@ -130,7 +130,7 @@ if (import.meta.main) {
 
   if (failures.length > 0) {
     for (const failure of failures) console.error(`fact-retention: ${failure}`);
-    console.error(`\nfact-retention: ${failures.length} problem(s). Classify the family under its owner in src/infra/store/fact-retention-registry.ts and define it under that owner's fact home; a checkpoint (state retired by its outcome) belongs in the in_flight table, not the log.`);
+    console.error(`\nfact-retention: ${failures.length} problem(s). Classify the family under its owner in src/infra/substrate/store/fact-retention-registry.ts and define it under that owner's fact home; a checkpoint (state retired by its outcome) belongs in the in_flight table, not the log.`);
     process.exit(1);
   }
 

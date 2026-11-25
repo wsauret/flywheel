@@ -1,5 +1,5 @@
 import { Icon, ICONS } from "../../controls/icons.js"
-import { returnToLatestLabel } from "../../../../../src/protocol/client/return-to-latest.js"
+import { returnToLatestLabel } from "../../../../../src/protocol/client/chat/transcript/return-to-latest.js"
 
 export interface ReturnToLatestProps {
   readonly unseen: number

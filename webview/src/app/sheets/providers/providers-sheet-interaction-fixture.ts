@@ -4,7 +4,7 @@ import { Redacted } from "effect"
 import type { FrontendMutation, MutationResult } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { AuthProviderStatus, RuntimeAuthLoginQuestion, RuntimeAuthProfileView, RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
 import type { RuntimeAuthLoginPrompt, RuntimeAuthLoginResult } from "../../../../../src/protocol/auth/auth-login-protocol-types.js"
-import type { SheetFocus } from "../../../../../src/protocol/client/host-contract.js"
+import type { SheetFocus } from "../../../../../src/protocol/client/host/host-contract.js"
 import type { ConfirmRequest } from "../../client-context.js"
 import { fakeClient, fakeClientActions, fakeViewState } from "../../client-context-fixture.js"
 import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"
@@ -14,7 +14,7 @@ import type { RuntimeAuthProfileDeletionPreview, RuntimeAuthProfileMutationResul
 import type { SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { createElement, insert, nodes, textContent, type FixtureEvent } from "../../../test-support/render-ownership-host-fixture.js"
 import { actionOwner } from "../../action-owner-fixture.js"
-import { BROWSER_LOGIN_COPY } from "../../../../../src/protocol/client/provider-account-copy.js"
+import { BROWSER_LOGIN_COPY } from "../../../../../src/protocol/client/auth/provider-account-copy.js"
 
 const provider: AuthProviderStatus = {
   providerId: "chatgpt",

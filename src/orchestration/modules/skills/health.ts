@@ -1,4 +1,4 @@
-import type { ProjectDirectories } from "../../../infra/directory-authorities.js"
+import type { ProjectDirectories } from "../../../infra/platform/files/directory-authorities.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { inspectSkillLibrary } from "../../../workflows/skills/skill-health.js"
 import { createInstalledDefinitionRegistry } from "../../app-service/definitions/definition-catalog.js"

@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { AgentViewKind } from "../../../../src/protocol/client/slash-route.js"
+import type { AgentViewKind } from "../../../../src/protocol/client/commands/slash-route.js"
 import { closeChatSurface } from "../../../../src/tui/commands/close-chat-surface.js"
 
 function surface(view: { agent?: AgentViewKind; chat?: string }) {

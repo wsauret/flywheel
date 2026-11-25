@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import type { ModelInfo } from "../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../src/infra/providers/llm/models/models.js";
 import { prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { prepareOpenAIResponsesRequest } from "../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-responses.js";
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { chatCompletionsRequestBody } from "./_wire-fixtures.js";
 
 const info: ModelInfo = {

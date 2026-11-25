@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createSqliteEventReadSurface } from "../../src/infra/store/sqlite-event-read-surface.js";
+import { createSqliteEventReadSurface } from "../../src/infra/substrate/store/sqlite-event-read-surface.js";
 import { isMissingFile } from "./analysis/json.js";
 import { decodeTrialStoreAnalysis, TRIAL_STORE_ANALYSIS_NAME, usageSummary, type UsageSummary } from "./trial-store-analysis.js";
 

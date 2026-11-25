@@ -1,4 +1,4 @@
-import type { CapabilityCheck } from "../../../infra/capability-text.js"
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js"
 
 /** How the root chat runs substantive work while Workflows is On:
  *  through workflows by default (PI-AGENT-031); the workflow tool description

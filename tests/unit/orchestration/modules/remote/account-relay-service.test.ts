@@ -12,7 +12,7 @@ import { createAccountService } from "../../../../../src/orchestration/app-servi
 import { createRemoteAccess, placementId, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import * as control from "../../../../../src/orchestration/modules/remote/relay-control-channel.js"
 import * as pairing from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
-import { canonicalPathWithMissingTail } from "../../../../../src/infra/canonical-path.js"
+import { canonicalPathWithMissingTail } from "../../../../../src/infra/platform/files/canonical-path.js"
 import type { OwnedProcessExit } from "../../../../../src/infra/supervision/launch/owned-subprocess.js"
 import { createAccountProjectClone } from "../../../../../src/orchestration/app-service/account/account-project-clone.js"
 import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"

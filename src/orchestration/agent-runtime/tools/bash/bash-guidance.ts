@@ -1,4 +1,4 @@
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import type { RuntimePlatform } from "./bash-script.js";
 import { SEARCH_CPU_LIMIT_SECONDS, SHELL_SEARCH_PROGRAMS, SHELL_SEARCH_RULES, type ShellSearchProgram } from "../search/search-rules.js";
 import type { RuntimeTool } from "../types.js";

@@ -1,5 +1,5 @@
-import type { ChatInputLike } from "../../../infra/chat-input.js"
-import type { OutputProjectionEvent } from "../../../infra/output/output-projection-events.js"
+import type { ChatInputLike } from "../../../infra/substrate/events/chat-input.js"
+import type { OutputProjectionEvent } from "../../../infra/substrate/output/output-projection-events.js"
 
 /** What a chat runner and a workflow runner both are. Controls whose shape
  *  differs between them, such as interrupt and resume, belong to each kind

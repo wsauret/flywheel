@@ -1,8 +1,8 @@
-import { errorMessage } from "../../../infra/error-message.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../infra/diagnostics/log.js";
 import type { AgentLoopOptions, CompactionAfter, CompactionInstallation } from "../agent-loop-types.js";
 import type { StreamEvent } from "../llm/types.js";
-import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js";
 
 const log = Log.create({ service: "agent-loop" });
 

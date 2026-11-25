@@ -7,7 +7,7 @@ import { describe, expect, spyOn, test } from "bun:test"
 import { Log } from "../../../../src/infra/diagnostics/log.js"
 import type { BundledDefaultCatalog } from "../../../../src/workflows/definitions/bundled-defaults.js"
 import { installBundledDefaults } from "../../../../src/workflows/definitions/installer.js"
-import { configurationReferenceFile } from "../../../../src/infra/paths.js"
+import { configurationReferenceFile } from "../../../../src/infra/platform/files/paths.js"
 import { workflowAssets } from "../../../../src/workflows/provenance/asset-manifest.js"
 import { existsSync } from "node:fs"
 

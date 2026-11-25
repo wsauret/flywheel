@@ -1,8 +1,8 @@
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { loggedOperation, type CompletionLevel, type OperationFailure, type OperationLogger } from "../../../infra/operation-log.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { loggedOperation, type CompletionLevel, type OperationFailure, type OperationLogger } from "../../../infra/diagnostics/operation-log.js"
 import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 import type { FrontendMutation, FrontendEvent, RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
-import { declinedByPausedProject, lostWithLane, supersededByGenerationChange } from "../../../protocol/client/connection-failures.js"
+import { endedAsOutcome } from "../../../protocol/client/runtime/connection-failures.js"
 
 interface MutationLogFields {
   [field: string]: unknown
@@ -47,16 +47,6 @@ export function withLoggedAppServiceClient(service: RuntimeClient, log: Operatio
       }
     },
   }
-}
-
-/** A call that ended as an outcome rather than a failure: its lane took it
- *  down, a clean close in a routine stop such as a planned replacement
- *  included (the connection records the lane's end once), a paused
- *  project declined it, or an executor generation change voided a read the
- *  change asked every client to take again. Each records where its
- *  completion would. */
-function endedAsOutcome(error: unknown): boolean {
-  return lostWithLane(error) || declinedByPausedProject(error) || supersededByGenerationChange(error)
 }
 
 export function withLoggedRuntimeClient(client: RuntimeClient, log: OperationLogger, prefix: string, side: ProtocolSide): RuntimeClient {

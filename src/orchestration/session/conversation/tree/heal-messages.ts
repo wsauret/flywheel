@@ -31,7 +31,7 @@
  */
 
 import { Log } from "../../../../infra/diagnostics/log.js";
-import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 
 const log = Log.create({ service: "heal-messages" });
 

@@ -10,7 +10,7 @@
 
 import { createHash } from "node:crypto";
 import type { OwnedProcess } from "../../../../../infra/supervision/launch/owned-subprocess.js";
-import { createStreamingSanitizer } from "../../../../../infra/control-characters.js";
+import { createStreamingSanitizer } from "../../../../../infra/substrate/output/control-characters.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 
 const log = Log.create({ service: "shell-runtime" });

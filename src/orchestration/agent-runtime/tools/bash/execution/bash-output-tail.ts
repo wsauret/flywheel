@@ -4,7 +4,7 @@
  * reading, and the result of a command that settled in its tool call.
  */
 
-import { createStreamingSanitizer } from "../../../../../infra/control-characters.js";
+import { createStreamingSanitizer } from "../../../../../infra/substrate/output/control-characters.js";
 import { formatDuration } from "../../../../../protocol/client/format.js";
 import type { BackgroundOutputRequest } from "../../../../session/control/background-work/background-work-processes.js";
 import { renderShellLines, type ShellGap, type ShellLines } from "./bash-compressor.js";

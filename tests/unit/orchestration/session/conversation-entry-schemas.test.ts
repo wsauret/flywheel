@@ -1,11 +1,11 @@
-import { buildMutationDiff, type MutationDiff } from "../../../../src/infra/mutation-diff.js";
+import { buildMutationDiff, type MutationDiff } from "../../../../src/infra/substrate/file-mutations/mutation-diff.js";
 import { parseSchema, safeParse } from "../../../helpers/schema-assertions.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { describe, expect, it } from "bun:test";
-import type { ContentBlock } from "../../../../src/infra/llm/conversation/conversation-message";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
+import type { ContentBlock } from "../../../../src/infra/providers/llm/conversation/conversation-message";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
 import {
   CompactionEntrySchema,
   LeafEntrySchema,

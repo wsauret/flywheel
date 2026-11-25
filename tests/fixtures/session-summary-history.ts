@@ -1,9 +1,9 @@
 import { Database } from "bun:sqlite"
 import { join } from "node:path"
 
-import type { StoredFact } from "../../src/infra/store/event-store-types.js"
-import { configureSqliteEventStore } from "../../src/infra/store/sqlite-event-store-core.js"
-import { resolveEventStoreDbFile } from "../../src/infra/paths.js"
+import type { StoredFact } from "../../src/infra/substrate/store/event-store-types.js"
+import { configureSqliteEventStore } from "../../src/infra/substrate/store/sqlite-event-store-core.js"
+import { resolveEventStoreDbFile } from "../../src/infra/platform/files/paths.js"
 import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state/workspace-state-retirement.js"
 
 export const SESSION_SUMMARY_FIXTURE_FACT_TYPES = [

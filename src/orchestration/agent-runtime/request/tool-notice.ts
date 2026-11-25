@@ -1,4 +1,4 @@
-import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js";
 import type { AgentLoopSeed } from "../agent-loop-types.js";
 import { recordNarrowing, type CapabilityNarrowing } from "./prompt/capability-narrowing.js";
 import { toolGrantRules } from "./prompt/persona-tool-rules.js";

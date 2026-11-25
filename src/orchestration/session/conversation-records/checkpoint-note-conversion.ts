@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js";
-import type { DurableOwner } from "../../../infra/durable-owner.js";
+import type { AsyncEventReadSurface } from "../../../infra/substrate/store/event-store-types.js";
+import type { DurableOwner } from "../../../infra/substrate/facts/durable-owner.js";
 import { emptyConversationCheckpoint, readConversationCheckpoint } from "./conversation-checkpoint.js";
 import type { SessionFactWriter } from "../persistence/session-fact-writer.js";
 

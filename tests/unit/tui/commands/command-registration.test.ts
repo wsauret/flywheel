@@ -5,7 +5,7 @@ import { buildCommandDefinitions } from "../../../../src/tui/commands/command-de
 import { createCommandDispatch, createCommandUsageRecorder } from "../../../../src/tui/commands/command-dispatch.js"
 import type { BuiltInCommandDefinition } from "../../../../src/tui/commands/command-types.js"
 import { bindRuntimeCommandDefinitions } from "../../../../src/tui/commands/runtime-command-bindings.js"
-import { createSurfaceOpener } from "../../../../src/protocol/client/surface-presentation.js"
+import { createSurfaceOpener } from "../../../../src/protocol/client/commands/surface-presentation.js"
 import { createOverlayLayers } from "../../../../src/tui/components/modal-stack.js"
 import type { SurfaceRequest } from "../../../../src/tui/commands/command-surfaces.js"
 import { commandSpecs, commandsToOptions } from "../../../../src/tui/commands/command-catalog.js"

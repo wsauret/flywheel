@@ -1,6 +1,6 @@
-import { recordBackgroundFailure } from "../../../infra/operation-log.js"
+import { recordBackgroundFailure } from "../../../infra/diagnostics/operation-log.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { createOrderedLane } from "../../../infra/ordered-lane.js"
+import { createOrderedLane } from "../../../infra/async/ordered-lane.js"
 import type { RuntimeAuthStatusScope } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { AuthProfileResolution } from "../../auth/auth-profile-manager.js"
 import type { SubscriptionUsageServiceLease, SubscriptionUsageServicePool } from "../../auth/provider-observations/subscription-usage-service-pool.js"

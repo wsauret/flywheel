@@ -6,15 +6,15 @@ import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestrat
 import { NO_CAPABILITY_ACCESS } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { fixedRequestToolSurface, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
-import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/definitions/modules/module-runtime.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js";
 import type { FirstPartyModule } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { hashToolInputFormat } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-hash.js";
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/provider-description.js";
-import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.js";
-import * as localTokenizer from "../../../../../src/infra/local-tokenizer.js";
+import { prepareLocalTokenizer } from "../../../../../src/infra/providers/local-tokenizer.js";
+import * as localTokenizer from "../../../../../src/infra/providers/local-tokenizer.js";
 import { tokenCountingPolicy } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";

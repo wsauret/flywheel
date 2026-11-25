@@ -5,8 +5,8 @@ import { composeFirstPartyModules, webAuthProviderDefinitions } from "../../../.
 import { moduleProtocolRows, type FirstPartyModuleComposition } from "../../../../src/orchestration/module-contract/module-catalog.js";
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
 import { MODULE_IDS } from "../../../../src/protocol/runtime/module-ids.js";
-import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
-import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js";
+import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../../src/infra/definitions/modules/module-runtime.js";
+import { NO_MODULE_SERVICES } from "../../../../src/infra/definitions/modules/module-service.js";
 import { capabilityAccessFor, type RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
 import type { KernelToolDeps } from "../../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
@@ -18,16 +18,16 @@ import { createBackgroundWorkRegistry } from "../../../../src/orchestration/sess
 import type { ModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
 import type { ModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { capabilityAccessHolding } from "../agent-runtime/tools/_fixtures.js";
-import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
+import type { AuthContext } from "../../../../src/infra/providers/auth/auth-context.js";
 
 import { accessProviderRegistry } from "../../../../src/orchestration/config/models/access-provider-registry.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js";
-import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js";
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js";
 import { unusedSessionMessaging } from "../../../helpers/child-session-control.js";
-import { asRecord } from "../../../../src/infra/record.js";
+import { asRecord } from "../../../../src/infra/guards/record.js";
 import { turnReminders } from "../../../../src/orchestration/agent-runtime/request/prompt/turn-reminders.js";
-import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { promptCapabilities } from "../../../helpers/prompt-capabilities.js";
 import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js";
 // Every module a source run composes: the shipped catalog plus the one the

@@ -4,7 +4,7 @@ import { decodeProjectExecutorCommand } from "../../../../../src/orchestration/a
 import type { ExecutorWedgeProof } from "../../../../../src/orchestration/app-service/executor/executor-responsiveness.js"
 import { createChatDefaultRefreshOwner } from "../../../../../src/orchestration/app-service/auth/models/model-assignment-admission.js"
 import type { RuntimeChatDefault } from "../../../../../src/protocol/runtime/app-service-types.js"
-import { createLoginShellPath } from "../../../../../src/infra/login-shell-path.js"
+import { createLoginShellPath } from "../../../../../src/infra/environment/login-shell-path.js"
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js"
 import { closeExecutorFixtures, fixture } from "../_project-executor-fixture.js"
 

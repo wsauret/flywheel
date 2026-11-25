@@ -10,7 +10,7 @@ import { subagentChildHarnesses } from "./_subagent-child-fixtures.js"
 import { loadSubagentRunsFromEvents, SUBAGENT_RUN_FACT_TYPES } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import { createSessionToolSummaryReader } from "../../../../../src/orchestration/session/runtime-facts/module-tool-history.js"
 import { subagentsModule } from "../../../../../src/orchestration/modules/subagents.js"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { processSettled } from "../../../../helpers/process-settled.js"
 
 const createHarness = subagentChildHarnesses()

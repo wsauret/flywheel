@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { authDir } from "../../../../../src/infra/paths.js"
+import { authDir } from "../../../../../src/infra/platform/files/paths.js"
 import { accessProviderRegistry } from "../../../../../src/orchestration/config/models/access-provider-registry.js"
 import { createResidentAuthScopes } from "../../../../../src/orchestration/app-service/auth/auth-resident-scopes.js"
 import type { AuthProfileResolution } from "../../../../../src/orchestration/auth/auth-profile-manager.js"

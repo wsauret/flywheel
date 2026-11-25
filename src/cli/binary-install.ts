@@ -19,10 +19,10 @@
  *  account-service boundary after publication. */
 
 import * as path from "node:path"
-import { selectStartupDirectories } from "../infra/directory-authorities.js"
-import { errorMessage } from "../infra/error-message.js"
+import { selectStartupDirectories } from "../infra/platform/files/directory-authorities.js"
+import { errorMessage } from "../infra/diagnostics/error-message.js"
 import { Log } from "../infra/diagnostics/log.js"
-import { buildPlatformArch } from "../infra/native-assets.js"
+import { buildPlatformArch } from "../infra/platform/native-assets.js"
 import { ownedCommandRunner } from "../infra/owned-command.js"
 import { wrapperDirectory } from "../infra/update/wrapper-directory.js"
 import { installBuild } from "../orchestration/update/install-engine.js"

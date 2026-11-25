@@ -2,10 +2,10 @@
  * records use the production planner and strict manifest codec, while the
  * retired consent flow exists only here to reproduce version 1 history. */
 
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventReader, type LocalSqliteEventStore } from "../../src/infra/store/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type EventReader, type LocalSqliteEventStore } from "../../src/infra/substrate/store/event-store-types.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { createSqliteEventStore } from "../../src/infra/store/sqlite-event-store.js";
+import { createSqliteEventStore } from "../../src/infra/substrate/store/sqlite-event-store.js";
 import {
   readConsentClaims,
   reconcileGlobalSkillOperations,
@@ -27,11 +27,11 @@ import {
 import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin } from "../../src/orchestration/modules/learning/skills/skill-store-types.js";
 import { publishSkillRevision } from "../../src/workflows/skills/skill-schema.js";
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../src/workflows/skills/skills.js";
-import type { ProjectDirectories } from "../../src/infra/directory-authorities.js";
+import type { ProjectDirectories } from "../../src/infra/platform/files/directory-authorities.js";
 import { planSkillMutation, planLockPaths, storeRootDirs } from "../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
 import { resultOfPlan } from "../../src/orchestration/modules/learning/skills/skill-store.js";
 import { claimAnsweredDecision } from "../../src/orchestration/session/agent-input/agent-input-decision.js";
-import { withPackageLocks } from "../../src/infra/locks/package-directory-lock.js";
+import { withPackageLocks } from "../../src/infra/process/locks/package-directory-lock.js";
 import { forgetOperation, runOperation } from "../../src/orchestration/modules/learning/skills/global-skill-mutation-protocol.js";
 import { reconcilePendingAudits, settlePendingAudit } from "../../src/orchestration/modules/learning/skills/learning-journal.js";
 

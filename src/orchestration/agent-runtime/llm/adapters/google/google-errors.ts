@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../../../infra/error-message.js";
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js";
 import { classifyQuotaError, ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError } from "../../errors.js";
 import { isTransientNetworkError } from "../../stream/provider-failure.js";
 

@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util"
-import { parseProjectionFact } from "../../../infra/projection/event-projection.js"
-import { CorruptEventRowError, type StoredFact } from "../../../infra/store/event-store-types.js"
-import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../infra/runtime-facts/runtime-fact-types.js"
+import { parseProjectionFact } from "../../../infra/substrate/projection/event-projection.js"
+import { CorruptEventRowError, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../infra/substrate/runtime-facts/runtime-fact-types.js"
 import { type CommittedWorkflowControl, parseCommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import {
   definitionIdentityMigrationOrder,

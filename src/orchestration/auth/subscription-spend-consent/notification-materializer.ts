@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
-import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../infra/notification-episode.js"
-import { createOrderedLane } from "../../../infra/ordered-lane.js"
+import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../infra/substrate/events/notification-episode.js"
+import { createOrderedLane } from "../../../infra/async/ordered-lane.js"
 import type { FrontendEvent } from "../../../protocol/runtime/app-service-types.js"
 import type { RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import { paidModeAwaitsAnswer, type SubscriptionSpendConsentView } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"

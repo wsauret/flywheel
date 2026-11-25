@@ -1,11 +1,11 @@
-import type { ProjectDirectories } from "../../infra/directory-authorities.js"
-import type { AuthProfileAccess } from "../../infra/auth/store/auth-profile-store.js"
-import type { KeyResolver } from "../../infra/auth/resolve-key.js"
-import type { ExternalUrlOpener } from "../../infra/open-external-url.js"
+import type { ProjectDirectories } from "../../infra/platform/files/directory-authorities.js"
+import type { AuthProfileAccess } from "../../infra/providers/auth/store/auth-profile-store.js"
+import type { KeyResolver } from "../../infra/providers/auth/resolve-key.js"
+import type { ExternalUrlOpener } from "../../infra/substrate/output/notify/open-external-url.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
-import type { CredentialProviderId } from "../../infra/auth/store/auth-store-types.js"
-import type { CredentialProviderCli } from "../../infra/auth/provider-account.js"
-import { errorMessage } from "../../infra/error-message.js"
+import type { CredentialProviderId } from "../../infra/providers/auth/store/auth-store-types.js"
+import type { CredentialProviderCli } from "../../infra/providers/auth/provider-account.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { keptFreePlanMessage } from "../../protocol/client/auth-login.js"
 import {
   type AuthCatalogSettlement,

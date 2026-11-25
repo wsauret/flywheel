@@ -1,12 +1,12 @@
 import { expect, it } from "bun:test";
 import { join } from "node:path";
 import { temporaryDirectories } from "../../helpers/directories.js";
-import { createSqliteEventStore } from "../../../src/infra/store/sqlite-event-store.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../src/infra/substrate/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/substrate/store/event-store-types.js";
 import { collectSkillLoadStats, refreshSkillLoadStatsSnapshot } from "../../../src/orchestration/modules/learning/skills/skill-load-stats.js";
 import { createSessionFactWriter } from "../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { createLearningReview, reviewReplay } from "../../../src/orchestration/modules/learning/review/learning-review.js";
-import type { ConversationMessage } from "../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { capabilityAccessFor } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { composeRealmModuleSnapshot } from "../../../src/orchestration/module-contract/module-composition.js";

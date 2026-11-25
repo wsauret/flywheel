@@ -8,9 +8,9 @@ import { loadBashParser } from "../../../../../../src/orchestration/agent-runtim
 import { createBashDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import { bashToolSurface } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash-guidance.js";
 import { startManagedCommand } from "../../../../../../src/orchestration/agent-runtime/tools/bash/execution/managed-command.js";
-import type { BackgroundCommandRecord } from "../../../../../../src/infra/runtime-facts/runtime-fact-types.js";
-import { asRecord } from "../../../../../../src/infra/record.js";
-import { watchNoticeRow } from "../../../../../../src/infra/watch-notices.js";
+import type { BackgroundCommandRecord } from "../../../../../../src/infra/substrate/runtime-facts/runtime-fact-types.js";
+import { asRecord } from "../../../../../../src/infra/guards/record.js";
+import { watchNoticeRow } from "../../../../../../src/infra/substrate/events/watch-notices.js";
 import { WATCH_LIMITS } from "../../../../../../src/orchestration/agent-runtime/tools/bash/execution/watch-stream.js";
 import { backgroundLogPath } from "../../../../../helpers/background-log-path.js";
 import { bashExecution, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";

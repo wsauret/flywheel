@@ -1,10 +1,10 @@
-import type { PausedBy } from "../../../infra/output-blocks.js"
-import { toolOutcomeFromProvider } from "../../../infra/runtime-facts/tool-outcome.js"
-import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js"
+import type { PausedBy } from "../../../infra/substrate/events/output-blocks.js"
+import { toolOutcomeFromProvider } from "../../../infra/substrate/runtime-facts/tool-outcome.js"
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js"
 import { callsShellTool } from "../../module-contract/module-catalog.js"
 import { messageDisposition } from "../message-disposition.js"
 import { MESSAGE_SESSION_TOOL_NAME } from "./reply-wait-cells.js"
-import type { SessionRelation } from "../../../infra/chat-input-schema.js"
+import type { SessionRelation } from "../../../infra/substrate/events/chat-input-schema.js"
 
 /** The duration of a wait and its deadline. */
 export interface WaitExpiry {

@@ -3,7 +3,7 @@ import { test } from "node:test"
 
 import { createRuntimeSession } from "../session.js"
 import { settle } from "../../../test-support/session-connection-fixture.js"
-import { saveReadingState } from "../../../../../src/protocol/client/reading-state.js"
+import { saveReadingState } from "../../input/reading-state.js"
 import { Socket } from "effect/socket"
 import { Layer } from "effect"
 import { headlessClient } from "../../../session-host-loader-fixture.js"

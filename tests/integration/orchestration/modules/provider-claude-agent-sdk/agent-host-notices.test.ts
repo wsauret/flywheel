@@ -4,7 +4,7 @@
  * the open tool call, with no dispatch; every other input, and a notice that no result can carry, dispatches.
  */
 import { afterEach, describe, expect, test } from "bun:test";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { formatChildInterruptedNotification, formatSubagentNotificationBatch } from "../../../../../src/orchestration/session/control/background-work/background-work-notifications.js";
 import { formatRuntimeNotification } from "../../../../../src/orchestration/session/control/background-work/runtime-notifications.js";
 import { captureForkMessages } from "../../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history.js";
@@ -12,7 +12,7 @@ import { toOpenAIResponsesRequestInput } from "../../../../../src/orchestration/
 import { openAIResponsesTarget, resolveOpenAISystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
 import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { conversationTierEntry, ENGINE_INSTRUCTIONS } from "../../../../helpers/hosted-engine-text.js";
-import { parseRuntimeReminder } from "../../../../../src/infra/llm/runtime-reminder-format.js";
+import { parseRuntimeReminder } from "../../../../../src/infra/providers/llm/runtime-reminder-format.js";
 import { processAgentHosts } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";

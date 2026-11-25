@@ -4,7 +4,7 @@
 // retries are capped; on give-up the user gets a visible notice rather than a
 // silent turn end.
 import { Log } from "../../../../infra/diagnostics/log.js";
-import type { LlmStopReason } from "../../../../infra/llm/conversation/messages.js";
+import type { LlmStopReason } from "../../../../infra/providers/llm/conversation/messages.js";
 
 const log = Log.create({ service: "agent-loop" });
 

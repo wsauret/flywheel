@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { openContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
+import { openContainedDirectory } from "../../../../src/infra/platform/files/descriptor-directory.js";
 import { extractArchive } from "../../../../src/orchestration/update/archive-spool.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { paxRecords, tarBlocks, type TarEntrySpec } from "../../../helpers/tar-archive.js";

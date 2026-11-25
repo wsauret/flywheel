@@ -4,21 +4,21 @@ import type {
   ResponseStreamEvent,
 } from "openai/resources/responses/responses.js";
 import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared.js";
-import type { AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
-import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
+import type { AccessProviderId } from "../../../../../infra/providers/llm/access/access-provider.js";
+import type { ModelInfo, ReasoningEffort } from "../../../../../infra/providers/llm/models/models.js";
 import { Option, Schema } from "effect";
 import { DebugLog } from "../../../../../infra/diagnostics/debug-log.js";
 import { ChatGptAdapterApiError } from "../../chatgpt-adapter-error.js";
 import { ChatGptAdapterTransportError } from "./chatgpt-adapter/types.js";
 import { classifyQuotaError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError, ProviderRequestValidationError, QUOTA_CODES, QuotaCoordinationError, QuotaExhaustedError } from "../../errors.js";
-import type { CompletedStopReason } from "../../../../../infra/llm/conversation/messages.js";
-import { clampReasoningEffort, openAIReasoningEffort, type ReasoningEffortTier, supportsReasoningOff } from "../../../../../infra/llm/models/model-compat.js";
+import type { CompletedStopReason } from "../../../../../infra/providers/llm/conversation/messages.js";
+import { clampReasoningEffort, openAIReasoningEffort, type ReasoningEffortTier, supportsReasoningOff } from "../../../../../infra/providers/llm/models/model-compat.js";
 import { applyOpenAIResponsesOptions, openAIReasoningSummary } from "./openai-options.js";
 import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.js";
 import { cacheWriteTokens } from "./openai-usage-normalization.js";
 import { getRetryAfterMs, isTransientNetworkError, normalizeProviderAttemptFailure } from "../../stream/provider-failure.js";
 import type { ProviderStreamEvent, StreamOptions, ToolChoice } from "../../types.js";
-import type { ConversationMessage } from "../../../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../infra/providers/llm/conversation/conversation-message.js";
 
 /** Map canonical ToolChoice to OpenAI Responses wire form. `any` becomes
  *  `"required"` (Responses' name for "must call some tool"). */

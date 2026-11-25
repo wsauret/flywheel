@@ -1,9 +1,9 @@
-import { readCapturedFacts } from "../../../../infra/store/event-store-types.js"
+import { readCapturedFacts } from "../../../../infra/substrate/store/event-store-types.js"
 import type { RecallInput, RecallResult } from "../../../../protocol/transcript/conversation-recall.js"
 import type { SessionManager } from "../../../session/manager.js"
 import { prepareSessionFactAppend } from "../../../session/persistence/session-fact-writer.js"
 import { acquireChildExecutionResources } from "../../../chat/children/child-execution-resources.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 // oxlint-disable-next-line import/no-cycle -- the module authority schedules the kernel cross-session publication.
 import { reconcileChildSessionCompletions } from "../../../session/control/children/child-session-reconciliation.js"

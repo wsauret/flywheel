@@ -1,5 +1,5 @@
 import { createSignal, untrack } from "solid-js"
-import { errorMessage } from "../../../../../infra/error-message.js"
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js"
 import type { ListModalKeyEvent } from "../../../../components/modal/select/modal-list-keys.js"
 import type { ControlledTextEditor } from "../../../../terminal/keymap/text-entry.js"
 import type { SettingsEditResult, SettingsEditSpec } from "../../../../modals/settings/settings-modal-types.js"

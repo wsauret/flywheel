@@ -5,10 +5,10 @@ import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/
 import { ContentFilteredError, ContentRefusedError, LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
 import { assemblyPinned, RequestToolMap } from "../../../../helpers/request-tool-surface.js";
-import { compactInput } from "../../../../../src/infra/agent-loop-events.js";
+import { compactInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 
 

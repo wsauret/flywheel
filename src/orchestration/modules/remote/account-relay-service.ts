@@ -1,7 +1,7 @@
 import { Cause, Deferred, Effect, Exit, Scope, Stream } from "effect"
 import { Socket } from "effect/socket"
 
-import type { ServeLane } from "../../../infra/cli-subprocess.js"
+import type { ServeLane } from "../../../infra/platform/cli-subprocess.js"
 import type { AccountProjectClone, ClonedProject } from "../../app-service/account/account-project-clone.js"
 import type { AccountProjectRegistry } from "../../app-service/account/account-project-registry.js"
 import type { AccountService } from "../../app-service/account/account-service.js"
@@ -21,9 +21,8 @@ import { placementId } from "./remote-access.js"
 import { ensureRemoteIdentity, remoteIdentityFrom, type RemoteIdentity } from "./pairing/remote-identity.js"
 import type { KeepAwake } from "./keep-awake.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { durationMs } from "../../../infra/operation-log.js"
-import { createBackgroundLane } from "../../../infra/ordered-lane.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { createBackgroundLane, durationMs } from "../../../infra/diagnostics/operation-log.js"
 import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 
 const log = Log.create({ service: "account-relay" })

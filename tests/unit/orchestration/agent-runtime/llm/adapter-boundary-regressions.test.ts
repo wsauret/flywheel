@@ -11,12 +11,12 @@ import { createChatCompletionsAdapter } from "../../../../../src/orchestration/a
 import { ContentFilteredError, ContentRefusedError, LlmStreamError, OutputLengthExceededError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { isProviderAttributedFailure, normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
-import { createAvailabilityAuthority } from "../../../../../src/infra/llm/access/availability-store.js";
+import { createAvailabilityAuthority } from "../../../../../src/infra/providers/llm/access/availability-store.js";
 import { availabilityFixtures } from "./_provider-availability-harness.js";
 import type { LLMClient, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
-import type { ModelInfo } from "../../../../../src/infra/llm/models/models.js";
-import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
+import type { ModelInfo } from "../../../../../src/infra/providers/llm/models/models.js";
+import { providerModelInfo } from "../../../../../src/infra/providers/llm/catalog/provider-model-info.js";
 import { wireClient, wireResponse } from "./_wire-fixtures.js";
 
 const fixtures = availabilityFixtures();

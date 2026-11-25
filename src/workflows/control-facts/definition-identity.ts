@@ -1,6 +1,6 @@
 import { Schema, SchemaTransformation } from "effect"
 import { DefinitionIdentityMismatchSchema, type DefinitionIdentityMismatch } from "../provenance/definition-identity-mismatch.js"
-import type { AgentDefinition } from "../../infra/agent-definition.js"
+import type { AgentDefinition } from "../../infra/definitions/agent-definition.js"
 import { reachableAgentNames, workflowAgentSubagents } from "../agents/subagent-reachability.js"
 import type { ResolvedAgent } from "../definitions/agent-resolution.js"
 import { hashContent, hashDefinition, Sha256Schema } from "../provenance/definition-hash.js"

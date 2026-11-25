@@ -2,11 +2,11 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { chmodSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type FactQuery } from "../../../../../../src/infra/store/event-store-types.js"
-import { resolveEventStoreDbFile, resolveOwnerPidPath } from "../../../../../../src/infra/paths.js"
-import { createRuntimeEventStore, createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface } from "../../../../../../src/infra/substrate/store/event-store-types.js"
+import { resolveEventStoreDbFile, resolveOwnerPidPath } from "../../../../../../src/infra/platform/files/paths.js"
+import { createRuntimeEventStore } from "../../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { openProjectState, owedAtRestart, recoverProject } from "../../../../../helpers/project-recovery.js"
-import { contentEvidence } from "../../../../../../src/infra/runtime-facts/content-evidence.js"
+import { contentEvidence } from "../../../../../../src/infra/substrate/runtime-facts/content-evidence.js"
 import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { buildDurableSubagentCreated, buildSubagentCompleted, buildSubagentPrompted } from "../../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { countStateRequests, type StateRequest } from "../../../../../helpers/state-requests.js"
@@ -23,34 +23,9 @@ import { CHILD_SESSION_DELETION_IN_FLIGHT_KIND } from "../../../../../../src/orc
 import { publishTestWorkflow } from "../../../session/_session-manager-fixtures.js"
 import { Log } from "../../../../../../src/infra/diagnostics/log.js"
 import { prepareFileMutationOperation } from "../../../../../../src/orchestration/session/file-mutations/file-mutation-fact-writers.js"
+import { cleanup, closeFixtures, fixture } from "./_project-state-recovery-fixture.js"
 
-const cleanup: (() => void | Promise<void>)[] = []
-afterEach(async () => { for (const dispose of cleanup.splice(0)) await dispose() })
-
-function fixture() {
-  const projectRoot = mkdtempSync(join(tmpdir(), "project-state-recovery-"))
-  const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
-  const writer = asAsyncEventWriter(store)
-  const localReader: EventStoreReadSurface = {
-    ...store,
-    read(query: FactQuery = {}) {
-      if (!query.aggregateId && !query.sessionId && query.types?.includes("session.auth.profile.selected")) {
-        throw new Error("recovery must not fold the full session metadata family")
-      }
-      return store.read(query)
-    },
-    readTolerant(query: FactQuery = {}) {
-      if (!query.aggregateId && !query.sessionId && query.types?.includes("session.auth.profile.selected")) {
-        throw new Error("recovery must not fold the full session metadata family")
-      }
-      return store.readTolerant(query)
-    },
-  }
-  const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, projectionReader: asAsyncEventReadSurface(localReader), writer })
-  const reader = asAsyncEventReadSurface(localReader)
-  cleanup.push(() => { store.close(); rmSync(projectRoot, { recursive: true, force: true }) })
-  return { projectRoot, store, reader, writer, manager, directories: testDirectories(projectRoot) }
-}
+afterEach(closeFixtures)
 
 describe("project execution recovery after a generation closes", () => {
   test("recovers the sessions the generation left live and leaves every other session to its own load", async () => {

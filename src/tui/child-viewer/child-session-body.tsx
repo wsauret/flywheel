@@ -1,12 +1,12 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { AgentViewKind } from "../../protocol/client/slash-route.js"
+import type { AgentViewKind } from "../../protocol/client/commands/slash-route.js"
 import { createEffect, createSignal, onCleanup, Show, untrack, type Accessor, type JSX } from "solid-js"
 import type { TextareaRenderable } from "@opentui/core"
-import { selectPrimarySessionNotice, sessionNoticeChannel } from "../../infra/session-notice.js"
+import { selectPrimarySessionNotice, sessionNoticeChannel } from "../../infra/substrate/events/session-notice.js"
 import type { DiffColorMode } from "../../orchestration/config/schema/schema.js"
 import type { RoleAssignmentView } from "../../protocol/auth/role-protocol-types.js"
-import type { ChildCardStatus } from "../../protocol/client/session-controls.js"
+import type { ChildCardStatus } from "../../protocol/client/work/session-controls.js"
 import { OutputWindow, type OutputWindowCommand, type OutputWindowCommandType } from "../transcript/output-window/output-window.js"
 import type { TranscriptLayoutSlot } from "../transcript/output-window/output-window-scroll.js"
 import type { RowProcessControls } from "../transcript/output-blocks/stop-affordance.js"
@@ -21,8 +21,8 @@ import { Button } from "../components/controls/button.js"
 import { ComposerBody, ComposerFrame, composerBodyGeometry } from "../components/composer/frame/composer-frame.js"
 import { createPromptBorderChunks } from "../components/composer/frame/composer-border-labels.js"
 import { InitialMessageProvider } from "../transcript/output-blocks/messages/user-message-block.js"
-import type { UserMessageBlock } from "../../infra/output-blocks.js"
-import type { ChatInputLike } from "../../infra/chat-input.js"
+import type { UserMessageBlock } from "../../infra/substrate/events/output-blocks.js"
+import type { ChatInputLike } from "../../infra/substrate/events/chat-input.js"
 import { useWrappedLineCount } from "../terminal/text.js"
 
 /** A hidden composer keeps its draft. Sending resolves true only after runtime acceptance. */

@@ -1,4 +1,4 @@
-import { asRecord } from "../../../../../infra/record.js";
+import { asRecord } from "../../../../../infra/guards/record.js";
 
 interface AnthropicProviderMetadata {
   [key: string]: unknown;

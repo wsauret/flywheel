@@ -1,7 +1,7 @@
 import type { RuntimeExecutorState, RuntimeServiceState, SessionCatalogError, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
-import { createFamilyIntake } from "../../../../../src/protocol/client/family-intake.js"
-import { mergeCatalogRow } from "../../../../../src/protocol/client/known-totals.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
+import { createFamilyIntake } from "../../../../../src/protocol/client/runtime/family-intake.js"
+import { mergeCatalogRow } from "../../../../../src/protocol/client/session/known-totals.js"
 import { sessionCursor, workspaceDomainCursor, type RuntimeUiPatch } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 /** The session catalog as the client holds it: one row per session, fed by

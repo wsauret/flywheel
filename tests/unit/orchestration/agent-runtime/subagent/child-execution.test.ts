@@ -1,13 +1,13 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import * as abort from "../../../../../src/infra/abort.js";
+import * as abort from "../../../../../src/infra/timing/abort.js";
 import * as os from "node:os";
 import * as path from "node:path";
 import { rmSync } from "node:fs";
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js";
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-types.js";
+import { createRuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js";
+import type { RuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-types.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
 import type { SessionFact } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import type { LiveChildControl } from "../../../../../src/orchestration/session/control/live-session-control.js";

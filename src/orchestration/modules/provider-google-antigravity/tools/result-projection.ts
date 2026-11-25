@@ -1,6 +1,6 @@
-import type { CapabilityCheck } from "../../../../infra/capability-text.js"
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js"
 import { limitOutput, savedOutputNotice } from "../../../agent-runtime/tools/results/truncation.js"
-import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-schema.js"
+import type { LlmToolOutputPart } from "../../../../infra/providers/llm/tool-output-part-schema.js"
 
 // agy puts a `Created At: <time>\nCompleted At: <time>\n` envelope (78 bytes) before every tool result, and cuts a
 // result whose text blocks, joined with "\n", and envelope exceed 10,240 characters to a preview and a file that only

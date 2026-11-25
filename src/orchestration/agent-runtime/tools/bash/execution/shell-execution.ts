@@ -9,7 +9,7 @@ import { randomUUID } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 
-import { errorMessage } from "../../../../../infra/error-message.js";
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import type { BackgroundWorkRegistry } from "../../../../session/control/background-work/background-work.js";
 import type { ForegroundBashReleaseReason } from "../../../../session/control/background-work/foreground-bash-hold.js";

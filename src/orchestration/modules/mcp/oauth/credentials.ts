@@ -6,8 +6,8 @@ import {
   mutateLockedJsonStore,
   readLockedJsonStore,
   type LockedJsonStoreOptions,
-} from "../../../../infra/auth/store/locked-json-store.js";
-import { accountSecretFile } from "../../../../infra/paths.js";
+} from "../../../../infra/providers/auth/store/locked-json-store.js";
+import { accountSecretFile } from "../../../../infra/platform/files/paths.js";
 
 const DiskTokensSchema = Schema.Struct({
   access_token: Schema.String,

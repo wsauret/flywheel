@@ -5,8 +5,8 @@ import { closeFixtures, fixture as stateFixture } from "../_project-state-worker
 import { claimProjectServing, projectServingPids } from "../../../../../src/orchestration/app-service/account/projects/project-serving-lane.js"
 import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account/account-project-registry.js"
 import { createReplacementHandoffs } from "../../../../../src/orchestration/app-service/account/replacement-handoffs.js"
-import { openExistingContainedDirectory } from "../../../../../src/infra/descriptor-directory.js"
-import { acquireLockSyncIn, releaseLockIn } from "../../../../../src/infra/locks/ownership-file-lock.js"
+import { openExistingContainedDirectory } from "../../../../../src/infra/platform/files/descriptor-directory.js"
+import { acquireLockSyncIn, releaseLockIn } from "../../../../../src/infra/process/locks/ownership-file-lock.js"
 import { executionAskerOf } from "../../../../../src/orchestration/app-service/executor/project-executor-generations.js"
 
 afterEach(closeFixtures)

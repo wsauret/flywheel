@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url"
 import { randomUUID } from "node:crypto"
-import { moduleServiceHandle } from "../../../infra/module-service.js"
+import { moduleServiceHandle } from "../../../infra/definitions/modules/module-service.js"
 import { ownedCommandRunner } from "../../../infra/owned-command.js"
 import type { McpCallResult } from "../../agent-runtime/mcp/mcp-result.js"
 import type { ModuleProcessServices, ModuleServiceInstance } from "../../app-service/executor/execution/module-service-host.js"

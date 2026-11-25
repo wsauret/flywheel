@@ -1,6 +1,6 @@
 import { installedAccessProviderDefinitions } from "../../module-contract/module-composition.js";
-import type { ModelsClient } from "../../../infra/llm/models/models.js";
-import { recentScoreModel } from "../../../infra/llm/models/model-scores-document.js";
+import type { ModelsClient } from "../../../infra/providers/llm/models/models.js";
+import { recentScoreModel } from "../../../infra/providers/llm/models/model-scores-document.js";
 
 /** Benchmark scope comes from direct provider catalogs, never OpenRouter membership. */
 export function scoreCatalogModels(now: Date, client: ModelsClient): string[] {

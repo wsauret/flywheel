@@ -6,11 +6,11 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { buildSubagentTask } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-types.js";
+import { createRuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js";
+import type { RuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-types.js";
 import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
-import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
+import { composeModuleRuntimes } from "../../../../../src/infra/definitions/modules/module-runtime.js";
 import { testCapabilityModules, testDefinitionAvailability, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { makeContext as toolContext } from "../tools/_fixtures.js";
@@ -27,7 +27,7 @@ import { definitionAvailabilityOf } from "../../../../../src/orchestration/confi
 import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { asModelClient } from "../_model-client.js";
 import { makeOptions } from "../_runner-options.js";
-import type { EnvCaptureResolver } from "../../../../../src/infra/env-detection.js";
+import type { EnvCaptureResolver } from "../../../../../src/infra/environment/env-detection.js";
 
 /** The check of a child whose plan lets it call exactly `tools`. */
 const holding = (tools: readonly string[]) => (term: string): boolean => tools.includes(term);

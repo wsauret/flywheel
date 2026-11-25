@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test";
 import { Redacted } from "effect";
-import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
-import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription/subscription-spend-consent.js";
-import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription/subscription-account-identity.js";
-import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access/access-provider.js";
+import { captureProviderConnection } from "../../../../../src/infra/providers/auth/auth-context.js";
+import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/providers/auth/subscription/subscription-spend-consent.js";
+import { createSubscriptionAccountIdentity } from "../../../../../src/infra/providers/auth/subscription/subscription-account-identity.js";
+import type { AccessProviderCandidate } from "../../../../../src/infra/providers/llm/access/access-provider.js";
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/runner/factory.js";
-import { authDir } from "../../../../../src/infra/paths.js";
+import { authDir } from "../../../../../src/infra/platform/files/paths.js";
 import { AllCandidatesExhaustedError, LlmStreamError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import type { ProviderAvailability, QuotaStanding } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js";
 import { chain, failoverFailure, fakeAvailability, fakeClient, preparedRequest, singletonCandidate, subscriptionCandidate, textStream } from "./_provider-chain-harness.js";

@@ -4,11 +4,11 @@ import {
   maskStaleForTurn,
   maskToolResultsById,
 } from "../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message";
-import { DELIVERY_CONFIRMATION } from "../../../../../src/infra/delivery-confirmation.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types.js";
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js";
-import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
+import { DELIVERY_CONFIRMATION } from "../../../../../src/infra/substrate/output/notify/delivery-confirmation.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js";
+import { resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths.js";
 import { ConversationTreeStorage } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-storage.js";
 import { readStaleMaskSeed } from "../../../../../src/orchestration/agent-runtime/request/active-request-context.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";

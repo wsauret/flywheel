@@ -28,8 +28,8 @@
  * one-item list for every provider, and records the wrap on the call.
  */
 
-import { isRecord } from "../../../../../infra/record.js";
-import { parseToolArguments, readJsonValue, unfinishedToolArguments, type ParsedToolArguments } from "../../../../../infra/llm/json-parse.js";
+import { isRecord } from "../../../../../infra/guards/record.js";
+import { parseToolArguments, readJsonValue, unfinishedToolArguments, type ParsedToolArguments } from "../../../../../infra/providers/llm/json-parse.js";
 
 interface UnknownFields {
   [key: string]: unknown;

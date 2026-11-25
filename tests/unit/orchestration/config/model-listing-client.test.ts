@@ -1,22 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Redacted } from "effect";
-import { accessProviderCandidateKey, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderCatalogFetchInput, type AccessProviderCatalogFetchResult, type AccessProviderDefinition } from "../../../../src/infra/llm/access/access-provider.js";
-import { createModelListingClient, type ModelDiscoveryMode } from "../../../../src/infra/llm/access/model-listing.js";
+import { accessProviderCandidateKey, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderCatalogFetchInput, type AccessProviderCatalogFetchResult, type AccessProviderDefinition } from "../../../../src/infra/providers/llm/access/access-provider.js";
+import { createModelListingClient, type ModelDiscoveryMode } from "../../../../src/infra/providers/llm/access/model-listing.js";
 import { AUTH_ALL, AUTH_DIR, AUTH_NONE } from "./_model-listing-fixtures.js";
 import { testCapabilityModules, testProviderSelection } from "../../../helpers/provider-authority.js";
 import { credentialSlotClassifier } from "../../../../src/orchestration/module-contract/module-catalog.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { fakeModelsClient, modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { fakeFetch } from "../../../helpers/fake-fetch.js";
-import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
-import type { ModelFamily } from "../../../../src/infra/llm/models/model-family.js";
-import type { ModelsClient } from "../../../../src/infra/llm/models/models.js";
-import { offeringTransportFamily } from "../../../../src/infra/llm/catalog/model-catalog-resolution.js";
-import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
+import type { AuthContext } from "../../../../src/infra/providers/auth/auth-context.js";
+import type { ModelFamily } from "../../../../src/infra/providers/llm/models/model-family.js";
+import type { ModelsClient } from "../../../../src/infra/providers/llm/models/models.js";
+import { offeringTransportFamily } from "../../../../src/infra/providers/llm/catalog/model-catalog-resolution.js";
+import { AuthProfileStore } from "../../../../src/infra/providers/auth/store/auth-profile-store.js";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
+import { accessProviderAccountKey } from "../../../../src/infra/providers/auth/provider-account.js";
 
 const classifySlot = credentialSlotClassifier(testCapabilityModules());
 

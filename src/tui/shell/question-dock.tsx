@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { QuestionBlock, QuestionChoice } from "@infra/output-blocks"
+import type { QuestionBlock, QuestionChoice } from "@infra/substrate/events/output-blocks"
 import { MouseButton, StyledText, bg as stBg, bold as stBold, fg as stFg, type BoxRenderable, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { useQuestionInput } from "@tui/components/modal/question-input"

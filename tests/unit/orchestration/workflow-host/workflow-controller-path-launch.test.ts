@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { resolveWorkflowAgentRole } from "../../../../src/orchestration/config/models/role-selection.js"
 import { resolveSessionRoles } from "../../../../src/orchestration/agent-runtime/request/roles/session-roles.js"
 import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"

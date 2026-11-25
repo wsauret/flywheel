@@ -1,9 +1,9 @@
 import { captureModuleRequestSections } from "../config/request-config.js"
 import { Effect, Exit, Scope } from "effect"
-import { errorMessage as extractErr } from "../../infra/error-message.js"
-import { createEmit, EventBus } from "../../infra/event-bus.js"
+import { errorMessage as extractErr } from "../../infra/diagnostics/error-message.js"
+import { createEmit, EventBus } from "../../infra/substrate/events/event-bus.js"
 import { Log } from "../../infra/diagnostics/log.js"
-import { EventStoreWriterService, type EventStoreRuntime } from "../../infra/store/event-store-effect.js"
+import { EventStoreWriterService, type EventStoreRuntime } from "../../infra/substrate/store/event-store-effect.js"
 import type { ChatRunner } from "./runner-types.js"
 import type { StartModelWorkflow } from "../agent-runtime/tools/definitions/workflow-tool.js"
 import { createChatSession } from "./session.js"
@@ -13,7 +13,7 @@ import { TITLE_GENERATION_ROLE_ID } from "../config/roles.js"
 import type { FlywheelConfig } from "../config/schema/schema.js"
 import { bindWorkflowDepsToSession, type PrepareWorkflowDepsInput, type WorkflowDeps } from "../agent-runtime/runner/workflow-deps.js"
 import { personaRoleIds, type ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js"
-import type { ModuleServices } from "../../infra/module-service.js"
+import type { ModuleServices } from "../../infra/definitions/modules/module-service.js"
 import { ensureSessionRoleSnapshot } from "../config/models/session-role-resolver.js"
 import { createSessionRoleResolver } from "../agent-runtime/request/roles/session-roles.js"
 import { acquireSessionResources } from "../session/persistence/session-resources-service.js"
@@ -26,7 +26,7 @@ import type { SessionAuthAdmission } from "../auth/session-auth-profile.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { CommandHandoverAuthority } from "../agent-runtime/background-execution/command-handover.js"
 import { ownedCommandRunner } from "../../infra/owned-command.js"
-import type { KeyResolver } from "../../infra/auth/resolve-key.js"
+import type { KeyResolver } from "../../infra/providers/auth/resolve-key.js"
 import type { ChatEntryPatch } from "../session-store/types.js"
 import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js"
 import type { ModulePolicy } from "../config/policy/module-policy.js"
@@ -35,7 +35,7 @@ import { unattendedModuleIds } from "../module-contract/module-catalog.js"
 
 import type { RecallInput, RecallResult } from "../../protocol/transcript/conversation-recall.js"
 import type { AttachChildSessionProjection } from "../module-contract/module-seams.js"
-import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../infra/substrate/store/event-store-types.js"
 type ChatUpdateEntryFn = (patch: ChatEntryPatch) => void
 
 export interface ChatRunnerDeps {
@@ -53,6 +53,8 @@ export interface ChatRunnerDeps {
   /** Definition owner of this project: briefs, workflows, and skill revisions. */
   definitions: ProjectDefinitionRegistry
   updateEntry: ChatUpdateEntryFn
+  /** `ChatSessionDeps.refreshDisplay`. */
+  refreshDisplay: () => Promise<void>
   attachChildProjection?: AttachChildSessionProjection
   runtime: EventStoreRuntime
   projectionReader: AsyncEventStateReadSurface
@@ -250,6 +252,7 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
       conversationId: deps.conversationId,
       metricsWriter: updateEntry,
       updateEntry,
+      refreshDisplay: deps.refreshDisplay,
       onChatMetadata: deps.onChatMetadata,
       onSessionName: deps.onSessionName,
       hasPriorBlocks: deps.hasPriorBlocks,

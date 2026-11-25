@@ -1,7 +1,7 @@
 import type { Accessor } from "solid-js"
 import { createSignal } from "solid-js"
-import type { DebouncedWriter } from "../../../infra/debounced-writer.js"
-import { createDebouncedWriter } from "../../../infra/debounced-writer.js"
+import type { DebouncedWriter } from "../../../infra/async/debounced-writer.js"
+import { createDebouncedWriter } from "../../../infra/async/debounced-writer.js"
 
 const MAX_ENTRIES = 500
 

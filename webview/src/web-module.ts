@@ -1,8 +1,8 @@
 import type { Accessor, Component } from "solid-js"
 
 import type { ModuleId } from "../../src/protocol/runtime/module-ids.js"
-import type { RuntimeConnection } from "../../src/protocol/client/connection.js"
-import type { FaultReach } from "../../src/protocol/client/runtime-fault-copy.js"
+import type { RuntimeConnection } from "../../src/protocol/client/runtime/connection.js"
+import type { FaultReach } from "../../src/protocol/client/runtime/copy/runtime-fault-copy.js"
 import type { RuntimeHealth } from "../../src/protocol/runtime/app-service-types.js"
 import type { ModuleRow, DomainReader } from "../../src/protocol/protocol-module.js"
 import type { ClientHost } from "./host.js"

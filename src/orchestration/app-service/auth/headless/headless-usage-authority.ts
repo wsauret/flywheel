@@ -1,4 +1,4 @@
-import { createUsageAuthority, type UsageAuthority } from "../../../../infra/llm/usage/usage-authority.js"
+import { createUsageAuthority, type UsageAuthority } from "../../../../infra/providers/llm/usage/usage-authority.js"
 import type { UsageSettlementAuthorityLease } from "../../../session/history/usage-settlement.js"
 
 interface HeadlessUsageProfile {

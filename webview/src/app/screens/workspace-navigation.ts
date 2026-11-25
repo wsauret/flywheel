@@ -1,5 +1,5 @@
 import { batch, createSignal, type Accessor } from "solid-js"
-import type { ClientSheetId } from "../../../../src/protocol/client/host-contract.js"
+import type { ClientSheetId } from "../../../../src/protocol/client/host/host-contract.js"
 
 /** Owns page-local workspace and modal destinations, independent of session selection. */
 export function createWorkspaceNavigation(canDock: Accessor<boolean>) {

@@ -11,11 +11,11 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { createGenerationMeasurement } from "../../../../../../../src/orchestration/agent-runtime/loop/turn/generation-measurement.js";
 import OpenAI from "openai";
-import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../../../src/infra/providers/llm/models/models.js";
 import { createChatCompletionsAdapter } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions.js";
 import { chatCompletionsTarget, toChatCompletionsMessages } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions-messages.js";
 import type { ProviderStreamEvent } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 
 const PNG = { type: "image" as const, mediaType: "image/png", data: "AAA" };
 

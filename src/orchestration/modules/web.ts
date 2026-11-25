@@ -1,4 +1,4 @@
-import { moduleRuntimeHandle } from "../../infra/module-runtime.js";
+import { moduleRuntimeHandle } from "../../infra/definitions/modules/module-runtime.js";
 import type { ToolDeclaration } from "../module-contract/module-seams.js";
 import { createWebTool, WEB_TOOL_DEFINITION } from "../agent-runtime/tools/web.js";
 import type { RuntimeToolSurfaces } from "../agent-runtime/types.js";

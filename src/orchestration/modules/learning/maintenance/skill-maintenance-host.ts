@@ -16,11 +16,11 @@
  *  library too large to decide over at once refuses early with a reason,
  *  rather than failing on a provider's own refusal. */
 
-import type { StartupDirectories } from "../../../../infra/directory-authorities.js"
-import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../../infra/auth/resolve-key.js"
+import type { StartupDirectories } from "../../../../infra/platform/files/directory-authorities.js"
+import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../../infra/providers/auth/resolve-key.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { AuthProfileManager } from "../../../auth/auth-profile-manager.js"
 import { captureRuntimeConfigRequest } from "../../../config/request-config.js"
 import { runHeadlessBootstrap } from "../../../app-service/headless/headless-bootstrap.js"

@@ -1,6 +1,6 @@
 import { batch, createEffect, createMemo, createSignal, type Accessor, type JSX } from "solid-js"
 import { createKeyedListSelection } from "./create-keyed-list-selection.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import type { RuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 import type { BackgroundWorkRow, BackgroundWorkTarget } from "../../../../protocol/session/background-index-protocol-types.js"
 import {
@@ -11,7 +11,7 @@ import {
   type BackgroundIndexEntry,
   type BackgroundIndexFilter,
   type BackgroundIndexState,
-} from "../../../../protocol/client/background-index.js"
+} from "../../../../protocol/client/work/background-index.js"
 import { sessionServingSelection } from "../../../../protocol/auth/role-protocol-types.js"
 import { createListModalKeys } from "../../../components/modal/select/modal-list-keys.js"
 import { flattenWithCategories } from "../../../components/modal/select/modal-select-helpers.js"

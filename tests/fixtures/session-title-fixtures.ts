@@ -1,5 +1,5 @@
 import { Redacted } from "effect"
-import type { AuthContext } from "../../src/infra/auth/auth-context.js"
+import type { AuthContext } from "../../src/infra/providers/auth/auth-context.js"
 import { FIXTURE_EXECUTION_CWD, testDirectories } from "../helpers/directories.js"
 import { authProviders } from "../helpers/auth-context.js"
 

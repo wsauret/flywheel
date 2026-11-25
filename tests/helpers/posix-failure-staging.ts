@@ -8,7 +8,7 @@
  *  failure to observe. Windows holds privacy through ACLs instead, which
  *  windows-private-directory-acl.test.ts covers.
  *
- *  A directory fsync. `fsyncDirectory` in src/infra/atomic-write.ts returns
+ *  A directory fsync. `fsyncDirectory` in src/infra/platform/files/atomic-write.ts returns
  *  early on Windows because the platform has no portable directory sync
  *  boundary, so a case that injects a failing directory sync, or asserts one
  *  happened, describes a step that does not run there.

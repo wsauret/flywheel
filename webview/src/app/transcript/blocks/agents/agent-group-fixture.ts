@@ -1,5 +1,5 @@
 import type { ChildSessionRow, FrontendEvent, FrontendMutation } from "../../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../../src/protocol/client/runtime/connection.js"
 import type { RuntimeSessionDetailSnapshotResult } from "../../../../../../src/protocol/session/session-detail-protocol-types.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../../../tests/helpers/runtime-dispatch.js"
 import { createRuntimeSession } from "../../../../client/session/session.js"

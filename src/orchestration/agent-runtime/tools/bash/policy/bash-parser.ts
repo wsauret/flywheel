@@ -1,7 +1,7 @@
 import type { Node, Parser } from "web-tree-sitter";
-import { errorDetail, errorMessage } from "../../../../../infra/error-message.js";
+import { errorDetail, errorMessage } from "../../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
-import { loadTreeSitterParser } from "../../../../../infra/tree-sitter-parser.js";
+import { loadTreeSitterParser } from "../../../../../infra/parsing/tree-sitter-parser.js";
 
 export async function loadBashParser(): Promise<Parser> {
   return loadTreeSitterParser("bash");

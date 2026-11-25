@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { Schema } from "effect";
 import { readJsonFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { AcceptanceRecordSchema } from "./acceptance.js";
-import { EffortSchema } from "../../src/infra/workflow-types.js";
+import { EffortSchema } from "../../src/infra/definitions/workflow/workflow-types.js";
 import { CampaignAttemptSchema, CampaignCount, CampaignHash, CampaignId, CampaignManifestV2Fields, CampaignOutcomeV2Fields, CampaignText, CampaignTreatmentFields, ClaudeCodeTreatmentFields, createCampaignLedger } from "./campaign-store.js";
 
 export const ChatTaskSchema = Schema.Struct({ id: CampaignId, stratum: CampaignText, contentIdentity: CampaignHash, timeoutMs: CampaignCount });

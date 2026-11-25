@@ -1,6 +1,6 @@
 import type { Accessor, JSX } from "solid-js"
 import type { RuntimeClient, RuntimeHealth } from "../protocol/runtime/app-service-types.js"
-import type { RuntimeFaultCopy } from "../protocol/client/runtime-fault-copy.js"
+import type { RuntimeFaultCopy } from "../protocol/client/runtime/copy/runtime-fault-copy.js"
 import type { ModuleId } from "../protocol/runtime/module-ids.js"
 import type { RuntimeAuthView } from "../protocol/auth/auth-status-protocol-types.js"
 import type { ModalContext } from "./components/modal-stack.js"

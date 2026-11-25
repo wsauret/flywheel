@@ -1,11 +1,11 @@
 /** @jsxImportSource @opentui/solid */
 
-import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry as ToolEntryType, type ToolStreamingText } from "@infra/output-blocks"
+import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry as ToolEntryType, type ToolStreamingText } from "@infra/substrate/events/output-blocks"
 import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
-import { toolActivity, toolProcess } from "../../../../protocol/client/transcript-model.js"
-import { conflictMarkersNotice, isShellMutationEntry, isShellMutationRunning, notAppliedNotice, presentsAsFileChange, rowPresentation, rowWritePolicy, selectFileChangeBody, shellMutationFiles, showsShellMutationOutput } from "../../../../protocol/client/file-change-body.js"
+import { toolActivity, toolProcess } from "../../../../protocol/client/chat/transcript/transcript-model.js"
+import { isShellMutationEntry, isShellMutationRunning, mutationEvidenceNotices, presentsAsFileChange, rowPresentation, rowWritePolicy, selectFileChangeBody, shellMutationFiles, showsShellMutationOutput } from "../../../../protocol/client/chat/transcript/file-change-body.js"
 import { totalDiffOmittedLines } from "../../../../protocol/transcript/diff-omission.js"
-import { getToolDisplay } from "@infra/tools/tool-display-registry.js"
+import { getToolDisplay } from "@infra/substrate/output/tools/tool-display-registry.js"
 import { StyledText, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { highlightExecuteInputs, highlightToolDetail, linkifyChunks } from "@tui/adapters/tool-detail-highlight.js"
 import { CollapsibleBox } from "@tui/components/layout/collapsible-box"
@@ -21,7 +21,7 @@ import { hasSelectedCells } from "@tui/terminal/selection.js"
 import { stStrike } from "@tui/terminal/text-attributes.js"
 import { BlankVerticalBarBorder, VerticalBarBorder } from "@tui/transcript/output-blocks/border"
 import { useRenderer } from "@opentui/solid"
-import { type Accessor, batch, createEffect, createMemo, createSignal, Show } from "solid-js"
+import { type Accessor, batch, createEffect, createMemo, createSignal, For, Show } from "solid-js"
 import { fileDisclosureKey, useBlockDisclosure } from "@tui/context/transcript/block-disclosure.js"
 import { useLandingBackground } from "@tui/context/transcript/landing-highlight.js"
 import type { DiffColorMode } from "../../../../orchestration/config/schema/schema.js"
@@ -36,7 +36,7 @@ import {
 } from "../tool-entry-helpers.js"
 import { wrapToolRowChunks } from "./tool-row-wrap.js"
 import { processControlChunks, processorWaitChunks, rowProcessControl, rowWaitsForProcessor, type RowProcessControl, type RowProcessControls } from "../stop-affordance.js"
-import { markToolResultMounted } from "../../../../infra/render-probe.js"
+import { markToolResultMounted } from "../../../../infra/substrate/output/render-probe.js"
 import { PreviewViewport } from "./preview-viewport.js"
 
 
@@ -436,20 +436,13 @@ export function ToolEntry(props: ToolEntryProps) {
           </box>
         )}
       </Show>
-      <Show when={(evidence()?.conflictMarkers ?? 0) > 0 ? evidence() : undefined}>
-        {(summary) => (
+      <For each={mutationEvidenceNotices(evidence())}>
+        {(notice) => (
           <box paddingLeft={2}>
-            <text fg={theme.warning} wrapMode="word">{conflictMarkersNotice(summary())}</text>
+            <text fg={theme.warning} wrapMode="word">{notice}</text>
           </box>
         )}
-      </Show>
-      <Show when={(evidence()?.notApplied ?? 0) > 0 ? evidence() : undefined}>
-        {(summary) => (
-          <box paddingLeft={2}>
-            <text fg={theme.warning} wrapMode="word">{notAppliedNotice(summary())}</text>
-          </box>
-        )}
-      </Show>
+      </For>
       <Show when={hasExpandable()}>
         <CollapsibleBox
           ref={toggle.body}

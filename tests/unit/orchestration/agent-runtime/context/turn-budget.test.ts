@@ -13,7 +13,7 @@ import {
   turnBudgetChars,
 } from "../../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js";
 
-import { messageInput } from "../../../../../src/infra/agent-loop-events.js";
+import { messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";

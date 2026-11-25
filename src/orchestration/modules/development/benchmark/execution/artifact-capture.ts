@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { open } from "node:fs/promises";
-import { errorMessage } from "../../../../../infra/error-message.js";
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js";
 import type { HeadlessBenchmarkExecution } from "./headless-execution-contract.js";
 
 /** Drain raw bytes into a new private artifact before consuming them. Existing files are refused. */

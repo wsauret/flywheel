@@ -3,7 +3,7 @@ import { createRoot, createSignal } from "solid-js"
 import type { TabInfo } from "../../../../src/tui/hooks/create-tabs.js"
 import { createFocusedSessionReadiness, useOpenSessionRunners } from "../../../../src/tui/hooks/use-open-session-runners.js"
 import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
-import { createOpenSessionKeeper } from "../../../../src/protocol/client/open-session-keeper.js"
+import { createOpenSessionKeeper } from "../../../../src/protocol/client/session/open-session-keeper.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { recordedDispatch, runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 

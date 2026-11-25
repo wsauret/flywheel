@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs"
 
-import type { StartupDirectories } from "../../infra/directory-authorities.js"
-import { errorMessage } from "../../infra/error-message.js"
-import type { ExternalUrlOpener } from "../../infra/open-external-url.js"
-import { accountHubOrigin } from "../../infra/paths.js"
+import type { StartupDirectories } from "../../infra/platform/files/directory-authorities.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import type { ExternalUrlOpener } from "../../infra/substrate/output/notify/open-external-url.js"
+import { accountHubOrigin } from "../../infra/platform/files/paths.js"
 import { releaseHarnessHub } from "../account-service/release-harness.js"
 import type { AccountRuntimeAttach } from "../account-service/runtime-attach.js"
 

@@ -8,7 +8,7 @@
 import { expect, test } from "bun:test"
 import { createReplacementOwner } from "../../../../../src/orchestration/app-service/account/replacement-owner.js"
 import { createServiceRestart } from "../../../../../src/orchestration/app-service/account/service-restart.js"
-import { RESTART_NO_STARTER_REASON, RESTART_UNCHECKED_REASON } from "../../../../../src/protocol/client/service-restart-copy.js"
+import { RESTART_NO_STARTER_REASON, RESTART_UNCHECKED_REASON } from "../../../../../src/protocol/client/runtime/copy/service-restart-copy.js"
 
 function harness(refusal: string | undefined, blockers: () => Promise<readonly []> = async () => []) {
   const events: string[] = []

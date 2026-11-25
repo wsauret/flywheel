@@ -1,4 +1,4 @@
-import type { StreamingToolTextOp, ValueEdit } from "../../infra/output/output-block-delta.js"
+import type { StreamingToolTextOp, ValueEdit } from "../../infra/substrate/output/output-block-delta.js"
 import type { FrontendOutputBlock, FrontendToolStreamingText } from "../runtime/app-service-types.js"
 import type { RuntimeSessionCursorIdentity, RuntimeUiPatchPayload } from "../runtime/runtime-ui-protocol-types.js"
 

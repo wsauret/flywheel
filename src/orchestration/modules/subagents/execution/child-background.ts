@@ -1,4 +1,4 @@
-import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import { probeLoopUnit, trackLoopSpan } from "../../../../infra/diagnostics/event-loop-lag.js";
 import { createBackgroundExecutionOwner } from "../../../agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry, type ActiveBackgroundCommandDescriptor } from "../../../session/control/background-work/background-work.js";

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import type { ReasoningEffort } from "../../../../infra/llm/models/models.js";
+import type { ReasoningEffort } from "../../../../infra/providers/llm/models/models.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js";
-import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import { renderMessage } from "./history-text.js";
 
 /** A prompt that the bridge sends to an engine session and that canonical history never holds: the fixed primer that

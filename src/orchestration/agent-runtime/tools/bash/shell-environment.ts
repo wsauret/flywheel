@@ -2,7 +2,7 @@ import { delimiter, join } from "node:path";
 import process from "node:process";
 
 import { backgroundShellModuleRequirements } from "../../../module-contract/module-requirements.js";
-import { AGENT_SESSION_ENV, runsThroughBun } from "../../../../infra/cli-subprocess.js";
+import { AGENT_SESSION_ENV, runsThroughBun } from "../../../../infra/platform/cli-subprocess.js";
 import { buildBunShims, isWindows, shellCommandInvocation, type RuntimePlatform } from "./bash-script.js";
 import { foregroundCommandLifetime } from "./bash-guidance.js";
 import { installSearchShims } from "./search-shims.js";

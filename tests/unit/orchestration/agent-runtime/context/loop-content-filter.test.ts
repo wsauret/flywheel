@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ModelClient, type ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

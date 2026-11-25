@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { tmpdir } from "node:os"
 
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js"
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
 import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js"
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js"

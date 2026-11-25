@@ -1,7 +1,7 @@
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { isRecord } from "../src/infra/record.js";
+import { isRecord } from "../src/infra/guards/record.js";
 
 // The review tool for the third-party components of the Bun runtime that `bun build --compile` embeds in the flywheel
 // binary. The component list is the one in Bun's own LICENSE.md at the bun-v1.4.4 tag. The test cases under

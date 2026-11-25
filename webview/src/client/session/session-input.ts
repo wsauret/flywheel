@@ -1,12 +1,12 @@
 import type { FrontendMutation, ProtocolChatAttachment, SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { AgentInputAnswer } from "../../../../src/protocol/session/question-protocol-types.js"
-import { createChatSubmissions, type ChatSubmissionResult, type ChatSubmissions, type LocalChatSubmission, type LocalRecall, type UnsentChatSubmission } from "../../../../src/protocol/client/chat-submissions.js"
-import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
-import { lostWithLane } from "../../../../src/protocol/client/connection-failures.js"
-import { dispatchInterrupt, resumeMutation, sessionControls, stopMutation } from "../../../../src/protocol/client/session-controls.js"
-import { NO_PROVIDER_READY, settledProviderSetup, type ProviderSetup } from "../../../../src/protocol/client/provider-setup.js"
+import { createChatSubmissions, type ChatSubmissionResult, type ChatSubmissions, type LocalChatSubmission, type LocalRecall, type UnsentChatSubmission } from "../../../../src/protocol/client/chat/chat-submissions.js"
+import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
+import { lostWithLane } from "../../../../src/protocol/client/runtime/connection-failures.js"
+import { dispatchInterrupt, resumeMutation, sessionControls, stopMutation } from "../../../../src/protocol/client/work/session-controls.js"
+import { NO_PROVIDER_READY, settledProviderSetup, type ProviderSetup } from "../../../../src/protocol/client/providers/provider-setup.js"
 import { describeFailure } from "../format/failure-message.js"
-import type { HoldOutcome } from "../../../../src/protocol/client/held-session-details.js"
+import type { HoldOutcome } from "../../../../src/protocol/client/session/held-session-details.js"
 
 /** Dispatches input and controls against current admission, not catalog membership.
  * Refusals reject so the existing client action boundary can report them.

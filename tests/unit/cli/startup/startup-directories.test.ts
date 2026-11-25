@@ -8,7 +8,7 @@ import {
   selectInteractiveStartupDirectories,
   selectStartupDirectories,
   type StartupDirectoryFallbackCandidate,
-} from "../../../../src/infra/directory-authorities.js"
+} from "../../../../src/infra/platform/files/directory-authorities.js"
 import { rootCliAction } from "../../../../src/cli/root-args.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 

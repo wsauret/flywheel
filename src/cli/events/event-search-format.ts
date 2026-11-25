@@ -1,5 +1,5 @@
-import { asRecord } from "../../infra/record.js"
-import { rowTimestamp, type EventSearchRow, type MergedEventTypeSummary } from "../../infra/store/event-search.js"
+import { asRecord } from "../../infra/guards/record.js"
+import { rowTimestamp, type EventSearchRow, type MergedEventTypeSummary } from "../../infra/substrate/store/event-search.js"
 import type { ProviderRequestPromptReconstruction } from "../../orchestration/agent-runtime/loop/provider-request-audit-reconstruction.js"
 
 interface Payload {

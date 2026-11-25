@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { checkModelCatalog } from "../../../scripts/check-model-catalog.js";
 import { prepareBundledModelsSnapshot } from "../../../scripts/refresh-models-snapshot.js";
-import { admitModelsDocument } from "../../../src/infra/llm/models/models-document.js";
+import { admitModelsDocument } from "../../../src/infra/providers/llm/models/models-document.js";
 import type { MutableCombinedModelsDevDocument } from "../../helpers/model-catalog-fixtures.js";
 
 interface ModelDocument {

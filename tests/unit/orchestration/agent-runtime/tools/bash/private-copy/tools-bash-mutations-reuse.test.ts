@@ -7,11 +7,11 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { DebugLog } from "../../../../../../../src/infra/diagnostics/debug-log.js";
-import { asAsyncEventWriter } from "../../../../../../../src/infra/store/event-store-types.js";
+import { asAsyncEventWriter } from "../../../../../../../src/infra/substrate/store/event-store-types.js";
 import type { OwnedProcess } from "../../../../../../../src/infra/supervision/launch/owned-subprocess.js";
-import { resolveEventStoreDbFile } from "../../../../../../../src/infra/paths.js";
-import { asRecord } from "../../../../../../../src/infra/record.js";
-import { createSqliteEventStore } from "../../../../../../../src/infra/store/sqlite-event-store.js";
+import { resolveEventStoreDbFile } from "../../../../../../../src/infra/platform/files/paths.js";
+import { asRecord } from "../../../../../../../src/infra/guards/record.js";
+import { createSqliteEventStore } from "../../../../../../../src/infra/substrate/store/sqlite-event-store.js";
 import { loadBashParser } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { temporaryDirectories } from "../../../../../../helpers/directories.js";
 import { handoverAuthority } from "../../../_command-handover-fixtures.js";

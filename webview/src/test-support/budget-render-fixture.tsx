@@ -1,8 +1,8 @@
 import { createComponent, createRoot, createSignal, type JSX } from "solid-js"
 
 import type { MutationResult, RuntimeHealth, RuntimeRestartReadiness } from "../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
-import type { BudgetSummary } from "../../../src/protocol/client/host-contract.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
+import type { BudgetSummary } from "../../../src/protocol/client/host/host-contract.js"
 import type { UpdateStatus, UpdateStatusView } from "../../../src/protocol/runtime/update-protocol-types.js"
 import type { ClientViewState, SessionSummary } from "../client/session/view-state.js"
 import { createModuleDomainMonitors, type ModuleDomainViews } from "../client/domains/module-domain-views.js"

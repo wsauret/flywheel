@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto"
-import type { AccessProviderCandidate, AccessProviderCatalogProvenance } from "../../../infra/llm/access/access-provider.js"
+import type { AccessProviderCandidate, AccessProviderCatalogProvenance } from "../../../infra/providers/llm/access/access-provider.js"
 import { Schema } from "effect"
-import { ProviderErrorDiagnosticSchema, type ProviderErrorDiagnostic } from "../../../infra/llm/errors/provider-error-diagnostic.js"
-import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js"
+import { ProviderErrorDiagnosticSchema, type ProviderErrorDiagnostic } from "../../../infra/providers/llm/errors/provider-error-diagnostic.js"
+import type { ProviderRequestOptions } from "../../../infra/providers/llm/access/provider-options.js"
 
 /** The ids of the interaction profiles that a request is served with (`resolveModelInteractionProfile`). */
 export const MODEL_INTERACTION_PROFILE_IDS = Object.freeze(["default"] as const)

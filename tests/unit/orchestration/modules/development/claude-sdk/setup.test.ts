@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { captureSubscriptionCredentials } from "../../../../../../src/infra/auth/auth-context.js";
-import { AuthProfileStore } from "../../../../../../src/infra/auth/store/auth-profile-store.js";
-import { authDir } from "../../../../../../src/infra/paths.js";
+import { captureSubscriptionCredentials } from "../../../../../../src/infra/providers/auth/auth-context.js";
+import { AuthProfileStore } from "../../../../../../src/infra/providers/auth/store/auth-profile-store.js";
+import { authDir } from "../../../../../../src/infra/platform/files/paths.js";
 import { createClaudeAgentSdkModule } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import { CLAUDE_SDK_PROFILE, setupClaudeSdkHome, setupClaudeSdkProfile } from "../../../../../../src/orchestration/modules/development/claude-sdk/setup.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";

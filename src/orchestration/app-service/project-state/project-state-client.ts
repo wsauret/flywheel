@@ -13,12 +13,12 @@ import {
   type GuardedEventStoreAppend,
   storedFact,
   type StoredFact,
-} from "../../../infra/store/event-store-types.js"
-import { InvariantViolation } from "../../../infra/invariant.js"
+} from "../../../infra/substrate/store/event-store-types.js"
+import { InvariantViolation } from "../../../infra/guards/invariant.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { errorMessage } from "../../../infra/error-message.js"
-import type { ContentResolver } from "../../../infra/runtime-facts/tool-content.js"
-import { storedToolContentReferences } from "../../../infra/store/tool-content-hydration.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import type { ContentResolver } from "../../../infra/substrate/runtime-facts/tool-content.js"
+import { storedToolContentReferences } from "../../../infra/substrate/store/tool-content-hydration.js"
 import type { SessionMetadataChange } from "../../session/manager.js"
 import { createProjectStateSessionManager, type ProjectStateSessionManager } from "./project-state-sessions.js"
 import { createProjectStateCommitWindow } from "./project-state-commit-window.js"

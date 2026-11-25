@@ -1,6 +1,6 @@
-import type { ChatInput, ChatInputLike } from "../../../infra/chat-input.js"
+import type { ChatInput, ChatInputLike } from "../../../infra/substrate/events/chat-input.js"
 import { batch, onCleanup } from "solid-js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { startupTrace } from "../../../infra/diagnostics/startup-trace.js"
 import type { FrontendMutation, MutationResult, SessionCatalogRow } from "../../../protocol/runtime/app-service-types.js"
 import type { ShellServices, ShellSignals } from "../state/shell-state.js"

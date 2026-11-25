@@ -1,7 +1,7 @@
-import { TOOL_PREVIEW_LINE_LIMIT } from "../../../infra/output-blocks.js"
-import { getToolDisplay } from "../../../infra/tools/tool-display-registry.js"
-import { toolRunCategoryFor } from "../../../protocol/client/tool-run-category.js"
-import { watchRowView } from "../../../protocol/client/transcript-model.js"
+import { TOOL_PREVIEW_LINE_LIMIT } from "../../../infra/substrate/events/output-blocks.js"
+import { getToolDisplay } from "../../../infra/substrate/output/tools/tool-display-registry.js"
+import { toolRunCategoryFor } from "../../../protocol/client/chat/transcript/tool-run-category.js"
+import { watchRowView } from "../../../protocol/client/chat/transcript/transcript-model.js"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../protocol/runtime/app-service-types.js"
 
 export interface OutputHeightEstimate {

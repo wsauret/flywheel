@@ -6,7 +6,7 @@ import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
 import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/rpc/runtime-cursor-schemas.js"
 import { ProviderModelViewSchema, RuntimeProviderModelsQuerySchema, RuntimeSetProviderModelMutationSchema } from "../../../../src/protocol/auth/provider-model-preference-protocol-schemas.js"
 import { runtimeDispatchResultSchema } from "../../../../src/protocol/rpc/runtime-dispatch-result-schemas.js"
-import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
+import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 
 const contractFiles = [
@@ -16,7 +16,7 @@ const contractFiles = [
   "src/protocol/auth/auth-profile-selection-protocol-types.ts", "src/protocol/auth/provider-model-preference-protocol-types.ts",
   "src/protocol/auth/provider-model-preference-protocol-schemas.ts", "src/protocol/session/status-protocol-types.ts",
   "src/protocol/session/budget-protocol-types.ts", "src/protocol/session/workflow-view-protocol-types.ts", "src/protocol/modules/experiments.ts",
-  "src/protocol/protocol-module.ts", "src/protocol/modules.ts", "src/protocol/client/module-domain.ts",
+  "src/protocol/protocol-module.ts", "src/protocol/modules.ts", "src/protocol/client/modules/module-domain.ts",
   "src/protocol/session/question-protocol-types.ts", "src/protocol/runtime/update-protocol-types.ts",
   "src/protocol/runtime/module-protocol-types.ts", "src/protocol/modules/definition-overrides.ts",
   "src/protocol/modules/papercuts.ts", "src/protocol/modules/subagents.ts", "src/protocol/modules/subscription-usage.ts", "src/protocol/rpc/schema-union.ts"]

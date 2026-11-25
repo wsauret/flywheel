@@ -4,8 +4,8 @@
 // no new capability (there is no second exit controller to inject). Consistent with
 // the Dependency Inversion rule of docs/elegance.md: when a rule produces indirection without depth, don't.
 
-import { errorDetail, errorMessage } from "../../infra/error-message.js"
-import type { LaunchState } from "../../infra/distribution/launch-state.js"
+import { errorDetail, errorMessage } from "../../infra/diagnostics/error-message.js"
+import type { LaunchState } from "../../infra/update/distribution/launch-state.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import { armProcessWatchdog } from "../../infra/supervision/process-watchdog.js"
 

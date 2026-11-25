@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createSideQuestionHost } from "../../../../../src/orchestration/modules/side-question/host.js"
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js"
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 import type { AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"
 
 function fixture() {

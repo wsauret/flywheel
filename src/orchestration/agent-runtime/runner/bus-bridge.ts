@@ -5,10 +5,10 @@
  * runners can no-op uniformly without bespoke guards at each call site.
  */
 
-import type { LogicalTurnStartedContext, TurnParkedContext } from "../../../infra/agent-loop-events.js"
-import type { EmitFn } from "../../../infra/event-bus.js"
-import type { RuntimeEvent } from "../../../infra/runtime-facts/runtime-event-types.js"
-import type { SessionNoticeOperation } from "../../../infra/session-notice.js"
+import type { LogicalTurnStartedContext, TurnParkedContext } from "../../../infra/substrate/events/agent-loop-events.js"
+import type { EmitFn } from "../../../infra/substrate/events/event-bus.js"
+import type { RuntimeEvent } from "../../../infra/substrate/runtime-facts/runtime-event-types.js"
+import type { SessionNoticeOperation } from "../../../infra/substrate/events/session-notice.js"
 import type { AgentLifecycleCallbacks } from "../types.js"
 
 export function createRunnerBusBridge(deps: {

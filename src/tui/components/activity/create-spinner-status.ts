@@ -1,10 +1,10 @@
 import type { Accessor } from "solid-js"
 import { createEffect, createMemo, on } from "solid-js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import type { ConnectionState, StreamPhase } from "../../../infra/output-blocks.js"
-import type { SessionNotice } from "../../../infra/session-notice.js"
+import type { ConnectionState, StreamPhase } from "../../../infra/substrate/events/output-blocks.js"
+import type { SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 import type { StatusView } from "../../../protocol/session/status-protocol-types.js"
-import { replyWaitLabel } from "../../../protocol/client/session-controls.js"
+import { replyWaitLabel } from "../../../protocol/client/work/session-controls.js"
 import type { AnimationState } from "./spinner-status-model.js"
 import {
   advanceAnimation,

@@ -1,10 +1,10 @@
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
-import type { ResidentLanes } from "../../../../../src/protocol/client/residency.js"
-import type { ReadingState } from "../../../../../src/protocol/client/reading-state.js"
-import type { LocalChatSubmission } from "../../../../../src/protocol/client/chat-submissions.js"
-import { createSessionChangesController, type SessionChangesController } from "../../../../../src/protocol/client/session-changes.js"
-import { backgroundIndexState, createBackgroundIndexReadings, type BackgroundIndexState, type HeldBackgroundIndex } from "../../../../../src/protocol/client/background-index.js"
-import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../../../../src/protocol/client/transcript-store.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
+import type { ResidentLanes } from "../../../../../src/protocol/client/session/residency.js"
+import type { ReadingState } from "../../input/reading-state.js"
+import type { LocalChatSubmission } from "../../../../../src/protocol/client/chat/chat-submissions.js"
+import { createSessionChangesController, type SessionChangesController } from "../../../../../src/protocol/client/session/changes/session-changes.js"
+import { backgroundIndexState, createBackgroundIndexReadings, type BackgroundIndexState, type HeldBackgroundIndex } from "../../../../../src/protocol/client/work/background-index.js"
+import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../../../../src/protocol/client/chat/transcript/transcript-store.js"
 import type { HydratedOutputBlockBody } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
 import { CHAT_SLOT } from "./active-model.js"
 import { createSessionModuleMonitors, type SessionModuleMonitors } from "../../domains/module-domain-views.js"
@@ -51,7 +51,7 @@ export function trimResidentBodies(residents: readonly ResidentSession[], shown:
 /** What the page's surfaces leave in a resident session when the person
  *  leaves it, which they restore when the person returns. */
 export interface SessionMemory {
-  reader?: import("../../../../../src/protocol/client/transcript-view.js").TranscriptReader
+  reader?: import("../../../../../src/protocol/client/chat/transcript/transcript-view.js").TranscriptReader
   /** Group keys and inferred fold openness survive coordinate recovery and
    *  navigation while this session stays resident. */
   presentation?: {

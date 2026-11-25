@@ -18,7 +18,7 @@ import type { ResolvedAgent } from "../../definitions/agent-resolution.js";
 import { hashDefinition } from "../../provenance/definition-hash.js";
 import { canonicalStepPolicy, canonicalStepWorkflowRecord } from "../../schema/retired-step-grammar/records.js";
 import { walkFlow, type StepGrammarWorkflow, type WorkflowFlowEntry } from "../../schema/retired-step-grammar/schema.js";
-import { CanonicalToolScopingSchema, type ToolScoping } from "../../../infra/workflow-types.js";
+import { CanonicalToolScopingSchema, type ToolScoping } from "../../../infra/definitions/workflow/workflow-types.js";
 import type { WorkflowDefinition } from "../../schema/workflow-schema.js";
 import {
   briefContentSha256,

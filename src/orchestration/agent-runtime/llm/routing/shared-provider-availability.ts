@@ -11,8 +11,8 @@ import { Log } from "../../../../infra/diagnostics/log.js";
 import {
   AVAILABILITY_PROTOCOL_VERSION,
   createAvailabilityAuthority,
-} from "../../../../infra/llm/access/availability-store.js";
-import { availabilityAuthorityDbFile } from "../../../../infra/paths.js";
+} from "../../../../infra/providers/llm/access/availability-store.js";
+import { availabilityAuthorityDbFile } from "../../../../infra/platform/files/paths.js";
 import { createProviderAvailability } from "./provider-availability.js";
 import type { ProviderAvailabilityOwner } from "./provider-availability-types.js";
 

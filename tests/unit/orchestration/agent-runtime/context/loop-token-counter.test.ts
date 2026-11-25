@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, spyOn, test } from "bun:test";
 
-import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.js";
+import { prepareLocalTokenizer } from "../../../../../src/infra/providers/local-tokenizer.js";
 import {
   createTokenEstimationCache,
   estimateConversationTokens,
@@ -8,7 +8,7 @@ import {
   tokenCountingPolicy,
 } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import { createStaleToolResultMasker } from "../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 
 const IMAGE_TOKEN_ESTIMATE = imageTokensForModel("anthropic");
 /** The character heuristic of a model with no local tokenizer. */

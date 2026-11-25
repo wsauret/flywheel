@@ -1,18 +1,18 @@
 import { Result, Schema } from "effect";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-import type { AuthProfileAccess } from "../../../../infra/auth/store/auth-profile-store.js";
-import { loadAuthStoreWithDiagnostics } from "../../../../infra/auth/store/auth-store.js";
-import { deleteProviderCredentials } from "../../../../infra/auth/store/auth-store-mutations.js";
-import { AUTH_STORE_FILE, CredentialInstanceSchema, isCredentialCollection, type CredentialInstance, type OAuthCredential } from "../../../../infra/auth/store/auth-store-types.js";
-import { transferProviderModelPreferences } from "../../../../infra/auth/provider-models/provider-model-preference-store.js";
-import { transferSubscriptionSpendDecisions } from "../../../../infra/auth/subscription/subscription-spend-consent-store.js";
-import { errorMessage } from "../../../../infra/error-message.js";
+import type { AuthProfileAccess } from "../../../../infra/providers/auth/store/auth-profile-store.js";
+import { loadAuthStoreWithDiagnostics } from "../../../../infra/providers/auth/store/auth-store.js";
+import { deleteProviderCredentials } from "../../../../infra/providers/auth/store/auth-store-mutations.js";
+import { AUTH_STORE_FILE, CredentialInstanceSchema, isCredentialCollection, type CredentialInstance, type OAuthCredential } from "../../../../infra/providers/auth/store/auth-store-types.js";
+import { transferProviderModelPreferences } from "../../../../infra/providers/auth/provider-models/provider-model-preference-store.js";
+import { transferSubscriptionSpendDecisions } from "../../../../infra/providers/auth/subscription/subscription-spend-consent-store.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import type { NotificationOccurrence } from "../../../../infra/notification-episode.js";
-import { isRecord, type UnknownRecord } from "../../../../infra/record.js";
+import type { NotificationOccurrence } from "../../../../infra/substrate/events/notification-episode.js";
+import { isRecord, type UnknownRecord } from "../../../../infra/guards/record.js";
 import { CLAUDE_AGENT_SDK_LABEL, CLAUDE_AGENT_SDK_PROVIDER_ID, LOGIN_PROGRAM_LABEL } from "../names.js";
-import type { AccessProviderAccountIdentity, AuthProfileConversion, ExternalAccount } from "../../../../infra/auth/provider-account.js";
+import type { AccessProviderAccountIdentity, AuthProfileConversion, ExternalAccount } from "../../../../infra/providers/auth/provider-account.js";
 
 const log = Log.create({ service: "provider-claude-agent-sdk" });
 

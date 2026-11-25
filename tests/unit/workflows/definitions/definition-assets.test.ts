@@ -12,7 +12,7 @@ import {
 import { workflowAssets } from "../../../../src/workflows/provenance/asset-manifest.js";
 import { withLoadedContent } from "../../../../src/workflows/definitions/loader.js";
 import { WorkflowDefinitionSchema } from "../../../../src/workflows/schema/workflow-schema.js";
-import { parseWorkflowYaml } from "../../../../src/infra/yaml/workflow-yaml.js";
+import { parseWorkflowYaml } from "../../../../src/infra/parsing/yaml/workflow-yaml.js";
 
 const PROJECT: AssetLocation = { root: { kind: "directory", dir: "/scratch/project/workflows" }, path: "nested/flow.yaml" };
 const CORE: AssetLocation = { root: { kind: "core" }, path: "debug.yaml" };

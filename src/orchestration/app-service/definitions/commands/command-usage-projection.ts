@@ -1,8 +1,8 @@
 import * as fs from "node:fs"
-import { appendFileEnsuringDir, writeFileAtomic } from "../../../../infra/atomic-write.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { appendFileEnsuringDir, writeFileAtomic } from "../../../../infra/platform/files/atomic-write.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import { slashCommandToken } from "../../../../infra/slash-command.js"
+import { slashCommandToken } from "../../../../infra/definitions/slash-command.js"
 import { commandUsageCursor, type CommandUsageView } from "../../../../protocol/commands/command-usage-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 

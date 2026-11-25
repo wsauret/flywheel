@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../../../infra/error-message.js"
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js"
 import type { RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import type { RuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
 import type { SettingsEditResult, SettingsEditSpec } from "../../../../modals/settings/settings-modal-types.js"

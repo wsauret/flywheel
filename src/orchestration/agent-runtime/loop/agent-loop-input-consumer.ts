@@ -1,5 +1,5 @@
-import { messageInput, type AgentLoopInput, type InputWaitReservation, type TurnParkedContext, type TurnParkState } from "../../../infra/agent-loop-events.js";
-import { mergeAbortSignals } from "../../../infra/abort.js";
+import { messageInput, type AgentLoopInput, type InputWaitReservation, type TurnParkedContext, type TurnParkState } from "../../../infra/substrate/events/agent-loop-events.js";
+import { mergeAbortSignals } from "../../../infra/timing/abort.js";
 import { formatRuntimeNotification } from "../../session/control/background-work/runtime-notifications.js";
 import { Log } from "../../../infra/diagnostics/log.js";
 import type { BackgroundWorkRegistry } from "../../session/control/background-work/background-work.js";

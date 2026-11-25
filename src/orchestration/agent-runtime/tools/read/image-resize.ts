@@ -15,9 +15,9 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { errorDetail, errorMessage } from "../../../../infra/error-message.js";
+import { errorDetail, errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { nativeAssetDir } from "../../../../infra/native-assets.js";
+import { nativeAssetDir } from "../../../../infra/platform/native-assets.js";
 
 type SharpFactory = typeof import("sharp").default;
 

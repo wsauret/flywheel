@@ -5,11 +5,11 @@ import { join } from "node:path";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { credentialSlotClassifier } from "../../../../src/orchestration/module-contract/module-catalog.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
-import type { AccessProviderCatalogFetchInput, AccessProviderDefinition } from "../../../../src/infra/llm/access/access-provider.js";
-import { normalizeResolvedCatalogRows, resolveModelCatalog, type CatalogSourceRow } from "../../../../src/infra/llm/catalog/model-catalog-resolution.js";
+import type { AccessProviderCatalogFetchInput, AccessProviderDefinition } from "../../../../src/infra/providers/llm/access/access-provider.js";
+import { normalizeResolvedCatalogRows, resolveModelCatalog, type CatalogSourceRow } from "../../../../src/infra/providers/llm/catalog/model-catalog-resolution.js";
 import { testProviderSelection } from "../../../helpers/provider-authority.js";
 import { OPENCODE_GO_API_BASE } from "../../../../src/orchestration/modules/provider-opencode-go/wire.js";
-import { openAiPricingFromMetadata, refreshOpenAiStandardPricing } from "../../../../src/infra/llm/models/openai-pricing.js";
+import { openAiPricingFromMetadata, refreshOpenAiStandardPricing } from "../../../../src/infra/providers/llm/models/openai-pricing.js";
 
 const originalFetch = globalThis.fetch;
 const temporaryDirectory = temporaryDirectories();

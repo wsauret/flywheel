@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
 import type { RuntimeQueryResult, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import { sessionCursor, type RuntimeUiPatch } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"
 import { createSessionCatalog } from "./session-catalog.js"

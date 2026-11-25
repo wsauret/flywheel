@@ -4,10 +4,10 @@ import type { RuntimeAuthProfileSelectionService } from "./auth/auth-profile-sel
 import type { ModuleProjection } from "./projections/module-projection.js"
 import type { RuntimeConfigProjection } from "./projections/runtime-config-projection.js"
 import type { ProviderModelPreferenceService } from "./auth/models/provider-model-preference-service.js"
-import { readAppVersion } from "../../infra/app-version.js"
-import { runningDisplayBuildId } from "../../infra/distribution/running-build.js"
+import { readAppVersion } from "../../infra/update/distribution/app-version.js"
+import { runningDisplayBuildId } from "../../infra/update/distribution/running-build.js"
 import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/runtime/app-service-types.js"
-import { mergeCatalogRow } from "../../protocol/client/known-totals.js"
+import { mergeCatalogRow } from "../../protocol/client/session/known-totals.js"
 import { commandCatalogCursor } from "../../protocol/commands/command-catalog-protocol-types.js"
 import type { CommandCatalogProjection } from "./definitions/commands/command-catalog-projection.js"
 import { authStatusCursor } from "../../protocol/auth/auth-status-protocol-types.js"
@@ -37,7 +37,7 @@ import { startupTrace } from "../../infra/diagnostics/startup-trace.js"
 import type { RuntimeBackgroundLane } from "./background/runtime-background-lane.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import { createMutationAdmission, type CommandAdmission } from "./mutations/mutation-admission.js"
-import { ADMISSION_CLOSED_ERROR } from "../../infra/shutdown-signals.js"
+import { ADMISSION_CLOSED_ERROR } from "../../infra/process/shutdown-signals.js"
 import { withLoggedAppServiceClient } from "./runtime/app-service-logging.js"
 import { shutdownOwner, type RuntimeShutdownRequest } from "./runtime/runtime-shutdown.js"
 
@@ -50,7 +50,7 @@ import { changesCursor } from "../../protocol/session/session-changes-protocol-t
 import type { BackgroundIndexOwner } from "./background/background-index-publisher.js"
 import type { MutationEvidenceService } from "./projections/changes/mutation-evidence-service.js"
 import type { SessionChangesService } from "./projections/changes/session-changes-service.js"
-import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../infra/substrate/store/event-store-types.js"
 
 /** Why an executor refuses a held detail read or its release: only the
  *  account facade holds and publishes `session_detail` (C5). */

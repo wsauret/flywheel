@@ -11,8 +11,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { once } from "node:events";
 import { join } from "node:path";
-import { asAsyncEventWriter } from "../../../src/infra/store/event-store-types.js";
-import { createSqliteEventStore } from "../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventWriter } from "../../../src/infra/substrate/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../src/infra/substrate/store/sqlite-event-store.js";
 import { installedModules } from "../../../src/orchestration/module-contract/module-catalog.js";
 import { createNestedToolDispatchBatch, createNestedToolFactPublisher } from "../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";

@@ -1,5 +1,5 @@
-import type { ConnectionState, StreamPhase } from "../../../infra/output-blocks.js"
-import type { SessionNotice } from "../../../infra/session-notice.js"
+import type { ConnectionState, StreamPhase } from "../../../infra/substrate/events/output-blocks.js"
+import type { SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 import type { DisplayActivityFields } from "./spinner-status-display-activity.js"
 
 export type SpinnerColorMode = "normal" | "stalled" | "thinking-long"

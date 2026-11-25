@@ -3,21 +3,21 @@
 import { useTerminalDimensions } from "@opentui/solid"
 import { KeyEvent as NativeKeyEvent, RenderableEvents, StyledText, fg as stFg, type TextareaRenderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, untrack, type Accessor } from "solid-js"
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import type { RuntimeClient } from "../../protocol/runtime/app-service-types.js"
 import type { OutputWindowCommandType } from "../transcript/output-window/output-window.js"
 import type { SessionSurface } from "../hooks/state/sessions/create-session-surface.js"
 import type { TextEntryKeyEvent } from "../terminal/keymap/text-entry.js"
 import { useTheme } from "../context/theme.js"
 import { Button } from "../components/controls/button.js"
-import { dispatchInterrupt, offeredSessionControls, resumeMutation, sessionControls, stopMutation, type ControlRefusal } from "../../protocol/client/session-controls.js"
+import { dispatchInterrupt, offeredSessionControls, resumeMutation, sessionControls, stopMutation, type ControlRefusal } from "../../protocol/client/work/session-controls.js"
 import { sessionHeaderParts } from "../hooks/state/create-header-display.js"
 import { ModalFrame, MODAL_FRAME_HORIZONTAL_INSET, sessionViewerBodyHeight, sessionViewerWidth } from "../components/modal/modal-frame.js"
 import { bindStyledTextContent } from "../context/find/reactive-text.js"
 import { ChildSessionBody, type ChildMessaging, type ChildSessionBodyInput, type ChildSessionBodyProps } from "./child-session-body.js"
-import { normalizeChatInput } from "../../infra/chat-input.js"
+import { normalizeChatInput } from "../../infra/substrate/events/chat-input.js"
 import { recallOnUp } from "../components/composer/composer-recall.js"
-import type { ChatSubmissions } from "../../protocol/client/chat-submissions.js"
+import type { ChatSubmissions } from "../../protocol/client/chat/chat-submissions.js"
 
 type KeyEvent = TextEntryKeyEvent
 
@@ -179,7 +179,7 @@ export interface ChildSessionViewerProps extends Omit<ChildSessionBodyProps,
   onClose: () => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
   compactionThreshold: Accessor<number | undefined>
-  returnDraft?: (sourceSessionId: string, input: import("../../infra/chat-input.js").ChatInputLike) => void
+  returnDraft?: (sourceSessionId: string, input: import("../../infra/substrate/events/chat-input.js").ChatInputLike) => void
   inputReady?: Accessor<boolean>
 }
 

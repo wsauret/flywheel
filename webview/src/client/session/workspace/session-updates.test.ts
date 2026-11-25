@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import type { FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import type { UpdateStatusView } from "../../../../../src/protocol/runtime/update-protocol-types.js"
 import { createRuntimeSession } from "../session.js"
 import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"

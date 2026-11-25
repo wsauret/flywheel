@@ -1,32 +1,32 @@
-import { canonicalize } from "../../../../infra/canonical-name.js";
-import { assistantContentRuns, reasoningSummaryText } from "../../../../infra/output/assistant-content-runs.js";
-import { isDeliveryConfirmationText } from "../../../../infra/delivery-confirmation.js";
-import { isProgressUpdate } from "../../../../infra/llm/anthropic-narration.js";
-import { isAgentInFlight, messageSenderOf, type AgentGroupBlock, type AnyBlock, type DegradedBlock, type QuestionBlock, type ToolEntry } from "../../../../infra/output-blocks.js";
-import { deferredAgentMeta } from "../../../../infra/output/projector/deferred-agent-meta.js";
-import { blockedStatusLine, formatAgentFailureDisplay, launderToolError, resolveAgentFailureDisplay } from "../../../../infra/output/output-formatter.js";
-import { extractFilePath } from "../../../../infra/output/projector/structured-event-tool-materializer.js";
-import { agentResultSummary, selectToolResultContent } from "../../../../infra/output/projector/structured-event-tool-results.js";
-import { toFileUri } from "../../../../infra/paths.js";
-import { contractReadRow, declaredMutationField, getToolDisplay, isHiddenFromTranscript, resolveToolRowPresentation, targetSessionField } from "../../../../infra/tools/tool-display-registry.js";
+import { canonicalize } from "../../../../infra/providers/canonical-name.js";
+import { assistantContentRuns, reasoningSummaryText } from "../../../../infra/substrate/output/assistant-content-runs.js";
+import { isDeliveryConfirmationText } from "../../../../infra/substrate/output/notify/delivery-confirmation.js";
+import { isProgressUpdate } from "../../../../infra/providers/llm/anthropic-narration.js";
+import { isAgentInFlight, messageSenderOf, type AgentGroupBlock, type AnyBlock, type DegradedBlock, type QuestionBlock, type ToolEntry } from "../../../../infra/substrate/events/output-blocks.js";
+import { deferredAgentMeta } from "../../../../infra/substrate/output/projector/deferred-agent-meta.js";
+import { blockedStatusLine, formatAgentFailureDisplay, launderToolError, resolveAgentFailureDisplay } from "../../../../infra/substrate/output/output-formatter.js";
+import { extractFilePath } from "../../../../infra/substrate/output/projector/structured-event-tool-materializer.js";
+import { agentResultSummary, selectToolResultContent } from "../../../../infra/substrate/output/projector/structured-event-tool-results.js";
+import { toFileUri } from "../../../../infra/platform/files/paths.js";
+import { contractReadRow, declaredMutationField, getToolDisplay, isHiddenFromTranscript, resolveToolRowPresentation, targetSessionField } from "../../../../infra/substrate/output/tools/tool-display-registry.js";
 import type { MessageEntry, ConversationEntry } from "../conversation-entry-types.js";
 import type { ConversationTreeTranscriptEntry } from "../conversation-projection.js";
 import type { ToolResultDisplayMeta } from "./tool-result-display-meta.js";
 import type { ToolHistorySummary } from "../../../module-contract/module-seams.js";
 import { installedRuntimeInvocationTool } from "../../../module-contract/module-catalog.js";
-import { createProvisionalDiffInput } from "../../../../infra/output/streaming/provisional-diff-input.js";
-import { mutationEvidenceSummaryDisplayPaths, provisionalDiffDisplayPaths } from "../../../../infra/output/display-paths.js";
-import { resetFailedFileChange } from "../../../../infra/output/projector/file-change-settlement.js";
+import { createProvisionalDiffInput } from "../../../../infra/substrate/output/streaming/provisional-diff-input.js";
+import { mutationEvidenceSummaryDisplayPaths, provisionalDiffDisplayPaths } from "../../../../infra/substrate/output/display-paths.js";
+import { resetFailedFileChange } from "../../../../infra/substrate/output/projector/file-change-settlement.js";
+import { invocationBoundaryId } from "./invocation-boundary.js";
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
 import type { AgentInputEntry } from "../../agent-input/agent-input-projection.js";
 import { formatAgentInputAnswers } from "../../../../protocol/session/question-protocol-types.js";
-import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, RESUMED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../../infra/output/run-labels.js";
-import { isContextResetRecord, isHistoricalCompletionEntry, isVisibleTurnEnd, turnEndOfEntry } from "../turn-end-record.js";
+import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, RESUMED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../../infra/substrate/output/run-labels.js";
+import { isContextResetRecord, isHistoricalCompletionEntry, isVisibleTurnEnd, turnEndOfEntry, CONTINUATION_MESSAGES } from "../turn-end-record.js";
 import { isBriefEntry } from "../tree/brief-entry.js";
 import { rawToolUseId } from "../../../../protocol/transcript/block-identity.js";
-import { sessionMessageRecoveryNotice } from "../../../../infra/chat-input.js";
-import { watchNoticeRow } from "../../../../infra/watch-notices.js";
-import { CONTINUATION_MESSAGES } from "../../conversation/turn-end-record.js";
+import { sessionMessageRecoveryNotice } from "../../../../infra/substrate/events/chat-input.js";
+import { watchNoticeRow } from "../../../../infra/substrate/events/watch-notices.js";
 import { assignSubagentCards, childCall, ownsSubagentCard, ownSubagentCard, type SubagentCardAssignment } from "./subagent-card-ownership.js";
 import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js";
 
@@ -322,7 +322,7 @@ export class TreeBlockProjection {
     // Inline step/skill invocations render as their divider plus the raw
     // user arguments; the expanded prompt body is model-facing only.
     if (message.invocation) {
-      this.append({ kind: "divider", id: `${id}:boundary`, label: message.invocation.label, timestamp });
+      this.append({ kind: "divider", id: invocationBoundaryId(id), label: message.invocation.label, timestamp });
       if (message.invocation.args) {
         this.append({ kind: "userMessage", id, content: message.invocation.args, timestamp, pending: false, injected: false, ...(message.submissionIds?.length ? { submissionIds: message.submissionIds } : {}) });
       }

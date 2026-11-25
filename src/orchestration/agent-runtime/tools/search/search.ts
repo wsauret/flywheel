@@ -1,22 +1,22 @@
 /**
  * Search tool - regex/literal search via ripgrep: validation, formatting,
  * grep invocation, error handling, and the factory/wiring layer.
- * Display metadata lives in `infra/tools/displays/search.ts`.
+ * Display metadata lives in `infra/substrate/output/tools/displays/search.ts`.
  */
 
-import { displayRelativePath } from "../../../../infra/tools/detail-helpers.js"
+import { displayRelativePath } from "../../../../infra/substrate/output/tools/detail-helpers.js"
 import { existsSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import { isAbortError } from "../../../../infra/abort.js";
-import { errorDetail, errorMessage } from "../../../../infra/error-message.js";
+import { isAbortError } from "../../../../infra/timing/abort.js";
+import { errorDetail, errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js";
 import { missingPathHint, resolveToolPath } from "../files/tool-paths.js";
 import { PRUNED_DIR_GLOBS, prepareSearchPathInput, prunedDirectoriesNote } from "./search-paths.js";
 import { PRUNED_DIR_NAMES, SEARCH_CPU_LIMIT_SECONDS, SEARCH_WALL_BACKSTOP_SECONDS, searchStoppedMessage } from "./search-rules.js";
 import { formatMatchLine } from "./match-line-format.js";
 import { checkNumericRange } from "../input/numeric-input.js";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import type { GrepMatch, GrepResult } from "../files/ripgrep.js";
 import { grep, SearchStoppedError } from "../files/ripgrep.js";
 import {

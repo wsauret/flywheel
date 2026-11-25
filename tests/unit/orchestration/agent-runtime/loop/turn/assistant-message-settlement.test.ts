@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { Exit } from "effect"
 import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/diagnostics/debug-log.js"
-import { isRecord } from "../../../../../../src/infra/record.js"
+import { isRecord } from "../../../../../../src/infra/guards/record.js"
 import { createAssistantMessageSettlement } from "../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-message-settlement.js"
 import type { AssistantTurnResult, TurnOutcome } from "../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js"
 import { AgentAborted } from "../../../../../../src/orchestration/agent-runtime/llm/routing/runtime-errors.js"
-import type { ContentBlock } from "../../../../../../src/infra/llm/conversation/conversation-message.js"
+import type { ContentBlock } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 
 function turn(outcome: TurnOutcome): AssistantTurnResult {
   return {

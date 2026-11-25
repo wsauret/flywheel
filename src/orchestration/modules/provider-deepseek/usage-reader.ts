@@ -1,6 +1,6 @@
 import { Redacted } from "effect";
-import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageJson, type SubscriptionUsageReader, type SubscriptionUsageSpendSource } from "../../../infra/llm/usage/subscription-usage.js";
-import { malformed, prepaidBalance, readerIdentity, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/usage/subscription-usage-reader.js";
+import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageJson, type SubscriptionUsageReader, type SubscriptionUsageSpendSource } from "../../../infra/providers/llm/usage/subscription-usage.js";
+import { malformed, prepaidBalance, readerIdentity, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/providers/llm/usage/subscription-usage-reader.js";
 
 const DEEPSEEK_BALANCE_URL = "https://api.deepseek.com/user/balance";
 

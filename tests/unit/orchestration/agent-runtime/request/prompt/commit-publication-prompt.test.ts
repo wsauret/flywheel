@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadEngineeringDoctrine } from "../../../../../../src/infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine } from "../../../../../../src/infra/definitions/agent-assets/system-prompt.js";
 import { buildSystemPrompt, type PromptKind } from "../../../../../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import { renderSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { testDirectories } from "../../../../../helpers/directories.js";

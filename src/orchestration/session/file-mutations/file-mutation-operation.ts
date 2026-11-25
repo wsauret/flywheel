@@ -1,14 +1,14 @@
 import { createHash } from "node:crypto"
 import { Schema } from "effect"
-import { MutationDiffSchema, type MutationDiff } from "../../../infra/mutation-diff.js"
-import { MutationFileEvidenceSchema } from "../../../infra/mutation-evidence-schema.js"
-import type { MutationFileEvidence } from "../../../infra/mutation-evidence.js"
-import type { InFlightWrite } from "../../../infra/store/event-store-types.js"
-import type { ContainedFileMetadata, ContainedFileSnapshot } from "../../../infra/descriptor-directory/descriptor-directory-contract.js"
+import { MutationDiffSchema, type MutationDiff } from "../../../infra/substrate/file-mutations/mutation-diff.js"
+import { MutationFileEvidenceSchema } from "../../../infra/substrate/file-mutations/mutation-evidence-schema.js"
+import type { MutationFileEvidence } from "../../../infra/substrate/file-mutations/mutation-evidence.js"
+import type { InFlightWrite } from "../../../infra/substrate/store/event-store-types.js"
+import type { ContainedFileMetadata, ContainedFileSnapshot } from "../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js"
 import { parseFileMutationFact, type FileMutationFact } from "./file-mutation-facts.js"
 import { fileAccessProof, parseFileAccessProof, type FileAccessProof } from "./file-mutation-access.js"
-import { buildSessionContent, buildSessionContentManifest, readSessionContentRange, readSessionContentRecords, type ReadSessionContentNode, type StageSessionContentNodes, type SessionContentManifestReference } from "../../../infra/session-content.js"
-import { SESSION_CONTENT_WINDOW_BYTES, SessionContentManifestReferenceSchema, SessionContentReferenceSchema } from "../../../infra/session-content-schema.js"
+import { buildSessionContent, buildSessionContentManifest, readSessionContentRange, readSessionContentRecords, type ReadSessionContentNode, type StageSessionContentNodes, type SessionContentManifestReference } from "../../../infra/substrate/session-content.js"
+import { SESSION_CONTENT_WINDOW_BYTES, SessionContentManifestReferenceSchema, SessionContentReferenceSchema } from "../../../infra/substrate/session-content-schema.js"
 
 type FileMutationPreparedFact = Extract<FileMutationFact, { type: "file.mutation.prepared" }>
 

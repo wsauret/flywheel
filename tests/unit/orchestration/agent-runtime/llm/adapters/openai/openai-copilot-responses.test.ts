@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../../../src/infra/providers/llm/models/models.js";
 import { buildOpenAIParams } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-helpers.js";
 import type { StreamOptions } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { toOpenAIResponsesRequestInput } from "../../../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 
 const openai = { sharedHost: false, accessProvider: "github_copilot" as const, provider: "openai" as const, api: "openai-responses" as const, model: "gpt-5.5" };

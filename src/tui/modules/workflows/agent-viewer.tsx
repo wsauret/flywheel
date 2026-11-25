@@ -4,15 +4,15 @@ import { useTerminalDimensions } from "@opentui/solid"
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import { createEffect, createMemo, createSignal, Show, untrack, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
-import { dispatchInterrupt, offeredSessionControls, resumeMutation, sessionControls, workflowParked, workflowStateLabel, type ControlRefusal } from "../../../protocol/client/session-controls.js"
-import { workflowAgentPlace, workflowOutline } from "../../../protocol/client/workflow-outline.js"
-import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentModel, workflowAgentMove, workflowAgentOpenTarget, workflowBriefLine, workflowNextAgentLabel, type WorkflowAgentHeaderDrop, type WorkflowAgentTarget } from "../../../protocol/client/workflow-agent.js"
-import { workflowAgentAddress } from "../../../protocol/client/workflow-addresses.js"
-import { workflowRunName } from "../../../protocol/client/workflow-card.js"
-import { CHIT_SLOTS } from "../../../protocol/client/workflow-chits.js"
-import { WORKFLOW_GLYPH } from "../../../protocol/client/glyphs.js"
+import { dispatchInterrupt, offeredSessionControls, resumeMutation, sessionControls, type ControlRefusal } from "../../../protocol/client/work/session-controls.js"
+import { workflowAgentPlace, workflowOutline } from "../../../protocol/client/work/workflow/workflow-outline.js"
+import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentModel, workflowAgentMove, workflowAgentOpenTarget, workflowBriefLine, NEXT_AGENT_LABEL, type WorkflowAgentHeaderDrop, type WorkflowAgentTarget } from "../../../protocol/client/work/workflow/workflow-agent.js"
+import { workflowAgentAddress } from "../../../protocol/client/work/workflow/workflow-addresses.js"
+import { workflowRunName, workflowRunState } from "../../../protocol/client/work/workflow/workflow-card.js"
+import { CHIT_SLOTS } from "../../../protocol/client/work/workflow/workflow-chits.js"
+import { WORKFLOW_GLYPH } from "../../../protocol/client/work/glyphs.js"
 import type { SessionSurface } from "@tui/hooks/state/sessions/create-session-surface.js"
 import type { WorkflowInspection } from "./inspection.js"
 import { useTheme } from "@tui/context/theme.js"
@@ -91,8 +91,7 @@ export function WorkflowAgentViewer(props: WorkflowAgentViewerProps) {
   const row = workflow.detail
   const live = workflow.live
   const view = createMemo(() => { const loaded = workflow.view(); return loaded?.attemptsStatus === "loaded" ? loaded : undefined })
-  const parked = () => workflowParked(live(), row())
-  const cut = () => workflowStateLabel(view()?.state, row(), parked())
+  const cut = () => workflowRunState(view()?.state, row(), live()).label
   const outline = createMemo(() => { const loaded = view(); return loaded === undefined ? undefined : workflowOutline(loaded, cut(), live()) })
 
   // The agent that the view shows: a link's agent takes `follow` from its
@@ -247,7 +246,7 @@ export function WorkflowAgentViewer(props: WorkflowAgentViewerProps) {
         navigation={<box flexDirection="row" gap={1} flexShrink={0}>
         <Button label="Back" hotkey="← esc" muted onPress={props.onBack} />
         <Button label="Close" muted onPress={props.onClose} />
-        <Show when={canMove()}><Button label={workflowNextAgentLabel(model())} hotkey="tab" muted onPress={() => move(1)} /></Show>
+        <Show when={canMove()}><Button label={model()?.next ?? NEXT_AGENT_LABEL} hotkey="tab" muted onPress={() => move(1)} /></Show>
         <Key each={model()?.history} by="sessionId">{(past, index) => <Button label={`Earlier session ${index() + 1}`} muted onPress={() => { setTarget((current) => current ? { ...current, follow: false } : current); setHistory(past().sessionId) }} />}</Key>
         <Show when={history() !== undefined}><Button label="Latest session" muted onPress={() => setHistory(undefined)} /></Show>
       </box>} />

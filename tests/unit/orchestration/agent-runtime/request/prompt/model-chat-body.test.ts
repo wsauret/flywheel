@@ -16,7 +16,7 @@ import { composeFirstPartyModules } from "../../../../../../src/orchestration/mo
 import { SUBAGENT_HANDOFF_SCHEMA } from "../../../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { installedPersonaToolEntries } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { createProjectDefinitionRegistry } from "../../../../../../src/workflows/definitions/definition-registry.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../../src/infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../../src/infra/definitions/agent-assets/system-prompt.js";
 import { planPromptRequest, promptParts, type PromptAssembly } from "../../../../../../scripts/prompt-assembly.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { promptOptions, type ToolPromptFields } from "../../../../../helpers/prompt-capabilities.js";

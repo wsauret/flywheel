@@ -1,5 +1,5 @@
-import type { AccessProviderCandidate } from "../../../infra/llm/access/access-provider.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import type { AccessProviderCandidate } from "../../../infra/providers/llm/access/access-provider.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import type { ProviderAvailabilityOwner } from "../../agent-runtime/llm/routing/provider-availability-types.js"
 import type { SubscriptionUsagePublishedSnapshot } from "./subscription-usage-service.js"

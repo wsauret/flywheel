@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 import { createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
-import { insertMention, mentionAt, type MentionToken } from "../../../../protocol/client/mention.js"
+import { insertMention, mentionAt, type MentionToken } from "../../../../protocol/client/chat/mention.js"
 import type { ProjectFileEntry } from "../../../../protocol/transcript/transcript-protocol-types.js"
 import type { ModalSelectOption } from "../../modal/select/modal-select-types.js"
 import type { SlashSuggestionsHook } from "./create-slash-suggestions.js"

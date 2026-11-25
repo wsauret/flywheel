@@ -4,7 +4,7 @@ import { patchScrollBoxLayoutHooks } from "../../components/modal/scroll/scrollb
 import { createHeightIndex, type ExtentCorrection, type HeightIndex, type HeightIndexConfig } from "./create-height-index.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { DEFAULT_ESTIMATE } from "../transcript-store/output-height-estimates.js"
-import type { LaunchScroll } from "../../../infra/distribution/launch-state.js"
+import type { LaunchScroll } from "../../../infra/update/distribution/launch-state.js"
 import type { TranscriptFollow } from "./transcript-follow.js"
 
 // Scroll virtualization keeps one authoritative offset, follows the bottom when

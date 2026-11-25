@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import type { RuntimeClient, RuntimeHealth, RuntimeQuery } from "../../../../../src/protocol/runtime/app-service-types.js"
-import { runtimeFaultCopy } from "../../../../../src/protocol/client/runtime-fault-copy.js"
+import { runtimeFaultCopy } from "../../../../../src/protocol/client/runtime/copy/runtime-fault-copy.js"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js"
 import { tuiFaultNotice } from "../../../../../src/tui/modules.js"

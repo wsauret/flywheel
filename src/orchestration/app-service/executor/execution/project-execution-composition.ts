@@ -3,9 +3,9 @@ import { createProjectExecutionState } from "../../project-state/project-executi
 import type { ProjectStateClient } from "../../project-state/project-state-client.js"
 import { assembleProjectRuntime, type RuntimeComposition, type RuntimeCompositionOptions } from "./project-execution-runtime.js"
 import type { RuntimeOwnership } from "../../runtime/runtime-ownership.js"
-import { runningDisplayBuildId } from "../../../../infra/distribution/running-build.js"
-import { resolveProjectionFoldCacheDbFile } from "../../../../infra/paths.js"
-import { attachProjectionFoldCache, openProjectionFoldCache } from "../../../../infra/projection/projection-fold-cache.js"
+import { runningDisplayBuildId } from "../../../../infra/update/distribution/running-build.js"
+import { resolveProjectionFoldCacheDbFile } from "../../../../infra/platform/files/paths.js"
+import { attachProjectionFoldCache, openProjectionFoldCache } from "../../../../infra/substrate/projection/projection-fold-cache.js"
 
 /** Composes execution over state-worker authority without acquiring its generation.
  * The caller keeps state alive until disposal completes. No startup maintenance

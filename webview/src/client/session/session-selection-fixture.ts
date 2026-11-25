@@ -1,6 +1,6 @@
 import type { ChildSessionRow, FrontendActivity, FrontendEvent, FrontendMutation, SessionCatalogError, SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { BudgetView } from "../../../../src/protocol/session/budget-protocol-types.js"
-import type { RuntimeConnection } from "../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
 import type { RuntimeUiPatch } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import type { RuntimeSession } from "./session.js"
 import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"

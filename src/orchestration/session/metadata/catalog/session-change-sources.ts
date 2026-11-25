@@ -1,8 +1,8 @@
-import { createFactParser } from "../../../../infra/event-registry.js"
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/store/event-store-types.js"
-import type { MutationFileEvidence, MutationDisplayFileEvidence } from "../../../../infra/mutation-evidence.js"
-import type { SessionContentReference } from "../../../../infra/session-content.js"
-import { SESSION_CONTENT_WINDOW_BYTES } from "../../../../infra/session-content-schema.js"
+import { createFactParser } from "../../../../infra/substrate/facts/event-registry.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
+import type { MutationFileEvidence, MutationDisplayFileEvidence } from "../../../../infra/substrate/file-mutations/mutation-evidence.js"
+import type { SessionContentReference } from "../../../../infra/substrate/session-content.js"
+import { SESSION_CONTENT_WINDOW_BYTES } from "../../../../infra/substrate/session-content-schema.js"
 import { FileMutationFactSchemas, type FileMutationFact } from "../../file-mutations/file-mutation-facts.js"
 import { StoredSessionRuntimeFactSchemas, type SessionRuntimeFact, type ToolContentReferenceFact } from "../../runtime-facts/session-runtime-event-types.js"
 

@@ -1,11 +1,11 @@
 import { batch, createMemo, createSignal, onCleanup, untrack } from "solid-js"
-import { errorDetail, errorMessage as extractErrorMessage } from "../../../../../infra/error-message.js"
+import { errorDetail, errorMessage as extractErrorMessage } from "../../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../../infra/diagnostics/log.js"
-import { isSessionId } from "../../../../../infra/session-id.js"
+import { isSessionId } from "../../../../../infra/substrate/session-id.js"
 import { effectiveSessionShortTitle, isActiveActivity, SHORT_TITLE_MAX_CHARS, type SessionCatalogError, type SessionCatalogRow } from "../../../../../protocol/runtime/app-service-types.js"
-import { dispatchInterrupt, isInterruptible, offeredSessionControls, resumeMutationType } from "../../../../../protocol/client/session-controls.js"
-import { sessionTitleMatcher } from "../../../../../protocol/client/session-title-match.js"
-import { contentRows, contentSettled, createContentSearch, type ContentAnswer } from "../../../../../protocol/client/chat-content-search.js"
+import { dispatchInterrupt, isInterruptible, offeredSessionControls, resumeMutationType } from "../../../../../protocol/client/work/session-controls.js"
+import { sessionTitleMatcher } from "../../../../../protocol/client/chat/search/session-title-match.js"
+import { contentResults, createContentSearch, type ContentAnswer } from "../../../../../protocol/client/chat/search/chat-content-search.js"
 import { createListModalKeys, type ListModalKeyEvent } from "../../../../components/modal/select/modal-list-keys.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY, type TextEditorPresentation } from "../../../../terminal/keymap/text-entry.js"
 import { firstSelectableRow, matchAction, MAX_RENDERED_ROWS } from "../../../../components/modal/select/modal-select-helpers.js"
@@ -58,8 +58,9 @@ export function useSessionModal(deps: SessionModalDeps, contentSearchDelayMs?: n
   const titleMatchIds = createMemo(() => titleResult().rows.flatMap((row) => row.kind === "session" ? [row.session.id] : []), [], { equals: sameIds })
   // Chats found by their messages go below every title match, so an answer
   // never moves a row above it (PI-INTERACTION-178).
+  const content = createMemo(() => contentResults(contentAnswer(), filterQuery(), new Set(titleMatchIds())))
   const foundRows = createMemo((): PickerRow[] => {
-    const chats = contentRows(contentAnswer(), new Set(titleMatchIds()))
+    const { chats } = content()
     if (chats.length === 0) return []
     const byId = new Map(deps.sessions().map((session) => [session.id, session]))
     const found = chats.flatMap((chat): PickerFoundRow[] => {
@@ -74,7 +75,7 @@ export function useSessionModal(deps: SessionModalDeps, contentSearchDelayMs?: n
     const selected = selection.key()
     const rows = [...capSelectableRows(result.rows, MAX_RENDERED_ROWS, selected), ...foundRows()]
     const labels = rows.flatMap((row) => row.kind === "session" || row.kind === "found" ? [formatCompactTimeAgo(nowMinute(), pickerRowLastActive(row))] : [])
-    return { ...result, rows, timeAgoWidth: timeAgoColumnWidth(labels), searchingMessages: !contentSettled(contentAnswer(), filterQuery()) }
+    return { ...result, rows, timeAgoWidth: timeAgoColumnWidth(labels), searchingMessages: content().searching }
   })
   const modalCursor = createMemo((): number => {
     const selected = selection.key()

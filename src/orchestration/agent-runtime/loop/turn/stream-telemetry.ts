@@ -1,4 +1,4 @@
-import { assertNever } from "../../../../infra/assert-never.js";
+import { assertNever } from "../../../../infra/guards/assert-never.js";
 import { maxEventLoopLagBetween } from "../../../../infra/diagnostics/event-loop-lag.js";
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import type { ProviderRequestOutcome, ProviderStreamSummary } from "../../../session/runtime-facts/provider-request-audit-types.js";

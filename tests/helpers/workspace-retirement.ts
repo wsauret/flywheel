@@ -12,7 +12,7 @@ import { prepareWorkspaceState } from "../../src/orchestration/workspace-state/w
 import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state/workspace-state-retirement.js"
 import { DATABASE_MEMBERS } from "../../src/orchestration/workspace-state/workspace-state-generation-members.js"
 import { testDirectories } from "./directories.js"
-import type { ProjectDirectories } from "../../src/infra/directory-authorities.js"
+import type { ProjectDirectories } from "../../src/infra/platform/files/directory-authorities.js"
 
 export interface JsonObject {
   readonly [key: string]: unknown

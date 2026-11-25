@@ -1,12 +1,12 @@
-import { canUseCheckpoint, renderSessionNotesAutoCompactFallback, CHECKPOINT_TOOL_NAMES } from "../../../infra/agent-assets/session-notes.js";
+import { canUseCheckpoint, renderSessionNotesAutoCompactFallback, CHECKPOINT_TOOL_NAMES } from "../../../infra/definitions/agent-assets/session-notes.js";
 import type { ExecutionWhitelist } from "../tools/dispatch/tool-policy.js";
-import type { CapabilityCheck } from "../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
 import type { ConversationCheckpoint } from "../../session/persistence/conversation-checkpoint-facts.js";
 import type { AgentLoopOptions, CompactionInstallation } from "../agent-loop-types.js";
 import { createTokenEstimationCache, estimateConversationTokens } from "../compaction/token-counter.js";
 import type { PlannedCompactionOperation } from "../compaction/triggers.js";
 import type { CacheRetention, StreamEvent, ServingAttempt } from "../llm/types.js";
-import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js";
 import { redactMessage } from "../../session/conversation/redact-message.js";
 import { turnContextEntry } from "../request/prompt/agent-loop-turn-context.js";
 import { modelRequestRoute, type createActiveRequestContext } from "../request/active-request-context.js";

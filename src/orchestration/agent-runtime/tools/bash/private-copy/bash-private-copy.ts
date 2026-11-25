@@ -22,7 +22,7 @@ import { readCopyRepositoryState, readIndexDigest, type RepositoryState } from "
 import { digestStateEntries, type StateDigest } from "./bash-copy-state-digest.js";
 import { PrivateCopyStateDropped, type PrivateCopyJobs } from "./bash-private-copy-jobs.js";
 import type { RecordedCopy } from "./bash-private-copy-record.js";
-import { PRIVATE_COPY_RECORD } from "../../../../../infra/paths.js";
+import { PRIVATE_COPY_RECORD } from "../../../../../infra/platform/files/paths.js";
 import { firstReplaced, homeChain } from "./bash-private-copy-home.js";
 import type { CopyGeometry, PrivateCopyPool, ReusableCopy } from "./bash-private-copy-pool.js";
 import { rootAtPathBoundary, type CopyRecordRead, type CopyTopologyRequest, type ScannedChanges } from "./bash-private-copy-tree.js";

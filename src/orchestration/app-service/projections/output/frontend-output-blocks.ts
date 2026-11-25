@@ -1,6 +1,6 @@
-import type { AnyBlock, ToolEntry } from "../../../../infra/output-blocks.js"
+import type { AnyBlock, ToolEntry } from "../../../../infra/substrate/events/output-blocks.js"
 import type { FrontendOutputBlock } from "../../../../protocol/runtime/app-service-types.js"
-import { fileChangeDetail, isShellMutationEntry } from "../../../../protocol/client/file-change-body.js"
+import { fileChangeDetail, isShellMutationEntry } from "../../../../protocol/client/chat/transcript/file-change-body.js"
 
 /** The largest live tool body a row carries inline. A larger body leaves the
  *  row with only its line count, and a client reads it through the

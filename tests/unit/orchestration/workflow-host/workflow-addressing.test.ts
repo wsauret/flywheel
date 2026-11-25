@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import { resolveWorkflowTargets, workflowAgentAddress, type WorkflowAddress } from "../../../../src/protocol/client/workflow-addresses.js"
+import { resolveWorkflowTargets, workflowAgentAddress, type WorkflowAddress } from "../../../../src/protocol/client/work/workflow/workflow-addresses.js"
 import { workflowAddressLines, workflowTargetRefusal } from "../../../../src/orchestration/session/control/messaging/workflow-addressing.js"
-import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent.js"
+import { workflowAgentModel } from "../../../../src/protocol/client/work/workflow/workflow-agent.js"
 import type { LoadedWorkflowView, WorkflowTreeNode } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { fourLaneControl, frontendView, interrupt, mapBindings, mapControl, phaseBindings, phaseControl, startNext, wideBindings } from "../../workflows/vm/_tree-fixtures.js"
 

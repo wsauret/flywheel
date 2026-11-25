@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js";
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js";
 import { budgetExhaustionReason, workflowBudgetRefusal, type BudgetLimits } from "../../../../src/workflows/run/budget.js";
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js";
 import { initializedWorkflowRoot } from "../../../helpers/workflow-root-fixtures.js";

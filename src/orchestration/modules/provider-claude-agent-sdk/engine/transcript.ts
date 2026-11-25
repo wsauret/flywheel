@@ -3,11 +3,11 @@ import { mkdirSync, readdirSync, realpathSync, rmdirSync, rmSync, statSync, writ
 import { uptime } from "node:os";
 import { dirname, join } from "node:path";
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
-import { errnoCode } from "../../../../infra/error-message.js";
-import { acquireLockSync, releaseLock, tryAcquireLockSync } from "../../../../infra/locks/ownership-file-lock.js";
+import { errnoCode } from "../../../../infra/platform/files/system-error.js";
+import { acquireLockSync, releaseLock, tryAcquireLockSync } from "../../../../infra/process/locks/ownership-file-lock.js";
 import { RouteUnavailableError } from "../../../agent-runtime/llm/errors.js";
 import { canonicalShell } from "../../../agent-runtime/llm/history/runtime-reminders.js";
-import type { RuntimeReminder } from "../../../../infra/llm/runtime-reminder-format.js";
+import type { RuntimeReminder } from "../../../../infra/providers/llm/runtime-reminder-format.js";
 import type { CliBlock, CliMessage, PlacedReminder } from "../cli-view.js";
 import { isBridgeSessionId } from "./session-id.js";
 

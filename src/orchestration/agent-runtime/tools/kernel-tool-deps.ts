@@ -4,9 +4,9 @@
  * a module reaches its own per-runner state through its runtime handle.
  */
 
-import type { AgentDefinition } from "../../../infra/agent-definition.js";
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
-import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
+import type { AgentDefinition } from "../../../infra/definitions/agent-definition.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
+import type { ProviderRequestOptions } from "../../../infra/providers/llm/access/provider-options.js";
 import type { SkillRegistryRevision, SkillDefinition } from "../../../workflows/skills/skill-schema.js";
 import type { AskUserController } from "./sessions/ask-user-controller.js";
 import type { HandoffToolSchema } from "./sessions/handoff-tool-schema.js";
@@ -17,7 +17,7 @@ import type { ShellRuntimeClient } from "./bash/execution/shell-runtime-types.js
 import type { ExternalSkillChildGrant } from "./definitions/skill.js";
 import type { CapabilityAccess } from "./types.js";
 import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js";
-import type { CapabilityCheck } from "../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
 import type { DefinitionAvailabilitySnapshot } from "../../config/policy/definition-availability.js";
 import type { RuntimeConfigRequestCapture } from "../../config/request-config.js";
 import type { AgentPurpose } from "../types.js";

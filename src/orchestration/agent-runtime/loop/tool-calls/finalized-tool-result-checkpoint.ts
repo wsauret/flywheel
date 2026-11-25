@@ -1,10 +1,10 @@
 import { Schema } from "effect";
-import { errorMessage } from "../../../../infra/error-message.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { extractToolContentFact } from "../../../../infra/runtime-facts/tool-content-extraction.js";
-import { hydrateToolContentFact } from "../../../../infra/store/tool-content-hydration.js";
-import { createRuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-factory.js";
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../infra/runtime-facts/runtime-fact-mapper.js";
+import { extractToolContentFact } from "../../../../infra/substrate/runtime-facts/tool-content-extraction.js";
+import { hydrateToolContentFact } from "../../../../infra/substrate/store/tool-content-hydration.js";
+import { createRuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-factory.js";
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../infra/substrate/runtime-facts/runtime-fact-mapper.js";
 import {
   InFlightSwapConflictError,
   type AsyncEventStateReadSurface,
@@ -12,7 +12,7 @@ import {
   type GuardedEventStoreAppend,
   type InFlightRecord,
   type InFlightWrite,
-} from "../../../../infra/store/event-store-types.js";
+} from "../../../../infra/substrate/store/event-store-types.js";
 import { toolResultMessages } from "../turn/agent-state.js";
 import type { ConversationTree } from "../../../session/conversation/tree/conversation-tree.js";
 import { parseSessionRuntimeFact, type SessionRuntimeFact } from "../../../session/runtime-facts/session-runtime-event-types.js";

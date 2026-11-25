@@ -1,6 +1,6 @@
-import { GATE_HOOK_TIMEOUT_SECONDS } from "../../../../infra/antigravity-gate-hook.js"
-import { executableRoleCommand } from "../../../../infra/cli-subprocess.js"
-import { EXECUTABLE_ROLES } from "../../../../infra/executable-roles.js"
+import { GATE_HOOK_TIMEOUT_SECONDS } from "../../../../infra/providers/antigravity-gate-hook.js"
+import { executableRoleCommand } from "../../../../infra/platform/cli-subprocess.js"
+import { EXECUTABLE_ROLES } from "../../../../infra/platform/executable-roles.js"
 
 /** One handler of a `hooks.json` event, in the engine's documented form: a
  *  single shell command string and a timeout in seconds. */

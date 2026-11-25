@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { TextAttributes } from "@opentui/core"
-import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../src/infra/output-blocks.js"
-import { resolveToolRowPresentation } from "../../../../../src/infra/tools/tool-display-registry.js"
+import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../src/infra/substrate/events/output-blocks.js"
+import { resolveToolRowPresentation } from "../../../../../src/infra/substrate/output/tools/tool-display-registry.js"
 import {
   getToolContentPreview,
   nextToolEntryToggleState,

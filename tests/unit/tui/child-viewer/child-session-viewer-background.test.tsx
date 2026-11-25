@@ -8,7 +8,7 @@ import type { BackgroundModalTarget } from "../../../../src/tui/hooks/overlays/m
 import type { StatusView } from "../../../../src/protocol/session/status-protocol-types.js"
 import { transcriptOf } from "../transcript/output-window/_output-window-transcript.js"
 import { viewerSurface } from "./_child-session-viewer-fixtures.js"
-import { createChatSubmissions } from "../../../../src/protocol/client/chat-submissions.js"
+import { createChatSubmissions } from "../../../../src/protocol/client/chat/chat-submissions.js"
 
 test("follows the subagent's background index while open, opens it from the chip, and lands in its viewer's transcript", async () => {
   const command = { id: "bg", toolUseId: "bash-bg", description: "Background proof", startedAtMs: 1 }

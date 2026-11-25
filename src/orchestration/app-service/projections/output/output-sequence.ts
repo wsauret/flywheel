@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js"
 import type { ReplayedSession } from "../../../session/metadata/schemas.js"
 import { readRecordedExecutionCwd } from "../../../session/metadata/session-execution-directory.js"
 import type { SessionStore } from "../../../session-store/types.js"
@@ -6,7 +6,7 @@ import type { CommandKeeper } from "../../runtime/command-keeper.js"
 import type { TranscriptProjectionCache } from "./transcript-projection-cache.js"
 import { indexOutputBlocks, type IndexedBlockReader } from "../../../session/conversation/transcript/branch-history-builder.js"
 import type { IndexedGroupChildren } from "../../../session/conversation/transcript/tool-result-meta.js"
-import { isAgentInFlight } from "../../../../infra/output-blocks.js"
+import { isAgentInFlight } from "../../../../infra/substrate/events/output-blocks.js"
 
 export interface OutputSequence extends IndexedBlockReader {
   readonly consistencyToken: string

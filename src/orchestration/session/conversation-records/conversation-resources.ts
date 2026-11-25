@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import { sessionScratchDir } from "../../../infra/paths.js";
+import { sessionScratchDir } from "../../../infra/platform/files/paths.js";
 
 /** Disposable scratch and the legacy note location used only for checkpoint conversion. */
 export interface ConversationResources {

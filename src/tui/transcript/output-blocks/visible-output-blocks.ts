@@ -1,8 +1,8 @@
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../protocol/runtime/app-service-types.js"
 import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
-import { toolRunCategoryFor, type ToolRunCategory } from "../../../protocol/client/tool-run-category.js"
-import { foldTranscript, runEnd, type ToolStretch, type TranscriptModel, type TranscriptWindow } from "../../../protocol/client/transcript-model.js"
-import { messageDisclosureEntry } from "../../../protocol/client/message-sender.js"
+import { toolRunCategoryFor, type ToolRunCategory } from "../../../protocol/client/chat/transcript/tool-run-category.js"
+import { foldTranscript, runEnd, type ToolStretch, type TranscriptModel, type TranscriptWindow } from "../../../protocol/client/chat/transcript/transcript-model.js"
+import { messageDisclosureEntry } from "../../../protocol/client/chat/message-sender.js"
 import type { ToolRenderEntry } from "./tool-entry-helpers.js"
 
 /** The terminal's presentation of the shared transcript model. The model

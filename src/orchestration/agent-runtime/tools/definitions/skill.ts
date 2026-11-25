@@ -1,5 +1,5 @@
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
-import { errorMessage } from "../../../../infra/error-message.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { offeredSkillResources, readSkillResource, type SkillResourceWindow } from "../../../../workflows/skills/skill-context.js";
 import { renderSkillResourceWindow } from "../../../../workflows/skills/skill-render.js";
 import { assembleSkillInvocation, skillInvocationRefusal } from "../../../../workflows/skills/skill-invocation.js";
@@ -7,7 +7,7 @@ import type { SkillDefinition, SkillRegistryRevision } from "../../../../workflo
 import type { DefinitionAvailabilitySnapshot } from "../../../config/policy/definition-availability.js";
 import type { AdvertisedTool, RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../types.js";
 import { formatToolInputProblems, validateToolInput } from "../input/validate-input.js";
-import { withPackageRead } from "../../../../infra/locks/package-directory-lock.js";
+import { withPackageRead } from "../../../../infra/process/locks/package-directory-lock.js";
 
 /** How many ids an unknown-skill_id error names. The complete catalog is already
  *  in the prompt, so the error is a nudge back to it, not a listing surface. */

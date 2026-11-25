@@ -2,7 +2,7 @@ import type { ReplyWaitTasks } from "../../../session/control/messaging/reply-wa
 import { MESSAGE_SESSION_TOOL_NAME } from "../../../session/conversation/reply-wait-cells.js";
 import type { MessageSessionResult, SessionMessaging } from "../../../session/control/messaging/session-messaging.js";
 import type { ReplayedSession } from "../../../session/metadata/schemas.js";
-import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import type { ContentBlock, ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import type { AdvertisedTool, RuntimeTool, ToolResult } from "../types.js";
 import { parseWorkflowTargets } from "./workflow-targets.js";
 
@@ -99,6 +99,7 @@ const NOT_PARENT_OR_CHILD = "you can wait only on your parent or on your own chi
 const REASON_TEXT = {
   interrupted: "it is interrupted. It reads the message when it resumes. A child that a person interrupted continues only when a person continues it",
   no_reader: "nothing runs it now. It reads the message when it runs again",
+  awaiting_answer: "it waits on a person's answer to its question. It reads the message after the person answers or skips the question",
   wake_limit: "a chain of messages between sessions reached its limit of five hops. It reads the message later, and this message starts no work",
   not_found: "no session or workflow of this project has that id for the selected target kind. Call list_sessions to find other targets, or process(action='list') to find your own work",
   deleted: "the session was deleted",

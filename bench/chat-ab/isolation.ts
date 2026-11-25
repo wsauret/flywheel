@@ -47,10 +47,10 @@ import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
 import { CONTAINER_MARK_VARIABLE, STRICT_DESCENDANT_SETTLEMENT_VARIABLE } from "../../src/infra/process/container/container-mark.js";
-import { authDir, globalAgentsFile, sharedAgentsDir } from "../../src/infra/paths.js";
+import { authDir, globalAgentsFile, sharedAgentsDir } from "../../src/infra/platform/files/paths.js";
 
 const SANDBOX_EXEC = "/usr/bin/sandbox-exec";
-/** The installed and the development hub ports (src/infra/paths.ts). */
+/** The installed and the development hub ports (src/infra/platform/files/paths.ts). */
 const HUB_PORTS = [41000, 40999];
 
 export interface CellIsolation {

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { carriedTurnEndRecord, chatTurnEndEvidenceOf, chatTurnEndOf, cutRunningToolCall, endsAtTurnEnd, interruptedTurnEnd, interruptedTurnMessage, isResumableTurnEnd, isVisibleTurnEnd, turnEndEntryId, turnEndOfEntry, questionExchangeOf, DEFAULT_WAIT_SECONDS, waitsAtRuntimeInterrupt, waitsForPerson, type TurnEndEntry, CONTINUATION_MESSAGES } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { toolResultMessages } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js"
-import { TOOL_OUTCOME_VALUES } from "../../../../src/infra/runtime-facts/tool-outcome.js"
+import { TOOL_OUTCOME_VALUES } from "../../../../src/infra/substrate/runtime-facts/tool-outcome.js"
 import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/loop/reply-nudge.js"
 
 /** The display-only content Escape markers carried before interrupt became resumable. */

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest, mock } from "bun:test"
 import { createSignal } from "solid-js"
 import { createCommandDispatch } from "../../../src/tui/commands/command-dispatch.js"
-import type { ProviderSetup } from "../../../src/protocol/client/provider-setup.js"
+import type { ProviderSetup } from "../../../src/protocol/client/providers/provider-setup.js"
 import { runtimeCallPolicies } from "../../../src/protocol/rpc/runtime-client-deadlines.js"
 import type { CommandDeps } from "../../../src/tui/hooks/composer/use-commands.js"
 import { useCommands } from "../../../src/tui/hooks/composer/use-commands.js"

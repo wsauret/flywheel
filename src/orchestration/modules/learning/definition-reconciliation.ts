@@ -1,6 +1,6 @@
 import { skillStoreRoots, type SkillStoreRoot } from "../../../workflows/skills/skills.js"
 import type { CapabilityAccess } from "../../agent-runtime/tools/types.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import type { DefinitionReconciliationInput } from "../../module-contract/module-seams.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { readConsentClaims, reconcileGlobalSkillOperations, reconcileGlobalSkillStores, type ConsentClaims } from "./skills/global-skill-mutation.js"

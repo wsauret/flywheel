@@ -9,7 +9,7 @@ import type { ResolvedAgent } from "../../../../src/workflows/definitions/agent-
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flatten.js"
 import { frontendAttempts } from "../../../../src/orchestration/session/metadata/frontend-attempts.js"
 import type { LoadedWorkflowView, WorkflowTree } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
-import { parseProjectionFact } from "../../../../src/infra/projection/event-projection.js"
+import { parseProjectionFact } from "../../../../src/infra/substrate/projection/event-projection.js"
 import type { OutputIssue } from "../../../../src/workflows/output-contract/paths.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { createMemoryStore, initialFacts, testHost } from "./host-test-support.js"

@@ -1,8 +1,6 @@
 import { createSignal, getOwner, onCleanup } from "solid-js"
 import type { AttachedRuntimeClient, RuntimeClient } from "../../protocol/runtime/app-service-types.js"
-import { isLaneBreak } from "../../protocol/client/cursor-intake.js"
-import { createHeldSessionDetails } from "../../protocol/client/held-session-details.js"
-import { isGlobalRuntimeInvalidation } from "../../protocol/rpc/runtime-invalidation.js"
+import { createHeldSessionDetails } from "../../protocol/client/session/held-session-details.js"
 import type { RuntimeSessionDetailView } from "../../protocol/session/session-detail-protocol-types.js"
 
 /** The held detail a surface reads, counted per surface that holds it. */
@@ -34,19 +32,11 @@ export function createSessionDetailCache(
   const track = (sessionId: string): void => { (changed.get(sessionId)?.track ?? holdsChanged)() }
   const notify = (sessionId: string): void => { changed.get(sessionId)?.notify() }
   const held = createHeldSessionDetails({
-    client: { query: reads.query, dispatch: releases.dispatch },
+    client: { query: reads.query, dispatch: releases.dispatch, subscribe: reads.subscribe, onLane: reads.onLane },
     onChange: notify,
   })
   const holds = new Map<string, number>()
-  // Each new lane reads every held session again. A break reads nothing,
-  // because the next lane's read answers for it.
-  const stopLanes = reads.onLane(() => held.refresh())
-  const unsubscribe = reads.subscribe((event) => {
-    if (event.type !== "patch") return
-    if (isGlobalRuntimeInvalidation(event.patch) && !isLaneBreak(event.patch)) held.refresh()
-    else held.accept(event.patch)
-  })
-  if (getOwner()) onCleanup(() => { stopLanes(); unsubscribe(); held.dispose(); changed.clear() })
+  if (getOwner()) onCleanup(() => { held.dispose(); changed.clear() })
   return {
     retain(sessionId) {
       const count = holds.get(sessionId) ?? 0

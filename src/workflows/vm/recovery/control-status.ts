@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import { readWorkflowControls } from "./recovery-fold.js"
 

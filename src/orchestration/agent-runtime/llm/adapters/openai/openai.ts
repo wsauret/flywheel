@@ -1,13 +1,13 @@
 import OpenAI, { APIConnectionError, APIError } from "openai";
 import { Redacted } from "effect";
 import type { ResponseStreamEvent } from "openai/resources/responses/responses.js";
-import type { OpenAIAuth } from "../../../../../infra/auth/openai/openai-auth-types.js";
-import type { AccessProviderCandidate, AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
-import { computeUsagePrice } from "../../../../../infra/llm/models/llm-helpers.js";
-import type { ModelInfo } from "../../../../../infra/llm/models/models.js";
+import type { OpenAIAuth } from "../../../../../infra/providers/auth/openai/openai-auth-types.js";
+import type { AccessProviderCandidate, AccessProviderId } from "../../../../../infra/providers/llm/access/access-provider.js";
+import { computeUsagePrice } from "../../../../../infra/providers/llm/models/llm-helpers.js";
+import type { ModelInfo } from "../../../../../infra/providers/llm/models/models.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { LlmStreamError } from "../../errors.js";
-import { parseToolArguments } from "../../../../../infra/llm/json-parse.js";
+import { parseToolArguments } from "../../../../../infra/providers/llm/json-parse.js";
 import { throwIfLivenessFailure, withStreamAttempt } from "../../stream/stream-attempt.js";
 import { mapChatGptAdapterEvents } from "./chatgpt-adapter/sse.js";
 import { tryChatGptAdapterTransport } from "./chatgpt-adapter/transport.js";
@@ -18,8 +18,8 @@ import { createChatGPTTokenAccessor, logRejectedChatGptRequest, type ChatGPTToke
 import { classifyOpenAIStreamError, classifyResponseFailed, createOpenAIStream, handleOpenAICompleted, handleOpenAIUsage } from "./openai-helpers.js";
 import { openAISessionAffinityHeaders } from "./openai-prompt-cache.js";
 import { prepareOpenAIResponsesRequest } from "./openai-responses.js";
-import { resolveOpenAIServiceTier } from "../../../../../infra/llm/access/provider-options.js";
-import { providerRequestHeaders } from "../../../../../infra/llm/provider-request-identity.js";
+import { resolveOpenAIServiceTier } from "../../../../../infra/providers/llm/access/provider-options.js";
+import { providerRequestHeaders } from "../../../../../infra/providers/llm/provider-request-identity.js";
 import { observeChatGptQuotaFrame } from "../../routing/provider-availability.js";
 import type { ProviderAvailability } from "../../routing/provider-availability-types.js";
 import { observeProviderTelemetry } from "../../stream/stream-observe.js";
@@ -38,7 +38,7 @@ export async function createOpenAIAdapter(
   defaultModel: string,
   openingInfo: ModelInfo,
   overrides: {
-    oauthPersistence?: import("../../../../../infra/auth/auth-context.js").OAuthPersistencePolicy;
+    oauthPersistence?: import("../../../../../infra/providers/auth/auth-context.js").OAuthPersistencePolicy;
     tokenAccessor?: ChatGPTTokenAccessor;
     client?: OpenAI; accessProvider?: AccessProviderId;
     candidate?: AccessProviderCandidate;

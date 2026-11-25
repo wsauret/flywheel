@@ -1,18 +1,18 @@
 import { describe, expect, it } from "bun:test";
 
-import { OutputProjector } from "../../../../../../src/infra/output/projector/output-projector.js";
-import type { QuestionEntry } from "../../../../../../src/infra/output-blocks.js";
+import { OutputProjector } from "../../../../../../src/infra/substrate/output/projector/output-projector.js";
+import type { QuestionEntry } from "../../../../../../src/infra/substrate/events/output-blocks.js";
 import type { AskUserController } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller.js";
 import type { ResolveWorkflowLaunchTarget } from "../../../../../../src/orchestration/agent-runtime/tools/definitions/workflow-launch.js";
 import { createAskUserTool } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/ask-user.js";
 import { answeredAskUserResult } from "../../../../../../src/orchestration/session/history/ask-user-answer.js";
-import { normalizeAskUserInput } from "../../../../../../src/infra/tools/displays/ask-user.js";
+import { normalizeAskUserInput } from "../../../../../../src/infra/substrate/output/tools/displays/ask-user.js";
 import type { DispatchedToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentInputAnswer } from "../../../../../../src/protocol/session/question-protocol-types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
 import type { SessionFact, SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
-import { asRecord, isRecord } from "../../../../../../src/infra/record.js";
+import { asRecord, isRecord } from "../../../../../../src/infra/guards/record.js";
 import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 

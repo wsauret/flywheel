@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { Log } from "../../../../../../src/infra/diagnostics/log.js";
 import { healConversation } from "../../../../../../src/orchestration/session/conversation/tree/heal-messages.js";
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 
 const anthropic = { api: "anthropic-messages" as const, provider: "anthropic" as const, model: "claude", timestamp: 1 };
 

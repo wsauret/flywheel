@@ -1,5 +1,5 @@
-import { CorruptEventRowError, type StoredFact } from "../../../../infra/store/event-store-types.js"
-import { workflowCallLaunched } from "../../../../infra/tools/workflow-call-source.js"
+import { CorruptEventRowError, type StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
+import { workflowCallLaunched } from "../../../../infra/substrate/output/tools/workflow-call-source.js"
 import { readAdvancingCompletionEvidence, readTerminalHandoff, terminalWorkflow, workflowStartFailureContent, workflowStopContent, type AgentResult, type FailedAgent, type TerminalHandoff } from "../../../../workflows/vm/recovery/workflow-completion.js"
 import { createReplayingWorkflowView } from "../../../../workflows/vm/recovery/workflow-view.js"
 import { readWorkflowControl } from "../../../../workflows/vm/recovery/recovery-fold.js"

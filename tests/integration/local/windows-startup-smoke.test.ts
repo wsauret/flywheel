@@ -3,9 +3,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpath
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { StartupDirectories } from "../../../src/infra/directory-authorities.js"
-import { globalConfigFile } from "../../../src/infra/paths.js"
-import { isProcessAlive } from "../../../src/infra/process-liveness.js"
+import type { StartupDirectories } from "../../../src/infra/platform/files/directory-authorities.js"
+import { globalConfigFile } from "../../../src/infra/platform/files/paths.js"
+import { isProcessAlive } from "../../../src/infra/platform/process-liveness.js"
 import { seedConfigDefaults } from "../../../src/orchestration/config/writer.js"
 import { migrateCapabilityModules } from "../../../src/orchestration/config/policy/module-selection-writer.js"
 import { readDefinitionOverrideBaselines } from "../../../src/workflows/definitions/override-baselines.js"

@@ -6,10 +6,10 @@
  */
 
 import { Schema } from "effect";
-import { durableOwnerAggregate, type DurableOwner } from "../../../infra/durable-owner.js";
-import { createEventProjection, parseProjectionFact } from "../../../infra/projection/event-projection.js";
-import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js";
-import { heldProjection } from "../../../infra/projection/projection-registry.js";
+import { durableOwnerAggregate, type DurableOwner } from "../../../infra/substrate/facts/durable-owner.js";
+import { createEventProjection, parseProjectionFact } from "../../../infra/substrate/projection/event-projection.js";
+import type { AsyncEventReadSurface } from "../../../infra/substrate/store/event-store-types.js";
+import { heldProjection } from "../../../infra/substrate/projection/projection-registry.js";
 import type { SessionFactWriter } from "../persistence/session-fact-writer.js";
 import { ConversationRolePickedFactSchema, type ConversationRolePickFact, type RolePickSetting } from "../persistence/conversation-role-pick-facts.js";
 

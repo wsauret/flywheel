@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import { AuthProfileStore, findLogicalAuthProfile } from "../../infra/auth/store/auth-profile-store.js";
+import { AuthProfileStore, findLogicalAuthProfile } from "../../infra/providers/auth/store/auth-profile-store.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import { removeSemanticSubtree, upsertSemanticAssignment } from "./config-assignment.js";
 import type { ConfigFileLocation, ConfigOwnership, ConfigReadResult } from "./config-file.js";

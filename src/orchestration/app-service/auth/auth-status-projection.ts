@@ -1,7 +1,7 @@
 import { credentialProviderDisplayName, getAuthStatusWithDiagnostics, rejectedCustomProviderStatusId } from "../../auth/auth-actions.js"
 import type { AuthProfileResolution } from "../../auth/auth-profile-manager.js"
-import { customProviderRejections } from "../../../infra/llm/custom-provider-registry.js"
-import type { AccessProviderCandidate } from "../../../infra/llm/access/access-provider.js"
+import { customProviderRejections } from "../../../infra/providers/llm/custom-provider-registry.js"
+import type { AccessProviderCandidate } from "../../../infra/providers/llm/access/access-provider.js"
 import type { ProviderModelEligibilityState, ProviderModelInventoryCandidate } from "./models/provider-model-preference-service.js"
 import type { AuthFileAttention, AuthOperationNotice, AuthProviderStatus, RuntimeAuthStatusScope, RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import { webAuthProviderDefinitions, installedAccessProviderDefinitions, installedCredentialSlotClassifier } from "../../module-contract/module-composition.js"
@@ -9,11 +9,11 @@ import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../.
 import { heldAuthStoreLoad } from "./held-auth-store-load.js"
 import type { SubscriptionSpendConsentView } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 import { subscriptionSpendAccountCorrelationId } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
-import { createAuthConditionOwner, type AuthConditionOwner } from "../../../infra/auth/store/auth-condition-owner.js"
-import { accountSecretFile } from "../../../infra/paths.js"
-import { lockedJsonStorePath } from "../../../infra/auth/store/locked-json-store.js"
+import { createAuthConditionOwner, type AuthConditionOwner } from "../../../infra/providers/auth/store/auth-condition-owner.js"
+import { accountSecretFile } from "../../../infra/platform/files/paths.js"
+import { lockedJsonStorePath } from "../../../infra/providers/auth/store/locked-json-store.js"
 import { accessProviderRegistry } from "../../config/models/access-provider-registry.js"
-import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js"
+import { accessProviderAccountKey } from "../../../infra/providers/auth/provider-account.js"
 
 /** Reads the auth view. A reading has no effect beyond the condition owner's
  *  observation; the attention a view shows is stated by the auth attention

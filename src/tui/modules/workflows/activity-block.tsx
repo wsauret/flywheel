@@ -1,14 +1,14 @@
 /** @jsxImportSource @opentui/solid */
 
-import { agentGroupClockRuns, agentGroupGlyph, agentGroupInFlight } from "../../../protocol/client/agent-group-summary.js"
-import { workflowCardControls, workflowHoldsFailedAgent } from "../../../protocol/client/session-controls.js"
-import type { AgentGroupBlock as AgentGroupBlockModel } from "@infra/output-blocks"
+import { agentGroupClockRuns, agentGroupGlyph, agentGroupInFlight } from "../../../protocol/client/work/agent-group-summary.js"
+import { workflowCardControls } from "../../../protocol/client/work/session-controls.js"
+import type { AgentGroupBlock as AgentGroupBlockModel } from "../../../infra/substrate/events/output-blocks.js"
 import { StyledText, bg as stBg, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { useNavigateUri } from "@tui/context/navigation.js"
-import { parseWorkflowLink } from "../../../protocol/client/session-links.js"
-import { workflowCard, workflowCardChoice, workflowCardCut, workflowCardHeaderParts, workflowCardNotice, workflowCardSettled, workflowPlanAbsence, type WorkflowCardChoices, type WorkflowCardHeaderPart } from "../../../protocol/client/workflow-card.js"
-import { workflowOutline } from "../../../protocol/client/workflow-outline.js"
+import { parseWorkflowLink } from "../../../protocol/client/session/session-links.js"
+import { workflowCard, workflowCardChoice, workflowCardCut, workflowCardHeaderParts, workflowCardNotice, workflowCardSettled, workflowPlanAbsence, type WorkflowCardChoices, type WorkflowCardHeaderPart } from "../../../protocol/client/work/workflow/workflow-card.js"
+import { workflowOutline } from "../../../protocol/client/work/workflow/workflow-outline.js"
 import { useWorkflowCards } from "./cards.js"
 import { createWorkflowServingLabels } from "./serving-labels.js"
 import { useTheme } from "@tui/context/theme"
@@ -26,7 +26,7 @@ import { BlockFrame, BLOCK_GUTTER_WIDTH } from "@tui/transcript/output-blocks/bl
 import { childProcessControl, processControlChunks, type RowProcessControls } from "@tui/transcript/output-blocks/stop-affordance.js"
 import { chunkDisplayWidth, truncateChunks } from "@tui/transcript/output-blocks/tools/tool-row-wrap.js"
 import { isNarrowWorkflowCard, WorkflowCardBox, type WorkflowCardAction } from "@tui/transcript/output-blocks/agents/workflow-card.js"
-import { workflowSurfaceReads } from "../../../protocol/client/workflow-surface.js"
+import { workflowSurfaceReads } from "../../../protocol/client/work/workflow/workflow-surface.js"
 
 /** One control of a card's header: its label, which a click hits, the
  *  chunks that draw it, and what it does. */
@@ -164,7 +164,7 @@ export function WorkflowActivityBlock(props: AgentGroupBlockProps) {
     const row = reads().detail ? workflowRow() : undefined
     const id = workflowId()
     const view = id === undefined ? undefined : cards?.view(id)
-    const admitted = workflowCardControls(row, isActive(), props.block.status === "paused", view?.attemptsStatus === "loaded" && workflowHoldsFailedAgent(view))
+    const admitted = workflowCardControls(row, isActive(), props.block.status === "paused", view)
     const stop = childProcessControl(props.processControls, props.block.toolUseId, workflowId() !== undefined, admitted.stop)
     const primary = admitted.primary === undefined || row === undefined || cards === undefined ? undefined : workflowControl(admitted.primary, () => cards[admitted.primary ?? "resume"](row))
     const resumeFailed = !admitted.resumeFailed || row === undefined || cards === undefined ? undefined : workflowControl("resume", () => cards.resume(row))

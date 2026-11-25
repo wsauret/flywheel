@@ -6,7 +6,7 @@ import { formatClockParts } from "../../../client/format/format-time.js"
 import { copyFrom } from "../../controls/copy.js"
 import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
-import { toolActivity, toolProcess } from "../../../../../src/protocol/client/transcript-model.js"
+import { toolActivity, toolProcess } from "../../../../../src/protocol/client/chat/transcript/transcript-model.js"
 import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"
 
 /** Keeps a block's time inputs scalar while its body streams. */

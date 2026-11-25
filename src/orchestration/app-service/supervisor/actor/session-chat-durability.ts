@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto"
-import type { ChatInputLike } from "../../../../infra/chat-input.js"
-import { chatInputImages, normalizeChatInput } from "../../../../infra/chat-input.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
+import type { ChatInputLike } from "../../../../infra/substrate/events/chat-input.js"
+import { chatInputImages, normalizeChatInput } from "../../../../infra/substrate/events/chat-input.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js"
 import { startupTrace } from "../../../../infra/diagnostics/startup-trace.js"
 import { createConversationTreeWriterController } from "../../../chat/tree-writer.js"
 import { personMessageKey } from "../../../session/conversation/queued-user-inputs.js"
+import { invocationBoundaryId } from "../../../session/conversation/transcript/invocation-boundary.js"
 import { conversationPersonMessage, recordPersonMessageReceipt } from "../../../session/control/messaging/person-message-ledger.js"
 import { unsavedMessageReason } from "./session-runtime-actor-helpers.js"
 import type { SessionManager } from "../../../session/manager.js"
@@ -97,7 +98,10 @@ export async function recordedChatMessage(ctx: ChatDurabilityContext, conversati
 }
 
 /** Commits a cold send's user turn, under its submission key when it has
- *  one, so a copy that a client sends again converges on this entry. */
+ *  one, so a copy that a client sends again converges on this entry. Behind
+ *  a waiting question it holds the message in its cell instead and
+ *  answers null: the message reaches the agent after the answer
+ *  (ARCH-SESSIONS-050). */
 export async function writePreReadinessTurn(ctx: ChatDurabilityContext, conversationId: string, input: ChatInputLike): Promise<string> {
   const writer = createConversationTreeWriterController({ conversationId, sessionId: ctx.sessionId, projectRoot: ctx.projectRoot, store: ctx.eventStore, projectionReader: ctx.projectionReader, writer: ctx.eventWriter })
   try {
@@ -116,17 +120,26 @@ export async function writePreReadinessTurn(ctx: ChatDurabilityContext, conversa
  *  always in the same synchronous frame as the caller's runner-null check --
  *  attachChatRunner's display seed hands whatever is in the store to the
  *  runner, so a block rendered here can never straddle the attach. */
-export function renderPreRunnerTurn(store: SessionStore, sessionId: string, input: ChatInputLike): void {
+export function renderPreRunnerTurn(store: SessionStore, sessionId: string, input: ChatInputLike, heldKey?: string): void {
   const normalized = normalizeChatInput(input)
+  // A message held behind a waiting question shows queued under its cell
+  // key, as the runner shows it once it takes the cell, so a recall finds
+  // it (ARCH-SESSIONS-050).
+  const state = {
+    pending: heldKey !== undefined,
+    injected: false,
+    ...(normalized.submissionIds?.length ? { submissionIds: normalized.submissionIds } : {}),
+    ...(heldKey !== undefined ? { dispatchIds: [heldKey] } : {}),
+  }
   if (normalized.invocation) {
-    store.appendPreRunnerOutput(sessionId, { kind: "divider", id: randomUUID(), label: normalized.invocation.label, timestamp: Date.now() })
+    store.appendPreRunnerOutput(sessionId, { kind: "divider", id: heldKey === undefined ? randomUUID() : invocationBoundaryId(heldKey), label: normalized.invocation.label, timestamp: Date.now() })
     if (normalized.invocation.args) {
-      store.appendPreRunnerOutput(sessionId, { kind: "userMessage", id: randomUUID(), content: normalized.invocation.args, timestamp: Date.now(), pending: false, injected: false, ...(normalized.submissionIds?.length ? { submissionIds: normalized.submissionIds } : {}) })
+      store.appendPreRunnerOutput(sessionId, { kind: "userMessage", id: heldKey ?? randomUUID(), content: normalized.invocation.args, timestamp: Date.now(), ...state })
     }
     return
   }
   const images = chatInputImages(normalized)
-  store.appendPreRunnerOutput(sessionId, { kind: "userMessage", id: randomUUID(), content: normalized.text, timestamp: Date.now(), pending: false, injected: false, ...(normalized.submissionIds?.length ? { submissionIds: normalized.submissionIds } : {}), ...(images.length ? { images } : {}) })
+  store.appendPreRunnerOutput(sessionId, { kind: "userMessage", id: heldKey ?? randomUUID(), content: normalized.text, timestamp: Date.now(), ...state, ...(images.length ? { images } : {}) })
 }
 
 /** Shows in the pre-runner transcript why an idle send's user turn was not

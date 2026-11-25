@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it } from "bun:test"
 import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state/workspace-state.js"
 import { WORKSPACE_STATE_EPOCH } from "../../../../src/orchestration/workspace-state/workspace-state-retirement.js"
 import {

@@ -1,6 +1,6 @@
-import { openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js"
-import { ensureSessionDir, sessionRelativeDir } from "../../../../infra/paths.js"
-import { directoryComponents, removeTreeUnder } from "../../../../infra/write-file-under.js"
+import { openExistingContainedDirectory } from "../../../../infra/platform/files/descriptor-directory.js"
+import { ensureSessionDir, sessionRelativeDir } from "../../../../infra/platform/files/paths.js"
+import { directoryComponents, removeTreeUnder } from "../../../../infra/platform/files/write-file-under.js"
 import { writeOwnerPid } from "../../pid-lock.js"
 
 /** Prepares the filesystem owner before guarded publication. Rollback removes

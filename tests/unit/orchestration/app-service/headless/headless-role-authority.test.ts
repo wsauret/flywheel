@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
+import { captureProviderConnection } from "../../../../../src/infra/providers/auth/auth-context.js";
 import type { AgentFactory } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { runHeadlessTask } from "../../../../../src/orchestration/app-service/headless/run-headless-task.js";
 import type { WorkflowDeps } from "../../../../../src/orchestration/agent-runtime/runner/workflow-deps.js";
@@ -13,7 +13,7 @@ import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { testCapabilityModules } from "../../../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
-import type { ModelFamily } from "../../../../../src/infra/llm/models/model-family.js";
+import type { ModelFamily } from "../../../../../src/infra/providers/llm/models/model-family.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
 import type { RoleSettingEntry } from "../../../../../src/orchestration/session/metadata/schemas.js";
 import { planEveryCapability } from "../../../../helpers/attempt-brief.js";

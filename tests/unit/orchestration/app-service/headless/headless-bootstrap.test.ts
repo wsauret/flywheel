@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { Database } from "bun:sqlite"
-import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths.js"
 import { QuotaCoordinationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import type { ProviderAvailabilityOwner } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js"
 import { disposeSharedProviderAvailability, getSharedProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js"

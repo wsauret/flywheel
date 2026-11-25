@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import type { EventBus, Unsubscribe } from "../../../infra/event-bus.js"
-import type { FlywheelEvent, FlywheelEventType } from "../../../infra/events.js"
+import type { EventBus, Unsubscribe } from "../../../infra/substrate/events/event-bus.js"
+import type { FlywheelEvent, FlywheelEventType } from "../../../infra/substrate/events/events.js"
 import type { HeadlessTaskResult } from "./run-headless-task.js"
 
 /** The version of the whole JSONL contract, which every record states.

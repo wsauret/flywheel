@@ -1,4 +1,4 @@
-import { capacityWaitReasonText, type SessionNotice } from "../../../infra/session-notice.js"
+import { capacityWaitReasonText, type SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 import { formatDateTime } from "../../../protocol/client/format.js"
 import { composeSegments, type MetadataSegment, type SpinnerStatus } from "./spinner-status-model.js"
 

@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { watch } from "node:fs";
-import type { AgentDefinition } from "../../../../../infra/agent-definition.js";
+import type { AgentDefinition } from "../../../../../infra/definitions/agent-definition.js";
 import type { PersonaBenchmarkDeps } from "./persona-benchmark.js";
 import type { BenchmarkCatalog } from "../catalog.js";
 import { bytesIdentity, structuredIdentity } from "../campaign/content-identity.js";

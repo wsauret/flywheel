@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { EventStoreWriterService } from "../../../../src/infra/store/event-store-effect.js"
-import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
+import { EventStoreWriterService } from "../../../../src/infra/substrate/store/event-store-effect.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { moduleDescriptor } from "../../../../src/orchestration/config/module-descriptor.js"
 import type { CapabilityAdmission, CapabilityRequest } from "../../../../src/orchestration/config/policy/module-policy.js"
 import { composeRealmModuleSnapshot } from "../../../../src/orchestration/module-contract/module-composition.js"

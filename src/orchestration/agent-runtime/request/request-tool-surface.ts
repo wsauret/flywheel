@@ -15,10 +15,10 @@
  */
 
 import { createHash } from "node:crypto";
-import { errorMessage } from "../../../infra/error-message.js";
-import type { CapabilityCheck } from "../../../infra/capability-text.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
 import { agentCapabilityCheck } from "./prompt/capability-checks.js";
-import { isRecord } from "../../../infra/record.js";
+import { isRecord } from "../../../infra/guards/record.js";
 import type { ToolExposurePlan } from "../tools/dispatch/tool-exposure-planner.js";
 import type { KernelToolDeps } from "../tools/kernel-tool-deps.js";
 import type { RuntimeTool } from "../tools/types.js";
@@ -139,7 +139,7 @@ export interface RequestProviderRuntime {
   readonly admittedRequest?: AdmittedModelRequest;
   readonly interactionProfile: ModelInteractionProfile;
   /** Effective request role, when request-time role refresh selected one. */
-  readonly role?: { readonly model: string; readonly effort?: string; readonly providerOptions?: import("../../../infra/llm/access/provider-options.js").ProviderRequestOptions };
+  readonly role?: { readonly model: string; readonly effort?: string; readonly providerOptions?: import("../../../infra/providers/llm/access/provider-options.js").ProviderRequestOptions };
   readonly selectionKey?: string;
   readonly selectionGeneration?: WeakKey;
   readonly selectionEligibility?: ProviderConnectionCapture["eligibility"];
@@ -177,7 +177,7 @@ interface RequestToolSurface extends RequestCapture {
   readonly turnedOff: ToolExposurePlan["turnedOff"];
   /** Resolves old unstamped calls only when their recorded model profile selects
    *  exactly one registration for the recorded provider-visible name. */
-  historicalRegistrationId(name: string, model: string | undefined, provider: import("../../../infra/llm/models/model-family.js").ModelFamily | undefined): string | undefined;
+  historicalRegistrationId(name: string, model: string | undefined, provider: import("../../../infra/providers/llm/models/model-family.js").ModelFamily | undefined): string | undefined;
   /** Capability admission fixed with the advertised tool surface. */
   readonly executionAdmission: ExecutionAdmission;
   /** Provider planning, factories, and billing derived from this exact request composition. */

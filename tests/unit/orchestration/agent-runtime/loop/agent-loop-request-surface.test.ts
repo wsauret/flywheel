@@ -10,11 +10,11 @@ import { createRequestToolSurface } from "../../../../../src/orchestration/agent
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js"
 import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/provider-description.js"
 import { FUNCTION_TOOL_PRESENTATION, type AdmittedModelRequest, type LLMClient, type ProviderStreamEvent, type StreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js"
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 import type { ProviderRequestAuditWriter } from "../../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js"
 import type { RuntimeTool, ToolAttributionIdentity } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { asModelClient, ownHistoryTarget } from "../_model-client.js"
-import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js"
+import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/definitions/modules/module-runtime.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { RequestToolMap, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js"
 import type { GitAiAttributionService } from "../../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
@@ -23,7 +23,7 @@ import { normalizeProviderAttemptFailure } from "../../../../../src/orchestratio
 import { StreamIdleTimeoutError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
-import { messageInput } from "../../../../../src/infra/agent-loop-events.js"
+import { messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js"
 
 describe("logical tool authorization", () => {
   it.each([
@@ -36,7 +36,7 @@ describe("logical tool authorization", () => {
     const audited: ReadonlyArray<ConversationMessage>[] = []
     const dispatched: ReadonlyArray<ConversationMessage>[] = []
     const persisted: ConversationMessage[] = []
-    const echoed: Array<{ content: string | import("../../../../../src/infra/llm/conversation/conversation-message.js").ContentBlock[]; origin: string }> = []
+    const echoed: Array<{ content: string | import("../../../../../src/infra/providers/llm/conversation/conversation-message.js").ContentBlock[]; origin: string }> = []
     const reminder = { kind: "user", content: "Required provider reminder", origin: "system" } as const
     const saved: ConversationMessage[][] = []
     let admissions = 0

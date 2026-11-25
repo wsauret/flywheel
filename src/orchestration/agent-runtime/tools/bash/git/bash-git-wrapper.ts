@@ -2,9 +2,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runsThroughBun } from "../../../../../infra/cli-subprocess.js";
-import { windowsGitForwarderPath } from "../../../../../infra/native-assets.js";
-import { SCRATCH_MUTATION_GIT_DIR } from "../../../../../infra/paths.js";
+import { runsThroughBun } from "../../../../../infra/platform/cli-subprocess.js";
+import { windowsGitForwarderPath } from "../../../../../infra/platform/native-assets.js";
+import { SCRATCH_MUTATION_GIT_DIR } from "../../../../../infra/platform/files/paths.js";
 import { isWindows, quoteBashSingle, type RuntimePlatform } from "../bash-script.js";
 import { shellPathKey, type ShellEnvironment } from "../shell-environment.js";
 

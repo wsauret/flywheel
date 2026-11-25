@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto"
 
-import type { ServeLane } from "../../../infra/cli-subprocess.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import type { ServeLane } from "../../../infra/platform/cli-subprocess.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import type { MutationResult, RuntimeRestartReadiness } from "../../../protocol/runtime/app-service-types.js"
-import { RESTART_UNCHECKED_REASON } from "../../../protocol/client/service-restart-copy.js"
+import { RESTART_UNCHECKED_REASON } from "../../../protocol/client/runtime/copy/service-restart-copy.js"
 import type { ProjectServiceState } from "./projects/project-control-client.js"
 import type { ReplacementOwner } from "./replacement-owner.js"
 

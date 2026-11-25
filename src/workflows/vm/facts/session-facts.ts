@@ -1,13 +1,13 @@
 import { Schema } from "effect";
-import { createFactParser, factDescriptors } from "../../../infra/event-registry.js";
+import { createFactParser, factDescriptors } from "../../../infra/substrate/facts/event-registry.js";
 import { DefinitionProvenanceFactSchemas } from "../../provenance/definition-provenance-facts.js";
 import { HandoffFactSchemas } from "../../output-contract/facts.js";
 import { MemoryFactSchemas } from "../../learning/memory/memory-facts.js";
 import { WorkflowContextFactSchemas } from "../../context-bundle/context-facts.js";
 import { WorkflowQueueFactSchemas } from "../../view/view-facts.js";
 import { WorkflowRunFactSchemas } from "../../run/run-facts.js";
-import { SessionRuntimeFactSchemas } from "../../../infra/runtime-facts/runtime-fact-parser.js";
-import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../infra/runtime-facts/runtime-fact-types.js";
+import { SessionRuntimeFactSchemas } from "../../../infra/substrate/runtime-facts/runtime-fact-parser.js";
+import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../infra/substrate/runtime-facts/runtime-fact-types.js";
 import { ImprovementFactSchemas } from "../../learning/improvements/improvement-facts.js";
 import { committedWorkflowEvent, WorkflowControlFactSchemas } from "../../control-facts/family.js";
 import { holdsCurrentEvent, type DecodedWorkflowProposalEvent } from "../../control-facts/events.js";

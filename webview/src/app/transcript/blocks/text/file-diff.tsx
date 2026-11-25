@@ -1,11 +1,11 @@
 import { createEffect, createMemo, createRenderEffect, createSignal, For, Index, on, onCleanup, onMount, Show, untrack, type JSX } from "solid-js"
 
-import { fileDiffFiles, removedDirectoryGroups, removedDirectoryLabel, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../../../../../src/protocol/client/file-change-body.js"
+import { fileDiffFiles, removedDirectoryGroups, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../../../../../src/protocol/client/chat/transcript/file-change-body.js"
 import { renderCode } from "./markdown.js"
 import { patchMarkdownChildren } from "./markdown-dom.js"
 import { writeSyntaxPresentation } from "./write-syntax.js"
 import type { WriteSyntaxThemeId } from "../../../../../../src/protocol/settings/write-syntax-theme.js"
-import type { MutationEvidenceHandle, MutationEvidenceReader, MutationFilesView, MutationPatchView } from "../../../../../../src/protocol/client/mutation-evidence.js"
+import type { MutationEvidenceHandle, MutationEvidenceReader, MutationFilesView, MutationPatchView } from "../../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 
 function languageFromPath(path?: string): string | undefined {
   const fileName = path?.split(/[\\/]/).at(-1)
@@ -145,9 +145,10 @@ function EvidenceDiff(props: FileDiffProps & { body: Extract<FileChangeBody, { m
       <Show when={pending()}>{(body) => <FileDiff {...props} body={body()} />}</Show>
       <For each={files()?.files}>{entry => entry.kind === "applied" || entry.kind === "display"
         ? <Show when={!grouped().has(entry)}>{evidenceFile(entry)}</Show>
-        : entry.kind === "removed_directory" ? <RemovedDirectory {...props} directory={entry} hidden={pending() !== undefined}
-          members={() => groups().directories.find(group => group.directory === entry)?.members.map(index => evidenceEntries()[index]!) ?? []}
-          renderFile={evidenceFile} />
+        : entry.kind === "removed_directory" ? <Show when={groups().directories.find(group => group.directory === entry)}>{group =>
+          <RemovedDirectory {...props} directory={entry} label={group().label} hidden={pending() !== undefined}
+            members={() => group().members.map(index => evidenceEntries()[index]!)}
+            renderFile={evidenceFile} />}</Show>
         : <div class="mutation-omitted">{entry.kind === "omitted" ? `${entry.displayPath} not shown` : `${entry.path} not applied`} ({entry.reason.replace(/_/g, " ")})</div>
       }</For>
       <Show when={unavailable()}><div class="omitted">Change evidence is unavailable</div></Show>
@@ -163,6 +164,7 @@ function EvidenceDiff(props: FileDiffProps & { body: Extract<FileChangeBody, { m
 /** One removed directory as a collapsed row; its files mount only while it is expanded. */
 function RemovedDirectory(props: FileDiffProps & {
   directory: Extract<MutationFilesView["files"][number], { kind: "removed_directory" }>
+  label: string
   hidden: boolean
   members: () => readonly Extract<MutationFilesView["files"][number], { kind: "applied" | "display" }>[]
   renderFile: (entry: Extract<MutationFilesView["files"][number], { kind: "applied" | "display" }>) => JSX.Element
@@ -173,7 +175,7 @@ function RemovedDirectory(props: FileDiffProps & {
     <section class="removed-directory">
       <button class="diff-file-path" aria-expanded={expanded()} disabled={props.onToggleFile === undefined}
         onClick={() => props.onToggleFile?.({ ...key(), expanded: expanded() })}>
-        {`${removedDirectoryLabel(props.directory)} ${expanded() ? "▾" : "▸"}`}
+        {`${props.label} ${expanded() ? "▾" : "▸"}`}
       </button>
       <Show when={expanded()}><For each={props.members()}>{entry => props.renderFile(entry)}</For></Show>
     </section>

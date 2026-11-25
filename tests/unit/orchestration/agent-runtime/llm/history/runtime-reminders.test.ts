@@ -1,12 +1,12 @@
 import { afterEach, expect, setSystemTime, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { localDate } from "../../../../../../src/infra/env-detection.js";
+import { localDate } from "../../../../../../src/infra/environment/env-detection.js";
 import { createClaudeReminders, createModelReminders } from "../../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
-import { parseRuntimeReminder } from "../../../../../../src/infra/llm/runtime-reminder-format.js";
-import type { CapabilityCheck } from "../../../../../../src/infra/capability-text.js";
+import { parseRuntimeReminder } from "../../../../../../src/infra/providers/llm/runtime-reminder-format.js";
+import type { CapabilityCheck } from "../../../../../../src/infra/definitions/capability-text.js";
 import { promptCapabilities, SHELL_CAPABILITIES } from "../../../../../helpers/prompt-capabilities.js";
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { redactMessage } from "../../../../../../src/orchestration/session/conversation/redact-message.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 

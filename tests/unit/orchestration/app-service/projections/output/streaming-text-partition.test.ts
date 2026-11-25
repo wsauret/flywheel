@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import type { StreamingToolTextOp } from "../../../../../../src/infra/output/output-block-delta.js"
+import type { StreamingToolTextOp } from "../../../../../../src/infra/substrate/output/output-block-delta.js"
 import { partitionStreamingTextDelta } from "../../../../../../src/orchestration/app-service/projections/output/streaming-text-partition.js"
-import { applyStreamingToolTextOps } from "../../../../../../src/protocol/client/streaming-text-edits.js"
+import { applyStreamingToolTextOps } from "../../../../../../src/protocol/client/chat/transcript/streaming-text-edits.js"
 import type { OutputDelta, OutputView } from "../../../../../../src/protocol/transcript/output-protocol-types.js"
 
 /** What a client holds after it applies every part in order. */

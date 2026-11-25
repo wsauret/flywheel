@@ -1,11 +1,11 @@
 import { createChatModuleHosts } from "../chat-module-host.js"
-import { errorMessage } from "../../../infra/error-message.js"
-import { createEmit, type EventBus } from "../../../infra/event-bus.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { createEmit, type EventBus } from "../../../infra/substrate/events/event-bus.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import type { ConnectionState } from "../../../infra/output-blocks.js"
-import type { ChatInputLike } from "../../../infra/chat-input.js"
-import { PersistenceWriteRefused, type StoredFact } from "../../../infra/store/event-store-types.js"
-import { wakeInput, type AgentLoopWakeInput, type TurnEndedContext } from "../../../infra/agent-loop-events.js"
+import type { ConnectionState } from "../../../infra/substrate/events/output-blocks.js"
+import type { ChatInputLike } from "../../../infra/substrate/events/chat-input.js"
+import { PersistenceWriteRefused, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { wakeInput, type AgentLoopWakeInput, type TurnEndedContext } from "../../../infra/substrate/events/agent-loop-events.js"
 import { randomUUID } from "node:crypto"
 
 import { createAgentGeneration } from "../../agent-runtime/runner/turn-host/host.js"
@@ -21,7 +21,9 @@ import type { AgentLoopMaintenance } from "../../agent-runtime/agent-loop-types.
 import { ChatTurnMailbox } from "../turn-mailbox.js"
 import { createChatTurnSlot, type ChatTurnLease } from "../turn-slot.js"
 import { createChatQueuedInputRecall } from "./chat-queued-input-recall.js"
-import { createChatMessageDelivery, type IdleLanding } from "./runner-message-delivery.js"
+import { createChatQuestionHold } from "./chat-question-hold.js"
+import { createChatMessageDelivery } from "./runner-message-delivery.js"
+import { createChatIdleLanding } from "./chat-idle-landing.js"
 import type { OutputSession } from "../../session-store/output-session.js"
 import { createRunnerBusBridge } from "../../agent-runtime/runner/bus-bridge.js"
 import { completionWorkIds } from "../../session/control/background-work/background-work-notifications.js"
@@ -29,10 +31,10 @@ import type { AskUserController } from "../../agent-runtime/tools/sessions/ask-u
 import { createModuleChatObservers } from "./module-observers.js"
 import { readChatTurnEndEvidence } from "../../session/control/chat-session-run-evidence.js"
 import { createChatWaitState } from "../runner-wait-state.js"
-import { watchNoticeRow } from "../../../infra/watch-notices.js"
+import { watchNoticeRow } from "../../../infra/substrate/events/watch-notices.js"
 import { awaitPlannedChildResumes } from "../../session/control/planned-session-continuation.js"
 import { waitsForPerson } from "../../session/conversation/turn-end-record.js"
-import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/module-runtime.js"
+import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/definitions/modules/module-runtime.js"
 import { createIdleCompaction } from "../idle-compaction.js"
 import { createChatInvocationCompletion, createChatTurnDurability, type ChatTurnEnding } from "../runner-completion.js"
 import { createChatCapacityWait } from "./chat-capacity-wait.js"
@@ -157,6 +159,10 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     mailbox, session, retire: (keys) => deps.treeWriter.dropQueuedUserInputs(keys), ended: () => state.ended,
   })
   deps.treeWriter.ownQueuedUserInputs((key) => mailbox.holdsDispatchId(key) || recalls.withdraws(key))
+  const questionHold = createChatQuestionHold({ treeWriter: deps.treeWriter, mailbox, session, ended: () => state.ended, refreshDisplay: deps.refreshDisplay })
+  const landWhileIdle = createChatIdleLanding({
+    turns, mailbox, wait, recalls, ended: () => state.ended, onTreeFailure: (error) => deps.onTreeFailure(error), startQueuedInputTurn,
+  })
 
   async function completeCurrentModelTurn(turn: RunningChatTurn, runtimeConfig?: TurnEndedContext["runtimeConfig"]): Promise<void> {
     if (!isLiveTurn(turn)) return
@@ -328,6 +334,9 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       skipLogicalStart?: boolean
       purpose?: TurnStartupPurpose
       resumes?: true
+      /** The turn continues a settled question: the input held behind it
+       *  lands after its result, before the request. */
+      releasesHeld?: true
     } = {},
   ): void {
     const lease = turns.takeReservedTurn() ?? turns.reserveTurn()
@@ -392,6 +401,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         // A command a previous build handed to this conversation is this
         // chat's before any request, so the turn parks on it as on its own.
         await background.adoptHandedOver()
+        if (opts.releasesHeld) await questionHold.release()
         result = await generation.runTurn({
           createContextOptions: async ({ providerSessionKey }: RetryState) =>
             buildRunnerContextOptions(turn, providerSessionKey ?? providerConversationId, opts.purpose),
@@ -471,7 +481,9 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         // the loop's existing in-memory continuation behavior.
         const authorized = runnerStarted && !turn.lease.signal.aborted || userInputAfterStartupStop?.() === true
         const canResume = !wait.stalled || mailbox.hasPendingUserMessage
-        if (ownsRunningTurn(turn) && authorized && !state.ended && !turn.completion.sealed && mailbox.hasPending && canResume) {
+        // Input queued behind a question that still waits, as a person's
+        // interrupt of the parked ask leaves it, waits for the answer's turn.
+        if (ownsRunningTurn(turn) && authorized && !state.ended && !turn.completion.sealed && mailbox.hasPending && canResume && !deps.treeWriter.holdsForQuestion()) {
           turns.continueAfterTurn(turn.lease, startQueuedInputTurn)
         }
       }
@@ -540,6 +552,15 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       capacity.continueNow()
       return true
     }
+    // A question that waits holds the conversation (ARCH-SESSIONS-050): the
+    // input waits in the mailbox, as behind a parked ask, and the turn that
+    // continues the answer takes it. A person's message comes here after
+    // its send opened the writer; a notice may meet an unopened one.
+    if (backgroundNotification ? await deps.treeWriter.awaitsAnswer() : deps.treeWriter.holdsForQuestion()) {
+      if (backgroundNotification) mailbox.enqueueBackgroundNotification(backgroundNotification)
+      else mailbox.enqueueNextTurn(input)
+      return true
+    }
 
     const reservation = turns.reserveTurn()
     if (!reservation) {
@@ -579,42 +600,6 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     return true
   }
 
-  /** The one turn-slot sequence for input that lands in history while no
-   *  turn runs: a background notification, or a message from another
-   *  session that is already held in its cell. The caller holds the slot's
-   *  reservation, so a Resume or a person's message that arrives meanwhile
-   *  waits in the mailbox. `admit` reads whether the last turn waits for the
-   *  person, as an interrupt, an unexpected exit, or a stall leaves it, and
-   *  answers whether the input commits and whether it starts its own turn.
-   *  After the commit, the sequence starts that turn, or the turn the
-   *  mailbox now waits with, or releases the slot. No turn starts after the
-   *  runner ended. A failed commit releases the slot and rejects. */
-  async function landWhileIdle<T>(reservation: ChatTurnLease, landing: IdleLanding<T>): Promise<T> {
-    const userInputArrived = mailbox.observeUserInput()
-    const admission = landing.admit(await wait.awaitsPerson())
-    if (admission.landing === "refuse") {
-      turns.releaseTurn(reservation)
-      return admission.result
-    }
-    try {
-      await landing.commit()
-    } catch (err) {
-      turns.releaseTurn(reservation)
-      deps.onTreeFailure(err)
-      throw err
-    }
-    // The decision reads the queue as the open recall leaves it. The
-    // reservation stays held, so a send meanwhile still waits in the mailbox.
-    if (recalls.open) await recalls.open
-    // The one ended check after the last await: the runner can end during
-    // the commit or the recall, and no turn starts after it ended.
-    if (state.ended) turns.releaseTurn(reservation)
-    else if (admission.landing === "wake") landing.wake()
-    else if (userInputArrived()) startQueuedInputTurn()
-    else turns.releaseTurn(reservation)
-    return admission.result
-  }
-
   const messages = createChatMessageDelivery({
     turns,
     mailbox,
@@ -623,18 +608,26 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     wait,
     landWhileIdle,
     commitHeldMessage: (input) => deps.treeWriter.commitHeldMessage(input),
+    awaitsAnswer: () => deps.treeWriter.awaitsAnswer(),
+    // A parked loop's ask, which the person can still answer. A person's
+    // interrupt of it ends the loop, so no parked turn outlives its ask.
+    leasedQuestionWaits: () => askUser.hasPendingQuestions(),
     wake: (input) => startTurn(input.text, { source: "background" }),
   })
 
   function restartWithQueuedInputs(inputs: readonly ChatInputLike[]): void {
     if (state.ended || deps.rootChatCompletion?.sealed) return
     for (const input of inputs) mailbox.enqueueNextTurn(input)
-    if (hasActiveTurn()) return
+    if (hasActiveTurn() || deps.treeWriter.holdsForQuestion()) return
     startQueuedInputTurn()
   }
 
   function requestWithContext(input: ChatInputLike, context: string): boolean {
     if (state.ended || deps.rootChatCompletion?.sealed) return false
+    // Its one-shot context has no durable hold, so a question that waits
+    // refuses it, parked or at rest; the person runs it again after the
+    // answer (ARCH-SESSIONS-050).
+    if (deps.treeWriter.holdsForQuestion()) return false
     mailbox.enqueueRequestWithContext(input, context)
     if (!hasActiveTurn() && !wait.stalled) startTurn(wakeInput(), { skipLogicalStart: true })
     return true
@@ -655,7 +648,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       return true
     }
     emit("agent.turn.resumed", { sessionId, data: {} })
-    startTurn(wakeInput(), { skipLogicalStart: true, ...(options?.explicit ? { resumes: true as const } : {}) })
+    startTurn(wakeInput(), { skipLogicalStart: true, ...(options?.explicit ? { resumes: true as const } : { releasesHeld: true as const }) })
     return true
   }
 
@@ -714,6 +707,9 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     hold: () => new Promise<ModuleRuntimes>((resolve, reject) => {
       if (state.ended) { reject(new Error("The runner has ended")); return }
       if (moduleRuntimes !== NO_MODULE_RUNTIMES) { resolve(moduleRuntimes); return }
+      // A maintenance turn would extend the conversation past a question
+      // that waits for the person (ARCH-SESSIONS-050).
+      if (!hasActiveTurn() && deps.treeWriter.holdsForQuestion()) { reject(new Error("The chat waits for the person to answer its question")); return }
       const listener = (modules: ModuleRuntimes): void => { runtimeListeners.delete(listener); resolve(modules) }
       runtimeListeners.add(listener)
       // An active turn is assembling already. Otherwise a maintenance turn
@@ -736,11 +732,15 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       const queued = !mailbox.parked
       mailbox.enqueueCompact()
       if (!hasActiveTurn()) {
+        // Behind a waiting question the request waits in the mailbox for
+        // the turn that the answer continues (ARCH-SESSIONS-050).
+        if (deps.treeWriter.holdsForQuestion()) return "behind_question"
         startTurn(wakeInput(), { skipLogicalStart: true, purpose: "maintenance" })
-        return false
+        return "started"
       }
-      return queued
+      return queued ? "queued" : "started"
     },
+    adoptHeldInput: questionHold.adopt,
     settle: async () => { await Promise.all([generation.settle(), turns.settle()]) },
     get pendingTurnSettlement() { return durability.pendingTurnSettlement },
     get lastTurnEnding() { return lastTurnEnding },

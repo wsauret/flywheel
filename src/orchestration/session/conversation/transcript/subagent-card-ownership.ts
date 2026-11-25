@@ -1,5 +1,5 @@
-import { canonicalize } from "../../../../infra/canonical-name.js";
-import type { AgentGroupBlock } from "../../../../infra/output-blocks.js";
+import { canonicalize } from "../../../../infra/providers/canonical-name.js";
+import type { AgentGroupBlock } from "../../../../infra/substrate/events/output-blocks.js";
 import type { ToolHistorySummary } from "../../../module-contract/module-seams.js";
 
 /** A call that addresses a child session: the parent's dispatch, its

@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { awaitWithAbortSignal, mergeAbortSignals } from "../../../../infra/abort.js"
+import { awaitWithAbortSignal, mergeAbortSignals } from "../../../../infra/timing/abort.js"
 import { probeLoopUnit } from "../../../../infra/diagnostics/event-loop-lag.js"
 import { closeScopedAbortSignal, createScopedAbortSignal } from "../../loop/turn/scoped-abort-signal.js"
 import { runAgentTurn } from "./agent-turn.js"

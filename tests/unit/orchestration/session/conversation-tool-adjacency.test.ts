@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message";
+import type { ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { buildSessionContext } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context";
 import type { MessageEntry, ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
 

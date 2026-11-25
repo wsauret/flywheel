@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 
 import { redactMessage } from "../../../../../src/orchestration/session/conversation/redact-message.js"
-import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js"
-import type { LlmToolOutputPart } from "../../../../../src/infra/llm/tool-output-part-schema.js"
+import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js"
+import type { LlmToolOutputPart } from "../../../../../src/infra/providers/llm/tool-output-part-schema.js"
 
 describe("redactMessage", () => {
   const recognizedSecret = ["sk", "proj", "aB3".repeat(12)].join("-")

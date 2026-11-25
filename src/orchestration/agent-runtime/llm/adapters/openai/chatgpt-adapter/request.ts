@@ -1,8 +1,8 @@
 import { Redacted } from "effect";
-import { errorMessage } from "../../../../../../infra/error-message.js";
-import { CHATGPT_BACKEND_API_BASE } from "../../../../../../infra/auth/openai/openai-auth-types.js";
+import { errorMessage } from "../../../../../../infra/diagnostics/error-message.js";
+import { CHATGPT_BACKEND_API_BASE } from "../../../../../../infra/providers/auth/openai/openai-auth-types.js";
 import { JWT_CLAIM_PATH } from "./types.js";
-import { providerRequestHeaders } from "../../../../../../infra/llm/provider-request-identity.js";
+import { providerRequestHeaders } from "../../../../../../infra/providers/llm/provider-request-identity.js";
 
 // pi's `buildRequestBody` (which used pi's `Context` + `convertResponsesMessages`)
 // is dropped here; Flywheel agent runtime builds its own `ResponseCreateParamsStreaming` via

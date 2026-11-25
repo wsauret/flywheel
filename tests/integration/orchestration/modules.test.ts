@@ -18,13 +18,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { ContainedDirectory } from "../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../src/infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
 import { heldDirectoryPrototype } from "../../helpers/contained-directory-spies.js";
 import { moduleProtocolRows, type ModuleId, effectiveModuleIds } from "../../../src/orchestration/module-contract/module-catalog.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
 import { migrateLegacyCapabilityModules, decodeModuleState } from "../../../src/orchestration/config/module-descriptor.js";
-import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
+import { composeModuleRuntimes } from "../../../src/infra/definitions/modules/module-runtime.js";
 import { capabilityAccessFor } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
 import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/bash/_bash-fixtures.js";

@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import type { ChangesReviewTarget, ClientCommand, ClientSummary } from "../../../src/protocol/client/host-contract.js"
+import type { ChangesReviewTarget, ClientCommand, ClientSummary } from "../../../src/protocol/client/host/host-contract.js"
 import { statusPage, type PageActionId } from "./status-page.js"
 import { PanelMount, type MountOwner, type MountView, type PanelContent } from "./panel-mount.js"
 

@@ -1,8 +1,8 @@
 import { Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
-import { everyProviderOff } from "../../../../src/protocol/client/capabilities.js"
-import type { ProviderSummary } from "../../../../src/protocol/client/provider-summary.js"
+import { everyProviderOff } from "../../client/session-settings.js"
+import type { ProviderSummary } from "../../../../src/protocol/client/providers/provider-summary.js"
 import { useClient } from "../client-context.js"
 import { BrandTile, Mark } from "../controls/icons.js"
 import type { PlacementLabels } from "./screen-stack.js"

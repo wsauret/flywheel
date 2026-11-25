@@ -1,5 +1,5 @@
-import type { QuestionBlock } from "@infra/output-blocks"
-import { questionRecordState } from "../../../../protocol/client/question-settlement.js"
+import type { QuestionBlock } from "@infra/substrate/events/output-blocks"
+import { questionRecordState } from "../../../../protocol/client/chat/questions/question-settlement.js"
 import type { ToolRenderEntry } from "../tool-entry-helpers.js"
 
 // Each resolved question becomes its own railed row under the "Ask User"

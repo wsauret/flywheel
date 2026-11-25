@@ -34,7 +34,7 @@ import { createIosSimulatorTool } from "../../../../../../src/orchestration/modu
 import { createRequestToolSurface } from "../../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE, resolveModelInteractionProfile } from "../../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { unusedSessionMessaging } from "../../../../../helpers/child-session-control.js";
-import { asRecord } from "../../../../../../src/infra/record.js";
+import { asRecord } from "../../../../../../src/infra/guards/record.js";
 import { promptOptions } from "../../../../../helpers/prompt-capabilities.js";
 
 const STATIC_TOOL_NAMES = ["bash", "read", "write", "edit", "search", "list"];

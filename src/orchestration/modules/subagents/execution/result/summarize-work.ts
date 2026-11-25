@@ -18,13 +18,13 @@
  */
 
 import { Cause, Effect, Exit, Fiber } from "effect";
-import { mergeAbortSignals } from "../../../../../infra/abort.js";
-import { errorMessage } from "../../../../../infra/error-message.js";
+import { mergeAbortSignals } from "../../../../../infra/timing/abort.js";
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { bridgeExternalPromise } from "../../../../agent-runtime/external-promise-bridge.js";
 import { failureTerminal, type Agent, type OmitAgentOptions, type RunnableAgentOptions } from "../../../../agent-runtime/types.js";
 import type { SessionFactWriter } from "../../../../session/persistence/session-fact-writer.js";
-import type { AsyncEventStateReadSurface } from "../../../../../infra/store/event-store-types.js";
+import type { AsyncEventStateReadSurface } from "../../../../../infra/substrate/store/event-store-types.js";
 import { createAgentGeneration } from "../../../../agent-runtime/runner/turn-host/host.js";
 import { tryParseJsonFromText } from "./json-extract.js";
 import {

@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/substrate/store/event-store-types.js"
 import type { AccumulatedContext, AccumulatorState, ContextRecipient } from "./context.js"
 import { accumulatorStateFromProjection, contextFromProjection, createWorkflowContextProjection } from "./context-projection.js"
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { TextAttributes, type CapturedFrame } from "@opentui/core"
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
-import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../../../src/infra/output-blocks.js"
+import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import flywheelThemeJson from "../../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../../src/tui/context/theme/resolve.js"
 

@@ -5,8 +5,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { processHolders } from "../../../../../../src/infra/process/process-holder.js"
-import { openContainedDirectory, openExistingContainedDirectory } from "../../../../../../src/infra/descriptor-directory.js"
-import { acquireLockSyncIn, releaseLockIn } from "../../../../../../src/infra/locks/ownership-file-lock.js"
+import { openContainedDirectory, openExistingContainedDirectory } from "../../../../../../src/infra/platform/files/descriptor-directory.js"
+import { acquireLockSyncIn, releaseLockIn } from "../../../../../../src/infra/process/locks/ownership-file-lock.js"
 import { createPersistentProcessManager } from "../../../../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import { claimHeadlessProjectExecution, claimProjectServing } from "../../../../../../src/orchestration/app-service/account/projects/project-serving-lane.js"
 

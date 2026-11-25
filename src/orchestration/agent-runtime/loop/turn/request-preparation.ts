@@ -6,9 +6,9 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
-import { REASONING_EFFORTS, type ReasoningEffort } from "../../../../infra/llm/models/models.js";
-import { prepareLocalTokenizer } from "../../../../infra/local-tokenizer.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
+import { REASONING_EFFORTS, type ReasoningEffort } from "../../../../infra/providers/llm/models/models.js";
+import { prepareLocalTokenizer } from "../../../../infra/providers/local-tokenizer.js";
 import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import type { AgentLoopOptions, HistorySink } from "../../agent-loop-types.js";
 import { appendEntries, appendProviderHistory, createLoopMessageWriters } from "./agent-loop-history.js";
@@ -19,7 +19,7 @@ import { prepareAssistantTurn, type PreparedRequest } from "./assistant-turn-str
 import type { AssistantAttemptInput, ImageLimitCutRecord } from "./assistant-turn-attempt.js";
 import type { CaptureModelRuntime } from "../../request/model-runtime-capture.js";
 import type { ServingAttempt } from "../../llm/types.js";
-import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../request/prompt/model-interaction-profile.js";
 import type { ProviderSession } from "../../request/provider-runtime-cache.js";
 import type { RequestToolSurfaceOwner } from "../../request/request-tool-surface.js";

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { createSessionChangesController } from "../../../../../src/protocol/client/session-changes.js"
-import { fileA, fileB, fileC, runtime, settle, waitForDiff } from "../../../../../tests/unit/protocol/client/_session-changes-fixtures.js"
+import { createSessionChangesController } from "../../../../../src/protocol/client/session/changes/session-changes.js"
+import { fileA, fileB, fileC, runtime, settle, waitForDiff } from "../../../../../tests/unit/protocol/client/session/changes/_session-changes-fixtures.js"
 import { mountReview } from "../../transcript/render-ownership-loader-fixture.js"
 
 test("groups deleted files under their removed folder across pages, and the folder header discloses each file with its own controls", async () => {

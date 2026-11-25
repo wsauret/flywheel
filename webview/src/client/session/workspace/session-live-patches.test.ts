@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import type { FrontendEvent, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
 import { createRuntimeSession } from "../session.js"
 import { createViewProjection } from "../view-state.js"
 import { layoutSessionRows } from "../../../app/sessions/session-rows.js"

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { hashAgentPrompt, hashToolSurface } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-hash"
 import { createConversationMessageEntries } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree"
 import { buildSessionContext } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-context"
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message"
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 
 function tool(input_schema: { [key: string]: unknown }) {
   return {

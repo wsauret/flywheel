@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, spyOn } from "bun:test";
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
-import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
-import { buildMutationDiff } from "../../../../../../src/infra/mutation-diff.js";
-import { buildMutationDiffEvidence } from "../../../../../../src/infra/mutation-diff-evidence.js";
-import type { SessionContentNode, StageSessionContentNodes } from "../../../../../../src/infra/session-content.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
+import { readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js";
+import { buildMutationDiff } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff.js";
+import { buildMutationDiffEvidence } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js";
+import type { SessionContentNode, StageSessionContentNodes } from "../../../../../../src/infra/substrate/session-content.js";
 import {
   createLearningReview,
   createReviewUsageAccounting,

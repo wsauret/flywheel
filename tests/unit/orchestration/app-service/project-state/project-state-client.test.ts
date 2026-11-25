@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { closeFixtures, fixture } from "../_project-state-worker-fixture.js"
-import { extractContent } from "../../../../../src/infra/runtime-facts/tool-content.js"
-import { hydrateToolContentFact } from "../../../../../src/infra/store/tool-content-hydration.js"
+import { extractContent } from "../../../../../src/infra/substrate/runtime-facts/tool-content.js"
+import { hydrateToolContentFact } from "../../../../../src/infra/substrate/store/tool-content-hydration.js"
 import {
   createProjectStateClient,
   ProjectStateUnavailableError,
@@ -10,14 +10,14 @@ import {
 } from "../../../../../src/orchestration/app-service/project-state/project-state-client.js"
 import { spawnProjectStateWorker } from "../../../../../src/orchestration/app-service/project-state/project-state-worker-spawner.js"
 import { decodeProjectStateRequest, encodeProjectStateClosed, encodeProjectStateRequest, encodeProjectStateResponseFrame, type ProjectStateRequest, type ProjectStateResponse, type ProjectStateResponseFrame } from "../../../../../src/orchestration/app-service/project-state/project-state-protocol.js"
-import { CorruptEventRowError, type EventStoreAppend, type StoredFact } from "../../../../../src/infra/store/event-store-types.js"
-import { contentEvidence } from "../../../../../src/infra/runtime-facts/content-evidence.js"
+import { CorruptEventRowError, type EventStoreAppend, type StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { contentEvidence } from "../../../../../src/infra/substrate/runtime-facts/content-evidence.js"
 import { WorkerGenerationBudgetExhausted, WorkerRoleAlreadyLive } from "../../../../../src/infra/process/workers/bounded-worker-spawner.js"
 import type { SessionMetadataChange } from "../../../../../src/orchestration/session/manager.js"
 import { startProjectStateStandby } from "../../../../../src/orchestration/app-service/project-state/project-state-standby.js"
 import { ServeStartupFailure, startRefusalOf } from "../../../../../src/protocol/runtime/serve-handshake.js"
 import { pack, unpack } from "msgpackr"
-import { buildSessionContent, type SessionContentNodeRow } from "../../../../../src/infra/session-content.js"
+import { buildSessionContent, type SessionContentNodeRow } from "../../../../../src/infra/substrate/session-content.js"
 
 afterEach(closeFixtures)
 

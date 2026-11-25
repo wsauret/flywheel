@@ -16,7 +16,7 @@ import { composeFirstPartyModules } from "../../../../../../src/orchestration/mo
 import type { FirstPartyModuleComposition } from "../../../../../../src/orchestration/module-contract/module-catalog.js"
 import { repoDefinitions } from "../../../../../helpers/project-definitions.js"
 import { codeModeServices } from "../../../../../helpers/code-mode-worker.js"
-import { composeModuleServices } from "../../../../../../src/infra/module-service.js"
+import { composeModuleServices } from "../../../../../../src/infra/definitions/modules/module-service.js"
 import { createBackgroundExecutionOwner } from "../../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js"
 import { personaInstructions } from "../../../../../../src/workflows/agents/persona-instructions.js"

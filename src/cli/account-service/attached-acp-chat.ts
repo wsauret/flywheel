@@ -1,5 +1,5 @@
-import type { StartupDirectories } from "../../infra/directory-authorities.js"
-import { errorMessage } from "../../infra/error-message.js"
+import type { StartupDirectories } from "../../infra/platform/files/directory-authorities.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import type { RuntimeStartupStatus } from "../../protocol/runtime/app-service-types.js"
 import type { ChatSettlementOutcome } from "../../protocol/session/chat-settlement-protocol-types.js"
 import { AuthProfileManager } from "../../orchestration/auth/auth-profile-manager.js"

@@ -1,8 +1,8 @@
-import { createEventProjection, parseProjectionFact } from "../../../infra/projection/event-projection.js"
-import type { AsyncEventReadSurface, StoredFact } from "../../../infra/store/event-store-types.js"
+import { createEventProjection, parseProjectionFact } from "../../../infra/substrate/projection/event-projection.js"
+import type { AsyncEventReadSurface, StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { heldProjection } from "../../../infra/projection/projection-registry.js"
-import type { BackgroundCommandRecord } from "../../../infra/runtime-facts/runtime-fact-types.js"
+import { heldProjection } from "../../../infra/substrate/projection/projection-registry.js"
+import type { BackgroundCommandRecord } from "../../../infra/substrate/runtime-facts/runtime-fact-types.js"
 import { parseSessionRuntimeFact } from "./session-runtime-event-types.js"
 
 const log = Log.create({ service: "background-index-projection" })

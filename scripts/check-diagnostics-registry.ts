@@ -78,23 +78,23 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /emit\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/runtime-facts/runtime-fact-mapper.ts",
+    file: "src/infra/substrate/runtime-facts/runtime-fact-mapper.ts",
     what: "runtime event debug channel",
     // defineRuntimeEvent({ type: "...", ..., debug: mapX })
     pattern: /defineRuntimeEvent\(\{\s*type:\s*"([^"]+)"[^\n]*\bdebug:\s*\w/g,
   },
   {
-    file: "src/infra/llm/catalog/model-catalog-resolution.ts",
+    file: "src/infra/providers/llm/catalog/model-catalog-resolution.ts",
     what: "dynamic model catalog collision evidence",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/render-probe.ts",
+    file: "src/infra/substrate/output/render-probe.ts",
     what: "render phase evidence",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/store/conversation-fts.ts",
+    file: "src/infra/substrate/store/conversation-fts.ts",
     what: "derived conversation index write boundary",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -294,7 +294,7 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
-    file: "src/infra/llm/access/model-listing.ts",
+    file: "src/infra/providers/llm/access/model-listing.ts",
     what: "saved model refusals",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
@@ -306,6 +306,11 @@ const PRODUCERS: readonly Producer[] = [
   {
     file: "src/orchestration/app-service/supervisor/actor/session-runtime-actor.ts",
     what: "refused question settlements",
+    pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
+  },
+  {
+    file: "src/orchestration/session/history/agent-input-reconciliation.ts",
+    what: "question settlements delivered late, behind entries an earlier build committed after the ask",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
 ];

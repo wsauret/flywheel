@@ -3,9 +3,9 @@ import { dirname } from "node:path"
 import { Redacted } from "effect"
 
 import { newAccountAttachCredential } from "../../../protocol/runtime/account-attach.js"
-import type { ServeLane } from "../../../infra/cli-subprocess.js"
-import { accountServeTokenPath } from "../../../infra/paths.js"
-import { ensurePrivateFile, ensurePrivateRootDirectory, PRIVATE_FILE_MODE } from "../../../infra/private-path.js"
+import type { ServeLane } from "../../../infra/platform/cli-subprocess.js"
+import { accountServeTokenPath } from "../../../infra/platform/files/paths.js"
+import { ensurePrivateFile, ensurePrivateRootDirectory, PRIVATE_FILE_MODE } from "../../../infra/platform/files/private-path.js"
 
 /** Reads or creates a lane's account-socket admission token. The token path
  *  only ever names a whole token, so a client and the service that start

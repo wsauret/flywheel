@@ -1,9 +1,9 @@
 import { chmodSync, mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { RuntimeOAuthCredential } from "../../../../../../src/infra/auth/auth-context.js"
-import type { AccessProviderDefinition } from "../../../../../../src/infra/llm/access/access-provider.js"
-import { applyWindowsPrivateDirectoryAcl } from "../../../../../../src/infra/windows-private-directory-acl.js"
+import type { RuntimeOAuthCredential } from "../../../../../../src/infra/providers/auth/auth-context.js"
+import type { AccessProviderDefinition } from "../../../../../../src/infra/providers/llm/access/access-provider.js"
+import { applyWindowsPrivateDirectoryAcl } from "../../../../../../src/infra/platform/files/windows/windows-private-directory-acl.js"
 import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js"
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js"
 

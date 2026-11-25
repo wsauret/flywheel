@@ -1,8 +1,8 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { ToolStreamingText } from "@infra/output-blocks"
+import type { ToolStreamingText } from "@infra/substrate/events/output-blocks"
 import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
-import { getToolDisplay } from "@infra/tools/tool-display-registry.js"
+import { getToolDisplay } from "@infra/substrate/output/tools/tool-display-registry.js"
 import { StyledText, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { displayWidth } from "@tui/terminal/text.js"
 import { highlightExecuteInputs, highlightToolDetail, linkifyChunks } from "@tui/adapters/tool-detail-highlight.js"
@@ -22,7 +22,7 @@ import { chunkDisplayWidth, wrapToolRowChunks } from "./tool-row-wrap.js"
 import { processControlChunks, processorWaitChunks, rowProcessControl, rowWaitsForProcessor, type RowProcessControl, type RowProcessControls } from "../stop-affordance.js"
 import { LIVE_EXECUTION_OUTPUT_TAIL_LIMIT, tailExecutionOutputLines, type ToolRenderEntry } from "../tool-entry-helpers.js"
 import { syntaxBodyStyledText } from "@tui/components/syntax-code.js"
-import { fileChangeDetail, isShellMutationRunning, rowPresentation } from "../../../../protocol/client/file-change-body.js"
+import { fileChangeDetail, isShellMutationRunning, rowPresentation } from "../../../../protocol/client/chat/transcript/file-change-body.js"
 import { splitLines } from "../markdown/format-token.js"
 
 const BULLET = "•"

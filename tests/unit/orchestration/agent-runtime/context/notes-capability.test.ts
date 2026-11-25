@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { compactInput, holdInput, resumeInput } from "../../../../../src/infra/agent-loop-events.js";
+import { compactInput, holdInput, resumeInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { ContextLengthExceededError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";

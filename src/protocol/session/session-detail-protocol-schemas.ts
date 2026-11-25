@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { ToolStreamingTextSchema } from "../../infra/output-blocks.js"
+import { ToolStreamingTextSchema } from "../../infra/substrate/events/output-blocks.js"
 export function runtimeSessionDetailResultSchema<
   Status extends Schema.Top,
   Budget extends Schema.Top,

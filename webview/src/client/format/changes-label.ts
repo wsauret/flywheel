@@ -1,4 +1,4 @@
-import type { ChangesSummaryState } from "../../../../src/protocol/client/session-changes.js"
+import type { ChangesSummaryState } from "../../../../src/protocol/client/session/changes/session-changes.js"
 
 /** Whole-session count only, from the last known count, never the request
  *  status, as the terminal's label reads it: a reread after a reconnect keeps

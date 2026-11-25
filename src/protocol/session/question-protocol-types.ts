@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { QuestionBlock } from "../../infra/output-blocks.js"
+import type { QuestionBlock } from "../../infra/substrate/events/output-blocks.js"
 import type { RuntimePosition, RuntimeSessionCursorIdentity, RuntimeSessionViewsResult, RuntimeUiPatchPayload } from "../runtime/runtime-ui-protocol-types.js"
 
 export type PendingQuestionView = QuestionBlock

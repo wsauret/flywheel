@@ -2,10 +2,10 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { detectModelFamily } from "../../../../../../src/infra/llm/models/model-family.js";
-import { stripProviderReasoningBlocks } from "../../../../../../src/infra/llm/provider-reasoning-blocks.js";
+import { detectModelFamily } from "../../../../../../src/infra/providers/llm/models/model-family.js";
+import { stripProviderReasoningBlocks } from "../../../../../../src/infra/providers/llm/provider-reasoning-blocks.js";
 import { createClient } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { testProviderRegistry, testProviderSessionLifetime } from "../../../../../helpers/provider-authority.js";
 import { fakeModelsClient } from "../../../../../helpers/model-tier-fixtures.js";
 

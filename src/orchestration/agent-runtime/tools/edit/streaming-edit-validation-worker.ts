@@ -1,6 +1,6 @@
 import { resolve } from "node:path"
-import { FILE_EDIT_LIMITS } from "../../../../infra/file-edit/contract.js"
-import type { FileSnapshot } from "../../../../infra/file-edit/patch-plan.js"
+import { FILE_EDIT_LIMITS } from "../../../../infra/substrate/file-mutations/file-edit/contract.js"
+import type { FileSnapshot } from "../../../../infra/substrate/file-mutations/file-edit/patch-plan.js"
 import { RetainedFileEditAuthority } from "../file-edits/retained-file-edit-host.js"
 import type {
   StreamingEditValidationWorkerIdentity,

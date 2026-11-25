@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { createUsageAuthority } from "../../../../../../src/infra/llm/usage/usage-authority.js"
+import { createUsageAuthority } from "../../../../../../src/infra/providers/llm/usage/usage-authority.js"
 import { createHeadlessUsageAuthorityOwner } from "../../../../../../src/orchestration/app-service/auth/headless/headless-usage-authority.js"
 
 const roots: string[] = []

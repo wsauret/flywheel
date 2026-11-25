@@ -1,13 +1,13 @@
-import { summarizeProviderError } from "../../../../infra/llm/errors/provider-error-diagnostic.js";
+import { summarizeProviderError } from "../../../../infra/providers/llm/errors/provider-error-diagnostic.js";
 import { attemptRequest, createAssistantAttempt, type AssistantAttemptInput } from "./assistant-turn-attempt.js";
 import type { AssistantTurnResult } from "./assistant-turn-result.js";
 import { isFailoverFailure } from "../../llm/stream/provider-failure.js";
 import type { PreparedRequestAttempt } from "../../request/request-tool-surface.js";
 import { NO_SYSTEM_PROMPT } from "../../llm/system-prompt-tiers.js";
 import { resolveCacheRetention, type AdmittedModelRequest, type AdmittedModelRequestExecution, type PreparedCandidate, type PreparedServingRequest, type ProviderResample, type ProviderRetry, type ProviderStreamEvent, type ServingAttempt, type ServingCandidate, type StreamOptions, type TurnModelClient } from "../../llm/types.js";
-import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import { estimateConversationTokens, tokenCountingPolicy } from "../../compaction/token-counter.js";
-import { prepareLocalTokenizer } from "../../../../infra/local-tokenizer.js";
+import { prepareLocalTokenizer } from "../../../../infra/providers/local-tokenizer.js";
 import { redactMessage } from "../../../session/conversation/redact-message.js";
 import { promptPrefixKey, type PrefixHoldTicket, type PromptPrefixHold } from "./prompt-prefix-hold.js";
 

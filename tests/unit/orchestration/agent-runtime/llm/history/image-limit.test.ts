@@ -3,14 +3,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { Log } from "../../../../../../src/infra/diagnostics/log.js";
-import type { ModelInfo } from "../../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../../src/infra/providers/llm/models/models.js";
 import { streamAssistantTurn } from "../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { asModelClient, fakeAttempt } from "../../_model-client.js";
 import { IMAGE_REMOVED } from "../../../../../../src/orchestration/agent-runtime/llm/history/image-limit.js";
 import { applyHistoryLowering, lowerProviderHistory, planHistoryLowering, type ProviderHistoryTarget } from "../../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js";
 import { stableSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { chatCompletionsRequestBody } from "../_wire-fixtures.js";
 
 const UPSTREAM_MODEL_REQUEST = resolve("inspiration/opencode/packages/core/src/session/model-request.ts");

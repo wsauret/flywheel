@@ -1,5 +1,5 @@
 import type { WorkerSelf } from "../../infra/process/workers/bun-worker-rpc.js"
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { importComposing } from "./module-registries.js"
 
 /** One Worker entry for source and compiled distributions. The first control

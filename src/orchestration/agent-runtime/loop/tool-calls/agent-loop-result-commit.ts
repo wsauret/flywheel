@@ -1,5 +1,5 @@
-import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js";
-import { asRecord } from "../../../../infra/record.js";
+import { PersistenceWriteRefused } from "../../../../infra/substrate/store/event-store-types.js";
+import { asRecord } from "../../../../infra/guards/record.js";
 import { finalizedToolResultCheckpointSwaps } from "./finalized-tool-result-checkpoint.js";
 import type { AgentLoopOptions } from "../../agent-loop-types.js";
 import type { ToolResultEntry } from "../turn/agent-state.js";

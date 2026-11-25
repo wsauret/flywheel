@@ -1,6 +1,7 @@
+import type { Accessor } from "solid-js"
 import type { FrontendOutputBlock } from "../../../protocol/runtime/app-service-types.js"
-import type { MutationEvidenceReader } from "../../../protocol/client/mutation-evidence.js"
-import type { SessionNotice } from "../../../infra/session-notice.js"
+import type { MutationEvidenceReader } from "../../../protocol/client/chat/transcript/mutation-evidence.js"
+import type { SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 import type { RuntimeTranscriptWindow } from "../../../protocol/transcript/transcript-protocol-types.js"
 import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
 import type { OutputHeightEstimate } from "./output-height-estimates.js"
@@ -118,7 +119,7 @@ export interface TranscriptViewportPaging {
  *  virtualization. */
 export interface OutputTranscriptView extends BlockDisclosureChannel, TranscriptViewportPaging {
   /** Publish visible block identities before the shared store chooses residency. */
-  protectReader(reader: import("../../../protocol/client/transcript-view.js").TranscriptReader): void
+  protectReader(reader: import("../../../protocol/client/chat/transcript/transcript-view.js").TranscriptReader): void
   /** The resident session's passive evidence reader. Reactive; never opens a session. */
   mutationEvidence(): MutationEvidenceReader | undefined
   /** Record a failed projection with the resident store and rendered window metadata. Rethrows the same error. */
@@ -135,8 +136,43 @@ export interface OutputTranscriptView extends BlockDisclosureChannel, Transcript
   hydrateBlockBody(blockId: string): void
 }
 
+/** The session a mounted surface shows, and what decides how its transcript
+ *  stays current. */
+export interface TranscriptMount {
+  readonly sessionId: Accessor<string | undefined>
+  /** Whether the session can still grow: its detail is live or its lifecycle
+   *  is active. Each change while it is live makes it resident again. */
+  readonly live: Accessor<boolean>
+  /** Whether the session's lifecycle is active. A change to active reads the
+   *  tail again, to follow output the runtime derived meanwhile. */
+  readonly lifecycleActive: Accessor<boolean>
+  /** Runs after each first tail read settles, while the surface still shows
+   *  that session. */
+  readonly hydrateToHead: (sessionId: string, stillMounted: () => boolean) => Promise<void>
+  /** Receives a failed first tail read of a session the surface still shows. */
+  readonly onFailure: (sessionId: string, cause: unknown) => void
+}
+
+/** The transcript of whichever session a mounted surface shows. */
+export interface MountedTranscript {
+  readonly view: OutputTranscriptView
+  /** The composed live view of the shown session. Reactive. */
+  readonly outputView: Accessor<OutputView | undefined>
+  /** The shown session's streamed character count; see
+   *  `TranscriptReads.streamingOutputChars`. Reactive. */
+  readonly streamingOutputChars: Accessor<number | undefined>
+}
+
 /** Which sessions stay resident, and when their tails are read. */
 export interface TranscriptResidency {
+  /** Keep the transcript of the session a surface shows resident and current
+   *  for the caller's Solid lifetime: retain and open each session it shows,
+   *  hydrate it to its head, keep a live session resident, and read the tail
+   *  again when its lifecycle becomes active. Each mount owns its own
+   *  retention, so nested viewers cannot evict the foreground or one another
+   *  when they close. Call it inside a reactive owner; its cleanup releases
+   *  only this mount's retention. */
+  mount(session: TranscriptMount): MountedTranscript
   /** Retain one mounted transcript surface. Each caller owns an independent,
    * idempotent release handle, so nested viewers cannot evict the foreground
    * or one another when they close. */
@@ -153,6 +189,10 @@ export interface TranscriptResidency {
   /** Publish the known-empty initial window for a session this client just
    * created while its first authoritative tail read remains in flight. */
   startKnownEmpty(sessionId: string): void
+  /** Read the tail of every resident session again, as `refresh` does for
+   *  one. A read that exhausts its retries publishes `recovery-failed` on
+   *  that session's window. */
+  refreshResidents(): void
   /** Snapshot the bounded set of sessions with resident transcript entries. */
   residentSessionIds(): readonly string[]
   /** Whether the resident window is current on this lane, or its read failed. Reactive. */

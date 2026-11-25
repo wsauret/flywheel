@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { applyContentRepairs, repairContentRefusal } from "../../../../../../src/orchestration/agent-runtime/llm/history/content-repair.js";
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 
 const WITHHOLD_NOTE = "The provider refused the image of read call-1, so it is withheld.";
 const REMOVE_NOTE = "The provider refused the calls call-2 and call-3, so they are removed.";

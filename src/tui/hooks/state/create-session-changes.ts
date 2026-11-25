@@ -1,6 +1,6 @@
 import { createEffect, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
 import type { AttachedRuntimeClient } from "../../../protocol/runtime/app-service-types.js"
-import { createSessionChangesController } from "../../../protocol/client/session-changes.js"
+import { createSessionChangesController } from "../../../protocol/client/session/changes/session-changes.js"
 import type { SessionChangesView } from "../../modals/session-changes-modal-types.js"
 
 /** Starts once after readiness survives a deferred turn; readiness loss or owner disposal cancels a pending start. */

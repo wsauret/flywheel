@@ -1,5 +1,5 @@
 import { expect, it, mock } from "bun:test"
-import type { ToolEntry } from "../../../../../../src/infra/output-blocks.js"
+import type { ToolEntry } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import { terminalTranscript } from "../../../../../../src/tui/transcript/output-blocks/visible-output-blocks.js"
 import { processStatus } from "../../../../../helpers/runtime-views.js"
 

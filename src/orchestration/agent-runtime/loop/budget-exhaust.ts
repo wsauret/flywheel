@@ -13,9 +13,9 @@
  */
 
 import { Effect, Exit, Scope } from "effect";
-import type { PersistenceWriteRefused } from "../../../infra/store/event-store-types.js";
-import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
-import type { ReasoningEffort } from "../../../infra/llm/models/models.js";
+import type { PersistenceWriteRefused } from "../../../infra/substrate/store/event-store-types.js";
+import type { ProviderRequestOptions } from "../../../infra/providers/llm/access/provider-options.js";
+import type { ReasoningEffort } from "../../../infra/providers/llm/models/models.js";
 import { Log } from "../../../infra/diagnostics/log.js";
 import { fixedTurnOutputBound } from "../compaction/compaction-policy.js";
 import type { AgentLoopOptions } from "../agent-loop-types.js";
@@ -26,7 +26,7 @@ import type { AssistantAttemptInput } from "./turn/assistant-turn-attempt.js";
 import type { AssistantTurnResult } from "./turn/assistant-turn-result.js";
 import type { ToolResultEntry } from "./turn/agent-state.js";
 import type { StreamEvent, StreamOptions, ToolCall, TurnModelClient } from "../llm/types.js";
-import type { ConversationMessage, ContentBlock } from "../../../infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage, ContentBlock } from "../../../infra/providers/llm/conversation/conversation-message.js";
 import type { RuntimeTool, ToolContext } from "../tools/types.js";
 import type { ExecutionWhitelist } from "../tools/dispatch/tool-policy.js";
 import type { PreparedRequestAttempt } from "../request/request-tool-surface.js";
@@ -34,7 +34,7 @@ import type { ModelInteractionProfile } from "../request/prompt/model-interactio
 import type { ProviderRequestAuditWriter } from "../llm/provider-request-audit.js";
 import { streamAssistantTurn } from "./turn/assistant-turn-stream.js";
 import type { PromptStaleMasking, PromptToolHistoryProjection } from "../../session/runtime-facts/provider-request-audit-types.js";
-import { prepareLocalTokenizer } from "../../../infra/local-tokenizer.js";
+import { prepareLocalTokenizer } from "../../../infra/providers/local-tokenizer.js";
 import type { createHandoffTracker } from "./closure/agent-loop-handoff.js";
 import { repairToolName } from "../tools/dispatch/tool-dispatch.js";
 import { createAssistantMessageSettlement, type AssistantProvenance } from "./turn/assistant-message-settlement.js";

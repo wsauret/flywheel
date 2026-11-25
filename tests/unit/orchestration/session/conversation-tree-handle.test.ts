@@ -3,9 +3,9 @@ import { Database } from "bun:sqlite";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
-import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
 import { createSessionManager } from "../../../../src/orchestration/session/manager";
 import { createConversationTree, readTranscript, readReconciledBranch, readReconciledTranscript, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import { turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record";
@@ -14,7 +14,7 @@ import { ConversationTreeStorage } from "../../../../src/orchestration/session/c
 import { parseConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts";
 import { toOpenAIResponsesRequestInput } from "../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses";
 import { toAnthropicMessagesRequest } from "../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages";
-import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message";
+import type { ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js";
 
 let baseDir: string;
 let store: LocalSqliteEventStore;

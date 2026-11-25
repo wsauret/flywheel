@@ -1,5 +1,5 @@
-import type { AgentDefinition } from "../../../../../infra/agent-definition.js";
-import type { ProviderRequestOptions } from "../../../../../infra/llm/access/provider-options.js";
+import type { AgentDefinition } from "../../../../../infra/definitions/agent-definition.js";
+import type { ProviderRequestOptions } from "../../../../../infra/providers/llm/access/provider-options.js";
 import { resolveSubagentRole, childServingSeat, type BriefScope } from "../../../../config/models/role-selection.js";
 import type { RoleResolver, ResolvedRoles, ResolvedRole } from "../../../../config/roles.js";
 import type { AgentOptions } from "../../../../agent-runtime/types.js";

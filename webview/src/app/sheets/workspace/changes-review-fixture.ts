@@ -1,5 +1,5 @@
 import type { SessionChangeDiffResult } from "../../../../../src/protocol/session/session-changes-protocol-types.js"
-import { retainedDiff } from "../../../../../tests/unit/protocol/client/_session-changes-fixtures.js"
+import { retainedDiff } from "../../../../../tests/unit/protocol/client/session/changes/_session-changes-fixtures.js"
 import { reviewWindow } from "../../transcript/render-ownership-loader-fixture.js"
 
 /** The review lays out after a frame, and the test host has no frame clock. */

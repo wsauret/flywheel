@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js"
+import { createEmit, EventBus } from "../../../../../src/infra/substrate/events/event-bus.js"
 import { createTaskProgressWriter } from "../../../../../src/orchestration/app-service/headless/task-progress.js"
 
 async function collectProgress(emitEvents: (emit: ReturnType<typeof createEmit>) => void): Promise<string[]> {

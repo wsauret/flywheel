@@ -2,13 +2,13 @@
 import { createEffect, createMemo, on, onCleanup, Show } from "solid-js"
 import { StyledText, bg as stBg, fg as stFg, bold as stBold, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
-import type { AgentGroupBlock as AgentGroupBlockModel } from "../../../../infra/output-blocks.js"
+import type { AgentGroupBlock as AgentGroupBlockModel } from "../../../../infra/substrate/events/output-blocks.js"
 import type { RoleAssignmentView } from "../../../../protocol/auth/role-protocol-types.js"
-import { agentGroupClockRuns, agentGroupInFlight, agentGroupInitializing, agentGroupModelLabel } from "../../../../protocol/client/agent-group-summary.js"
-import { dispatchInterrupt, resumeMutation, subagentCardControls, type ChildCardStatus } from "../../../../protocol/client/session-controls.js"
-import { subagentHeaderParts, subagentLine } from "../../../../protocol/client/subagent-line.js"
-import { errorMessage } from "../../../../infra/error-message.js"
-import { parseSessionLink } from "../../../../protocol/client/session-links.js"
+import { agentGroupClockRuns, agentGroupInFlight } from "../../../../protocol/client/work/agent-group-summary.js"
+import { dispatchInterrupt, resumeMutation, subagentCardControls, type ChildCardStatus } from "../../../../protocol/client/work/session-controls.js"
+import { subagentCard, type SubagentHeaderPart } from "../../../../protocol/client/work/subagent-line.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import { parseSessionLink } from "../../../../protocol/client/session/session-links.js"
 import { useClientExtensions } from "../../../context/client-extensions.js"
 import { useNavigateUri } from "../../../context/navigation.js"
 import { useLandingBackground } from "../../../context/transcript/landing-highlight.js"
@@ -50,9 +50,9 @@ function ChildActivityBlock(props: AgentGroupBlockProps) {
   const clock = useTickPool().createSharedTick(1000, () => agentGroupClockRuns(props.block))
   const sessionId = () => parseSessionLink(props.block.linkUri)?.sessionId
   const role = () => { const id = sessionId(); return id === undefined ? undefined : props.roleView?.(id) }
-  const summaryBlock = () => ({ ...props.block, model: agentGroupModelLabel(props.block.model, role()) })
-  const initializing = () => agentGroupInitializing(summaryBlock())
   const child = () => { const id = sessionId(); return id === undefined ? undefined : props.childStatus?.(id) }
+  const card = createMemo(() => { clock(); return subagentCard(props.block, { roles: role(), child: child(), now: Date.now(), timedHeader: true }) })
+  const initializing = () => card().initializing
   const controls = useSubagentControls()
   const heldChild = createMemo(() => initializing() || props.block.status === "completed" ? undefined : sessionId())
   createEffect(on(heldChild, (id) => {
@@ -83,15 +83,13 @@ function ChildActivityBlock(props: AgentGroupBlockProps) {
     if (ending) items.push({ ...ending, chunks: processControlChunks(theme, ending.label) })
     return items
   })
-  const line = createMemo(() => { clock(); return subagentLine(summaryBlock(), child(), Date.now()) })
+  const line = () => card().line
   const header = createMemo(() => {
     const open = action.hovered() ? stBold(stFg(theme.primaryBright)("  ↗ Open")) : stFg(theme.primary)("  ↗ Open")
     const suffix = [...(canOpen() ? [open] : []), ...headerControls().flatMap(({ chunks }) => chunks)]
     const room = measured.width() - chunkDisplayWidth(suffix)
-    const parts = initializing()
-      ? subagentHeaderParts({ ...props.block, model: "" }).filter(({ kind }) => kind === "persona" || kind === "goal")
-      : subagentHeaderParts(summaryBlock(), summaryBlock().model, line().time)
-    const chunksFor = (selected: ReturnType<typeof subagentHeaderParts>): TextChunk[] => selected.map((part, index) => part.kind === "persona"
+    const parts = card().header
+    const chunksFor = (selected: readonly SubagentHeaderPart[]): TextChunk[] => selected.map((part, index) => part.kind === "persona"
       ? stBold(stFg(action.hovered() ? theme.textBright : theme.text)(part.text))
       : stFg(theme.textSubtle)(`${index === 0 ? "" : " · "}${part.text}`))
     let shown = parts

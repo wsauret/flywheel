@@ -1,10 +1,10 @@
-import type { AuthContext } from "../../../infra/auth/auth-context.js";
-import { resolveAuthContext } from "../../../infra/auth/auth-context.js";
+import type { AuthContext } from "../../../infra/providers/auth/auth-context.js";
+import { resolveAuthContext } from "../../../infra/providers/auth/auth-context.js";
 import { installedCredentialProviderIds } from "../../module-contract/module-composition.js";
 import { credentialSlotClassifier } from "../../module-contract/module-catalog.js";
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
-import { offeringTransportFamily } from "../../../infra/llm/catalog/model-catalog-resolution.js";
-import type { ResolvedProviderModels } from "../../../infra/auth/provider-models/provider-model-preferences.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
+import { offeringTransportFamily } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import type { ResolvedProviderModels } from "../../../infra/providers/auth/provider-models/provider-model-preferences.js";
 import { resolveEnabledProviderModelCatalog } from "./model-assignment-providers.js";
 import type { EffortOptionRow, ModelAssignmentExpected, ModelAssignmentPatch, ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort, ModelSelectionSlot, ModelTier } from "../../../protocol/auth/model-assignment-protocol-types.js";
 import type { ModelConfigDeps, ModelPickerConfigDeps } from "./model-assignment-types.js";
@@ -27,7 +27,7 @@ import { parseBriefRoleId, briefPersonaRoleId, briefRoleId } from "../../../prot
 import type { FlywheelConfig } from "../schema/schema.js";
 import { createRuntimeConfigOwner } from "../runtime-config-owner.js";
 import { configuredRoleAssignment, pruneStaleConfig, updateModelAssignments } from "../writer.js";
-import { clampReasoningEffort, effortOptionsForMetadata } from "../../../infra/llm/models/model-compat.js";
+import { clampReasoningEffort, effortOptionsForMetadata } from "../../../infra/providers/llm/models/model-compat.js";
 
 /** Clears the profile's assignment of each default role that `slots` names, so it resolves to its detected default.
  *  A role that `slots` does not name keeps its saved value. Each cleared role must still hold its `expected` entry,
@@ -388,7 +388,7 @@ async function modelOptionRanks(
   selectedRoutes: ModelPickerConfigDeps["selectedModelRoutes"],
 ): Promise<ReadonlyMap<string, OptionRank>> {
   const ranks = new Map<string, OptionRank>();
-  const routeRequests = new Map<string, { readonly key: string; readonly wireModelId: string; readonly providerHint: string; readonly metadata?: import("../../../infra/llm/models/models.js").ModelInfo }>();
+  const routeRequests = new Map<string, { readonly key: string; readonly wireModelId: string; readonly providerHint: string; readonly metadata?: import("../../../infra/providers/llm/models/models.js").ModelInfo }>();
   for (const row of rows) {
     if (!row.family || !row.model) continue;
     const route = optionsForSelectedRoute(row.model);

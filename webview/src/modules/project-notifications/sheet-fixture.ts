@@ -1,6 +1,6 @@
 import { createComponent } from "solid-js"
 import { renderToString } from "solid-js/web"
-import { notificationAction } from "../../../../src/protocol/client/host-contract.js"
+import { notificationAction } from "../../../../src/protocol/client/host/host-contract.js"
 import type { ProjectNotificationEpisode } from "../../../../src/protocol/modules/project-notifications.js"
 import { ClientContext, type ClientContextValue } from "../../app/client-context.js"
 import { fakeClient, fakeClientActions, fakeViewState } from "../../app/client-context-fixture.js"

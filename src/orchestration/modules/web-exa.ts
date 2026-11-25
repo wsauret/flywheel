@@ -1,7 +1,7 @@
-import { apiKey } from "../../infra/auth/auth-context.js";
-import { EXA_WEB_PROVIDER_DEFINITION } from "../../infra/auth/web-providers.js";
+import { apiKey } from "../../infra/providers/auth/auth-context.js";
+import { EXA_WEB_PROVIDER_DEFINITION } from "../../infra/providers/auth/web-providers.js";
 import { createExaWebSearch } from "../agent-runtime/web-search/exa.js";
-import type { FirstPartyModule, WebBackendContribution } from "../module-contract/module-catalog.js";
+import type { WebBackendContribution, FirstPartyModule } from "../module-contract/module-catalog.js";
 
 const backend = {
   id: "exa",

@@ -1,9 +1,9 @@
 import type { AttachedRuntimeClient, FrontendEvent } from "../../../src/protocol/runtime/app-service-types.js"
 import { authStatusCursor, type RuntimeAuthStatusSnapshotResult } from "../../../src/protocol/auth/auth-status-protocol-types.js"
-import { lostWithLane } from "../../../src/protocol/client/connection-failures.js"
+import { lostWithLane } from "../../../src/protocol/client/runtime/connection-failures.js"
 import { formatDateTime } from "../../../src/protocol/client/format.js"
-import { notificationAction, type NotificationActionView } from "../../../src/protocol/client/host-contract.js"
-import { MODULE_DOMAIN_BINDINGS } from "../../../src/protocol/client/module-domain.js"
+import { notificationAction, type NotificationActionView } from "../../../src/protocol/client/host/host-contract.js"
+import { MODULE_DOMAIN_BINDINGS } from "../../../src/protocol/client/modules/module-domain.js"
 
 interface AuthNotificationCoordinator {
   /** Presents every unresolved notice not yet presented, when the window can take one. */

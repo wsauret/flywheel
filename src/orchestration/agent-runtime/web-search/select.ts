@@ -6,7 +6,7 @@
  * credential degrades instead of disabling search.
  */
 
-import type { AuthContext, ProviderConnection } from "../../../infra/auth/auth-context.js";
+import type { AuthContext, ProviderConnection } from "../../../infra/providers/auth/auth-context.js";
 import { credentialSlotClassifier, type FirstPartyModuleComposition } from "../../module-contract/module-catalog.js";
 import { WebSearchError, type WebSearchPort, type WebSearchProvider, type WebSearchProviderId } from "./types.js";
 

@@ -1,5 +1,5 @@
-import { isApplyPatchModel, type ModelFamily } from "../../../../infra/llm/models/model-family.js"
-import { familySettings } from "../../../../infra/llm/models/model-compat.js"
+import { isApplyPatchModel, type ModelFamily } from "../../../../infra/providers/llm/models/model-family.js"
+import { familySettings } from "../../../../infra/providers/llm/models/model-compat.js"
 import { MODEL_GUIDANCE, type ModelGuidance } from "./model-chat-body.js"
 import type { ModelInteractionProfileId } from "../../../session/runtime-facts/provider-request-audit-types.js"
 

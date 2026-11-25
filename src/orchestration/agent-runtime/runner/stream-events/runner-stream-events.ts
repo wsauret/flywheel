@@ -1,11 +1,11 @@
 // Translates loop stream events into runtime events for the session's event
 // channel: one exhaustive switch, one emit per event kind.
-import { createRuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-factory.js";
+import { createRuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-factory.js";
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
-import { isAnthropicNarration } from "../../../../infra/llm/anthropic-narration.js";
-import { reasoningSummaryText } from "../../../../infra/output/assistant-content-runs.js";
+import { isAnthropicNarration } from "../../../../infra/providers/llm/anthropic-narration.js";
+import { reasoningSummaryText } from "../../../../infra/substrate/output/assistant-content-runs.js";
 import type { AgentOptions } from "../../types.js";
-import { assertNever } from "../../../../infra/assert-never.js";
+import { assertNever } from "../../../../infra/guards/assert-never.js";
 import {
   emitAssistant,
   emitCompactionCompleted,

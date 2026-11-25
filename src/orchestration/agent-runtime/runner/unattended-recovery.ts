@@ -55,14 +55,14 @@
  * The run's cancellation ends the wait, and the turn ends aborted.
  */
 
-import { abortableSleep, mergeAbortSignals } from "../../../infra/abort.js"
-import type { TurnParkState } from "../../../infra/agent-loop-events.js"
+import { abortableSleep, mergeAbortSignals } from "../../../infra/timing/abort.js"
+import type { TurnParkState } from "../../../infra/substrate/events/agent-loop-events.js"
 import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
-import { errorMessage } from "../../../infra/error-message.js"
-import type { CapacityReset, ProviderRecovery } from "../../../infra/llm/errors/provider-error-copy.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import type { CapacityReset, ProviderRecovery } from "../../../infra/providers/llm/errors/provider-error-copy.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import type { SessionNotice, SessionNoticeOperation } from "../../../infra/session-notice.js"
-import { sleepUntil } from "../../../infra/wall-clock-sleep.js"
+import type { SessionNotice, SessionNoticeOperation } from "../../../infra/substrate/events/session-notice.js"
+import { sleepUntil } from "../../../infra/timing/wall-clock-sleep.js"
 import { capacityWaitNotice, type CapacityWaitAuthority, type CapacityWaitWithdrawal } from "../../session/control/capacity-wait.js"
 import type { TurnInterruption } from "../../session/conversation/turn-end-record.js"
 import type { DeliveryOutcome } from "../../session/message-disposition.js"

@@ -3,7 +3,7 @@
  * dispatcher's and the agents' own, and one agent loop that drives a staged client as the production loop does.
  */
 import type { StreamOptions, ToolDef } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { applyContentRepairs } from "../../../../../src/orchestration/agent-runtime/llm/history/content-repair.js";
 import { projectToolHistory } from "../../../../../src/orchestration/agent-runtime/llm/history/tool-history-projection.js";
 import type { SystemPromptTiers } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

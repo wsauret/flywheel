@@ -7,9 +7,9 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-store.js"
-import type { ServeLane } from "../../../src/infra/cli-subprocess.js"
-import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath, accountServeTokenPath } from "../../../src/infra/paths.js"
+import { AuthProfileStore } from "../../../src/infra/providers/auth/store/auth-profile-store.js"
+import type { ServeLane } from "../../../src/infra/platform/cli-subprocess.js"
+import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath, accountServeTokenPath } from "../../../src/infra/platform/files/paths.js"
 import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account/account-project-registry.js"
 import { defaultRoleSlots } from "../../../src/orchestration/config/models/role-selection.js"
 import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"

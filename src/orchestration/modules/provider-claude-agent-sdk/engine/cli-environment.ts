@@ -1,8 +1,8 @@
 import { Redacted } from "effect";
 import { basename, dirname, resolve } from "node:path";
-import { separatedEngineEnvironment, type EngineHost } from "../../../../infra/claude-engine.js";
-import { MAX_TIMER_MS } from "../../../../infra/timers.js";
-import { inheritsPerTurnEffort } from "../../../../infra/llm/models/model-compat.js";
+import { separatedEngineEnvironment, type EngineHost } from "../../../../infra/providers/claude-engine.js";
+import { MAX_TIMER_MS } from "../../../../infra/timing/timers.js";
+import { inheritsPerTurnEffort } from "../../../../infra/providers/llm/models/model-compat.js";
 import type { BridgeRequest } from "../cli-view.js";
 import { LOGIN_ACCOUNTS_DIRECTORY, TOKEN_LOGIN_VARIABLE } from "../names.js";
 import { STEP_GATE_SOCKET_VARIABLE } from "./step-gate.js";

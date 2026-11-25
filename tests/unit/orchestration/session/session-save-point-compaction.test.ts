@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
@@ -24,7 +24,7 @@ function createController() {
 }
 
 function measureWithPrefix(prefixTokens: number) {
-  return (messages: readonly import("../../../../src/infra/llm/conversation/conversation-message").ConversationMessage[]) => {
+  return (messages: readonly import("../../../../src/infra/providers/llm/conversation/conversation-message").ConversationMessage[]) => {
     return prefixTokens + estimateConversationTokens(messages, tokenCountingPolicy("unmapped-model", "anthropic"));
   };
 }

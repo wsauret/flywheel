@@ -1,6 +1,6 @@
 import { createEffect, untrack } from "solid-js"
 import type { RuntimeAuthView } from "../../../../protocol/auth/auth-status-protocol-types.js"
-import { providerSetup } from "../../../../protocol/client/provider-setup.js"
+import { providerSetup } from "../../../../protocol/client/providers/provider-setup.js"
 
 /** Allows automatic auth and paid-use presentation unless verification opts out.
  * This process-only override does not change authentication or recorded consent.

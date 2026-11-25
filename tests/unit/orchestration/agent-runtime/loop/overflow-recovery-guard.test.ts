@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { messageInput } from "../../../../../src/infra/agent-loop-events.js";
+import { messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { consumeAgentLoopMessageInput } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-input.js";
 import { agentLoopTransition, initialAgentLoopState } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-state.js";
 
@@ -10,7 +10,7 @@ import { normalizeProviderAttemptFailure } from "../../../../../src/orchestratio
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import type { AgentLoopOptions } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
 import type { ModelClient, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { asModelClient } from "../_model-client.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";

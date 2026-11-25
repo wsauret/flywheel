@@ -1,6 +1,6 @@
-import type { TurnParkState } from "../../../infra/agent-loop-events.js"
-import type { ChatInput } from "../../../infra/chat-input.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { TurnParkState } from "../../../infra/substrate/events/agent-loop-events.js"
+import type { ChatInput } from "../../../infra/substrate/events/chat-input.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import type { ConversationTreeWriterController } from "../../chat/tree-writer.js"
 import type { HeldBackgroundNotification } from "../../session/conversation/queued-background-notifications.js"
 import { heldAtWakeLimit, type DeliveryOutcome } from "../../session/message-disposition.js"
@@ -15,7 +15,7 @@ import { addressReachesAgent } from "../../../workflows/context-bundle/context-f
 import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { startedAgents, type StartedAgent } from "../../../workflows/vm/host/host-commit-controller.js"
 import { workflowInterruptRefusal } from "../../session/control/messaging/workflow-addressing.js"
-import { interruptRank, strongestInterrupt } from "../../session/metadata/workflow-run-record.js"
+import { strongestInterrupt, interruptRank } from "../../session/metadata/workflow-run-record.js"
 
 /** The attempt of one agent that runs, which a held message's address
  *  reaches or not. */

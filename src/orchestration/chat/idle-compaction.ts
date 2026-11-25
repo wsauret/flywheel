@@ -1,4 +1,4 @@
-import type { TurnParkedContext } from "../../infra/agent-loop-events.js";
+import type { TurnParkedContext } from "../../infra/substrate/events/agent-loop-events.js";
 import type { RuntimeConfigOwner } from "../config/runtime-config-owner.js";
 
 /** Reads live policy and cancels a pending deadline when either setting changes. */

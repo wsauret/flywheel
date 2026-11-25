@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { Schema } from "effect"
 import { pack, unpack } from "msgpackr"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { trackLoopSpan } from "../../../infra/diagnostics/event-loop-lag.js"
 import type { InternalProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"
 import { Log } from "../../../infra/diagnostics/log.js"
@@ -17,7 +17,7 @@ import type {
   RuntimeQueryResult,
 } from "../../../protocol/runtime/app-service-types.js"
 import { RuntimeCallTimeout, runtimeCallPolicies } from "../../../protocol/rpc/runtime-client-deadlines.js"
-import { decodeRuntimeEventFrame } from "../../../protocol/client/runtime-event-intake.js"
+import { decodeRuntimeEventFrame } from "../../../protocol/client/runtime/runtime-event-intake.js"
 import {
   FrontendMutationSchema,
   RuntimeQuerySchema,

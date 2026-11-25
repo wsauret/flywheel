@@ -1,9 +1,9 @@
 import { closeSync, fstatSync, openSync, readSync, statSync } from "node:fs"
 import { Redacted } from "effect"
 
-import { AGENT_SESSION_ENV, serveLaneFor, sourceCheckout, type ServeLane } from "../../infra/cli-subprocess.js"
-import type { StartupDirectories } from "../../infra/directory-authorities.js"
-import { accountServeErrorLogPath, accountServeRecordPath, accountServeSocketPath } from "../../infra/paths.js"
+import { AGENT_SESSION_ENV, serveLaneFor, sourceCheckout, type ServeLane } from "../../infra/platform/cli-subprocess.js"
+import type { StartupDirectories } from "../../infra/platform/files/directory-authorities.js"
+import { accountServeErrorLogPath, accountServeRecordPath, accountServeSocketPath } from "../../infra/platform/files/paths.js"
 import { launchPersistentSubprocess, type PersistentSubprocess } from "../../infra/supervision/persistent/persistent-subprocess.js"
 import { startupTrace } from "../../infra/diagnostics/startup-trace.js"
 import type { RuntimeStartupStatus } from "../../protocol/runtime/app-service-types.js"
@@ -16,8 +16,9 @@ import { readOrCreateAccountAttachToken } from "../../orchestration/app-service/
 import { ACCOUNT_DRAIN_HARD_EXIT_MS } from "../../orchestration/app-service/runtime/runtime-shutdown.js"
 import { unansweredStartRequested } from "../../orchestration/app-service/account/installation/service-manager-command.js"
 import { installedBuildId, runningBuildId, runtimeCommand } from "../../orchestration/app-service/runtime-executable.js"
-import { processRunningBuild, type RunningBuild } from "../../infra/distribution/running-build.js"
-import { errnoCode, errorMessage } from "../../infra/error-message.js"
+import { processRunningBuild, type RunningBuild } from "../../infra/update/distribution/running-build.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import { errnoCode } from "../../infra/platform/files/system-error.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import { trustedCommandRun } from "../../infra/process/container/process-container.js"
 import { readRuntimeIdentity, type RuntimeIdentity } from "./runtime-identity-record.js"
@@ -289,7 +290,7 @@ async function ensureAccountRuntime(
     const refusal = `the account service speaks protocol ${identity?.protocolVersion ?? "unknown"} and this client requires ${RUNTIME_PROTOCOL_VERSION}`
     const follow = options.follow
     if (follow === undefined || identity === undefined || identity.buildId !== currentBuild) throw new Error(refusal)
-    const [{ servingBuild }, { buildPlatformArch }] = await Promise.all([import("./serving-build.js"), import("../../infra/native-assets.js")])
+    const [{ servingBuild }, { buildPlatformArch }] = await Promise.all([import("./serving-build.js"), import("../../infra/platform/native-assets.js")])
     const target = servingBuild({
       lane,
       platform: process.platform,

@@ -1,7 +1,7 @@
-import { forgetReadingState, saveReadingState, takeReadingState, type ReadingState } from "../../../../src/protocol/client/reading-state.js"
+import { forgetReadingState, saveReadingState, takeReadingState, type ReadingState } from "./reading-state.js"
 
 /** One mount's hold on the reader's place across a reload
- *  (`src/protocol/client/reading-state.ts`): the place the previous page
+ *  (`reading-state.ts`): the place the previous page
  *  saved, which this mount restores once, and the transcript's way of reading
  *  the place now, which the mount saves whenever the page may go away. */
 export interface ReadingPlace {

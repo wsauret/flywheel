@@ -14,18 +14,18 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
-import { isAbortError } from "../../../../../infra/abort.js";
-import { errorDetail, errorMessage } from "../../../../../infra/error-message.js";
-import type { AccessProviderCandidate, AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
-import { dashedModelId } from "../../../../../infra/model-id.js";
-import { computeUsagePrice } from "../../../../../infra/llm/models/llm-helpers.js";
-import { providerRequestHeaders } from "../../../../../infra/llm/provider-request-identity.js";
-import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
-import { ANTHROPIC_RESERVED_BODY_KEYS, applyProviderExtraBody, type AnthropicThinkingDisplay } from "../../../../../infra/llm/access/provider-options.js";
+import { isAbortError } from "../../../../../infra/timing/abort.js";
+import { errorDetail, errorMessage } from "../../../../../infra/diagnostics/error-message.js";
+import type { AccessProviderCandidate, AccessProviderId } from "../../../../../infra/providers/llm/access/access-provider.js";
+import { dashedModelId } from "../../../../../infra/providers/model-id.js";
+import { computeUsagePrice } from "../../../../../infra/providers/llm/models/llm-helpers.js";
+import { providerRequestHeaders } from "../../../../../infra/providers/llm/provider-request-identity.js";
+import type { ModelInfo, ReasoningEffort } from "../../../../../infra/providers/llm/models/models.js";
+import { ANTHROPIC_RESERVED_BODY_KEYS, applyProviderExtraBody, type AnthropicThinkingDisplay } from "../../../../../infra/providers/llm/access/provider-options.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "../../errors.js";
-import type { CompletedStopReason } from "../../../../../infra/llm/conversation/messages.js";
-import { anthropicThinkingMode } from "../../../../../infra/llm/models/model-compat.js";
+import type { CompletedStopReason } from "../../../../../infra/providers/llm/conversation/messages.js";
+import { anthropicThinkingMode } from "../../../../../infra/providers/llm/models/model-compat.js";
 import { throwIfLivenessFailure, withStreamAttempt, type StreamAttempt } from "../../stream/stream-attempt.js";
 import { invokeProviderAttempt } from "../../stream/provider-attempt-boundary.js";
 import { normalizeProviderAttemptFailure } from "../../stream/provider-failure.js";
@@ -57,7 +57,7 @@ import { anthropicUsageEvent, emptyAnthropicUsage, foldAnthropicMessageDeltaUsag
 import { definitionText, definitionValue } from "../../tool-definition-text.js";
 import type { ProviderHistoryTarget } from "../../history/provider-history.js";
 import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, presentToolHistory, resolveCacheRetention, type Claim, type ConnectedClient, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions, type ToolChoice, type ToolPresentation, type TransportContextFrame } from "../../types.js";
-import { trailingRuntimeNotices } from "../../../../../infra/llm/conversation/conversation-message.js";
+import { trailingRuntimeNotices } from "../../../../../infra/providers/llm/conversation/conversation-message.js";
 const log = Log.create({ service: "llm-anthropic" });
 
 interface StringHeaders {

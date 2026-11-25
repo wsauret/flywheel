@@ -5,8 +5,8 @@ import type { ProcessDiagnosticPayload } from "../kernel/process-diagnostic-read
 import { windowsProcessApi, type WindowsProcessApi, type WindowsProcessQuery } from "../kernel/windows-process-api.js"
 import type { WindowsJob } from "./windows-job-object.js"
 import { redactSecrets } from "../../redact-secrets.js"
-import { trustedProbeLaunch, type TrustedProbeLaunch } from "../../trusted-probe-launch.js"
-import { DeadlineExceeded, withDeadline } from "../../with-deadline.js"
+import { trustedProbeLaunch, type TrustedProbeLaunch } from "../../platform/trusted-probe-launch.js"
+import { DeadlineExceeded, withDeadline } from "../../timing/with-deadline.js"
 import { waitForStopHolds, type StopHold } from "./stop-hold.js"
 
 /** Why Flywheel ends a container: the trigger, and the facts it rested on

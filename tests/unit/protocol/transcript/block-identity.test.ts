@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { AnyBlock } from "@infra/output-blocks"
+import type { AnyBlock } from "@infra/substrate/events/output-blocks"
 import { blockIdentity, rawToolUseId } from "../../../../src/protocol/transcript/block-identity.js"
 import type { FrontendOutputBlock } from "../../../../src/protocol/runtime/app-service-types.js"
 

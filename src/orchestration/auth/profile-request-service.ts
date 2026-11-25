@@ -1,7 +1,7 @@
-import { authDir } from "../../infra/paths.js"
+import { authDir } from "../../infra/platform/files/paths.js"
 import type { UsageAuthorityGeneration, UsageSettlementAuthorityLease } from "../session/history/usage-settlement.js"
 import type { CaptureRuntimeConfig } from "../config/request-config.js"
-import type { AuthContext } from "../../infra/auth/auth-context.js"
+import type { AuthContext } from "../../infra/providers/auth/auth-context.js"
 import type { RecordModelRefusal } from "../agent-runtime/llm/routing/client-factory.js"
 
 import type { PrepareWorkflowDepsInput, WorkflowDeps } from "../agent-runtime/runner/workflow-deps.js"

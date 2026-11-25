@@ -1,5 +1,5 @@
-import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/module-runtime.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/definitions/modules/module-runtime.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import type { SessionMetadataReader } from "../../session/metadata/schemas.js"
 import type { BackgroundWorkTracking } from "../../session/control/background-work/background-work.js"
 import { liveChildRun, liveWorkflowControl } from "../../session/control/live-session-control.js"

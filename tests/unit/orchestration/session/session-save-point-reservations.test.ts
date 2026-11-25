@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer";
 import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
 import {

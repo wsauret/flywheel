@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto"
 import { isAbsolute, parse, relative, sep } from "node:path"
-import { InFlightSwapConflictError, readCapturedFacts, type AsyncEventStateReadSurface, type EventStoreAppend, type GuardedAppendResult, type GuardedEventStoreAppend, type InFlightWrite, type StoredFact } from "../../../infra/store/event-store-types.js"
+import { InFlightSwapConflictError, readCapturedFacts, type AsyncEventStateReadSurface, type EventStoreAppend, type GuardedAppendResult, type GuardedEventStoreAppend, type InFlightWrite, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { ContainedFileTooLargeError } from "../../../infra/descriptor-directory/descriptor-directory-contract.js"
-import { createEventProjection, parseProjectionFact } from "../../../infra/projection/event-projection.js"
-import { heldProjection } from "../../../infra/projection/projection-registry.js"
-import { withMutationQueueKeys } from "../../../infra/locks/file-mutation-queue.js"
-import { readFileSnapshotUnder, readFileUnder } from "../../../infra/write-file-under.js"
+import { ContainedFileTooLargeError } from "../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js"
+import { createEventProjection, parseProjectionFact } from "../../../infra/substrate/projection/event-projection.js"
+import { heldProjection } from "../../../infra/substrate/projection/projection-registry.js"
+import { withMutationQueueKeys } from "../../../infra/process/locks/file-mutation-queue.js"
+import { readFileSnapshotUnder, readFileUnder } from "../../../infra/platform/files/write-file-under.js"
 import { parseFileMutationFact, type FileMutationFact } from "./file-mutation-facts.js"
 import {
   FILE_MUTATION_IN_FLIGHT_KIND,

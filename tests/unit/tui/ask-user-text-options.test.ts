@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createRoot } from "solid-js"
 
-import type { QuestionBlock } from "../../../src/infra/output-blocks.js"
-import { normalizeAskUserInput } from "../../../src/infra/tools/displays/ask-user.js"
+import type { QuestionBlock } from "../../../src/infra/substrate/events/output-blocks.js"
+import { normalizeAskUserInput } from "../../../src/infra/substrate/output/tools/displays/ask-user.js"
 import { answeredAskUserResult } from "../../../src/orchestration/session/history/ask-user-answer.js"
 import { createQuestionForm } from "../../../src/tui/components/composer/question-dock-form.js"
 import { adaptQuestionHistoryRows } from "../../../src/tui/transcript/output-blocks/tools/question-history-format.js"

@@ -8,13 +8,13 @@
  *  race between two real processes is in the integration tier. */
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { isRecord } from "../../../../../../src/infra/record.js";
+import { isRecord } from "../../../../../../src/infra/guards/record.js";
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/store/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/substrate/store/event-store-types.js";
 import { reconcileGlobalSkillOperations } from "../../../../../../src/orchestration/modules/learning/skills/global-skill-mutation.js";
 import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { openPendingAudit, reconcilePendingAudits } from "../../../../../../src/orchestration/modules/learning/skills/learning-journal.js";

@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightWrite } from "../../../infra/store/event-store-types.js"
-import { SESSION_RELATIONS } from "../../../infra/chat-input-schema.js"
-import { chatInputContent, normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike, type ChatInvocation, type SessionMessageEnvelope, type UserInputProducer } from "../../../infra/chat-input.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightWrite } from "../../../infra/substrate/store/event-store-types.js"
+import { SESSION_RELATIONS } from "../../../infra/substrate/events/chat-input-schema.js"
+import { chatInputContent, normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike, type ChatInvocation, type SessionMessageEnvelope, type UserInputProducer } from "../../../infra/substrate/events/chat-input.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js"
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js"
 import { recoverSessionMessageProducer, sessionMessageSources, type SessionMessageSources } from "../metadata/session-message-sources.js"
 
 /** The in-flight kind a queued-but-not-yet-durable user input is held under.

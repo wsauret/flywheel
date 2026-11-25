@@ -1,11 +1,11 @@
 import { Schema } from "effect"
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { basename, join } from "node:path"
-import { antigravityEnginePath, separatedAntigravityEnvironment, type AntigravityEngineHost } from "../../../../infra/antigravity-engine.js"
-import { readAppVersion } from "../../../../infra/app-version.js"
-import { writeFileAtomic } from "../../../../infra/atomic-write.js"
-import { errorMessage } from "../../../../infra/error-message.js"
-import type { ExternalLoginDefinition, ExternalLoginPorts } from "../../../../infra/llm/access/access-provider.js"
+import { antigravityEnginePath, separatedAntigravityEnvironment, type AntigravityEngineHost } from "../../../../infra/providers/antigravity-engine.js"
+import { readAppVersion } from "../../../../infra/update/distribution/app-version.js"
+import { writeFileAtomic } from "../../../../infra/platform/files/atomic-write.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import type { ExternalLoginDefinition, ExternalLoginPorts } from "../../../../infra/providers/llm/access/access-provider.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { ownedCommandRunner } from "../../../../infra/owned-command.js"
 import type { OwnedProcess } from "../../../../infra/supervision/launch/owned-subprocess.js"
@@ -17,7 +17,7 @@ import { EngineCannotStartError, loginProblems, type LoginObservations, type Pro
 import { accountRecordPath, GOOGLE_ANTIGRAVITY_LABEL, LOGIN_PROGRAM_LABEL, loginsDirectory } from "../names.js"
 import { acpLaunch, prepareLoginHome } from "../engine/private-home.js"
 import { keychainReachedFailure, prepareTokenStore, tokenStoreObservation } from "../engine/token-store.js"
-import type { ExternalAccount } from "../../../../infra/auth/provider-account.js"
+import type { ExternalAccount } from "../../../../infra/providers/auth/provider-account.js"
 
 // agy runs every sign-in itself (plan M7a, design feature 2): its browser
 // loopback flow through ACP `authenticate`, or `agy acp --login`, which prints

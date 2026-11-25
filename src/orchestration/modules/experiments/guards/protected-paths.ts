@@ -1,5 +1,5 @@
 import { isAbsolute, relative, resolve, sep } from "node:path"
-import { physicalPathWithMissingTail } from "../../../../infra/canonical-path.js"
+import { physicalPathWithMissingTail } from "../../../../infra/platform/files/canonical-path.js"
 
 function slash(path: string): string {
   return path.replaceAll("\\", "/").replace(/^\.\/+/u, "").replace(/\/+$/u, "")

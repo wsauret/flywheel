@@ -3,9 +3,9 @@ import { bashCommandNodes, loadBashParser } from "./bash-parser.js";
 import { extractShellCommand, type ParsedCommand } from "./bash-command-parts.js";
 import { scopeAdmission, shellWriteViolation, type WriteScope } from "./bash-write-targets.js";
 import { resolveShellWrappers } from "./bash-write-wrappers.js";
-import type { CapabilityCheck } from "../../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../../infra/definitions/capability-text.js";
 import { DebugLog } from "../../../../../infra/diagnostics/debug-log.js";
-import { WORKTREE_LIFECYCLE_SKILL_ID } from "../../../../../infra/directory-authorities.js";
+import { WORKTREE_LIFECYCLE_SKILL_ID } from "../../../../../infra/platform/files/directory-authorities.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { coalesceRepeats } from "../../../../../infra/diagnostics/repeat-coalescer.js";
 

@@ -1,7 +1,7 @@
-import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
-import { createHeldView, type HeldViewSource } from "../../../../../src/protocol/client/held-view.js"
-import { providerSetup, type ProviderSetup } from "../../../../../src/protocol/client/provider-setup.js"
-import { summarizeProviders, type ProviderSummary } from "../../../../../src/protocol/client/provider-summary.js"
+import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
+import { createHeldView, type HeldViewSource } from "../../../../../src/protocol/client/runtime/held-view.js"
+import { providerSetup, type ProviderSetup } from "../../../../../src/protocol/client/providers/provider-setup.js"
+import { summarizeProviders, type ProviderSummary } from "../../../../../src/protocol/client/providers/provider-summary.js"
 import { authStatusCursor, type RuntimeAuthStatusScope, type RuntimeAuthStatusSnapshotResult } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
 
 /** The runtime's auth snapshot, held live on its scoped `auth` cursor:

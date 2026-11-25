@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url"
 import { runWithResilience } from "../../../src/orchestration/agent-runtime/runner/agent-resilience.js"
 import { workerOutcome } from "../../../src/orchestration/workflow-host/attempt/worker-outcome.js"
 import type { AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js"
-import type { ConnectionState } from "../../../src/infra/output-blocks.js"
-import { exhaustedProvidersCopy } from "../../../src/infra/llm/errors/provider-error-copy.js"
+import type { ConnectionState } from "../../../src/infra/substrate/events/output-blocks.js"
+import { exhaustedProvidersCopy } from "../../../src/infra/providers/llm/errors/provider-error-copy.js"
 
 describe("workerOutcome", () => {
   it("returns 'completed' when the run completed cleanly", () => {

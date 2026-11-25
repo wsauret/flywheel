@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { UserMessageBlock as UserMessageBlockType, UserMessageImage } from "@infra/output-blocks"
+import type { UserMessageBlock as UserMessageBlockType, UserMessageImage } from "@infra/substrate/events/output-blocks"
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { VerticalBarBorder } from "@tui/transcript/output-blocks/border"
@@ -19,7 +19,7 @@ import { markdownTextChunk } from "../markdown/format-token.js"
 import { AttachmentImage } from "@tui/components/image/attachment-image.js"
 import { ImageClip } from "@tui/components/image/image-clip.js"
 import { useAttachmentImages } from "@tui/context/attachment-images.js"
-import { messageDisclosureEntry, messageSenderLabel, PERSON_WORDS_LABEL } from "../../../../protocol/client/message-sender.js"
+import { messageDisclosureEntry, messageSenderLabel, PERSON_WORDS_LABEL } from "../../../../protocol/client/chat/message-sender.js"
 import { ToolEntry } from "../tools/tool-entry.js"
 
 interface UserMessageBlockProps {

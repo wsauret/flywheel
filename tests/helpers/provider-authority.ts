@@ -1,7 +1,7 @@
-import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderId, AccessProviderModelEligibility } from "../../src/infra/llm/access/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderId, AccessProviderModelEligibility } from "../../src/infra/providers/llm/access/access-provider.js";
 import { composeFirstPartyModules } from "../../src/orchestration/module-contract/module-composition.js";
 import type { FirstPartyModuleComposition } from "../../src/orchestration/module-contract/module-catalog.js";
-import { canonicalModelId } from "../../src/infra/model-id.js";
+import { canonicalModelId } from "../../src/infra/providers/model-id.js";
 import { fakeModelInfos } from "./model-tier-fixtures.js";
 import { randomUUID } from "node:crypto";
 import { Scope } from "effect";

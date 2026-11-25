@@ -1,7 +1,7 @@
 import { createEffect, createSignal, on, onCleanup, type Accessor } from "solid-js"
 import type { RuntimeAuthLoginQuestion, RuntimeAuthView } from "../../../../src/protocol/auth/auth-status-protocol-types.js"
-import { loginQuestions } from "../../../../src/protocol/client/auth-status-state.js"
-import { LOGIN_QUESTION_COPY } from "../../../../src/protocol/client/provider-account-copy.js"
+import { loginQuestions } from "../../../../src/protocol/client/auth/auth-status-state.js"
+import { LOGIN_QUESTION_COPY } from "../../../../src/protocol/client/auth/provider-account-copy.js"
 import type { ConfirmRequest } from "../client-context.js"
 
 /** Presents project-owned episodes once. Withdrawal and disposal do not answer the account condition. An answer

@@ -4,14 +4,14 @@
  *  kernel-raised episode reaches it through the seam with no host edit. */
 
 import { describe, expect, it } from "bun:test"
-import { composeModules } from "../../../../src/infra/module-descriptor.js"
-import { moduleServiceHandle } from "../../../../src/infra/module-service.js"
-import type { NotificationEpisodeInput } from "../../../../src/infra/notification-episode.js"
+import { composeModules } from "../../../../src/infra/definitions/module-descriptor.js"
+import { moduleServiceHandle } from "../../../../src/infra/definitions/modules/module-service.js"
+import type { NotificationEpisodeInput } from "../../../../src/infra/substrate/events/notification-episode.js"
 import { composeModuleProcessServices, composePortableModuleServices, createNotifySeam, type ModuleProcessServices, type PortableModuleServices } from "../../../../src/orchestration/app-service/executor/execution/module-service-host.js"
 import { createAccountModuleServiceOwner } from "../../../../src/orchestration/app-service/account/projects/account-module-services.js"
 import { composeRealmModuleSnapshot } from "../../../../src/orchestration/module-contract/module-composition.js"
 import type { FirstPartyModule } from "../../../../src/orchestration/module-contract/module-catalog.js"
-import { errorMessage } from "../../../../src/infra/error-message.js"
+import { errorMessage } from "../../../../src/infra/diagnostics/error-message.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { CONFIG_VALUE_ABSENT, createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js"
 import { remoteModule } from "../../../../src/orchestration/modules/remote/module.js"

@@ -1,4 +1,4 @@
-import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import type { ContentBlock, ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 
 type AssistantMessage = Extract<ConversationMessage, { kind: "assistant" }>;
 type ToolResultMessage = Extract<ConversationMessage, { kind: "toolResult" }>;

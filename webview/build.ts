@@ -6,7 +6,7 @@ import { join, relative } from "node:path"
 import sharp from "sharp"
 
 import { brandTileSvg } from "../src/protocol/client/brand.js"
-import { HOST_CONTRACT_VERSION } from "../src/protocol/client/host-contract.js"
+import { HOST_CONTRACT_VERSION } from "../src/protocol/client/host/host-contract.js"
 import { stageLegalPayload } from "../scripts/legal-payload.js"
 
 // Babel loads a preset from its resolved path, so the presets, which ship no

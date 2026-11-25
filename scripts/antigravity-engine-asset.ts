@@ -2,9 +2,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { antigravityEngineFile, buildPlatformArch, checkoutAntigravityEngine } from "../src/infra/native-assets.js";
-import { isRecord, type UnknownRecord } from "../src/infra/record.js";
-import { renameThroughSharing } from "../src/infra/windows-file-replacement.js";
+import { antigravityEngineFile, buildPlatformArch, checkoutAntigravityEngine } from "../src/infra/platform/native-assets.js";
+import { isRecord, type UnknownRecord } from "../src/infra/guards/record.js";
+import { renameThroughSharing } from "../src/infra/platform/files/windows/windows-file-replacement.js";
 import { requireDigestMatch, requireExecutable, type EngineDigest } from "./engine-asset-verify.js";
 import { RELEASE_TARGETS, type ReleaseTargetName } from "./release-contract.js";
 

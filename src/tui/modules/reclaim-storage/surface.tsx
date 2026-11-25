@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { createEffect, createMemo, createRoot, createSignal, on, onCleanup, Show } from "solid-js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { describeReclaimOutcome, previewShowsView, RECLAIM_STORAGE_COMMAND_NAME, storageDomain } from "../../../protocol/modules/reclaim-storage.js"
 import { formatStorageBytes, type StorageReclaimPreview } from "../../../protocol/store-reclaim.js"
 import { Button } from "../../components/controls/button.js"

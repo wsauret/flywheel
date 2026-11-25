@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../../infra/substrate/store/event-store-types.js"
 import { liveChildRun, whenLiveChildRun, type LiveChildControl } from "../../../../session/control/live-session-control.js"
 import { readUnreadMessages, type QueuedUserInputCell } from "../../../../session/conversation/queued-user-inputs.js"
 import { readConversationBackgroundNotifications } from "../../../../session/conversation/queued-background-notifications.js"

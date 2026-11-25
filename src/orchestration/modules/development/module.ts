@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url"
-import { moduleRuntimeHandle } from "../../../infra/module-runtime.js"
+import { moduleRuntimeHandle } from "../../../infra/definitions/modules/module-runtime.js"
 import { ownedCommandRunner } from "../../../infra/owned-command.js"
 import type { ModuleRuntimeServices } from "../../agent-runtime/request/module-services/module-runtime-services.js"
 import type { ToolDeclaration } from "../../module-contract/module-seams.js"

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type OpenAI from "openai";
 import { z } from "zod";
 import { wireClient } from "../../_wire-fixtures.js";
-import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../../../src/infra/providers/llm/models/models.js";
 import { createChatCompletionsAdapter } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions.js";
 
 

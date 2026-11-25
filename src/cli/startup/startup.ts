@@ -2,15 +2,15 @@ import { importComposing } from "../composition/module-registries.js"
 import { existsSync, mkdirSync } from "node:fs"
 import { isatty } from "node:tty"
 
-import { AccountHomeRefusal, type AccountDirectories, type StartupDirectories } from "../../infra/directory-authorities.js"
-import { errorMessage } from "../../infra/error-message.js"
-import type { LaunchState } from "../../infra/distribution/launch-state.js"
+import { AccountHomeRefusal, type AccountDirectories, type StartupDirectories } from "../../infra/platform/files/directory-authorities.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import type { LaunchState } from "../../infra/update/distribution/launch-state.js"
 import { Log } from "../../infra/diagnostics/log.js"
-import { accountServeErrorLogPath, remoteProjectStateRoot, terminalDeviceStoreFile } from "../../infra/paths.js"
+import { accountServeErrorLogPath, remoteProjectStateRoot, terminalDeviceStoreFile } from "../../infra/platform/files/paths.js"
 import { startupTrace } from "../../infra/diagnostics/startup-trace.js"
 import { createStartupTimeline } from "../../infra/diagnostics/startup-timeline.js"
 import { registerLiveBuild } from "../../infra/update/live-builds.js"
-import { serveLaneFor, type ServeLane } from "../../infra/cli-subprocess.js"
+import { serveLaneFor, type ServeLane } from "../../infra/platform/cli-subprocess.js"
 import type { HeadlessFailure, HeadlessOutputObserver } from "../../orchestration/app-service/headless/headless-output.js"
 import type { RemoteAttach, TerminalRemoteChoice, TerminalRemoteRequest } from "../../orchestration/module-contract/terminal-remote.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../protocol/runtime-liveness.js"
@@ -341,7 +341,7 @@ async function prepareRelayTerminal(action: RunCliAction, account: AccountDirect
 /** Reads the place a predecessor terminal handed over. A place this build
  *  cannot read is a plain start with the reason in the log, never a failure. */
 async function takeHandedPlace(path: string, projectRoot: string): Promise<LaunchState | undefined> {
-  const { takeLaunchState } = await import("../../infra/distribution/launch-state.js")
+  const { takeLaunchState } = await import("../../infra/update/distribution/launch-state.js")
   const taken = takeLaunchState(path, projectRoot)
   if (taken.kind === "restore") return taken.state
   Log.Default.warn("the previous terminal's place was not restored", { reason: taken.reason })

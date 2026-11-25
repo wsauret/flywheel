@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { importComposing } from "./composition/module-registries.js"
-import { EXECUTABLE_ROLES, internalExecutableRole, type ExecutableRole } from "../infra/executable-roles.js"
+import { EXECUTABLE_ROLES, internalExecutableRole, type ExecutableRole } from "../infra/platform/executable-roles.js"
 
 const internalRoles = {
   [EXECUTABLE_ROLES.mutationGit]: async () => {
@@ -25,7 +25,7 @@ const internalRoles = {
     process.exit(await runBinaryInstall())
   },
   [EXECUTABLE_ROLES.antigravityGate]: async () => {
-    const { runGateHookMain } = await import("../infra/antigravity-gate-hook.js")
+    const { runGateHookMain } = await import("../infra/providers/antigravity-gate-hook.js")
     await runGateHookMain(process.argv)
   },
 } satisfies { [Role in ExecutableRole]: () => Promise<void> }
@@ -41,7 +41,7 @@ export async function runFlywheelCli(): Promise<void> {
     if (role) return await internalRoles[role]()
     // Read first: the service and the terminal both name the build they run
     // by this one read of the build directory they started from.
-    const { processRunningBuild } = await import("../infra/distribution/running-build.js")
+    const { processRunningBuild } = await import("../infra/update/distribution/running-build.js")
     processRunningBuild()
     const [{ startupTrace }, { rootCliAction }] = await Promise.all([import("../infra/diagnostics/startup-trace.js"), import("./root-args.js")])
     startupTrace("cli main")
@@ -52,7 +52,7 @@ export async function runFlywheelCli(): Promise<void> {
       return
     }
     if (action.kind === "version") {
-      const [{ buildIdentityBeside, versionLine }, { readAppVersion }] = await Promise.all([import("../infra/update/build-identity.js"), import("../infra/app-version.js")])
+      const [{ buildIdentityBeside, versionLine }, { readAppVersion }] = await Promise.all([import("../infra/update/build-identity.js"), import("../infra/update/distribution/app-version.js")])
       process.stdout.write(`${versionLine(await readAppVersion(), buildIdentityBeside(process.execPath)?.buildId)}\n`)
       return
     }

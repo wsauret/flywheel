@@ -1,5 +1,5 @@
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
-import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
+import type { ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 
 type SystemReminder = Extract<ConversationMessage, { kind: "user" }> & { origin: "system" };
 export type TurnReminderStatement = "on" | "still" | "off";

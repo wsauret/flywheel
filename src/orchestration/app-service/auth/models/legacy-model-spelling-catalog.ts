@@ -1,4 +1,4 @@
-import { modelsDevBaseline } from "../../../../infra/llm/access/model-listing-rows.js"
+import { modelsDevBaseline } from "../../../../infra/providers/llm/access/model-listing-rows.js"
 import { getSharedModelsClient } from "../../../config/models/llm-clients.js"
 import { installedAccessProviderDefinitions } from "../../../module-contract/module-composition.js"
 import type { ProviderModelEligibilityState } from "./provider-model-preference-service.js"

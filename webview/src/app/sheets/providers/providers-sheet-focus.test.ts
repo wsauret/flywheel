@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { createRoot, createSignal } from "solid-js"
 
-import type { SheetFocus } from "../../../../../src/protocol/client/host-contract.js"
+import type { SheetFocus } from "../../../../../src/protocol/client/host/host-contract.js"
 import { observeProviderSheetFocus } from "./providers-sheet.js"
 
 test("provider focus requests focus without starting authentication and repeat while mounted", async () => {

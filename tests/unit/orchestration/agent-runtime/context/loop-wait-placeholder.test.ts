@@ -12,8 +12,8 @@ import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime
 import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
 import { makeCaptureClient, makeFakeLLMClient } from "./_loop-fixtures.js";
 import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
-import { messageInput } from "../../../../../src/infra/agent-loop-events.js";
-import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js";
+import { messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
+import { createEmit, EventBus } from "../../../../../src/infra/substrate/events/event-bus.js";
 import { createRunnerBusBridge } from "../../../../../src/orchestration/agent-runtime/runner/bus-bridge.js";
 import { SessionEventAdapter } from "../../../../../src/orchestration/session-store/event-adapter.js";
 import { createOutputSession } from "../../../../../src/orchestration/session-store/output-session.js";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { createStreamingSanitizer } from "../../../../../../../src/infra/control-characters.js";
+import { createStreamingSanitizer } from "../../../../../../../src/infra/substrate/output/control-characters.js";
 import { createShellOutputAccumulator, readBackgroundProcessOutput, readBoundedSpoolTail, readSpoolGrowth, shellObservation } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/execution/bash-output-tail.js";
 
 const CHUNK_BYTES = 64 * 1024;

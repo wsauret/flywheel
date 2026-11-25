@@ -10,7 +10,7 @@
  *
  */
 
-import type { RuntimeEvent } from "../../../../../infra/runtime-facts/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import { toolIdentity } from "../../../../module-contract/module-catalog.js";
 
 interface ToolInput {

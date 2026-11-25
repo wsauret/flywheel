@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { Log } from "../../../../../../src/infra/diagnostics/log.js";
 import type { DebugLogRecordInput } from "../../../../../../src/infra/diagnostics/debug-log.js";
-import { captureProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
-import type { AccessProviderCandidate, AccessProviderDefinition, ExternalLoginProblem } from "../../../../../../src/infra/llm/access/access-provider.js";
-import { createAccessProviderSelection } from "../../../../../../src/infra/llm/access/access-provider.js";
+import { captureProviderConnection } from "../../../../../../src/infra/providers/auth/auth-context.js";
+import type { AccessProviderCandidate, AccessProviderDefinition, ExternalLoginProblem } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
+import { createAccessProviderSelection } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
 import { createClient, providerAdapter, type AccessProviderFactory } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { QuotaExhaustedError, RouteUnavailableError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";

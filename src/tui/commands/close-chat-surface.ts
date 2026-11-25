@@ -1,4 +1,4 @@
-import { chatOnlyCommandNotice, type AgentViewKind } from "../../protocol/client/slash-route.js"
+import { chatOnlyCommandNotice, type AgentViewKind } from "../../protocol/client/commands/slash-route.js"
 import type { ShellServices } from "../hooks/state/shell-state.js"
 
 /** The terminal's `close-chat` surface: Close chat on the chat in front, which

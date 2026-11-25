@@ -7,7 +7,7 @@ import { settle } from "../../../test-support/session-connection-fixture.js"
 import { createSessionNavigation, type SessionNavigationDeps } from "./session-navigation.js"
 import { navigationConnection, type TailRead } from "./session-navigation-fixture.js"
 import { createViewProjection } from "../view-state.js"
-import { RuntimeLaneLost } from "../../../../../src/protocol/client/connection-failures.js"
+import { RuntimeLaneLost } from "../../../../../src/protocol/client/runtime/connection-failures.js"
 
 /** A tap that leaves the open session moves to its destination at once, and
  *  the destination shows that it is opening until its content can show. */

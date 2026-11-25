@@ -1,7 +1,7 @@
 import { removeSemanticSubtree, renameSemanticTable, quoteTomlKey, rewriteSemanticAssignmentKeys, type SemanticKeyRewrite } from "./config-assignment.js";
 import { parseBriefRoleId } from "../../protocol/auth/brief-role-id.js";
 import { RETIRED_BRIEFS } from "../../workflows/definitions/retired-bindings.js";
-import { canonicalModelId } from "../../infra/model-id.js";
+import { canonicalModelId } from "../../infra/providers/model-id.js";
 import type { RoleSettings } from "../session/metadata/schemas.js";
 
 /** Retired config names: the role-id spellings that user config, the

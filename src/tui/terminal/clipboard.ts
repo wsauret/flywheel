@@ -1,10 +1,10 @@
 
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { errorDetail, errorMessage } from "../../infra/error-message.js"
+import { errorDetail, errorMessage } from "../../infra/diagnostics/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import type { OwnedCommandRunner } from "../../infra/owned-command.js"
-import { windowsClipboard } from "../../infra/windows-clipboard.js"
+import { windowsClipboard } from "../../infra/platform/windows-clipboard.js"
 
 const log = Log.create({ service: "clipboard" })
 

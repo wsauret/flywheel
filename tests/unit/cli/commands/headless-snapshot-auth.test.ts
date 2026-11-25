@@ -3,11 +3,11 @@ import { Redacted } from "effect"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { runHeadlessSnapshotAuth, snapshotAuthProviders } from "../../../../src/cli/commands/headless-snapshot-auth.js"
-import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js"
+import { AuthProfileStore } from "../../../../src/infra/providers/auth/store/auth-profile-store.js"
 import { installCustomProviders } from "../../../helpers/custom-providers.js"
 import { accessProviderRegistry } from "../../../../src/orchestration/config/models/access-provider-registry.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
-import { applyWindowsPrivateDirectoryAcl } from "../../../../src/infra/windows-private-directory-acl.js"
+import { applyWindowsPrivateDirectoryAcl } from "../../../../src/infra/platform/files/windows/windows-private-directory-acl.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 
 const PROVIDERS = accessProviderRegistry(composeFirstPartyModules()).selection.definitions

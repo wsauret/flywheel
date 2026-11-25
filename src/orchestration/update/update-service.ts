@@ -33,7 +33,7 @@
  *  synchronously and aborts the run in flight, including its collection, and
  *  `settled()` is the single settlement its owner's shutdown joins. */
 
-import { errorMessage } from "../../infra/error-message.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import type { BuildRef } from "../../infra/update/build-identity.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import type { UpdateAutoInstall, UpdateStatus, UpdateStatusView } from "../../protocol/runtime/update-protocol-types.js";
@@ -41,7 +41,7 @@ import { parseRepositoryIdentity, platformAssetName, type SelectedRelease } from
 import type { UpdateAuthority, UpdateLeaseRenewal } from "../../infra/update/update-authority.js";
 import { compareReleaseVersions, isLaterRelease, parseReleaseVersion, type ReleaseVersion } from "../../infra/update/version-order.js";
 import { ConfigWriteError, type ConfigWriteResult } from "../config/writer.js";
-import { ADMISSION_CLOSED_ERROR } from "../../infra/shutdown-signals.js";
+import { ADMISSION_CLOSED_ERROR } from "../../infra/process/shutdown-signals.js";
 import { checkForUpdate, type UpdateCheckRequest, type UpdateCheckResult, type UpdateScheduler } from "./update-check.js";
 
 const log = Log.create({ service: "update-service" });

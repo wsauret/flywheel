@@ -1,4 +1,4 @@
-import { createOrderedLane } from "../../../../infra/ordered-lane.js";
+import { createOrderedLane } from "../../../../infra/async/ordered-lane.js";
 import { isMcpConnector, type McpServerRegistry } from "../config.js";
 import type { McpManager, McpManagerOptions, McpManagerResource } from "../manager-types.js";
 

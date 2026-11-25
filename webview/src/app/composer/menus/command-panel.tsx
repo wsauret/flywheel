@@ -1,4 +1,4 @@
-import { HOST_ACTION_NAMES } from "../../../../../src/protocol/client/host-action-names.js"
+import { HOST_ACTION_NAMES } from "../../../../../src/protocol/client/host/host-action-names.js"
 import { Key } from "@solid-primitives/keyed"
 import { scrollEdges } from "../../controls/scroll-edges.js"
 import { createEffect, createMemo, createSignal, on, Show } from "solid-js"

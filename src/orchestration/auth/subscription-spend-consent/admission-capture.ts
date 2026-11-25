@@ -1,10 +1,10 @@
-import { openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../../infra/auth/store/auth-profile-store.js"
-import { heldDirectoryDerivation } from "../../../infra/watched-directory-values.js"
-import { SUBSCRIPTION_SPEND_CONSENT_FILE, subscriptionSpendConsentRevision, type SubscriptionSpendConsentRevision } from "../../../infra/auth/subscription/subscription-spend-consent-store.js"
-import type { AccessProviderCandidate, AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js"
+import { openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../../infra/providers/auth/store/auth-profile-store.js"
+import { heldDirectoryDerivation } from "../../../infra/platform/files/watched-directory-values.js"
+import { SUBSCRIPTION_SPEND_CONSENT_FILE, subscriptionSpendConsentRevision, type SubscriptionSpendConsentRevision } from "../../../infra/providers/auth/subscription/subscription-spend-consent-store.js"
+import type { AccessProviderCandidate, AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js"
 import { providerSettingValues, type AccessProviderRegistry } from "../../config/models/access-provider-registry.js"
-import { availableSubscriptionUsageResetCredits } from "../../../infra/llm/usage/subscription-usage.js"
-import { metricUsedFraction } from "../../../infra/llm/usage/subscription-usage-store-codec.js"
+import { availableSubscriptionUsageResetCredits } from "../../../infra/providers/llm/usage/subscription-usage.js"
+import { metricUsedFraction } from "../../../infra/providers/llm/usage/subscription-usage-store-codec.js"
 import type { SubscriptionAdmissionCapture, SubscriptionAllowanceAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionExpiringResetResolver } from "../../agent-runtime/llm/routing/provider-availability-types.js"
 import type { RuntimeConfigRequestCapture } from "../../config/request-config.js"
 import type { SubscriptionUsageProfile } from "../provider-observations/subscription-usage-service.js"
@@ -12,7 +12,7 @@ import type { SubscriptionUsageServiceLease, SubscriptionUsageServicePool } from
 import type { SubscriptionSpendConsentCaptureCache } from "./capture-cache.js"
 import { createSubscriptionSpendConsentRuntime } from "./runtime-composition.js"
 import type { SubscriptionSpendConsentCapture } from "./subscription-spend-consent-service.js"
-import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js"
+import { accessProviderAccountKey } from "../../../infra/providers/auth/provider-account.js"
 
 const CONSENT_REVISION = heldDirectoryDerivation<SubscriptionSpendConsentRevision>([SUBSCRIPTION_SPEND_CONSENT_FILE])
 const UNKNOWN_ALLOWANCE: SubscriptionAllowanceAdmission = Object.freeze({ allowance: "unknown" })

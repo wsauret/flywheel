@@ -1,14 +1,14 @@
-import type { EligibilityInputRevision, ProviderModelPreferenceState } from "../../../../infra/auth/provider-models/provider-model-preference-store.js"
-import type { AccessProviderModelEligibility } from "../../../../infra/llm/access/access-provider.js"
-import { resolveAccountProviderModelPreferences, transitionProviderAutoEnableNewModels, type ProviderModelCatalog, type ResolvedProviderModels } from "../../../../infra/auth/provider-models/provider-model-preferences.js"
+import type { EligibilityInputRevision, ProviderModelPreferenceState } from "../../../../infra/providers/auth/provider-models/provider-model-preference-store.js"
+import type { AccessProviderModelEligibility } from "../../../../infra/providers/llm/access/access-provider.js"
+import { resolveAccountProviderModelPreferences, transitionProviderAutoEnableNewModels, type ProviderModelCatalog, type ResolvedProviderModels } from "../../../../infra/providers/auth/provider-models/provider-model-preferences.js"
 import { subscriptionSpendAccountCorrelationId } from "../../../../protocol/auth/subscription-spend-consent-protocol-types.js"
-import { createOrderedLane } from "../../../../infra/ordered-lane.js"
+import { createOrderedLane } from "../../../../infra/async/ordered-lane.js"
 import { createProfileRuntimeStateOwner, type ProfileRuntimeSnapshot } from "./profile-runtime-state.js"
 import { providerModelEligibilityDecision, type PickerModelEligibility, type ProviderModelEnabledCandidate } from "../../../config/models/provider-model-eligibility.js"
-import type { CatalogModelOffering } from "../../../../infra/catalog-model-offering.js"
-import type { AccessAuditStatus } from "../../../../infra/llm/access/model-listing-rows.js"
+import type { CatalogModelOffering } from "../../../../infra/providers/catalog-model-offering.js"
+import type { AccessAuditStatus } from "../../../../infra/providers/llm/access/model-listing-rows.js"
 import { TRAINING_ROUTES_REQUIRED, type ProviderCatalogDiscovery, type ProviderModelRow, type ProviderModelTarget, type ProviderModelView, type RuntimeDeselectAllProviderModelsMutation, type RuntimeProviderModelHiddenResult, type RuntimeRecheckProviderModelsMutation, type RuntimeSetProviderAutoEnableNewModelsMutation, type RuntimeSetProviderAutoEnableNewModelsResult, type RuntimeSetProviderFreeRoutesMutation, type RuntimeSetProviderModelMutation, type RuntimeSetProviderModelResult } from "../../../../protocol/auth/provider-model-preference-protocol-types.js"
-import { type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../../../infra/auth/provider-account.js"
+import { type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../../../infra/providers/auth/provider-account.js"
 
 const ABSENT_CATALOG: ProviderCatalogDiscovery = { kind: "unavailable", reason: "authentication-absent" }
 

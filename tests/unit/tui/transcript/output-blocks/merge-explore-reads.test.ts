@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { ToolEntry } from "@infra/output-blocks"
-import { getToolDisplay, resolveToolRowPresentation } from "@infra/tools/tool-display-registry.js"
+import type { ToolEntry } from "@infra/substrate/events/output-blocks"
+import { getToolDisplay, resolveToolRowPresentation } from "@infra/substrate/output/tools/tool-display-registry.js"
 import { mergeExploreReadRuns } from "@tui/transcript/output-blocks/tool-entry-helpers.js"
 
 const CWD = "/workspace"

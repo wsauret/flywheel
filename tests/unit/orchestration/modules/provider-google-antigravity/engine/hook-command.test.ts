@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 
-import { GATE_HOOK_DEADLINE_MS, GATE_HOOK_TIMEOUT_SECONDS } from "../../../../../../src/infra/antigravity-gate-hook.js"
-import { executableRoleCommand } from "../../../../../../src/infra/cli-subprocess.js"
-import { EXECUTABLE_ROLES } from "../../../../../../src/infra/executable-roles.js"
+import { GATE_HOOK_DEADLINE_MS, GATE_HOOK_TIMEOUT_SECONDS } from "../../../../../../src/infra/providers/antigravity-gate-hook.js"
+import { executableRoleCommand } from "../../../../../../src/infra/platform/cli-subprocess.js"
+import { EXECUTABLE_ROLES } from "../../../../../../src/infra/platform/executable-roles.js"
 import { gateHookHandler } from "../../../../../../src/orchestration/modules/provider-google-antigravity/engine/hook-command.js"
 
 describe("gate hook handler", () => {

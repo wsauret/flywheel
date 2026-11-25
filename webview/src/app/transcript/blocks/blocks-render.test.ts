@@ -3,7 +3,7 @@ import { describe, test } from "node:test"
 
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
-import { foldReadRuns } from "../../../../../src/protocol/client/tool-run-category.js"
+import { foldReadRuns } from "../../../../../src/protocol/client/chat/transcript/tool-run-category.js"
 import { rendered } from "./blocks-render-loader-fixture.js"
 const { renderBlock, renderCompactRow, renderTurnFold, renderLocalMessage, tool } = rendered
 

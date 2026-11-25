@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
 
-import { PatchPlanningCursor } from "../../../../../../src/infra/file-edit/patch-plan.js";
+import { PatchPlanningCursor } from "../../../../../../src/infra/substrate/file-mutations/file-edit/patch-plan.js";
 import {
   StreamingEditValidator,
   type StreamingEditValidationResult,

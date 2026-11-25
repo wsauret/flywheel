@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 import { openCampaignLedger } from "../../src/orchestration/modules/development/benchmark/campaign/campaign-ledger.js";
-import { EffortSchema } from "../../src/infra/workflow-types.js";
-import { canonicalModelId } from "../../src/infra/model-id.js";
+import { EffortSchema } from "../../src/infra/definitions/workflow/workflow-types.js";
+import { canonicalModelId } from "../../src/infra/providers/model-id.js";
 import { SourcePatchSchema } from "./source-treatment.js";
 
 export const CampaignId = Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/));

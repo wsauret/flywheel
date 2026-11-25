@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { QuestionBlock } from "@infra/output-blocks"
+import type { QuestionBlock } from "@infra/substrate/events/output-blocks"
 import { StyledText, bold as stBold, fg as stFg } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { createMeasuredWidth } from "@tui/components/layout/create-measured-width.js"

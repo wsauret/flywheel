@@ -1,7 +1,7 @@
 /**
  * Production-shaped coverage for the runner-universal system prompt.
  *
- * A compiled binary has no source tree: `src/infra/agent-assets/system-prompt.md`
+ * A compiled binary has no source tree: `src/infra/definitions/agent-assets/system-prompt.md`
  * is absent and the generated manifest is the only layer left. These tests run
  * the real resolver in a separate process against an isolated cwd and HOME, so
  * both the compiled shape and the dev shape are exercised as they ship.
@@ -10,11 +10,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { writeAgentAssetsManifest } from "../../../scripts/build-manifest.js";
 
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
-const ASSETS_SRC = join(REPO_ROOT, "src", "infra", "agent-assets");
+const ASSETS_SRC = join(REPO_ROOT, "src", "infra", "definitions", "agent-assets");
 /** Both runner-universal prompt assets share one overlay and manifest lane. */
 const PROMPT_ASSETS = [
   { file: "system-prompt.md", loader: "loadSystemPrompt" },
@@ -64,8 +64,8 @@ async function resolveAsset(loader: string): Promise<string> {
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "flywheel-compiled-assets-"));
   cpSync(join(REPO_ROOT, "src", "infra"), tmp, { recursive: true });
-  rmSync(join(tmp, "agent-assets"), { recursive: true, force: true });
-  assetsDir = join(tmp, "agent-assets");
+  assetsDir = join(tmp, relative(join(REPO_ROOT, "src", "infra"), ASSETS_SRC));
+  rmSync(assetsDir, { recursive: true, force: true });
   projectRoot = join(tmp, "project");
   userDataRoot = join(tmp, "home", ".flywheel");
   for (const dir of [assetsDir, projectRoot, userDataRoot]) mkdirSync(dir, { recursive: true });

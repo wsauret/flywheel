@@ -1,5 +1,5 @@
 import { createEffect, createMemo, untrack, type Accessor } from "solid-js"
-import type { WorkflowOutline } from "../../../protocol/client/workflow-outline.js"
+import type { WorkflowOutline } from "../../../protocol/client/work/workflow/workflow-outline.js"
 import { sessionServingLabel, type RoleAssignmentView } from "../../../protocol/auth/role-protocol-types.js"
 
 /** The role readings that a workflow card reads its agents' models from. */

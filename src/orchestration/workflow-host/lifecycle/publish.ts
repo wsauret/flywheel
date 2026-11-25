@@ -8,7 +8,7 @@ import { agentRecords, type WorkflowDefinition } from "../../../workflows/schema
 import type { WorkflowVerificationResult } from "../../../workflows/vm/compile/verify-types.js"
 import { decodeWorkflowInput, type WorkflowInputValue } from "../../../workflows/output-contract/compile.js"
 import { commandEvidenceRefusal } from "../../../workflows/output-contract/envelope.js"
-import type { AgentDefinition } from "../../../infra/agent-definition.js"
+import type { AgentDefinition } from "../../../infra/definitions/agent-definition.js"
 import { disabledToolReason } from "../../agent-runtime/tools/dispatch/tool-catalog.js"
 import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js"
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"
@@ -21,13 +21,13 @@ import { bindWorkflowAgentModels } from "../../agent-runtime/request/roles/workf
 import type { WorkflowAgentModels } from "../../agent-runtime/tools/definitions/workflow-launch.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { RuntimeWorkflowInvocation, WorkflowLaunchBinding } from "../../session/control/children/child-session-publication.js"
-import type { InFlightSwap } from "../../../infra/store/event-store-types.js"
+import type { InFlightSwap } from "../../../infra/substrate/store/event-store-types.js"
 import type { WorkflowCapabilityBoundary } from "../../../workflows/run/run-facts.js"
 import type { RoleSettings } from "../../session/metadata/schemas.js"
 import { buildWorkflowDefinitionLineageFacts } from "./definition-lineage.js"
 import type { WorkflowDeps } from "../../agent-runtime/runner/workflow-deps.js"
 import type { CommittedWorkflowControl } from "../../../workflows/control-facts/committed-control.js"
-import type { WorkflowLaunchAgentModels } from "../../../infra/workflow-types.js"
+import type { WorkflowLaunchAgentModels } from "../../../infra/definitions/workflow/workflow-types.js"
 
 /** A launch whose agents require a package the captured registry revision does
  *  not install. Startup validation cannot decide this: packages hot reload, so

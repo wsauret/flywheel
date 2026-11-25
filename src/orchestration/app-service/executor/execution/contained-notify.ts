@@ -1,6 +1,6 @@
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import type { NotificationEpisodeInput } from "../../../../infra/notification-episode.js"
+import type { NotificationEpisodeInput } from "../../../../infra/substrate/events/notification-episode.js"
 import { coalesceRepeats } from "../../../../infra/diagnostics/repeat-coalescer.js"
 
 const log = Log.create({ service: "notify" })

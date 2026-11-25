@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
-import type { QuestionBlock } from "../../../../../../src/infra/output-blocks.js"
+import type { QuestionBlock } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 
 function entry(question: string, optionLabels: string[], header?: string): QuestionBlock["questions"][number] {
   return {

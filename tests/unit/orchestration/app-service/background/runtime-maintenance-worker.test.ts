@@ -1,4 +1,4 @@
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js";
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js";
 import { maintainSkillLifecycleIfAdmitted } from "../../../../../src/orchestration/modules/learning/maintenance/maintenance.js";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,10 +12,10 @@ import { serveProjectStateChannel } from "../../../../../src/orchestration/app-s
 import { servedProjectState } from "../_served-project-state-fixture.js";
 import { pruneRetiredFactFamilies, type StoreUsage } from "../../../../../src/orchestration/session/persistence/storage/event-store-maintenance.js";
 import { prepareWorkspaceState } from "../../../../../src/orchestration/workspace-state/workspace-state.js";
-import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
+import { resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths.js";
 import { canonicalTestDirectory } from "../../../../helpers/directories.js";
-import { withEventStore } from "../../../../../src/infra/store/with-event-store.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types.js";
+import { withEventStore } from "../../../../../src/infra/substrate/store/with-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types.js";
 import { Database } from "bun:sqlite";
 
 const created: string[] = [];

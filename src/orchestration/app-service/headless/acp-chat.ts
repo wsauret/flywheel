@@ -1,7 +1,7 @@
 import { realpath } from "node:fs/promises"
 import { Schema } from "effect"
-import { readAppVersion } from "../../../infra/app-version.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { readAppVersion } from "../../../infra/update/distribution/app-version.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import {
   ACP_PROTOCOL_VERSION, AcpCancelParamsSchema, AcpCloseSessionParamsSchema, AcpContinueSessionParamsSchema, AcpInboundResponseSchema, AcpInboundSchema,
   AcpInitializeParamsSchema, AcpNewSessionParamsSchema, AcpPromptParamsSchema, AcpSetConfigOptionParamsSchema,
@@ -13,7 +13,7 @@ import type { ChatSettlementOutcome, ChatTurnEnding } from "../../../protocol/se
 import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeEventFrame } from "../../../protocol/runtime/app-service-types.js"
 import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import { isBudgetPayload } from "../../../protocol/session/budget-protocol-types.js"
-import { createTranscriptStore, type TranscriptStore } from "../../../protocol/client/transcript-store.js"
+import { createTranscriptStore, type TranscriptStore } from "../../../protocol/client/chat/transcript/transcript-store.js"
 import type { ModelSelectionEffort, ModelSelectionSlot } from "../../../protocol/auth/model-assignment-protocol-types.js"
 import type { PendingQuestionView } from "../../../protocol/session/question-protocol-types.js"
 import { isRolePayload } from "../../../protocol/auth/role-protocol-types.js"

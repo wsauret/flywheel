@@ -1,5 +1,5 @@
 import type { WorkflowWorkTarget, ModuleWorkControl, ModuleWorkflowRuns } from "../../module-contract/module-seams.js"
-import { workflowProgress, workflowSummaryText } from "../../../protocol/client/workflow-progress.js"
+import { workflowProgress, workflowSummaryText } from "../../../protocol/client/work/workflow/workflow-progress.js"
 import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { frontendAttempts } from "../../session/metadata/frontend-attempts.js"
 import { workflowAddressText } from "../../session/control/messaging/workflow-addressing.js"

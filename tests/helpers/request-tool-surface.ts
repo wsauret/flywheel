@@ -1,4 +1,4 @@
-import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../src/infra/definitions/modules/module-runtime.js";
 import { bashExecution } from "../unit/orchestration/agent-runtime/tools/bash/_bash-fixtures.js";
 import type { ToolExposurePlan } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { createRequestToolSurface, type PlannedRequest, type RequestToolSurfaceOwner } from "../../src/orchestration/agent-runtime/request/request-tool-surface.js";
@@ -11,7 +11,7 @@ import { createToolRegistry } from "../../src/orchestration/agent-runtime/tools/
 import { definitionAvailabilityOf } from "../../src/orchestration/config/policy/definition-availability.js";
 import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/definitions/definition-registry.js";
-import type { AgentDefinition } from "../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../src/infra/definitions/agent-definition.js";
 import { publishSkillRevision } from "../../src/workflows/skills/skill-schema.js";
 import type { ExecutionAdmission } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import type { FirstPartyModuleComposition } from "../../src/orchestration/module-contract/module-catalog.js";

@@ -1,13 +1,13 @@
 import { release, type, version } from "node:os";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
-import { detectShell, isGitRepo, isGitWorktree, localDate } from "../../../../infra/env-detection.js";
-import { canonicalModelId } from "../../../../infra/model-id.js";
-import type { ModelInfo } from "../../../../infra/llm/models/models.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
+import { detectShell, isGitRepo, isGitWorktree, localDate } from "../../../../infra/environment/env-detection.js";
+import { canonicalModelId } from "../../../../infra/providers/model-id.js";
+import type { ModelInfo } from "../../../../infra/providers/llm/models/models.js";
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
 import { ANTHROPIC_STANDARD_CONTEXT_WINDOW } from "../errors.js";
 import type { ServingAttempt } from "../types.js";
-import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
-import { dateText, ENVIRONMENT_CHANGE_HEADER, ENVIRONMENT_HEADER, escapeEnvironment, fact, label, MODEL_OPENING, reminderIn, withoutExtendedWindow, worktreeLine, yesNo, type RuntimeReminder } from "../../../../infra/llm/runtime-reminder-format.js";
+import type { ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
+import { dateText, ENVIRONMENT_CHANGE_HEADER, ENVIRONMENT_HEADER, escapeEnvironment, fact, label, MODEL_OPENING, reminderIn, withoutExtendedWindow, worktreeLine, yesNo, type RuntimeReminder } from "../../../../infra/providers/llm/runtime-reminder-format.js";
 
 // The display name and knowledge cutoff that the model reminder states for each Claude model. This does not admit models.
 const modelDisplay = new Map<string, readonly [string, string?]>(Object.entries({

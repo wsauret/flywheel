@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/store/event-store-types.js"
-import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js"
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/substrate/store/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../../src/infra/substrate/store/sqlite-event-store.js"
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 import { createPromptBaseline, type PromptBaselineStore } from "../../../../../../src/orchestration/agent-runtime/request/prompt/prompt-baseline.js"
 import type { SystemPromptPart } from "../../../../../../src/orchestration/agent-runtime/request/prompt/system-prompt.js"
 import { conversationPromptBaselines } from "../../../../../../src/orchestration/session/conversation-records/conversation-prompt-baseline.js"

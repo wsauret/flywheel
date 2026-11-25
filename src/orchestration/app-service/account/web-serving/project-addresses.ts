@@ -1,8 +1,8 @@
 import type { Server } from "bun"
 
-import { errnoCode } from "../../../../infra/error-message.js"
+import { errnoCode } from "../../../../infra/platform/files/system-error.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import { projectWebPort } from "../../../../infra/paths.js"
+import { projectWebPort } from "../../../../infra/platform/files/paths.js"
 import { brandTileSvg } from "../../../../protocol/client/brand.js"
 import { applyControlUiSecurityHeaders } from "./control-ui-csp.js"
 import { isReadHttpMethod, respondPlainText } from "./control-ui-http-utils.js"

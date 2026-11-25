@@ -17,8 +17,8 @@ import { cliLaunch } from "../../../../../src/orchestration/modules/provider-cla
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { canonicalShell } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
-import { parseRuntimeReminder } from "../../../../../src/infra/llm/runtime-reminder-format.js";
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import { parseRuntimeReminder } from "../../../../../src/infra/providers/llm/runtime-reminder-format.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { agentLoop, dispatchedIds, effortOf, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, SYSTEM, systemTexts, textOf, TREE, wireMessages, type WireBlock } from "./_agent-host.js";
 import { captureDiagnostics, onFakeHost, removeEngineProbes, streamedText, streamedToolCalls, until, type StagedSdkClient, type StreamResult } from "./_claude-sdk-client.js";

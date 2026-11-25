@@ -4,7 +4,7 @@ import { hasAssistantOutput } from "./assistant-output.js"
 import { toolUseBlock } from "./agent-state.js"
 import type { AssistantTurnResult } from "./assistant-turn-result.js"
 import type { AssistantMetadata, ToolCall } from "../../llm/types.js"
-import type { ContentBlock } from "../../../../infra/llm/conversation/conversation-message.js"
+import type { ContentBlock } from "../../../../infra/providers/llm/conversation/conversation-message.js"
 
 const log = Log.create({ service: "agent-loop" })
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Redacted } from "effect";
-import * as taskScheduling from "../../../../../src/infra/task-scheduling.js";
+import * as taskScheduling from "../../../../../src/infra/process/task-scheduling.js";
 import { McpOutcomeUnknownError } from "../../../../../src/orchestration/modules/mcp/errors.js";
 import { startLoopbackMcpServer } from "../../../../helpers/code-mode-loopback-mcp.js";
 import {

@@ -1,6 +1,6 @@
 import { formatActivity, formatElapsed, formatTokens } from "../../../protocol/client/format.js"
-import type { ConnectionState, StreamPhase } from "../../../infra/output-blocks.js"
-import type { SessionNotice } from "../../../infra/session-notice.js"
+import type { ConnectionState, StreamPhase } from "../../../infra/substrate/events/output-blocks.js"
+import type { SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 import { noticeSpinnerStatus } from "./spinner-status-notice.js"
 import { advanceDisplayActivity, initialDisplayActivityState } from "./spinner-status-display-activity.js"
 import {

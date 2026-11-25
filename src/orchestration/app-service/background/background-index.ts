@@ -15,15 +15,15 @@
  * same reads, so an advanced tree holds the rows that a fresh build reads.
  */
 
-import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { loggedOperation } from "../../../infra/operation-log.js"
-import { containSessionReads } from "../../../infra/session-read-containment.js"
-import type { BackgroundCommandRecord } from "../../../infra/runtime-facts/runtime-fact-types.js"
+import { loggedOperation } from "../../../infra/diagnostics/operation-log.js"
+import { containSessionReads } from "../../../infra/substrate/session-read-containment.js"
+import type { BackgroundCommandRecord } from "../../../infra/substrate/runtime-facts/runtime-fact-types.js"
 import type { BackgroundWorkProgress, BackgroundWorkRow, BackgroundWorkStatus } from "../../../protocol/session/background-index-protocol-types.js"
 import type { StoppedBy } from "../../../protocol/runtime/app-service-types.js"
 import type { ActiveBackgroundCommandView, ReplyWaitView } from "../../../protocol/session/status-protocol-types.js"
-import { workflowProgress } from "../../../protocol/client/workflow-progress.js"
+import { workflowProgress } from "../../../protocol/client/work/workflow/workflow-progress.js"
 import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { readWorkflowStatees } from "../../../workflows/view/view-store.js"
 import { readBackgroundCommands } from "../../session/runtime-facts/background-index-projection.js"

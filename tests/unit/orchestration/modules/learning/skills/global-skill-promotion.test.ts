@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSyn
 import { join } from "node:path";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type StoredFact } from "../../../../../../src/infra/store/event-store-types.js";
-import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type StoredFact } from "../../../../../../src/infra/substrate/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../../src/infra/substrate/store/sqlite-event-store.js";
 import { createSkillManageTool } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { DispatchedToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { loadAgentInputProjection } from "../../../../../../src/orchestration/session/agent-input/agent-input-projection.js";

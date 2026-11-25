@@ -16,7 +16,7 @@
 // composition root owns.
 
 import { importComposing } from "./composition/module-registries.js"
-import type { StartupDirectories } from "../infra/directory-authorities.js"
+import type { StartupDirectories } from "../infra/platform/files/directory-authorities.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
 import type { ProjectStateStandby } from "../orchestration/app-service/project-state/project-state-standby.js"
 import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/module-contract/module-catalog.js"
@@ -60,7 +60,7 @@ const EVENT_VERBS: Readonly<Subcommands> = {
 
 const HEADLESS_VERBS: Readonly<Subcommands> = {
   "snapshot-auth": async (args, directories, launcher) => {
-    const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/auth/resolve-key.js")
+    const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/providers/auth/resolve-key.js")
     const { runHeadlessSnapshotAuth, snapshotAuthProviders } = await importComposing(() => import("./commands/headless-snapshot-auth.js"))
     await runHeadlessSnapshotAuth(args, directories, createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope)), await snapshotAuthProviders(directories))
   },
@@ -92,8 +92,8 @@ export const SUBCOMMANDS: KernelNouns = {
       { syntax: "logout --provider <id>", description: "Remove a [custom_providers] entry's credentials." },
     ],
     dispatch: async (args, directories, launcher) => {
-      const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/auth/resolve-key.js")
-      const { openExternalUrl } = await import("../infra/open-external-url.js")
+      const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/providers/auth/resolve-key.js")
+      const { openExternalUrl } = await import("../infra/substrate/output/notify/open-external-url.js")
       const { promptFromReadline } = await import("./readline-prompt.js")
       const { composeRealmModuleSnapshot } = await importComposing(() => import("../orchestration/module-contract/module-composition.js"))
       const { MODULE_IDS } = await import("../protocol/runtime/module-ids.js")
@@ -165,7 +165,7 @@ export const SUBCOMMANDS: KernelNouns = {
       // the terminal shows the link and nothing else.
       await Log.init({ dir: directories.projectRoot })
       const { createAccountRuntimeAttach } = await import("./account-service/runtime-attach.js")
-      const { openExternalUrl } = await import("../infra/open-external-url.js")
+      const { openExternalUrl } = await import("../infra/substrate/output/notify/open-external-url.js")
       const { runWeb } = await import("./commands/web.js")
       const attach = createAccountRuntimeAttach({ ...directories, allowPersistentProcesses: resources.allowPersistentProcesses })
       await runWeb(args, directories, attach, (url) => openExternalUrl(launcher.scope, url))

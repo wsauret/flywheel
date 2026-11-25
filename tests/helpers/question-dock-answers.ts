@@ -4,7 +4,7 @@
  *  fake ask_user controller answers in labels, so this is what turns those
  *  labels into the durable discriminated answer the strict fact requires. */
 
-import type { QuestionEntry } from "../../src/infra/output-blocks.js";
+import type { QuestionEntry } from "../../src/infra/substrate/events/output-blocks.js";
 import type { AgentInputAnswer } from "../../src/protocol/session/question-protocol-types.js";
 
 type QuestionOption = Extract<QuestionEntry["choices"][number], { kind: "option" }>;

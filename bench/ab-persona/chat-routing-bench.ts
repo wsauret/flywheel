@@ -2,7 +2,7 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { selectStartupDirectories } from "../../src/infra/directory-authorities.js";
+import { selectStartupDirectories } from "../../src/infra/platform/files/directory-authorities.js";
 import { createBenchmarkRuntime } from "../shared/runtime.js";
 import { ChatRoutingFailure, chatRoutingGuidance, runChatRoutingTask } from "../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
 import { completionIndex, planMatrix, runMatrix } from "../../src/orchestration/modules/development/benchmark/campaign/matrix-runner.js";
@@ -190,7 +190,7 @@ export interface ChatRoutingCliDeps {
   readonly createRuntime: typeof createBenchmarkRuntime;
   readonly admitModels: typeof admitBenchmark;
   readonly createStore: typeof createRoutingRunStore;
-  readonly createRoutingRegistry: () => ReadonlyMap<string, import("../../src/infra/agent-definition.js").AgentDefinition>;
+  readonly createRoutingRegistry: () => ReadonlyMap<string, import("../../src/infra/definitions/agent-definition.js").AgentDefinition>;
   readonly writeOutput: (text: string) => void;
 }
 

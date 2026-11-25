@@ -1,12 +1,12 @@
 import { existsSync } from "node:fs"
 import { isAbsolute } from "node:path"
 
-import type { AccountDirectories, StartupDirectories } from "../../infra/directory-authorities.js"
-import { errorMessage } from "../../infra/error-message.js"
+import type { AccountDirectories, StartupDirectories } from "../../infra/platform/files/directory-authorities.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import type { AccountServiceInstallation } from "../../orchestration/app-service/account/installation/account-service-platform.js"
 import { runtimeCommand } from "../../orchestration/app-service/runtime-executable.js"
-import { RESTART_NO_STARTER_REASON, RESTART_TASK_SCHEDULER_REASON, restartLaunchMissingReason } from "../../protocol/client/service-restart-copy.js"
+import { RESTART_NO_STARTER_REASON, RESTART_TASK_SCHEDULER_REASON, restartLaunchMissingReason } from "../../protocol/client/runtime/copy/service-restart-copy.js"
 import { launchAccountRuntime } from "./runtime-attach.js"
 import { SERVE_EXIT } from "./serve-contract.js"
 

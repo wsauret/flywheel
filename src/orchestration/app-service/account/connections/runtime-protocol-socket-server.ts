@@ -7,7 +7,7 @@ import { Log } from "../../../../infra/diagnostics/log.js"
 import { MutationFilesQuerySchema, MutationFilesResultSchema, MutationPatchWindowQuerySchema, MutationPatchWindowResultSchema } from "../../../../protocol/session/mutation-evidence-protocol-types.js"
 import { fitMutationEvidenceWindow } from "../../../../protocol/session/mutation-evidence-window.js"
 import { SessionChangesQuerySchema, SessionChangesResultSchema } from "../../../../protocol/session/session-changes-protocol-types.js"
-import { SESSION_CONTENT_WINDOW_BYTES } from "../../../../infra/session-content-schema.js"
+import { SESSION_CONTENT_WINDOW_BYTES } from "../../../../infra/substrate/session-content-schema.js"
 
 type FromServerEncoded = RpcMessage.FromServerEncoded
 type FromClientEncoded = RpcMessage.FromClientEncoded
@@ -45,7 +45,7 @@ const isEvidenceQuery = Schema.is(Schema.Union([MutationFilesQuerySchema, Mutati
  *  The acknowledgement stays end to end. The client sends one `Ack` for each
  *  chunk, in chunk order, only after the chunk enters its bounded stream
  *  buffer; the counterpart that keeps this contract for Flywheel's clients is
- *  `src/protocol/client/socket-protocol.ts`, and ARCH-PROTOCOL-022 states it. This
+ *  `src/protocol/client/runtime/socket-protocol.ts`, and ARCH-PROTOCOL-022 states it. This
  *  protocol reads every `Ack` itself and reports `supportsAck: false`, so
  *  `RpcServer` keeps no latch of its own and the window is the one owner of
  *  stream flow control. */

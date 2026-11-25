@@ -1,4 +1,4 @@
-import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js"
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js"
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "../llm/provider-request-audit.js"
 import type { GitAiTranscriptMessage } from "../git-ai-attribution-service.js"
 import type { RunnableAgentOptions } from "../types.js"

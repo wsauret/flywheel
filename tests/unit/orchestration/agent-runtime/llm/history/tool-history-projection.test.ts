@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { projectToolHistory } from "../../../../../../src/orchestration/agent-runtime/llm/history/tool-history-projection.js";
-import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { toAnthropicMessagesRequest } from "../../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { toOpenAIResponsesRequestInput } from "../../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 import { chatCompletionsTarget, toChatCompletionsMessages } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions-messages.js";

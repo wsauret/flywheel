@@ -1,8 +1,8 @@
 import { importComposing } from "./composition/module-registries.js"
-import { readAppVersion } from "../infra/app-version.js"
-import type { StartupDirectories } from "../infra/directory-authorities.js"
-import { errorDetail, errorMessage } from "../infra/error-message.js"
-import type { LaunchState } from "../infra/distribution/launch-state.js"
+import { readAppVersion } from "../infra/update/distribution/app-version.js"
+import type { StartupDirectories } from "../infra/platform/files/directory-authorities.js"
+import { errorDetail, errorMessage } from "../infra/diagnostics/error-message.js"
+import type { LaunchState } from "../infra/update/distribution/launch-state.js"
 import { Log } from "../infra/diagnostics/log.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
 import { createPersistentProcessManager, type PersistentProcessManager } from "../infra/supervision/persistent/persistent-process-manager.js"
@@ -16,7 +16,7 @@ import { publishFailedHeadlessTerminal, type CliStartup } from "./startup/startu
 import type { SubcommandDispatch } from "./subcommands.js"
 import type { HeadlessOutputObserver } from "../orchestration/app-service/headless/headless-output.js"
 import type { HeadlessTaskResult } from "../orchestration/app-service/headless/run-headless-task.js"
-import { shutdownSignals } from "../infra/shutdown-signals.js"
+import { shutdownSignals } from "../infra/process/shutdown-signals.js"
 import { watchTerminalInput } from "../tui/terminal/terminal-input.js"
 
 type MutationResult = number | undefined | { readonly kind: "task"; result: HeadlessTaskResult }

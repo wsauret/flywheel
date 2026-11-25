@@ -9,7 +9,7 @@ import { antigravityEngineBump } from "./antigravity-engine-release.js";
 import { parseAntigravityPin, PIN_FILE } from "./antigravity-engine-asset.js";
 import { FRESHNESS_BLOCKED_EXIT, type EngineBump } from "./engine-freshness.js";
 import { parseReleaseLoginStatus, RELEASE_LOGIN_SETTING, WINDOWS_HOST_SETTING, WINDOWS_RELEASE_LOGIN_FOLDER, type ReleaseEngine } from "./readiness-login.js";
-import { selectStartupDirectories } from "../src/infra/directory-authorities.js";
+import { selectStartupDirectories } from "../src/infra/platform/files/directory-authorities.js";
 import { buildExecutable } from "../src/infra/update/build-identity.js";
 import { CLAUDE_AGENT_SDK_LOGIN_COMMAND } from "../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { GOOGLE_ANTIGRAVITY_LOGIN_COMMAND } from "../src/orchestration/modules/provider-google-antigravity/names.js";

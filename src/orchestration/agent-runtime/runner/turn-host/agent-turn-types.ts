@@ -1,4 +1,4 @@
-import type { AgentLoopWakeInput } from "../../../../infra/agent-loop-events.js"
+import type { AgentLoopWakeInput } from "../../../../infra/substrate/events/agent-loop-events.js"
 import type { ResilienceDeps } from "../agent-resilience.js"
 import type { Agent, AgentRunResult } from "../../types.js"
 import type { RetryState } from "../../llm/retry-budget.js"

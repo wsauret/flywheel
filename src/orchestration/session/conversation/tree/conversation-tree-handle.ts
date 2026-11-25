@@ -2,8 +2,8 @@ import { ConversationTreeStorage } from "./conversation-tree-storage.js";
 import { ConversationTree } from "./conversation-tree.js";
 import { isSessionOwnerGone } from "../../pid-lock.js";
 import type { ConversationTreeTranscriptEntry } from "../conversation-projection.js";
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js";
-import type { ConversationMessage, ContentBlock } from "../../../../infra/llm/conversation/conversation-message.js";
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js";
+import type { ContentBlock, ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import { interruptedToolResult } from "./heal-messages.js";
 import type { ConversationEntry } from "../conversation-entry-types.js";
 

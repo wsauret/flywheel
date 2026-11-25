@@ -1,4 +1,4 @@
-import type { QuestionEntry } from "../../../infra/output-blocks.js";
+import type { QuestionEntry } from "../../../infra/substrate/events/output-blocks.js";
 import type { AgentInputAnswers } from "../../../protocol/session/question-protocol-types.js";
 import type { AgentInputDecision } from "../agent-input/agent-input-facts.js";
 

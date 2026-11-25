@@ -1,5 +1,5 @@
-import { openExistingAuthProfileDirectory } from "../../../../infra/auth/store/auth-profile-store.js"
-import { deselectAllProviderModels, setProviderAutoEnableNewModels, setProviderFreeRoutePreference, setProviderModelPreference } from "../../../../infra/auth/provider-models/provider-model-preference-store.js"
+import { openExistingAuthProfileDirectory } from "../../../../infra/providers/auth/store/auth-profile-store.js"
+import { deselectAllProviderModels, setProviderAutoEnableNewModels, setProviderFreeRoutePreference, setProviderModelPreference } from "../../../../infra/providers/auth/provider-models/provider-model-preference-store.js"
 import type { ProviderModelPreferenceServiceDeps } from "./provider-model-preference-service.js"
 
 type Persistence = Pick<ProviderModelPreferenceServiceDeps, "persist" | "persistAllDeselected" | "persistAutoEnableNewModels" | "persistFreeRoutes">

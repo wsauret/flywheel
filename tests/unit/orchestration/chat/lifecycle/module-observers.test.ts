@@ -3,7 +3,7 @@ import { createModuleChatObservers } from "../../../../../src/orchestration/chat
 import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import type { FirstPartyModuleComposition } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 import type { ModuleChatObserverContext } from "../../../../../src/orchestration/module-contract/module-seams.js"
-import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js"
+import { createEmit, EventBus } from "../../../../../src/infra/substrate/events/event-bus.js"
 import { createTestChatSessionDeps } from "../_chat-session-agent-runtime-fixtures.js"
 
 function context(): ModuleChatObserverContext {

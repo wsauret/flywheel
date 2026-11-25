@@ -18,9 +18,9 @@
  * from the keeper.
  */
 
-import { serveLaneFor } from "../../../../infra/cli-subprocess.js"
-import { errorMessage } from "../../../../infra/error-message.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
+import { serveLaneFor } from "../../../../infra/platform/cli-subprocess.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import type { CommandHandoverAuthority } from "../../../agent-runtime/background-execution/command-handover.js"
 import type { ChatRunner } from "../../../chat/runner-types.js"

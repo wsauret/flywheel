@@ -25,10 +25,10 @@
  */
 
 import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
-import { errorMessage } from "../../../infra/error-message.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/store/event-store-types.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { capacityWaitReasonText, type CapacityWaitReason, type SessionNotice } from "../../../infra/session-notice.js"
+import { capacityWaitReasonText, type CapacityWaitReason, type SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 import {
   authorizePlannedSessionContinuation,
   capacityContinuations,

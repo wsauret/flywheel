@@ -1,4 +1,4 @@
-import { moduleServiceHandle } from "../../../infra/module-service.js"
+import { moduleServiceHandle } from "../../../infra/definitions/modules/module-service.js"
 import { describeReclaimOutcome, storageCursor, type RuntimeStorageView, type StorageReclaimResult } from "../../../protocol/modules/reclaim-storage.js"
 import type { StorageReclaimOutcome, StorageReclaimPreview } from "../../../protocol/store-reclaim.js"
 import type { ModuleServiceInstance } from "../../app-service/executor/execution/module-service-host.js"

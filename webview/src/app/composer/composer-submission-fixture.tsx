@@ -8,8 +8,8 @@ import type { InlineSettingAction } from "../../client/settings-actions.js"
 import type { ClientViewState } from "../../client/session/view-state.js"
 import type { FrontendQuestionBlock } from "../../client/questions/question-answer.js"
 import type { SessionMemory } from "../../client/session/residents/session-residents.js"
-import { createSessionChangesController, type ChangesSummaryState } from "../../../../src/protocol/client/session-changes.js"
-import type { BudgetSummary } from "../../../../src/protocol/client/host-contract.js"
+import { createSessionChangesController, type ChangesSummaryState } from "../../../../src/protocol/client/session/changes/session-changes.js"
+import type { BudgetSummary } from "../../../../src/protocol/client/host/host-contract.js"
 import type { RoleAssignmentView } from "../../../../src/protocol/auth/role-protocol-types.js"
 import { ClientContext } from "../client-context.js"
 import { fakeClient, fakeClientHost, fakePanelSettings, fakeRuntimeSession, fakeSessionSummary, fakeViewState } from "../client-context-fixture.js"
@@ -18,8 +18,8 @@ import type { ComposerHandle } from "./composer.js"
 import type { ComposerCheckpoint } from "../../client/input/input-reload-checkpoint.js"
 import { ConversationBody } from "./conversation-body.js"
 import { PersistentPane } from "../screens/persistent-pane.js"
-import type { WorkflowAgentAddress } from "../../../../src/protocol/client/workflow-addresses.js"
-import type { WorkflowAgentModel } from "../../../../src/protocol/client/workflow-agent.js"
+import type { WorkflowAgentAddress } from "../../../../src/protocol/client/work/workflow/workflow-addresses.js"
+import type { WorkflowAgentModel } from "../../../../src/protocol/client/work/workflow/workflow-agent.js"
 import { createElement, insert, nodes, textContent, type FixtureEvent } from "../../test-support/render-ownership-host-fixture.js"
 
 const settle = async () => {
@@ -344,7 +344,7 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
       openAgent(target: string | undefined, agentState: WorkflowAgentModel["state"] = "running") {
         setAddress(target === undefined ? undefined : { target, label: `item ${target}`, placeholder: `Message item ${target}` })
         const agentNodeId = target ?? "finished"
-        setAgent({ agentNodeId, follow: true, kind: "list", phaseId: "map", position: "1/1", state: agentState, stateText: agentState, emptyText: "", label: agentNodeId, definitionId: "work", name: agentNodeId, running: agentState === "running", current: false, history: [] })
+        setAgent({ agentNodeId, follow: true, kind: "list", phaseId: "map", next: "Next agent 1/1", state: agentState, stateText: agentState, emptyText: "", label: agentNodeId, definitionId: "work", name: agentNodeId, running: agentState === "running", current: false, history: [] })
       },
       closeAgent() { setAgent(undefined); setAddress(undefined) },
       /** Opens the workflow child with an agent running or with none. */

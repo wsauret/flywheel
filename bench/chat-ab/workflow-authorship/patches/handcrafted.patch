@@ -24,7 +24,7 @@ diff --git a/src/orchestration/modules/workflows/orchestration.ts b/src/orchestr
 +
 +const HANDCRAFTED_WORKFLOW_DIRECTORY = resolve(import.meta.dir, "../../../../bench/chat-ab/workflow-authorship/handcrafted")
 +
- import type { CapabilityCheck } from "../../../infra/capability-text.js"
+ import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js"
  
  /** How the root chat runs substantive work while Workflows is On:
 @@ -14,10 +18,28 @@

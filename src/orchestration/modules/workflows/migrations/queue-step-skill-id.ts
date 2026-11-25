@@ -1,4 +1,4 @@
-import { isRecord } from "../../../../infra/record.js"
+import { isRecord } from "../../../../infra/guards/record.js"
 import { migrateFactVersions, type FactMigrationResult, type FactUpgrade } from "../../../workspace-state/migrations/engine.js"
 import { rebuildQueueFactWithoutSelfReview } from "./retired-self-review.js"
 

@@ -1,5 +1,5 @@
 import type { MutationResult, RuntimeClient } from "../../protocol/runtime/app-service-types.js"
-import { dispatchInterrupt } from "../../protocol/client/session-controls.js"
+import { dispatchInterrupt } from "../../protocol/client/work/session-controls.js"
 import type { AgentInputAnswer } from "../../protocol/session/question-protocol-types.js"
 import type { ShellServices, ShellSignals } from "./state/shell-state.js"
 

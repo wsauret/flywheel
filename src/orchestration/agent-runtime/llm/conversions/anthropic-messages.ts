@@ -1,13 +1,13 @@
-import { imageOmittedPlaceholder } from "../../../../infra/llm/tool-output-part-schema.js";
+import { imageOmittedPlaceholder } from "../../../../infra/providers/llm/tool-output-part-schema.js";
 import { healConversation } from "../../../session/conversation/tree/heal-messages.js";
 import { originOf, type BlockOrigin } from "../history/block-origin.js";
 import { lowerProviderHistory, type ProviderHistoryTarget } from "../history/provider-history.js";
 import { ProviderRequestValidationError } from "../errors.js";
-import { isSameProviderReplay } from "../../../../infra/llm/conversation/messages.js"
-import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
+import { isSameProviderReplay } from "../../../../infra/providers/llm/conversation/messages.js"
+import type { ContentBlock, ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import type { SystemPromptTiers } from "../system-prompt-tiers.js";
 import { sanitizeSurrogates } from "../history/sanitize-unicode.js";
-import { assertNever } from "../../../../infra/assert-never.js";
+import { assertNever } from "../../../../infra/guards/assert-never.js";
 import { ProviderIdConversionError, ProviderIdNormalizer } from "./provider-id.js";
 
 interface UnknownFields { [key: string]: unknown }

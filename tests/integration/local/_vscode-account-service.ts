@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs"
 
-import { selectStartupDirectories } from "../../../src/infra/directory-authorities.js"
+import { selectStartupDirectories } from "../../../src/infra/platform/files/directory-authorities.js"
 import { Log } from "../../../src/infra/diagnostics/log.js"
 import { createPersistentProcessManager } from "../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import { runServe } from "../../../src/cli/account-service/serve.js"

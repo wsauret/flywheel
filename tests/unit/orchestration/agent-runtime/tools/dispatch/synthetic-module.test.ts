@@ -4,8 +4,8 @@
  *  handle with no planner, assembly, or prompt-builder edit. */
 
 import { describe, expect, it } from "bun:test";
-import { composeModuleRuntimes, moduleRuntimeHandle, NO_MODULE_RUNTIMES } from "../../../../../../src/infra/module-runtime.js";
-import { composeModules } from "../../../../../../src/infra/module-descriptor.js";
+import { composeModuleRuntimes, moduleRuntimeHandle, NO_MODULE_RUNTIMES } from "../../../../../../src/infra/definitions/modules/module-runtime.js";
+import { composeModules } from "../../../../../../src/infra/definitions/module-descriptor.js";
 import type { ModuleRuntimeServices } from "../../../../../../src/orchestration/agent-runtime/request/module-services/module-runtime-services.js";
 import { planToolExposure } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { toolRegistryFromComposition } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";

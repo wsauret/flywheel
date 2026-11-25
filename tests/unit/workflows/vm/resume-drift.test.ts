@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host/host.js"
 import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/workflows/vm/host/host-types.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"

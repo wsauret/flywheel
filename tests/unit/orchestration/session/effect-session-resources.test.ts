@@ -12,11 +12,11 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { Effect } from "effect"
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types.js"
-import { EventReaderService, EventStoreWriterLaneService, EventStoreWriterService } from "../../../../src/infra/store/event-store-effect.js"
-import { createEventStoreWriterLane } from "../../../../src/infra/store/event-store-writer-lane.js"
-import type { EventStoreWriterLane } from "../../../../src/infra/store/event-store-writer-lane-types.js"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { EventReaderService, EventStoreWriterLaneService, EventStoreWriterService } from "../../../../src/infra/substrate/store/event-store-effect.js"
+import { createEventStoreWriterLane } from "../../../../src/infra/substrate/store/event-store-writer-lane.js"
+import type { EventStoreWriterLane } from "../../../../src/infra/substrate/store/event-store-writer-lane-types.js"
 import { acquireSessionResources } from "../../../../src/orchestration/session/persistence/session-resources-service.js"
 import type { AcquireSessionResourcesDeps } from "../../../../src/orchestration/session/persistence/session-resources-service.js"
 import type { SessionBudgetStore } from "../../../../src/orchestration/session/runtime-facts/budget-store-types.js"
@@ -26,10 +26,10 @@ import type { WorkflowContextStore } from "../../../../src/workflows/context-bun
 import type { WorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view.js"
 import { acquireChildExecutionResources } from "../../../../src/orchestration/chat/children/child-execution-resources.js"
 import { readBackgroundCommands } from "../../../../src/orchestration/session/runtime-facts/background-index-projection.js"
-import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory.js"
+import { createRuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js"
 import { skillLoadedFact } from "../../../../src/workflows/skills/skill-facts.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
-import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
+import { createEmit, EventBus } from "../../../../src/infra/substrate/events/event-bus.js"
 import { wireSessionSubscribers, type MetricsWriter } from "../../../../src/orchestration/session/persistence/create-session-infra.js"
 import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 
@@ -149,7 +149,7 @@ function provideEventStoreServices<A, E, R>(effect: Effect.Effect<A, E, R>, stor
 }
 
 function makeDeps(store: LocalSqliteEventStore): AcquireSessionResourcesDeps {
-  const emitter: import("../../../../src/infra/event-bus").EmitFn = () => {}
+  const emitter: import("../../../../src/infra/substrate/events/event-bus").EmitFn = () => {}
   return {
     sessionId: "test-session",
     projectRoot: "/scratch/test-project",

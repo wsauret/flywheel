@@ -1,11 +1,11 @@
 /** @jsxImportSource @opentui/solid */
 import type { JSX } from "solid-js"
-import type { ToolEntry as ToolEntryType, ToolStreamingText } from "../../../../../../src/infra/output-blocks.js"
+import type { ToolEntry as ToolEntryType, ToolStreamingText } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import type { RuntimeConfigView } from "../../../../../../src/protocol/settings/runtime-config-protocol-types.js"
 import type { BlockDisclosureChannel } from "../../../../../../src/tui/context/transcript/block-disclosure.js"
 import type { RowProcessControls } from "../../../../../../src/tui/transcript/output-blocks/stop-affordance.js"
 import type { ToolRun } from "../../../../../../src/tui/transcript/output-blocks/visible-output-blocks.js"
-import type { MutationEvidenceReader } from "../../../../../../src/protocol/client/mutation-evidence.js"
+import type { MutationEvidenceReader } from "../../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { processStatus } from "../../../../../helpers/runtime-views.js"
 

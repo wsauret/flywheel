@@ -4,11 +4,11 @@ import { join } from "node:path"
 import { describe, expect, it } from "bun:test"
 
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
-import { DELIVERY_CONFIRMATION } from "../../../../../src/infra/delivery-confirmation.js"
+import { DELIVERY_CONFIRMATION } from "../../../../../src/infra/substrate/output/notify/delivery-confirmation.js"
 import { fixedRequestToolSurface, RequestToolMap } from "../../../../helpers/request-tool-surface.js"
 import type { RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js"
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js"
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { asModelClient, ownHistoryTarget } from "../_model-client.js"
 

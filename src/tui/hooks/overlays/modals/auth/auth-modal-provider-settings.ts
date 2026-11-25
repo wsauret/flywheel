@@ -1,6 +1,6 @@
 import { batch } from "solid-js"
-import type { CredentialProviderId } from "../../../../../infra/auth/store/auth-store-types.js"
-import type { ExternalUrlOpener } from "../../../../../infra/open-external-url.js"
+import type { CredentialProviderId } from "../../../../../infra/providers/auth/store/auth-store-types.js"
+import type { ExternalUrlOpener } from "../../../../../infra/substrate/output/notify/open-external-url.js"
 import type { AuthProviderAccountStatus, RuntimeAuthStatusScope, RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import type { RuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
 import { paidModeAwaitsAnswer, subscriptionSpendAccountCorrelationId } from "../../../../../protocol/auth/subscription-spend-consent-protocol-types.js"
@@ -11,7 +11,7 @@ import { buildAuthRows, buildProviderOptions, type AuthView, type ProviderOption
 import type { SubscriptionSpendConsentControl } from "./use-subscription-spend-consent-control.js"
 import type { SubscriptionAccountTarget } from "./auth-modal-types.js"
 import { automaticDialogsEnabled } from "../../questions/automatic-dialogs.js"
-import { PAID_USE_SETTINGS_LOAD_FAILURE } from "../../../../../protocol/client/provider-account-copy.js"
+import { PAID_USE_SETTINGS_LOAD_FAILURE } from "../../../../../protocol/client/auth/provider-account-copy.js"
 
 type ProviderSettingsView = Extract<AuthView, { kind: "provider-settings" }>
 type PaidUseQuestionView = Extract<AuthView, { kind: "paid-use-question" }>

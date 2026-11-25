@@ -1,4 +1,4 @@
-import { commonLocalTokenizer, prepareLocalTokenizer, type LocalTokenizer } from "../../../../infra/local-tokenizer.js"
+import { commonLocalTokenizer, prepareLocalTokenizer, type LocalTokenizer } from "../../../../infra/providers/local-tokenizer.js"
 import type { GenerationMeasurement } from "../../../session/runtime-facts/provider-request-audit-types.js"
 import type { ProviderStreamEvent } from "../../llm/types.js"
 

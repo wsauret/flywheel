@@ -5,7 +5,7 @@ import { decodeConfigObject } from "../../../../../src/orchestration/config/load
 import { installedConfigSchema } from "../../../../../src/orchestration/config/schema/schema.js";
 import { McpConfigSchema } from "../../../../../src/orchestration/modules/mcp/config.js";
 import { disabledAgentTypes } from "../../../../../src/orchestration/module-contract/module-catalog.js";
-import { isRecord, type UnknownRecord } from "../../../../../src/infra/record.js";
+import { isRecord, type UnknownRecord } from "../../../../../src/infra/guards/record.js";
 
 function tomlTable(text: string): UnknownRecord {
   const parsed = Bun.TOML.parse(text);

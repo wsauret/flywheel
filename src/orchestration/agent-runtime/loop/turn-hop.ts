@@ -1,6 +1,6 @@
-import type { AgentLoopInput } from "../../../infra/agent-loop-events.js";
-import type { MessageProducer, SessionInputProducer } from "../../../infra/chat-input.js";
-import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
+import type { AgentLoopInput } from "../../../infra/substrate/events/agent-loop-events.js";
+import type { MessageProducer, SessionInputProducer } from "../../../infra/substrate/events/chat-input.js";
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js";
 import { MESSAGE_SESSION_TOOL_NAME } from "../../session/conversation/reply-wait-cells.js";
 
 /** What the hop rule reads of an input: who produced it. A stored user

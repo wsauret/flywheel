@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { type InputSource, messageInput } from "../../../../../src/infra/agent-loop-events.js";
+import { type InputSource, messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { assemblyPinned, RequestToolMap, testBaseTools } from "../../../../helpers/request-tool-surface.js";

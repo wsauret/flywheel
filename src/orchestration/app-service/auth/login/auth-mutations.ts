@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { startupTrace } from "../../../../infra/diagnostics/startup-trace.js"
 import type { FrontendMutation, MutationResult } from "../../../../protocol/runtime/app-service-types.js"
 import type { RuntimeModelCatalogRefreshScope } from "../../../../protocol/auth/provider-model-preference-protocol-types.js"

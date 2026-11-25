@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createRoot, createSignal, getOwner, on, onCleanup, type Accessor } from "solid-js"
 
-import type { FaultReach } from "../../../../src/protocol/client/runtime-fault-copy.js"
+import type { FaultReach } from "../../../../src/protocol/client/runtime/copy/runtime-fault-copy.js"
 import type { ModuleId } from "../../../../src/protocol/runtime/module-ids.js"
 import type { ClientHost } from "../../host.js"
 import { webModuleEnabled, type WebHostPresence, type WebModule } from "../../web-module.js"

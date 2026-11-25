@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "bun:test"
-import type { ChatInputLike } from "../../../../src/infra/chat-input"
-import type { AnyBlock } from "../../../../src/infra/output-blocks"
+import type { ChatInputLike } from "../../../../src/infra/substrate/events/chat-input"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks"
 import { createChatControls } from "../../../../src/orchestration/chat/controls"
 import type { ConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
 import { ChatSessionState, type ChatCallbacks } from "../../../../src/orchestration/chat/types"
@@ -8,7 +8,7 @@ import type { ChatPorts } from "../../../../src/orchestration/chat/host-ports"
 import type { OutputSession } from "../../../../src/orchestration/session-store/output-session"
 import type { Agent } from "../../../../src/orchestration/agent-runtime/types"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work"
-import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime"
+import { NO_MODULE_RUNTIMES } from "../../../../src/infra/definitions/modules/module-runtime"
 import { isRuntimeInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record"
 
 function outputSessionStub(calls: string[], phase: () => OutputSession["streamPhase"], echoedEntryIds?: (string | undefined)[], echoedQueued?: boolean[]): OutputSession {
@@ -61,7 +61,7 @@ function lifecycleStub(): ChatPorts {
     restartWithQueuedInputs(_inputs: readonly ChatInputLike[]) {},
     resumeCommitted() { return false },
     async awaitOwedCapacity() { return false },
-    requestCompact() { return false },
+    requestCompact() { return "started" as const },
     learn() { return false },
     interruptGeneration() { return false },
     turnRunning: false,
@@ -80,6 +80,7 @@ function lifecycleStub(): ChatPorts {
     releaseForegroundBash() { return false },
     transferForegroundForReplacement: async () => {},
     adoptHandedOver: async () => {},
+    adoptHeldInput: async () => {},
   }
 }
 
@@ -90,6 +91,10 @@ function treeWriterStub(): ConversationTreeWriterController {
     releaseMessageId() {},
     commitQueuedUserInput: async () => { throw new Error("unused") },
     acceptRetainedOperation: async () => {},
+    holdsForQuestion: () => false,
+    awaitsAnswer: async () => false,
+    readHeldMessages: async () => [],
+    releaseHeldInput: async () => {},
     commitSystemTurn: async () => { throw new Error("unused") },
     commitBackgroundNotification: async () => { throw new Error("unused") },
     commitSystemMessage: async () => { throw new Error("unused") },

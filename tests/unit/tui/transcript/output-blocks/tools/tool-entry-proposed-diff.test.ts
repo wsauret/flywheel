@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
-import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry as ToolEntryType } from "../../../../../../src/infra/output-blocks.js"
-import { resolveToolRowPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js"
+import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry as ToolEntryType } from "../../../../../../src/infra/substrate/events/output-blocks.js"
+import { resolveToolRowPresentation } from "../../../../../../src/infra/substrate/output/tools/tool-display-registry.js"
 import { renderToolEntry } from "./_tool-entry-render.js"
 import { writeEntry } from "./_write-entry-fixture.js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"
-import { buildMutationDiff } from "../../../../../../src/infra/mutation-diff.js"
+import { buildMutationDiff } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff.js"
 
 function provisionalFileEntry(path?: string): ToolEntryType {
   return {
