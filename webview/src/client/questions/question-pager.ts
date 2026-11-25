@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, onCleanup, type Accessor } from "solid-js"
 import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
-import { createQuestionPages } from "../../../../src/protocol/client/questions/question-pages.js"
+import { createQuestionPages } from "../../../../src/protocol/client/chat/questions/question-pages.js"
 import { desktopNotificationsOn, type WorkspaceSettings } from "../session-settings.js"
 import type { RuntimeSession } from "../session/session.js"
 

@@ -1,7 +1,7 @@
 import { createContext, useContext, type Accessor } from "solid-js"
 
 import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
-import type { SessionChangesController } from "../../../src/protocol/client/changes/session-changes.js"
+import type { SessionChangesController } from "../../../src/protocol/client/session/changes/session-changes.js"
 import type { ClientActions } from "../client/actions.js"
 import type { ReadingPlace } from "../client/input/reading-place.js"
 import type { RuntimeSession } from "../client/session/session.js"
@@ -10,7 +10,7 @@ import type { ClientSheetId, SheetFocus } from "../../../src/protocol/client/hos
 import type { ClientHost } from "../host.js"
 import type { ScreenStack } from "./screens/screen-stack.js"
 import type { WebSurface } from "./sheets/commands/surfaces.js"
-import type { SurfaceOpening } from "../../../src/protocol/client/surface-presentation.js"
+import type { SurfaceOpening } from "../../../src/protocol/client/commands/surface-presentation.js"
 import type { WebModule } from "../web-module.js"
 
 /** A yes-or-no question the client asks before something irreversible. */

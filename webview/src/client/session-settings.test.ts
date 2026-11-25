@@ -4,7 +4,7 @@ import type { RuntimeConnection } from "../../../src/protocol/client/runtime/con
 import type { ModuleProtocolRow } from "../../../src/protocol/runtime/module-protocol-types.js"
 import { readWorkspaceSettings } from "./session-settings.js"
 import { createSeatReading } from "./session/residents/session-seat.js"
-import { backgroundReads } from "../../../src/protocol/client/background-reads.js"
+import { backgroundReads } from "../../../src/protocol/client/runtime/background-reads.js"
 import type { RoleAssignmentView } from "../../../src/protocol/auth/role-protocol-types.js"
 import type { RuntimeQuery } from "../../../src/protocol/runtime/app-service-types.js"
 import type { EffortOptionRow, ModelSelectionEffort } from "../../../src/protocol/auth/model-assignment-protocol-types.js"

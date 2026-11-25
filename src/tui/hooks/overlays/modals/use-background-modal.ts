@@ -11,7 +11,7 @@ import {
   type BackgroundIndexEntry,
   type BackgroundIndexFilter,
   type BackgroundIndexState,
-} from "../../../../protocol/client/background-index.js"
+} from "../../../../protocol/client/work/background-index.js"
 import { sessionServingSelection } from "../../../../protocol/auth/role-protocol-types.js"
 import { createListModalKeys } from "../../../components/modal/select/modal-list-keys.js"
 import { flattenWithCategories } from "../../../components/modal/select/modal-select-helpers.js"

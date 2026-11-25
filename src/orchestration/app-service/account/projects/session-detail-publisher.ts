@@ -1,7 +1,7 @@
 import type { RuntimeQueryResult, SessionRow } from "../../../../protocol/runtime/app-service-types.js"
 import { sessionDetailCursor, type RuntimeSessionDetailView } from "../../../../protocol/session/session-detail-protocol-types.js"
 import type { RuntimeUiPatch } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
-import { isInterruptible } from "../../../../protocol/client/session-controls.js"
+import { isInterruptible } from "../../../../protocol/client/work/session-controls.js"
 import type { StatusView } from "../../../../protocol/session/status-protocol-types.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { parseProjectionFact } from "../../../../infra/projection/event-projection.js"

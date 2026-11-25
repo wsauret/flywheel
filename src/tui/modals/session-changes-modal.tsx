@@ -11,7 +11,7 @@ import { Button } from "../components/controls/button.js"
 import { ModalFrame } from "../components/modal/modal-frame.js"
 import { DiffPreview, parseDiffs } from "../transcript/output-blocks/tools/diff-preview.js"
 import { BOLD } from "../terminal/text-attributes.js"
-import { sessionChangeFileView, sessionChangeFolderLabel, sessionChangesLabel, type SessionChangesRow } from "../../protocol/client/changes/session-changes-copy.js"
+import { sessionChangeFileView, sessionChangeFolderLabel, sessionChangesLabel, type SessionChangesRow } from "../../protocol/client/session/changes/session-changes-copy.js"
 import { KERNEL_COMMAND_NAMES } from "../../protocol/commands/command-names.js"
 
 const DIFF_ACTION = { added: "add", modified: "update", removed: "delete" } as const

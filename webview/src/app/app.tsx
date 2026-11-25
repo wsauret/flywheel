@@ -4,7 +4,7 @@ import { Dynamic } from "solid-js/web"
 import { webModuleEnabled, type WebModule } from "../web-module.js"
 
 import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
-import { createSurfaceOpener, type CaptureSurfaceOpener, type SurfaceOpening } from "../../../src/protocol/client/surface-presentation.js"
+import { createSurfaceOpener, type CaptureSurfaceOpener, type SurfaceOpening } from "../../../src/protocol/client/commands/surface-presentation.js"
 import type { ClientActions } from "../client/actions.js"
 import { actionKey } from "../client/action-key.js"
 import type { ReadingPlace } from "../client/input/reading-place.js"
@@ -53,7 +53,7 @@ import "../styles/tokens.css"
 import "../styles/base.css"
 import "../styles/app.css"
 import type { ComposerCheckpoint } from "../client/input/input-reload-checkpoint.js"
-import { createComposerReturns } from "../../../src/protocol/client/composer-returns.js"
+import { createComposerReturns } from "../../../src/protocol/client/chat/composer-returns.js"
 
 /** The width at which the session list stops being a screen and becomes a
  *  rail. The same threshold the stylesheet's container query uses; the script

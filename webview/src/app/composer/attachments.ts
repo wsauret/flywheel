@@ -4,7 +4,7 @@ import type { ProtocolChatAttachment } from "../../../../src/protocol/runtime/ap
 import {
   ACCEPTED_IMAGE_TYPES, ATTACHMENT_LIMITS, attachmentKind, attachmentMarker, attachmentRefusalMessage, base64ByteLength, decodeUtf8Text,
   nextAttachmentOrdinal, type AttachmentKind, type AttachmentRefusal,
-} from "../../../../src/protocol/client/attachments.js"
+} from "../../../../src/protocol/client/chat/attachments.js"
 
 /** Base64 without a Buffer, which a browser does not have. */
 export function bytesToBase64(bytes: Uint8Array): string {

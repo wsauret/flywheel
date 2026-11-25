@@ -1,6 +1,6 @@
 import { createEffect, createSignal, onCleanup, Show, type Accessor } from "solid-js"
 
-import { contextGaugeCopy } from "../../../../src/protocol/client/context-compaction.js"
+import { contextGaugeCopy } from "../../../../src/protocol/client/chat/context-compaction.js"
 import type { BudgetSummary } from "../../../../src/protocol/client/host/host-contract.js"
 
 /** Context usage toward the existing compaction ceiling. Choosing the reading

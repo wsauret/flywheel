@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 import type { FrontendOutputBlock } from "../../../protocol/runtime/app-service-types.js"
-import type { MutationEvidenceReader } from "../../../protocol/client/transcript/mutation-evidence.js"
+import type { MutationEvidenceReader } from "../../../protocol/client/chat/transcript/mutation-evidence.js"
 import type { SessionNotice } from "../../../infra/session-notice.js"
 import type { RuntimeTranscriptWindow } from "../../../protocol/transcript/transcript-protocol-types.js"
 import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
@@ -119,7 +119,7 @@ export interface TranscriptViewportPaging {
  *  virtualization. */
 export interface OutputTranscriptView extends BlockDisclosureChannel, TranscriptViewportPaging {
   /** Publish visible block identities before the shared store chooses residency. */
-  protectReader(reader: import("../../../protocol/client/transcript/transcript-view.js").TranscriptReader): void
+  protectReader(reader: import("../../../protocol/client/chat/transcript/transcript-view.js").TranscriptReader): void
   /** The resident session's passive evidence reader. Reactive; never opens a session. */
   mutationEvidence(): MutationEvidenceReader | undefined
   /** Record a failed projection with the resident store and rendered window metadata. Rethrows the same error. */

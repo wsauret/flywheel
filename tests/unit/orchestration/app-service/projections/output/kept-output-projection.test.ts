@@ -7,7 +7,7 @@ import { readOutputSequence, type OutputSequence } from "../../../../../../src/o
 import { indexOutputBlocks } from "../../../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { outputCursor } from "../../../../../../src/protocol/transcript/output-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
-import { applyStreamingToolTextOps } from "../../../../../../src/protocol/client/transcript/streaming-text-edits.js"
+import { applyStreamingToolTextOps } from "../../../../../../src/protocol/client/chat/transcript/streaming-text-edits.js"
 import { createShippedOutput } from "../../../../../../src/orchestration/app-service/projections/output/shipped-output.js"
 import { createOutputProjection } from "../../../../../../src/orchestration/app-service/projections/output/output-projection.js"
 import { chatEntry, fakeSessionStore } from "../../app-service-doubles.js"

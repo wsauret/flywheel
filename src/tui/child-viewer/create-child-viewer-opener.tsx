@@ -5,7 +5,7 @@ import type { ViewerContext, ViewerHandle } from "../components/modal-stack.js"
 import type { SessionSurface } from "../hooks/state/sessions/create-session-surface.js"
 import type { RuntimeClient, SessionRow } from "../../protocol/runtime/app-service-types.js"
 import { NavigationProvider } from "../context/navigation.js"
-import { parseSessionLink } from "../../protocol/client/session-links.js"
+import { parseSessionLink } from "../../protocol/client/session/session-links.js"
 import { errorMessage } from "../../infra/error-message.js"
 
 export interface ChildPlaces {

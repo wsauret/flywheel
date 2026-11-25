@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { contextGaugeCopy } from "../../../../src/protocol/client/context-compaction.js"
+import { contextGaugeCopy } from "../../../../src/protocol/client/chat/context-compaction.js"
 
 describe("contextGaugeCopy", () => {
   test("clamps a session past the cap to a full ring", () => {

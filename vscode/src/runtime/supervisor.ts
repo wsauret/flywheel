@@ -8,7 +8,7 @@ import type { Readable } from "node:stream"
 import { Redacted } from "effect"
 
 import { RUNTIME_PROTOCOL_VERSION } from "../../../src/protocol/runtime-liveness.js"
-import { startRefusalCopy } from "../../../src/protocol/client/runtime/runtime-fault-copy.js"
+import { startRefusalCopy } from "../../../src/protocol/client/runtime/copy/runtime-fault-copy.js"
 import { createServeStatusReader, decodeServeListeningVersions, readServeDiagnostic, type ServeStartRefusal, type ServeStartStatus } from "../../../src/protocol/runtime/serve-handshake.js"
 import { probeVersion } from "./probe-version.js"
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { RESTART_CONFIRMATION, RESTART_NO_STARTER_REASON, restartReadinessUnknownReason } from "../../../../../src/protocol/client/runtime/service-restart-copy.js"
+import { RESTART_CONFIRMATION, RESTART_NO_STARTER_REASON, restartReadinessUnknownReason } from "../../../../../src/protocol/client/runtime/copy/service-restart-copy.js"
 import { loadBudgetRenderFixture } from "../../../test-support/budget-render-test-loader.js"
 
 const READY = { kind: "ready", serviceStart: "start-1" } as const

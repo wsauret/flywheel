@@ -8,7 +8,7 @@ import { publishPaneHeight } from "../transcript-scroll.js"
 import { scrollEdges } from "../../controls/scroll-edges.js"
 import "../../../styles/find.css"
 import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/commands/command-names.js"
-import { snippetParts } from "../../../../../src/protocol/client/search/search-snippet.js"
+import { snippetParts } from "../../../../../src/protocol/client/chat/search/search-snippet.js"
 
 const DEBOUNCE_MS = 200
 

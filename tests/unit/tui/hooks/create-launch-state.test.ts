@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 
-import type { UnsentChatSubmission } from "../../../../src/protocol/client/chat-submissions.js"
+import type { UnsentChatSubmission } from "../../../../src/protocol/client/chat/chat-submissions.js"
 import type { LaunchState } from "../../../../src/infra/distribution/launch-state.js"
 import { leaveTerminal, setRendererHandoff } from "../../../../src/tui/terminal/exit.js"
 import { createDraftCache } from "../../../../src/tui/components/composer/create-draft-cache.js"

@@ -1,5 +1,5 @@
 import { Show, type JSX } from "solid-js"
-import type { WorkflowAgentDetail } from "../../../../../../src/protocol/client/workflow/workflow-card.js"
+import type { WorkflowAgentDetail } from "../../../../../../src/protocol/client/work/workflow/workflow-card.js"
 import "../../../../styles/agent-line.css"
 
 /** The cells shared by workflow agents and delegated agents. The caller owns

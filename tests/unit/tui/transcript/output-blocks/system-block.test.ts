@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { TOOL_PREVIEW_LINE_LIMIT, type SystemBlock as SystemBlockType } from "../../../../../src/infra/output-blocks.js"
 import { mutationEvidenceFixture } from "../../../../fixtures/mutation-evidence-fixture.js"
-import type { MutationEvidenceReader } from "../../../../../src/protocol/client/transcript/mutation-evidence.js"
+import type { MutationEvidenceReader } from "../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 import flywheelThemeJson from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js"
 

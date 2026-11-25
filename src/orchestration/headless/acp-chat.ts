@@ -13,7 +13,7 @@ import type { ChatSettlementOutcome, ChatTurnEnding } from "../../protocol/sessi
 import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeEventFrame } from "../../protocol/runtime/app-service-types.js"
 import { blockIdentity } from "../../protocol/transcript/block-identity.js"
 import { isBudgetPayload } from "../../protocol/session/budget-protocol-types.js"
-import { createTranscriptStore, type TranscriptStore } from "../../protocol/client/transcript/transcript-store.js"
+import { createTranscriptStore, type TranscriptStore } from "../../protocol/client/chat/transcript/transcript-store.js"
 import type { ModelSelectionEffort, ModelSelectionSlot } from "../../protocol/auth/model-assignment-protocol-types.js"
 import type { PendingQuestionView } from "../../protocol/session/question-protocol-types.js"
 import { isRolePayload } from "../../protocol/auth/role-protocol-types.js"

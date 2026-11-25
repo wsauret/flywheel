@@ -3,7 +3,7 @@
 import type { BoxRenderable, RGBA } from "@opentui/core"
 import { useTerminalDimensions } from "@opentui/solid"
 import { onCleanup, Show } from "solid-js"
-import type { ContextGaugeCopy } from "../../../protocol/client/context-compaction.js"
+import type { ContextGaugeCopy } from "../../../protocol/client/chat/context-compaction.js"
 import { useTheme } from "../../context/theme.js"
 import { useModal } from "../modal/modal.js"
 import type { ModalHandle } from "../modal-stack.js"

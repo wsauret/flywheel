@@ -25,7 +25,7 @@ import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
 import { ChildSessionBody } from "../../../../src/tui/child-viewer/child-session-body.js"
 import { createTranscriptInView } from "../../../../src/tui/hooks/transcript/transcript-in-view.js"
 import { RuntimeCallTimeout } from "../../../../src/protocol/rpc/runtime-client-deadlines.js"
-import { createChatSubmissions } from "../../../../src/protocol/client/chat-submissions.js"
+import { createChatSubmissions } from "../../../../src/protocol/client/chat/chat-submissions.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
 const renders: Awaited<ReturnType<typeof testRender>>[] = []

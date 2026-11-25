@@ -1,5 +1,5 @@
 import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
-import { restartNoSuccessorReason } from "../../../../../src/protocol/client/runtime/service-restart-copy.js"
+import { restartNoSuccessorReason } from "../../../../../src/protocol/client/runtime/copy/service-restart-copy.js"
 
 /** How long a client waits, once the old service left, for a successor to
  *  answer. A manager restarts the service within seconds and a source run

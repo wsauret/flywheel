@@ -1,8 +1,8 @@
 import type { SessionRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
-import { createOpenSessionKeeper } from "../../../../../src/protocol/client/open-session-keeper.js"
-import type { Residency } from "../../../../../src/protocol/client/residency.js"
-import type { HeldSessionDetails } from "../../../../../src/protocol/client/held-session-details.js"
+import { createOpenSessionKeeper } from "../../../../../src/protocol/client/session/open-session-keeper.js"
+import type { Residency } from "../../../../../src/protocol/client/session/residency.js"
+import type { HeldSessionDetails } from "../../../../../src/protocol/client/session/held-session-details.js"
 
 /** What the page holds on the runtime for its awake resident sessions: the
  *  detail of each one and its parent chain, and the runner of each root chat.

@@ -25,8 +25,8 @@ import { releaseConversationTreeProjection } from "../../../session/conversation
 import { errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
-import { WORKFLOW_GLYPH } from "../../../../protocol/client/glyphs.js"
-import { messageSessionLabel } from "../../../../protocol/client/message-sender.js"
+import { WORKFLOW_GLYPH } from "../../../../protocol/client/work/glyphs.js"
+import { messageSessionLabel } from "../../../../protocol/client/chat/message-sender.js"
 
 /** Formats a proven session type for a message row. Workflow types carry the shared workflow marker. */
 function messageSessionTypeLabel(type: string, workflow = false): string {

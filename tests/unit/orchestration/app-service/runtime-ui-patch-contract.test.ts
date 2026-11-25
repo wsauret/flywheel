@@ -4,7 +4,7 @@ import { decodeRuntimeUiPatch, encodeRuntimeUiPatch } from "../../../helpers/run
 import { stringDiscriminatorLiterals } from "../../../../src/protocol/rpc/schema-union.js"
 import type { RuntimeUiPatch } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { isGlobalRuntimeInvalidation } from "../../../../src/protocol/rpc/runtime-invalidation.js"
-import { isLaneBreak } from "../../../../src/protocol/client/cursor-intake.js"
+import { isLaneBreak } from "../../../../src/protocol/client/runtime/cursor-intake.js"
 import { runtimeUiPatchFixtures } from "../../protocol/runtime-ui-patch-fixtures.js"
 
 describe("runtime UI patch contract", () => {

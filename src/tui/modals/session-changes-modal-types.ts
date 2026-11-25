@@ -1,7 +1,7 @@
 import type { Renderable, ScrollBoxRenderable } from "@opentui/core"
 import type { Accessor } from "solid-js"
-import type { SessionChangesController, SessionChangesSnapshot } from "../../protocol/client/changes/session-changes.js"
-import type { SessionChangesRow } from "../../protocol/client/changes/session-changes-copy.js"
+import type { SessionChangesController, SessionChangesSnapshot } from "../../protocol/client/session/changes/session-changes.js"
+import type { SessionChangesRow } from "../../protocol/client/session/changes/session-changes-copy.js"
 import type { SessionChangeFile } from "../../protocol/session/session-changes-protocol-types.js"
 
 /** The changes of one session, as the shell holds them while the modal shows them. */

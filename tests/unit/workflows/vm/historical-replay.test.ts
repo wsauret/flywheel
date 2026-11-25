@@ -10,7 +10,7 @@ import { nonEmpty } from "../../../helpers/non-empty.js";
 import phaseCutoverHistories from "./golden/committed-v10-phase-cutover-histories.json";
 import repeatBoundHistory from "./golden/committed-v10-repeat-bound.json";
 import { frontendView, stepLoopBindings } from "./_tree-fixtures.js";
-import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/client/workflow/workflow-progress.js";
+import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/client/work/workflow/workflow-progress.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
 import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery/recovery.js";
 import { continueWorkflowReplay } from "../../../../src/workflows/vm/host/replay.js";

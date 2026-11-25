@@ -1,6 +1,6 @@
 import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
-import { resolveWorkflowAgentTarget, resolveWorkflowTargets, workflowAddresses, type WorkflowAddress, type WorkflowTargetResolution } from "../../protocol/client/workflow/workflow-addresses.js"
-import { workflowTreeIndex } from "../../protocol/client/workflow/workflow-outline.js"
+import { resolveWorkflowAgentTarget, resolveWorkflowTargets, workflowAddresses, type WorkflowAddress, type WorkflowTargetResolution } from "../../protocol/client/work/workflow/workflow-addresses.js"
+import { workflowTreeIndex } from "../../protocol/client/work/workflow/workflow-outline.js"
 import type { LoadedWorkflowView } from "../../protocol/session/workflow-view-protocol-types.js"
 import { addressReachesAgent, type AddressedAgent, type WorkflowMessageAddress } from "../../workflows/context-bundle/context-facts.js"
 import { loadQueueSnapshotFromReader } from "../../workflows/vm/recovery/workflow-view.js"

@@ -6,7 +6,7 @@ import type { TuiModuleClient, TuiModuleClientHost } from "../../tui-module-clie
 import type { ViewerHandle } from "../../components/modal-stack.js"
 import { createChildSessionViewerInput } from "../../child-viewer/child-session-viewer.js"
 import { NavigationProvider } from "../../context/navigation.js"
-import { parseWorkflowLink } from "../../../protocol/client/session-links.js"
+import { parseWorkflowLink } from "../../../protocol/client/session/session-links.js"
 import type { SessionSurface } from "../../hooks/state/sessions/create-session-surface.js"
 import { viewerLinkNavigator } from "../../child-viewer/create-child-viewer-opener.js"
 import { createWorkflowCards, WorkflowCardsProvider } from "./cards.js"

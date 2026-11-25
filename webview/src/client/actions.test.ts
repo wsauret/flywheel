@@ -11,7 +11,7 @@ import type { RuntimeSession } from "./session/session.js"
 import { fakePanelSettings, fakeRuntimeSession } from "../app/client-context-fixture.js"
 import { fakeRuntimeConnection } from "../test-support/runtime-connection-fixture.js"
 import { settingKeys } from "./settings-actions.js"
-import { createSurfaceOpener, type CaptureSurfaceOpener } from "../../../src/protocol/client/surface-presentation.js"
+import { createSurfaceOpener, type CaptureSurfaceOpener } from "../../../src/protocol/client/commands/surface-presentation.js"
 import type { CommandOutcome } from "../../../src/protocol/commands/command-catalog-protocol-types.js"
 import { createWorkspaceNavigation } from "../app/screens/workspace-navigation.js"
 

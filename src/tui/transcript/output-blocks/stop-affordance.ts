@@ -1,7 +1,7 @@
 import { bg as stBg, fg as stFg, type TextChunk } from "@opentui/core"
 import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 import type { FrontendToolEntry } from "../../../protocol/runtime/app-service-types.js"
-import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, type ProcessStatus } from "../../../protocol/client/transcript/transcript-model.js"
+import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, type ProcessStatus } from "../../../protocol/client/chat/transcript/transcript-model.js"
 
 /** Inline process control appended to a transcript row. The owning component
  * hit-tests mouse-up coordinates against the visible label before disclosure.

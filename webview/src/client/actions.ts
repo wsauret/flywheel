@@ -4,9 +4,9 @@ import type { RuntimeConnection } from "../../../src/protocol/client/runtime/con
 import type { AgentInputAnswer } from "../../../src/protocol/session/question-protocol-types.js"
 import type { ChatSearchRequest, ChatSearchResult, ProjectFileEntry, TranscriptSearchRequest, TranscriptSearchResult } from "../../../src/protocol/transcript/transcript-protocol-types.js"
 import type { CommandOutcome } from "../../../src/protocol/commands/command-catalog-protocol-types.js"
-import type { CaptureSurfaceOpener } from "../../../src/protocol/client/surface-presentation.js"
+import type { CaptureSurfaceOpener } from "../../../src/protocol/client/commands/surface-presentation.js"
 import type { ProtocolChatAttachment, SessionTitlePatch } from "../../../src/protocol/runtime/app-service-types.js"
-import type { LocalRecall } from "../../../src/protocol/client/chat-submissions.js"
+import type { LocalRecall } from "../../../src/protocol/client/chat/chat-submissions.js"
 import { routeSlashToken, type SlashRoute } from "../../../src/protocol/client/commands/slash-route.js"
 import { offCommandRefusal } from "../../../src/protocol/client/commands/off-command.js"
 import type { HostCapabilities } from "../host.js"
@@ -17,7 +17,7 @@ import type { SessionLink } from "./session/navigation/session-navigation.js"
 import { desktopPermissionRefusal } from "./desktop-notifier.js"
 import { DraftKeptRefusal } from "./session/session-input.js"
 import { applyInlineSetting, settingKeys, type InlineSettingAction, type SettingOutcome } from "./settings-actions.js"
-import type { MutationEvidenceReader } from "../../../src/protocol/client/transcript/mutation-evidence.js"
+import type { MutationEvidenceReader } from "../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 
 /** What owns a typed slash token: a command the catalog lists, or a refusal
  *  for a command that only a turned-off module provides or that is retired. */

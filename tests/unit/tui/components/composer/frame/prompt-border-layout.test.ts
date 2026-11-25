@@ -10,7 +10,7 @@ import { noticeSpinnerStatus } from "../../../../../../src/tui/components/activi
 import { capacityWaitNotice } from "../../../../../../src/orchestration/session/control/capacity-wait.js"
 import type { SessionNotice } from "../../../../../../src/infra/session-notice.js"
 import type { KeyHintSpec } from "../../../../../../src/tui/components/composer/frame/key-hint-row-state.js"
-import { offeredSessionControls } from "../../../../../../src/protocol/client/session-controls.js"
+import { offeredSessionControls } from "../../../../../../src/protocol/client/work/session-controls.js"
 import { contrastRatio } from "../../../../../../src/tui/context/theme/color-contrast.js"
 import { baseInput, primary, resolvedTheme, renderPromptLabelsFrame, renderStatusFrame, sameColor, spanColor } from "./prompt-border-fixtures.js"
 

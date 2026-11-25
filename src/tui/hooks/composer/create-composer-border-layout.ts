@@ -7,8 +7,8 @@ import type { ComposerBorderLayout, ComposerBorderUpdate } from "../../component
 import { computeComposerBorderLayout } from "../../components/composer/frame/composer-border-layout.js"
 import type { Keymap } from "../../terminal/keymap/keymap.js"
 import { primaryKeyHints, shouldShowGlobalHints } from "../../components/composer/frame/key-hint-row-state.js"
-import { sessionChangesLabel } from "../../../protocol/client/changes/session-changes-copy.js"
-import type { ChangesSummaryState } from "../../../protocol/client/changes/session-changes.js"
+import { sessionChangesLabel } from "../../../protocol/client/session/changes/session-changes-copy.js"
+import type { ChangesSummaryState } from "../../../protocol/client/session/changes/session-changes.js"
 
 /** The prompt offers the review only when its last known count is positive. */
 export function sessionChangesPromptLabel(summary: ChangesSummaryState | undefined): string | undefined {

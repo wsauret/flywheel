@@ -1,6 +1,6 @@
 import { createComponent, createRoot } from "solid-js"
 import type { RuntimeHealth } from "../../../src/protocol/runtime/app-service-types.js"
-import type { LocalChatSubmission } from "../../../src/protocol/client/chat-submissions.js"
+import type { LocalChatSubmission } from "../../../src/protocol/client/chat/chat-submissions.js"
 import type { ProviderSetup } from "../../../src/protocol/client/providers/provider-setup.js"
 import type { SessionMemory } from "../client/session/residents/session-residents.js"
 import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"

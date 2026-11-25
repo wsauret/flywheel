@@ -1,6 +1,6 @@
-import type { TranscriptStore } from "../../../../../src/protocol/client/transcript/transcript-store.js"
+import type { TranscriptStore } from "../../../../../src/protocol/client/chat/transcript/transcript-store.js"
 import { describeFailure } from "../../format/failure-message.js"
-import type { HoldOutcome } from "../../../../../src/protocol/client/held-session-details.js"
+import type { HoldOutcome } from "../../../../../src/protocol/client/session/held-session-details.js"
 
 /** The name a new chat has until its catalog row names it. */
 const NEW_CHAT_LABEL = "New chat"

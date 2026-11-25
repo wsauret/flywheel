@@ -1,6 +1,6 @@
 import { type Accessor, createSignal } from "solid-js"
 
-import type { FileDiffFile } from "../../../../../src/protocol/client/transcript/file-change-body.js"
+import type { FileDiffFile } from "../../../../../src/protocol/client/chat/transcript/file-change-body.js"
 
 interface BlockDisclosureState {
   readonly open: boolean

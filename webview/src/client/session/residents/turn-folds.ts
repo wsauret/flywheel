@@ -1,9 +1,9 @@
 import { formatElapsed } from "../../../../../src/protocol/client/format.js"
 import { rowIdentity, toolWorkCounts, type TranscriptView, type TranscriptViewRow, type TurnFold } from "./tool-runs.js"
-import { selectFileChangeBody } from "../../../../../src/protocol/client/transcript/file-change-body.js"
+import { selectFileChangeBody } from "../../../../../src/protocol/client/chat/transcript/file-change-body.js"
 import type { HydratedOutputBlockBody } from "../../../../../src/protocol/transcript/transcript-protocol-types.js"
-import { isReviewableSessionFile } from "../../../../../src/protocol/client/changes/session-changes-copy.js"
-import type { MutationFilesView } from "../../../../../src/protocol/client/transcript/mutation-evidence.js"
+import { isReviewableSessionFile } from "../../../../../src/protocol/client/session/changes/session-changes-copy.js"
+import type { MutationFilesView } from "../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 import type { FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { isReturnedInputNotice } from "../../../../../src/protocol/transcript/composer-returns.js"
 

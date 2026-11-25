@@ -1,6 +1,6 @@
 import { buildMutationEvidence, type MutationEvidenceEntry, type MutationFileEvidence } from "../../src/infra/mutation-evidence.js"
 import { buildSessionContent, readSessionContentRange, type SessionContentNode, type StageSessionContentNodes } from "../../src/infra/session-content.js"
-import { createMutationEvidenceReader, type MutationEvidenceHandle } from "../../src/protocol/client/transcript/mutation-evidence.js"
+import { createMutationEvidenceReader, type MutationEvidenceHandle } from "../../src/protocol/client/chat/transcript/mutation-evidence.js"
 import type { RuntimeConnection } from "../../src/protocol/client/runtime/connection.js"
 import type { RuntimeQuery } from "../../src/protocol/runtime/app-service-types.js"
 import { unifiedDiffPreview, type MutationDiff } from "../../src/infra/mutation-diff.js"

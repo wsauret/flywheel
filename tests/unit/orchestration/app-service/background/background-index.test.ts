@@ -3,7 +3,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work"
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer"
-import { backgroundIndexEntries } from "../../../../../src/protocol/client/background-index"
+import { backgroundIndexEntries } from "../../../../../src/protocol/client/work/background-index"
 import { workflowRunWriter } from "../../../../../src/orchestration/module-catalog"
 import { publishTestWorkflow } from "../../session/_session-manager-fixtures"
 import { validateWorkflowBootstrap } from "../../../../../src/workflows/vm/recovery/bootstrap-validation"

@@ -3,7 +3,7 @@ import type { AgentGroupBlock, AnyBlock, ToolEntry } from "../../../../../../src
 import { compactGroupChild, projectFrontendOutputBlock } from "../../../../../../src/orchestration/app-service/projections/output/frontend-output-blocks.js"
 import { hydrateDerivedOutputBlockBody } from "../../../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
-import { rowPresentation } from "../../../../../../src/protocol/client/transcript/file-change-body.js"
+import { rowPresentation } from "../../../../../../src/protocol/client/chat/transcript/file-change-body.js"
 import type { MutationEvidence } from "../../../../../../src/infra/mutation-evidence.js"
 import { buildMutationDiffEvidence } from "../../../../../../src/infra/mutation-diff-evidence.js"
 

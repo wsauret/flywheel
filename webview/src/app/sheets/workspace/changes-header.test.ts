@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { createSessionChangesController } from "../../../../../src/protocol/client/changes/session-changes.js"
-import { fileA, fileB, list, retainedDiff, runtime, settle, waitForDiff } from "../../../../../tests/unit/protocol/client/changes/_session-changes-fixtures.js"
+import { createSessionChangesController } from "../../../../../src/protocol/client/session/changes/session-changes.js"
+import { fileA, fileB, list, retainedDiff, runtime, settle, waitForDiff } from "../../../../../tests/unit/protocol/client/session/changes/_session-changes-fixtures.js"
 import { mountReview } from "../../transcript/render-ownership-loader-fixture.js"
 
 test("explains an empty review with one excluded file", async () => {

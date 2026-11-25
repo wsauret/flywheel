@@ -24,7 +24,7 @@ import { flattenWorkflowView } from "../../../../../../src/workflows/vm/view/vie
 import { queueFactsForState } from "../../../../../../src/workflows/view/view-diff.js"
 import { buildWorkflowControlInitializedFact } from "../../../../../../src/workflows/control-facts/family.js"
 import { buildContextInputSeededFact } from "../../../../../../src/workflows/context-bundle/context-facts.js"
-import { isInterruptible } from "../../../../../../src/protocol/client/session-controls.js"
+import { isInterruptible } from "../../../../../../src/protocol/client/work/session-controls.js"
 import { createSessionManager } from "../../../../../../src/orchestration/session/manager.js"
 import { workflowParentBinding } from "../../../../../helpers/workflow-parent.js"
 import { replayWorkflowControl } from "../../../../../../src/workflows/vm/recovery/fact-fold.js"

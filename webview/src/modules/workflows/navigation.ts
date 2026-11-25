@@ -1,6 +1,6 @@
 import { batch, createEffect, createMemo, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
-import { workflowAgentModel, workflowAgentMove, type WorkflowAgentTarget } from "../../../../src/protocol/client/workflow/workflow-agent.js"
-import { workflowRunState } from "../../../../src/protocol/client/workflow/workflow-card.js"
+import { workflowAgentModel, workflowAgentMove, type WorkflowAgentTarget } from "../../../../src/protocol/client/work/workflow/workflow-agent.js"
+import { workflowRunState } from "../../../../src/protocol/client/work/workflow/workflow-card.js"
 import { LEVEL_KEY, SESSION_KEY, pushedOver, sessionOf, type HistoryEntryState } from "../../app/screens/screen-stack.js"
 import type { WorkflowReading } from "./inspection.js"
 import type { SessionSummary } from "../../client/session/view-state.js"

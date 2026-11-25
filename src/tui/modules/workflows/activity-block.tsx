@@ -1,14 +1,14 @@
 /** @jsxImportSource @opentui/solid */
 
-import { agentGroupClockRuns, agentGroupGlyph, agentGroupInFlight } from "../../../protocol/client/agent-group-summary.js"
-import { workflowCardControls } from "../../../protocol/client/session-controls.js"
+import { agentGroupClockRuns, agentGroupGlyph, agentGroupInFlight } from "../../../protocol/client/work/agent-group-summary.js"
+import { workflowCardControls } from "../../../protocol/client/work/session-controls.js"
 import type { AgentGroupBlock as AgentGroupBlockModel } from "@infra/output-blocks"
 import { StyledText, bg as stBg, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { useNavigateUri } from "@tui/context/navigation.js"
-import { parseWorkflowLink } from "../../../protocol/client/session-links.js"
-import { workflowCard, workflowCardChoice, workflowCardCut, workflowCardHeaderParts, workflowCardNotice, workflowCardSettled, workflowPlanAbsence, type WorkflowCardChoices, type WorkflowCardHeaderPart } from "../../../protocol/client/workflow/workflow-card.js"
-import { workflowOutline } from "../../../protocol/client/workflow/workflow-outline.js"
+import { parseWorkflowLink } from "../../../protocol/client/session/session-links.js"
+import { workflowCard, workflowCardChoice, workflowCardCut, workflowCardHeaderParts, workflowCardNotice, workflowCardSettled, workflowPlanAbsence, type WorkflowCardChoices, type WorkflowCardHeaderPart } from "../../../protocol/client/work/workflow/workflow-card.js"
+import { workflowOutline } from "../../../protocol/client/work/workflow/workflow-outline.js"
 import { useWorkflowCards } from "./cards.js"
 import { createWorkflowServingLabels } from "./serving-labels.js"
 import { useTheme } from "@tui/context/theme"
@@ -26,7 +26,7 @@ import { BlockFrame, BLOCK_GUTTER_WIDTH } from "@tui/transcript/output-blocks/bl
 import { childProcessControl, processControlChunks, type RowProcessControls } from "@tui/transcript/output-blocks/stop-affordance.js"
 import { chunkDisplayWidth, truncateChunks } from "@tui/transcript/output-blocks/tools/tool-row-wrap.js"
 import { isNarrowWorkflowCard, WorkflowCardBox, type WorkflowCardAction } from "@tui/transcript/output-blocks/agents/workflow-card.js"
-import { workflowSurfaceReads } from "../../../protocol/client/workflow/workflow-surface.js"
+import { workflowSurfaceReads } from "../../../protocol/client/work/workflow/workflow-surface.js"
 
 /** One control of a card's header: its label, which a click hits, the
  *  chunks that draw it, and what it does. */

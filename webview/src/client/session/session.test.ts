@@ -15,7 +15,7 @@ import { selectionConnection } from "./session-selection-fixture.js"
 import { detailView, statusView } from "../../../../tests/helpers/runtime-views.js"
 import { spyOn } from "bun:test"
 import type { RuntimeClientDiagnostic } from "../../../../src/protocol/runtime/runtime-client-diagnostics.js"
-import { backgroundReads } from "../../../../src/protocol/client/background-reads.js"
+import { backgroundReads } from "../../../../src/protocol/client/runtime/background-reads.js"
 import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../../tests/helpers/runtime-dispatch.js"
 import { fakeLanes, LANE_BREAK } from "../../../../tests/helpers/fake-lanes.js"
 

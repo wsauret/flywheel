@@ -1,6 +1,6 @@
 import { Show, type JSX } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { cardProfileName } from "../../../../src/protocol/client/new-chat-card.js"
+import { cardProfileName } from "../../../../src/protocol/client/chat/new-chat-card.js"
 
 import { pageDomainReader } from "../../client/domains/module-domain-views.js"
 import { formatRuntimeIdentity } from "../../../../src/protocol/client/runtime/runtime-identity.js"

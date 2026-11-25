@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, Index, on, onCleanup, onMount } from "solid-js"
-import type { SubagentHeaderPart } from "../../../../../../src/protocol/client/subagent-line.js"
+import type { SubagentHeaderPart } from "../../../../../../src/protocol/client/work/subagent-line.js"
 
 /** Drops optional figures before cutting the goal. The resident spans keep
  *  their identity while both the available width and the figures change. */

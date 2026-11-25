@@ -6,14 +6,14 @@ import { Log } from "../../../infra/diagnostics/log.js"
 import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import type { AttachedRuntimeClient, FrontendOutputBlock } from "../../../protocol/runtime/app-service-types.js"
 import type { OutputView } from "../../../protocol/transcript/output-protocol-types.js"
-import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../../protocol/client/transcript/transcript-store.js"
-import type { BlockReplacement, TranscriptView } from "../../../protocol/client/transcript/transcript-view.js"
+import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../../protocol/client/chat/transcript/transcript-store.js"
+import type { BlockReplacement, TranscriptView } from "../../../protocol/client/chat/transcript/transcript-view.js"
 import type { HydratedOutputBlockBody } from "../../../protocol/transcript/transcript-protocol-types.js"
 import { estimateAppendedBlockRows, estimateFrontendOutputBlockRows, heightEstimatesFromBlocks } from "./output-height-estimates.js"
 import { RESIDENT_BLOCK_BUDGET, type LoadDirection, type LoadPageResult, type OutputTranscriptCache, type OutputTranscriptView, type TranscriptFreshness, type TranscriptSnapshot, type TranscriptStatus } from "./output-transcript-cache-types.js"
-import { transcriptIdentitySample } from "../../../protocol/client/transcript/transcript-delta.js"
-import { adoptedBlocks, type ChatSubmissionWindow } from "../../../protocol/client/chat-submissions.js"
-import { createResidency, type ResidentLanes } from "../../../protocol/client/residency.js"
+import { transcriptIdentitySample } from "../../../protocol/client/chat/transcript/transcript-delta.js"
+import { adoptedBlocks, type ChatSubmissionWindow } from "../../../protocol/client/chat/chat-submissions.js"
+import { createResidency, type ResidentLanes } from "../../../protocol/client/session/residency.js"
 import { mountTranscript } from "./transcript-mount.js"
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] }
@@ -40,7 +40,7 @@ const FRAME_MS = 16
 /** A resident session: the shared store that holds its window and the
  *  presentation stamps this client derives from what the store reports. */
 interface Resident {
-  reader?: import("../../../protocol/client/transcript/transcript-view.js").TranscriptReader
+  reader?: import("../../../protocol/client/chat/transcript/transcript-view.js").TranscriptReader
   readonly store: TranscriptStore
   unsubscribe: () => void
   /** Identity of the resident block-index space; see TranscriptSnapshot.generation. */

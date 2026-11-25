@@ -3,7 +3,7 @@ import { describe, test } from "node:test"
 import { createRoot, createSignal } from "solid-js"
 
 import type { FrontendEvent, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
-import type { DesktopNotice } from "../../../../src/protocol/client/questions/question-pages.js"
+import type { DesktopNotice } from "../../../../src/protocol/client/chat/questions/question-pages.js"
 import type { RuntimeSessionDetailView } from "../../../../src/protocol/session/session-detail-protocol-types.js"
 import { questionCursor, type PendingQuestionView } from "../../../../src/protocol/session/question-protocol-types.js"
 import { browserDesktopNotifier, desktopPermissionRefusal, desktopSwitchOn, type DesktopNotifier, type DesktopPermission } from "../desktop-notifier.js"

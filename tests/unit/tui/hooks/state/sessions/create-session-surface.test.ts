@@ -5,7 +5,7 @@ import { budgetCursor, type BudgetView } from "../../../../../../src/protocol/se
 import { sessionDetailCursor, type RuntimeSessionDetailView } from "../../../../../../src/protocol/session/session-detail-protocol-types.js"
 import { statusCursor, type StatusView } from "../../../../../../src/protocol/session/status-protocol-types.js"
 import { sessionCursor } from "../../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
-import { offeredSessionControls, workflowStateLabel } from "../../../../../../src/protocol/client/session-controls.js"
+import { offeredSessionControls, workflowStateLabel } from "../../../../../../src/protocol/client/work/session-controls.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { createBudgetCache } from "../../../../../../src/tui/hooks/state/sessions/create-budget-cache.js"
 import { sessionHeaderParts } from "../../../../../../src/tui/hooks/state/create-header-display.js"

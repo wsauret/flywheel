@@ -5,7 +5,7 @@ import type { WriteSyntaxThemeId } from "../../../src/protocol/settings/write-sy
 import type { UpdateAutoInstall } from "../../../src/protocol/runtime/update-protocol-types.js"
 import type { BinaryModule } from "../../../src/protocol/runtime/module-protocol-types.js"
 import { stepWorkflowsMode } from "../../../src/protocol/client/capabilities.js"
-import { autoInstallCopy, persistentProcessesCopy } from "../../../src/protocol/client/runtime/runtime-policy-copy.js"
+import { autoInstallCopy, persistentProcessesCopy } from "../../../src/protocol/client/runtime/copy/runtime-policy-copy.js"
 import { actionKey } from "./action-key.js"
 
 /** The settings the client changes in place, without a picker.

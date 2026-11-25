@@ -9,7 +9,7 @@ import { createOutputProjection } from "../../../../../../src/orchestration/app-
 import { createShippedOutput } from "../../../../../../src/orchestration/app-service/projections/output/shipped-output.js"
 import { runtimeQueryResultSchema, RuntimeUiPatchPayloadSchema } from "../../../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import type { StatusPatchPayload, StatusView } from "../../../../../../src/protocol/session/status-protocol-types.js"
-import { replyWaitLabel, WAITING_ON_PARENT } from "../../../../../../src/protocol/client/session-controls.js"
+import { replyWaitLabel, WAITING_ON_PARENT } from "../../../../../../src/protocol/client/work/session-controls.js"
 import { createSessionStore } from "../../../../../../src/orchestration/session-store/store.js"
 import { EventReaderService, EventStoreLive } from "../../../../../../src/infra/store/event-store-effect.js"
 import type { AnyBlock } from "../../../../../../src/infra/output-blocks.js"

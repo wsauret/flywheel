@@ -37,7 +37,7 @@ import { hasPendingRetainedOperation } from "../../session/control/module-sessio
 import { keptCommandsOf } from "../../session/command-handover.js"
 import { presentedTurn } from "./catalog/status-projection.js"
 import { readReplyWaitViews, toReplyWaitViews, type OpenReplyWaitView } from "../../session/control/messaging/reply-waits.js"
-import { displayedReplyWait } from "../../../protocol/client/session-controls.js"
+import { displayedReplyWait } from "../../../protocol/client/work/session-controls.js"
 import type { RuntimeSummaryProjection } from "./catalog/runtime-summary-projection.js"
 import { budgetViewFromRuntimeSummary, type RuntimeSummaryView } from "./catalog/runtime-summary-read.js"
 import type { SessionRow } from "../../../protocol/runtime/app-service-types.js"

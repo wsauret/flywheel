@@ -1,6 +1,6 @@
 import type { OutputBlockChange, OutputChangeBatch } from "../../../../infra/output/output-block-delta.js"
 import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
-import { parseSessionLink, parseWorkflowLink } from "../../../../protocol/client/session-links.js"
+import { parseSessionLink, parseWorkflowLink } from "../../../../protocol/client/session/session-links.js"
 import { projectFrontendOutputBlock } from "./frontend-output-blocks.js"
 import type { SessionEntry, SessionStore } from "../../../session-store/types.js"
 import { runsWorkflowClock } from "../../../session-store/activity.js"

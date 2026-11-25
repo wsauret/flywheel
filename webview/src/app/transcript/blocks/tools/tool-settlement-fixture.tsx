@@ -5,7 +5,7 @@ import { createBlockDisclosure } from "../block-disclosure.js"
 import { Block } from "../blocks.js"
 import { presentedBlock } from "../../../../client/session/residents/presented-block-fixture.js"
 import { createElement, insert, nodes, textContent } from "../../../../test-support/render-ownership-host-fixture.js"
-import type { MutationEvidenceReader } from "../../../../../../src/protocol/client/transcript/mutation-evidence.js"
+import type { MutationEvidenceReader } from "../../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 
 type HostNode = ReturnType<typeof createElement>
 

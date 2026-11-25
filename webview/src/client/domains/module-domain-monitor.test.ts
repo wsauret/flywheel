@@ -10,7 +10,7 @@ import { workflowViewCursor } from "../../../../src/protocol/modules/workflows.j
 import { createModuleDomainMonitor } from "./module-domain-monitor.js"
 import { fakeLanes, LANE_BREAK } from "../../../../tests/helpers/fake-lanes.js"
 import { runtimeQuery } from "../../../../tests/helpers/runtime-dispatch.js"
-import { backgroundReads, type ReadTimers } from "../../../../src/protocol/client/background-reads.js"
+import { backgroundReads, type ReadTimers } from "../../../../src/protocol/client/runtime/background-reads.js"
 import type { RuntimeClientDiagnostic } from "../../../../src/protocol/runtime/runtime-client-diagnostics.js"
 
 const settle = () =>

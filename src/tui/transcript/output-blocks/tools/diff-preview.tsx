@@ -6,7 +6,7 @@ import { diffOmittedLinesForFile } from "../../../../protocol/transcript/diff-om
 import { RGBA, ScrollBoxRenderable, StyledText, bg as stBg, fg as stFg, type BoxRenderable, type TextChunk } from "@opentui/core"
 import { renderHunk, renderTypedDiffRows, type DiffSyntaxHighlighter } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff, type Hunk, type TypedDiffRow } from "@tui/adapters/diff-parser"
-import { fileDiffFiles, removedDirectoryGroups, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../../../protocol/client/transcript/file-change-body.js"
+import { fileDiffFiles, removedDirectoryGroups, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../../../protocol/client/chat/transcript/file-change-body.js"
 import { useBlockDisclosure } from "@tui/context/transcript/block-disclosure.js"
 import type { MutationEvidence } from "../../../../infra/mutation-evidence.js"
 import { useMutationEvidence } from "@tui/context/mutation-evidence.js"

@@ -11,7 +11,7 @@ import { Icon, ICONS } from "../controls/icons.js"
 import { ToolbarBadges } from "./toolbar-badges.js"
 import { ComposerStatus } from "./composer-status.js"
 import { ContextGauge } from "./context-gauge.js"
-import { describeUpdateStatus } from "../../../../src/protocol/client/runtime/update-status-copy.js"
+import { describeUpdateStatus } from "../../../../src/protocol/client/runtime/copy/update-status-copy.js"
 import type { UpdateStatus } from "../../../../src/protocol/runtime/update-protocol-types.js"
 
 /** The update states the toolbar chip shows: a release a person can take or

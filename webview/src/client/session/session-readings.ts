@@ -2,8 +2,8 @@ import type { SessionRow } from "../../../../src/protocol/runtime/app-service-ty
 import type { BudgetSummary } from "../../../../src/protocol/client/host/host-contract.js"
 import { budgetCursor, isBudgetPayload, type BudgetView } from "../../../../src/protocol/session/budget-protocol-types.js"
 import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
-import { mergeBudgetView } from "../../../../src/protocol/client/known-totals.js"
-import { createSessionReadingFamily, type SessionViewStore } from "../../../../src/protocol/client/session-reading-family.js"
+import { mergeBudgetView } from "../../../../src/protocol/client/session/known-totals.js"
+import { createSessionReadingFamily, type SessionViewStore } from "../../../../src/protocol/client/session/session-reading-family.js"
 import { isStatusPayload, statusCursor, type StatusView } from "../../../../src/protocol/session/status-protocol-types.js"
 import { isQuestionPayload, questionCursor, type PendingQuestionView } from "../../../../src/protocol/session/question-protocol-types.js"
 

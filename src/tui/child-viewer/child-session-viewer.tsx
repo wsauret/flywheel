@@ -10,14 +10,14 @@ import type { SessionSurface } from "../hooks/state/sessions/create-session-surf
 import type { TextEntryKeyEvent } from "../terminal/keymap/text-entry.js"
 import { useTheme } from "../context/theme.js"
 import { Button } from "../components/controls/button.js"
-import { dispatchInterrupt, offeredSessionControls, resumeMutation, sessionControls, stopMutation, type ControlRefusal } from "../../protocol/client/session-controls.js"
+import { dispatchInterrupt, offeredSessionControls, resumeMutation, sessionControls, stopMutation, type ControlRefusal } from "../../protocol/client/work/session-controls.js"
 import { sessionHeaderParts } from "../hooks/state/create-header-display.js"
 import { ModalFrame, MODAL_FRAME_HORIZONTAL_INSET, sessionViewerBodyHeight, sessionViewerWidth } from "../components/modal/modal-frame.js"
 import { bindStyledTextContent } from "../context/find/reactive-text.js"
 import { ChildSessionBody, type ChildMessaging, type ChildSessionBodyInput, type ChildSessionBodyProps } from "./child-session-body.js"
 import { normalizeChatInput } from "../../infra/chat-input.js"
 import { recallOnUp } from "../components/composer/composer-recall.js"
-import type { ChatSubmissions } from "../../protocol/client/chat-submissions.js"
+import type { ChatSubmissions } from "../../protocol/client/chat/chat-submissions.js"
 
 type KeyEvent = TextEntryKeyEvent
 

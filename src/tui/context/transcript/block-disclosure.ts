@@ -1,6 +1,6 @@
 import { createContext, useContext } from "solid-js"
 import { createStore } from "solid-js/store"
-import type { FileDiffFile } from "../../../protocol/client/transcript/file-change-body.js"
+import type { FileDiffFile } from "../../../protocol/client/chat/transcript/file-change-body.js"
 
 // Disclosure state for collapsible transcript blocks, keyed by durable block
 // identity (blockIdentity, suffixed `#<facet>` when one block has more than

@@ -7,7 +7,7 @@ import {
   type OffCommandDescriptor,
   type RuntimeCommandCatalog,
 } from "../../../protocol/commands/command-catalog-protocol-types.js"
-import { createHeldView } from "../../../protocol/client/held-view.js"
+import { createHeldView } from "../../../protocol/client/runtime/held-view.js"
 import type { CommandCatalogReadiness } from "../../../protocol/client/commands/slash-route.js"
 
 export interface CommandCatalogCache extends CommandCatalogReadiness {

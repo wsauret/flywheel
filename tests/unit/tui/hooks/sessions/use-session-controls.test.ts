@@ -4,7 +4,7 @@ import { Socket } from "effect/socket"
 import type { FrontendMutation, MutationResult, SessionRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
 import { useSessionControls } from "../../../../../src/tui/hooks/sessions/use-session-controls.js"
-import { offeredSessionControls } from "../../../../../src/protocol/client/session-controls.js"
+import { offeredSessionControls } from "../../../../../src/protocol/client/work/session-controls.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
 import { statusView } from "../../../../helpers/runtime-views.js"
 

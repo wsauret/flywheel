@@ -4,7 +4,7 @@ import { MODULE_DOMAIN_BINDINGS, moduleDomainReader, type ModuleDomainBinding } 
 import { PROTOCOL_MODULE_DOMAINS, PROTOCOL_MODULE_SESSION_DOMAINS, type ProtocolModuleDomainName, type ProtocolModuleEntry, type ProtocolModuleSessionDomain, type ProtocolModuleView, type ProtocolModuleWorkspaceDomain } from "../../../../protocol/modules.js"
 import { protocolDomainTable, type DomainReader } from "../../../../protocol/protocol-module.js"
 import { sessionDomainCursor, workspaceDomainCursor, type RuntimeUiPatchPayload } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
-import { createHeldView } from "../../../../protocol/client/held-view.js"
+import { createHeldView } from "../../../../protocol/client/runtime/held-view.js"
 import { createPerSessionCache, type PerSessionCache } from "../sessions/create-per-session-cache.js"
 import { createWorkflowDomainIntake, type WorkflowDomainIntake } from "./create-workflow-domain-intake.js"
 

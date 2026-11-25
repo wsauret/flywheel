@@ -12,7 +12,7 @@ import { createAuthStatusProjection } from "../../../../../../src/orchestration/
 import { createProviderModelPreferenceService } from "../../../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
 import { createRuntimeUiBus } from "../../../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js"
-import { createCursorIntake } from "../../../../../../src/protocol/client/cursor-intake.js"
+import { createCursorIntake } from "../../../../../../src/protocol/client/runtime/cursor-intake.js"
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { durableRow } from "../../_frontend-projection-fixtures.js"
 import { temporaryDirectories } from "../../../../../helpers/directories.js"

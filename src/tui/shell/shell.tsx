@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { faultReach, type TerminalAttach } from "../terminal-attach.js"
-import { cardProfileName } from "../../protocol/client/new-chat-card.js"
-import { runtimeFaultCopy, type ReleaseInstall } from "../../protocol/client/runtime/runtime-fault-copy.js"
+import { cardProfileName } from "../../protocol/client/chat/new-chat-card.js"
+import { runtimeFaultCopy, type ReleaseInstall } from "../../protocol/client/runtime/copy/runtime-fault-copy.js"
 import { providerSetup } from "../../protocol/client/providers/provider-setup.js"
 import { usePaste, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { OverlayHost, useOverlay } from "@tui/components/modal/modal"

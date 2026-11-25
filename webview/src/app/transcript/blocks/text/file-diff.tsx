@@ -1,11 +1,11 @@
 import { createEffect, createMemo, createRenderEffect, createSignal, For, Index, on, onCleanup, onMount, Show, untrack, type JSX } from "solid-js"
 
-import { fileDiffFiles, removedDirectoryGroups, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../../../../../src/protocol/client/transcript/file-change-body.js"
+import { fileDiffFiles, removedDirectoryGroups, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../../../../../src/protocol/client/chat/transcript/file-change-body.js"
 import { renderCode } from "./markdown.js"
 import { patchMarkdownChildren } from "./markdown-dom.js"
 import { writeSyntaxPresentation } from "./write-syntax.js"
 import type { WriteSyntaxThemeId } from "../../../../../../src/protocol/settings/write-syntax-theme.js"
-import type { MutationEvidenceHandle, MutationEvidenceReader, MutationFilesView, MutationPatchView } from "../../../../../../src/protocol/client/transcript/mutation-evidence.js"
+import type { MutationEvidenceHandle, MutationEvidenceReader, MutationFilesView, MutationPatchView } from "../../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 
 function languageFromPath(path?: string): string | undefined {
   const fileName = path?.split(/[\\/]/).at(-1)

@@ -1,5 +1,5 @@
 import type { ModuleId } from "../../../src/protocol/runtime/module-ids.js"
-import { configProblemText } from "../../../src/protocol/client/runtime/config-problem-copy.js"
+import { configProblemText } from "../../../src/protocol/client/runtime/copy/config-problem-copy.js"
 import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
 import type { ModelSelectionSlot } from "../../../src/protocol/auth/model-assignment-protocol-types.js"
 import type { ModuleConfigBooleanControl, ModuleConfigNumberListControl, ModuleProtocolRow, RuntimeModulesView } from "../../../src/protocol/runtime/module-protocol-types.js"

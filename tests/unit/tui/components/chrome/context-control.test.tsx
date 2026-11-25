@@ -8,7 +8,7 @@ const { ModalProvider, OverlayHost, useModal } = await import("../../../../../sr
 const { QuestionInputProvider } = await import("../../../../../src/tui/components/modal/question-input.js")
 const { ThemeProvider, useTheme } = await import("../../../../../src/tui/context/theme.js")
 const { ToastProvider } = await import("../../../../../src/tui/context/toast.js")
-const { contextGaugeCopy } = await import("../../../../../src/protocol/client/context-compaction.js")
+const { contextGaugeCopy } = await import("../../../../../src/protocol/client/chat/context-compaction.js")
 
 const clipboard = { copy: async (_text: string) => {}, readImage: async () => null }
 

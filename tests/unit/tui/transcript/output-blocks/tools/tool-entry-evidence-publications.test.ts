@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { ToolEntry as ToolEntryType } from "../../../../../../src/infra/output-blocks.js"
-import type { MutationEvidenceHandle, MutationPatchHandle, MutationPatchView } from "../../../../../../src/protocol/client/transcript/mutation-evidence.js"
+import type { MutationEvidenceHandle, MutationPatchHandle, MutationPatchView } from "../../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../../src/infra/output-blocks.js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"
 import { renderToolEntries } from "./_tool-entry-render.js"

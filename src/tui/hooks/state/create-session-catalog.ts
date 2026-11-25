@@ -6,8 +6,8 @@ import { isRuntimeInvalidationPayload } from "../../../protocol/rpc/runtime-inva
 import { InvariantViolation } from "../../../infra/invariant.js"
 import { createStartupTimeline } from "../../../infra/diagnostics/startup-timeline.js"
 import { startupTrace } from "../../../infra/diagnostics/startup-trace.js"
-import { mergeCatalogRow } from "../../../protocol/client/known-totals.js"
-import { runtimeSnapshotScopeKey } from "../../../protocol/client/family-intake.js"
+import { mergeCatalogRow } from "../../../protocol/client/session/known-totals.js"
+import { runtimeSnapshotScopeKey } from "../../../protocol/client/runtime/family-intake.js"
 import type { RuntimeIdentity } from "../../../protocol/client/runtime/runtime-identity.js"
 import { createOrderedPatchReceiver } from "./create-ordered-patch-receiver.js"
 

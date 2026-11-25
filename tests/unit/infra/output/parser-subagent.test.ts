@@ -4,7 +4,7 @@ import { OutputProjector } from "../../../../src/infra/output/projector/output-p
 import { OutputToolProjector } from "../../../../src/infra/output/projector/output-tool-projector";
 import { StructuredOutputBuilder } from "../../../../src/infra/output/projector/structured-output-builder";
 import { blockIdentity } from "../../../../src/protocol/transcript/block-identity";
-import { applyOutputDelta, buildBlockIndex } from "../../../../src/protocol/client/transcript/transcript-delta";
+import { applyOutputDelta, buildBlockIndex } from "../../../../src/protocol/client/chat/transcript/transcript-delta";
 import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
 import type { AgentGroupBlock, AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks";

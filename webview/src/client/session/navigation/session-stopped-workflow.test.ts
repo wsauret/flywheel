@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert"
 
 import type { SessionCatalogRow, SessionRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
-import { offeredSessionControls, workflowStateLabel } from "../../../../../src/protocol/client/session-controls.js"
+import { offeredSessionControls, workflowStateLabel } from "../../../../../src/protocol/client/work/session-controls.js"
 import { createRuntimeSession } from "../session.js"
 import { createViewProjection, summaryOf } from "../view-state.js"
 import { fakeRuntimeConnection } from "../../../test-support/runtime-connection-fixture.js"

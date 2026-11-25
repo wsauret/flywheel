@@ -1,6 +1,6 @@
 import type { ChatInputLike } from "../../../../../src/infra/chat-input.js"
 import type { QuestionBlock } from "../../../../../src/infra/output-blocks.js"
-import type { LocalRecall } from "../../../../../src/protocol/client/chat-submissions.js"
+import type { LocalRecall } from "../../../../../src/protocol/client/chat/chat-submissions.js"
 import type { ComposerHandle, ComposerProps } from "../../../../../src/tui/components/composer/composer-types.js"
 import type { DraftCache } from "../../../../../src/tui/components/composer/create-draft-cache.js"
 import type { PromptHistoryHook } from "../../../../../src/tui/components/composer/create-composer-history.js"

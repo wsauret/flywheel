@@ -1,6 +1,6 @@
 import { join, relative } from "node:path";
 import { FLYWHEEL_DIR_NAME } from "../../../infra/directory-authorities.js";
-import { isReviewableSessionFile } from "../../../protocol/client/changes/session-changes-copy.js";
+import { isReviewableSessionFile } from "../../../protocol/client/session/changes/session-changes-copy.js";
 import { Result, Schema } from "effect";
 import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js";
 import { canonicalMutationPath } from "../../../infra/locks/file-mutation-queue.js";

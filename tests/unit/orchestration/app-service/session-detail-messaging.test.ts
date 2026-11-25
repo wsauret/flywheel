@@ -5,7 +5,7 @@ import { chatEntriesFacts } from "../../../../src/orchestration/session/conversa
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/control/planned-session-continuation.js"
-import { replyWaitLabel, WAITING_ON_PARENT } from "../../../../src/protocol/client/session-controls.js"
+import { replyWaitLabel, WAITING_ON_PARENT } from "../../../../src/protocol/client/work/session-controls.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { chatEntry, durableRow, managerWithSessions } from "./_frontend-projection-fixtures.js"

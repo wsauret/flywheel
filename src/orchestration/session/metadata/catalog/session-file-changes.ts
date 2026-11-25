@@ -7,7 +7,7 @@ import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-que
 import { createOrderedLane } from "../../../../infra/ordered-lane.js"
 import { heldProjection } from "../../../../infra/projection/projection-registry.js"
 import type { SessionFileChangeCounts } from "../../../../protocol/session/session-changes-protocol-types.js"
-import { isReviewableSessionFile } from "../../../../protocol/client/changes/session-changes-copy.js"
+import { isReviewableSessionFile } from "../../../../protocol/client/session/changes/session-changes-copy.js"
 import type { FileMutationFact } from "../../file-mutations/file-mutation-facts.js"
 import { readChangeFact } from "./session-change-sources.js"
 import { createSubtreeFold } from "./session-subtree.js"

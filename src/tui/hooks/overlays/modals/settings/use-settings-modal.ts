@@ -28,7 +28,7 @@ import { groupDigits, parseDigits, sanitizeDigitInput, sanitizeDigitPaste } from
 import { createGitAiAttributionRow } from "./settings-git-ai-attribution-row.js"
 import { createProviderSettingRow } from "./settings-provider-setting-row.js"
 import { createTrainingRoutesRow } from "./settings-training-routes-row.js"
-import { autoInstallCopy, persistentProcessesCopy } from "../../../../../protocol/client/runtime/runtime-policy-copy.js"
+import { autoInstallCopy, persistentProcessesCopy } from "../../../../../protocol/client/runtime/copy/runtime-policy-copy.js"
 
 interface SettingsModalDeps {
   /** Account directories the font rows and the config writes resolve from. */

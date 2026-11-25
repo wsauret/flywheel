@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { ReadingStateSchema } from "./reading-state.js"
-import { attachmentKind } from "../../../../src/protocol/client/attachments.js"
-import type { UnsentChatSubmission } from "../../../../src/protocol/client/chat-submissions.js"
+import { attachmentKind } from "../../../../src/protocol/client/chat/attachments.js"
+import type { UnsentChatSubmission } from "../../../../src/protocol/client/chat/chat-submissions.js"
 
 const Attachment = Schema.Struct({
   marker: Schema.String, mediaType: Schema.String, data: Schema.String,

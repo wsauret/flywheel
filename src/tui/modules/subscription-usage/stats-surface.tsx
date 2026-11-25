@@ -2,7 +2,7 @@
 import { createMemo, createResource, createSignal, For, onCleanup, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import type { ScrollBoxRenderable } from "@opentui/core"
-import { readRetainedQuery, type QueryReading } from "../../../protocol/client/retained-query.js"
+import { readRetainedQuery, type QueryReading } from "../../../protocol/client/modules/retained-query.js"
 import { generationSpeedLines, USAGE_SPEND_SURFACE, type UsageSessionStats, type UsageStatsSummary, USAGE_STATS_COMMAND_NAME } from "../../../protocol/modules/subscription-usage.js"
 import { Button } from "../../components/controls/button.js"
 import { ModalFrame } from "../../components/modal/modal-frame.js"

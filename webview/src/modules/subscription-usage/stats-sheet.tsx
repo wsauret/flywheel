@@ -2,7 +2,7 @@ import { createEffect, createMemo, createResource, on, onCleanup, Show, For } fr
 import { Key } from "@solid-primitives/keyed"
 
 import { formatUsd, generationSpeedLines, type UsageSessionStats, USAGE_SPEND_SURFACE, USAGE_STATS_COMMAND_NAME } from "../../../../src/protocol/modules/subscription-usage.js"
-import { readRetainedQuery, type QueryReading } from "../../../../src/protocol/client/retained-query.js"
+import { readRetainedQuery, type QueryReading } from "../../../../src/protocol/client/modules/retained-query.js"
 import { useClient } from "../../app/client-context.js"
 import { Sheet, SheetEmpty, SheetLoading, SheetRow } from "../../app/sheets/sheet.js"
 import { describeFailure } from "../../client/format/failure-message.js"

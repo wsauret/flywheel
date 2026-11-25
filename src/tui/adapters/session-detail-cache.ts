@@ -1,6 +1,6 @@
 import { createSignal, getOwner, onCleanup } from "solid-js"
 import type { AttachedRuntimeClient, RuntimeClient } from "../../protocol/runtime/app-service-types.js"
-import { createHeldSessionDetails } from "../../protocol/client/held-session-details.js"
+import { createHeldSessionDetails } from "../../protocol/client/session/held-session-details.js"
 import type { RuntimeSessionDetailView } from "../../protocol/session/session-detail-protocol-types.js"
 
 /** The held detail a surface reads, counted per surface that holds it. */

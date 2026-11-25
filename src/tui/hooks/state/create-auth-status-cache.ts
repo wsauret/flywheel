@@ -3,7 +3,7 @@ import type { AttachedRuntimeClient } from "../../../protocol/runtime/app-servic
 import { authStatusCursor, type AuthPatchPayload, type RuntimeAuthStatusScope, type RuntimeAuthStatusSnapshotResult, type RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { RuntimeUiPatch } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { cursorKey } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
-import { runtimeSnapshotScopeKey } from "../../../protocol/client/family-intake.js"
+import { runtimeSnapshotScopeKey } from "../../../protocol/client/runtime/family-intake.js"
 import { createOrderedPatchReceiver } from "./create-ordered-patch-receiver.js"
 
 export interface AuthStatusCache {

@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { join } from "node:path"
 import { FLYWHEEL_DIR_NAME } from "../../../../infra/directory-authorities.js"
-import { isReviewableSessionFile } from "../../../../protocol/client/changes/session-changes-copy.js"
+import { isReviewableSessionFile } from "../../../../protocol/client/session/changes/session-changes-copy.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
 import { canonicalMutationPath, withMutationQueueKeys } from "../../../../infra/locks/file-mutation-queue.js"
 import { redactSecrets } from "../../../../infra/redact-secrets.js"

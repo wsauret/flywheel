@@ -5,9 +5,9 @@ import hljs from "highlight.js/lib/common"
 
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/runtime/app-service-types.js"
 import * as markdown from "./blocks/text/markdown.js"
-import { createSessionChangesController } from "../../../../src/protocol/client/changes/session-changes.js"
+import { createSessionChangesController } from "../../../../src/protocol/client/session/changes/session-changes.js"
 import type { SessionChangeDiffResult, SessionChangeSummaryResult, SessionChangesSetViewedResult } from "../../../../src/protocol/session/session-changes-protocol-types.js"
-import { deferred, fileA, fileB, fileC, retainedDiff, runtime, settle, waitForDiff } from "../../../../tests/unit/protocol/client/changes/_session-changes-fixtures.js"
+import { deferred, fileA, fileB, fileC, retainedDiff, runtime, settle, waitForDiff } from "../../../../tests/unit/protocol/client/session/changes/_session-changes-fixtures.js"
 
 import { reviewWindow, mountTimedRows, mountUserMessage, mountTool, mountAgentGroup, mountChanges, mountReview } from "./render-ownership-loader-fixture.js"
 import { longDiff, manualFrames } from "../sheets/workspace/changes-review-fixture.js"

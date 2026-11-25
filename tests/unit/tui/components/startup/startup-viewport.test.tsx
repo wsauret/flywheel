@@ -5,7 +5,7 @@ import { testRender } from "@opentui/solid"
 import { createSignal } from "solid-js"
 import { createComponent } from "solid-js/web"
 import type { RuntimeStartupStatus } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { RuntimeFaultCopy } from "../../../../../src/protocol/client/runtime/runtime-fault-copy.js"
+import type { RuntimeFaultCopy } from "../../../../../src/protocol/client/runtime/copy/runtime-fault-copy.js"
 import { StartupViewport } from "../../../../../src/tui/components/startup/startup-viewport.js"
 import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }

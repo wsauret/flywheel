@@ -1,13 +1,13 @@
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"
-import { isShellMutationEntry, presentsAsFileChange } from "../../../../../src/protocol/client/transcript/file-change-body.js"
-import type { ReadRun } from "../../../../../src/protocol/client/transcript/tool-run-category.js"
-import type { StretchMember, ToolStretch, TranscriptModel } from "../../../../../src/protocol/client/transcript/transcript-model.js"
+import { isShellMutationEntry, presentsAsFileChange } from "../../../../../src/protocol/client/chat/transcript/file-change-body.js"
+import type { ReadRun } from "../../../../../src/protocol/client/chat/transcript/tool-run-category.js"
+import type { StretchMember, ToolStretch, TranscriptModel } from "../../../../../src/protocol/client/chat/transcript/transcript-model.js"
 import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
-import { foldTranscript, runEnd, toolActivity, toolProcess } from "../../../../../src/protocol/client/transcript/transcript-model.js"
-import { agentGroupClockRuns } from "../../../../../src/protocol/client/agent-group-summary.js"
-import { messageDisclosureEntry } from "../../../../../src/protocol/client/message-sender.js"
-import type { MutationFilesView } from "../../../../../src/protocol/client/transcript/mutation-evidence.js"
+import { foldTranscript, runEnd, toolActivity, toolProcess } from "../../../../../src/protocol/client/chat/transcript/transcript-model.js"
+import { agentGroupClockRuns } from "../../../../../src/protocol/client/work/agent-group-summary.js"
+import { messageDisclosureEntry } from "../../../../../src/protocol/client/chat/message-sender.js"
+import type { MutationFilesView } from "../../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 
 declare const presented: unique symbol
 

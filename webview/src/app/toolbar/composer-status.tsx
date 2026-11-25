@@ -5,9 +5,9 @@ import { webModuleEnabled, type WebModule } from "../../web-module.js"
 import { pageDomainReader } from "../../client/domains/module-domain-views.js"
 import { moduleComposerStatus } from "../../../../src/protocol/modules.js"
 import type { ModuleComposerStatus } from "../../../../src/protocol/protocol-module.js"
-import { runtimeFaultCopy, type FaultReach } from "../../../../src/protocol/client/runtime/runtime-fault-copy.js"
+import { runtimeFaultCopy, type FaultReach } from "../../../../src/protocol/client/runtime/copy/runtime-fault-copy.js"
 import { useClient } from "../client-context.js"
-import { backgroundReads } from "../../../../src/protocol/client/background-reads.js"
+import { backgroundReads } from "../../../../src/protocol/client/runtime/background-reads.js"
 
 /** The runtime's one notice, when there is one: a lost runtime, or an
  *  executor the runtime keeps restarting. It is a sentence with a remedy,

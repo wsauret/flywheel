@@ -7,7 +7,7 @@ import type { ProviderModelPreferenceService } from "./auth/models/provider-mode
 import { readAppVersion } from "../../infra/app-version.js"
 import { runningDisplayBuildId } from "./runtime-executable.js"
 import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/runtime/app-service-types.js"
-import { mergeCatalogRow } from "../../protocol/client/known-totals.js"
+import { mergeCatalogRow } from "../../protocol/client/session/known-totals.js"
 import { commandCatalogCursor } from "../../protocol/commands/command-catalog-protocol-types.js"
 import type { CommandCatalogProjection } from "./definitions/commands/command-catalog-projection.js"
 import { authStatusCursor } from "../../protocol/auth/auth-status-protocol-types.js"

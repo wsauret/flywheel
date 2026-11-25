@@ -2,7 +2,7 @@ import { createSignal, onCleanup, untrack } from "solid-js"
 import type { AttachedRuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 import type { ModuleDomainBinding, ModuleDomainSnapshot } from "../../../../protocol/client/modules/module-domain.js"
 import type { ProtocolModuleWorkflowDomain } from "../../../../protocol/modules.js"
-import { runtimeSnapshotScopeKey } from "../../../../protocol/client/family-intake.js"
+import { runtimeSnapshotScopeKey } from "../../../../protocol/client/runtime/family-intake.js"
 import type { RuntimeUiPatchPayload, RuntimeWorkflowCursorIdentity } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { createOrderedPatchReceiver } from "../create-ordered-patch-receiver.js"
 

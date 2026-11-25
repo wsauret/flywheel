@@ -1,5 +1,5 @@
 import type { RuntimeConnection } from "../../../../../src/protocol/client/runtime/connection.js"
-import { createHeldView, type HeldViewSource } from "../../../../../src/protocol/client/held-view.js"
+import { createHeldView, type HeldViewSource } from "../../../../../src/protocol/client/runtime/held-view.js"
 import { providerSetup, type ProviderSetup } from "../../../../../src/protocol/client/providers/provider-setup.js"
 import { summarizeProviders, type ProviderSummary } from "../../../../../src/protocol/client/providers/provider-summary.js"
 import { authStatusCursor, type RuntimeAuthStatusScope, type RuntimeAuthStatusSnapshotResult } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"

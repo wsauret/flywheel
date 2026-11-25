@@ -9,8 +9,8 @@ import { transcriptPlace, type TranscriptLayoutSlot } from "../transcript/output
 import type { DraftCache } from "../components/composer/create-draft-cache.js"
 import type { TabInfo } from "./create-tabs.js"
 import type { ShellServices, ShellSignals } from "./state/shell-state.js"
-import type { SessionRoute } from "../../protocol/client/held-session-details.js"
-import type { ChatSubmissions } from "../../protocol/client/chat-submissions.js"
+import type { SessionRoute } from "../../protocol/client/session/held-session-details.js"
+import type { ChatSubmissions } from "../../protocol/client/chat/chat-submissions.js"
 import type { AttachedRuntimeClient } from "../../protocol/runtime/app-service-types.js"
 
 /** A diff file's disclosure key minted from its position in one process's

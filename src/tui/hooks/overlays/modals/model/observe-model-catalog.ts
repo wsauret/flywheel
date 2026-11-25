@@ -1,6 +1,6 @@
 import type { AttachedRuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
 import { authStatusCursor, type RuntimeAuthStatusScope, type RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
-import { createHeldView } from "../../../../../protocol/client/held-view.js"
+import { createHeldView } from "../../../../../protocol/client/runtime/held-view.js"
 
 /** Seeds scoped auth before saved-row reads and observes later publications. No provider discovery is awaited. Dispose on close or scope change. */
 export function observeModelCatalog(

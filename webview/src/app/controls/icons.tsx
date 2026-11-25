@@ -1,5 +1,5 @@
 import { brandTileSvg, FLYWHEEL_MARK_PATHS } from "../../../../src/protocol/client/brand.js"
-import { WORKFLOW_GLYPH } from "../../../../src/protocol/client/glyphs.js"
+import { WORKFLOW_GLYPH } from "../../../../src/protocol/client/work/glyphs.js"
 
 /** The workflow glyph in its text form. iOS Safari draws U+2699 as a colour
  *  emoji unless the text presentation selector follows it. Only the browser

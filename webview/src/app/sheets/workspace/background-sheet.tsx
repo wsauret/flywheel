@@ -9,7 +9,7 @@ import {
   stopBackgroundRow,
   type BackgroundIndexFilter,
   type BackgroundIndexEntry,
-} from "../../../../../src/protocol/client/background-index.js"
+} from "../../../../../src/protocol/client/work/background-index.js"
 import { actionKey } from "../../../client/action-key.js"
 import { useClient } from "../../client-context.js"
 import { SheetEmpty, SheetLoading, SheetRow } from "../sheet.js"

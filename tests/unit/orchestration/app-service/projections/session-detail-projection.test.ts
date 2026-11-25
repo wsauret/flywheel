@@ -17,7 +17,7 @@ import { prepareSessionFactAppend } from "../../../../../src/orchestration/sessi
 import type { ChatSessionEntry } from "../../../../helpers/session-entries.js"
 import type { SessionSummaryIndex } from "../../../../../src/orchestration/session/metadata/catalog/session-summary-index.js"
 import type { SessionManager } from "../../../../../src/orchestration/session/manager.js"
-import { isInterruptible, offeredSessionControls } from "../../../../../src/protocol/client/session-controls.js"
+import { isInterruptible, offeredSessionControls } from "../../../../../src/protocol/client/work/session-controls.js"
 import { SessionCatalogRowSchema } from "../../../../../src/protocol/session/session-catalog-protocol-schemas.js"
 import type { RuntimeSessionDetailResult } from "../../../../../src/protocol/session/session-detail-protocol-types.js"
 import { WORKFLOW_LAUNCH_OPERATION_KIND, type WorkflowLaunchOperation } from "../../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract.js"

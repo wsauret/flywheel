@@ -95,6 +95,16 @@ export function explainedByConnection(error: unknown): boolean {
   return lostWithLane(error) || findCause(error, (cause): cause is RuntimeSilent => cause instanceof RuntimeSilent) !== undefined
 }
 
+/** Whether a call ended as an outcome rather than a failure: its lane took it
+ *  down, a clean close in a routine stop such as a planned replacement
+ *  included (the connection records the lane's end once), a paused project
+ *  declined it, or an executor generation change voided a read the change
+ *  asked every client to take again. A record of it belongs where the
+ *  call's completion would go. */
+export function endedAsOutcome(error: unknown): boolean {
+  return lostWithLane(error) || declinedByPausedProject(error) || supersededByGenerationChange(error)
+}
+
 /** Whether a call failed only because its project is paused: the executor
  *  is not running and nothing has asked for it, so the runtime ran nothing
  *  and answers every such call the same way until something asks. An
@@ -107,7 +117,7 @@ export function declinedByPausedProject(error: unknown): boolean {
  *  its answer. The change already told every client to read again, so the
  *  failure loses nothing: an expected outcome, whose record belongs below
  *  the default level. */
-export function supersededByGenerationChange(error: unknown): boolean {
+function supersededByGenerationChange(error: unknown): boolean {
   return findCause(error, (cause): cause is RuntimeProtocolError => cause instanceof RuntimeProtocolError && cause.kind === "superseded") !== undefined
 }
 

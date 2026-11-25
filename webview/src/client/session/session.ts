@@ -5,7 +5,7 @@ import { isActiveActivity, type FrontendActivity, type FrontendEvent, type Front
 import { createWorkspaceStatusViews, WORKSPACE_STATUS_DOMAINS } from "./workspace/workspace-status-views.js"
 import type { GitView } from "../../../../src/protocol/git/git-protocol-types.js"
 import type { RuntimeConnection } from "../../../../src/protocol/client/runtime/connection.js"
-import { isLaneBreak } from "../../../../src/protocol/client/cursor-intake.js"
+import { isLaneBreak } from "../../../../src/protocol/client/runtime/cursor-intake.js"
 import { runtimeHealth } from "../../../../src/protocol/client/runtime/runtime-health.js"
 import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/commands/slash-route.js"
 import { isGlobalRuntimeInvalidation } from "../../../../src/protocol/rpc/runtime-invalidation.js"
@@ -14,7 +14,7 @@ import { readWorkspaceSettings, type PanelSettings, type WorkspaceSettings } fro
 import { browserDesktopNotifier, type DesktopNotifier } from "../desktop-notifier.js"
 import { createSessionCatalog } from "./workspace/session-catalog.js"
 import { createWorkspaceReader } from "./workspace/session-workspace.js"
-import { createHeldSessionDetails } from "../../../../src/protocol/client/held-session-details.js"
+import { createHeldSessionDetails } from "../../../../src/protocol/client/session/held-session-details.js"
 import { createHeldRoles } from "./residents/session-roles.js"
 import { createSessionReadings } from "./session-readings.js"
 import { createAuthMonitor } from "./workspace/auth-monitor.js"
@@ -22,16 +22,16 @@ import { createModuleDomainMonitors } from "../domains/module-domain-views.js"
 import { CHAT_SLOT } from "./residents/active-model.js"
 import { createResidentHolds } from "./residents/session-holds.js"
 import { isWindowCurrent } from "./view-state.js"
-import { createResidency } from "../../../../src/protocol/client/residency.js"
+import { createResidency } from "../../../../src/protocol/client/session/residency.js"
 import { createResidentSession, trimResidentBodies, WEB_RESIDENT_SESSIONS, type ResidentSession, type SessionMemory } from "./residents/session-residents.js"
 import { createSeatReading, type SeatReading } from "./residents/session-seat.js"
-import { withDetailEvidence } from "../../../../src/protocol/client/session-controls.js"
+import { withDetailEvidence } from "../../../../src/protocol/client/work/session-controls.js"
 import { createSessionInput, NEW_CHAT_ENTRIES, type SessionInput } from "./session-input.js"
 import type { SessionNoticeSummary, SessionState } from "./session-state.js"
-import { openChat } from "../../../../src/protocol/client/chat-open.js"
-import { adoptedBlocks, type ChatSubmissions, type UnsentChatSubmission } from "../../../../src/protocol/client/chat-submissions.js"
+import { openChat } from "../../../../src/protocol/client/chat/chat-open.js"
+import { adoptedBlocks, type ChatSubmissions, type UnsentChatSubmission } from "../../../../src/protocol/client/chat/chat-submissions.js"
 import { createSessionNavigation, type SessionLink, type SessionMove } from "./navigation/session-navigation.js"
-import { backgroundReads } from "../../../../src/protocol/client/background-reads.js"
+import { backgroundReads } from "../../../../src/protocol/client/runtime/background-reads.js"
 
 /** The scope of the pane's own notice, which says why the pane moved. The
  *  runtime raises no notice under the `client.` prefix, so a dismiss of this
@@ -59,7 +59,7 @@ const PANE_NOTICE_SCOPE = "client.pane-move"
 export interface RuntimeSession extends SessionState, SessionInput {
   /** Which returned inputs this window sent, for its composer returns. */
   readonly submissions: Pick<ChatSubmissions, "ownsSubmission" | "settleReturned">
-  onTranscriptChange?(listener: (sessionId: string, change: import("../../../../src/protocol/client/transcript/transcript-store.js").TranscriptChange) => void): () => void
+  onTranscriptChange?(listener: (sessionId: string, change: import("../../../../src/protocol/client/chat/transcript/transcript-store.js").TranscriptChange) => void): () => void
   /** Counts pane moves, including a return to the same session after navigation. */
   readonly navigationVersion: number
   /** Runs the built-in command `name` names, by id or alias, in `sessionId`.
@@ -154,7 +154,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
   let restoredNewChat = options.initialNewChat === true
   const { connection } = options
   const listeners = new Set<() => void>()
-  const transcriptListeners = new Set<(sessionId: string, change: import("../../../../src/protocol/client/transcript/transcript-store.js").TranscriptChange) => void>()
+  const transcriptListeners = new Set<(sessionId: string, change: import("../../../../src/protocol/client/chat/transcript/transcript-store.js").TranscriptChange) => void>()
   const diagnostic = options.onDiagnostic === undefined ? {} : { onDiagnostic: options.onDiagnostic }
   backgroundReads(connection).diagnose(options.onDiagnostic, connection.reportDiagnostic)
 

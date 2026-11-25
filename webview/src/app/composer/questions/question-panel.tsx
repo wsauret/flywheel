@@ -4,7 +4,7 @@ import { scrollEdges } from "../../controls/scroll-edges.js"
 
 import { applyNamedText, resolveQuestionAnswer, type FrontendQuestionBlock, type FrontendQuestionEntry, type NamedSelectionState, type QuestionAnswer } from "../../../client/questions/question-answer.js"
 import { actionKey } from "../../../client/action-key.js"
-import { questionSkip } from "../../../../../src/protocol/client/questions/question-settlement.js"
+import { questionSkip } from "../../../../../src/protocol/client/chat/questions/question-settlement.js"
 import { useClient, type ClientContextValue } from "../../client-context.js"
 import type { ClientActions } from "../../../client/actions.js"
 import { Icon, ICONS } from "../../controls/icons.js"

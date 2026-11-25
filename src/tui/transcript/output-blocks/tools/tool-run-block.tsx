@@ -2,8 +2,8 @@
 
 import type { ToolStreamingText } from "@infra/output-blocks"
 import { formatDuration } from "../../../../protocol/client/format.js"
-import { presentsAsFileChange } from "../../../../protocol/client/transcript/file-change-body.js"
-import { toolActivity, toolProcess } from "../../../../protocol/client/transcript/transcript-model.js"
+import { presentsAsFileChange } from "../../../../protocol/client/chat/transcript/file-change-body.js"
+import { toolActivity, toolProcess } from "../../../../protocol/client/chat/transcript/transcript-model.js"
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { createMeasuredWidth } from "@tui/components/layout/create-measured-width.js"

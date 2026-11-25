@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { createStatusProjection } from "../../../../src/orchestration/app-service/projections/catalog/status-projection.js"
-import { replyWaitLabel } from "../../../../src/protocol/client/session-controls.js"
+import { replyWaitLabel } from "../../../../src/protocol/client/work/session-controls.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { onReplyWaitsChanged, readReplyWaitViews } from "../../../../src/orchestration/session/control/messaging/reply-waits.js"
 import { dropReplyWait, holdReplyWait, REPLY_WAIT_IN_FLIGHT_KIND, replyWaitNoticeKey } from "../../../../src/orchestration/session/conversation/reply-wait-cells.js"

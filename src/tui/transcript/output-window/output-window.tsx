@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import type { ChildCardStatus } from "../../../protocol/client/session-controls.js"
+import type { ChildCardStatus } from "../../../protocol/client/work/session-controls.js"
 import type { ToolStreamingText } from "@infra/output-blocks"
 import { chatInputImages } from "@infra/chat-input.js"
 import type { BoxRenderable, ScrollBoxRenderable } from "@opentui/core"
@@ -16,7 +16,7 @@ import { LandingTargetProvider } from "@tui/context/transcript/landing-highlight
 import { createFindHighlight, findColors, FindHighlightProvider, type FindSpot } from "@tui/context/find/find-highlight.js"
 import type { FindMatcher } from "../../../protocol/transcript/transcript-find.js"
 import type { FindLanding } from "./create-find-bar.js"
-import { parseSessionLink } from "../../../protocol/client/session-links.js"
+import { parseSessionLink } from "../../../protocol/client/session/session-links.js"
 import { useTheme } from "@tui/context/theme"
 import { type Accessor, createEffect, createMemo, createSignal, Index, type JSX, on, onCleanup, Show, untrack } from "solid-js"
 import { probe } from "../../../infra/render-probe.js"
@@ -33,10 +33,10 @@ import { createTranscriptWindowProjector, targetTimelineBlockIndex, type Transcr
 import { TranscriptViewport } from "./output-window-viewport.js"
 import { createMountedRowRegistry, createSlotSignal, type EdgeDirection, type TranscriptLayoutSlot } from "./output-window-scroll.js"
 import { SessionIntroBlock, type SessionIntroProps } from "../welcome-notice.js"
-import { undeliveredNotice, type LocalChatSubmission } from "../../../protocol/client/chat-submissions.js"
+import { undeliveredNotice, type LocalChatSubmission } from "../../../protocol/client/chat/chat-submissions.js"
 import { UserMessageBlock } from "../output-blocks/messages/user-message-block.js"
 import { Button } from "../../components/controls/button.js"
-import { returnToLatestLabel, unseenMessageCount } from "../../../protocol/client/transcript/return-to-latest.js"
+import { returnToLatestLabel, unseenMessageCount } from "../../../protocol/client/chat/transcript/return-to-latest.js"
 import type { RoleAssignmentView } from "../../../protocol/auth/role-protocol-types.js"
 import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 
