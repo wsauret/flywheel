@@ -1,0 +1,14 @@
+AGENTS.md
+  h_4b47e9e4a8b456 260-271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a8356b1bde6509f25cd9572094c0e40407358020",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
