@@ -21,7 +21,7 @@ import type { ReadSessionContentNode } from "../../../../infra/session-content.j
 import { Log } from "../../../../infra/diagnostics/log.js";
 import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
 import { skillReviewCompletedFact, type SkillReviewCompletedFact } from "../../../../workflows/skills/skill-facts.js";
-import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { failureTerminal, type AgentRunResult } from "../../../agent-runtime/types.js";
 import { LEARNING_REVIEW_ROLE_ID, requireRole, type ResolvedRole, type ResolvedRoles } from "../../../config/roles.js";
 import { withCapabilityGrant, type CapabilityAccess } from "../../../agent-runtime/tools/types.js";
@@ -29,7 +29,7 @@ import type { SessionFactWriter } from "../../../session/persistence/session-fac
 
 import type { CapabilityCheck } from "../../../../infra/capability-text.js";
 import { reviewInstruction, type ReviewHalf } from "./learning-review-prompts.js";
-import type { ModuleId, FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../modules.js";
+import type { ModuleId, FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../module-catalog.js";
 import { moduleRequirementsForContribution, hasModuleContribution } from "../../../module-requirements.js";
 
 import { canonicalModuleIds } from "../../../../protocol/runtime/module-ids.js";

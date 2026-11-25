@@ -3,8 +3,8 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { createFactParser } from "../../../../src/infra/event-registry";
 import { messageInput } from "../../../../src/infra/agent-loop-events";
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/loop/agent-loop";
-import { redactMessage } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history";
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
+import { redactMessage } from "../../../../src/orchestration/session/conversation/redact-message";
+import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message";
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer";
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox";
 import { ConversationTreeFactSchemas, parseConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts";

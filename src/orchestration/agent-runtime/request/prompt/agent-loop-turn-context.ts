@@ -1,6 +1,6 @@
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
-import { CONTINUATION_MESSAGES } from "./continuation-messages.js";
-import type { ConversationMessage } from "../../llm/types.js";
+import { CONTINUATION_MESSAGES } from "../../../session/conversation/turn-end-record.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 
 /** One turn-context entry, before the redaction boundary stamps its origin. */
 export const turnContextEntry = (content: string): ConversationMessage => ({ kind: "user", content, framing: "turn-context" });

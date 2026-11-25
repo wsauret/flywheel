@@ -1,6 +1,6 @@
 import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
 import type { AnthropicThinkingDisplay } from "../../../../../infra/llm/access/provider-options.js";
-import { clampReasoningEffort, familySettings, type ReasoningEffortTier } from "../../model-compat.js";
+import { clampReasoningEffort, familySettings, type ReasoningEffortTier } from "../../../../../infra/llm/models/model-compat.js";
 
 /** Assumed tiers for adaptive-thinking models with no models.dev effort
  *  declaration: every adaptive Claude release accepts low through high. */

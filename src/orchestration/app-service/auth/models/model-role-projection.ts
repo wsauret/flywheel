@@ -1,8 +1,8 @@
 import { AGENT_ROLE_IDS, AUX_ROLE_IDS, DEFAULT_ROLES, parentRoleId, ROLE_GROUP_ORDER, TOP_LEVEL_ROLE_IDS, type RoleId, type RoleMetadata } from "../../../config/roles.js"
 import type { RuntimeModelRole } from "../../../../protocol/auth/model-role-protocol-types.js"
 import { parseBriefRoleId } from "../../../../protocol/auth/brief-role-id.js"
-import type { FirstPartyModuleComposition } from "../../../modules.js"
-import { agentTypeRefusal, type DefinitionAvailabilitySnapshot } from "../../definitions/definition-availability.js"
+import type { FirstPartyModuleComposition } from "../../../module-catalog.js"
+import { agentTypeRefusal, type DefinitionAvailabilitySnapshot } from "../../../config/policy/definition-availability.js"
 
 /** The model roles and seats that the model settings offer under one module selection and one definition
  *  availability (ARCH-STRUCTURE-044). Every model-settings entry point reads it: the published role list, the

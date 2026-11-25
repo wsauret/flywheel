@@ -8,7 +8,7 @@ import { rmSync } from "node:fs";
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { forkAssignment } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { loadStandalonePersonaRegistry } from "../../../../../src/workflows/agents/registry.js";
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
 import type { SubagentDispatchDeps } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
 import { buildRegistry, grantOf, makeContext, makeDeps, makeMockRunnerFactory, runnerEffort, TEST_RATIONALE, childTask } from "./_fixtures.js";

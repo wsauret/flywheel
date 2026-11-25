@@ -8,7 +8,7 @@ import { describeCodeModeTools } from "../../../../../src/orchestration/modules/
 import type { CodeModeLimits } from "../../../../../src/orchestration/modules/code-mode/limits.js";
 import { codeModeRuntimeOver, codeModeServices, codeToolOver, InProcessInvocationWorker, scriptedWorker, workerLog } from "../../../../helpers/code-mode-worker.js";
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";

@@ -1,7 +1,3 @@
-/** What a mutation entry point returns once admission is closed: the call never
- *  started, so it owns no session and left nothing to interrupt. */
-export const ADMISSION_CLOSED_ERROR = "Flywheel is shutting down"
-
 /** The app-service's one admission gate. Every entry point that starts runtime
  *  work passes through it, so shutdown has a single place to stop accepting work
  *  and a single settlement that covers the calls it already accepted. */

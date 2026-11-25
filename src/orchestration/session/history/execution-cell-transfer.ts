@@ -1,10 +1,10 @@
 import type { Database } from "bun:sqlite"
 import { isRecord } from "../../../infra/record.js"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND, decodeCommandHandover } from "../command-handover.js"
-import { FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND, decodeRecoverableCheckpoint } from "./finalized-tool-result-checkpoint.js"
+import { FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND, decodeRecoverableCheckpoint } from "./finalized-tool-result-checkpoint-schema.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, decodeQueuedUserInputCell } from "../conversation/queued-user-inputs.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, decodeQueuedBackgroundNotification } from "../conversation/queued-background-notifications.js"
-import { decodeUsageSettlementCheckpoint, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../agent-runtime/request/usage/usage-settlement.js"
+import { decodeUsageSettlementCheckpoint, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "./usage-settlement.js"
 import { decodePlannedSessionContinuation, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND } from "../control/planned-session-continuation.js"
 
 /** Moves the ordered recovery cells whose family proves one conversation.

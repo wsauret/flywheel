@@ -8,22 +8,23 @@ import { PersistenceWriteRefused, type StoredFact } from "../../../infra/store/e
 import { wakeInput, type AgentLoopWakeInput, type TurnEndedContext } from "../../../infra/agent-loop-events.js"
 import { randomUUID } from "node:crypto"
 
-import { createAgentHost } from "../../agent-runtime/runner/turn-host/host.js"
-import type { AgentHostContextOptions, AgentHostTurnLease } from "../../agent-runtime/runner/turn-host/types.js"
+import { createAgentGeneration } from "../../agent-runtime/runner/turn-host/host.js"
+import type { AgentHostContextOptions } from "../../agent-runtime/runner/turn-host/types.js"
 import { reportPersistenceWriteRefusal, resolveProviderNotices } from "../../agent-runtime/runner/agent-resilience.js"
 import { AgentTurnAborted } from "../../agent-runtime/runner/turn-host/agent-turn-types.js"
 import type { ChatSessionDeps, ChatSessionState } from "../types.js"
 import type { ChatPorts } from "../host-ports.js"
-import { createForegroundBashHoldController } from "../../agent-runtime/background-work/foreground-bash-hold.js"
+import { createForegroundBashHoldController } from "../../session/control/background-work/foreground-bash-hold.js"
 import type { RetryState } from "../../agent-runtime/llm/retry-budget.js"
 import type { AgentRunResult, AgentRunTerminal } from "../../agent-runtime/types.js"
 import type { AgentLoopMaintenance } from "../../agent-runtime/agent-loop-types.js"
 import { ChatTurnMailbox } from "../turn-mailbox.js"
+import { createChatTurnSlot, type ChatTurnLease } from "../turn-slot.js"
 import { createChatQueuedInputRecall } from "./chat-queued-input-recall.js"
 import { createChatMessageDelivery, type IdleLanding } from "./runner-message-delivery.js"
 import type { OutputSession } from "../../session-store/output-session.js"
-import { createRunnerBusBridge } from "../../agent-runtime/runner/turn-host/bus-bridge.js"
-import { completionWorkIds } from "../../agent-runtime/background-work/background-work-notifications.js"
+import { createRunnerBusBridge } from "../../agent-runtime/runner/bus-bridge.js"
+import { completionWorkIds } from "../../session/control/background-work/background-work-notifications.js"
 import type { AskUserController } from "../../agent-runtime/tools/sessions/ask-user-controller.js"
 import { createModuleChatObservers } from "./module-observers.js"
 import { readChatTurnEndEvidence } from "../../session/control/chat-session-run-evidence.js"
@@ -47,7 +48,7 @@ const RESTATED_SEED_CONTEXT = "Context that this session started with follows. I
 
 interface RunningChatTurn {
   readonly completion: ReturnType<typeof createChatInvocationCompletion>
-  readonly lease: AgentHostTurnLease
+  readonly lease: ChatTurnLease
   preparatoryContextBuilt: boolean
   /** A maintenance start's decision: whether the last turn waits for the person. */
   readonly maintenance?: Promise<AgentLoopMaintenance>
@@ -74,7 +75,8 @@ interface ChatRunnerLifecycleInput {
 export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInput): ChatPorts {
   const { deps, session, state, askUser, setConnectionState, applyNestedStoredFact, awaitDurableFacts } = lifecycleInput
   const emit = createEmit(lifecycleInput.eventBus)
-  const host = createAgentHost({ createRunner: deps.createAgent })
+  const turns = createChatTurnSlot()
+  const generation = createAgentGeneration({ createRunner: deps.createAgent, closeTurnWithoutContext: turns.closeLiveTurn })
   const { sessionId } = deps
   // Chat input is purely next-turn: external arrivals (user messages,
   // subagent completion batches) defer to the next turn deterministically.
@@ -90,7 +92,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   }
   const unsubscribeIdleCompaction = deps.idleCompaction?.subscribe(cancelIdleCompaction)
   const wait = createChatWaitState({
-    host, sessionId,
+    turns, sessionId,
     readLastTurnWaitsForPerson: async () => waitsForPerson((await readChatTurnEndEvidence(deps.infra.projectionReader, deps.conversationId, { restoreWait: true }))?.turnEnd),
   })
   const capacity = createChatCapacityWait({ sessionId, conversationId: deps.conversationId, unattended: deps.rootChatCompletion?.unattended === true, eventStore: deps.infra.eventStore, onNotice: (operation) => { emit("agent.notice.changed", { sessionId, data: { operation } }) } })
@@ -140,7 +142,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   const unsubscribeRoleChanges = deps.subscribeRoleChanges(() => { engines.rolesChanged() })
 
   function ownsRunningTurn(turn: RunningChatTurn): boolean {
-    return host.ownsTurn(turn.lease)
+    return turns.ownsTurn(turn.lease)
   }
 
   function isLiveTurn(turn: RunningChatTurn): boolean {
@@ -148,7 +150,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   }
 
   function hasActiveTurn(): boolean {
-    return host.turnState === "active"
+    return turns.turnState === "active"
   }
 
   const recalls = createChatQueuedInputRecall({
@@ -328,8 +330,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       resumes?: true
     } = {},
   ): void {
-    const lease = host.takeReservedTurn() ?? host.reserveTurn()
-    if (!lease) throw new Error("startTurn requires an idle or reserved runner host")
+    const lease = turns.takeReservedTurn() ?? turns.reserveTurn()
+    if (!lease) throw new Error("startTurn requires an idle or reserved turn slot")
     engines.turnStarted()
     lastTurnEnding = undefined
     const turn: RunningChatTurn = { lease, completion: deps.rootChatCompletion ?? createChatInvocationCompletion(undefined), preparatoryContextBuilt: false, ...(opts.purpose === "maintenance" ? { maintenance: wait.decideMaintenance(lease) } : {}), ...(opts.resumes ? { resumes: true as const } : {}) }
@@ -390,7 +392,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         // A command a previous build handed to this conversation is this
         // chat's before any request, so the turn parks on it as on its own.
         await background.adoptHandedOver()
-        result = await host.runTurn({
+        result = await generation.runTurn({
           createContextOptions: async ({ providerSessionKey }: RetryState) =>
             buildRunnerContextOptions(turn, providerSessionKey ?? providerConversationId, opts.purpose),
           onContextCreated: (ctx) => {
@@ -470,12 +472,12 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         const authorized = runnerStarted && !turn.lease.signal.aborted || userInputAfterStartupStop?.() === true
         const canResume = !wait.stalled || mailbox.hasPendingUserMessage
         if (ownsRunningTurn(turn) && authorized && !state.ended && !turn.completion.sealed && mailbox.hasPending && canResume) {
-          host.continueAfterTurn(turn.lease, startQueuedInputTurn)
+          turns.continueAfterTurn(turn.lease, startQueuedInputTurn)
         }
       }
     }
 
-    host.startTurn(lease, run)
+    turns.startTurn(lease, run)
   }
 
   /** Starts the turn that drains the mailbox, for input that waits there
@@ -527,7 +529,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       if (state.ended) return true
     }
     lastTurnEnding = undefined
-    const activeTurn = host.activeTurnLease
+    const activeTurn = turns.activeTurnLease
     if (activeTurn) {
       if (backgroundNotification) {
         mailbox.enqueueBackgroundNotification(backgroundNotification)
@@ -539,7 +541,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       return true
     }
 
-    const reservation = host.reserveTurn()
+    const reservation = turns.reserveTurn()
     if (!reservation) {
       if (backgroundNotification) mailbox.enqueueBackgroundNotification(backgroundNotification)
       return backgroundNotification !== undefined
@@ -587,17 +589,17 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
    *  After the commit, the sequence starts that turn, or the turn the
    *  mailbox now waits with, or releases the slot. No turn starts after the
    *  runner ended. A failed commit releases the slot and rejects. */
-  async function landWhileIdle<T>(reservation: AgentHostTurnLease, landing: IdleLanding<T>): Promise<T> {
+  async function landWhileIdle<T>(reservation: ChatTurnLease, landing: IdleLanding<T>): Promise<T> {
     const userInputArrived = mailbox.observeUserInput()
     const admission = landing.admit(await wait.awaitsPerson())
     if (admission.landing === "refuse") {
-      host.releaseTurn(reservation)
+      turns.releaseTurn(reservation)
       return admission.result
     }
     try {
       await landing.commit()
     } catch (err) {
-      host.releaseTurn(reservation)
+      turns.releaseTurn(reservation)
       deps.onTreeFailure(err)
       throw err
     }
@@ -606,15 +608,15 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     if (recalls.open) await recalls.open
     // The one ended check after the last await: the runner can end during
     // the commit or the recall, and no turn starts after it ended.
-    if (state.ended) host.releaseTurn(reservation)
+    if (state.ended) turns.releaseTurn(reservation)
     else if (admission.landing === "wake") landing.wake()
     else if (userInputArrived()) startQueuedInputTurn()
-    else host.releaseTurn(reservation)
+    else turns.releaseTurn(reservation)
     return admission.result
   }
 
   const messages = createChatMessageDelivery({
-    host,
+    turns,
     mailbox,
     session,
     ended: () => state.ended || deps.rootChatCompletion?.sealed === true,
@@ -648,7 +650,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       wait.clearStall()
       mailbox.enqueueResume()
     }
-    if (host.turnState === "active") {
+    if (turns.turnState === "active") {
       if (!options?.explicit) mailbox.enqueueWake()
       return true
     }
@@ -659,13 +661,13 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
 
   return {
     get invocationCompletion() { return deps.rootChatCompletion },
-    get turnState() { return host.turnState },
+    get turnState() { return turns.turnState },
     onModuleRuntimesChange: (listener) => { runtimeListeners.add(listener); return () => runtimeListeners.delete(listener) },
     interruptGeneration: () => {
       cancelIdleCompaction()
       // A turn that waits for capacity runs no generation: the interrupt cuts
       // the wait, and the turn ends with the person's turn end. Both run.
-      const interrupted = [capacity.cutWait("person"), host.interruptGeneration()].includes(true)
+      const interrupted = [capacity.cutWait("person"), generation.interruptGeneration()].includes(true)
       if (interrupted) emit("agent.turn.interrupted", { sessionId, data: {} })
       return interrupted
     },
@@ -682,10 +684,10 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     abortRunningTurn: () => {
       cancelIdleCompaction()
       if (!wait.turnRunning()) return false
-      host.abortGeneration()
+      generation.abortGeneration()
       return true
     },
-    abortGeneration: () => { cancelIdleCompaction(); host.abortGeneration() },
+    abortGeneration: () => { cancelIdleCompaction(); generation.abortGeneration() },
     enqueueInput: submit,
     deliverHeldMessage: messages.deliverHeldMessage,
     messageState: messages.messageState,
@@ -739,7 +741,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       }
       return queued
     },
-    settle: host.settle,
+    settle: async () => { await Promise.all([generation.settle(), turns.settle()]) },
     get pendingTurnSettlement() { return durability.pendingTurnSettlement },
     get lastTurnEnding() { return lastTurnEnding },
     awaitLogicalTurnDurability: durability.awaitDurable,

@@ -1,5 +1,6 @@
 import { createOrderedLane } from "../../../infra/ordered-lane.js"
-import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../module-seams.js"
+import { installedModules, type FirstPartyModule } from "../../module-catalog.js"
+import type { ModuleSessionHistory, SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../module-seams.js"
 
 interface PendingHistoryUpdate {
   position: number
@@ -79,4 +80,10 @@ export function createModuleToolHistoryReader(readers: readonly SessionToolSumma
     replay: () => replays.run(replay),
     dispose: () => { for (const reader of readers) reader.dispose?.() },
   }
+}
+
+/** One tool summary reader over every installed module's session history. */
+export function createSessionToolSummaryReader(reader: Parameters<NonNullable<ModuleSessionHistory["createToolSummaryReader"]>>[0], sessionId: string, modules: readonly FirstPartyModule[] = installedModules()): Required<SessionToolSummaryReader> {
+  const readers = modules.flatMap((module) => module.sessionHistory?.createToolSummaryReader?.(reader, sessionId) ?? [])
+  return createModuleToolHistoryReader(readers)
 }

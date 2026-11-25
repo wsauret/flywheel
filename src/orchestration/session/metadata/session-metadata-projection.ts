@@ -4,8 +4,8 @@ import { createEventProjection, parseProjectionFact, type EventProjection, type 
 import { heldProjection } from "../../../infra/projection/projection-registry.js"
 import { CorruptEventRowError, type AsyncEventReadSurface, type AsyncEventStateReadSurface, type EventReader, type StoredFact } from "../../../infra/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { canonicalRoleId } from "../../config/retired-config-names.js"
-import { normalizeRoleAssignmentSnapshot, normalizeRoleAssignments, recoverRoleAssignmentSnapshot, type ReplayedSession, type RoleAssignmentSnapshot } from "./schemas.js"
+import { canonicalRoleId, normalizeRoleAssignments } from "../../config/retired-config-names.js"
+import { normalizeRoleAssignmentSnapshot, recoverRoleAssignmentSnapshot, type ReplayedSession, type RoleAssignmentSnapshot } from "./schemas.js"
 import { decodeSessionMetadataFactForReplay, type ReplayedSessionMetadataFact } from "./session-metadata-facts.js"
 
 export type SessionMetadataProjectionState = {

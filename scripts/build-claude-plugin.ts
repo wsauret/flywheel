@@ -32,7 +32,7 @@ import { resolveModelInteractionProfile } from "../src/orchestration/agent-runti
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { personaToolEntries } from "../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import { codedRolePreference } from "../src/orchestration/config/models/role-model-defaults.js";
-import { SHIPPED_MODULES } from "../src/orchestration/modules.js";
+import { SHIPPED_MODULES } from "./shipped-modules.js";
 import { createToolRegistry } from "../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";
 import { loadStandalonePersonaRegistry } from "../src/workflows/agents/registry.js";

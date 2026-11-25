@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
 import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { Redacted } from "effect";
@@ -9,10 +9,10 @@ import type { FailoverPlan } from "../../../../../src/infra/llm/access/access-pr
 import { createBenchmarkTool } from "../../../../../src/orchestration/modules/development/benchmark-tool.js";
 import { admitBenchmark, type BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { createBenchmarkCatalog } from "../../../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createForegroundBashHoldController } from "../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
 import type { DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
 import { testProviderRegistry } from "../../../../helpers/provider-authority.js";

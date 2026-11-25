@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
 import type { ResolvedRole, ResolvedRoles } from "../../../../../../src/orchestration/config/roles.js";
 import {
   resolveReviewRoute,
   reviewReplay,
 } from "../../../../../../src/orchestration/modules/learning/review/learning-review.js";
-import { resolveSessionRoles } from "../../../../../../src/orchestration/config/models/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../../../../src/orchestration/agent-runtime/request/roles/session-roles.js";
 import { roleCapture } from "../../../../../helpers/role-capture.js";
 
 describe("review route resolution", () => {

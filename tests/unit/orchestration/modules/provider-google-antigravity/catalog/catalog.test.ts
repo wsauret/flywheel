@@ -11,7 +11,7 @@ import type { OwnedProcess, OwnedProcessExit } from "../../../../../../src/infra
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js"
 import { antigravityDynamicCatalog } from "../../../../../../src/orchestration/modules/provider-google-antigravity/catalog/catalog.js"
 import { sweepLogin } from "../../../../../../src/orchestration/modules/provider-google-antigravity/engine/session-files.js"
-import { credentialSlotClassifier } from "../../../../../../src/orchestration/auth/credential-slot-classifier.js"
+import { credentialSlotClassifier } from "../../../../../../src/orchestration/module-catalog.js"
 import { authProviders } from "../../../../../helpers/auth-context.js"
 import { temporaryDirectories } from "../../../../../helpers/directories.js"
 import { modelInfo } from "../../../../../helpers/model-tier-fixtures.js"

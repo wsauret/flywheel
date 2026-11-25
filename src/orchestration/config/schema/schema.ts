@@ -1,6 +1,5 @@
 import { Schema } from "effect";
-import type { FirstPartyModule } from "../../modules.js";
-import { installedModules } from "../../module-catalog.js";
+import { type FirstPartyModule, installedModules } from "../../module-catalog.js";
 import { installedConfigSections } from "./config-section.js";
 import { DEFINITION_OWNED_SCHEMA_FIELDS, RETAINED_CONFIG_SCHEMA_FIELDS } from "./setting-definitions.js";
 

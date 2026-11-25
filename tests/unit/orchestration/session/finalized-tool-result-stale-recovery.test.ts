@@ -4,7 +4,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
-import { recoverFinalizedToolResultCheckpoints, retireLegacyFinalizedToolResultCheckpoints } from "../../../../src/orchestration/session/history/finalized-tool-result-checkpoint";
+import { recoverFinalizedToolResultCheckpoints, retireLegacyFinalizedToolResultCheckpoints } from "../../../../src/orchestration/agent-runtime/loop/tool-calls/finalized-tool-result-checkpoint";
 import { buildMutationEvidence, buildMutationFileEvidence } from "../../../../src/infra/mutation-evidence";
 import { hydrateToolContentFact } from "../../../../src/infra/store/tool-content-hydration";
 import { buildMutationDiff } from "../../../../src/infra/mutation-diff";

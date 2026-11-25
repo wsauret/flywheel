@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, spyOn } from "bun:test";
-import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
 import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
 import { buildMutationDiff } from "../../../../../../src/infra/mutation-diff.js";
 import { buildMutationDiffEvidence } from "../../../../../../src/infra/mutation-diff-evidence.js";
@@ -14,7 +14,7 @@ import {
 import { capabilityAccessFor } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentRunResult, AgentRunTerminal } from "../../../../../../src/orchestration/agent-runtime/types.js";
 import type { SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
-import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
+import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js";
 import { Log } from "../../../../../../src/infra/diagnostics/log.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 type ReviewNotice = Parameters<SpawnedReview["recordSystemMessage"]>[0];

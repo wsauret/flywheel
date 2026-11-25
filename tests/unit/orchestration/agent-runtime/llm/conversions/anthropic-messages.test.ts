@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
 import { toAnthropicMessagesRequest } from "../../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { ProviderIdConversionError } from "../../../../../../src/orchestration/agent-runtime/llm/conversions/provider-id.js";
 import { stableSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

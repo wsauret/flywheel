@@ -41,7 +41,7 @@ import { parseRepositoryIdentity, platformAssetName, type SelectedRelease } from
 import type { UpdateAuthority, UpdateLeaseRenewal } from "../../infra/update/update-authority.js";
 import { compareReleaseVersions, isLaterRelease, parseReleaseVersion, type ReleaseVersion } from "../../infra/update/version-order.js";
 import { ConfigWriteError, type ConfigWriteResult } from "../config/writer.js";
-import { ADMISSION_CLOSED_ERROR } from "../app-service/mutations/mutation-admission.js";
+import { ADMISSION_CLOSED_ERROR } from "../../infra/shutdown-signals.js";
 import { checkForUpdate, type UpdateCheckRequest, type UpdateCheckResult, type UpdateScheduler } from "./update-check.js";
 
 const log = Log.create({ service: "update-service" });

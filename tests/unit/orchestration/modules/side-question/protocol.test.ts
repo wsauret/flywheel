@@ -4,7 +4,7 @@ import { createSideQuestionHost, sideQuestionHost, type SideQuestionHost } from 
 import { createSideQuestionProtocol } from "../../../../../src/orchestration/modules/side-question/protocol.js"
 import { readSideQuestionView, sideQuestionCursor, sideQuestionProtocol, sideQuestionRequestCursor } from "../../../../../src/protocol/modules/side-question.js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
 import { sideQuestionModule } from "../../../../../src/orchestration/modules/side-question/module.js"
@@ -16,7 +16,7 @@ import type { ConversationSessionEntry } from "../../../../../src/orchestration/
 import { CommandOutcomeSchema } from "../../../../../src/protocol/commands/command-catalog-protocol-schemas.js"
 import type { ChatModuleHostContribution } from "../../../../../src/orchestration/chat/chat-module-host.js"
 import { composeModules } from "../../../../../src/infra/module-descriptor.js"
-import type { FirstPartyModule } from "../../../../../src/orchestration/modules.js"
+import type { FirstPartyModule } from "../../../../../src/orchestration/module-catalog.js"
 import { makeLifecycle } from "../../chat/lifecycle/_chat-runner-lifecycle-fixtures.js"
 
 type Runner = { readonly chatModuleHosts: ReturnType<typeof composeModuleRuntimes> }

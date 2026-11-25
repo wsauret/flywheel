@@ -1,9 +1,9 @@
 import type { AgentLoopInput } from "../../../infra/agent-loop-events.js";
 import { chatInputContent } from "../../../infra/chat-input.js";
-import type { ContentBlock } from "../llm/types.js";
+import type { ContentBlock } from "../../../infra/llm/conversation/conversation-message.js";
 import type { LoopUserMetadata } from "./turn/agent-loop-history.js";
-import { CONTINUATION_MESSAGES } from "../request/prompt/continuation-messages.js";
-import { completionWorkIds } from "../background-work/background-work-notifications.js";
+import { CONTINUATION_MESSAGES } from "../../session/conversation/turn-end-record.js";
+import { completionWorkIds } from "../../session/control/background-work/background-work-notifications.js";
 import { textChars } from "../tools/results/truncation.js";
 
 type MessageInput = Extract<AgentLoopInput, { kind: "message" }>;

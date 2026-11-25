@@ -4,7 +4,7 @@ import { isRecord } from "../../../../../infra/record.js";
 import type { AnthropicWireMessage } from "./anthropic-adapter-helpers.js";
 import { anthropicToolResultParts, type BlockOrigins } from "../../conversions/anthropic-messages.js";
 import { ContentRefusedError } from "../../errors.js";
-import type { ConversationMessage } from "../../types.js";
+import type { ConversationMessage } from "../../../../../infra/llm/conversation/conversation-message.js";
 
 /** The message and block of the prepared request that the provider's request holds at wire message `wireMessage`,
  *  block `wireBlock`, or undefined when no prepared block is at that position. `prepared` is the origin of each block

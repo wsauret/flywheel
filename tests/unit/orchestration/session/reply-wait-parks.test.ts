@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work"
 import type { AsyncEventStateReadSurface } from "../../../../src/infra/store/event-store-types"
 import { notifyLiveWorkChanged, registerLiveSessionControl, registerLiveWorkflowControl } from "../../../../src/orchestration/session/control/live-session-control"
 import type { LiveRecipientState } from "../../../../src/orchestration/session/message-disposition"

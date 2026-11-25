@@ -9,9 +9,9 @@ import { createSubscriptionSpendEnvelope } from "../../../../../../src/infra/aut
 import { createSubscriptionSpendConsentStore } from "../../../../../../src/infra/auth/subscription/subscription-spend-consent-store.js";
 import { createSubscriptionAccountIdentity } from "../../../../../../src/infra/auth/subscription/subscription-account-identity.js";
 import { Log } from "../../../../../../src/infra/diagnostics/log.js";
-import { accessProviderRegistry } from "../../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
-import { credentialSlotClassifier } from "../../../../../../src/orchestration/auth/credential-slot-classifier.js";
-import { composeFirstPartyModules, type FirstPartyModule } from "../../../../../../src/orchestration/modules.js";
+import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js";
+import { credentialSlotClassifier, type FirstPartyModule } from "../../../../../../src/orchestration/module-catalog.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
 import { createClaudeAgentSdkModule } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import { createSubscriptionUsageService } from "../../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { createSubscriptionSpendConsentService } from "../../../../../../src/orchestration/auth/subscription-spend-consent/subscription-spend-consent-service.js";

@@ -4,10 +4,11 @@ import type { AssistantTurnResult } from "./assistant-turn-result.js";
 import { isFailoverFailure } from "../../llm/stream/provider-failure.js";
 import type { PreparedRequestAttempt } from "../../request/request-tool-surface.js";
 import { NO_SYSTEM_PROMPT } from "../../llm/system-prompt-tiers.js";
-import { resolveCacheRetention, type AdmittedModelRequest, type AdmittedModelRequestExecution, type PreparedCandidate, type PreparedServingRequest, type ProviderResample, type ProviderRetry, type ProviderStreamEvent, type ServingAttempt, type ServingCandidate, type StreamOptions, type TurnModelClient, type ConversationMessage } from "../../llm/types.js";
+import { resolveCacheRetention, type AdmittedModelRequest, type AdmittedModelRequestExecution, type PreparedCandidate, type PreparedServingRequest, type ProviderResample, type ProviderRetry, type ProviderStreamEvent, type ServingAttempt, type ServingCandidate, type StreamOptions, type TurnModelClient } from "../../llm/types.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { estimateConversationTokens, tokenCountingPolicy } from "../../compaction/token-counter.js";
 import { prepareLocalTokenizer } from "../../../../infra/local-tokenizer.js";
-import { redactMessage } from "./agent-loop-history.js";
+import { redactMessage } from "../../../session/conversation/redact-message.js";
 import { promptPrefixKey, type PrefixHoldTicket, type PromptPrefixHold } from "./prompt-prefix-hold.js";
 
 type Attempt = ReturnType<typeof createAssistantAttempt>;

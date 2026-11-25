@@ -8,7 +8,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runti
 import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
 import { createOutputSession } from "../../../../../src/orchestration/session-store/output-session.js";
 import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
-import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js";
 import type { CommandHandoverAuthority } from "../../../../../src/orchestration/agent-runtime/background-execution/command-handover.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter, PersistenceWriteRefused, type AsyncEventStateReadSurface } from "../../../../../src/infra/store/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";

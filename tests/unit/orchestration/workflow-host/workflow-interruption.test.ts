@@ -17,7 +17,7 @@ import { publishWorkerAttempt, commitWorkflowEvent } from "./_workflow-host-fixt
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 import type { AttemptRow } from "../../../../src/workflows/view/types.js"
 import { testAuth } from "../chat/_chat-session-agent-runtime-fixtures"
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
 import { ManagedRuntime } from "effect"
 import { EventReaderService, EventStoreLive, EventStoreService } from "../../../../src/infra/store/event-store-effect.js"
 import { liveWorkflowControl } from "../../../../src/orchestration/session/control/live-session-control.js"

@@ -1,6 +1,6 @@
 import type { CapabilityCheck } from "../../../../infra/capability-text.js"
 import { assembleSkillInvocation, skillInvocationRefusal } from "../../../../workflows/skills/skill-invocation.js"
-import type { DefinitionAvailabilitySnapshot } from "../definition-availability.js"
+import type { DefinitionAvailabilitySnapshot } from "../../../config/policy/definition-availability.js"
 
 /** The turn that starts one skill's method, or why the skill cannot start. */
 export type SkillMethod =

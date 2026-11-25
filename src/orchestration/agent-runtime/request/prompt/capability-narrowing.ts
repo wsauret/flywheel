@@ -11,9 +11,9 @@
  */
 
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
-import type { FirstPartyModuleComposition } from "../../../modules.js";
+import type { FirstPartyModuleComposition } from "../../../module-catalog.js";
 import type { HistorySink } from "../../agent-loop-types.js";
-import type { ConversationMessage } from "../../llm/types.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 
 // The marker, not the wording, identifies a statement in history, so a later release reads it however the body
 // changes. Only an entry with tool-notice framing carries one: a statement stands alone, and the tool notice carries

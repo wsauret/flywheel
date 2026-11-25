@@ -38,7 +38,7 @@ import {
   type ProjectStateWorkerInit,
 } from "../project-state-protocol.js"
 import type { ProjectStateControlOperation, ProjectStateOperation } from "../project-state-operation.js"
-import type { WorkerSelf } from "./bun-worker-rpc.js"
+import type { WorkerSelf } from "../../../../infra/process/workers/bun-worker-rpc.js"
 import { retainedOperationKinds } from "../../../session/control/module-session-operations.js"
 import { PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND } from "../../../session/control/planned-session-continuation.js"
 import { projectStateFactReferences, readProjectStateContent } from "./project-state-content.js"

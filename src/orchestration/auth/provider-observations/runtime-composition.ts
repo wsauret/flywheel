@@ -5,7 +5,7 @@ import { createSubscriptionUsageServicePool, type SubscriptionUsageServicePool }
 import { peekSharedProviderAvailability } from "../../agent-runtime/llm/routing/shared-provider-availability.js"
 import { foldSubscriptionUsageIntoAvailability } from "./usage-availability-fold.js"
 
-import type { AccessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js"
+import type { AccessProviderRegistry } from "../../config/models/access-provider-registry.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
 const log = Log.create({ service: "runtime-composition" })
 

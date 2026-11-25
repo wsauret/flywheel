@@ -2,7 +2,7 @@ import { tmpdir } from "node:os"
 import { describe, expect, it } from "bun:test"
 
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js"
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js"
 import type { RuntimeTool, ToolResult } from "../../../../../../src/orchestration/agent-runtime/tools/types.js"
 import type { LLMClient, ProviderStreamEvent, StreamOptions, ToolCall } from "../../../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js"

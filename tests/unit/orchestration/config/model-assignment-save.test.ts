@@ -6,7 +6,7 @@ import { saveModelAssignment } from "../../../../src/orchestration/config/models
 
 import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js";
 import { NO_CREDENTIALS, USER_DATA_ROOT } from "./_config-models-fixtures.js";
 
 /** Saving writes only the named config file; the account and credential deps stay inert. */

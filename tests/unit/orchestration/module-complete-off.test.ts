@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { createWebSearchProviderResolver, SHIPPED_MODULES, composeFirstPartyModules, moduleProtocolRows, webAuthProviderDefinitions, type FirstPartyModuleComposition } from "../../../src/orchestration/modules.js";
+import { createWebSearchProviderResolver } from "../../../src/orchestration/agent-runtime/web-search/select.js";
+import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
+import { composeFirstPartyModules, webAuthProviderDefinitions } from "../../../src/orchestration/module-composition.js";
+import { moduleProtocolRows, type FirstPartyModuleComposition } from "../../../src/orchestration/module-catalog.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
 import { MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js";
 import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../src/infra/module-runtime.js";
@@ -11,20 +14,20 @@ import { parseSessionFact } from "../../../src/orchestration/session/persistence
 import { parseExperimentFact, type ExperimentFact } from "../../../src/orchestration/modules/experiments/state/facts.js";
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/session/control/background-work/background-work.js";
 import type { ModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
 import type { ModuleState } from "../../../src/orchestration/config/module-descriptor.js";
 import { capabilityAccessHolding } from "./agent-runtime/tools/_fixtures.js";
 import type { AuthContext } from "../../../src/infra/auth/auth-context.js";
 
-import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../src/orchestration/config/models/access-provider-registry.js";
 import { authProviders } from "../../helpers/auth-context.js";
 import { inMemoryEventReader } from "../../helpers/in-memory-event-reader.js";
 import { asAsyncEventReadSurface } from "../../../src/infra/store/event-store-types.js";
 import { unusedSessionMessaging } from "../../helpers/child-session-control.js";
 import { asRecord } from "../../../src/infra/record.js";
 import { turnReminders } from "../../../src/orchestration/agent-runtime/request/prompt/turn-reminders.js";
-import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../src/infra/llm/conversation/conversation-message.js";
 import { promptCapabilities } from "../../helpers/prompt-capabilities.js";
 import { discardingSessionFactWriter } from "../../helpers/event-writer-doubles.js";
 // Every module a source run composes: the shipped catalog plus the one the

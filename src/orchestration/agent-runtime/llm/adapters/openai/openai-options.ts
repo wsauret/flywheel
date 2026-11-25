@@ -5,7 +5,7 @@ import {
   type OpenAIReasoningSummary,
   type ProviderRequestOptions,
 } from "../../../../../infra/llm/access/provider-options.js";
-import { supportsParallelToolCalls } from "../../model-compat.js";
+import { supportsParallelToolCalls } from "../../../../../infra/llm/models/model-compat.js";
 
 export interface UnknownFields { [key: string]: unknown }
 

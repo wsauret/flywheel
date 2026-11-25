@@ -1,7 +1,7 @@
 import { configLines, findFieldIndex, findSectionEnd, keyPattern, removeAssignment, removeSection, rootEndIndex, sectionHasKeyLines } from "../config-assignment.js";
-import { installedRetiredModuleConfig, MODULE_PRESETS, migrateLegacyCapabilityModules, moduleIdForSettingControl, moduleSelectionFromConfig, normalizeModuleSelection, selectionPolicyError, workflowsModeOf, type ModuleId } from "../../modules.js";
+import { installedRetiredModuleConfig, moduleIdForSettingControl, selectionPolicyError, type ModuleId } from "../../module-catalog.js";
+import { MODULE_PRESETS, migrateLegacyCapabilityModules, moduleSelectionFromConfig, normalizeModuleSelection, workflowsModeOf, decodeModuleState, statedRetiredOptOut } from "../module-descriptor.js";
 import type { WorkflowsMode } from "../../../protocol/runtime/module-protocol-types.js";
-import { decodeModuleState, statedRetiredOptOut } from "../module-descriptor.js";
 import { ConfigStaleWriteError, ConfigWriteError, patchRootField, updateConfigTextAwaited, type ConfigWriteResult, type UpdateModelSelectionOptions } from "../writer.js";
 
 import { MODULE_IDS, persistedDisabledModuleIds } from "../../../protocol/runtime/module-ids.js";

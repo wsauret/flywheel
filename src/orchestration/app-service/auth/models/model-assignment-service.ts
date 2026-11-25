@@ -1,7 +1,6 @@
 import type { RoleAssignments } from "../../../session/metadata/schemas.js"
-import type { FirstPartyModuleSnapshot } from "../../../modules.js"
-import { workflowRunReader } from "../../../module-catalog.js"
-import { agentPersonas, installedPersonaRole } from "../../../workflow-host/frontend-attempts.js"
+import { type FirstPartyModuleSnapshot, workflowRunReader } from "../../../module-catalog.js"
+import { agentPersonas, installedPersonaRole } from "../../../session/metadata/frontend-attempts.js"
 import type { RuntimeModelRolesResult } from "../../../../protocol/auth/model-role-protocol-types.js"
 import { modelRoleAdmission, publishedModelRoles } from "./model-role-projection.js"
 import type { ModelPickerConfigDeps } from "../../../config/models/model-assignment-types.js"
@@ -16,7 +15,7 @@ import {
   type RoleCaptureStore,
 } from "../../../config/models/model-assignment-controller.js"
 import { ensureDurableChatSession } from "../../supervisor/actor/session-chat-durability.js"
-import type { DefinitionAvailabilityOwner } from "../../definitions/definition-availability.js"
+import type { DefinitionAvailabilityOwner } from "../../../config/policy/definition-availability.js"
 import { isProfileModelRole } from "../../../../protocol/auth/brief-role-id.js"
 import type { SessionManager } from "../../../session/manager.js"
 import type { SessionStore } from "../../../session-store/types.js"

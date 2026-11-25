@@ -1,5 +1,5 @@
 import { createChatGptWebSearch } from "../agent-runtime/web-search/chatgpt.js";
-import type { FirstPartyModule, WebBackendContribution } from "../modules.js";
+import type { FirstPartyModule, WebBackendContribution } from "../module-catalog.js";
 
 const backend = {
   id: "chatgpt",

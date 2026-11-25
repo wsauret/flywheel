@@ -3,7 +3,7 @@ import { isVisibleMessageBlock, messageSenderOf } from "../../infra/output-block
 import type { AttachChildSessionProjection } from "../module-seams.js"
 import { SessionTranscriptProjection } from "../session/conversation/transcript/transcript-projection.js"
 import { SessionEventAdapter } from "./event-adapter.js"
-import { createRunnerBusBridge } from "../agent-runtime/runner/turn-host/bus-bridge.js"
+import { createRunnerBusBridge } from "../agent-runtime/runner/bus-bridge.js"
 import { createOutputSession } from "./output-session.js"
 import type { SessionStore } from "./types.js"
 import { readSessionDurationFromReader } from "../session/runtime-facts/session-duration-projection.js"

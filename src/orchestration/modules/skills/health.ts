@@ -2,7 +2,7 @@ import type { ProjectDirectories } from "../../../infra/directory-authorities.js
 import { Log } from "../../../infra/diagnostics/log.js"
 import { inspectSkillLibrary } from "../../../workflows/skills/skill-health.js"
 import { createInstalledDefinitionRegistry } from "../../app-service/definitions/definition-catalog.js"
-import type { ModuleHealthReport } from "../../module-health.js"
+import type { ModuleHealthReport } from "../../app-service/definitions/commands/module-health.js"
 
 const log = Log.create({ service: "skill-doctor" })
 

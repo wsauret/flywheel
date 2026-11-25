@@ -7,7 +7,7 @@ import { ChatSessionState, type ChatCallbacks } from "../../../../src/orchestrat
 import type { ChatPorts } from "../../../../src/orchestration/chat/host-ports"
 import type { OutputSession } from "../../../../src/orchestration/session-store/output-session"
 import type { Agent } from "../../../../src/orchestration/agent-runtime/types"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work"
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime"
 import { isRuntimeInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record"
 

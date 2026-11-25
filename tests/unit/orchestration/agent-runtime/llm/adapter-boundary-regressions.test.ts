@@ -13,7 +13,8 @@ import { isProviderAttributedFailure, normalizeProviderAttemptFailure, ProviderA
 import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
 import { createAvailabilityAuthority } from "../../../../../src/infra/llm/access/availability-store.js";
 import { availabilityFixtures } from "./_provider-availability-harness.js";
-import type { ConversationMessage, LLMClient, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { LLMClient, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models/models.js";
 import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
 import { wireClient, wireResponse } from "./_wire-fixtures.js";

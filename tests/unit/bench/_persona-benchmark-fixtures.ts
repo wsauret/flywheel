@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
 import { tmpdir } from "node:os";
 import type { AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
 import type { BenchmarkEvent, PersonaBenchmarkDeps } from "../../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";

@@ -4,7 +4,7 @@ import type { OperationLogger } from "../../../../infra/operation-log.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import { providerLoginFlow } from "../../../auth/auth-actions.js"
 import type { ModulePolicy } from "../../../config/policy/module-policy.js"
-import { composeRealmModuleSnapshot } from "../../../modules.js"
+import { composeRealmModuleSnapshot } from "../../../module-composition.js"
 import { createAuthLoginService, type AuthLoginService } from "./auth-login-service.js"
 import type { AuthRuntime } from "../auth-runtime.js"
 

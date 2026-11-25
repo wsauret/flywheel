@@ -9,15 +9,8 @@ import { openStandaloneTurn, RunLifecycle } from "../../../../../src/orchestrati
 import { RequestToolMap, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { runBudgetExhaustionTurn } from "../../../../../src/orchestration/agent-runtime/loop/budget-exhaust.js";
 import { resolveModelInteractionProfile } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
-import {
-  FUNCTION_TOOL_PRESENTATION,
-  type ContentBlock,
-  type ConversationMessage,
-  type ModelClient,
-  type ProviderStreamEvent,
-  type ServingAttempt,
-  type StreamOptions,
-} from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, type ModelClient, type ProviderStreamEvent, type ServingAttempt, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "../tools/_fixtures.js";
 import type { ToolResultEntry } from "../../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js";

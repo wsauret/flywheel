@@ -5,14 +5,14 @@ import type { ContentBlock } from "../../../infra/runtime-facts/runtime-content-
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
 import type { BackgroundCommandRecord } from "../../../infra/runtime-facts/runtime-fact-types.js";
 import type { RuntimeEvent, UsageData } from "../../../infra/runtime-facts/runtime-event-types.js";
-import type { LlmToolOutputPart } from "../llm/messages.js";
+import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
 import { toolOutcomeToProviderIsError, type ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js";
-import type { RuntimeToolExecution } from "../tools/types.js";
+import type { RuntimeToolExecution } from "../../../infra/tools/types.js";
 import { probeToolRenderPhase } from "../../../infra/render-probe.js";
 import { sanitizeExternalText } from "../../../infra/control-characters.js";
 import type { ChatInput } from "../../../infra/chat-input.js";
-import type { ContentBlock as CanonicalContentBlock } from "../llm/types.js";
-import { redactBlock } from "../loop/turn/agent-loop-history.js";
+import type { ContentBlock as CanonicalContentBlock } from "../../../infra/llm/conversation/conversation-message.js";
+import { redactBlock } from "../../session/conversation/redact-message.js";
 import { isAnthropicNarration } from "../../../infra/llm/anthropic-narration.js";
 
 interface ToolInput {

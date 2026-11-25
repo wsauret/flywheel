@@ -1,5 +1,5 @@
-import type { FirstPartyModule, ModuleId, FirstPartyModuleComposition } from "./modules.js"
-import { installedModules } from "./module-catalog.js"
+import { installedModules, type FirstPartyModule, type FirstPartyModuleComposition, type ModuleId } from "./module-catalog.js"
+import type { DefinitionContribution } from "./module-seams.js"
 
 import { canonicalModuleIds } from "../protocol/runtime/module-ids.js"
 
@@ -45,4 +45,9 @@ export function backgroundShellModuleRequirements(modules: readonly FirstPartyMo
   const entries = modules.flatMap((module) => module.contributions.filter((entry) => entry.domain === "shellOperations" && entry.value.background))
   if (entries.length === 0) throw new Error("No module contributes background shell execution")
   return canonicalModuleIds(entries.flatMap((entry) => moduleRequirementsForContribution("shellOperations", entry.id, modules)))
+}
+
+export function definitionModuleRequirements(modules: readonly FirstPartyModule[] = installedModules()) {
+  const forKind = (kind: DefinitionContribution["kind"]): readonly ModuleId[] => canonicalModuleIds(modules.flatMap((module) => module.contributions.flatMap((entry) => entry.domain === "definitions" && entry.value.kind === kind ? moduleRequirementsForContribution("definitions", entry.id, modules) : [])))
+  return { skills: forKind("skill"), subagents: forKind("agent"), workflows: forKind("workflow") }
 }

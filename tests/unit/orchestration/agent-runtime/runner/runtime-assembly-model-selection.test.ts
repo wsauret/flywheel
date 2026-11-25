@@ -7,7 +7,7 @@ import { openExistingAuthProfileDirectory } from "../../../../../src/infra/auth/
 import { writeProviderModelCatalog } from "../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js"
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../../src/infra/model-catalog-rows.js"
 import { accessProviderAccountKey } from "../../../../../src/infra/auth/provider-account.js";
-import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js"
+import { accessProviderRegistry } from "../../../../../src/orchestration/config/models/access-provider-registry.js"
 import { providerModelEligibilityDecision, type ProviderModelEnabledCandidate } from "../../../../../src/orchestration/config/models/provider-model-eligibility.js"
 import { assembleRuntimeForTurn } from "../../../../../src/orchestration/agent-runtime/runner/runtime-assembly.js"
 import { resolveRuntimeConversation } from "../../../../../src/orchestration/agent-runtime/request/runtime-conversation.js"
@@ -20,7 +20,7 @@ import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../hel
 import { attemptHistoryTarget } from "../_model-client.js"
 import { createAdmittedClient, type AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"
 import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission, type LLMClient, type ServingAttempt } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
-import { resolveSessionRoles } from "../../../../../src/orchestration/config/models/session-role-resolver.js"
+import { resolveSessionRoles } from "../../../../../src/orchestration/agent-runtime/request/roles/session-roles.js"
 import type { RoleHold } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { capabilityAccessHolding } from "../tools/_fixtures.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js"

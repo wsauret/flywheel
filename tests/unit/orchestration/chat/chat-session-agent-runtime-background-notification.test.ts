@@ -5,7 +5,8 @@ import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types
 import type { ChatCallbacks } from "../../../../src/orchestration/chat/types"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
-import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
+import { FUNCTION_TOOL_PRESENTATION, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
+import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message"
 import { asModelClient } from "../agent-runtime/_model-client"
 import { chain, fakeAvailability } from "../agent-runtime/llm/_provider-chain-harness"
 import { chatInputText, type ChatInputLike } from "../../../../src/infra/chat-input"
@@ -16,9 +17,9 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { ownHistoryTarget } from "../agent-runtime/_model-client.js";
-import { durableSubagentCompletionNotification } from "../../../../src/orchestration/agent-runtime/background-work/background-work-notifications"
-import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types"
-import type { BackgroundWorkRegistry, BackgroundWorkTracking } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
+import { durableSubagentCompletionNotification } from "../../../../src/orchestration/session/control/background-work/background-work-notifications"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/session/control/background-work/background-work-types"
+import type { BackgroundWorkRegistry, BackgroundWorkTracking } from "../../../../src/orchestration/session/control/background-work/background-work"
 
 function isBackgroundWorkRegistry(tasks: BackgroundWorkTracking): tasks is BackgroundWorkRegistry {
   return "deliverWatchEvent" in tasks

@@ -8,7 +8,7 @@ import { readSessionMetadata } from "../../session/metadata/catalog/session-meta
 import { getSessionFileChanges, sessionChangeCounts } from "../../session/metadata/catalog/session-file-changes.js"
 import type { SessionFileChangeCounts } from "../../../protocol/session/session-changes-protocol-types.js"
 import { openWorkspaceState } from "../../workspace-state/workspace-state.js"
-import { bunWorkerRunnerLayer, type WorkerSelf } from "../project-state/worker/bun-worker-rpc.js"
+import { bunWorkerRunnerLayer, type WorkerSelf } from "../../../infra/process/workers/bun-worker-rpc.js"
 import { createSessionDetailReader } from "../projections/session-detail-projection.js"
 import { classifyRuntimeProtocolErrorKind, RuntimeBackgroundRpc, RuntimeProtocolError } from "../../../protocol/rpc/runtime-protocol-schemas.js"
 import { composeModuleBackgroundReaders } from "../module-protocol-host.js"

@@ -3,12 +3,12 @@
  *  composes approval choices from the file and binds its path and hash,
  *  so model input cannot supply its own approval authority. */
 
-import type { WorkflowCallSource, WorkflowLaunchSource } from "../../../infra/tools/workflow-call-source.js"
 import type { DecisionRefusal } from "../../session/agent-input/agent-input-decision.js"
 import type { AgentInputDecision, WorkflowLaunchApprovalSource } from "../../session/agent-input/agent-input-facts.js"
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"
-import type { CapabilityAccess } from "../../agent-runtime/tools/types.js"
-import { describeDefinitionRefusal, readPathWorkflow, stageWorkflowSource, workflowFileName, type LaunchingSessionAuthority } from "./path-workflow.js"
+import { describeDefinitionRefusal, readPathWorkflow, workflowFileName } from "./path-workflow.js"
+import { stageWorkflowSource } from "../../agent-runtime/tools/definitions/workflow-staging.js"
+import { NO_WORKFLOW_DIRECTORY, type ModelWorkflowLaunchContext, type ModelWorkflowLaunchIntent, type ResolveWorkflowLaunchTarget, type WorkflowLaunchRefusal } from "../../agent-runtime/tools/definitions/workflow-launch.js"
 
 /** What every refusal of a model-originated launch ends with. The model cannot
  *  recover from prose, so each refusal names the one recovery path for each
@@ -17,46 +17,10 @@ import { describeDefinitionRefusal, readPathWorkflow, stageWorkflowSource, workf
  *  Ask before its call lands, because the mode is read at the call. */
 const WORKFLOW_LAUNCH_RETRY_INSTRUCTION = "Call ask_user with a workflow_launch decision naming the same source. After the user approves, retry workflow with the confirmation_id returned by ask_user. A child session has no ask_user: message your parent with message_session to ask it for the launch."
 
-/** Why a session without a scratch directory launches no workflow file. */
-export const NO_WORKFLOW_DIRECTORY = "This session has no scratch directory, so it cannot launch a workflow file."
-
-export type WorkflowLaunchConfirmation =
-  | { readonly kind: "supplied"; readonly confirmationId: string }
-  | { readonly kind: "absent" }
-
-/** Trusted call context of one model `workflow` call, plus the untrusted
- *  confirmation value that call carried. */
-export interface ModelWorkflowLaunchContext {
-  readonly conversationId: string
-  readonly toolUseId: string
-  readonly confirmation: WorkflowLaunchConfirmation
-  /** The tools and personas of the calling session, which a workflow file
-   *  may grant its agents. The tool derives it from its runner's planned
-   *  tools. */
-  readonly authority: LaunchingSessionAuthority
-  /** The capability boundary of the calling agent, as its tool call holds it.
-   *  The launch records its ceiling and whether a person reads the tree with
-   *  the run, so the workflow's agents keep them in every start of the run
-   *  (PI-AGENT-121).
-   *  Absent when the call's context holds no capability policy. */
-  readonly capabilityAccess?: CapabilityAccess
-}
-
 export interface ModelWorkflowLaunchOrigin extends ModelWorkflowLaunchContext {
   readonly kind: "model"
   /** Parent chat session, stamped by the host that owns the runner. */
   readonly chatSessionId: string
-}
-
-/** The intent one model launch states. The tool saves
- *  the content of a content call first, so a launch names the saved file. */
-export interface ModelWorkflowLaunchIntent {
-  readonly source: WorkflowLaunchSource
-  readonly summary?: string
-  readonly description: string
-  readonly launchCwd?: string
-  /** The bytes saved by this content call, carried only until definition admission. */
-  readonly savedContent?: string
 }
 
 /** A model's launch: it answers with the live run its tool call follows.
@@ -71,24 +35,6 @@ export interface ModelWorkflowLaunchRequest extends ModelWorkflowLaunchIntent {
 export function modelWorkflowLaunchOrigin(chatSessionId: string, context: ModelWorkflowLaunchContext): ModelWorkflowLaunchOrigin {
   return { kind: "model", chatSessionId, ...context }
 }
-
-const APPROVE_CHOICE_ID = "approve"
-const INLINE_CHOICE_ID = "inline"
-const DECISION_HEADER = "Workflow"
-
-/** The file definition that the approval question shows. */
-export interface WorkflowLaunchTarget {
-    readonly source: Extract<WorkflowLaunchApprovalSource, { kind: "path" }>
-    readonly name: string
-    readonly description?: string
-  }
-
-/** The target one approval names, or why it cannot be approved. A path
- *  target reads the file through the path pipeline, so the question shows
- *  the definition that the approval binds. A content target saves and judges
- *  those bytes as the launch does, retaining the file's path, so a launch of
- *  the same content, or of the saved file, matches the approval. */
-export type ResolveWorkflowLaunchTarget = (source: WorkflowCallSource) => Promise<WorkflowLaunchTarget | WorkflowLaunchRefusal>
 
 /** The target resolver of one chat session. A path source reads the file through the
  *  path pipeline, so the approval binds the resolved path and the hash of
@@ -117,33 +63,6 @@ export function workflowLaunchTargets(input: {
       name: read.workflow.name,
       ...(read.workflow.description ? { description: read.workflow.description } : {}),
     }
-  }
-}
-
-/** Approval choices name the file and state what its definition says it does. */
-function launchChoices(target: WorkflowLaunchTarget, approveLabel: string) {
-  return [
-    { kind: "option", choiceId: APPROVE_CHOICE_ID, label: approveLabel, description: `Run the workflow file ${target.source.path}${target.description ? `: ${target.description}` : "."}` },
-    { kind: "option", choiceId: INLINE_CHOICE_ID, label: "Do the work inline", description: "Do not start the workflow file, and do the work in this chat." },
-  ] as const
-}
-
-/** Compose the one question a model-originated launch is decided by. The user
- *  reads the workflow name and answers with Flywheel's own choices; the launch
- *  intent itself is already legible in the conversation that proposed it. */
-export function workflowLaunchDecision(target: WorkflowLaunchTarget) {
-  const approve = { choiceId: APPROVE_CHOICE_ID, label: `Start the ${target.name} workflow` }
-  const choices = launchChoices(target, approve.label)
-  const reject = { choiceId: INLINE_CHOICE_ID, label: choices[1].label }
-  const question = `Launch the ${target.name} workflow?`
-  return {
-    decision: { kind: "workflow_launch", source: target.source, question, approve, reject },
-    question: {
-      question,
-      header: DECISION_HEADER,
-      choices: [...choices, { kind: "freeform", label: "Other" }],
-      multiSelect: false,
-    },
   }
 }
 
@@ -180,24 +99,6 @@ export function workflowLaunchMismatch(input: {
     return `That confirmation approves the workflow file ${source.path} as it was when the question was asked, and the file changed after that. Ask again to approve the file as it is now.`
   }
   return undefined
-}
-
-/** A refused model-originated launch. `error` is the complete reason, the
- *  words a person reads on the launch card. `recovery` is the one path the
- *  model takes next, which the model reads after the reason. */
-export interface WorkflowLaunchRefusal {
-  readonly error: string
-  /** Each located problem of a workflow file, for the agent that repairs it. */
-  readonly problems?: readonly string[]
-  readonly recovery?: string
-}
-
-/** A refusal as the words the agent reads: the reason, each located
- *  problem on its own line, then the recovery. A reason that spans lines
- *  ends on a line of its own, so its recovery takes a line of its own. */
-export function workflowRefusalText(refusal: WorkflowLaunchRefusal): string {
-  const reason = [refusal.error, ...(refusal.problems ?? []).map((problem) => `- ${problem}`)].join("\n")
-  return refusal.recovery === undefined ? reason : `${reason}${reason.includes("\n") ? "\n" : " "}${refusal.recovery}`
 }
 
 /** One approval refusal the model can act on: the specific reason, then the

@@ -1,6 +1,7 @@
 import { Schema } from "effect"
 import { defineFact } from "../../../infra/event-registry.js"
-import { CanonicalDirectorySchema, RoleAssignmentEntryV1Schema, RoleAssignmentsV1Schema, RoleAssignmentEntrySchema, RoleAssignmentsSchema, HistoricalRoleAssignmentSnapshotSchema, ReplayedSessionSchema, SalvagedSessionSchema, SessionSchema, normalizeRoleAssignments, recoverRoleAssignmentSnapshot, type ReplayedSession, type RoleSettingEntry, type RoleSettings, type SalvagedSession, type Session } from "./schemas.js"
+import { CanonicalDirectorySchema, RoleAssignmentEntryV1Schema, RoleAssignmentsV1Schema, RoleAssignmentEntrySchema, RoleAssignmentsSchema, HistoricalRoleAssignmentSnapshotSchema, ReplayedSessionSchema, SalvagedSessionSchema, SessionSchema, recoverRoleAssignmentSnapshot, type ReplayedSession, type RoleSettingEntry, type RoleSettings, type SalvagedSession, type Session } from "./schemas.js"
+import { normalizeRoleAssignments } from "../../config/retired-config-names.js"
 import { RoleAssignmentSnapshotSchema, RoleSettingEntrySchema } from "../../../infra/role-settings.js"
 import { SessionLifecycleStateSchema } from "./types.js"
 import { isRecord } from "../../../infra/record.js"

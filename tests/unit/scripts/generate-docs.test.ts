@@ -8,7 +8,7 @@ import { renderCliReference, renderCommandReference } from "../../../scripts/ren
 import { commandSyntax, rootHelp } from "../../../src/cli/root-help.js";
 import { configReference } from "../../../src/orchestration/config/schema/config-reference.js";
 import { installedConfigSchema } from "../../../src/orchestration/config/schema/schema.js";
-import { SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
+import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
 import { createKeymap } from "../../../src/tui/terminal/keymap/keymap.js";
 import { temporaryDirectories } from "../../helpers/directories.js";

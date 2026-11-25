@@ -14,8 +14,8 @@ import { conversationHoldsEntries } from "../../session/conversation/session-mes
 import { addressReachesAgent } from "../../../workflows/context-bundle/context-facts.js"
 import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { startedAgents, type StartedAgent } from "../../../workflows/vm/host/host-commit-controller.js"
-import { workflowInterruptRefusal } from "../workflow-addressing.js"
-import { interruptRank, strongestInterrupt } from "../../session/control/child-continuation.js"
+import { workflowInterruptRefusal } from "../../session/control/messaging/workflow-addressing.js"
+import { interruptRank, strongestInterrupt } from "../../session/metadata/workflow-run-record.js"
 
 /** The attempt of one agent that runs, which a held message's address
  *  reaches or not. */

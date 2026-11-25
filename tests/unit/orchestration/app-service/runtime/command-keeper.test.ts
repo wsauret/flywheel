@@ -7,7 +7,7 @@ import { readOutcomeRecord, writeOutcomeRecord } from "../../../../../src/infra/
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js"
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js"
 import { createCommandKeeper, type CommandKeeper, type KeptOutputChange } from "../../../../../src/orchestration/app-service/runtime/command-keeper.js"
 import { createPrivateCopyJobs } from "../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-jobs.js"
 import { takePrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy.js"

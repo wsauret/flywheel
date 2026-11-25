@@ -1,7 +1,7 @@
 import type { ReplyWaitTasks } from "../../../session/control/messaging/reply-waits.js";
 import type { MessageSessionResult, SessionMessaging } from "../../../session/control/messaging/session-messaging.js";
 import type { ReplayedSession } from "../../../session/metadata/schemas.js";
-import type { ContentBlock, ConversationMessage } from "../../llm/types.js";
+import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import type { AdvertisedTool, RuntimeTool, ToolResult } from "../types.js";
 import { parseWorkflowTargets } from "./workflow-targets.js";
 

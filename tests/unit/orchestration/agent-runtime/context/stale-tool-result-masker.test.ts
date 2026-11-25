@@ -4,7 +4,7 @@ import {
   maskStaleForTurn,
   maskToolResultsById,
 } from "../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker";
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types";
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message";
 import { DELIVERY_CONFIRMATION } from "../../../../../src/infra/delivery-confirmation.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types.js";
 import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js";

@@ -9,7 +9,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../s
 import type { StartupDirectories } from "../../../../../../src/infra/directory-authorities.js";
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js";
 import { clearSharedModelListingClients, getSharedModelsClient } from "../../../../../../src/orchestration/config/models/llm-clients.js";
-import * as workflowDeps from "../../../../../../src/orchestration/workflow-host/deps.js";
+import * as workflowDeps from "../../../../../../src/orchestration/agent-runtime/runner/workflow-deps.js";
 
 describe("skill maintenance request hosts", () => {
   const temporary = temporaryDirectories();

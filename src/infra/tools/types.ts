@@ -147,3 +147,13 @@ export interface DetailToolDisplay extends ToolDisplayBase {
 }
 
 export type ToolDisplay = ActionAwareToolDisplay | DetailToolDisplay;
+
+type ToolExecutionMode = "foreground" | "background";
+type ToolTraceKind = "tool" | "subagent";
+
+/** How the runtime runs one tool's calls, and how its trace shows them. */
+export interface RuntimeToolExecution {
+  mode: ToolExecutionMode;
+  traceKind: ToolTraceKind;
+  childHasOwnViewport?: boolean;
+}

@@ -11,12 +11,12 @@ import { providerLoginFlow, type ProviderOAuthLogin } from "../../../../src/orch
 import { chatgptModule } from "../../../../src/orchestration/modules/provider-chatgpt/module.js";
 import { githubCopilotModule } from "../../../../src/orchestration/modules/provider-github-copilot/module.js";
 import { supergrokModule } from "../../../../src/orchestration/modules/provider-supergrok/module.js";
-import type { FirstPartyModule } from "../../../../src/orchestration/modules.js";
+import type { FirstPartyModule } from "../../../../src/orchestration/module-catalog.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 import { FREE_PLAN_REPLACE_QUESTION } from "../../../../src/infra/llm/access/free-plan-accounts.js";
 import { createUsageAuthority } from "../../../../src/infra/llm/usage/usage-authority.js";
-import { installedCredentialSlotClassifier } from "../../../../src/orchestration/credential-provider-modules.js";
+import { installedCredentialSlotClassifier } from "../../../../src/orchestration/module-composition.js";
 
 // Each login runs a shipped provider definition whose round trip with the
 // provider is replaced, through the flow that clients call, against a real

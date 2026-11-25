@@ -15,10 +15,11 @@
 // subcommand that starts a process launches it into the one generation the
 // composition root owns.
 
+import { importComposing } from "./composition/module-registries.js"
 import type { StartupDirectories } from "../infra/directory-authorities.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
 import type { ProjectStateStandby } from "../orchestration/app-service/project-state/project-state-standby.js"
-import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/modules.js"
+import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/module-catalog.js"
 import type { CliVerbSummary, CommandProcessResources } from "../orchestration/cli-contribution.js"
 import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/runtime/account-attach.js"
 
@@ -52,7 +53,7 @@ const EVENT_VERBS: Readonly<Subcommands> = {
     await runEventSearch(args, directories.projectRoot)
   },
   maintain: async (args, directories) => {
-    const { runMaintain } = await import("./events/event-maintain.js")
+    const { runMaintain } = await importComposing(() => import("./events/event-maintain.js"))
     await runMaintain(args, directories.projectRoot)
   },
 }
@@ -60,7 +61,7 @@ const EVENT_VERBS: Readonly<Subcommands> = {
 const HEADLESS_VERBS: Readonly<Subcommands> = {
   "snapshot-auth": async (args, directories, launcher) => {
     const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/auth/resolve-key.js")
-    const { runHeadlessSnapshotAuth, snapshotAuthProviders } = await import("./commands/headless-snapshot-auth.js")
+    const { runHeadlessSnapshotAuth, snapshotAuthProviders } = await importComposing(() => import("./commands/headless-snapshot-auth.js"))
     await runHeadlessSnapshotAuth(args, directories, createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope)), await snapshotAuthProviders(directories))
   },
 }
@@ -94,10 +95,10 @@ export const SUBCOMMANDS: KernelNouns = {
       const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/auth/resolve-key.js")
       const { openExternalUrl } = await import("../infra/open-external-url.js")
       const { promptFromReadline } = await import("./readline-prompt.js")
-      const { composeRealmModuleSnapshot } = await import("../orchestration/modules.js")
+      const { composeRealmModuleSnapshot } = await importComposing(() => import("../orchestration/module-composition.js"))
       const { MODULE_IDS } = await import("../protocol/runtime/module-ids.js")
-      const { AUTH_OPERATIONS, runAuth } = await import("./commands/auth.js")
-      const { createCatalogSettlement } = await import("../orchestration/auth/catalog-settlement.js")
+      const { AUTH_OPERATIONS, runAuth } = await importComposing(() => import("./commands/auth.js"))
+      const { createCatalogSettlement } = await importComposing(() => import("../orchestration/auth/catalog-settlement.js"))
       const resolveKey = createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope))
       await runAuth([...args], directories, {
         actions: AUTH_OPERATIONS,
@@ -141,7 +142,7 @@ export const SUBCOMMANDS: KernelNouns = {
         stateStandby = startProjectStateStandby(runtimeWorkerUrl())
       }
       try {
-        const { releaseHarnessRuntimeOptions, runServe } = await import("./account-service/serve.js")
+        const { releaseHarnessRuntimeOptions, runServe } = await importComposing(() => import("./account-service/serve.js"))
         process.exitCode = await runServe(
           args,
           directories,
@@ -188,7 +189,7 @@ export const SUBCOMMANDS: KernelNouns = {
       { syntax: "reset", description: "Show the Flywheel font tip again." },
     ],
     dispatch: async (args, directories, launcher) => {
-      const { runFont } = await import("./commands/font.js")
+      const { runFont } = await importComposing(() => import("./commands/font.js"))
       await runFont([...args], directories, launcher.scope)
     },
   },
@@ -203,7 +204,7 @@ export const SUBCOMMANDS: KernelNouns = {
   update: {
     verbs: [{ syntax: "", description: "Check for a newer Flywheel and install it." }],
     dispatch: async (args, directories, launcher) => {
-      const { runUpdate } = await import("./commands/update.js")
+      const { runUpdate } = await importComposing(() => import("./commands/update.js"))
       await runUpdate(args, directories, launcher)
     },
   },
@@ -219,8 +220,8 @@ export const SUBCOMMANDS: KernelNouns = {
  *  cannot act on selects nothing, and its reason is the line before the
  *  refusal. */
 async function projectModuleSelection(directories: StartupDirectories, modules: readonly FirstPartyModule[] | undefined): Promise<FirstPartyModuleComposition> {
-  const { startModulePolicy } = await import("../orchestration/config/policy/module-policy.js")
-  const { composeRealmModuleSnapshot } = await import("../orchestration/modules.js")
+  const { startModulePolicy } = await importComposing(() => import("../orchestration/config/policy/module-policy.js"))
+  const { composeRealmModuleSnapshot } = await importComposing(() => import("../orchestration/module-composition.js"))
   const started = await startModulePolicy({ userDataRoot: directories.userDataRoot })
   try {
     if (started.notice) console.error(started.notice)
@@ -271,7 +272,7 @@ function moduleNounDispatch(noun: InstalledCliNoun, catalog: readonly FirstParty
 export async function subcommandDispatch(name: string, modules?: readonly FirstPartyModule[]): Promise<SubcommandDispatch | undefined> {
   if (Object.hasOwn(SUBCOMMANDS, name)) return SUBCOMMANDS[name]?.dispatch
   if (name.startsWith("-")) return undefined
-  const { installedCliNouns } = await import("../orchestration/modules.js")
+  const { installedCliNouns } = await importComposing(() => import("../orchestration/module-catalog.js"))
   const noun = installedCliNouns(modules).get(name)
   return noun && moduleNounDispatch(noun, modules)
 }

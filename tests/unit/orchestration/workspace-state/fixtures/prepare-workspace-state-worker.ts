@@ -1,3 +1,5 @@
+// A worker realm loads the registries, which publish the module catalog.
+import "../../../../../scripts/shipped-modules.js"
 import { parentPort, workerData } from "node:worker_threads"
 import type { ProjectDirectories } from "../../../../../src/infra/directory-authorities.js"
 import { LockRefusal } from "../../../../../src/infra/locks/ownership-file-lock.js"

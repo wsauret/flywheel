@@ -11,8 +11,8 @@ import { join } from "node:path";
 
 import { errorMessage } from "../../../../../infra/error-message.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
-import type { BackgroundWorkRegistry } from "../../../background-work/background-work.js";
-import type { ForegroundBashReleaseReason } from "../../../background-work/foreground-bash-hold.js";
+import type { BackgroundWorkRegistry } from "../../../../session/control/background-work/background-work.js";
+import type { ForegroundBashReleaseReason } from "../../../../session/control/background-work/foreground-bash-hold.js";
 import { settledForegroundResult } from "./bash-output-tail.js";
 import { BACKGROUND_COMMAND_FILE_PREFIX, buildBackgroundScript, scriptExtension, shellInvocation } from "../bash-script.js";
 import { landingEvidence, settledLandingOutput, startManagedCommand } from "./managed-command.js";

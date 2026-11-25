@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
-import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
 import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
 import { budgetCaptureSurface, makeCaptureClient } from "./_loop-fixtures.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";

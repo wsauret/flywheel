@@ -11,7 +11,7 @@ import * as path from "node:path";
 import { rmSync } from "node:fs";
 
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
 import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js";
 import type { AgentRunResult, AgentRunTerminal, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";

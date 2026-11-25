@@ -6,10 +6,11 @@ import type {
 } from "openai/resources/chat/completions.js";
 import type { AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
 import { imageOmittedPlaceholder, splitToolOutputParts } from "../../../../../infra/llm/tool-output-part-schema.js";
-import { healConversation } from "../../history/heal-messages.js";
+import { healConversation } from "../../../../session/conversation/tree/heal-messages.js";
 import { lowerProviderHistory, type ProviderHistoryTarget } from "../../history/provider-history.js";
 import { sanitizeSurrogates } from "../../history/sanitize-unicode.js";
-import type { ContentBlock, ConversationMessage, ToolChoice } from "../../types.js";
+import type { ToolChoice } from "../../types.js";
+import type { ContentBlock, ConversationMessage } from "../../../../../infra/llm/conversation/conversation-message.js";
 
 interface UnknownFields { [key: string]: unknown }
 

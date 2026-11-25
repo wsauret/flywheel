@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { campaignDesignAnswer, campaignWorkflowApproval, recordCampaignAnswer } from "../../../bench/chat-ab/campaign-policy.js";
 import { acpQuestionForm } from "../../../src/protocol/rpc/acp.js";
 import type { PendingQuestionView } from "../../../src/protocol/session/question-protocol-types.js";
-import { workflowLaunchDecision } from "../../../src/orchestration/workflow-host/lifecycle/launch-origin.js";
+import { workflowLaunchDecision } from "../../../src/orchestration/agent-runtime/tools/definitions/workflow-launch.js";
 
 type Entry = PendingQuestionView["questions"][number];
 // Headless chat asks each open question as this form (protocol/rpc/acp.ts), which the adapter decodes as is.

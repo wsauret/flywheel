@@ -4,10 +4,10 @@ import { sessionMessageRecoveryNotice, type SessionInputProducer, type SessionMe
 import type { ModelFamily } from "../../../../infra/llm/models/model-family.js";
 import type { PromptHistoryLowering } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import { IMAGE_REMOVED, imagesReplaced } from "./image-limit.js";
-import { isSameProviderReplay, type LlmApi } from "../messages.js";
-import { maxImagesPerRequest } from "../model-compat.js";
-import { isModelReminderOf } from "./runtime-reminders.js";
-import type { ContentBlock, ConversationMessage } from "../types.js";
+import { isSameProviderReplay, type LlmApi } from "../../../../infra/llm/conversation/messages.js";
+import { maxImagesPerRequest } from "../../../../infra/llm/models/model-compat.js";
+import { isModelReminderOf } from "../../../../infra/llm/runtime-reminder-format.js";
+import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 
 const CONTINUATION_INSTRUCTION = "Continue the original request from the retained assistant output without repeating completed work.";
 

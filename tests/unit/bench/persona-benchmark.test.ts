@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,7 +18,7 @@ import { createPersonaStore as createRunStore } from "../../../src/orchestration
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
 import { loadAllCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
 import type { BenchmarkRuntime } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
-import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createForegroundBashHoldController } from "../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
 import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";

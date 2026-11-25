@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import * as os from "node:os";
 
 import { createBashDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { createForegroundBashHoldController } from "../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { backgroundLogPath } from "../../../../../helpers/background-log-path.js";
 import { bashExecution, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext } from "../_fixtures.js";

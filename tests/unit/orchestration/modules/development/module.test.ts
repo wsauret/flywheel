@@ -1,11 +1,14 @@
-import { installedDefinitionBundles, installedModules } from "../../../../../src/orchestration/module-catalog.js"
+import { installedDefinitionBundles, installedModules, installedCliNouns, moduleProtocolRows } from "../../../../../src/orchestration/module-catalog.js";
 import { afterAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEVELOPMENT_MODULES } from "../../../../../src/orchestration/development-modules.js";
 import { developmentModule } from "../../../../../src/orchestration/modules/development/module.js";
 import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/request/module-services/module-runtime-services.js";
-import { composeFirstPartyModules, composeRealmModuleSnapshot, installedCliNouns, moduleProtocolRows, moduleSelectionFromConfig, RETIRED_MODULE_ID_SPELLINGS, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../src/orchestration/module-composition.js";
+import { moduleSelectionFromConfig } from "../../../../../src/orchestration/config/module-descriptor.js";
+import { RETIRED_MODULE_ID_SPELLINGS } from "../../../../../src/orchestration/modules.js";
+import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js";
 import { createToolRegistry, installedPersonaToolEntries } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { composeModuleServices, NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js";
 import { moduleRequirementsForContribution } from "../../../../../src/orchestration/module-requirements.js";
@@ -16,8 +19,8 @@ import { personaToolEntries } from "../../../../../src/orchestration/agent-runti
 import { loadStandalonePersonaRegistry } from "../../../../../src/workflows/agents/registry.js";
 import { personaToolNames } from "../../../../../src/workflows/agents/subagent-reachability.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js";
 import { createProviderRequestAuditWriter } from "../../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js";
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js";

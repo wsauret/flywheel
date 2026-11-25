@@ -7,7 +7,9 @@ import type { DebugLogRecordInput } from "../../../../../src/infra/diagnostics/d
 import { Log } from "../../../../../src/infra/diagnostics/log.js"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
-import { composeFirstPartyModules, createSessionToolSummaryReader, installedWorkspaceMigrations } from "../../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { createSessionToolSummaryReader } from "../../../../../src/orchestration/session/runtime-facts/module-tool-history.js"
+import { installedWorkspaceMigrations } from "../../../../../src/orchestration/module-catalog.js"
 import { subagentsModule } from "../../../../../src/orchestration/modules/subagents.js"
 import { TreeBlockProjection } from "../../../../../src/orchestration/session/conversation/transcript/conversation-block-projection.js"
 import type { MessageEntry } from "../../../../../src/orchestration/session/conversation/conversation-entry-types.js"
@@ -24,8 +26,7 @@ beforeEach(() => {
   store = createSqliteEventStore(resolveEventStoreDbFile(directory))
 })
 afterEach(() => {
-  store.close()
-  rmSync(directory, { recursive: true, force: true })
+  store.close(); rmSync(directory, { recursive: true, force: true })
 })
 function append(fact: Omit<EventStoreAppend, "aggregateId" | "sessionId" | "timestamp">): void {
   store.append({ ...fact, aggregateId: `session:${sessionId}`, sessionId, timestamp: 10 })

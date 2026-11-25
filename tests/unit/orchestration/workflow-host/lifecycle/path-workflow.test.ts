@@ -2,13 +2,8 @@ import { describe, expect, it } from "bun:test"
 import { closeSync, existsSync, ftruncateSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, symlinkSync } from "node:fs"
 import { join } from "node:path"
 import { ToolActionSchema, type ToolAction } from "../../../../../src/infra/workflow-types.js"
-import {
-  describeDefinitionRefusal,
-  loadPathWorkflow,
-  readPathWorkflow,
-  stageWorkflowSource,
-  type LaunchingSessionAuthority,
-} from "../../../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
+import { describeDefinitionRefusal, loadPathWorkflow, readPathWorkflow, type LaunchingSessionAuthority } from "../../../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
+import { stageWorkflowSource } from "../../../../../src/orchestration/agent-runtime/tools/definitions/workflow-staging.js"
 import { hashDefinition } from "../../../../../src/workflows/provenance/definition-hash.js"
 import { canonicalWorkflowRecord } from "../../../../../src/workflows/schema/definition-records.js"
 import { WORKFLOW_FILE_MAX_BYTES } from "../../../../../src/infra/yaml/workflow-yaml.js"

@@ -25,14 +25,8 @@ import type { OwnedTurn } from "./turn/run-lifecycle.js";
 import type { AssistantAttemptInput } from "./turn/assistant-turn-attempt.js";
 import type { AssistantTurnResult } from "./turn/assistant-turn-result.js";
 import type { ToolResultEntry } from "./turn/agent-state.js";
-import type {
-  ConversationMessage,
-  ContentBlock,
-  StreamEvent,
-  StreamOptions,
-  ToolCall,
-  TurnModelClient,
-} from "../llm/types.js";
+import type { StreamEvent, StreamOptions, ToolCall, TurnModelClient } from "../llm/types.js";
+import type { ConversationMessage, ContentBlock } from "../../../infra/llm/conversation/conversation-message.js";
 import type { RuntimeTool, ToolContext } from "../tools/types.js";
 import type { ExecutionWhitelist } from "../tools/dispatch/tool-policy.js";
 import type { PreparedRequestAttempt } from "../request/request-tool-surface.js";

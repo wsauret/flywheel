@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 
-import { emitAgentStreamEvent } from "../../../../../src/orchestration/agent-runtime/runner/runner-stream-events.js";
+import { emitAgentStreamEvent } from "../../../../../src/orchestration/agent-runtime/runner/stream-events/runner-stream-events.js";
 import { emitTurnAssistant } from "../../../../../src/orchestration/agent-runtime/runner/emit.js";
 import { OutputProjector } from "../../../../../src/infra/output/projector/output-projector.js";
 import { RuntimeEventProjector } from "../../../../../src/infra/output/runtime-event-projector.js";

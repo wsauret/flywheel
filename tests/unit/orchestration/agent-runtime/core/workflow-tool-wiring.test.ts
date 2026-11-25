@@ -6,7 +6,7 @@ import type { ProviderStreamEvent, StreamOptions } from "../../../../../src/orch
 import { asModelClient } from "../_model-client.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { capabilityAccessHolding } from "../tools/_fixtures.js";
 import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js";

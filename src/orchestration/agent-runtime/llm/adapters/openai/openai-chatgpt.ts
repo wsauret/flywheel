@@ -10,7 +10,7 @@ import { Log } from "../../../../../infra/diagnostics/log.js";
 import { redactSecrets } from "../../../../../infra/redact-secrets.js";
 import { LOG_DIR } from "../../../../../infra/paths.js";
 import { applyWindowsPrivateDirectoryAcl, windowsDirectoryIsOwnerOnly } from "../../../../../infra/windows-private-directory-acl.js";
-import { refreshAccessToken } from "../../../../auth/openai-oauth.js";
+import { refreshAccessToken } from "../../../../../infra/llm/access/openai-oauth.js";
 import type { ProviderConnection } from "../../../../../infra/auth/auth-context.js";
 import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../stream/provider-failure.js";
 

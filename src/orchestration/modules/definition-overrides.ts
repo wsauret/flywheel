@@ -5,7 +5,7 @@ import { createDefinitionOverridesTool, DEFINITION_OVERRIDES_TOOL_DEFINITION, ty
 import { MESSAGE_SESSION_TOOL_NAME } from "../agent-runtime/tools/sessions/message-session.js"
 import type { ToolDeclaration } from "../module-seams.js"
 import { moduleProtocol } from "../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../modules.js"
+import type { FirstPartyModule } from "../module-catalog.js"
 import { createDefinitionOverridesProtocol } from "./definition-overrides/protocol.js"
 
 /** The runtime-owned definition resolution and mutation surface, when the

@@ -1,19 +1,20 @@
 import { describe, expect, it } from "bun:test"
 import { Effect, Exit, Scope } from "effect"
-import type { ContentBlock, ConversationMessage, ProviderSessionLifetime } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ProviderSessionLifetime } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ContentBlock, ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message.js"
 import type { AgentLoopOptions } from "../../../../src/orchestration/agent-runtime/agent-loop-types.js"
 import { seedAgentLoopTurn } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import type { AgentOptionsOverride } from "./_runner-options.js"
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/request/shared-tree.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
 import { createConversationMessageEntry } from "../../../../src/orchestration/session/conversation/tree/conversation-tree.js"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { unusedSessionMessaging } from "../../../helpers/child-session-control.js"
 import { assembledRuntime, CALL_NO_TOOLS, providerRuntime } from "./_runtime-assembly-harness.js"
-import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/metadata/session-title.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/agent-runtime/session-title-generation.js"
 
 describe("side calls of a chat tree", () => {
   const sideCalls: readonly AgentOptions["purpose"][] = [

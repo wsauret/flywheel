@@ -19,6 +19,8 @@
  * A scenario that measures learning review adds a skill-load history with
  * appendSkillLoadHistory; the shared fixture does not carry it.
  */
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../../../scripts/shipped-modules.js"
 import { mkdirSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { Schema } from "effect"
@@ -26,7 +28,7 @@ import { canonicalDirectory, FLYWHEEL_DIR_NAME, type ProjectDirectories } from "
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStoreAppend } from "../../../src/infra/store/event-store-types.js"
 import { resolveSessionSummaryDbFile } from "../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../src/infra/store/sqlite-event-store.js"
-import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../src/infra/llm/conversation/conversation-message.js"
 import { createRuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-factory.js"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-facts/runtime-fact-mapper.js"
 import { parseConversationTreeFact } from "../../../src/orchestration/session/conversation/conversation-facts.js"

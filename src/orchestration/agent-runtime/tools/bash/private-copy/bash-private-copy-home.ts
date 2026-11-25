@@ -8,7 +8,7 @@ import { lstatSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { Log } from "../../../../../infra/diagnostics/log.js";
-import { PRIVATE_COPY_RECORD } from "./bash-private-copy-record.js";
+import { PRIVATE_COPY_RECORD } from "../../../../../infra/paths.js";
 
 const log = Log.create({ service: "bash-private-copy" });
 

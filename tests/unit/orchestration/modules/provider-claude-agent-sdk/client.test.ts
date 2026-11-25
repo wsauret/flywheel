@@ -8,7 +8,7 @@ import type { LauncherScope } from "../../../../../src/infra/process-supervisor.
 import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
 import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { enginePath } from "../../../../../src/infra/claude-engine.js";

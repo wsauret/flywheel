@@ -7,7 +7,7 @@ import { Log } from "../../../infra/diagnostics/log.js"
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
 import { failureTerminal, type AgentRunResult } from "../../agent-runtime/types.js"
 import { formatAgentFailure } from "../../agent-runtime/runner/failure-message.js"
-import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js"
 import { sideQuestionReminder, sideQuestionSource } from "./context.js"
 
 export interface SideQuestionRun {

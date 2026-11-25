@@ -10,9 +10,10 @@ import { testAccountHome, testDirectories } from "./directories.js";
 import type { AgentDefinition } from "../../src/infra/agent-definition.js";
 
 import { DEVELOPMENT_MODULES } from "../../src/orchestration/development-modules.js";
-import { installedDefinitionBundles } from "../../src/orchestration/module-catalog.js";
-import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModule } from "../../src/orchestration/modules.js";
-import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../src/orchestration/app-service/definitions/definition-availability.js";
+import { installedDefinitionBundles, type FirstPartyModule } from "../../src/orchestration/module-catalog.js";
+import { composeFirstPartyModules } from "../../src/orchestration/module-composition.js";
+import { SHIPPED_MODULES } from "../../scripts/shipped-modules.js";
+import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../src/orchestration/config/policy/definition-availability.js";
 import { installedPersonaToolEntries } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 let registry: ProjectDefinitionRegistry | undefined;
 let sourceRunRegistry: ProjectDefinitionRegistry | undefined;

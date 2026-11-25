@@ -3,13 +3,19 @@ import { PersistenceWriteRefused } from "../../../../infra/store/event-store-typ
 import { Log } from "../../../../infra/diagnostics/log.js";
 import { createOrderedLane } from "../../../../infra/ordered-lane.js";
 import { runInTaskSlices } from "../../../../infra/task-scheduling.js";
-import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { repairToolAdjacencyWork } from "./conversation-tool-adjacency.js";
 import type { ConversationTree } from "./conversation-tree.js";
-import type { FinalizedCheckpointSwap } from "../../../agent-runtime/agent-loop-types.js";
 import type { QueuedUserInputCell, QueuedUserInputCommitResult } from "../queued-user-inputs.js";
 import { cutRunningToolCall, interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnEndEntry, type TurnInterruption } from "../turn-end-record.js";
 import type { HeldRetainedOperation } from "../../../module-seams.js";
+
+/** A swap of one finalized in-flight checkpoint that a canonical flush retires with its turn. */
+export interface FinalizedCheckpointSwap {
+  readonly kind: string;
+  readonly key: string;
+  readonly expectedRaw: string;
+}
 
 const log = Log.create({ service: "conversation-tree-writer" });
 

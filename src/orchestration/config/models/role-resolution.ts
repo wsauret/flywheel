@@ -2,7 +2,7 @@ import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import { mergeProviderOptions } from "../../../infra/llm/access/provider-options.js";
 import { canonicalCatalogModelId, canonicalModelId } from "../../../infra/model-id.js";
 import { isCustomProviderModel } from "../../../infra/llm/custom-provider-registry.js";
-import { installedAccessProviderDefinitions } from "../../credential-provider-modules.js";
+import { installedAccessProviderDefinitions } from "../../module-composition.js";
 import { getSharedModelsClient } from "./llm-clients.js";
 import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../../infra/auth/store/auth-profile-store.js";
 import { savedProviderModelIds } from "../../../infra/auth/provider-models/provider-model-catalog-store.js";
@@ -13,7 +13,7 @@ import type { AdmittedFailoverPlan, AccessProviderModelEligibility, AccessProvid
 import type { ProviderConnection } from "../../../infra/auth/auth-context.js";
 import type { ModelInfo } from "../../../infra/llm/models/models.js";
 import { EFFORT_VALUES } from "../../../infra/workflow-types.js";
-import { clampReasoningEffort, newestLaterModelVersion } from "../../agent-runtime/llm/model-compat.js";
+import { clampReasoningEffort, newestLaterModelVersion } from "../../../infra/llm/models/model-compat.js";
 import { parseBriefRoleId, briefPersonaRoleId } from "../../../protocol/auth/brief-role-id.js";
 import { beginTierResolutionOperation, modelPriceTier, resolveModelForTierAcrossFamilies, type TierResolutionOptions } from "./model-tiers.js";
 import { modelTierForReference } from "../../../protocol/auth/model-tier-reference.js";

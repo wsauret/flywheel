@@ -17,7 +17,7 @@ import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models
 import { join } from "node:path";
 import { createModelsClient } from "../../../../../../../src/infra/llm/models/models.js";
 import { createAnthropicAdapter, operationsFromAnthropicClient, prepareAnthropicRequest, type AnthropicOperations } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
-import { supportsAdaptiveThinking } from "../../../../../../../src/orchestration/agent-runtime/llm/model-compat.js";
+import { supportsAdaptiveThinking } from "../../../../../../../src/infra/llm/models/model-compat.js";
 import { temporaryDirectories } from "../../../../../../helpers/directories.js";
 import { QuotaExhaustedError } from "../../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { ProviderAttemptFailure } from "../../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";

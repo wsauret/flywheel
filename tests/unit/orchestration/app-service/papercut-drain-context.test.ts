@@ -5,7 +5,8 @@ import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event
 import { buildPapercutDrain } from "../../../../src/orchestration/modules/papercuts/drain.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
-import type { ConversationMessage, ProviderStreamEvent, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ProviderStreamEvent, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message.js"
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox.js"
 import { asModelClient } from "../agent-runtime/_model-client.js"

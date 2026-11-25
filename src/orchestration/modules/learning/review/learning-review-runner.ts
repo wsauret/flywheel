@@ -16,7 +16,7 @@ import { verifySkillSemanticAudit } from "../skills/skill-semantic-audit.js";
 import type { ServingAttempt } from "../../../agent-runtime/llm/types.js";
 import { ModelUnavailable } from "../../../agent-runtime/llm/routing/runtime-errors.js";
 import { resolveCapturedRole } from "../../../config/models/role-resolution.js";
-import { resolveSessionRoles } from "../../../config/models/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../agent-runtime/request/roles/session-roles.js";
 import { LEARNING_REVIEW_ROLE_ID, type RoleResolver, type ResolvedRole } from "../../../config/roles.js";
 
 const log = Log.create({ service: "learning-review-runner" });
@@ -99,7 +99,7 @@ class LearningReviewRequestError extends Error {
 
 /** Resolve each review request from one profile capture and retain its admitted runtime through settlement. */
 export function createLearningReviewExecution(deps: Partial<LearningReviewModelSetting> & LearningReviewRoots & {
-  readonly moduleSelection: import("../../../modules.js").FirstPartyModuleComposition;
+  readonly moduleSelection: import("../../../module-catalog.js").FirstPartyModuleComposition;
   readonly signal?: AbortSignal;
   readonly onBudgetEvent?: (event: RuntimeEvent) => void;
   readonly captureProviderConnection: CaptureProviderConnection;

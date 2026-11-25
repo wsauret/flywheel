@@ -18,7 +18,8 @@ import type { OutgoingContextSnapshot } from "../../request/context-token-anchor
 import { prepareAssistantTurn, type PreparedRequest } from "./assistant-turn-stream.js";
 import type { AssistantAttemptInput, ImageLimitCutRecord } from "./assistant-turn-attempt.js";
 import type { CaptureModelRuntime } from "../../request/model-runtime-capture.js";
-import type { ConversationMessage, ServingAttempt } from "../../llm/types.js";
+import type { ServingAttempt } from "../../llm/types.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "../../request/prompt/model-interaction-profile.js";
 import type { ProviderSession } from "../../request/provider-runtime-cache.js";
 import type { RequestToolSurfaceOwner } from "../../request/request-tool-surface.js";

@@ -4,14 +4,13 @@ import type { ChatSessionAction, StoppedBy, WorkflowSessionAction } from "../../
 import type { WorkflowView } from "../../../workflows/view/types.js"
 import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/workflow-view.js"
 import { parseConversationTreeFact, type ConversationTreeFact } from "../conversation/conversation-facts.js"
-import { chatTurnEndEvidenceOf, isPlannedCut, isProducedInput, isResumableTurnEnd, isSkippedByWalk, pendingTurnEndEntry, restoredWaitReadsOlder, turnEndOfEntry, waitsAtRuntimeInterrupt, waitsForPerson, type ChatTurnEnd, type TurnEnd, type TurnEndEntry } from "../conversation/turn-end-record.js"
+import { chatTurnEndEvidenceOf, isPlannedCut, isProducedInput, isResumableTurnEnd, isSkippedByWalk, pendingTurnEndEntry, restoredWaitReadsOlder, turnEndOfEntry, waitsAtRuntimeInterrupt, waitsForPerson, type ChatTurnEnd, type RestoredAgentWait, type TurnEnd, type TurnEndEntry } from "../conversation/turn-end-record.js"
 import { isWorkflowResumeCandidate } from "../metadata/resumable.js"
 import { startedAgents, type StartedAgent } from "../../../workflows/vm/host/host-commit-controller.js"
 import { holdsInterruptedGuess, readToolExecution } from "../runtime-facts/tool-execution-projection.js"
 import type { ToolExecutionEntry } from "../runtime-facts/tool-execution-types.js"
 import type { SessionLifecycleState } from "../metadata/types.js"
 import { readReplyWaits } from "../conversation/reply-wait-cells.js"
-import type { RestoredAgentWait } from "../../agent-runtime/agent-loop-types.js"
 
 /** The newest entry batches of a conversation, oldest first, or nothing when
  *  this release cannot read them: a corrupt row or a batch that fails its

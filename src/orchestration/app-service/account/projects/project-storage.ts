@@ -5,7 +5,7 @@ import type { StoreUsage } from "../../../session/persistence/storage/event-stor
 import type { AccountService } from "../account-service.js"
 import type { MaintenanceQueue } from "../../background/runtime-maintenance-owner.js"
 import { readStoreUsage } from "../../../session/persistence/storage/event-store-maintenance.js"
-import { vacuumSpaceNeeds, vacuumSpaceShortfall } from "../../../session/persistence/storage/store-reclaim.js"
+import { vacuumSpaceNeeds, vacuumSpaceShortfall } from "../../../workspace-state/store-reclaim.js"
 import type { StorageReclaimOutcome, StorageReclaimPreview } from "../../../../protocol/store-reclaim.js"
 
 const log = Log.create({ service: "storage-reclaim" })

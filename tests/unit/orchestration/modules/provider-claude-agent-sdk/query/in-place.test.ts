@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY } from "@anthropic-ai/claude-agent-sdk";
 import { Effect, Exit } from "effect";
 import type { CliBlock, CliMessage, CliView, PlacedReminder, QueryIdentity } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
-import type { RuntimeReminder, HostEnvironment } from "../../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
+import type { HostEnvironment } from "../../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
+import type { RuntimeReminder } from "../../../../../../src/infra/llm/runtime-reminder-format.js";
 import { createReplayAcks, planReload, replayFrames, type HeldConversation, type OpeningStatement, type ReloadDecision } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/in-place.js";
 import { planRequest, type CliCopy, type QueryState } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/request-plan.js";
 

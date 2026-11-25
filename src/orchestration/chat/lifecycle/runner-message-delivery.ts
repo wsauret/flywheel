@@ -1,10 +1,10 @@
 import type { ChatInput } from "../../../infra/chat-input.js"
 import { messageSenderOf } from "../../../infra/output-blocks.js"
-import type { AgentHost, AgentHostTurnLease } from "../../agent-runtime/runner/turn-host/types.js"
 import type { OutputSession } from "../../session-store/output-session.js"
 import { heldAtWakeLimit, type DeliveryOutcome, type LiveRecipientState } from "../../session/message-disposition.js"
 import type { ChatTurnMailbox } from "../turn-mailbox.js"
 import type { ChatWaitState } from "../runner-wait-state.js"
+import type { ChatTurnLease, ChatTurnSlot } from "../turn-slot.js"
 
 /** One landing of input while no turn runs: whether it commits, and whether
  *  it starts its own turn. The chat runner owns the turn-slot sequence. */
@@ -16,13 +16,13 @@ export interface IdleLanding<T> {
 
 /** The parts of a chat runner that a message from another session meets. */
 export interface ChatMessageDeliveryPorts {
-  readonly host: Pick<AgentHost, "turnState" | "activeTurnLease" | "reserveTurn">
+  readonly turns: Pick<ChatTurnSlot, "turnState" | "activeTurnLease" | "reserveTurn">
   readonly mailbox: Pick<ChatTurnMailbox, "enqueueNextTurn" | "enqueueHeldMessage">
   readonly session: Pick<OutputSession, "pushUserMessage" | "flush">
   ended(): boolean
   /** What the runner's turn waits for. */
   readonly wait: Pick<ChatWaitState, "leasedState" | "awaitsPerson" | "undecidedStart">
-  landWhileIdle(reservation: AgentHostTurnLease, landing: IdleLanding<DeliveryOutcome>): Promise<DeliveryOutcome>
+  landWhileIdle(reservation: ChatTurnLease, landing: IdleLanding<DeliveryOutcome>): Promise<DeliveryOutcome>
   commitHeldMessage(input: ChatInput): Promise<string | null>
   wake(input: ChatInput): void
 }
@@ -54,8 +54,8 @@ export function createChatMessageDelivery(ports: ChatMessageDeliveryPorts) {
     async messageState(): Promise<LiveRecipientState> {
       for (let pending = ports.wait.undecidedStart(); pending; pending = ports.wait.undecidedStart()) await pending
       if (ports.ended()) return "at_rest"
-      if (ports.host.activeTurnLease) return ports.wait.leasedState()
-      if (ports.host.turnState === "active") return "running"
+      if (ports.turns.activeTurnLease) return ports.wait.leasedState()
+      if (ports.turns.turnState === "active") return "running"
       return await ports.wait.awaitsPerson() ? "interrupted" : "idle"
     },
 
@@ -69,8 +69,8 @@ export function createChatMessageDelivery(ports: ChatMessageDeliveryPorts) {
     async deliverHeldMessage(input: ChatInput, decide: (state: LiveRecipientState) => DeliveryOutcome): Promise<DeliveryOutcome> {
       for (let pending = ports.wait.undecidedStart(); pending; pending = ports.wait.undecidedStart()) await pending
       if (ports.ended()) return decide("at_rest")
-      if (ports.host.activeTurnLease) return enqueue(decide(ports.wait.leasedState()), input)
-      const reservation = ports.host.reserveTurn()
+      if (ports.turns.activeTurnLease) return enqueue(decide(ports.wait.leasedState()), input)
+      const reservation = ports.turns.reserveTurn()
       if (!reservation) return enqueue(decide("running"), input)
       const outcome = await ports.landWhileIdle(reservation, {
         admit: (waits) => {

@@ -14,17 +14,17 @@ import { canonicalize } from "../../../infra/canonical-name.js";
 import { REASONING_EFFORTS, type ReasoningEffort } from "../../../infra/llm/models/models.js";
 import { composeModuleRuntimes, type ModuleRuntimes } from "../../../infra/module-runtime.js";
 import type { AgentLoopOptions } from "../agent-loop-types.js";
-import type { ConversationMessage, ModelClient, ProviderSessionLifetime, ServingAttempt } from "../llm/types.js";
+import type { ModelClient, ProviderSessionLifetime, ServingAttempt } from "../llm/types.js";
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
 import { stableSystemPrompt, type SystemPromptTiers } from "../llm/system-prompt-tiers.js";
 import { promptKindForPurpose } from "./prompt/agent-purpose.js";
 import type { CaptureModelRuntime, LLMClientFactory } from "./model-runtime-capture.js";
-import type { RuntimeConfigRequestCapture } from "./request-config.js";
+import type { RuntimeConfigRequestCapture } from "../../config/request-config.js";
 import type { ProjectDefinitionRegistry } from "../../../workflows/definitions/definition-registry.js";
 import type { AgentDefinition } from "../../../infra/agent-definition.js";
 import type { SkillDefinition } from "../../../workflows/skills/skill-schema.js";
-import type { FirstPartyModule, FirstPartyModuleComposition } from "../../modules.js";
+import { type FirstPartyModule, type FirstPartyModuleComposition, disabledAgentTypes, installedModules } from "../../module-catalog.js";
 import { createToolRegistry } from "../tools/dispatch/tool-catalog.js";
-import { disabledAgentTypes, installedModules } from "../../module-catalog.js";
 import { skillLoadedFact } from "../../../workflows/skills/skill-facts.js";
 import { selectedToolNames } from "../tools/dispatch/tool-dispatch.js";
 import { callerToolGrant, planToolExposure, type ToolGrant } from "../tools/dispatch/tool-exposure-planner.js";
@@ -42,7 +42,7 @@ import { loadAgentInstructions } from "./prompt/instructions/project-instruction
 import { buildSystemPromptParts, type BuildSystemPromptOptions, type SystemPromptPart } from "./prompt/system-prompt.js";
 import { createPromptBaseline } from "./prompt/prompt-baseline.js";
 import { conversationPromptBaselines } from "../../session/conversation-records/conversation-prompt-baseline.js";
-import { runningDisplayBuildId } from "../../app-service/runtime-executable.js";
+import { runningDisplayBuildId } from "../../../infra/distribution/running-build.js";
 import { readModuleMemory, requestSystemPromptOptions } from "./prompt/request-system-prompt.js";
 import { isPersonTurn, turnReminders, type TurnReminderState } from "./prompt/turn-reminders.js";
 import { budgetStreamIdOf, prepareRuntimeUsage } from "./usage/runtime-usage.js";
@@ -60,7 +60,7 @@ import { conversationRolePicks, rolePickSettingKey } from "../../session/convers
 import type { RolePickSetting } from "../../session/persistence/conversation-role-pick-facts.js";
 import { commitToolNotice, toolNotice } from "./tool-notice.js";
 import { createCapabilityNarrowing, narrowingStatements, recordingNarrowings } from "./prompt/capability-narrowing.js";
-import { agentTypesTurnedOffSince } from "../../app-service/definitions/definition-availability.js";
+import { agentTypesTurnedOffSince } from "../../config/policy/definition-availability.js";
 import { holdSharedTree, treeLogin, type SharedTree, type SharedTreeCapture } from "./shared-tree.js";
 
 /** What builds the inputs of a run's requests: the same for a send and for a pre-start. */

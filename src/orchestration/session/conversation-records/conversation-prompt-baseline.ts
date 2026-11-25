@@ -11,7 +11,7 @@ import { durableOwnerAggregate, type DurableOwner } from "../../../infra/durable
 import { createEventProjection, parseProjectionFact } from "../../../infra/projection/event-projection.js";
 import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js";
 import { heldProjection } from "../../../infra/projection/projection-registry.js";
-import type { ConversationMessage } from "../../agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
 import type { SessionFactWriter } from "../persistence/session-fact-writer.js";
 import { ConversationPromptFixedFactSchema, type ConversationPromptFixedFact } from "../persistence/conversation-prompt-baseline-facts.js";
 

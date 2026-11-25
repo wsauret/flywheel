@@ -2,7 +2,7 @@ import type { TurnParkState } from "../../infra/agent-loop-events.js"
 import type { AgentLoopMaintenance } from "../agent-runtime/agent-loop-types.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
-import type { AgentHost, AgentHostTurnLease } from "../agent-runtime/runner/turn-host/types.js"
+import type { ChatTurnLease, ChatTurnSlot } from "./turn-slot.js"
 import type { LiveRecipientState } from "../session/message-disposition.js"
 import { isRuntimeInterruption, type ControlInterruption, type TurnInterruption } from "../session/conversation/turn-end-record.js"
 
@@ -55,7 +55,7 @@ export interface ChatWaitState {
    *  child's resume takes, runs no turn of its own and parks where the last
    *  turn ended, so its decision is its state from that moment, before its
    *  loop parks. */
-  decideMaintenance(lease: AgentHostTurnLease): Promise<AgentLoopMaintenance>
+  decideMaintenance(lease: ChatTurnLease): Promise<AgentLoopMaintenance>
   /** The decision of a maintenance start that holds the turn slot and has not
    *  settled yet. No interrupt has a turn to cut meanwhile, and a message
    *  waits for the decision to learn what it meets. */
@@ -81,7 +81,7 @@ export interface ChatWaitState {
 }
 
 export function createChatWaitState(input: {
-  readonly host: Pick<AgentHost, "activeTurnLease" | "ownsTurn">
+  readonly turns: Pick<ChatTurnSlot, "activeTurnLease" | "ownsTurn">
   readonly sessionId: string
   /** Whether the conversation's last turn ended by an interrupt or an
    *  unexpected exit, read from its durable turn end. */
@@ -100,9 +100,9 @@ export function createChatWaitState(input: {
   // work of its turn, which an interrupt still cuts. `interrupted` waits for
   // the person's Resume or message: a message from another session folds
   // into its history and starts no request.
-  const turns = new WeakMap<AgentHostTurnLease, SlotTurn>()
+  const turns = new WeakMap<ChatTurnLease, SlotTurn>()
   function slotTurn(): SlotTurn | undefined {
-    const lease = input.host.activeTurnLease
+    const lease = input.turns.activeTurnLease
     if (lease === null) return undefined
     let turn = turns.get(lease)
     if (turn === undefined) turns.set(lease, turn = { park: undefined, cut: undefined })
@@ -163,7 +163,7 @@ export function createChatWaitState(input: {
     awaitsPerson,
     decideMaintenance(lease) {
       const decision: Promise<AgentLoopMaintenance> = lastTurnWaitsForPerson().then((turnEndWaits) => {
-        const turn = input.host.ownsTurn(lease) ? slotTurn() : undefined
+        const turn = input.turns.ownsTurn(lease) ? slotTurn() : undefined
         if (turn) turn.park = stalled || turnEndWaits ? "interrupted" : undefined
         if (undecidedMaintenance === decision) undecidedMaintenance = undefined
         return stalled || turnEndWaits ? { personWait: { turnEnd: turnEndWaits ? "recorded" : "unrecorded" } } : {}
@@ -191,7 +191,7 @@ export function createChatWaitState(input: {
     leasedState: () => stalled ? "interrupted" : slotTurn()?.park ?? "running",
     waitsForPersonNow() {
       if (stalled) return true
-      if (input.host.activeTurnLease !== null) return slotTurn()?.park === "interrupted"
+      if (input.turns.activeTurnLease !== null) return slotTurn()?.park === "interrupted"
       if (storedWaits === undefined) readStoredWaits()
       return storedWaits ?? true
     },

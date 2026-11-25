@@ -3,8 +3,7 @@ import { composeModules } from "../../../../infra/module-descriptor.js"
 import { moduleDisabledReason } from "../../../../protocol/runtime/module-ids.js"
 import { personaToolEntries, registrationNamed, toolRegistryFromComposition, type ToolRegistry } from "./tool-registry.js"
 import type { RuntimeToolInput, ShellCommand } from "../types.js"
-import { installedModules, validateModuleFactPrefixes } from "../../../module-catalog.js"
-import type { FirstPartyModule, FirstPartyModuleComposition } from "../../../modules.js"
+import { installedModules, validateModuleFactPrefixes, type FirstPartyModule, type FirstPartyModuleComposition } from "../../../module-catalog.js"
 
 /** One metadata registry per catalog. The catalog is fixed for the realm, so
  *  the complete registry derived from it is a value every reader shares rather

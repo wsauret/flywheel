@@ -4,7 +4,7 @@ import { readAdvancingCompletionEvidence, readTerminalHandoff, terminalWorkflow,
 import { createReplayingWorkflowView } from "../../../../workflows/vm/recovery/workflow-view.js"
 import { readWorkflowControl } from "../../../../workflows/vm/recovery/recovery-fold.js"
 import { workflowRunOwner } from "../../../module-catalog.js"
-import type { WorkflowRunRecord } from "../../../workflow-host/run-record.js"
+import type { WorkflowRunRecord } from "../../metadata/workflow-run-record.js"
 import { readParentTools, type ChildReconciliationReadContext } from "./child-reconciliation-index.js"
 import { retainedSettledContent, workflowNotificationLabel } from "./child-session-completion.js"
 import { historicalCompletionEntryId } from "../../conversation/turn-end-record.js"

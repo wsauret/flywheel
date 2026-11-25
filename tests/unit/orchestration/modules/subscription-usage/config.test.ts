@@ -4,13 +4,12 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Schema } from "effect"
 import { DEFAULT_USAGE_ALERT_THRESHOLDS, subscriptionUsageConfigSection } from "../../../../../src/orchestration/modules/subscription-usage/config.js"
-import { configSection } from "../../../../../src/orchestration/config/schema/config-section.js"
+import { configSection, installedModuleConfigSettings } from "../../../../../src/orchestration/config/schema/config-section.js"
 import { installedConfigSchema, CONFIG_DEFAULTS } from "../../../../../src/orchestration/config/schema/schema.js"
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js"
 import { createRuntimeConfigProjection } from "../../../../../src/orchestration/app-service/projections/runtime-config-projection.js"
 import { loadConfig } from "../../../../../src/orchestration/config/loader.js"
 import { seedConfigDefaults } from "../../../../../src/orchestration/config/writer.js"
-import { installedModuleConfigSettings } from "../../../../../src/orchestration/modules.js"
 
 const roots: string[] = []
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })

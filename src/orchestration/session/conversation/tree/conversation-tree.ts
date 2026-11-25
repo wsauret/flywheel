@@ -1,4 +1,4 @@
-import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { hasInterruptedWork, interruptedTurnEntryId, interruptedWorkMessage, isRecoveredToolResultEntryId, type InterruptedTurnReason } from "./interrupted-turn-summary.js";
 import { chatTurnEndOf, endsAtTurnEnd, isPlannedCut, questionExchangeOf } from "../turn-end-record.js";
 import { decodeQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND, queuedInputDrops, queuedInputMessage, type QueuedUserInputCell, type QueuedUserInputCommitResult } from "../queued-user-inputs.js";

@@ -1,7 +1,7 @@
 import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
 import type { ContentBlockParam, ImageBlockParam } from "@anthropic-ai/sdk/resources/messages.js";
 import type { AnthropicOperations } from "../../agent-runtime/llm/adapters/anthropic/anthropic.js";
-import { parseRuntimeReminder, type RuntimeReminder } from "../../agent-runtime/llm/history/runtime-reminders.js";
+import { parseRuntimeReminder, type RuntimeReminder } from "../../../infra/llm/runtime-reminder-format.js";
 import type { BlockOrigin } from "../../agent-runtime/llm/history/block-origin.js";
 import type { BlockOrigins } from "../../agent-runtime/llm/conversions/anthropic-messages.js";
 import { ANTHROPIC_RESERVED_BODY_KEYS } from "../../../infra/llm/access/provider-options.js";

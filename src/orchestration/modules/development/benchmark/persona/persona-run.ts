@@ -5,12 +5,12 @@ import { errorMessage } from "../../../../../infra/error-message.js";
 import { DURABLE_RUNTIME_EVENT_TYPES, type RuntimeEvent } from "../../../../../infra/runtime-facts/runtime-event-types.js";
 import type { Effort } from "../../../../../infra/workflow-types.js";
 import { agentTasksFromComposition, type ModuleAgentTasks } from "../../../../module-agent-tasks.js";
-import { composeFirstPartyModules } from "../../../../modules.js";
-import type { WorkflowDeps } from "../../../../workflow-host/deps.js";
+import { composeFirstPartyModules } from "../../../../module-composition.js";
+import type { WorkflowDeps } from "../../../../agent-runtime/runner/workflow-deps.js";
 import type { LauncherScope } from "../../../../../infra/process-supervisor.js";
 import type { BackgroundExecutionOwner } from "../../../../agent-runtime/background-execution/background-execution-owner.js";
 import type { ShellRuntimeClient } from "../../../../agent-runtime/tools/bash/execution/shell-runtime-types.js";
-import type { ForegroundBashHoldController } from "../../../../agent-runtime/background-work/foreground-bash-hold.js";
+import type { ForegroundBashHoldController } from "../../../../session/control/background-work/foreground-bash-hold.js";
 import { formatAgentFailure } from "../../../../agent-runtime/runner/failure-message.js";
 import { failureTerminal, type AgentRunResult } from "../../../../agent-runtime/types.js";
 import { personaInstructions } from "../../../../../workflows/agents/persona-instructions.js";
@@ -21,10 +21,10 @@ import { unavailableBenchmarkAccounting, type BenchmarkAccounting } from "../acc
 import { invokeBenchmarkAgent } from "../execution/invocation.js";
 import { agentCapabilityCheck } from "../../../../agent-runtime/request/prompt/capability-checks.js";
 import { availableToolNames } from "../../../../agent-runtime/request/prompt/persona-tool-rules.js";
-import { definitionAvailabilityOf } from "../../../../app-service/definitions/definition-availability.js";
+import { definitionAvailabilityOf } from "../../../../config/policy/definition-availability.js";
 import { disabledAgentTypes } from "../../../../module-catalog.js";
 import type { CaptureProviderConnection } from "../../../../agent-runtime/request/model-runtime-capture.js";
-import { resolveSessionRoles } from "../../../../config/models/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../../agent-runtime/request/roles/session-roles.js";
 import type { ResolvedRole } from "../../../../config/roles.js";
 
 export type PersonaDefinition = Extract<AgentDefinition, { kind: "persona" }>;

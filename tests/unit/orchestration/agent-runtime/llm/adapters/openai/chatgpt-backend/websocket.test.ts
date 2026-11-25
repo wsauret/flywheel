@@ -9,7 +9,7 @@ import { retainWebSocketSession } from "../../../../../../../../src/orchestratio
 import { ChatGptAdapterTransportError } from "../../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/chatgpt-adapter/types.js";
 import { createStaleToolResultMasker } from "../../../../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
 import { buildOpenAIResponseInput } from "../../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
-import type { ConversationMessage } from "../../../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../../../src/infra/llm/conversation/conversation-message.js";
 import type { ModelInfo } from "../../../../../../../../src/infra/llm/models/models.js";
 import { prepareOpenAIResponsesRequest } from "../../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-responses.js";
 import { stableSystemPrompt } from "../../../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

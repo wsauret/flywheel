@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { Agent, AgentRunResult } from "../../../../../../src/orchestration/agent-runtime/types.js"
-import { createAgentHost } from "../../../../../../src/orchestration/agent-runtime/runner/turn-host/host.js"
+import { createAgentGeneration } from "../../../../../../src/orchestration/agent-runtime/runner/turn-host/host.js"
+import { createChatTurnSlot } from "../../../../../../src/orchestration/chat/turn-slot.js"
 import { newTestRunner } from "../../../../../helpers/agent-runner.js"
 import { makeOptions } from "../../_runner-options.js"
 
@@ -15,7 +16,9 @@ function completedRunner(messages: string[]): Agent {
 function createPreparingHost() {
   const preparationStarted = Promise.withResolvers<void>()
   let attempts = 0
-  const host = createAgentHost<{ model: string }>({
+  const turns = createChatTurnSlot()
+  const host = createAgentGeneration<{ model: string }>({
+    closeTurnWithoutContext: turns.closeLiveTurn,
     createRunner: () => ({
       send(): void {},
       abort(): void {},
@@ -25,6 +28,7 @@ function createPreparingHost() {
   })
   return {
     host,
+    turns,
     preparationStarted: preparationStarted.promise,
     attempts: () => attempts,
     run: (signal?: AbortSignal) => host.runTurn({
@@ -41,7 +45,7 @@ function createPreparingHost() {
 describe("runner host", () => {
   it("creates and runs one context", async () => {
     const messages: string[] = []
-    const host = createAgentHost<{ model: string }>({ createRunner: () => completedRunner(messages) })
+    const host = createAgentGeneration<{ model: string }>({ createRunner: () => completedRunner(messages) })
 
     const result = await host.runTurn({
       createContextOptions: () => ({ model: "test", executionCwd: "/scratch", projectRoot: "/scratch", userDataRoot: "/scratch", accountHome: "/scratch", promptKind: "chat", runtimeSurfaces: {} }),
@@ -65,7 +69,7 @@ describe("runner host", () => {
         done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }),
       }
     }
-    const host = createAgentHost<{ model: string }>({ createRunner })
+    const host = createAgentGeneration<{ model: string }>({ createRunner })
 
     const result = await host.runTurn({
       createContextOptions: () => ({ model: "test", executionCwd: "/scratch", projectRoot: "/scratch", userDataRoot: "/scratch", accountHome: "/scratch", promptKind: "chat", runtimeSurfaces: {} }),
@@ -90,7 +94,7 @@ describe("runner host", () => {
         done: new Promise((resolve) => { resolveDone = resolve }),
       }
     }
-    const host = createAgentHost<{ model: string }>({ createRunner })
+    const host = createAgentGeneration<{ model: string }>({ createRunner })
     const running = host.runTurn({
       createContextOptions: () => ({ model: "test", executionCwd: "/scratch", projectRoot: "/scratch", userDataRoot: "/scratch", accountHome: "/scratch", promptKind: "chat" }),
       message: "hello",
@@ -116,14 +120,15 @@ describe("runner host", () => {
   it("cancels pending preparation when no model context can accept interruption", async () => {
     const recovery = createPreparingHost()
     const turnResult = Promise.withResolvers<AgentRunResult>()
-    const lease = recovery.host.reserveTurn()
+    const lease = recovery.turns.reserveTurn()
     if (!lease) throw new Error("expected a turn lease")
-    recovery.host.startTurn(lease, async () => { turnResult.resolve(await recovery.run(lease.signal)) })
+    recovery.turns.startTurn(lease, async () => { turnResult.resolve(await recovery.run(lease.signal)) })
 
     await recovery.preparationStarted
     const interrupted = recovery.host.interruptGeneration()
-    if (!interrupted) recovery.host.interruptTurn()
-    await recovery.host.settle()
+    // With no loop to park, the interrupt closes the turn's authorization itself.
+    expect(lease.signal.aborted).toBe(true)
+    await Promise.all([recovery.host.settle(), recovery.turns.settle()])
 
     expect(interrupted).toBe(true)
     expect(await turnResult.promise).toMatchObject({ terminal: { kind: "aborted" } })
@@ -144,7 +149,7 @@ describe("runner host", () => {
   it("does not create a runner after interruption during context construction", async () => {
     const contextOptions = Promise.withResolvers<{ model: string }>()
     let runnersCreated = 0
-    const host = createAgentHost<{ model: string }>({
+    const host = createAgentGeneration<{ model: string }>({
       createRunner: () => {
         runnersCreated += 1
         return {
@@ -177,7 +182,7 @@ describe("runner host", () => {
     const flushStarted = Promise.withResolvers<void>()
     const releaseFlush = Promise.withResolvers<void>()
     let attempts = 0
-    const host = createAgentHost<{ model: string }>({
+    const host = createAgentGeneration<{ model: string }>({
       createRunner: () => {
         const terminal = attempts++ === 0
           ? { kind: "api_error" as const, message: "provider failed", recovery: { kind: "none" as const } }
@@ -213,7 +218,7 @@ describe("runner host", () => {
     const options = { model: "test", executionCwd: "/scratch", projectRoot: "/scratch", userDataRoot: "/scratch", accountHome: "/scratch", promptKind: "chat" }
     const messages: string[] = []
     const runners: Agent[] = []
-    const host = createAgentHost<typeof options>({
+    const host = createAgentGeneration<typeof options>({
       createRunner: () => {
         const runner = runners.length === 0
           ? newTestRunner(makeOptions(), () => { throw new Error("no model request is expected") })

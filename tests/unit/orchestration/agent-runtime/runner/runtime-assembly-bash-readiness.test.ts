@@ -5,13 +5,13 @@ import { canonicalPathWithMissingTail } from "../../../../../src/infra/canonical
 import { createLauncherScope } from "../../../../../src/infra/process-supervisor.js";
 import { accountAuthDir } from "../../../../../src/infra/paths.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { assembleRuntimeForTurn } from "../../../../../src/orchestration/agent-runtime/runner/runtime-assembly.js";
 import { resolveRuntimeConversation } from "../../../../../src/orchestration/agent-runtime/request/runtime-conversation.js";
 import type { ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { deriveChildRuntimeSurfaces } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
-import type { CaptureRuntimeConfig } from "../../../../../src/orchestration/agent-runtime/request/request-config.js";
+import type { CaptureRuntimeConfig } from "../../../../../src/orchestration/config/request-config.js";
 import type { RuntimeToolSurfaces } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";

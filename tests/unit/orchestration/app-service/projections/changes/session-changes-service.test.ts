@@ -10,7 +10,7 @@ import { createBashDefinition } from "../../../../../../src/orchestration/agent-
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js"
 import { bashExecution, mutationSpawnProbe, makeMockOps } from "../../../agent-runtime/tools/bash/_bash-fixtures.js"
 import { capabilityAccessHolding, makeContext } from "../../../agent-runtime/tools/_fixtures.js"
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js"
 import { emitToolExecutionOutputRecorded } from "../../../../../../src/orchestration/agent-runtime/runner/emit.js"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../../src/infra/runtime-facts/runtime-fact-mapper.js"
 import { readToolResultDisplayMeta } from "../../../../../../src/orchestration/session/conversation/transcript/tool-result-meta.js"

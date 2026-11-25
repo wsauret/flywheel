@@ -4,11 +4,10 @@ import * as path from "node:path";
 import type { Node } from "web-tree-sitter";
 import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";
-import { agentTypeOf, createDefinitionAvailability } from "../src/orchestration/app-service/definitions/definition-availability.js";
+import { agentTypeOf, createDefinitionAvailability } from "../src/orchestration/config/policy/definition-availability.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
 import { decodeModuleState } from "../src/orchestration/config/module-descriptor.js";
-import { installedDefinitionBundles } from "../src/orchestration/module-catalog.js";
-import type { FirstPartyModule } from "../src/orchestration/modules.js";
+import { installedDefinitionBundles, type FirstPartyModule } from "../src/orchestration/module-catalog.js";
 import { installedPersonaToolEntries } from "../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { createProjectDefinitionRegistry } from "../src/workflows/definitions/definition-registry.js";
 import { isUnderAny, moduleHomes } from "./module-homes.js";
@@ -103,7 +102,7 @@ export const CAPABILITY_PHRASES: CapabilityPhraseTable = {
       /\bWorkflow Agent default\b/,
     ],
     guards: ["workflowLaunch"],
-    sources: [`${TOOLS}/definitions/workflow.ts`, `${TOOLS}/definitions/workflow-tool.ts`],
+    sources: [`${TOOLS}/definitions/workflow.ts`, `${TOOLS}/definitions/workflow-tool.ts`, `${TOOLS}/definitions/workflow-launch.ts`, `${TOOLS}/definitions/workflow-staging.ts`],
   },
 };
 

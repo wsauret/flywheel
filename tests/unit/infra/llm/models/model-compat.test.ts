@@ -1,0 +1,140 @@
+import { describe, expect, it } from "bun:test";
+import type { ModelInfo } from "../../../../../src/infra/llm/models/models.js";
+import { anthropicThinkingMode, clampReasoningEffort, familySettings, inheritsPerTurnEffort, supportsAdaptiveThinking, supportsPerTurnEffort, supportsReasoningOff, supportsThinkingDisable } from "../../../../../src/infra/llm/models/model-compat.js";
+
+const baseModelInfo = {
+  provider: "anthropic",
+  family: "anthropic",
+  id: "claude-test",
+  name: "Claude Test",
+  openWeights: false,
+  reasoning: true,
+  toolCall: true,
+  attachment: true,
+  temperature: true,
+  contextLimit: 200_000,
+  outputLimit: 64_000,
+  cost: { input: 0, output: 0 },
+  pricing: { status: "unavailable", reason: "missing-rate-card" },
+  modalities: { input: ["text"], output: ["text"] },
+} satisfies ModelInfo;
+
+function modelInfo(releaseDate: string): ModelInfo {
+  return { ...baseModelInfo, releaseDate };
+}
+
+function withEfforts(reasoningEfforts: ModelInfo["reasoningEfforts"]): ModelInfo {
+  return { ...baseModelInfo, ...(reasoningEfforts ? { reasoningEfforts } : {}) };
+}
+
+describe("supportsAdaptiveThinking", () => {
+  it("uses release date as the adaptive-thinking boundary", () => {
+    expect(supportsAdaptiveThinking("claude-fable-5", modelInfo("2026-01-31"))).toBe(false);
+    expect(supportsAdaptiveThinking("claude-fable-5", modelInfo("2026-02-01"))).toBe(true);
+    expect(supportsAdaptiveThinking("claude-sonnet-4-20250514", modelInfo("2025-05-14"))).toBe(false);
+    expect(supportsAdaptiveThinking("gpt-5", modelInfo("2026-02-01"))).toBe(false);
+  });
+
+  it("keeps legacy Claude models without a release date on budget-based thinking", () => {
+    expect(supportsAdaptiveThinking("claude-3-7-sonnet-20250219", baseModelInfo)).toBe(false);
+    expect(supportsAdaptiveThinking("claude-sonnet-4-20250514", baseModelInfo)).toBe(false);
+    expect(supportsAdaptiveThinking("claude-sonnet-4-5-20250929", baseModelInfo)).toBe(false);
+  });
+
+  it("defaults future Claude models without a release date to adaptive thinking", () => {
+    expect(supportsAdaptiveThinking("claude-fable-5", baseModelInfo)).toBe(true);
+    expect(supportsAdaptiveThinking("claude-sonnet-5", baseModelInfo)).toBe(true);
+    expect(supportsAdaptiveThinking("gpt-5", baseModelInfo)).toBe(false);
+  });
+
+  it("marks the OpenCode Go qwen family adaptive (the budget shape 400s on qwen3.8-max)", () => {
+    expect(supportsAdaptiveThinking("qwen3.7-max", baseModelInfo)).toBe(true);
+    expect(supportsAdaptiveThinking("qwen3.8-max", baseModelInfo)).toBe(true);
+    expect(supportsAdaptiveThinking("qwen3.5-plus", baseModelInfo)).toBe(true);
+  });
+});
+
+describe("familySettings", () => {
+  const setting = familySettings([["claude-x-5", "five"], ["claude-x-5-1", "five-one"], ["claude-x-5.3", "five-three"], ["gpt-5.1", "gpt"], ["gpt-6.1-sol", "sol"]]);
+
+  it("prefers the model's own entry, in any spelling of its id", () => {
+    expect(setting("claude-x-5.1")).toEqual({ value: "five-one" });
+    expect(setting("claude-x-5-3")).toEqual({ value: "five-three" });
+    expect(setting("claude-x-5-1-20260601")).toEqual({ value: "five-one" });
+  });
+
+  it("inherits from the newest earlier version of the same family and major line", () => {
+    expect(setting("claude-x-5-2")).toEqual({ value: "five-one", inheritedFrom: "claude-x-5.1" });
+    expect(setting("claude-x-5.4")).toEqual({ value: "five-three", inheritedFrom: "claude-x-5.3" });
+    expect(setting("gpt-5.2")).toEqual({ value: "gpt", inheritedFrom: "gpt-5.1" });
+    expect(setting("gpt-6.2-sol")).toEqual({ value: "sol", inheritedFrom: "gpt-6.1-sol" });
+  });
+
+  it("never inherits from a later version, another major line, or another family", () => {
+    expect(setting("claude-x-4.9")).toBeUndefined();
+    expect(setting("claude-x-6")).toBeUndefined();
+    expect(setting("claude-y-5.2")).toBeUndefined();
+    expect(setting("gpt-5")).toBeUndefined();
+    expect(setting("claude-x-5.2-fast")).toBeUndefined();
+    expect(setting("gpt-6.2-luna")).toBeUndefined();
+    expect(setting("gpt-7-sol")).toBeUndefined();
+  });
+});
+
+describe("per-model settings of an unknown Claude version", () => {
+  it("inherit from the newest earlier version of the family", () => {
+    expect(supportsPerTurnEffort("claude-fable-5-3")).toBe(true);
+    expect(inheritsPerTurnEffort("claude-fable-5-3")).toBe(true);
+    expect(anthropicThinkingMode("claude-fable-5-3", baseModelInfo, "off", true)).toBe("omit");
+    expect(supportsThinkingDisable("claude-fable-5.3")).toBe(false);
+  });
+
+  it("keep the settings of every exactly known version", () => {
+    expect(inheritsPerTurnEffort("claude-fable-5-1")).toBe(false);
+    expect(inheritsPerTurnEffort("claude-fable-5-2")).toBe(false);
+    expect(supportsPerTurnEffort("claude-fable-5-1")).toBe(true);
+    expect(supportsPerTurnEffort("claude-fable-5")).toBe(false);
+    expect(anthropicThinkingMode("claude-fable-5-1", baseModelInfo, "off", true)).toBe("omit");
+    expect(anthropicThinkingMode("claude-opus-5-5", baseModelInfo, "off", true)).toBe("adaptive");
+    expect(anthropicThinkingMode("claude-mythos-5-1", baseModelInfo, "off", true)).toBe("disabled");
+    expect(supportsPerTurnEffort("claude-opus-5")).toBe(false);
+    expect(inheritsPerTurnEffort("gpt-5.6")).toBe(false);
+  });
+});
+
+describe("clampReasoningEffort", () => {
+  it("passes declared tiers through", () => {
+    const info = withEfforts(["low", "medium", "high", "xhigh", "max"]);
+    expect(clampReasoningEffort("max", info, ["low", "medium", "high"])).toBe("max");
+    expect(clampReasoningEffort("low", info, ["low", "medium", "high"])).toBe("low");
+  });
+
+  it("resolves an undeclared tier to the nearest declared one, rounding ties up", () => {
+    // Opus 4.6 shape: max declared, xhigh not -- xhigh upgrades to max.
+    const opus46 = withEfforts(["low", "medium", "high", "max"]);
+    expect(clampReasoningEffort("xhigh", opus46, ["low", "medium", "high"])).toBe("max");
+    // gpt-5.1 shape: nothing above high -- xhigh and max clamp down.
+    const gpt51 = withEfforts(["none", "low", "medium", "high"]);
+    expect(clampReasoningEffort("xhigh", gpt51, ["low", "medium", "high", "xhigh"])).toBe("high");
+    expect(clampReasoningEffort("max", gpt51, ["low", "medium", "high", "xhigh"])).toBe("high");
+  });
+
+  it("uses the fallback set when the model declares nothing", () => {
+    expect(clampReasoningEffort("max", null, ["low", "medium", "high"])).toBe("high");
+    expect(clampReasoningEffort("max", withEfforts(undefined), ["low", "medium", "high", "xhigh"])).toBe("xhigh");
+    expect(clampReasoningEffort("medium", null, ["low", "medium", "high"])).toBe("medium");
+  });
+
+  it("ignores a declared off tier when clamping", () => {
+    const info = withEfforts(["none", "low"]);
+    expect(clampReasoningEffort("high", info, ["low", "medium", "high"])).toBe("low");
+  });
+});
+
+describe("supportsReasoningOff", () => {
+  it("requires a declared off tier", () => {
+    expect(supportsReasoningOff(withEfforts(["none", "low", "medium", "high"]))).toBe(true);
+    expect(supportsReasoningOff(withEfforts(["low", "medium", "high"]))).toBe(false);
+    expect(supportsReasoningOff(withEfforts(undefined))).toBe(false);
+  });
+});

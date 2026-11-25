@@ -1,4 +1,5 @@
-import { composeRealmModuleSnapshot, type FirstPartyModuleComposition } from "../../../modules.js"
+import { composeRealmModuleSnapshot } from "../../../module-composition.js"
+import type { FirstPartyModuleComposition } from "../../../module-catalog.js"
 
 /** Compose the root and admitted child selections of one runtime. Tool exclusions
  * leave their modules enabled, but remove each tool and its associated roster. */

@@ -8,7 +8,7 @@ import { createClaudeAgentSdkModule } from "../../../../../../src/orchestration/
 import { CLAUDE_SDK_PROFILE, setupClaudeSdkHome, setupClaudeSdkProfile } from "../../../../../../src/orchestration/modules/development/claude-sdk/setup.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { roleCapture } from "../../../../../helpers/role-capture.js";
-import { resolveSessionRoles } from "../../../../../../src/orchestration/config/models/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../../../../src/orchestration/agent-runtime/request/roles/session-roles.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 
 const temporaryDirectory = temporaryDirectories();

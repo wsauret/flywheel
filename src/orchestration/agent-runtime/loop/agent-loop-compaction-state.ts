@@ -5,8 +5,9 @@ import type { ConversationCheckpoint } from "../../session/persistence/conversat
 import type { AgentLoopOptions, CompactionInstallation } from "../agent-loop-types.js";
 import { createTokenEstimationCache, estimateConversationTokens } from "../compaction/token-counter.js";
 import type { PlannedCompactionOperation } from "../compaction/triggers.js";
-import type { CacheRetention, ConversationMessage, StreamEvent, ServingAttempt } from "../llm/types.js";
-import { redactMessage } from "./turn/agent-loop-history.js";
+import type { CacheRetention, StreamEvent, ServingAttempt } from "../llm/types.js";
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
+import { redactMessage } from "../../session/conversation/redact-message.js";
 import { turnContextEntry } from "../request/prompt/agent-loop-turn-context.js";
 import { modelRequestRoute, type createActiveRequestContext } from "../request/active-request-context.js";
 import type { RequestToolSurfaceOwner } from "../request/request-tool-surface.js";

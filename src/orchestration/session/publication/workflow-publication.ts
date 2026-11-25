@@ -3,7 +3,7 @@ import { parseWorkflowSessionFact } from "../../../workflows/vm/facts/session-fa
 import { workflowRunOwner } from "../../module-catalog.js"
 import { workflowMembershipReader, type WorkflowMember } from "../metadata/workflow-membership.js"
 import type { ReplayedSession, RoleSettings, Session } from "../metadata/schemas.js"
-import { prepareChildExecutionOwner } from "../control/children/child-execution-resources.js"
+import { prepareChildExecutionOwner } from "../control/children/child-execution-owner.js"
 import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact, buildSessionCreatedFact, buildSessionOwnershipAdoptedFact, buildSessionRolesSnapshottedFact } from "../metadata/session-metadata-facts.js"
 import { buildSessionMetadataAppend } from "../metadata/catalog/session-metadata-store.js"
 import { ConversationTreeStorage } from "../conversation/tree/conversation-tree-storage.js"

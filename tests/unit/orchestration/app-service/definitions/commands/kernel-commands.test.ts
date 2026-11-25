@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test"
 
 import { builtInCommandDeclarations, builtInCommandDescriptor } from "../../../../../../src/orchestration/app-service/definitions/commands/kernel-commands.js"
 import { commandMenuGroups } from "../../../../../../src/protocol/client/command-menu.js"
-import { SHIPPED_MODULES, composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js"
+import { SHIPPED_MODULES } from "../../../../../../scripts/shipped-modules.js"
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js"
 
 /** Each module a person can turn off, with the name its Settings row shows. */
 const switchable = SHIPPED_MODULES.flatMap((module) => module.contributions.flatMap((contribution) =>

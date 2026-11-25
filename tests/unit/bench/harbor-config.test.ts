@@ -8,8 +8,9 @@ import { temporaryDirectories } from "../../helpers/directories.js";
 import { harborLaunchArgs as launchArgs } from "../../fixtures/harbor-run.js";
 import { readFileSync, readdirSync } from "node:fs";
 import { decodeCanonicalConfigText } from "../../../src/orchestration/config/loader.js";
-import { composeFirstPartyModules, type ModuleId } from "../../../src/orchestration/modules.js";
-import { availableAgentTypes, definitionAvailabilityOf } from "../../../src/orchestration/app-service/definitions/definition-availability.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
+import type { ModuleId } from "../../../src/orchestration/module-catalog.js";
+import { availableAgentTypes, definitionAvailabilityOf } from "../../../src/orchestration/config/policy/definition-availability.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
 import { disabledTypesOf } from "../../../src/orchestration/modules/subagents/config.js";
 

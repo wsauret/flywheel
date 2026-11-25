@@ -5,7 +5,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../i
 import { startupTrace } from "../../../../infra/diagnostics/startup-trace.js"
 import { createConversationTreeWriterController } from "../../../chat/tree-writer.js"
 import { personMessageKey } from "../../../session/conversation/queued-user-inputs.js"
-import { conversationPersonMessage, recordPersonMessageReceipt } from "../../../session/conversation/person-message-ledger.js"
+import { conversationPersonMessage, recordPersonMessageReceipt } from "../../../session/control/messaging/person-message-ledger.js"
 import { unsavedMessageReason } from "./session-runtime-actor-helpers.js"
 import type { SessionManager } from "../../../session/manager.js"
 import type { SessionStore } from "../../../session-store/types.js"

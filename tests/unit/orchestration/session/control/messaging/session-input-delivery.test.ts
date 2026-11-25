@@ -11,7 +11,7 @@ import { prepareSessionFactAppend } from "../../../../../../src/orchestration/se
 import { deliverSessionInput, settleUnreadMessages } from "../../../../../../src/orchestration/session/control/messaging/session-input-delivery"
 import { cleanupTmpRoot, finalizeTestSessionDeletion, makeDepsWithStore, makeTmpDir, publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } from "../../_session-manager-fixtures"
 import { returnUnreadHumanInput, claimComposerReturns } from "../../../../../../src/orchestration/session/control/messaging/composer-returns"
-import { conversationPersonMessage } from "../../../../../../src/orchestration/session/conversation/person-message-ledger"
+import { conversationPersonMessage } from "../../../../../../src/orchestration/session/control/messaging/person-message-ledger"
 import { tryOpenConversationTree } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { createConversationTreeWriterController } from "../../../../../../src/orchestration/chat/tree-writer"
 

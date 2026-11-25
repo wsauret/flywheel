@@ -8,7 +8,7 @@ import { createChatCompletionsAdapter } from "../../../../../../../src/orchestra
 import { isProviderAttributedFailure, normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { ApiError, fromStreamError } from "../../../../../../../src/orchestration/agent-runtime/llm/routing/runtime-errors.js";
 import { repairContentRefusal } from "../../../../../../../src/orchestration/agent-runtime/llm/history/content-repair.js";
-import type { ConversationMessage } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../../src/infra/llm/conversation/conversation-message.js";
 import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
 import { providerModelInfo } from "../../../../../../../src/infra/llm/catalog/provider-model-info.js";
 import { modelInfo } from "../../../../../../helpers/model-tier-fixtures.js";

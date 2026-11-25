@@ -10,17 +10,17 @@ import type { RetryState } from "../../../agent-runtime/llm/retry-budget.js";
 import { createAgentGeneration } from "../../../agent-runtime/runner/turn-host/host.js";
 import { AgentTurnAborted } from "../../../agent-runtime/runner/turn-host/agent-turn-types.js";
 import { createSubagentRunInputs } from "./run-inputs.js";
-import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work/background-work-types.js";
+import type { BackgroundWorkResult, EndedWorkResult } from "../../../session/control/background-work/background-work-types.js";
 import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
 import { createChildBackgroundExecution } from "./child-background.js";
 import { isReadOnlyPersona } from "../../../agent-runtime/request/prompt/persona-tool-rules.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "./prompts.js";
 import { recordSubagentCompletion } from "./run-recorder.js";
 import { buildSubagentPaused } from "../history/subagent-run-fact-writers.js";
-import { interruptedTurnEnd, isVisibleTurnEnd } from "../../../session/conversation/turn-end-record.js";
+import { interruptedTurnEnd, isVisibleTurnEnd, CONTINUATION_MESSAGES } from "../../../session/conversation/turn-end-record.js";
 import { publishLiveParentResult, reconcileParentCompletion } from "./parent-delivery.js";
 import { HandoffCorrectionExhausted } from "../../../agent-runtime/handoff-correction-exhausted.js";
-import { createRefusedHandoff } from "../../../workflow-host/attempt/handoff-tool-schema.js";
+import { createRefusedHandoff } from "../../../agent-runtime/tools/sessions/handoff-tool-schema.js";
 import {
   deliveredHandoffResult,
   failedRunResult,
@@ -47,7 +47,6 @@ import { canonicalModelId } from "../../../../infra/model-id.js";
 import { AssistantPrefillSessionContextError } from "../../../session/conversation/tree/conversation-tree-context.js";
 import { launchAssignmentText, recordedEntryText } from "../../../session/conversation/tree/brief-entry.js";
 import { readRecordedInheritedIntent } from "../../../session/conversation-records/conversation-checkpoint.js";
-import { CONTINUATION_MESSAGES } from "../../../agent-runtime/request/prompt/continuation-messages.js";
 import { readAuthorizedRestoredWait } from "../../../session/control/chat-session-run-evidence.js";
 import { awaitPlannedChildResumes } from "../../../session/control/planned-session-continuation.js";
 import { recallQueuedInput } from "../../../session/control/messaging/queued-input-recall.js";

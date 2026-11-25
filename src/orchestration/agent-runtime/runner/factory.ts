@@ -15,15 +15,15 @@ import type { PersistentProcessClient } from "../../../infra/supervision/persist
 import type { BridgedPersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-bridge.js";
 import type { ProjectDefinitionRegistry } from "../../../workflows/definitions/definition-registry.js";
 import { createBreadcrumbMaintenance } from "../../session/persistence/storage/session-artifacts.js";
-import { createWebSearch } from "../web-search/select.js";
+import { createWebSearch, createWebSearchProviderResolver } from "../web-search/select.js";
 import type { WebSearchProviderId } from "../web-search/types.js";
-import { createWebSearchProviderResolver, type FirstPartyModuleComposition, type FirstPartyModuleSnapshot } from "../../modules.js";
-import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "../request/request-config.js";
+import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../module-catalog.js";
+import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "../../config/request-config.js";
 import type { StreamingEditValidationService } from "../tools/edit/streaming-edit-validation.js";
-import { requestAdmissionFromCaptures } from "../../auth/subscription-spend-consent/admission-capture.js";
-import type { AuthConditionOwner } from "../../auth/auth-condition-owner.js";
-import type { UsageAuthorityGeneration } from "../request/usage/usage-settlement.js";
-import { accessProviderRegistry, type AccessProviderRegistry } from "../llm/routing/access-provider-registry.js";
+import { requestAdmissionFromCaptures } from "../llm/routing/request-admission.js";
+import type { AuthConditionOwner } from "../../../infra/auth/store/auth-condition-owner.js";
+import type { UsageAuthorityGeneration } from "../../session/history/usage-settlement.js";
+import { accessProviderRegistry, type AccessProviderRegistry } from "../../config/models/access-provider-registry.js";
 import type { CaptureProviderConnection, CaptureSubscriptionAdmission, LLMClientFactory } from "../request/model-runtime-capture.js";
 import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js";
 
@@ -106,7 +106,7 @@ export function createAgentRuntime(deps: {
   captureRuntimeConfig: CaptureRuntimeConfig;
   /** Captures allowance and profile-bound consent together for each provider request. */
   captureSubscriptionAdmission?: CaptureSubscriptionAdmission;
-  acquireUsageSettlementAuthority?: (profile: { readonly profileDir: string; readonly profileId: string }) => Promise<import("../request/usage/usage-settlement.js").UsageSettlementAuthorityLease>;
+  acquireUsageSettlementAuthority?: (profile: { readonly profileDir: string; readonly profileId: string }) => Promise<import("../../session/history/usage-settlement.js").UsageSettlementAuthorityLease>;
   usageAuthority?: UsageAuthorityGeneration;
   gitAiAttribution?: RuntimeToolSurfaces["gitAiAttribution"];
   streamingEditValidation?: StreamingEditValidationService;

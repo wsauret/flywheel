@@ -3,15 +3,15 @@ import { createStreamingSanitizer } from "../../../../../infra/control-character
 import type { HandoverAnswer, OwnedProcess } from "../../../../../infra/supervision/launch/owned-subprocess.js";
 import { formatDuration } from "../../../../../protocol/client/format.js";
 import { formatNotAppliedFiles } from "../../../../../infra/not-applied-files.js";
-import type { BackgroundWorkRegistry, SettledProjectMutation } from "../../../background-work/background-work.js";
-import type { BackgroundKillSource, BackgroundWorkResult, CommandExit, ToolCallIdentity } from "../../../background-work/background-work-types.js";
+import type { BackgroundWorkRegistry, SettledProjectMutation } from "../../../../session/control/background-work/background-work.js";
+import type { BackgroundKillSource, BackgroundWorkResult, CommandExit, ToolCallIdentity } from "../../../../session/control/background-work/background-work-types.js";
 import { boundedExecutionOutputTail, createShellOutputAccumulator, createTailEmitter, readBackgroundProcessOutput, readSpoolGrowth, type SettledShellOutput, shellObservation } from "./bash-output-tail.js";
 import type { PrivateCopy, ProjectMutationLanding } from "./shell-runtime-types.js";
 import { createStderrTail, drainStderr, silentFailureStderr } from "./shell-stderr.js";
 import { armUnheldDeadline, NEVER_HELD, type HeldTime } from "./processor-claims.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { watchEndKey } from "../../../../../infra/watch-notices.js";
-import { formatWatchEnded } from "../../../background-work/background-work-notifications.js";
+import { formatWatchEnded } from "../../../../session/control/background-work/background-work-notifications.js";
 import { createWatchStream, type WatchLimiterState, type WatchOverLimit } from "./watch-stream.js";
 
 const log = Log.create({ service: "watch" });

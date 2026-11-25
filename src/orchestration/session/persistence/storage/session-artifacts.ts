@@ -28,9 +28,7 @@ import { openExistingContainedDirectory } from "../../../../infra/descriptor-dir
 import { errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
-import { AGENT_OUTPUTS_DIR, requireSessionIdComponent, SCRATCH_MUTATION_GIT_DIR, SCRATCH_MUTATIONS_DIR, SESSIONS_DIR, sessionRelativeDir, workflowRelativeDir } from "../../../../infra/paths.js"
-import { mutationGitDirectoryName, mutationGitRuntimeExists } from "../../../agent-runtime/tools/bash/git/bash-git-wrapper.js"
-import { PRIVATE_COPY_RECORD } from "../../../agent-runtime/tools/bash/private-copy/bash-private-copy-record.js"
+import { AGENT_OUTPUTS_DIR, PRIVATE_COPY_RECORD, requireSessionIdComponent, SCRATCH_MUTATION_GIT_DIR, SCRATCH_MUTATIONS_DIR, SESSIONS_DIR, sessionRelativeDir, workflowRelativeDir } from "../../../../infra/paths.js"
 import { directoryComponents, removeTreeUnder, writeFileUnder } from "../../../../infra/write-file-under.js"
 
 const log = Log.create({ service: "session-artifacts" })
@@ -225,6 +223,15 @@ const MUTATION_GIT: ScratchRetention = { kind: "mutation-git", idleMs: SCRATCH_I
 /** Spreads the file events of removing a backlog of shim folders over several passes. */
 const MUTATION_GIT_REMOVALS_PER_SWEEP = 200
 
+/** The Git shim folders under `mutation-git` that the sweep keeps: the
+ *  folder of this process's own runtime (`current`), and each folder whose
+ *  runtime still exists, so a command may still call its shim. The bash tool
+ *  that installs the shims answers both. */
+export interface MutationGitRetention {
+  readonly current: string
+  runtimeExists(folder: string): boolean
+}
+
 export interface ScratchSweep {
   readonly removedEntries: number
   readonly removedBytes: number
@@ -242,11 +249,10 @@ export interface ScratchSweep {
  *  worktree inside a removed entry is removed through Git first, so its
  *  repository does not keep the registration. Failures are per entry: one
  *  that cannot be measured or removed is logged and kept. */
-export async function sweepIdleScratch(input: { readonly projectRoot: string; readonly now: number; readonly signal: AbortSignal; readonly runGit: OwnedCommandRunner }): Promise<ScratchSweep> {
+export async function sweepIdleScratch(input: { readonly projectRoot: string; readonly now: number; readonly signal: AbortSignal; readonly runGit: OwnedCommandRunner; readonly mutationGit: MutationGitRetention }): Promise<ScratchSweep> {
   let removedEntries = 0
   let removedBytes = 0
   let mutationGitRemovals = 0
-  const currentMutationGit = mutationGitDirectoryName(process.execPath, process.platform)
   /** Answers whether the entry was removed. */
   const sweepOne = async (sessionId: string, parent: ContainedDirectory, name: string, entry: string, retention: ScratchRetention): Promise<boolean> => {
     input.signal.throwIfAborted()
@@ -277,7 +283,7 @@ export async function sweepIdleScratch(input: { readonly projectRoot: string; re
     try {
       for (const name of shims.entryNames()) {
         if (mutationGitRemovals >= MUTATION_GIT_REMOVALS_PER_SWEEP) return
-        if (name === currentMutationGit || mutationGitRuntimeExists(join(shims.canonicalPath(), name))) continue
+        if (name === input.mutationGit.current || input.mutationGit.runtimeExists(join(shims.canonicalPath(), name))) continue
         if (await sweepOne(sessionId, shims, name, `${SCRATCH_MUTATION_GIT_DIR}/${name}`, MUTATION_GIT)) mutationGitRemovals += 1
       }
     } finally {

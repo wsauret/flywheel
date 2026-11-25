@@ -4,9 +4,9 @@ import * as path from "node:path";
 import { backgroundLogPath } from "../../../../../helpers/background-log-path.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { createBashDefinition, parseBashResultDetails } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
-import { createForegroundBashHoldController, type ForegroundBashHoldController } from "../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createForegroundBashHoldController, type ForegroundBashHoldController } from "../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { bashExecution, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext } from "../_fixtures.js";

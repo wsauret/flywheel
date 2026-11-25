@@ -1,7 +1,7 @@
 import type { ToolAction } from "../../../../infra/workflow-types.js";
 import { canonicalModuleIds, MODULE_IDS, moduleDisabledReason, type ModuleId } from "../../../../protocol/runtime/module-ids.js";
 import type { RegisteredTool, ToolDeclaration, ToolDeps, ToolExposureCategory, ToolFactoryResult, ToolPolicy, ToolRegistration } from "../../../module-seams.js";
-import type { FirstPartyModuleComposition } from "../../../modules.js";
+import type { FirstPartyModuleComposition } from "../../../module-catalog.js";
 import type { RuntimeToolSurfaces, RunnerToolSurfaces } from "../../types.js";
 import { createHandoffTool, handoffDefinition } from "../sessions/handoff.js";
 import { createListSessionsTool, LIST_SESSIONS_TOOL_DEFINITION } from "../sessions/list-sessions.js";

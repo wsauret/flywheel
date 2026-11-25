@@ -1,4 +1,4 @@
-import { installedAccessProviderDefinitions } from "../../credential-provider-modules.js";
+import { installedAccessProviderDefinitions } from "../../module-composition.js";
 import type { ModelsClient } from "../../../infra/llm/models/models.js";
 import { recentScoreModel } from "../../../infra/llm/models/model-scores-document.js";
 

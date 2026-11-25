@@ -8,7 +8,7 @@ import { blockIdentity } from "../../../../src/protocol/transcript/block-identit
 import { createOutputSession } from "../../../../src/orchestration/session-store/output-session.js"
 import { createConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/runner/emit.js"
-import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner/runner-stream-events.js"
+import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner/stream-events/runner-stream-events.js"
 import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/request/usage/turn-usage-tracker.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import { RequestToolMap } from "../../../helpers/request-tool-surface.js"

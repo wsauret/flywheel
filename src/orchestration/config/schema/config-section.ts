@@ -1,7 +1,6 @@
 import { Schema } from "effect";
 import type { ProtocolExposure, SettingApplication } from "./setting-definitions.js";
-import { installedModules } from "../../module-catalog.js";
-import type { FirstPartyModule } from "../../modules.js";
+import { installedModules, type FirstPartyModule } from "../../module-catalog.js";
 
 /** The module-facing half of the configuration file: what a module declares
  *  to own one retained section through its `config` contribution (ARCH-RUNTIME-064),
@@ -59,4 +58,16 @@ export function installedConfigSections(modules: readonly FirstPartyModule[] = i
     if (contribution.id !== contribution.value.key) throw new Error(`Config contribution id ${contribution.id} must equal its section key ${contribution.value.key}`);
     return [contribution.value];
   }));
+}
+
+/** Declared settings in UI-safe module sections. The registry validates
+ *  the section owner before the host projects or writes one of these keys. */
+export function installedModuleConfigSettings(modules: readonly FirstPartyModule[] = installedModules()) {
+  return modules.flatMap((module) => module.contributions.flatMap((contribution) => {
+    if (contribution.domain !== "settings" || !(contribution.value.control === "config-number-list" || (contribution.value.control === "config-boolean" && "section" in contribution.value))) return []
+    const setting = contribution.value
+    const section = module.contributions.find((entry) => entry.domain === "config" && entry.value.key === setting.section)
+    if (section?.domain !== "config" || section.value.protocolExposure !== "ui-safe") throw new Error(`Module ${module.id} must own UI-safe config section ${setting.section}`)
+    return [{ moduleId: module.id, section: section.value, setting }]
+  }))
 }

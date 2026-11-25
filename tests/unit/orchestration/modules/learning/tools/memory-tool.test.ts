@@ -13,7 +13,8 @@ import { createMemoryTool } from "../../../../../../src/orchestration/modules/le
 import { type DispatchedToolContext, capabilityAccessFor, type CapabilityAccess, type RuntimeTool, type ToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import type { CapabilityGrant } from "../../../../../../src/orchestration/config/policy/module-policy.js";
-import { composeFirstPartyModules, composeRealmModuleSnapshot, type ModuleId } from "../../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js";
+import type { ModuleId } from "../../../../../../src/orchestration/module-catalog.js";
 import { testKernelToolDeps, admitEveryTool, requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { moduleDisabledReason } from "../../../../../../src/protocol/runtime/module-ids"

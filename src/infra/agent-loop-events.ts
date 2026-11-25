@@ -126,7 +126,7 @@ export interface InputSource {
    *  removes one queued delivery; cancellation leaves queue order unchanged.
    *  Sources that cannot park omit it. */
   prepareWaitForInput?(signal?: AbortSignal): InputWaitReservation;
-  /** The loop's channel for a runtime notice about its own wait (see agent-runtime/background-work/runtime-notifications.ts for the
+  /** The loop's channel for a runtime notice about its own wait (see session/control/background-work/runtime-notifications.ts for the
    *  envelope format and pipeline). The text is delivered on the next drain as a masked `silent-system` user message
    *  that carries `runtimeNotice`: it reaches the model and the durable conversation but never renders in the
    *  transcript, and it never merges with unlabeled input. Sources that cannot deliver silent notices omit it. */

@@ -16,11 +16,12 @@ import { createLauncherScope, createProcessSupervisor, guardianCommand } from ".
 import { privateTemporaryRoot } from "../../../../../src/infra/private-temporary-root.js";
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js";
-import type { AdapterAdmission, Claim, ContentBlock, ConversationMessage, ProviderStreamEvent, StagedProviderClient, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { AdapterAdmission, Claim, ProviderStreamEvent, StagedProviderClient, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
 import { engineModelId } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";
 import { holdSharedTree, type SharedTree } from "../../../../../src/orchestration/agent-runtime/request/shared-tree.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
 import { inPlaceGate, runInPlaceSelfTest } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/in-place-check.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js";

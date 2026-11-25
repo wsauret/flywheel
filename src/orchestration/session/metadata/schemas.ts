@@ -1,8 +1,7 @@
 import { Schema } from "effect";
 import { isAbsolute, resolve } from "node:path";
 import { ProviderRequestOptionsSchema } from "../../../infra/llm/access/provider-options.js";
-import { canonicalModelId } from "../../../infra/model-id.js";
-import { canonicalRoleId } from "../../config/retired-config-names.js";
+import { normalizeRoleAssignments } from "../../config/retired-config-names.js";
 import { parseBriefRoleId } from "../../../protocol/auth/brief-role-id.js";
 import { SessionLifecycleStateSchema } from "./types.js";
 import { RoleAssignmentSnapshotSchema, RoleSettingEntrySchema, RoleSettingsSchema } from "../../../infra/role-settings.js";
@@ -83,24 +82,6 @@ export type RoleSettingEntry = typeof RoleSettingEntrySchema.Type;
 export type RoleSettings = typeof RoleSettingsSchema.Type;
 
 export type RoleAssignmentSnapshot = typeof RoleAssignmentSnapshotSchema.Type;
-
-/** One role assignment table in canonical form: each model id canonical,
- *  and each role id current (refer to `canonicalRoleId`), so a snapshot
- *  that a run stored under a retired seat name reads as its current seat.
- *  A table that holds both spellings of one seat keeps the current one. */
-export function normalizeRoleAssignments(roles: RoleSettings): RoleSettings {
-  const normalized: { [roleId: string]: RoleSettings[string] } = {};
-  for (const [roleId, assignment] of Object.entries(roles)) {
-    const current = canonicalRoleId(roleId);
-    if (current !== roleId && Object.hasOwn(roles, current)) continue;
-    normalized[current] = {
-      ...(assignment.model === undefined ? {} : { model: canonicalModelId(assignment.model) }),
-      ...(assignment.effort === undefined ? {} : { effort: assignment.effort }),
-      ...(assignment.providerOptions === undefined ? {} : { providerOptions: assignment.providerOptions }),
-    };
-  }
-  return normalized;
-}
 
 // Remove after 2027-10-16. Flat maps cannot distinguish old generated defaults from user choices.
 export function recoverRoleAssignmentSnapshot(

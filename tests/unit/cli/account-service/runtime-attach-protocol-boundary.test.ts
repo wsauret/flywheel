@@ -9,7 +9,8 @@ import { versionsDir } from "../../../../src/infra/paths.js"
 import { executableBuild } from "../../../../src/infra/update/live-builds.js"
 import { useWin32ContainedDirectories } from "../../../helpers/win32-contained-directories.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
-import { installedBuildId, type RunningBuild } from "../../../../src/orchestration/app-service/runtime-executable.js"
+import { installedBuildId } from "../../../../src/orchestration/app-service/runtime-executable.js"
+import type { RunningBuild } from "../../../../src/infra/distribution/running-build.js"
 
 describe("account runtime attach at a protocol boundary", () => {
   const NEXT = RUNTIME_PROTOCOL_VERSION + 1

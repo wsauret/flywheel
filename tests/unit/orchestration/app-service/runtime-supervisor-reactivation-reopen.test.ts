@@ -8,7 +8,7 @@ import { EventReaderService, EventStoreLive, LocalEventStoreService } from "../.
 import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { isVisibleMessageBlock, type AnyBlock } from "../../../../src/infra/output-blocks.js"
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message.js"
 import { createRuntimeSupervisor as createRuntimeSupervisorBase } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createContinuationLanes } from "../../../../src/orchestration/session/control/planned-session-continuation.js"

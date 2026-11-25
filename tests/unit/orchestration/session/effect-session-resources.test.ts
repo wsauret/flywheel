@@ -24,7 +24,7 @@ import type { SessionFactWriter } from "../../../../src/orchestration/session/pe
 import type { SessionToolExecutionStore } from "../../../../src/orchestration/session/runtime-facts/tool-execution-types.js"
 import type { WorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import type { WorkflowViewStore } from "../../../../src/workflows/vm/recovery/workflow-view.js"
-import { acquireChildExecutionResources } from "../../../../src/orchestration/session/control/children/child-execution-resources.js"
+import { acquireChildExecutionResources } from "../../../../src/orchestration/chat/children/child-execution-resources.js"
 import { readBackgroundCommands } from "../../../../src/orchestration/session/runtime-facts/background-index-projection.js"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory.js"
 import { skillLoadedFact } from "../../../../src/workflows/skills/skill-facts.js"

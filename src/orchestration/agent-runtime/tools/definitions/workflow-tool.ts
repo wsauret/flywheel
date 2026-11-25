@@ -5,20 +5,12 @@ import { textField } from "../../../../infra/tools/json-field.js";
 import { workflowCallSource, workflowSource, workflowSourceLabel, type WorkflowCallSource, type WorkflowLaunchSource } from "../../../../infra/tools/workflow-call-source.js";
 import type { ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js";
 import type { AgentFailureDisplay } from "../../../../infra/output-blocks.js";
-import type { BackgroundKillSource, BackgroundWorkResult, ChildInterruption } from "../../background-work/background-work-types.js";
+import type { BackgroundKillSource, BackgroundWorkResult, ChildInterruption } from "../../../session/control/background-work/background-work-types.js";
 import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js";
-import {
-  NO_WORKFLOW_DIRECTORY,
-  type ModelWorkflowLaunchContext,
-  type ModelWorkflowLaunchIntent,
-  type ResolveWorkflowLaunchTarget,
-  type WorkflowLaunchConfirmation,
-  type WorkflowLaunchRefusal,
-  workflowRefusalText,
-} from "../../../workflow-host/lifecycle/launch-origin.js";
-import { stageWorkflowSource, type LaunchingSessionAuthority } from "../../../workflow-host/lifecycle/path-workflow.js";
+import { NO_WORKFLOW_DIRECTORY, type ModelWorkflowLaunchContext, type ModelWorkflowLaunchIntent, type ResolveWorkflowLaunchTarget, type WorkflowLaunchConfirmation, type WorkflowLaunchRefusal, workflowRefusalText, type WorkflowAgentModels } from "./workflow-launch.js";
+import type { LaunchingSessionAuthority } from "../../../workflow-host/lifecycle/path-workflow.js";
+import { stageWorkflowSource } from "./workflow-staging.js";
 import type { VerificationUncertaintyKind, WorkflowVerificationResult } from "../../../../workflows/vm/compile/verify-types.js";
-import type { WorkflowAgentModels } from "../../../config/models/workflow-agent-models.js";
 
 import type { CapabilityAccess, RuntimeToolInput } from "../types.js";
 /** Result of an atomic workflow aggregate publication. The parent is the

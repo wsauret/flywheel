@@ -9,7 +9,7 @@ import { connectProjectStateChannel, serveProjectStateChannel } from "../../../s
 import { createProjectExecutionState } from "../../../src/orchestration/app-service/project-state/project-execution-state.js"
 import { createSessionFactWriter } from "../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { tryOpenConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
-import { checkpointFinalizedToolResult } from "../../../src/orchestration/session/history/finalized-tool-result-checkpoint.js"
+import { checkpointFinalizedToolResult } from "../../../src/orchestration/agent-runtime/loop/tool-calls/finalized-tool-result-checkpoint.js"
 import { createProjectControlRuntime, type ProjectControlRuntime, type ProjectControlRuntimeOptions } from "../../../src/orchestration/app-service/account/projects/project-control-runtime.js"
 import { createMaintenanceQueue } from "../../../src/orchestration/app-service/background/runtime-maintenance-owner.js"
 import { createLoginShellPath } from "../../../src/infra/login-shell-path.js"

@@ -1,3 +1,4 @@
+import { importComposing } from "./composition/module-registries.js"
 import { resolveDebugLogDirectory } from "../infra/diagnostics/debug-log.js"
 import type { AccountDirectories, StartupDirectories } from "../infra/directory-authorities.js"
 import { diagnosticDetail, errorMessage } from "../infra/error-message.js"
@@ -21,7 +22,7 @@ import type { TerminalHandoff, TerminalSuccessor } from "./account-service/termi
 const log = Log.create({ service: "remote-terminal" })
 
 async function loadTerminalRemote(): Promise<TerminalRemote> {
-  const { installedTerminalRemote } = await import("../orchestration/modules.js")
+  const { installedTerminalRemote } = await importComposing(() => import("../orchestration/module-catalog.js"))
   const contribution = installedTerminalRemote()
   if (contribution === undefined) throw new Error("This build of Flywheel cannot open a project on another machine.")
   return await contribution.load()
@@ -56,7 +57,7 @@ async function tracedPrompt(question: string): Promise<string> {
  *  and answers the program the terminal becomes to run it, or why no install
  *  reached it. */
 export async function installTerminalRelease(account: AccountDirectories, launcher: LauncherContext, version: string): Promise<TerminalSuccessor | string> {
-  const [{ installRelease, releaseInstallRefusal }, { runtimeCommand }] = await Promise.all([import("./commands/update.js"), import("../orchestration/app-service/runtime-executable.js")])
+  const [{ installRelease, releaseInstallRefusal }, { runtimeCommand }] = await Promise.all([importComposing(() => import("./commands/update.js")), import("../orchestration/app-service/runtime-executable.js")])
   const result = await installRelease(account, launcher, version)
   if (result.kind !== "installed") return releaseInstallRefusal(result, version)
   return { command: runtimeCommand(account), env: {} }

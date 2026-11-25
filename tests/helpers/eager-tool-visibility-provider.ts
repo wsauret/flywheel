@@ -7,7 +7,7 @@ import { providerModelInfo } from "../../src/infra/llm/catalog/provider-model-in
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../src/infra/runtime-facts/runtime-fact-mapper.js";
 import { createChatCompletionsAdapter } from "../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions.js";
 import type { LLMClient } from "../../src/orchestration/agent-runtime/llm/types.js";
-import { checkpointFinalizedToolResult } from "../../src/orchestration/session/history/finalized-tool-result-checkpoint.js";
+import { checkpointFinalizedToolResult } from "../../src/orchestration/agent-runtime/loop/tool-calls/finalized-tool-result-checkpoint.js";
 import { createSessionFactWriter } from "../../src/orchestration/session/persistence/session-fact-writer.js";
 
 export const EAGER_PROVIDER_MODEL = "fixture-streaming-model";
@@ -150,6 +150,6 @@ if (import.meta.main) {
   if (modeIndex < 0) throw new Error(`expected ${FINALIZED_RESULT_CRASH_MODE}`);
   // This process entry owns its catalog bootstrap, like every production entry:
   // the session fact writer decodes module facts through the installed catalog.
-  await import("../../src/orchestration/modules.js");
+  await import("../../scripts/shipped-modules.js");
   await runFinalizedResultCrashWriter(Bun.argv.slice(modeIndex + 1));
 }

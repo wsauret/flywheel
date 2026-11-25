@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { createBackgroundWorkRegistry } from "../../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { createShellRuntime } from "../../../../../../../src/orchestration/agent-runtime/background-execution/shell-runtime.js";
 import { sharedProcessorClaims, type ProcessorClaims } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/execution/processor-claims.js";
 import { startManagedCommand } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/execution/managed-command.js";
-import { createForegroundBashHoldController } from "../../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createForegroundBashHoldController } from "../../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { createBackgroundExecutionOwner } from "../../../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { bridgeExternalPromise } from "../../../../../../../src/orchestration/agent-runtime/external-promise-bridge.js";
 import type { ToolContext } from "../../../../../../../src/orchestration/agent-runtime/tools/types.js";

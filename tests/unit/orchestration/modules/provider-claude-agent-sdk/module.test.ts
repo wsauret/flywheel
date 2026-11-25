@@ -9,7 +9,10 @@ import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/mod
 import { processUsageReadings } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/account-usage.js";
 import type { CliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { updateModuleMember } from "../../../../../src/orchestration/config/policy/module-selection-writer.js";
-import { composeFirstPartyModules, moduleProtocolRows, moduleSelectionFromConfig, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { moduleProtocolRows } from "../../../../../src/orchestration/module-catalog.js";
+import { moduleSelectionFromConfig } from "../../../../../src/orchestration/config/module-descriptor.js";
+import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js";
 import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
 import { observedLogins } from "../../../../helpers/login-observations.js";

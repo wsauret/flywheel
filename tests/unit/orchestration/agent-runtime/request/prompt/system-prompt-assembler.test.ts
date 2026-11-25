@@ -12,7 +12,7 @@ import { advertisedBashTool } from "../../../../../../src/orchestration/agent-ru
 import type { SkillRegistryRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { testSkill, testSkillRevision } from "../../../../../helpers/skill-fixtures.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
 import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/module-runtime.js";
 import { testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";
 import { promptCapabilities, promptOptions, type ToolPromptFields } from "../../../../../helpers/prompt-capabilities.js";

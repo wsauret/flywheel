@@ -2,7 +2,7 @@ import type { ExternalLoginProblem } from "../../../../infra/llm/access/access-p
 import { errorMessage } from "../../../../infra/error-message.js";
 import { keychainUnlocked } from "../../../../infra/macos-keychain.js";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
-import type { ModuleHealthReport } from "../../../module-health.js";
+import type { ModuleHealthReport } from "../../../app-service/definitions/commands/module-health.js";
 import { cliAccount, observationsOf, type ClaudeAgentSdkSeams } from "../cli-launch.js";
 import { cliLoginAccount, loginDirectories } from "./cli-login.js";
 import { enginePath } from "../../../../infra/claude-engine.js";

@@ -24,10 +24,10 @@ import { loadSubagentRunsFromEvents, readSubagentRuns, SUBAGENT_RUN_FACT_TYPES }
 import { prepareSessionFactAppend } from "../session/persistence/session-fact-writer.js"
 import type { ToolDeclaration } from "../module-seams.js"
 import type { RoleResolver } from "../config/roles.js"
-import type { ModuleId, FirstPartyModule } from "../modules.js"
+import type { ModuleId, FirstPartyModule } from "../module-catalog.js"
 import { moduleProtocol, type ModuleProtocolRuntime, type ModuleProtocolServices } from "../app-service/module-protocol-host.js"
 import { subagentsProtocol } from "../../protocol/modules/subagents.js"
-import type { DefinitionAvailabilitySnapshot } from "../app-service/definitions/definition-availability.js"
+import type { DefinitionAvailabilitySnapshot } from "../config/policy/definition-availability.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { CapabilityCheck } from "../../infra/capability-text.js"
 import { disabledTypesOf, subagentsConfigSection } from "./subagents/config.js"
@@ -171,7 +171,7 @@ function createSubagentsRuntime(services: ModuleRuntimeServices): SubagentsRunti
     resume: async (childSessionId, admission) => {
       // Only a running host's runtime is reachable for a Resume, and a capability plan registers with no host.
       if (!services.servingModel) throw new Error("A capability plan has no serving model to resume a child on.")
-      const { definitionAvailabilityOf } = await import("../app-service/definitions/definition-availability.js")
+      const { definitionAvailabilityOf } = await import("../config/policy/definition-availability.js")
       const availability = definitionAvailabilityOf(services.definitions.captureRevision(), services.moduleSelection().enabledModuleIds, disabledTypesOf(services.captureRuntimeConfig().moduleSections))
       return createSubagentResume({ ...toolDeps(services.servingModel, availability), ...admission })(childSessionId, {
         executionCwd: services.executionCwd, projectRoot: services.projectRoot,

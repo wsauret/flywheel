@@ -16,9 +16,10 @@ import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
  * truth; see imageTokensForModel and countToolOutputPartsChars below.
  */
 
-import type { ContentBlock, ConversationMessage } from "../llm/types.js";
-import { modelFamilyApi, type LlmApi, type LlmToolOutputPart } from "../llm/messages.js";
-import { keepsEarlierTurnReasoning } from "../llm/model-compat.js";
+import type { ContentBlock, ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
+import { modelFamilyApi, type LlmApi } from "../../../infra/llm/conversation/messages.js";
+import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
+import { keepsEarlierTurnReasoning } from "../../../infra/llm/models/model-compat.js";
 import { deliberationReplays, type DeliberationReplay } from "../llm/history/provider-history.js";
 import { isProgressUpdate } from "../../../infra/llm/anthropic-narration.js";
 import type { AccessProviderId } from "../../../infra/llm/access/access-provider.js";

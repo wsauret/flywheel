@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import type { BackgroundWorkResult } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
-import type { BackgroundOutputRequest } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work-processes.js";
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../../src/orchestration/session/control/background-work/background-work-types.js";
+import type { BackgroundOutputRequest } from "../../../../../../src/orchestration/session/control/background-work/background-work-processes.js";
 import { createProcessTool } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
 import type { PersistentProcessRecord } from "../../../../../../src/infra/supervision/persistent/persistent-process-manager.js";
 import { unusedChildSessionControl } from "../../../../../helpers/child-session-control.js";

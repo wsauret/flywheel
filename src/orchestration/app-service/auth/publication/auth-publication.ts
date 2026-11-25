@@ -1,7 +1,7 @@
 import { authStatusCursor, type AuthOperationNotice, type RuntimeAuthStatusScope, type RuntimeAuthView } from "../../../../protocol/auth/auth-status-protocol-types.js"
 import type { AuthProfileResolution } from "../../../auth/auth-profile-manager.js"
 import type { SessionManager } from "../../../session/manager.js"
-import { listActiveAndObservedAuthSessions, resolveSessionAuthProfile, sessionAuthFacts, type WorkflowAuthRuns } from "../auth-profile-scope.js"
+import { listActiveAndObservedAuthSessions, resolveSessionAuthProfile, sessionAuthFacts, type WorkflowAuthRuns } from "../../../auth/auth-profile-scope.js"
 import type { AuthStatusProjection } from "../auth-status-projection.js"
 import type { AuthAttentionPublisher } from "./auth-attention-publisher.js"
 import type { RuntimeUiBus } from "../../projections/runtime-ui-bus.js"

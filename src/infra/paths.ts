@@ -294,6 +294,9 @@ export function resolveSessionDir(sessionId: string, projectRoot: string): strin
 /** The scratch child that holds one private project copy per bash `mutates` command. */
 export const SCRATCH_MUTATIONS_DIR = "mutations";
 
+/** The record of one private copy, in its home under `SCRATCH_MUTATIONS_DIR`. Taking the copy writes it last. */
+export const PRIVATE_COPY_RECORD = "copy.json";
+
 /** The scratch child that holds one Git shim folder per runtime that ran a bash `mutates` command. */
 export const SCRATCH_MUTATION_GIT_DIR = "mutation-git";
 

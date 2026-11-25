@@ -5,29 +5,7 @@ import type { StoredFact } from "../../../infra/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { isRecord } from "../../../infra/record.js"
 import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
-import {
-  ProviderRequestErrorSchema,
-  ProviderRequestIdentitySchema,
-  ProviderRequestOmittedToolSchema,
-  ProviderRequestOutcomeSchema,
-  ProviderRequestToolSchema,
-  HistoricalProviderRequestToolSchema,
-  ProviderRequestTreePointerSchema,
-  HistoricalProviderStreamSummarySchema,
-  ProviderStreamSummarySchema,
-  ProviderStreamSummaryV2Schema,
-  providerRequestIdentityFromPayload,
-  type ProviderRequestIdentity,
-  type ProviderStreamSummary,
-  ProviderStreamTelemetrySourceSchema,
-  PromptStaleMaskingSchema,
-  PromptToolHistoryProjectionSchema,
-  PromptHistoryLoweringSchema,
-  ProviderRequestAuditOptionsSchema,
-  ProviderTransportContextSchema,
-  RETIRED_INTERACTION_PROFILE_IDS,
-} from "./provider-request-audit-types.js"
-import { MODEL_INTERACTION_PROFILE_IDS } from "../../agent-runtime/request/prompt/model-interaction-profile.js"
+import { ProviderRequestErrorSchema, ProviderRequestIdentitySchema, ProviderRequestOmittedToolSchema, ProviderRequestOutcomeSchema, ProviderRequestToolSchema, HistoricalProviderRequestToolSchema, ProviderRequestTreePointerSchema, HistoricalProviderStreamSummarySchema, ProviderStreamSummarySchema, ProviderStreamSummaryV2Schema, providerRequestIdentityFromPayload, type ProviderRequestIdentity, type ProviderStreamSummary, ProviderStreamTelemetrySourceSchema, PromptStaleMaskingSchema, PromptToolHistoryProjectionSchema, PromptHistoryLoweringSchema, ProviderRequestAuditOptionsSchema, ProviderTransportContextSchema, RETIRED_INTERACTION_PROFILE_IDS, MODEL_INTERACTION_PROFILE_IDS } from "./provider-request-audit-types.js"
 import { AccessProviderCandidateSchema, AccessProviderCatalogProvenanceSchema } from "../../../infra/llm/access/access-provider.js"
 
 

@@ -1,6 +1,7 @@
 import { CONFIG_VALUE_ABSENT, type ConfigMutationResult, type RuntimeConfigOwner, type RuntimeConfigSnapshot } from "../../config/runtime-config-owner.js"
 import { PROJECT_SHOW_BUILD_DEFAULT, isPresentedSettingId } from "../../config/schema/setting-definitions.js"
-import { installedModuleConfigSettings, installedProviderSettings } from "../../modules.js"
+import { installedProviderSettings } from "../../module-catalog.js"
+import { installedModuleConfigSettings } from "../../config/schema/config-section.js"
 import { Schema } from "effect"
 import type { ModuleConfigNumberListControl, ModuleConfigSectionBooleanControl, ModuleProviderSetting } from "../../../protocol/runtime/module-protocol-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"

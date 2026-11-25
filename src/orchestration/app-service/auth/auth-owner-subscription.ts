@@ -1,7 +1,7 @@
 import type { StoredFact } from "../../../infra/store/event-store-types.js"
 import type { RuntimeAuthStatusScope } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { SessionManager } from "../../session/manager.js"
-import type { WorkflowRunReader } from "../../workflow-host/run-record.js"
+import type { WorkflowRunReader } from "../../session/metadata/workflow-run-record.js"
 import type { WatchedCatalogSession } from "./auth-profile-watcher-owner.js"
 
 /** Observes durable owner changes without inventing session scopes for aggregate IDs.

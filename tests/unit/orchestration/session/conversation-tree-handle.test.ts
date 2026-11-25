@@ -14,7 +14,7 @@ import { ConversationTreeStorage } from "../../../../src/orchestration/session/c
 import { parseConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts";
 import { toOpenAIResponsesRequestInput } from "../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses";
 import { toAnthropicMessagesRequest } from "../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages";
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
+import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message";
 
 let baseDir: string;
 let store: LocalSqliteEventStore;

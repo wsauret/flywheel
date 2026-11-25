@@ -24,8 +24,8 @@ import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models
 import { ANTHROPIC_RESERVED_BODY_KEYS, applyProviderExtraBody, type AnthropicThinkingDisplay } from "../../../../../infra/llm/access/provider-options.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "../../errors.js";
-import type { CompletedStopReason } from "../../messages.js";
-import { anthropicThinkingMode } from "../../model-compat.js";
+import type { CompletedStopReason } from "../../../../../infra/llm/conversation/messages.js";
+import { anthropicThinkingMode } from "../../../../../infra/llm/models/model-compat.js";
 import { throwIfLivenessFailure, withStreamAttempt, type StreamAttempt } from "../../stream/stream-attempt.js";
 import { invokeProviderAttempt } from "../../stream/provider-attempt-boundary.js";
 import { normalizeProviderAttemptFailure } from "../../stream/provider-failure.js";
@@ -56,7 +56,8 @@ import { parseAnthropicToolInput } from "./anthropic-tool-input.js";
 import { anthropicUsageEvent, emptyAnthropicUsage, foldAnthropicMessageDeltaUsage, foldAnthropicMessageStartUsage } from "./anthropic-usage.js";
 import { definitionText, definitionValue } from "../../tool-definition-text.js";
 import type { ProviderHistoryTarget } from "../../history/provider-history.js";
-import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, presentToolHistory, resolveCacheRetention, trailingRuntimeNotices, type Claim, type ConnectedClient, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions, type ToolChoice, type ToolPresentation, type TransportContextFrame } from "../../types.js";
+import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, presentToolHistory, resolveCacheRetention, type Claim, type ConnectedClient, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions, type ToolChoice, type ToolPresentation, type TransportContextFrame } from "../../types.js";
+import { trailingRuntimeNotices } from "../../../../../infra/llm/conversation/conversation-message.js";
 const log = Log.create({ service: "llm-anthropic" });
 
 interface StringHeaders {

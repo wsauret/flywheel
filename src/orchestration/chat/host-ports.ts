@@ -6,7 +6,7 @@ import type { DeliveryOutcome, LiveRecipientState } from "../session/message-dis
 import type { ChatTurnEnding, createChatInvocationCompletion } from "./runner-completion.js"
 import type { TurnCut } from "./runner-wait-state.js"
 import type { TurnInterruption } from "../session/conversation/turn-end-record.js"
-import type { BackgroundWorkTracking } from "../agent-runtime/background-work/background-work.js"
+import type { BackgroundWorkTracking } from "../session/control/background-work/background-work.js"
 
 /** Interactive controls and projections layered over the shared runner host. */
 export interface ChatPorts {

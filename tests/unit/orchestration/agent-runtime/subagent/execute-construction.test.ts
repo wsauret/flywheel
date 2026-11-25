@@ -15,7 +15,7 @@ import { testCapabilityModules, testDefinitionAvailability, testKernelToolDeps, 
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { makeContext as toolContext } from "../tools/_fixtures.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { buildRegistry, createNotificationCapture, makeContext, makeDeps, makeMockRunnerFactory, runnerEffort, TEST_RATIONALE, childTask } from "./_fixtures.js";
 import { Effect, Exit, Scope } from "effect";
 import { openRequestInputs } from "../../../../../src/orchestration/agent-runtime/request/request-inputs.js";
@@ -23,8 +23,8 @@ import { resolveRuntimeConversation } from "../../../../../src/orchestration/age
 import type { RunnableAgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { subagentsRuntime } from "../../../../../src/orchestration/modules/subagents/execution/control/runtime-binding.js";
-import { definitionAvailabilityOf } from "../../../../../src/orchestration/app-service/definitions/definition-availability.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
+import { definitionAvailabilityOf } from "../../../../../src/orchestration/config/policy/definition-availability.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
 import { asModelClient } from "../_model-client.js";
 import { makeOptions } from "../_runner-options.js";
 import type { EnvCaptureResolver } from "../../../../../src/infra/env-detection.js";

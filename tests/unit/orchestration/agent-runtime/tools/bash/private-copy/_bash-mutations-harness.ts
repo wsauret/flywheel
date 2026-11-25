@@ -11,8 +11,8 @@ import type { ToolContext } from "../../../../../../../src/orchestration/agent-r
 import type { ShellRuntime, ShellRuntimeClient } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/execution/shell-runtime-types.js";
 import { commandOutputOps, mutationSpawnProbe, makeMockOps, makeMockOwnedProcess, type MergeFileFake, type OwnedExit } from "../_bash-fixtures.js";
 import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext } from "../../_fixtures.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkRegistry, type SettledProjectMutation } from "../../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { createForegroundBashHoldController } from "../../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createBackgroundWorkRegistry, type BackgroundWorkRegistry, type SettledProjectMutation } from "../../../../../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { backgroundLogPath } from "../../../../../../helpers/background-log-path.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../../src/infra/store/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../../../src/infra/paths.js";

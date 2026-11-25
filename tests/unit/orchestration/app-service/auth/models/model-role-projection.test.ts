@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { modelRoleAdmission, publishedModelRoles } from "../../../../../../src/orchestration/app-service/auth/models/model-role-projection.js"
-import { definitionAvailabilityOf } from "../../../../../../src/orchestration/app-service/definitions/definition-availability.js"
+import { definitionAvailabilityOf } from "../../../../../../src/orchestration/config/policy/definition-availability.js"
 import { RuntimeModelRolesResultSchema } from "../../../../../../src/protocol/auth/model-role-protocol-schemas.js"
-import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModuleComposition } from "../../../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js"
+import { SHIPPED_MODULES } from "../../../../../../scripts/shipped-modules.js"
+import type { FirstPartyModuleComposition } from "../../../../../../src/orchestration/module-catalog.js"
 import { repoDefinitions, repoModules } from "../../../../../helpers/project-definitions.js"
 
 const rolesOf = (composition: FirstPartyModuleComposition) =>

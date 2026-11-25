@@ -5,7 +5,7 @@ import { blockIdentity, rawToolUseId } from "../../../../protocol/transcript/blo
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
 import { createReadQueue } from "../../../../infra/read-queue.js"
 import { createMicrotaskBatch } from "../../../../infra/microtask-batch.js"
-import { createSessionToolSummaryReader } from "../../../modules.js"
+import { createSessionToolSummaryReader } from "../../runtime-facts/module-tool-history.js"
 import type { ToolHistorySummary, SessionToolSummaryReader, SessionToolSummarySnapshot } from "../../../module-seams.js"
 import { branchVisibleTranscriptEntries, createConversationTreeProjection, type ConversationTreeProjectionState, type ConversationTreeTranscriptEntry } from "../conversation-projection.js"
 import type { ConversationEntry } from "../conversation-entry-types.js"

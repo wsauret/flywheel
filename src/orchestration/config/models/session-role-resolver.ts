@@ -1,7 +1,6 @@
-import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js"
 import { resolveCurrentRoles } from "./model-selection.js"
-import { canonicalRoleId, RETIRED_COMPACTION_ROLE_IDS } from "../retired-config-names.js"
-import { parentRoleId, type ResolvedRole, type ResolvedRoles, type RoleId, type RoleResolver } from "../roles.js"
+import { canonicalRoleId, normalizeRoleAssignments, RETIRED_COMPACTION_ROLE_IDS } from "../retired-config-names.js"
+import { parentRoleId, type ResolvedRole, type ResolvedRoles, type RoleId } from "../roles.js"
 import { parseBriefRoleId, briefPersonaRoleId, briefAtRoleId, briefRoleId } from "../../../protocol/auth/brief-role-id.js"
 import type { FlywheelConfig } from "../schema/schema.js"
 import type { ModelFamily } from "../../../infra/llm/models/model-family.js"
@@ -9,12 +8,9 @@ import type { ModelInfo, ModelsClient } from "../../../infra/llm/models/models.j
 import { offeringTransportFamily } from "../../../infra/llm/catalog/model-catalog-resolution.js"
 import type { PickerModelEligibility } from "./provider-model-eligibility.js"
 import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js"
-import { normalizeRoleAssignments, type RoleAssignmentEntry, type RoleAssignments, type RoleAssignmentSnapshot, type RoleSettingEntry, type RoleSettings } from "../../session/metadata/schemas.js"
-import { createSingleSessionMetadataProjection } from "../../session/metadata/session-metadata-projection.js"
-import { registeredRoleIds, captureRoleResolver, resolveRoleFromModels, type RoleSetting } from "./role-resolution.js"
+import type { RoleAssignmentEntry, RoleAssignments, RoleAssignmentSnapshot, RoleSettingEntry, RoleSettings } from "../../session/metadata/schemas.js"
+import { registeredRoleIds, resolveRoleFromModels, type RoleSetting } from "./role-resolution.js"
 import { beginTierResolutionOperation, type TierResolutionOptions } from "./model-tiers.js"
-import type { CaptureProviderConnection, ProviderConnectionCapture } from "../../agent-runtime/request/model-runtime-capture.js"
-import { workflowRunOwner } from "../../module-catalog.js"
 import type { AgentPersonaRoles } from "./role-selection.js"
 
 type MaterializeRoleSnapshotDeps = {
@@ -97,17 +93,6 @@ export function roleAssignmentEntryFromSelection(input: RoleSettingEntry): RoleS
   }
 }
 
-/** Projects complete saved pairs for consumers without a request capture.
- * Live runners pass a capture to createSessionRoleResolver instead. */
-function resolvedRolesFromAssignments(roles: RoleSettings): ResolvedRoles {
-  const resolved = new Map<RoleId, ResolvedRole>()
-  for (const [roleId, assignment] of Object.entries(normalizeRoleAssignments(roles))) {
-    if (RETIRED_COMPACTION_ROLE_IDS.has(roleId) || assignment.model === undefined || assignment.effort === undefined) continue
-    resolved.set(roleId, { roleId, model: assignment.model, effort: assignment.effort, providerOptions: assignment.providerOptions, setting: assignment, settingScope: "session" })
-  }
-  return resolved
-}
-
 /** Groups one eligibility decision's effective model IDs for role previews. */
 export function enabledModelsFromEligibility(entries: Iterable<readonly [string, PickerModelEligibility]>): ReadonlyMap<ModelFamily, ReadonlySet<string>> {
   const available = new Map<ModelFamily, Set<string>>()
@@ -146,18 +131,6 @@ export async function ensureSessionRoleSnapshot(deps: {
   return effectiveRoleAssignments(current.roleAssignments ?? { defaults: {}, overrides: {} })
 }
 
-/** Resolves replayed authored fields against the current immutable profile capture.
- * No request selection is written back to session metadata. */
-export async function resolveSessionRoles(snapshot: RoleAssignmentSnapshot, capture: ProviderConnectionCapture, userDataRoot: string, additionalRoleIds: Iterable<string> = [], inherited?: RoleAssignmentSnapshot, personas?: AgentPersonaRoles): Promise<ResolvedRoles> {
-  const resolve = captureRoleResolver({
-    selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: capture.runtimeConfig.allowTrainingRoutes,
-  }, userDataRoot)
-  return resolveSessionSettings(snapshot, capture.runtimeConfig.profileRoles, async (roleId, setting) => {
-    const result = await resolve(roleId, setting)
-    return result.kind === "selected" || result.kind === "unserved" ? result.role : undefined
-  }, additionalRoleIds, undefined, inherited, personas)
-}
-
 /** Previews the same authored policy as requests, using the picker's admitted catalog.
  * Only `requestedRoleIds` resolve. A request resolves a brief seat only when a
  * setting names it, so a preview never generates one either: an unset seat
@@ -169,7 +142,7 @@ export function previewSessionRoles(snapshot: RoleAssignmentSnapshot, profileRol
   return resolveSessionSettings(snapshot, profileRoles, (roleId, setting) => resolveRoleFromModels(roleId, setting, available, operation), generated, requested, undefined, personas)
 }
 
-async function resolveSessionSettings(snapshot: RoleAssignmentSnapshot, profileRoles: FlywheelConfig["profiles"][string]["roles"], resolve: (roleId: string, setting: RoleSetting) => Promise<ResolvedRole | undefined>, additionalRoleIds: Iterable<string>, onlyRoleIds?: ReadonlySet<string>, inherited?: RoleAssignmentSnapshot, personas?: AgentPersonaRoles): Promise<ResolvedRoles> {
+export async function resolveSessionSettings(snapshot: RoleAssignmentSnapshot, profileRoles: FlywheelConfig["profiles"][string]["roles"], resolve: (roleId: string, setting: RoleSetting) => Promise<ResolvedRole | undefined>, additionalRoleIds: Iterable<string>, onlyRoleIds?: ReadonlySet<string>, inherited?: RoleAssignmentSnapshot, personas?: AgentPersonaRoles): Promise<ResolvedRoles> {
   const profile = Object.fromEntries(Object.entries(profileRoles).filter(([id]) => parseBriefRoleId(canonicalRoleId(id)) === undefined).map(([id, role]) => [canonicalRoleId(id), {
     model: role.model, effort: role.effort, providerOptions: role.provider_options,
   }]))
@@ -191,28 +164,4 @@ async function resolveSessionSettings(snapshot: RoleAssignmentSnapshot, profileR
     })
   }
   return roles
-}
-
-export function createSessionRoleResolver(deps: {
-  projectRoot: string
-  sessionId: string
-  reader: AsyncEventReadSurface
-  userDataRoot?: string
-  capture?: CaptureProviderConnection
-  requiredRoleIds?: ReadonlySet<string>
-  /** For a workflow agent's session, the persona roles of its agent record, by record id. */
-  personas?: AgentPersonaRoles
-}): RoleResolver {
-  const projection = createSingleSessionMetadataProjection(deps.reader, deps.sessionId)
-  return async (requestCapture) => {
-    const session = (await projection.replay()).sessions[deps.sessionId]
-    if (!session) throw new Error(`Session not found: ${deps.sessionId}`)
-    const snapshot = session.roleAssignments ?? { defaults: {}, overrides: {} }
-    const inherited = session.kind === "workflow-agent" ? await workflowRunOwner().settings(deps.reader).read(session.workflowMembership.workflowId) : undefined
-    if (session.kind === "workflow-agent" && !inherited) throw new Error(`Workflow not found: ${session.workflowMembership.workflowId}`)
-    const capture = requestCapture ?? await deps.capture?.()
-    return capture
-      ? resolveSessionRoles(snapshot, capture, deps.userDataRoot ?? deps.projectRoot, deps.requiredRoleIds, inherited?.roleAssignments, deps.personas)
-      : resolvedRolesFromAssignments(effectiveRoleAssignments(inherited ? withInheritedRoles(inherited.roleAssignments, snapshot) : snapshot, {}, deps.personas))
-  }
 }

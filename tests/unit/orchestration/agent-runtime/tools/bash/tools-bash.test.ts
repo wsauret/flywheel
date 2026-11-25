@@ -10,8 +10,8 @@ import * as path from "node:path";
 import { Parser } from "web-tree-sitter";
 
 import { createBashDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { createForegroundBashHoldController } from "../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
 import { canonicalMutationPath } from "../../../../../../src/infra/locks/file-mutation-queue.js";

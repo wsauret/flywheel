@@ -19,7 +19,7 @@ const DIRECT_OUTPUT_FILE_ALLOWLIST = new Set([
   // The sink under log.ts: when the diagnostics stream itself fails, stderr is
   // the only channel left, and routing through Log would be circular.
   "src/infra/diagnostics/debug-log.ts",
-  "src/orchestration/headless/run-headless-task.ts",
+  "src/orchestration/app-service/headless/run-headless-task.ts",
   // This executable role runs inside a captured command. Its fixed refusal
   // belongs to that command's stderr, not the host renderer or diagnostics.
   "src/orchestration/agent-runtime/tools/bash/git/bash-git-main.ts",

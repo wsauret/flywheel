@@ -21,7 +21,7 @@ import { ConversationTreeStorage } from "./conversation/tree/conversation-tree-s
 import { forkConversationTree } from "./conversation/tree/conversation-tree-fork.js"
 import { reconstructRawSessionMessages, validateRawForkBranchWork } from "./conversation/tree/conversation-tree-context.js"
 import { runInTaskSlices } from "../../infra/task-scheduling.js"
-import type { ConversationMessage } from "../agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../infra/llm/conversation/conversation-message.js"
 import { prepareChatBranchPublication } from "./publication/session-chat-branch-publication.js"
 import { readConversationCheckpoint } from "./conversation-records/conversation-checkpoint.js"
 import { readConversationPromptBaseline } from "./conversation-records/conversation-prompt-baseline.js"

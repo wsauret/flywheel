@@ -1,6 +1,6 @@
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
 import type { ChatInput } from "../../../../src/infra/chat-input"
-import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
+import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work"
 import { createMessageSessionTool } from "../../../../src/orchestration/agent-runtime/tools/sessions/message-session"
 import type { DispatchedToolContext } from "../../../../src/orchestration/agent-runtime/tools/types"
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"

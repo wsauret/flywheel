@@ -10,7 +10,7 @@ import { contentEvidence } from "../../../../../../src/infra/runtime-facts/conte
 import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { buildDurableSubagentCreated, buildSubagentCompleted, buildSubagentPrompted } from "../../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { countStateRequests, type StateRequest } from "../../../../../helpers/state-requests.js"
-import { USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../../../../../src/orchestration/agent-runtime/request/usage/usage-settlement.js"
+import { USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../../../../../src/orchestration/session/history/usage-settlement.js"
 import { chatSessionActions, readChatTurnEnd } from "../../../../../../src/orchestration/session/control/chat-session-run-evidence.js"
 import { tryOpenConversationTree } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { createConversationTreeWriter } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-writer.js"

@@ -14,11 +14,10 @@ import { deriveProviderModelPreferences, resolveAccountProviderModelPreferences,
 import { getSharedModelListingClient } from "./llm-clients.js";
 import { isListableRoute, sharedModelInfos } from "../../../infra/llm/catalog/provider-model-info.js";
 import { customProviderById } from "../../../infra/llm/custom-provider-registry.js";
-import { composeFirstPartyModules, type FirstPartyModuleSnapshot } from "../../modules.js";
-import { installedCredentialProviderIds } from "../../credential-provider-modules.js";
-import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js";
+import { composeFirstPartyModules, installedCredentialProviderIds } from "../../module-composition.js";
+import { type FirstPartyModuleSnapshot, credentialSlotClassifier } from "../../module-catalog.js";
 
-import { accessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js";
+import { accessProviderRegistry } from "./access-provider-registry.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import { type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../../infra/auth/provider-account.js";
 interface ProviderModelDeps {

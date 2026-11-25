@@ -174,6 +174,8 @@ export interface ModuleCatalogSlot<Module> {
   /** The selected catalog, loaded once on first read. Undefined means no
    * registry or source-entry loader has initialized this realm. */
   installed(): readonly Module[] | undefined;
+  /** The tuple the registry published, without an installed override. */
+  shipped(): readonly Module[] | undefined;
 }
 
 export function createModuleCatalogSlot<Module>(): ModuleCatalogSlot<Module> {
@@ -197,5 +199,6 @@ export function createModuleCatalogSlot<Module>(): ModuleCatalogSlot<Module> {
       if (load && !catalog) catalog = Object.freeze(load());
       return catalog ?? shipped;
     },
+    shipped: () => shipped,
   };
 }

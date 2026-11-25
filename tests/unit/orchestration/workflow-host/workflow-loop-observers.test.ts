@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import type { EmitFn } from "../../../../src/infra/event-bus.js";
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work.js";
+import type { BackgroundWorkResult } from "../../../../src/orchestration/session/control/background-work/background-work-types.js";
 import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/execution/injection-queue.js";
 import { createWorkflowLoopObservers } from "../../../../src/orchestration/workflow-host/execution/loop-observers.js";
 import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";

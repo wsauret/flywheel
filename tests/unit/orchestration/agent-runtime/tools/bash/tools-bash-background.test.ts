@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { hasShellBackgroundJob, loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { createBashDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import { capabilityAccessFor } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { startModulePolicy, type ModulePolicy } from "../../../../../../src/orchestration/config/policy/module-policy.js";

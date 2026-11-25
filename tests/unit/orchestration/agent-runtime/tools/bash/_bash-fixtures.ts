@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import { lstatSync, mkdirSync, rmdirSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import type { OwnedProcess } from "../../../../../../src/infra/supervision/launch/owned-subprocess.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { createForegroundBashHoldController, type ForegroundBashHoldController } from "../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController, type ForegroundBashHoldController } from "../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { createShellRuntime } from "../../../../../../src/orchestration/agent-runtime/background-execution/shell-runtime.js";
 import { executeDispatchedTool } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";

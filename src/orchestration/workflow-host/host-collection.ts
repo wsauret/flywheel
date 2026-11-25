@@ -2,7 +2,7 @@ import type { WorkflowDefinition } from "../../workflows/schema/workflow-schema.
 import type { WorkflowView } from "../../workflows/view/types.js"
 import type { RecallInput, RecallResult } from "../../protocol/transcript/conversation-recall.js"
 import type { SessionManager } from "../session/manager.js"
-import type { AdmittedWorkflowDeps } from "./deps.js"
+import type { AdmittedWorkflowDeps } from "../agent-runtime/runner/workflow-deps.js"
 import type { EventStoreRuntime } from "../../infra/store/event-store-effect.js"
 import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
 import type { AttachChildSessionProjection } from "../module-seams.js"

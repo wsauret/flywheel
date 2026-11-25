@@ -66,7 +66,7 @@ export const AGGREGATE_READ_ALLOWLIST: readonly AggregateReadAllowance[] = [
   { file: "src/workflows/vm/host/host.ts", scope: "performPreflight", rule: FULL, reason: "one workflow host preflight on launch or resume, cached for the run" },
   { file: "src/workflows/vm/host/host.ts", scope: "loop", rule: FULL, reason: "once when a workflow run fails and formats its terminal result" },
 
-  { file: "src/orchestration/session/history/finalized-tool-result-checkpoint.ts", scope: "readSessionRecoveryEvidence", rule: FULL, reason: "checkpoint.ts:133,259 reads only when retained checkpoints exist: conversation-tree-writer.ts:154 before an idle command, :238 at a question-suspended runner end (chat/controls.ts:196-201), or project-state-recovery.ts:221 during crash recovery; :244 also retires retained legacy cells" },
+  { file: "src/orchestration/agent-runtime/loop/tool-calls/finalized-tool-result-checkpoint.ts", scope: "readSessionRecoveryEvidence", rule: FULL, reason: "checkpoint.ts:133,259 reads only when retained checkpoints exist: conversation-tree-writer.ts:154 before an idle command, :238 at a question-suspended runner end (chat/controls.ts:196-201), or project-state-recovery.ts:221 during crash recovery; :244 also retires retained legacy cells" },
 
   // Migrations.
   migration("adopt-workflow-children.ts", "adoptionCandidates"),

@@ -2,7 +2,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { declaredFactRetentionTypes, declaredRetiredFactTypes, factOwner, factRetention, type FactOwner, type FactRetention } from "../src/infra/store/fact-retention-registry.js";
 import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js";
-import { SHIPPED_MODULES, type FirstPartyModule } from "../src/orchestration/modules.js";
+import { SHIPPED_MODULES } from "./shipped-modules.js";
+import type { FirstPartyModule } from "../src/orchestration/module-catalog.js";
 import { RETIRED_FACT_TYPES } from "../src/orchestration/session/persistence/storage/event-store-maintenance.js";
 import { isUnderAny, moduleFactHomes } from "./module-homes.js";
 

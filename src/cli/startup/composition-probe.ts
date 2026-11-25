@@ -1,5 +1,3 @@
-// This probe enters before normal command composition and owns its catalog bootstrap.
-import "../../orchestration/modules.js";
 import type { StartupDirectories } from "../../infra/directory-authorities.js";
 import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { isDevelopmentBuild } from "../../infra/development-mode.js";

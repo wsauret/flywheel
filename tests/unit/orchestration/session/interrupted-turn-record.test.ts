@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
+import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message";
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer";
 import { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import { interruptedTurnEnd, turnEndOfEntry, type TurnInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record";

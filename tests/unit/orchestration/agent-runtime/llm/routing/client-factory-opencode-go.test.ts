@@ -15,7 +15,7 @@ import { testDirectories } from "../../../../../helpers/directories.js";
 import { testCapabilityModules, testEligibility, testProviderSessionLifetime } from "../../../../../helpers/provider-authority.js";
 import { fakeAvailability, requestEvents } from "../_provider-chain-harness.js";
 
-import { accessProviderRegistry } from "../../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js";
 import { authProviders } from "../../../../../helpers/auth-context.js";
 import { modelInfo } from "../../../../../helpers/model-tier-fixtures.js";
 import { openCodeGoRequestHeaders } from "../../../../../../src/infra/llm/provider-request-identity.js";

@@ -18,7 +18,8 @@ import { openRouterReportedChargeUsd } from "../../../../../../../src/orchestrat
 /** The provider module passes the wire id it resolved from its catalog; the
  *  adapter never folds one itself. */
 const OPENROUTER = { accessProvider: "openrouter", wireModelId: "anthropic/claude-opus-4.8", reportedChargeUsd: openRouterReportedChargeUsd } as const;
-import type { ConversationMessage, LLMClient, ProviderStreamEvent, StreamOptions } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { LLMClient, ProviderStreamEvent, StreamOptions } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../../src/infra/llm/conversation/conversation-message.js";
 import { ProviderAttemptFailure } from "../../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { LlmStreamError } from "../../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 

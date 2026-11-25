@@ -11,17 +11,18 @@ import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-ev
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths"
 import type { ChatInput } from "../../../../../src/infra/chat-input"
 import type { AgentFactory, AgentOptions, AgentRunTerminal } from "../../../../../src/orchestration/agent-runtime/types"
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types"
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message"
 import { publishWorkerAttempt } from "../_workflow-host-fixtures"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
-import { checkpointFinalizedToolResult, FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/history/finalized-tool-result-checkpoint"
+import { checkpointFinalizedToolResult } from "../../../../../src/orchestration/agent-runtime/loop/tool-calls/finalized-tool-result-checkpoint"
+import { FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/history/finalized-tool-result-checkpoint-schema"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer"
 import {
   QUEUED_USER_INPUT_IN_FLIGHT_KIND, decodeQueuedUserInput, decodeQueuedUserInputCell,
   holdQueuedUserInput, queuedInputPayload, queuedUserInputPut, readWorkflowQueuedUserInputs,
 } from "../../../../../src/orchestration/session/conversation/queued-user-inputs"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/modules"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
 import { createWorkerCallback } from "../../../../../src/orchestration/workflow-host/execution/agent-callback"
 import { consumeWorkflowRecoveryInputs } from "../../../../../src/orchestration/workflow-host/execution/recovery-input"
 import { createWorkflowAgentInputs } from "../../../../../src/orchestration/workflow-host/execution/agent-inputs"

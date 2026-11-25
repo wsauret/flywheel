@@ -1,5 +1,4 @@
 import type { AgentLoopWakeInput } from "../../../../infra/agent-loop-events.js"
-import type { OutputProjectionEvent } from "../../../../infra/output/output-projection-events.js"
 import type { Agent, AgentOptions, AgentRunResult, OmitAgentOptions, RunnerToolSurfaces } from "../../types.js"
 import type { RetryState } from "../../llm/retry-budget.js"
 import type { ResilienceDeps } from "../agent-resilience.js"
@@ -14,10 +13,12 @@ export type AgentHostContextOptions = OmitAgentOptions<AgentOptions, "runtimeSur
  *  of erasing it to the loose hosted shape. */
 export interface AgentHostOptions<O = AgentHostContextOptions> {
   createRunner: (options: O) => Agent
-}
-
-export interface AgentHostTurnLease {
-  readonly signal: AbortSignal
+  /** Called by `interruptGeneration` when no model context can park the
+   *  turn, such as during context preparation. The owner of a turn
+   *  authorization that outlives one generation (the chat turn slot) closes
+   *  it here, because cancelling only this generation would still permit a
+   *  teardown respawn. Answers whether it closed one. */
+  closeTurnWithoutContext?: () => boolean
 }
 
 interface AgentHostTurnOptions<O> {
@@ -30,8 +31,9 @@ interface AgentHostTurnOptions<O> {
   onAttemptFailure?: (result: AgentRunResult) => void | Promise<void>
 }
 
-/** One logical generation at a time and its shared recovery policy: what a
- *  caller that runs one turn and then stops needs. */
+/** One logical generation at a time and its shared recovery policy. A caller
+ *  that continues across turns, such as a chat runner, keeps its own turn
+ *  slot beside it. */
 export interface AgentGeneration<O = AgentHostContextOptions> {
   readonly generationState: "active" | "idle"
   runTurn(options: AgentHostTurnOptions<O>): Promise<AgentRunResult>
@@ -41,37 +43,4 @@ export interface AgentGeneration<O = AgentHostContextOptions> {
   abortGeneration(): void
   /** Settles after the active logical generation and all retry attempts end. */
   settle(): Promise<void>
-}
-
-/** A generation host with the turn slot that a chat runner reserves, starts,
- *  and continues across the person's messages. */
-export interface AgentHost<O = AgentHostContextOptions> extends AgentGeneration<O> {
-  readonly turnState: "active" | "idle"
-  readonly activeTurnLease: AgentHostTurnLease | null
-  reserveTurn(): AgentHostTurnLease | null
-  takeReservedTurn(): AgentHostTurnLease | null
-  releaseTurn(lease: AgentHostTurnLease): void
-  ownsTurn(lease: AgentHostTurnLease): boolean
-  startTurn(lease: AgentHostTurnLease, run: () => Promise<void>): void
-  interruptTurn(): void
-  continueAfterTurn(lease: AgentHostTurnLease, continuation: () => void): void
-}
-import type { ChatInputLike } from "../../../../infra/chat-input.js"
-/** What a chat runner and a workflow runner both are. Controls whose shape
- *  differs between them, such as interrupt and resume, belong to each kind
- *  (`ChatRunner`, `WorkflowRunner`). */
-export interface Runner {
-  readonly sessionId: string
-  /** Projects an already durable event without recording it again. */
-  applyProjectionEvent(event: OutputProjectionEvent): void
-  dispose(): Promise<void>
-  /** Takes the person's latest unread queued message back for their editor.
-   *  Resolves with it only after its hold is retired, and null when nothing
-   *  unread is queued. Rejects with the store's error when the hold cannot
-   *  be retired, which leaves the message queued. */
-  recallQueuedMessage(): Promise<ChatInputLike | null>
-  compact(): Promise<boolean>
-  /** Reload runtime config, auth, and model listing from disk. Optional;
-   *  workflow runners that complete in one shot may omit it. */
-  refreshDeps?(): Promise<void>
 }

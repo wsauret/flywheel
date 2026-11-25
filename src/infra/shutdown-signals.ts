@@ -21,3 +21,7 @@ export function shutdownSignals(platform: NodeJS.Platform): readonly ShutdownSig
       return []
   }
 }
+
+/** What an entry point returns once shutdown closed its admission: the call
+ *  never started, so it owns no session and left nothing to interrupt. */
+export const ADMISSION_CLOSED_ERROR = "Flywheel is shutting down"

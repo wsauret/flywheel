@@ -1,9 +1,9 @@
 import { createStreamingSanitizer } from "../../../../infra/control-characters.js";
 import type { PersistentProcessRecord } from "../../../../infra/supervision/persistent/persistent-process-manager.js";
 import type { ChildRow, ChildSessionControl, ChildStatus } from "../../../session/control/messaging/child-session-control.js";
-import type { BackgroundWorkRegistry } from "../../background-work/background-work.js";
-import type { BackgroundOutputRequest, BackgroundProcessRecord } from "../../background-work/background-work-processes.js";
-import { formatRuntimeNotification } from "../../background-work/runtime-notifications.js";
+import type { BackgroundWorkRegistry } from "../../../session/control/background-work/background-work.js";
+import type { BackgroundOutputRequest, BackgroundProcessRecord } from "../../../session/control/background-work/background-work-processes.js";
+import { formatRuntimeNotification } from "../../../session/control/background-work/runtime-notifications.js";
 import { readBoundedSpoolTail, type BoundedSpoolTail, type RandomAccessSpool } from "../bash/execution/bash-output-tail.js";
 import type { AdvertisedTool, ToolContext, RuntimeTool, RuntimeToolInput, ToolResult } from "../types.js";
 import { parseWorkflowTargets } from "./workflow-targets.js";

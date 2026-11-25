@@ -10,8 +10,8 @@
  */
 
 import type { CapabilityCheck } from "../../../../infra/capability-text.js";
-import { availableAgentTypes, grantedAgentTypes, type DefinitionAvailabilitySnapshot } from "../../../app-service/definitions/definition-availability.js";
-import type { FirstPartyModuleComposition } from "../../../modules.js";
+import { availableAgentTypes, grantedAgentTypes, type DefinitionAvailabilitySnapshot } from "../../../config/policy/definition-availability.js";
+import type { FirstPartyModuleComposition } from "../../../module-catalog.js";
 import { resolveSkillClosure } from "../../../../workflows/skills/skill-closure.js";
 import { toolRegistryFromComposition } from "../../tools/dispatch/tool-registry.js";
 

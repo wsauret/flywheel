@@ -1,0 +1,730 @@
+/**
+ * Background-task registry. Callers register a Promise plus metadata; the
+ * registry owns the rest of the lifecycle (stall watchdog timer, completion
+ * notification XML).
+ *
+ * Completed work remains owed until its notification commits to the conversation.
+ *
+ * The registry is runtime-only. Any model-visible result derived from a
+ * notification must flow through existing durable channels
+ * (SQLite chat tree facts, session runtime events, subagent artifacts).
+ */
+
+import { errorMessage } from "../../../../infra/error-message.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
+import type { PausedBy } from "../../../../infra/output-blocks.js";
+import type { BackgroundCommandRecord } from "../../../../infra/runtime-facts/runtime-fact-types.js";
+import { watchEventKey } from "../../../../infra/watch-notices.js";
+import {
+  createBackgroundNotificationDelivery,
+  completionWorkIds,
+  formatChildInterruptedNotification,
+  commandCompletionText,
+  formatWatchEvent,
+  formatSubagentNotificationBatch,
+  type BackgroundNotificationEntry,
+} from "./background-work-notifications.js";
+import { commandIndexRecord, createBackgroundProcessTable, type BackgroundOutputRequest, type BackgroundProcessRecord, type BackgroundWorkOutput, type LiveProcessTask } from "./background-work-processes.js";
+import type { ManagedCommand } from "../../../agent-runtime/tools/bash/execution/managed-command.js";
+import type { BackgroundWorkProgress, WorkReference } from "./background-work-progress.js";
+import { backgroundHandoffBlock, awaitedWork as awaits, type HandoffBlock } from "./background-work-readiness.js";
+import { backgroundWorkOutcome } from "./background-work-outcome.js";
+import type { BackgroundKillSource, BackgroundWorkMeta, BackgroundWorkResult, ChildInterruption, ToolCallIdentity } from "./background-work-types.js";
+
+const log = Log.create({ service: "background-work" });
+
+/** Stable per-id snapshot of a stoppable background task. Every field is
+ *  constant for the lifetime of the id, so the id list is the identity. */
+interface ActiveBackgroundCommandDescriptorBase {
+  id: string;
+  description: string;
+  toolUseId: string;
+  startedAtMs: number;
+}
+
+export type ActiveBackgroundCommandDescriptor = ActiveBackgroundCommandDescriptorBase & (
+  | { model: string; effort?: string; roleSessionId?: string }
+  | { model?: never; effort?: never; roleSessionId?: never }
+);
+
+interface StallWatchdog {
+  /** Reads the task owner's current activity before an expired clock can abort it. */
+  isIdle: () => boolean;
+  abort: () => void;
+  timeoutMs: number;
+}
+
+/** Handle returned by `track()`. `bump()` resets the stall watchdog timer;
+ *  callers should invoke it whenever the underlying task makes observable
+ *  progress (e.g. a subagent emits an event). Without bumping, the watchdog
+ *  is a flat wall-clock kill switch. A watchdog fires once; `rearm()` arms it
+ *  again for work that continues after its stall, such as a subagent whose
+ *  stalled generation restarts. */
+interface TrackHandle {
+  bump: () => void;
+  rearm: () => void;
+}
+
+
+/** How a request to stop a task was decided: this request began its stop, a
+ *  stop of it was already under way, or nothing here can stop it because it
+ *  is unknown, settled, or has no kill control. */
+type StopDecision = "requested" | "under_way" | "refused";
+
+/** How a task dies: `run` stops the underlying work. The registry invokes it
+ * at most once for targeted termination or host-owned teardown. */
+interface KillControl {
+  run: (source: BackgroundKillSource) => void | Promise<void>;
+}
+
+
+/** A child's completion that reconciliation holds durably under `key`. */
+interface DurableSubagentNotification {
+  readonly key?: string;
+  readonly text: string;
+  readonly completionRunIds?: readonly string[];
+}
+
+interface TrackArgs {
+  done: Promise<BackgroundWorkResult>;
+  meta: BackgroundWorkMeta;
+  stall?: StallWatchdog;
+  kill?: KillControl;
+  /** Reads and formats one bounded request against the task's retained output.
+   * Supplied only by producers with a pull-readable output stream. */
+  readOutput?: (request: BackgroundOutputRequest) => Promise<string>;
+  /** A detached task belongs to another durable session. Host teardown drops
+   * this observer without killing or awaiting that session. */
+  hostClose?: "detach";
+  /** When the work started, for work that started before this registry. */
+  startedAtMs?: number;
+  /** A child session's interrupt as its runner reports it, for a child that
+   *  an interrupt leaves running in place, such as a workflow. A subagent
+   *  settles its task as `interrupted` instead. */
+  interruption?: ChildInterruption;
+  /** The task is a wait that the turn parks on, such as a reply wait, not a
+   *  command: no live command list shows it, and its result is its own
+   *  notice, with no notice for an empty result. */
+  wait?: true;
+  /** The managed command a background command task is: its log, its hard
+   *  deadline, and, while it runs and this host owns it, what a planned
+   *  replacement's close hands to the next build. Its process record keeps
+   *  it for as long as the record lasts. */
+  command?: ManagedCommand;
+}
+
+interface TaskLifecycle extends BackgroundWorkProgress {
+  /** Ended work whose notification has not yet committed to the conversation:
+   *  the part of `awaitedTaskCount` that only a turn can retire. */
+  pendingDeliveryCount(): number;
+  /** Snapshot of active background tasks available for targeted control. */
+  activeBackgroundCommands(): ActiveBackgroundCommandDescriptor[];
+  /** Session-scoped active and settled process records, keyed by task metadata id. */
+  processRecords(): BackgroundProcessRecord[];
+  processRecord(processId: string): BackgroundProcessRecord | undefined;
+  /** The managed command a session process is, running or settled, for as
+   *  long as its record lasts; absent for every other kind of task. */
+  processCommand(processId: string): ManagedCommand | undefined;
+  readProcessOutput(processId: string, request: BackgroundOutputRequest): Promise<BackgroundWorkOutput>;
+  /** Session-scoped live channel for a running command's output tail. The
+   *  per-turn `ToolContext.onExecutionOutput` channel dies with its turn; a
+   *  command's tail outlives turns and runners, in the foreground hold and
+   *  after it moves to the background, so it streams here. A running tail is
+   *  in-flight state, not history: it is shown live and never recorded, and
+   *  the durable record is the settled tail the registry publishes when the
+   *  command settles. */
+  streamExecutionOutput(toolUseId: string, output: string, identity?: ToolCallIdentity): void;
+  /** Records the settled tail, the project edits, and the outcome of work
+   *  that ended while no host of this registry tracked it, as the
+   *  settlement of tracked work records them, with no notification: the
+   *  completion reaches its conversation through the handover row. The caller
+   *  awaits an asynchronous recorder's durability acknowledgement before
+   *  retiring that row. A command whose supervisor recorded no exit gets no outcome. */
+  recordSettlement(meta: BackgroundWorkMeta, result: BackgroundWorkResult, timing: SettlementTiming): void | Promise<void>;
+  /** Delivers a subagent notification only after reconciliation has atomically
+   * settled its parent tool call and durable mailbox cell. Returns the receipt
+   * that settles once the conversation commits the notification and this
+   * registry retires the runs it covers, or undefined when the registry admits
+   * no more notifications. A repeat of a pending key joins its receipt. */
+  deliverDurableSubagentNotification(notification: DurableSubagentNotification): Promise<void> | undefined;
+  /** True while this live owner holds the keyed commit receipt, including retries. */
+  ownsNotification(key: string): boolean;
+  /** Fences delivery callbacks and settles accepted durable hold admissions. */
+  closeNotifications(): Promise<void>;
+  /** Stops serving the host: no new work is admitted, and no notification is
+   *  delivered, because the host that would read one is closing. `track()` from
+   *  here on registers what it is given and terminates it at once, so a task
+   *  that arrives while its host closes cannot outlive that host. Idempotent. */
+  stopAdmission(): void;
+  /** Terminates the background task associated with a tool use. Returns true
+   *  only when this call requested a new kill; false means the task is unknown,
+   *  settled, or already stopping. */
+  terminate(toolUseId: string): boolean;
+  terminateProcess(processId: string, source: BackgroundKillSource): StopDecision;
+  /** Drops the observer of one live task, and its process record, without
+   *  killing it or publishing its completion, for work another owner took
+   *  over. False when the task is not live here. */
+  detach(processId: string): boolean;
+  /** Every running managed command, for a planned replacement's close, which
+   *  hands over the ones this host owns. */
+  handoverCandidates(): ManagedCommand[];
+  /** Delivers one event of a watch this registry tracks, keyed by the log
+   *  position where its lines end, as a completion is delivered: it wakes the
+   *  owner's agent and ends its parked wait (PI-AGENT-136). False, with
+   *  nothing delivered, while the owner holds watch events, once the registry
+   *  admits no more work, or for a watch it does not track: the watch then
+   *  keeps the event and its place. */
+  deliverWatchEvent(meta: BackgroundWorkMeta, event: { readonly text: string; readonly position: number; readonly dropped: number }): boolean;
+  /** Whether a watch must hold its events now (`RegistryOptions.holdsWatchEvents`). */
+  holdsWatchEvents(): boolean;
+  /** Terminates all controllable tasks and waits for every tracked task to settle. */
+  terminateAll(): Promise<void>;
+}
+
+interface ChatRegistry extends TaskLifecycle {
+  kind: "chat";
+  assertHandoffReady(): HandoffBlock | null;
+  track(args: TrackArgs): TrackHandle;
+}
+
+interface WorkflowRegistry extends TaskLifecycle {
+  kind: "workflow";
+  track(args: TrackArgs): TrackHandle;
+  /** Returns owned work that is still active, including a running background
+   *  command, or whose result has not reached the model; null only when handoff can
+   *  safely terminate this runner. A child that the parent agent or the
+   *  runtime interrupted is not active work, so it never blocks a handoff. */
+  assertHandoffReady(): HandoffBlock | null;
+}
+
+export type BackgroundWorkRegistry = ChatRegistry | WorkflowRegistry;
+
+/** The host surface that admits child work without exposing registry lifecycle controls. */
+export type BackgroundWorkTracking = Pick<BackgroundWorkRegistry, "track" | "detach" | "processRecord" | "liveWorkReferences" | "awaitedTaskCount" | "pendingDeliveryCount" | "observeWorkChanges" | "deliverDurableSubagentNotification" | "ownsNotification">;
+
+/** The one record of a live task. Its process record derives from it. */
+interface ActiveEntry extends LiveProcessTask {
+  meta: BackgroundWorkMeta;
+  done: Promise<BackgroundWorkResult>;
+  stall: StallWatchdog | undefined;
+  kill: KillControl | undefined;
+  interruption: ChildInterruption | undefined;
+  /** Ends the observation of `interruption` when the entry leaves. */
+  stopObservingInterruption: (() => void) | undefined;
+  hostClose: "detach" | undefined;
+  wait: boolean;
+  /** Who asked for the stop that is under way, or undefined while none is.
+   *  `requestStop` is its one writer. It names a stopped command's outcome,
+   *  and the task's process record reads it as `stopping`. */
+  stopRequestedBy: BackgroundKillSource | undefined;
+  suppressNotification: boolean;
+  stallTimer: ReturnType<typeof setTimeout> | null;
+  stallFired: boolean;
+}
+
+interface RegistryOptions {
+  kind: "chat" | "workflow";
+  /** Delivers one notification into the host's conversation. `key` names the
+   *  notification's durable hold: reconciliation already holds a child's
+   *  completion under it, and a command's completion is held under it on its
+   *  way in. The sink must hold and commit the message under that key, so the
+   *  commit retires the hold and a repeat under the key commits once. A sink
+   *  that drops the key leaves the hold for a later drain to deliver a second
+   *  time. `runtimeNotice` is true for a notice of the closed set that a route may deliver with the parked tool
+   *  results it follows (`ConversationMessage` `runtimeNotice`): a child's completion, stop, or runtime interrupt, and
+   *  a reply wait's end without a reply. A command's completion and every other wait's end are false. */
+  enqueueNotification: ((text: string, key?: string, runtimeNotice?: boolean) => void) | ((text: string, key?: string, runtimeNotice?: boolean) => Promise<void>);
+  /** Initial delivery retry delay; tests can shorten it without a fake clock. */
+  notificationRetryMs?: number;
+  settleNotificationAdmission?: () => Promise<void>;
+  /** Chat owns queued input in its mailbox, not a workflow pending bucket. */
+  pendingInput?: () => boolean;
+  onChange?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void;
+  /** A running command's current tail, for live display only. */
+  onExecutionOutput?: (toolUseId: string, output: string, identity: ToolCallIdentity) => void;
+  /** A settled command's tail and project edits. An asynchronous recorder
+   * acknowledges durability so handover recovery can retain its evidence on failure. */
+  onExecutionOutputRecorded?: (toolUseId: string, output: string, identity: ToolCallIdentity, mutation: SettledProjectMutation) => void | Promise<void>;
+  /** A background command as it starts and as it settles, which the owner
+   *  records durably for the background index of its session. */
+  onCommandRecorded?: (record: BackgroundCommandRecord) => void;
+  /** Whether the owner's agent cannot take a turn now: it was interrupted,
+   *  waits on the person's answer, or waits for model capacity. A watch
+   *  reads nothing meanwhile and keeps its place (PI-AGENT-136). Absent, it
+   *  never holds. */
+  holdsWatchEvents?: () => boolean;
+}
+
+/** When settled work started and ended. */
+interface SettlementTiming {
+  readonly startedAtMs: number;
+  readonly settledAtMs: number;
+}
+
+/** The project edits a settled command published, recorded with its tail. */
+export type SettledProjectMutation = Pick<BackgroundWorkResult, "mutationEvidence">;
+
+function clearStall(entry: ActiveEntry): void {
+  if (entry.stallTimer) {
+    clearTimeout(entry.stallTimer);
+    entry.stallTimer = null;
+  }
+}
+
+/** A subagent and a workflow run in a child session, which a Resume can run
+ *  again under the id of its settled run. */
+function isChildRun(type: string): boolean {
+  return type === "subagent" || type === "workflow";
+}
+
+function identityOf(meta: BackgroundWorkMeta): ToolCallIdentity {
+  return {
+    ...(meta.parentToolUseId ? { parentToolUseId: meta.parentToolUseId } : {}),
+    ...(meta.modelRequestId ? { modelRequestId: meta.modelRequestId } : {}),
+  };
+}
+
+interface CompletedEntry extends BackgroundNotificationEntry {
+  meta: BackgroundWorkMeta;
+}
+
+export function createBackgroundWorkRegistry(opts: RegistryOptions & { kind: "chat" }): ChatRegistry;
+export function createBackgroundWorkRegistry(opts: RegistryOptions & { kind: "workflow" }): WorkflowRegistry;
+export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundWorkRegistry;
+export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundWorkRegistry {
+  const active = new Map<string, ActiveEntry>();
+  const activeByToolUse = new Map<string, ActiveEntry>();
+  const completedSubagents: CompletedEntry[] = [];
+  const processes = createBackgroundProcessTable(active);
+  const lastExecutionOutputs = new Map<string, string>();
+  let publishedIds = "";
+  let admitting = true;
+  const notifications = createBackgroundNotificationDelivery(opts.enqueueNotification, notifyChange, opts.notificationRetryMs);
+  const { enqueueNotification, pendingWork, hasPending: notificationIsPending } = notifications;
+
+  // A subagent that a person interrupted settled its run, but it stays the
+  // parent's work until its Resume tracks it again or its end reaches the
+  // parent through reconciliation (PI-AGENT-025).
+  const interruptedByPerson = new Map<string, ActiveEntry>();
+  const parentWork = (): ActiveEntry[] => [...active.values(), ...interruptedByPerson.values()];
+  const workListeners = new Set<() => void>();
+  const outstanding = () => {
+    const live = parentWork();
+    const liveIds = new Set(live.map(({ meta }) => meta.id));
+    const pending = [...new Map([...completedSubagents.map(({ meta }) => meta), ...pendingWork()].map((work) => [work.id, work])).values()];
+    return { live, pending: pending.filter(({ id }) => !liveIds.has(id)) };
+  };
+
+  const activeSubagentCount = (): number => parentWork().filter((entry) => entry.meta.type === "subagent").length;
+
+  const liveWorkReferences = (): WorkReference[] => {
+    const work = outstanding();
+    return [
+    ...work.live.filter((entry) => !entry.wait && awaits(entry)).map(({ meta }): WorkReference => {
+      if (meta.type === "subagent" && meta.roleSessionId) return { kind: "session", sessionId: meta.roleSessionId };
+      return meta.type === "workflow" ? { kind: "workflow", workflowId: meta.id } : { kind: "command", processId: meta.id };
+    }),
+    ...work.pending.map(({ id }): WorkReference => ({ kind: "command", processId: id })),
+    ];
+  };
+
+  function track(args: TrackArgs): TrackHandle {
+    // One id names one live task. A second registration for a live id would
+    // strand the first task's watchdog, kill control and notification, so it is
+    // refused before any of this one exists.
+    if (active.has(args.meta.id)) throw new Error(`Background task ${args.meta.id} is already active`);
+    // A live id was refused above, so a known one here is a settled record.
+    const priorProcess = processes.record(args.meta.id)
+    if (priorProcess) {
+      if (!isChildRun(args.meta.type) || !isChildRun(priorProcess.kind)) throw new Error(`Background task ${args.meta.id} is already known in this session`)
+      const priorToolUseId = processes.forget(args.meta.id)
+      if (priorToolUseId) lastExecutionOutputs.delete(priorToolUseId)
+    }
+    // A child that a person interrupted and resumed runs again as this entry.
+    // The process table keeps a bounded history, so its record may be gone.
+    interruptedByPerson.delete(args.meta.id)
+    const entry: ActiveEntry = {
+      meta: args.meta,
+      done: args.done,
+      stall: args.stall,
+      kill: args.kill,
+      readOutput: args.readOutput,
+      command: args.command,
+      interruption: args.interruption,
+      stopObservingInterruption: undefined,
+      startedAtMs: args.startedAtMs ?? Date.now(),
+      hostClose: args.hostClose,
+      wait: args.wait === true,
+      stopRequestedBy: undefined,
+      suppressNotification: false,
+      stallTimer: null,
+      stallFired: false,
+    };
+    const stall = args.stall;
+    const armStall = () => {
+      if (!stall) return;
+      entry.stallTimer = setTimeout(() => {
+        if (!stall.isIdle()) {
+          armStall();
+          return;
+        }
+        entry.stallFired = true;
+        log.warn("background task stall watchdog fired", {
+          id: args.meta.id, type: args.meta.type, description: args.meta.description, timeoutMs: stall.timeoutMs,
+        });
+        stall.abort();
+      }, stall.timeoutMs);
+    };
+    armStall();
+    active.set(args.meta.id, entry);
+    if (args.meta.toolUseId !== undefined) activeByToolUse.set(args.meta.toolUseId, entry);
+    entry.stopObservingInterruption = args.interruption?.observe(() => { interruptionChanged(entry); });
+    recordCommand(commandIndexRecord(args.meta, entry.startedAtMs));
+    notifyChange();
+
+    const settle = (outcome: { ok: true; result: BackgroundWorkResult } | { ok: false; err: unknown }) => {
+      // A detached entry already left, and a later task may track under its id.
+      if (active.get(args.meta.id) !== entry) return;
+      release(entry);
+      const result = backgroundWorkOutcome({
+        description: entry.meta.description, stallFired: entry.stallFired, stallTimeoutMs: entry.stall?.timeoutMs,
+        killedBy: entry.stopRequestedBy,
+      }, outcome);
+      const evictedToolUseId = processes.settle(entry, { status: result.status, exit: result.exit });
+      if (evictedToolUseId) lastExecutionOutputs.delete(evictedToolUseId);
+      // A command the host tore down ended too, so its outcome is recorded
+      // even when no notification is. The record goes before the change, so
+      // an index read for the change does not find the command running with
+      // no owner and show it as ended.
+      recordCommand(commandIndexRecord(entry.meta, entry.startedAtMs, { result, settledAtMs: Date.now() }));
+      notifyChange();
+      if (entry.suppressNotification) return;
+      recordSettledOutput(entry.meta, result);
+      onSettled(entry, result, outcome.ok);
+      notifyChange();
+    };
+
+    args.done.then(
+      (result) => settle({ ok: true, result }),
+      (err) => settle({ ok: false, err }),
+    );
+
+    // Admission can close while a task is launching. Host-owned work dies at
+    // once; session-owned work only loses this host's observer.
+    if (!admitting) {
+      entry.suppressNotification = entry.meta.type !== "background_command";
+      if (entry.hostClose === "detach") detach(args.meta.id);
+      else requestStop(entry, "runtime", false);
+    }
+
+    return {
+      bump: () => {
+        if (!stall) return;
+        if (entry.stallFired) return;
+        if (!active.has(args.meta.id)) return;
+        clearStall(entry);
+        armStall();
+      },
+      rearm: () => {
+        if (!stall || !active.has(args.meta.id)) return;
+        entry.stallFired = false;
+        clearStall(entry);
+        armStall();
+      },
+    };
+  }
+
+  /** Tells the parent that the runtime interrupted one of its children. The
+   *  child no longer holds a wait, so the notice is also what wakes a park
+   *  that waited only on it. The parent's own interrupt needs no notice: its
+   *  call's result says so. A person's interrupt and Resume send none: the
+   *  child stays the parent's work (PI-AGENT-025). */
+  function announceInterruption(entry: ActiveEntry, by: PausedBy | undefined): void {
+    if (by !== "runtime" || !admitting || entry.suppressNotification) return;
+    const sessionId = entry.meta.type === "subagent" ? entry.meta.roleSessionId : entry.meta.id;
+    log.info("child interruption announced to its parent", { id: entry.meta.id, type: entry.meta.type });
+    opts.enqueueNotification(formatChildInterruptedNotification({ description: entry.meta.description, ...(sessionId ? { sessionId } : {}) }), undefined, true);
+  }
+
+  function interruptionChanged(entry: ActiveEntry): void {
+    if (active.get(entry.meta.id) !== entry) return;
+    notifyChange();
+    announceInterruption(entry, entry.interruption?.interruptedBy());
+  }
+
+  function activeBackgroundCommands(): ActiveBackgroundCommandDescriptor[] {
+    const commands: ActiveBackgroundCommandDescriptor[] = [];
+    for (const entry of active.values()) {
+      if (entry.meta.toolUseId === undefined || entry.wait) continue;
+      // A shell stop is a request, not process settlement. Keep its live
+      // descriptor until `done` settles so the project stays open for it.
+      if (!entry.kill || (entry.stopRequestedBy !== undefined && entry.meta.type !== "background_command")) continue;
+      const descriptor = {
+        id: entry.meta.id,
+        description: entry.meta.description,
+        toolUseId: entry.meta.toolUseId,
+        startedAtMs: entry.startedAtMs,
+      };
+      if (entry.meta.model === undefined) {
+        commands.push(descriptor);
+      } else {
+        commands.push({
+          ...descriptor,
+          model: entry.meta.model,
+          ...(entry.meta.effort === undefined ? {} : { effort: entry.meta.effort }),
+          ...(entry.meta.roleSessionId === undefined ? {} : { roleSessionId: entry.meta.roleSessionId }),
+        });
+      }
+    }
+    return commands;
+  }
+
+  /** Ends this registry's observation of a live entry. */
+  function release(entry: ActiveEntry): void {
+    clearStall(entry);
+    active.delete(entry.meta.id);
+    if (entry.meta.toolUseId !== undefined) activeByToolUse.delete(entry.meta.toolUseId);
+    entry.stopObservingInterruption?.();
+  }
+
+  function notifyChange(): void {
+    for (const listener of workListeners) listener();
+    const next = activeBackgroundCommands();
+    // Descriptor fields are constant per id, so the id list is the identity.
+    const ids = next.map((command) => command.id).join("\n");
+    if (ids === publishedIds) return;
+    publishedIds = ids;
+    opts.onChange?.(next);
+  }
+
+  function recordKillFailure(entry: ActiveEntry, err: Error, retryable: boolean): void {
+    log.warn("background task kill failed", {
+      id: entry.meta.id,
+      type: entry.meta.type,
+      description: entry.meta.description,
+      error: errorMessage(err),
+    });
+    if (!retryable) return;
+    entry.stopRequestedBy = undefined;
+    notifyChange();
+  }
+
+  /** The one transition of a task's stop request. Every stop, whether a
+   *  person's, the agent's, or the runtime's, goes through it. */
+  function requestStop(entry: ActiveEntry, source: BackgroundKillSource, retryable: boolean): StopDecision {
+    if (!entry.kill) return "refused";
+    if (entry.stopRequestedBy !== undefined) return "under_way";
+    entry.stopRequestedBy = source;
+    try {
+      void Promise.resolve(entry.kill.run(source)).catch((err) => { recordKillFailure(entry, err instanceof Error ? err : new Error(String(err)), retryable); });
+    } catch (err) {
+      recordKillFailure(entry, err instanceof Error ? err : new Error(String(err)), retryable);
+      return "refused";
+    }
+    notifyChange();
+    return "requested";
+  }
+
+  function terminate(toolUseId: string): boolean {
+    const entry = activeByToolUse.get(toolUseId);
+    return entry !== undefined && requestStop(entry, "user", true) === "requested";
+  }
+
+  function terminateProcess(processId: string, source: BackgroundKillSource): StopDecision {
+    const entry = active.get(processId);
+    return entry ? requestStop(entry, source, true) : "refused";
+  }
+
+  function detach(processId: string): boolean {
+    const entry = active.get(processId);
+    if (!entry) return false;
+    entry.suppressNotification = true;
+    release(entry);
+    notifyChange();
+    return true;
+  }
+
+  function stopAdmission(): void {
+    admitting = false;
+    interruptedByPerson.clear();
+    for (const entry of active.values()) entry.suppressNotification = entry.meta.type !== "background_command";
+  }
+
+  async function terminateAll(): Promise<void> {
+    const owned: ActiveEntry[] = [];
+    interruptedByPerson.clear();
+    for (const [id, entry] of active) {
+      if (entry.hostClose === "detach") {
+        detach(id);
+        continue;
+      }
+      entry.suppressNotification = entry.meta.type !== "background_command";
+      owned.push(entry);
+      requestStop(entry, "runtime", false);
+    }
+    notifyChange();
+    await Promise.allSettled(owned.map((entry) => entry.done));
+    processes.clear();
+    lastExecutionOutputs.clear();
+  }
+
+  function recordCommand(record: BackgroundCommandRecord | undefined): void {
+    if (record) opts.onCommandRecorded?.(record);
+  }
+
+  function recordSettledOutput(meta: BackgroundWorkMeta, { executionOutputTail, mutationEvidence }: BackgroundWorkResult): void | Promise<void> {
+    // A mutating command that printed nothing still records its settled mutation, with an empty tail.
+    if (!meta.toolUseId || (executionOutputTail === undefined && mutationEvidence === undefined)) return;
+    return publishExecutionOutput(meta.toolUseId, executionOutputTail ?? "", identityOf(meta), true, mutationEvidence ? { mutationEvidence } : {});
+  }
+
+  function publishExecutionOutput(toolUseId: string, output: string, identity: ToolCallIdentity, retain: boolean, mutation: SettledProjectMutation): void | Promise<void> {
+    if (lastExecutionOutputs.get(toolUseId) === output) return;
+    const recorded = opts.onExecutionOutputRecorded?.(toolUseId, output, identity, mutation);
+    // Remember only durable tails. The settlement owner reports a rejection.
+    if (recorded) {
+      void recorded.then(() => { if (retain) lastExecutionOutputs.set(toolUseId, output); }, () => {});
+      return recorded;
+    }
+    if (retain) lastExecutionOutputs.set(toolUseId, output);
+  }
+
+  function streamExecutionOutput(toolUseId: string, output: string, identity: ToolCallIdentity = {}): void {
+    // A tracked command's identity comes from its entry; foreground work in its
+    // hold is not tracked yet, so the caller's identity is the only one it has.
+    const entry = activeByToolUse.get(toolUseId);
+    opts.onExecutionOutput?.(toolUseId, output, entry ? identityOf(entry.meta) : identity);
+  }
+
+  /** Removes the settled child-session runs that a durable notification
+   *  covers, or every one when it names none. A child that
+   *  a person interrupted ends only when the notification names its run.
+   *  Neither kind retires merely because its notification entered a queue.
+   *  A workflow's run reports its end only after the parent's sweep reads
+   *  the committed notification, and the parent's turn on that notification
+   *  can end first, so the commit itself ends the parent's observation of
+   *  the run, as the durable settlement owner. A later run of the workflow
+   *  is a new entry under the same id, so only the entries that were live
+   *  when the notification was offered retire. */
+  function retireDeliveredSubagents(runIds: readonly string[] | undefined, workflows: ReadonlyMap<string, ActiveEntry>): void {
+    for (const runId of runIds ?? []) interruptedByPerson.delete(runId);
+    for (const [runId, entry] of workflows) {
+      if (active.get(runId) === entry) detach(runId);
+    }
+    const delivered = runIds === undefined ? undefined : new Set(runIds);
+    const owed = completedSubagents.filter((entry) => delivered !== undefined && !delivered.has(entry.meta.id));
+    completedSubagents.splice(0, completedSubagents.length, ...owed);
+  }
+
+  function liveWorkflows(runIds: readonly string[] | undefined): ReadonlyMap<string, ActiveEntry> {
+    return new Map((runIds ?? []).flatMap((runId) => {
+      const entry = active.get(runId);
+      return entry?.meta.type === "workflow" ? [[runId, entry] as const] : [];
+    }));
+  }
+
+  function deliverDurableSubagentNotification(notification: DurableSubagentNotification): Promise<void> | undefined {
+    if (!admitting) return undefined;
+    // The delivery of a pending key returns that key's receipt and sends nothing.
+    if (notification.key !== undefined && notificationIsPending(notification.key)) return enqueueNotification(notification.text, notification.key, undefined, true) ?? Promise.resolve();
+    const ids = notification.completionRunIds?.length ? notification.completionRunIds : notification.key === undefined ? undefined : completionWorkIds(notification.key);
+    const workflows = liveWorkflows(ids);
+    const batch = completedSubagents.filter((entry) => ids === undefined || ids.includes(entry.meta.id));
+    const interrupted = (ids ?? []).flatMap((id) => {
+      const entry = interruptedByPerson.get(id);
+      return entry ? [entry.meta] : [];
+    });
+    const known = [...interrupted, ...batch.map((entry) => entry.meta)];
+    const work = ids?.length ? ids.map((id) => ({
+      id,
+      description: known.find((meta) => meta.id === id)?.description ?? processes.record(id)?.description ?? `child result ${id}`,
+    })) : undefined;
+    const text = notification.text.length > 0 ? notification.text : formatSubagentNotificationBatch(batch, activeSubagentCount());
+    const delivered = enqueueNotification(text, notification.key, work, true);
+    if (!delivered) {
+      retireDeliveredSubagents(ids, workflows);
+      return Promise.resolve();
+    }
+    return delivered.then(() => {
+      retireDeliveredSubagents(ids, workflows);
+      notifyChange();
+    });
+  }
+
+  function onSettled(entry: ActiveEntry, result: BackgroundWorkResult, settledCleanly: boolean): void {
+    if (entry.meta.type === "workflow") {
+      if (result.status === "stopped" || result.status === "cancelled") completedSubagents.push({ meta: entry.meta, result });
+      return;
+    }
+    if (entry.meta.type !== "subagent") {
+      const completed = { meta: entry.meta, result };
+      if (entry.wait && !result.content) return;
+      enqueueNotification(entry.wait ? result.content : commandCompletionText(completed.meta, result), entry.meta.notificationKey, [entry.meta], entry.wait === true && result.runtimeNotice === true);
+      return;
+    }
+    // An interrupted run has not ended and owes no result. A person's
+    // interrupt leaves it the parent's work; any other is not active work,
+    // so no wait or handoff holds on it (PI-AGENT-025). Its Resume tracks
+    // it again.
+    if (result.status === "interrupted") {
+      if (result.interruptedBy === "person") interruptedByPerson.set(entry.meta.id, entry);
+      announceInterruption(entry, result.interruptedBy);
+      return;
+    }
+    completedSubagents.push({ meta: entry.meta, result });
+    // The child session publishes its own completion through
+    // reconciliation. When that publication itself rejected, no durable
+    // completion exists for reconciliation to deliver, so this registry
+    // delivers the synthesized failure now rather than leaving the parent
+    // parked on a child it will never hear from.
+    if (!settledCleanly) deliverDurableSubagentNotification({ text: "", completionRunIds: [entry.meta.id] });
+  }
+
+  const lifecycle: TaskLifecycle = {
+    activeSubagentCount,
+    activeTaskCount: () => { const work = outstanding(); return work.live.length + work.pending.length; },
+    awaitedTaskCount: () => { const work = outstanding(); return work.live.filter(awaits).length + work.pending.length; },
+    pendingDeliveryCount: () => outstanding().pending.length,
+    liveWorkReferences,
+    observeWorkChanges: (listener) => { workListeners.add(listener); return () => { workListeners.delete(listener); }; },
+    holdsWait: (toolUseId) => activeByToolUse.get(toolUseId)?.wait === true,
+    activeBackgroundCommands,
+    processRecords: processes.records,
+    processRecord: processes.record,
+    processCommand: processes.command,
+    readProcessOutput: processes.readOutput,
+    streamExecutionOutput,
+    recordSettlement: (meta, result, timing) => {
+      recordCommand(commandIndexRecord(meta, timing.startedAtMs, { result, settledAtMs: timing.settledAtMs }));
+      return recordSettledOutput(meta, result);
+    },
+    deliverDurableSubagentNotification,
+    ownsNotification: notificationIsPending,
+    closeNotifications: async () => { notifications.close(); await opts.settleNotificationAdmission?.(); },
+    stopAdmission,
+    terminate,
+    terminateProcess,
+    detach,
+    handoverCandidates: () => [...active.values()].flatMap(({ command }) => command === undefined ? [] : [command]),
+    deliverWatchEvent: (meta, event) => {
+      if (!admitting || active.get(meta.id)?.meta !== meta || opts.holdsWatchEvents?.() === true) return false;
+      void enqueueNotification(formatWatchEvent({ processId: meta.id, description: meta.description, text: event.text, dropped: event.dropped }), watchEventKey(meta.id, event.position), [meta]);
+      return true;
+    },
+    holdsWatchEvents: () => opts.holdsWatchEvents?.() === true,
+    terminateAll,
+  };
+
+  return {
+    kind: opts.kind,
+    ...lifecycle,
+    track,
+    assertHandoffReady(): HandoffBlock | null {
+      const work = outstanding();
+      return backgroundHandoffBlock(work.live, [
+        ...work.pending.map((item) => item.description),
+        ...(opts.pendingInput?.() ? ["queued Chat input"] : []),
+      ]);
+    },
+  };
+}

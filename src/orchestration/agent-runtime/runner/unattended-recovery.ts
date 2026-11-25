@@ -66,7 +66,7 @@ import { sleepUntil } from "../../../infra/wall-clock-sleep.js"
 import { capacityWaitNotice, type CapacityWaitAuthority, type CapacityWaitWithdrawal } from "../../session/control/capacity-wait.js"
 import type { TurnInterruption } from "../../session/conversation/turn-end-record.js"
 import type { DeliveryOutcome } from "../../session/message-disposition.js"
-import { CONTINUATION_MESSAGES } from "../request/prompt/continuation-messages.js"
+import { CONTINUATION_MESSAGES } from "../../session/conversation/turn-end-record.js"
 import type { AgentFailureReason, AgentRunResult } from "../types.js"
 
 /** How many fresh attempts in a row with no served request a run makes

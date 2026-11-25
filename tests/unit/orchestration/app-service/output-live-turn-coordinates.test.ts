@@ -9,7 +9,7 @@ import { createConversationTree } from "../../../../src/orchestration/session/co
 import { tailRequest } from "./_output-projection-fixtures.js"
 import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js"
-import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner/runner-stream-events.js"
+import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner/stream-events/runner-stream-events.js"
 import { emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/runner/emit.js"
 import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/request/usage/turn-usage-tracker.js"
 import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js"

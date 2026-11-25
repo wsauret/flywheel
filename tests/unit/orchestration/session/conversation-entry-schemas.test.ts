@@ -2,7 +2,7 @@ import { buildMutationDiff, type MutationDiff } from "../../../../src/infra/muta
 import { parseSchema, safeParse } from "../../../helpers/schema-assertions.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { describe, expect, it } from "bun:test";
-import type { ContentBlock } from "../../../../src/orchestration/agent-runtime/llm/types";
+import type { ContentBlock } from "../../../../src/infra/llm/conversation/conversation-message";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";

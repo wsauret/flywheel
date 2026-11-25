@@ -2,10 +2,9 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
-import { migrateLegacyCapabilityModules } from "../../../../src/orchestration/modules.js";
+import { migrateLegacyCapabilityModules, decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { MODULE_IDS } from "../../../../src/protocol/runtime/module-ids.js";
 import { ConfigWriteError } from "../../../../src/orchestration/config/writer.js";
-import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { decodeCanonicalConfigText } from "../../../../src/orchestration/config/loader.js";
 import { startModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
 import {

@@ -11,7 +11,7 @@ import { redactSecrets } from "../../../../infra/redact-secrets.js";
 import { promptContextOpening, type ConversationPromptBaseline } from "../../../session/conversation-records/conversation-prompt-baseline.js";
 import { turnContextEntry } from "./agent-loop-turn-context.js";
 import type { SystemPromptTiers } from "../../llm/system-prompt-tiers.js";
-import type { ConversationMessage } from "../../llm/types.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { joinSystemPromptParts, type SystemPromptPart } from "./system-prompt.js";
 
 const log = Log.create({ service: "prompt-baseline" });

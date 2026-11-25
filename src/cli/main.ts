@@ -1,3 +1,4 @@
+import { importComposing } from "./composition/module-registries.js"
 import { readAppVersion } from "../infra/app-version.js"
 import type { StartupDirectories } from "../infra/directory-authorities.js"
 import { errorDetail, errorMessage } from "../infra/error-message.js"
@@ -13,8 +14,8 @@ import type { CliLauncher, TerminalLaunch, TerminalRuntime } from "./account-ser
 import type { TerminalHandoff } from "./account-service/terminal-handoff.js"
 import { publishFailedHeadlessTerminal, type CliStartup } from "./startup/startup.js"
 import type { SubcommandDispatch } from "./subcommands.js"
-import type { HeadlessOutputObserver } from "../orchestration/headless/headless-output.js"
-import type { HeadlessTaskResult } from "../orchestration/headless/run-headless-task.js"
+import type { HeadlessOutputObserver } from "../orchestration/app-service/headless/headless-output.js"
+import type { HeadlessTaskResult } from "../orchestration/app-service/headless/run-headless-task.js"
 import { shutdownSignals } from "../infra/shutdown-signals.js"
 import { watchTerminalInput } from "../tui/terminal/terminal-input.js"
 
@@ -105,7 +106,7 @@ async function runCommand(args: readonly string[], subcommand: SubcommandDispatc
   }
   // Must branch before startTUI() registers a global terminal raw-mode handler
   if (hasHeadlessFlag(args)) {
-    const { composeFirstPartyModules } = await import("../orchestration/modules.js")
+    const { composeFirstPartyModules } = await importComposing(() => import("../orchestration/module-composition.js"))
     for (const warning of composeFirstPartyModules().warnings) Log.Default.warn(warning)
 
     // A headless command that hosts its runtime prepares it here. The
@@ -141,11 +142,11 @@ async function runHeadless(args: readonly string[], directories: StartupDirector
   })
   const progressWriter = (line: string) => { process.stderr.write(`${line}\n`) }
   if (headlessChatAttaches(args)) {
-    const { runAttachedAcpChat } = await import("./account-service/attached-acp-chat.js")
+    const { runAttachedAcpChat } = await importComposing(() => import("./account-service/attached-acp-chat.js"))
     return await runAttachedAcpChat({ directories, allowPersistentProcesses, authProfile: headlessAuthProfile(args), input: process.stdin, write, progressWriter })
   }
   if (isHeadlessChat(args)) {
-    const { runHeadlessChat } = await import("../orchestration/headless/run-headless-chat.js")
+    const { runHeadlessChat } = await importComposing(() => import("../orchestration/app-service/headless/run-headless-chat.js"))
     const { runtimeWorkerUrl } = await import("./account-service/runtime-launch.js")
     return await runHeadlessChat({
       headlessAuth: { profile: headlessAuthProfile(args), snapshotPath: headlessAuthSnapshot(args) },
@@ -162,7 +163,7 @@ async function runHeadless(args: readonly string[], directories: StartupDirector
 }
 
 async function runHeadlessTaskMode(task: string, args: readonly string[], directories: StartupDirectories, launcher: LauncherContext, persistentProcessManager: PersistentProcessManager, allowPersistentProcesses: boolean, disabledTools: readonly string[], output?: HeadlessOutputObserver): Promise<MutationResult> {
-  const { runHeadlessTask } = await import("../orchestration/headless/run-headless-task.js")
+  const { runHeadlessTask } = await importComposing(() => import("../orchestration/app-service/headless/run-headless-task.js"))
   const result = await runHeadlessTask(task, {
     directories,
     launcher: launcher.scope,
@@ -180,7 +181,7 @@ async function runHeadlessTaskMode(task: string, args: readonly string[], direct
     connectEventBus: output ? (bus) => output.connect(bus) : undefined,
   })
   if (!output) {
-    const { formatLegacyTaskOutput } = await import("../orchestration/headless/headless-output.js")
+    const { formatLegacyTaskOutput } = await import("../orchestration/app-service/headless/headless-output.js")
     process.stdout.write(formatLegacyTaskOutput(result))
   }
   return { kind: "task", result }

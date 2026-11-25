@@ -5,7 +5,7 @@ import { installedConfigSchema } from "../../../../src/orchestration/config/sche
 import { makeModelsClient, modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
 import { USER_DATA_ROOT, NO_CREDENTIALS } from "./_config-models-fixtures.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js";
 
 import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 describe("model release metadata", () => {

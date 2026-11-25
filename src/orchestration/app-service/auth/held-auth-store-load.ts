@@ -4,7 +4,7 @@ import { AUTH_STORE_FILE } from "../../../infra/auth/store/auth-store-types.js"
 import { deepFreeze } from "../../../infra/deep-freeze.js"
 import { customProviderGeneration } from "../../../infra/llm/custom-provider-registry.js"
 import { heldDirectoryDerivation } from "../../../infra/watched-directory-values.js"
-import { installedCredentialProviderIds, installedCredentialSlotClassifier } from "../../credential-provider-modules.js"
+import { installedCredentialProviderIds, installedCredentialSlotClassifier } from "../../module-composition.js"
 
 // A refusal can heal with no change to auth.json or the profile directory, such as a parent restored in place, so it is never held.
 const HELD_AUTH_STORE_LOAD = heldDirectoryDerivation<Redacted.Redacted<AuthStoreLoadResult>>([AUTH_STORE_FILE], {

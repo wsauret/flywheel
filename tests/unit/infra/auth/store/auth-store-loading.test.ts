@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { authStoreObservationKey, authStoreObservedRevision, loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../../../src/infra/auth/store/auth-store.js";
 import type { Credential } from "../../../../../src/infra/auth/store/auth-store-types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import { installedCredentialProviderIds, installedCredentialSlotClassifier } from "../../../../../src/orchestration/credential-provider-modules.js";
+import { installedCredentialProviderIds, installedCredentialSlotClassifier } from "../../../../../src/orchestration/module-composition.js";
 
 const slots = (providerId: string): "subscription" | "metered" => providerId === "chatgpt" ? "subscription" : "metered";
 const temporaryDirectory = temporaryDirectories();

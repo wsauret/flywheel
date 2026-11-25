@@ -1,7 +1,7 @@
 import { moduleServiceHandle } from "../../../infra/module-service.js"
 import { describeReclaimOutcome, storageCursor, type RuntimeStorageView, type StorageReclaimResult } from "../../../protocol/modules/reclaim-storage.js"
 import type { StorageReclaimOutcome, StorageReclaimPreview } from "../../../protocol/store-reclaim.js"
-import type { ControlModuleServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
+import type { ControlModuleServices, ModuleServiceInstance } from "../../app-service/executor/execution/module-service-host.js"
 
 /** The module's one process-scoped service: the storage view, which follows
  *  the kernel's live store usage and publishes each new value whole, and the

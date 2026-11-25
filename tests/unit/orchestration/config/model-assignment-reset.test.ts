@@ -7,7 +7,7 @@ import { listModelAssignments, resetRoleAssignmentsToDetectedDefaults } from "..
 import { fakeModelsClient, tierAvailableModels } from "../../../helpers/model-tier-fixtures.js";
 import { USER_DATA_ROOT } from "./_config-models-fixtures.js";
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js";
 
 import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {

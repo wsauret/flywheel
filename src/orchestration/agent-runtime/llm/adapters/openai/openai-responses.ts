@@ -3,7 +3,7 @@ import type { ModelInfo } from "../../../../../infra/llm/models/models.js";
 import { buildOpenAIResponseInput, createOpenAITools, resolveOpenAISystemPrompt } from "./openai-adapter-helpers.js";
 import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "../../provider-description.js";
 import { buildOpenAIParams, openAIWireReasoningEffort } from "./openai-helpers.js";
-import { supportsReasoningEffortUpdates } from "../../model-compat.js";
+import { supportsReasoningEffortUpdates } from "../../../../../infra/llm/models/model-compat.js";
 import { immutablePreparedRequest, resolveCacheRetention, type PreparedProviderRequest, type StreamOptions } from "../../types.js";
 
 type OpenAIResponseParams = ReturnType<typeof buildOpenAIParams>;

@@ -9,7 +9,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { installModuleCatalog } from "../../src/orchestration/module-catalog.js";
-import type { UsageAuthorityGeneration } from "../../src/orchestration/agent-runtime/request/usage/usage-settlement.js";
+import type { UsageAuthorityGeneration } from "../../src/orchestration/session/history/usage-settlement.js";
 import { createBenchmarkCatalog } from "../../src/orchestration/modules/development/benchmark/catalog.js";
 import type {
   BenchmarkEvent,
@@ -308,6 +308,7 @@ async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeo
 if (import.meta.main) {
   const load = createRequire(import.meta.url);
   installModuleCatalog({
+    credentialProviders: () => load("../../src/orchestration/credential-provider-modules.js").CREDENTIAL_PROVIDER_MODULES,
     otherModules: () => [
       ...load("../../src/orchestration/modules.js").SHIPPED_OTHER_MODULES,
       ...load("../../src/orchestration/development-modules.js").DEVELOPMENT_MODULES,

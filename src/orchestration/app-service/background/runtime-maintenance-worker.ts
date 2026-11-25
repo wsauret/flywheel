@@ -1,6 +1,6 @@
 import type { DebugLogRecordInput } from "../../../infra/diagnostics/debug-log.js"
 import type { StartupDirectories } from "../../../infra/directory-authorities.js"
-import { runModuleMaintenance } from "../../modules.js"
+import { runModuleMaintenance } from "../../module-catalog.js"
 import { installCrashPolicy, recordFatal } from "../../../infra/crash-policy.js"
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
 import { createMessagePortProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"
@@ -11,10 +11,11 @@ import { resolveEventStoreDbFile } from "../../../infra/paths.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
 import type { AsyncEventWriter } from "../../../infra/store/event-store-types.js"
 import { INCREMENTAL_VACUUM_STEP_PAGES, pruneRetiredFactFamiliesThrough, pruneSupersededFactsThrough, readEventStoreSizeStats, readStoreUsage, type StoreUsage, type SupersededPlanBounds } from "../../session/persistence/storage/event-store-maintenance.js"
-import { reclaimStoreExclusively } from "../../session/persistence/storage/store-reclaim.js"
+import { reclaimStoreExclusively } from "../../workspace-state/store-reclaim.js"
 import type { StorageReclaimOutcome } from "../../../protocol/store-reclaim.js"
 import { sweepIdleScratch } from "../../session/persistence/storage/session-artifacts.js"
-import type { WorkerSelf } from "../project-state/worker/bun-worker-rpc.js"
+import { mutationGitDirectoryName, mutationGitRuntimeExists } from "../../agent-runtime/tools/bash/git/bash-git-wrapper.js"
+import type { WorkerSelf } from "../../../infra/process/workers/bun-worker-rpc.js"
 import { createProjectExecutionState } from "../project-state/project-execution-state.js"
 import type { ProjectStateClient } from "../project-state/project-state-client.js"
 import { connectProjectStateChannel } from "../project-state/project-state-channel.js"
@@ -268,7 +269,7 @@ async function runStartupSteps(directories: StartupDirectories, launcher: Launch
     // agents left clones behind, and nothing else waits on it.
     contained("idle scratch sweep failed", async () => {
       const startedAt = Date.now()
-      const swept = await sweepIdleScratch({ projectRoot: directories.projectRoot, now: startedAt, signal, runGit: ownedCommandRunner(launcher) })
+      const swept = await sweepIdleScratch({ projectRoot: directories.projectRoot, now: startedAt, signal, runGit: ownedCommandRunner(launcher), mutationGit: { current: mutationGitDirectoryName(process.execPath, process.platform), runtimeExists: mutationGitRuntimeExists } })
       log.info("idle scratch sweep done", { ...swept, durationMs: Date.now() - startedAt })
     }),
   ])

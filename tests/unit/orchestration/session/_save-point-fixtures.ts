@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
+import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message";
 import { createSessionManager } from "../../../../src/orchestration/session/manager";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage";

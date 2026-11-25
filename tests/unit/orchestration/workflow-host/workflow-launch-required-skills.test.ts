@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/lifecycle/publish.js"

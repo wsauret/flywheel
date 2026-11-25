@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../../src/infra/llm/access/access-provider.js";
 import { logoutProfileExternalLogins, providerLoginFlow } from "../../../../src/orchestration/auth/auth-actions.js";
-import { SHIPPED_MODULES } from "../../../../src/orchestration/modules.js";
+import { SHIPPED_MODULES } from "../../../../scripts/shipped-modules.js";
 import { fileTemporaryDirectory } from "../../../helpers/directories.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 import type { AccessProviderAccountIdentity, ExternalAccount } from "../../../../src/infra/auth/provider-account.js";

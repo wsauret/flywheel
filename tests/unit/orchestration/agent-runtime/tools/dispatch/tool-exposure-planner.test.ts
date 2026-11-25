@@ -7,12 +7,12 @@ import type { KernelToolDeps } from "../../../../../../src/orchestration/agent-r
 import { callerToolGrant, planToolExposure } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { testBaseTools, testCapabilityModules, testRuntimeConfigCapture, plannedRequest, admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
-import type { HandoffToolSchema } from "../../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
+import type { HandoffToolSchema } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/handoff-tool-schema.js";
 import { buildSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { testSkill } from "../../../../../helpers/skill-fixtures.js";
 import { runtimeToolExecution, type RuntimeToolInput } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { mcpPortsOver, mcpRuntimeOver } from "../../../../../helpers/mcp.js";
 import { codeModeRuntimeOver } from "../../../../../helpers/code-mode-worker.js";
 import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
@@ -25,7 +25,8 @@ import type { WorkflowsMode } from "../../../../../../src/protocol/runtime/modul
 import type { ModuleId } from "../../../../../../src/protocol/runtime/module-ids.js";
 import { createRecordingFileMutationStore, makeContext } from "../_fixtures.js";
 import { ALL_CAPABILITIES, askUserController, plan, skillRevision, subagentsRuntime, userDataRoot } from "./_planner-fixtures.js";
-import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import { SHIPPED_MODULES } from "../../../../../../scripts/shipped-modules.js";
 import { createToolRegistry } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { DEVELOPMENT_MODULES } from "../../../../../../src/orchestration/development-modules.js";
 import { learningReviewToolNames } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
@@ -44,8 +45,7 @@ const sessionMessaging = unusedSessionMessaging();
  *  a benchmark would actually use throws. */
 function benchmarkDeps() {
   return {
-    userDataRoot,
-    accountHome: userDataRoot,
+    userDataRoot, accountHome: userDataRoot,
     definitions: { skills: () => skillRevision([]) },
     moduleSelection: composeFirstPartyModules,
     runOwnedCommand: () => { throw new Error("unused in this test"); },

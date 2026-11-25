@@ -6,7 +6,7 @@ import type { CapacityHold } from "../../../../infra/llm/errors/provider-error-c
 import type { AccessProviderCandidate, AccessProviderId, ProviderSettingValues } from "../../../../infra/llm/access/access-provider.js";
 import type { AvailabilityAuthority } from "../../../../infra/llm/access/availability-store.js";
 import type { SubscriptionUsageMetric } from "../../../../infra/llm/usage/subscription-usage.js";
-import type { SubscriptionSpendAuthorization } from "../../../auth/subscription-spend-consent/subscription-spend-consent-service.js";
+import type { SubscriptionSpendAuthorization } from "../../../../infra/auth/subscription/subscription-spend-consent.js";
 
 
 
@@ -88,6 +88,22 @@ export type SubscriptionBankedResetResolver = (candidate: AccessProviderCandidat
  *  admitted states it. It answers only with a moment after admission;
  *  undefined means no known future reset. */
 export type SubscriptionExpiringResetResolver = (candidate: AccessProviderCandidate) => number | undefined;
+
+/** The paid-use consent that request admission reads: the envelopes that
+ *  the person of one profile accepted, by account and spend mode. */
+export interface SubscriptionSpendConsentEvidence {
+  readonly profileId: string;
+  readonly authorizations: ReadonlyMap<string, SubscriptionSpendAuthorization>;
+}
+
+/** One request's subscription evidence: the profile's paid-use consent and
+ *  the allowance and reset readings of its providers. */
+export interface SubscriptionAdmissionCapture {
+  readonly consent: SubscriptionSpendConsentEvidence;
+  readonly subscriptionAllowanceFor: SubscriptionAllowanceResolver;
+  readonly bankedResetFor: SubscriptionBankedResetResolver;
+  readonly expiringResetFor: SubscriptionExpiringResetResolver;
+}
 
 export interface RequestAdmission {
   readonly subscriptionSpendAuthorizationFor: SubscriptionSpendAuthorizationResolver;

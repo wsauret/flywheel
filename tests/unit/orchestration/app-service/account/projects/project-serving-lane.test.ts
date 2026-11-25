@@ -262,7 +262,7 @@ describe("exclusive headless project execution", () => {
       await expect(claimHeadlessProjectExecution(projectRoot)).rejects.toThrow("is open in headless execution")
       throw new Error("assembly failed")
     })
-    const { runHeadlessChat } = await import("../../../../../../src/orchestration/headless/run-headless-chat.js")
+    const { runHeadlessChat } = await import("../../../../../../src/orchestration/app-service/headless/run-headless-chat.js")
     const records: string[] = []
     try {
       const code = await runHeadlessChat({

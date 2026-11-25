@@ -144,7 +144,7 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   // The event search formatter and the decode-only schema of the older usage fact.
   "src/infra/runtime-facts/runtime-fact-types.ts",
   "src/cli/events/event-search-format.ts",
-  "src/orchestration/agent-runtime/request/usage/usage-settlement.ts",
+  "src/orchestration/session/history/usage-settlement.ts",
   "src/orchestration/session/runtime-facts/provider-request-audit-facts.ts",
   "src/orchestration/session/diagnostics/provider-request-audit-projection.ts",
   PROTOCOL_VERSION_NOTES,

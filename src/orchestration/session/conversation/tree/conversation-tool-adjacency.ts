@@ -1,4 +1,4 @@
-import type { ConversationMessage, ContentBlock } from "../../../agent-runtime/llm/types.js";
+import type { ConversationMessage, ContentBlock } from "../../../../infra/llm/conversation/conversation-message.js";
 
 type ToolUseBlock = Extract<ContentBlock, { type: "tool_use" }>;
 type ToolResultMessage = Extract<ConversationMessage, { kind: "toolResult" }>;

@@ -1,6 +1,6 @@
 import type { ReasoningEffort } from "../../../../infra/llm/models/models.js";
 import type { SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js";
-import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { renderAppend, renderMessages } from "./history-text.js";
 import { messageFingerprint, systemPromptHash, type SessionView, type SyntheticPrompt } from "./session-view.js";
 

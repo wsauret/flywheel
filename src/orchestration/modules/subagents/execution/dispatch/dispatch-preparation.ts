@@ -1,6 +1,6 @@
 import { canonicalDirectory, resolveExecutionDirectoryInput } from "../../../../../infra/directory-authorities.js"
 import { errorMessage } from "../../../../../infra/error-message.js"
-import type { ConversationMessage } from "../../../../agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../../../infra/llm/conversation/conversation-message.js"
 import { grantCovers, NO_CAPABILITY_ACCESS, refuseDisabledToolCall, withCapabilityGrant, type CapabilityAccess } from "../../../../agent-runtime/tools/types.js"
 import { buildSubagentTask, forkAssignment, validateDispatchInput } from "../prompts.js"
 import { resolveDispatchModel, resolveChildRole, type ResolvedDispatchModel } from "./dispatch-configuration.js"

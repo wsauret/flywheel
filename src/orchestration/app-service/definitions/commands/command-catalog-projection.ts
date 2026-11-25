@@ -1,9 +1,9 @@
 import type { DefinitionRootWatch } from "../definition-root-watcher.js"
 import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js"
-import type { FirstPartyModuleSnapshot } from "../../../modules.js"
+import type { FirstPartyModuleSnapshot } from "../../../module-catalog.js"
 import { commandCatalogCursor, type RuntimeCommandCatalog } from "../../../../protocol/commands/command-catalog-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
-import type { DefinitionAvailabilityOwner } from "../definition-availability.js"
+import type { DefinitionAvailabilityOwner } from "../../../config/policy/definition-availability.js"
 import { builtInCommandDeclarations, builtInCommandDescriptor, offCommandDescriptors } from "./kernel-commands.js"
 
 export interface CommandCatalogProjection {

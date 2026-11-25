@@ -32,7 +32,7 @@ describe("streamAssistantTurn request identity forwarding", () => {
   test("appends ordinary provider messages and counts them before ephemeral audit and dispatch", async () => {
     const captured: StreamOptions[] = []
     const reminder = { kind: "user", content: "required reminder", origin: "system" } as const
-    const messages: import("../../../../../../src/orchestration/agent-runtime/llm/types.js").ConversationMessage[] = [{ kind: "user", content: "hello" }]
+    const messages: import("../../../../../../src/infra/llm/conversation/conversation-message.js").ConversationMessage[] = [{ kind: "user", content: "hello" }]
     const client = asModelClient({
       ...fakeAttempt("anthropic_api", "test-model"),
       messagesToAppend(history, cwd) {

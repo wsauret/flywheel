@@ -1,9 +1,9 @@
 import type { AgentDefinition } from "../infra/agent-definition.js"
 import type { CapabilityCheck } from "../infra/capability-text.js"
 import type { RuntimeEvent } from "../infra/runtime-facts/runtime-event-types.js"
-import type { HandoffToolSchema } from "./workflow-host/attempt/handoff-tool-schema.js"
+import type { HandoffToolSchema } from "./agent-runtime/tools/sessions/handoff-tool-schema.js"
 import type { RuntimeTool } from "./agent-runtime/tools/types.js"
-import type { FirstPartyModuleComposition } from "./modules.js"
+import type { FirstPartyModuleComposition } from "./module-catalog.js"
 
 interface DispatchInput { readonly [key: string]: unknown }
 

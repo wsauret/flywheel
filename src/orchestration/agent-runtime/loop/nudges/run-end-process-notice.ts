@@ -9,7 +9,7 @@
  * can launch it again to persist. A command named once is not named again.
  */
 import { Log } from "../../../../infra/diagnostics/log.js";
-import type { BackgroundProcessRecord } from "../../background-work/background-work-processes.js";
+import type { BackgroundProcessRecord } from "../../../session/control/background-work/background-work-processes.js";
 
 const log = Log.create({ service: "agent-loop" });
 

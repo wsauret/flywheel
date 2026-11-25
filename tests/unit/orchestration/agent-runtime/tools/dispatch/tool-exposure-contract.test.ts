@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../../../../src/infra/module-runtime.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
 import { createToolRegistry } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
 import type { KernelToolDeps } from "../../../../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { planToolExposure, type ToolExposureInput } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { learningReviewToolNames, toolRegistryFromComposition } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";

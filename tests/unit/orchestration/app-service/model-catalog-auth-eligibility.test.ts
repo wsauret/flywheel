@@ -7,7 +7,7 @@ import { normalizeAuthProfile } from "../../../../src/infra/auth/auth-profile-no
 import { createKeyResolver } from "../../../../src/infra/auth/resolve-key.js";
 import { Log } from "../../../../src/infra/diagnostics/log.js";
 import { authDir as profileAuthDirectory } from "../../../../src/infra/paths.js";
-import { createAuthConditionOwner } from "../../../../src/orchestration/auth/auth-condition-owner.js";
+import { createAuthConditionOwner } from "../../../../src/infra/auth/store/auth-condition-owner.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
 import { appendCredentialInstanceWithReceipt, replaceCredentialInstance, replaceCredentialInstanceWithReceipt } from "../../../../src/infra/auth/store/auth-store-mutations.js";
 import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/store/auth-store.js";
@@ -21,11 +21,10 @@ import { captureAccountConnection } from "../../../../src/orchestration/agent-ru
 import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/models/model-assignment-providers.js";
 import { providerModelEligibilityDecision } from "../../../../src/orchestration/config/models/provider-model-eligibility.js";
 import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../../../../src/orchestration/app-service/auth/models/eligibility-preparation.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
-import { installedAccessProviderDefinitions, installedCredentialProviderIds } from "../../../../src/orchestration/credential-provider-modules.js";
+import { composeFirstPartyModules, installedAccessProviderDefinitions, installedCredentialProviderIds } from "../../../../src/orchestration/module-composition.js";
 
-import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
-import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
+import { accessProviderRegistry } from "../../../../src/orchestration/config/models/access-provider-registry.js";
+import { credentialSlotClassifier } from "../../../../src/orchestration/module-catalog.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js";
 import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js";

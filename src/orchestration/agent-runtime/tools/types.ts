@@ -3,16 +3,17 @@ import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import type { ToolAction } from "../../../infra/workflow-types.js";
 import type { SessionFactWriter } from "../../session/persistence/session-fact-writer.js";
 import type { ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js";
-import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
-import type { ToolCallIdentity } from "../background-work/background-work-types.js";
+import type { BackgroundWorkRegistry } from "../../session/control/background-work/background-work.js";
+import type { ToolCallIdentity } from "../../session/control/background-work/background-work-types.js";
 import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
-import type { ConversationMessage, ToolCall, ToolWirePresentation } from "../llm/types.js";
+import type { ToolCall, ToolWirePresentation } from "../llm/types.js";
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
 import type { FileReadLedger } from "./files/file-read-ledger.js";
 import type { ContextAdmission } from "../compaction/compaction-policy.js";
 import type { GitAiAttributionService, GitAiRequestRegistration } from "../git-ai-attribution-service.js";
 import type { NestedToolDispatchBatch } from "./dispatch/nested-tool-dispatch.js";
 import type { ReadCommandEvidence } from "../../../workflows/output-contract/evidence.js";
-import type { HandoffRejection } from "../../workflow-host/attempt/handoff-tool-schema.js";
+import type { HandoffRejection } from "./sessions/handoff-tool-schema.js";
 
 import type { PersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-bridge.js";
@@ -20,8 +21,7 @@ import type { ModuleRuntimes } from "../../../infra/module-runtime.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js";
 import { canonicalModuleIds, MODULE_IDS, type ModuleId } from "../../../protocol/runtime/module-ids.js";
-type ToolExecutionMode = "foreground" | "background";
-type ToolTraceKind = "tool" | "subagent";
+import type { RuntimeToolExecution } from "../../../infra/tools/types.js";
 
 /** Closed tool authority for an execution. Absence retains ordinary selection. */
 export type ToolProfile = "none";
@@ -121,12 +121,6 @@ export function withCapabilityGrant(access: CapabilityAccess, grant: CapabilityG
  *  the configuration that satisfied it, not a licence for unrelated work. */
 export function grantCovers(grant: CapabilityGrant | undefined, required: readonly ModuleId[]): boolean {
   return grant !== undefined && required.every((capability) => grant.required.includes(capability));
-}
-
-export interface RuntimeToolExecution {
-  mode: ToolExecutionMode;
-  traceKind: ToolTraceKind;
-  childHasOwnViewport?: boolean;
 }
 
 const DEFAULT_EXECUTION: RuntimeToolExecution = {

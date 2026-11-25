@@ -8,7 +8,7 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/pr
 import { createInertSubscriptionUsageService } from "../../../helpers/subscription-usage-service-fixture.js"
 import { createUsageAuthority, type UsageAuthority } from "../../../../src/infra/llm/usage/usage-authority.js"
 import type { UsageEntry } from "../../../../src/infra/llm/usage/usage-entry.js"
-import { createProcessUsageSettlement } from "../../../../src/orchestration/agent-runtime/request/usage/usage-settlement.js"
+import { createProcessUsageSettlement } from "../../../../src/orchestration/session/history/usage-settlement.js"
 import { createSubscriptionUsageServicePool } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
 

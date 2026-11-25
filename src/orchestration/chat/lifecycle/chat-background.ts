@@ -2,7 +2,7 @@ import { emitToolExecutionOutput, emitBackgroundCommandRecorded, emitToolExecuti
 import type { createEmit } from "../../../infra/event-bus.js"
 import type { RuntimeEvent } from "../../../infra/runtime-facts/runtime-event-types.js"
 import { createBackgroundExecutionOwner } from "../../agent-runtime/background-execution/background-execution-owner.js"
-import { createBackgroundWorkRegistry } from "../../agent-runtime/background-work/background-work.js"
+import { createBackgroundWorkRegistry } from "../../session/control/background-work/background-work.js"
 import type { ConversationTreeWriterController } from "../tree-writer.js"
 import type { HeldBackgroundNotification } from "../../session/conversation/queued-background-notifications.js"
 import type { ChatSessionDeps } from "../types.js"

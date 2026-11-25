@@ -5,7 +5,7 @@ import { Effect, Exit, Scope } from "effect"
 import { providerModelInfo } from "../../../../src/infra/llm/catalog/provider-model-info.js"
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work.js"
 import type { AccessProviderBuild } from "../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"
 import type { ProviderSessionLifetime } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runner/runtime-assembly.js"
@@ -13,7 +13,7 @@ import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/request/shared-tree.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import type { AgentOptionsOverride } from "./_runner-options.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
 import type { AgentHost } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js"
 import { processAgentHosts, type HostPlace, type HostRegistry } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js"
 import { createClaudeAgentSdkClient } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js"
@@ -25,7 +25,7 @@ import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.
 import { forwardDiagnostics, payloads } from "../modules/provider-claude-agent-sdk/_bridge-harness.js"
 import { asModelClient } from "./_model-client.js"
 import { fakeAvailability } from "./llm/_provider-chain-harness.js"
-import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/metadata/session-title.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/agent-runtime/session-title-generation.js"
 
 /*
  * The guard of the one shared engine agent host of a chat tree. Every Claude call of one tree, other than the

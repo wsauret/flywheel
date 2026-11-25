@@ -23,7 +23,7 @@ import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { asRecord } from "../../../../../infra/record.js";
 import { classifyQuotaError, ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "../../errors.js";
-import type { CompletedStopReason } from "../../messages.js";
+import type { CompletedStopReason } from "../../../../../infra/llm/conversation/messages.js";
 import { parseToolArguments } from "../../../../../infra/llm/json-parse.js";
 import { httpStatusOf, normalizeProviderAttemptFailure } from "../../stream/provider-failure.js";
 import { invokeProviderAttempt, normalizeProviderAttemptIterator } from "../../stream/provider-attempt-boundary.js";
@@ -33,7 +33,7 @@ import { CHAT_COMPLETIONS_REASONING_FIELDS, applyAnthropicCacheControl, chatComp
 import { isOpenAIContextLengthMessage } from "../openai/openai-helpers.js";
 import { cacheWriteTokens } from "../openai/openai-usage-normalization.js";
 import { cacheControlFor } from "../anthropic/anthropic-adapter-helpers.js";
-import { openAIReasoningEffort, supportsThinkingDisable } from "../../model-compat.js";
+import { openAIReasoningEffort, supportsThinkingDisable } from "../../../../../infra/llm/models/model-compat.js";
 import type { ProviderAvailability } from "../../routing/provider-availability-types.js";
 import { observeProviderTelemetry } from "../../stream/stream-observe.js";
 import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, type ConnectedClient, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions } from "../../types.js";

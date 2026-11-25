@@ -9,7 +9,7 @@ import type { ChatPorts } from "./host-ports.js"
 import type { OutputSession } from "../session-store/output-session.js"
 import type { ChatSendResult } from "./runner-types.js"
 import { personMessageKey } from "../session/conversation/queued-user-inputs.js"
-import { recordPersonMessageReceipt } from "../session/conversation/person-message-ledger.js"
+import { recordPersonMessageReceipt } from "../session/control/messaging/person-message-ledger.js"
 
 const log = Log.create({ service: "chat" })
 

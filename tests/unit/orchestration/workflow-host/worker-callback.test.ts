@@ -15,8 +15,8 @@ import { scopedAgentRegistry } from "../../../../src/orchestration/modules/subag
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND, commandHandoversOfAsync } from "../../../../src/orchestration/session/command-handover"
 import { createBackgroundIndex } from "../../../../src/orchestration/app-service/background/background-index"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
-import type { ActiveBackgroundCommandDescriptor } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
-import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types"
+import type { ActiveBackgroundCommandDescriptor } from "../../../../src/orchestration/session/control/background-work/background-work"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/session/control/background-work/background-work-types"
 import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/handoff-correction-exhausted"
 import { HandoffInvalidError } from "../../../../src/workflows/context-bundle/handoff-errors"
 import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution"
@@ -39,7 +39,7 @@ import { WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversati
 import { registerCapacityWaits } from "../../../../src/orchestration/session/control/capacity-wait"
 import { liveSessionControl } from "../../../../src/orchestration/session/control/live-session-control"
 import { messageDisposition } from "../../../../src/orchestration/session/message-disposition"
-import type { RestoredAgentWait } from "../../../../src/orchestration/agent-runtime/agent-loop-types"
+import type { RestoredAgentWait } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const temporary = temporaryDirectories()

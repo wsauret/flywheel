@@ -18,26 +18,28 @@ import type { BriefScope } from "../config/models/role-selection.js";
 import type { RoleResolver } from "../config/roles.js";
 import type { RoleSettingEntry } from "../session/metadata/schemas.js";
 import type { AskUserController } from "./tools/sessions/ask-user-controller.js";
-import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/attempt/handoff-tool-schema.js";
+import type { HandoffRejection, HandoffToolSchema } from "./tools/sessions/handoff-tool-schema.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
 import type { ProviderRequestAuditFact } from "../session/runtime-facts/provider-request-audit-facts.js";
 import type { SessionFactWriter } from "../session/persistence/session-fact-writer.js";
 import type { DurableOwner } from "../../infra/durable-owner.js";
 
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js";
-import type { ConversationMessage } from "./llm/types.js";
+import type { ConversationMessage } from "../../infra/llm/conversation/conversation-message.js";
 import type { AgentRunTally } from "./loop/agent-loop-state.js";
 import type { CommittedTree, ConversationTreeProjectionState } from "../session/conversation/conversation-projection.js";
 import type { CaptureProviderConnection } from "./request/model-runtime-capture.js";
 import type { BackgroundExecutionOwner } from "./background-execution/background-execution-owner.js";
 import type { CommandHandoverAuthority } from "./background-execution/command-handover.js";
 import type { PromptKind } from "./request/prompt/system-prompt.js";
-import type { UsageSettlementAuthorityLease } from "./request/usage/usage-settlement.js";
+import type { UsageSettlementAuthorityLease } from "../session/history/usage-settlement.js";
 import type { ChildSlotRegistry } from "./request/module-services/child-slot-registry.js";
 import type { StartModelWorkflow } from "./tools/definitions/workflow-tool.js";
 import type { CapabilityAccess, ToolProfile } from "./tools/types.js";
 import type { ModuleRuntimes } from "../../infra/module-runtime.js";
-import type { AgentLoopMaintenance, AgentLoopPersistence, AgentLoopTerminal, FinalizedCheckpointSwap, RestoredAgentWait } from "./agent-loop-types.js";
+import type { AgentLoopMaintenance, AgentLoopPersistence, AgentLoopTerminal } from "./agent-loop-types.js";
+import type { FinalizedCheckpointSwap } from "../session/conversation/tree/conversation-tree-writer.js";
+import type { RestoredAgentWait } from "../session/conversation/turn-end-record.js";
 import type { RecallPort } from "../../protocol/transcript/conversation-recall.js";
 import type { ModuleServices } from "../../infra/module-service.js";
 import type { EnvCaptureResolver } from "../../infra/env-detection.js";
@@ -45,8 +47,8 @@ import type { LauncherScope } from "../../infra/process-supervisor.js";
 import type { PersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-bridge.js";
 import type { SkillRegistryRevision } from "../../workflows/skills/skill-schema.js";
-import type { ForegroundBashHoldController } from "./background-work/foreground-bash-hold.js";
-import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js";
+import type { ForegroundBashHoldController } from "../session/control/background-work/foreground-bash-hold.js";
+import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../module-catalog.js";
 import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js";
 import type { GitAiAttributionService } from "./git-ai-attribution-service.js";
 import type { StreamingEditValidationService } from "./tools/edit/streaming-edit-validation.js";
@@ -56,7 +58,7 @@ import type { ShellRuntimeClient } from "./tools/bash/execution/shell-runtime-ty
 
 import type { SessionMessaging } from "../session/control/messaging/session-messaging.js";
 import type { ExternalSkillChildGrant } from "./tools/definitions/skill.js";
-import type { CaptureRuntimeConfig } from "./request/request-config.js";
+import type { CaptureRuntimeConfig } from "../config/request-config.js";
 
 export interface RequestRoleSelection {
   readonly roleId?: string;
@@ -322,7 +324,7 @@ interface AgentBaseOptions {
   accountHome: string;
   onEvent: (event: RuntimeEvent) => void;
   /** Observes the initial policy read used by this turn. The observer settles before provider preparation. */
-  onRuntimeConfigCapture?: (config: import("./request/request-config.js").RuntimeConfigRequestCapture) => Promise<void>;
+  onRuntimeConfigCapture?: (config: import("../config/request-config.js").RuntimeConfigRequestCapture) => Promise<void>;
   /** Shared session delivery watermark, inherited by nested producers. */
   waitForEventCapacity?: (signal?: AbortSignal) => void | Promise<void>;
   onSystemMessage?: (message: string, level?: "info" | "error") => void;

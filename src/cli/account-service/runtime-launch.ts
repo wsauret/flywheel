@@ -48,7 +48,7 @@ export interface LaunchedRuntimeClient {
 
 export function runtimeWorkerUrl(): string {
   return runsThroughBun(process.execPath)
-    ? new URL("../../orchestration/app-service/background/worker-entry.ts", import.meta.url).href
+    ? new URL("../composition/worker-entry.ts", import.meta.url).href
     : embeddedEntrySpecifier(import.meta.dir, "worker-entry.js")
 }
 

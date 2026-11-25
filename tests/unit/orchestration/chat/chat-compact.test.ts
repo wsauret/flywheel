@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test"
 
 import { EventBus } from "../../../../src/infra/event-bus"
-import type { ConversationMessage, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
+import type { StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
+import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message"
 import { createChatSession } from "../../../../src/orchestration/chat/session"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types"
 import type { ConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"

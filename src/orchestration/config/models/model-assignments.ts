@@ -1,7 +1,7 @@
 import type { AuthContext } from "../../../infra/auth/auth-context.js";
 import { resolveAuthContext } from "../../../infra/auth/auth-context.js";
-import { installedCredentialProviderIds } from "../../credential-provider-modules.js";
-import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js";
+import { installedCredentialProviderIds } from "../../module-composition.js";
+import { credentialSlotClassifier } from "../../module-catalog.js";
 import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import { offeringTransportFamily } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import type { ResolvedProviderModels } from "../../../infra/auth/provider-models/provider-model-preferences.js";
@@ -27,7 +27,7 @@ import { parseBriefRoleId, briefPersonaRoleId, briefRoleId } from "../../../prot
 import type { FlywheelConfig } from "../schema/schema.js";
 import { createRuntimeConfigOwner } from "../runtime-config-owner.js";
 import { configuredRoleAssignment, pruneStaleConfig, updateModelAssignments } from "../writer.js";
-import { clampReasoningEffort, effortOptionsForMetadata } from "../../agent-runtime/llm/model-compat.js";
+import { clampReasoningEffort, effortOptionsForMetadata } from "../../../infra/llm/models/model-compat.js";
 
 /** Clears the profile's assignment of each default role that `slots` names, so it resolves to its detected default.
  *  A role that `slots` does not name keeps its saved value. Each cleared role must still hold its `expected` entry,

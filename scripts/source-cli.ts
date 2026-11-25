@@ -26,6 +26,7 @@ export async function runSourceCli(entry?: SourceEntry): Promise<void> {
   // the CLI import: a composition that reads the catalog first locks it.
   const load = createRequire(import.meta.url)
   installModuleCatalog({
+    credentialProviders: () => load("../src/orchestration/credential-provider-modules.js").CREDENTIAL_PROVIDER_MODULES,
     otherModules: () => [
       ...load("../src/orchestration/modules.js").SHIPPED_OTHER_MODULES,
       ...load("../src/orchestration/development-modules.js").DEVELOPMENT_MODULES,

@@ -1,21 +1,22 @@
 import * as os from "node:os";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
 import * as path from "node:path";
 
 import type { SubagentDispatchDeps } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
-import type { ConversationMessage, ModelClient } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import type { ModelClient } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
 import type { AgentFailureReason, AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
-import { resolveSessionRoles } from "../../../../../src/orchestration/config/models/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../../../src/orchestration/agent-runtime/request/roles/session-roles.js";
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
 import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js";
 import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { capabilityAccessFor, type CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest } from "../../../../../src/orchestration/config/policy/module-policy.js";
-import type { ModuleId } from "../../../../../src/orchestration/modules.js";
+import type { ModuleId } from "../../../../../src/orchestration/module-catalog.js";
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
 import type { SummarizeSubagentWorkInput } from "../../../../../src/orchestration/modules/subagents/execution/result/summarize-work.js";

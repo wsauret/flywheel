@@ -7,7 +7,7 @@ import { chatTurnEndOf } from "../../../../src/orchestration/session/conversatio
 import {
   checkpointFinalizedToolResult,
   recoverFinalizedToolResultCheckpoints,
-} from "../../../../src/orchestration/session/history/finalized-tool-result-checkpoint";
+} from "../../../../src/orchestration/agent-runtime/loop/tool-calls/finalized-tool-result-checkpoint";
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer";
 import {
   attachingProcess,

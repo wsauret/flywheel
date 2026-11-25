@@ -7,7 +7,7 @@ import { bashExecution } from "../../orchestration/agent-runtime/tools/bash/_bas
 import type { ToolRegistration } from "../../../../src/orchestration/module-seams.js";
 
 import { createToolRegistry } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
-import { SHIPPED_MODULES } from "../../../../src/orchestration/modules.js";
+import { SHIPPED_MODULES } from "../../../../scripts/shipped-modules.js";
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
 const toolRegistrations = Object.fromEntries(createToolRegistry());
 

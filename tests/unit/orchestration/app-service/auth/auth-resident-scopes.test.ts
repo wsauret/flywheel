@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test"
 import { authDir } from "../../../../../src/infra/paths.js"
-import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js"
+import { accessProviderRegistry } from "../../../../../src/orchestration/config/models/access-provider-registry.js"
 import { createResidentAuthScopes } from "../../../../../src/orchestration/app-service/auth/auth-resident-scopes.js"
 import type { AuthProfileResolution } from "../../../../../src/orchestration/auth/auth-profile-manager.js"
 import { createSubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { createSubscriptionUsageServicePool } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()

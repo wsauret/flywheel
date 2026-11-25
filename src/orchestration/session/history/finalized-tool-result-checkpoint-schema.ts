@@ -46,3 +46,10 @@ export type RecoverableCheckpoint = FinalizedToolResultCheckpoint | typeof Unver
 
 /** Reads the pre-conversation checkpoint shape without inventing missing metadata. */
 export const decodeLegacyFinalizedToolResultCheckpoint = Schema.decodeUnknownSync(BareKeyFinalizedToolResultCheckpointSchema, { onExcessProperty: "error" });
+
+export const FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND = "finalized-tool-result";
+
+/** Decodes current and supported historical cells, rejecting unknown shapes without discarding their bytes. */
+export const decodeRecoverableCheckpoint = Schema.decodeUnknownSync(Schema.Union([
+  FinalizedToolResultCheckpointSchema, UnversionedFinalizedToolResultCheckpointSchema,
+]), { onExcessProperty: "error" });

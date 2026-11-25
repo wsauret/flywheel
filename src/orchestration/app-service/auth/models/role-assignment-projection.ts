@@ -4,9 +4,9 @@ import type { WorkflowMembership } from "../../../../infra/session-workflow-memb
 import type { RoleAssignmentView, RuntimeRoleAssignments } from "../../../../protocol/auth/role-protocol-types.js"
 import { activeServingSeat } from "../../../../protocol/auth/active-serving-seat.js"
 import { parseBriefRoleId } from "../../../../protocol/auth/brief-role-id.js"
-import type { AgentPersonas } from "../../../workflow-host/frontend-attempts.js"
+import type { AgentPersonas } from "../../../session/metadata/frontend-attempts.js"
 import type { ProviderConnectionCapture } from "../../../agent-runtime/request/model-runtime-capture.js"
-import { resolveSessionRoles } from "../../../config/models/session-role-resolver.js"
+import { resolveSessionRoles } from "../../../agent-runtime/request/roles/session-roles.js"
 import { childServingSeat, roleSlot, type BriefScope } from "../../../config/models/role-selection.js"
 
 /** Reads next-request policy without persisting resolved pairs. Missing sessions return null. */

@@ -12,12 +12,12 @@ import { clearSharedModelListingClients, getSharedModelListingClient, getSharedM
 import { createAdmittedClient, createClient, type AccessProviderBuild } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import type { AdapterAdmission } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ModelInfo } from "../../../../../../src/infra/llm/models/models.js";
-import { credentialSlotClassifier } from "../../../../../../src/orchestration/auth/credential-slot-classifier.js";
-import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
+import { credentialSlotClassifier } from "../../../../../../src/orchestration/module-catalog.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js";
 import { testRuntimeConfigCapture } from "../../../../../helpers/request-tool-surface.js";
 import { AccessProviderCandidateSchema, createAccessProviderSelection, type AccessProviderCandidate } from "../../../../../../src/infra/llm/access/access-provider.js";
 
-import { accessProviderRegistry } from "../../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js";
 import { authProviders } from "../../../../../helpers/auth-context.js";
 import { combinedModelsDevJson, combinedModelsDevProviders } from "../../../../../helpers/model-catalog-fixtures.js";
 import { requestEvents } from "../_provider-chain-harness.js";
@@ -26,11 +26,11 @@ import { createClaudeAgentSdkModule } from "../../../../../../src/orchestration/
 import { createAgentRuntime } from "../../../../../../src/orchestration/agent-runtime/runner/factory.js";
 import { fixedDefinitions } from "../../../../../helpers/project-definitions.js";
 import { roleCapture } from "../../../../../helpers/role-capture.js";
-import { resolveSessionRoles } from "../../../../../../src/orchestration/config/models/session-role-resolver.js";
+import { resolveSessionRoles } from "../../../../../../src/orchestration/agent-runtime/request/roles/session-roles.js";
 import { asModelClient } from "../../_model-client.js";
 import { testCapabilityModules, testEligibility, testProviderSessionLifetime } from "../../../../../helpers/provider-authority.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
-import { SESSION_TITLE_PURPOSE } from "../../../../../../src/orchestration/session/metadata/session-title.js";
+import { SESSION_TITLE_PURPOSE } from "../../../../../../src/orchestration/agent-runtime/session-title-generation.js";
 
 const temporaryDirectory = temporaryDirectories();
 

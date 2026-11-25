@@ -5,7 +5,7 @@ import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-even
 import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
 import { makeAssistantEvent as assistantEvent } from "./_parser-fixtures";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result";
-import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner/runner-stream-events";
+import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner/stream-events/runner-stream-events";
 import { emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/runner/emit";
 import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/request/usage/turn-usage-tracker";
 import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types";

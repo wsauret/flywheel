@@ -12,7 +12,7 @@ import { createAccessProviderSelection, type AccessProviderDefinition } from "..
 import { createModelListingClient } from "../../../../../src/infra/llm/access/model-listing.js";
 import { createModelsClient } from "../../../../../src/infra/llm/models/models.js";
 import { testCapabilityModules, testProviderSelection } from "../../../../helpers/provider-authority.js";
-import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/credential-slot-classifier.js";
+import { credentialSlotClassifier } from "../../../../../src/orchestration/module-catalog.js";
 import { AUTH_DIR, AUTH_NONE } from "../../../orchestration/config/_model-listing-fixtures.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
 import { canonicalTestRow, combinedModelsDevProviders, modelsDevDocument, TEST_CATALOG_LIMITS } from "../../../../helpers/model-catalog-fixtures.js";

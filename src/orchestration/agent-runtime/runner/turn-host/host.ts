@@ -1,83 +1,19 @@
-import { Deferred, Effect, Fiber } from "effect"
+import { Effect } from "effect"
 import { awaitWithAbortSignal, mergeAbortSignals } from "../../../../infra/abort.js"
 import { probeLoopUnit } from "../../../../infra/diagnostics/event-loop-lag.js"
 import { closeScopedAbortSignal, createScopedAbortSignal } from "../../loop/turn/scoped-abort-signal.js"
 import { runAgentTurn } from "./agent-turn.js"
 import { AgentTurnAborted } from "./agent-turn-types.js"
-import type { AgentGeneration, AgentHost, AgentHostContextOptions, AgentHostOptions, AgentHostTurnLease } from "./types.js"
+import type { AgentGeneration, AgentHostContextOptions, AgentHostOptions } from "./types.js"
 import type { Agent, AgentRunResult } from "../../types.js"
 
-/** A host for a caller that runs one turn and then stops: it never sees the
- *  chat turn slot. */
-export function createAgentGeneration<O = AgentHostContextOptions>(options: AgentHostOptions<O>): AgentGeneration<O> {
-  return createAgentHost(options)
-}
-
 /** Owns context construction and one logical turn's shared recovery policy. */
-export function createAgentHost<O = AgentHostContextOptions>(options: AgentHostOptions<O>): AgentHost<O> {
+export function createAgentGeneration<O = AgentHostContextOptions>(options: AgentHostOptions<O>): AgentGeneration<O> {
   let activeContext: Agent | null = null
   let activeTurn: Promise<AgentRunResult> | null = null
   let activeGeneration: ReturnType<typeof createScopedAbortSignal> | null = null
-  interface ReservedTurn {
-    readonly lease: AgentHostTurnLease
-    readonly settled: Deferred.Deferred<void>
-    readonly close: Effect.Effect<void>
-  }
-  interface RunningTurn extends ReservedTurn {
-    readonly fiber: Fiber.Fiber<void>
-  }
-  let turnSlot: ReservedTurn | RunningTurn | null = null
-  let turnContinuation: (() => void) | null = null
 
-  const settle = (turn: ReservedTurn): void => { Effect.runSync(Deferred.succeed(turn.settled, undefined)) }
-  const reserveTurn = (): AgentHostTurnLease | null => {
-    if (turnSlot) return null
-    const token = createScopedAbortSignal()
-    turnSlot = { lease: { signal: token.signal }, settled: Deferred.makeUnsafe<void>(), close: closeScopedAbortSignal(token) }
-    return turnSlot.lease
-  }
-  const ownsTurn = (lease: AgentHostTurnLease): boolean => turnSlot?.lease === lease
-  const takeReservedTurn = (): AgentHostTurnLease | null => turnSlot && !("fiber" in turnSlot) ? turnSlot.lease : null
-  const releaseTurn = (lease: AgentHostTurnLease): void => {
-    const reserved = turnSlot
-    if (!reserved || reserved.lease !== lease || "fiber" in reserved) return
-    Effect.runSync(reserved.close)
-    turnSlot = null
-    settle(reserved)
-  }
-  const startTurn = (lease: AgentHostTurnLease, run: () => Promise<void>): void => {
-    const reserved = turnSlot
-    if (!reserved || reserved.lease !== lease || "fiber" in reserved) throw new Error("Runner host turn lease is not reserved")
-    const fiber = Effect.runFork(Effect.promise(run).pipe(
-      Effect.ensuring(reserved.close),
-      Effect.ensuring(Effect.sync(() => {
-        if (turnSlot?.lease === lease) turnSlot = null
-        settle(reserved)
-        const continuation = turnContinuation
-        turnContinuation = null
-        continuation?.()
-      })),
-    ))
-    turnSlot = { ...reserved, fiber }
-  }
-  const continueAfterTurn = (lease: AgentHostTurnLease, continuation: () => void): void => {
-    if (!ownsTurn(lease)) throw new Error("Runner host does not own the turn continuation")
-    if (turnContinuation) throw new Error("Runner host already has a turn continuation")
-    turnContinuation = continuation
-  }
-  const interruptTurn = (): void => {
-    const turn = turnSlot
-    if (!turn || !("fiber" in turn)) return
-    activeContext?.abort()
-    Effect.runSync(turn.close)
-    Effect.runFork(Fiber.interrupt(turn.fiber))
-  }
-  const settleTurn = async (): Promise<void> => {
-    const observed = turnSlot
-    if (observed) await Effect.runPromise(Deferred.await(observed.settled))
-  }
-
-  async function runTurn(turn: Parameters<AgentHost<O>["runTurn"]>[0]): Promise<AgentRunResult> {
+  async function runTurn(turn: Parameters<AgentGeneration<O>["runTurn"]>[0]): Promise<AgentRunResult> {
     if (activeTurn) throw new Error("Runner host already has an active generation")
     const generation = createScopedAbortSignal()
     activeGeneration = generation
@@ -142,13 +78,9 @@ export function createAgentHost<O = AgentHostContextOptions>(options: AgentHostO
   }
   const interruptGeneration = (): boolean => {
     if (activeContext) return activeContext.interruptGeneration?.() ?? false
-    const turn = turnSlot
-    if (!turn || turn.lease.signal.aborted) return cancelActiveGeneration()
-    // With no loop to park, the lease is the authorization to continue.
-    // Cancelling only this generation would still permit a teardown respawn.
-    Effect.runSync(turn.close)
-    cancelActiveGeneration()
-    return true
+    const closedTurn = options.closeTurnWithoutContext?.() ?? false
+    const cancelled = cancelActiveGeneration()
+    return closedTurn || cancelled
   }
   const abortGeneration = (): void => {
     activeContext?.abort()
@@ -157,18 +89,9 @@ export function createAgentHost<O = AgentHostContextOptions>(options: AgentHostO
 
   return {
     get generationState() { return activeTurn ? "active" : "idle" },
-    get turnState() { return turnSlot ? "active" : "idle" },
-    get activeTurnLease() { return turnSlot?.lease ?? null },
-    takeReservedTurn,
-    releaseTurn,
-    reserveTurn,
-    ownsTurn,
-    startTurn,
-    interruptTurn,
-    continueAfterTurn,
     runTurn,
     interruptGeneration,
     abortGeneration,
-    settle: async () => { await Promise.all([activeTurn?.then(() => undefined, () => undefined), settleTurn()]) },
+    settle: async () => { await activeTurn?.then(() => undefined, () => undefined) },
   }
 }

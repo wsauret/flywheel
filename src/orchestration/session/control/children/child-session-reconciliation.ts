@@ -1,11 +1,11 @@
 import type { AggregateSeqConflict, AsyncEventStateReadSurface, AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../infra/store/event-store-types.js"
-import type { BackgroundWorkResult } from "../../../agent-runtime/background-work/background-work-types.js"
+import type { BackgroundWorkResult } from "../background-work/background-work-types.js"
 import { liveWorkflowControl } from "../live-session-control.js"
 import {
   childSessionBackgroundResult,
   durableSubagentCompletionNotification,
   hasDurableSubagentNotificationEvidence,
-} from "../../../agent-runtime/background-work/background-work-notifications.js"
+} from "../background-work/background-work-notifications.js"
 import { installedChildSessionHistory } from "../module-session-operations.js"
 import type { ChildSessionRun, ModuleChildSessionHistory } from "../../../module-seams.js"
 import { readPendingTurnEnds } from "../chat-session-run-evidence.js"
@@ -23,7 +23,7 @@ import { readChildCompletionConversation } from "./child-completion-conversation
 import { createSessionPlacementProjection, createSingleSessionMetadataProjection, sessionMetadataStateOf } from "../../metadata/session-metadata-projection.js"
 import type { ReplayedSession } from "../../metadata/schemas.js"
 import { workflowRunReader } from "../../../module-catalog.js"
-import type { WorkflowRunRecord } from "../../../workflow-host/run-record.js"
+import type { WorkflowRunRecord } from "../../metadata/workflow-run-record.js"
 import { prepareSessionFactAppend } from "../../persistence/session-fact-writer.js"
 import { buildSessionMetadataAppend } from "../../metadata/catalog/session-metadata-store.js"
 import { createToolExecutionProjection } from "../../runtime-facts/tool-execution-projection.js"

@@ -4,8 +4,18 @@ import type { OutputChangeBatch } from "../../infra/output/output-block-delta.js
 import type { SessionNotice, SessionNoticeOperation } from "../../infra/session-notice.js"
 import type { ChatRunner } from "../chat/runner-types.js"
 import type { SessionKind } from "../session/metadata/types.js"
-import type { ActiveBackgroundCommandDescriptor } from "../agent-runtime/background-work/background-work.js"
+import type { ActiveBackgroundCommandDescriptor } from "../session/control/background-work/background-work.js"
 
+/** What the runner pool calls on the chat runner that an entry holds. */
+export interface PooledRunner {
+  abort(): void
+  /** Seed the display blocks the store accumulated before attach, whose first
+   *  block sits at absolute index `sequenceStart`. The store's
+   *  attachChatRunner calls this in the same synchronous frame that makes the
+   *  runner the block authority, so no pre-runner append can fall between the
+   *  capture and the handoff. */
+  seedDisplayBlocks(blocks: readonly AnyBlock[], sequenceStart: number): void
+}
 
 /** Patch shape for store entries: callers always hand the store a plain block
  *  array; the store owns the per-entry mutable box that `outputBlocks` reads

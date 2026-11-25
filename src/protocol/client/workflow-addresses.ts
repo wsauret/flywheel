@@ -3,7 +3,7 @@
  * of each phase, and the agent of each phase of one agent, which a message
  * can name in `targets`. The runtime resolves targets with
  * {@link resolveWorkflowTargets} and refuses and lists them from
- * {@link workflowAddresses} (orchestration/workflow-host/workflow-addressing.ts),
+ * {@link workflowAddresses} (orchestration/session/control/messaging/workflow-addressing.ts),
  * and the agent view's composer reads its own with {@link workflowAgentAddress}.
  * Each reads the one operational tree of the workflow view through the shared
  * outline and folds no hierarchy of its own.

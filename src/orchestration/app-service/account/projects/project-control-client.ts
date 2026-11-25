@@ -8,7 +8,7 @@ import { withDetailEvidence } from "../../../../protocol/client/session-controls
 import { sessionCursor, workspaceDomainCursor, type RuntimeSessionViewEntry, type RuntimeSessionViewsResult } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { budgetCursor } from "../../../../protocol/session/budget-protocol-types.js"
 import type { AuthProfileManager } from "../../../auth/auth-profile-manager.js"
-import { resolveSessionAuthProfile } from "../../../session/metadata/session-auth-profile.js"
+import { resolveSessionAuthProfile } from "../../../auth/session-auth-profile.js"
 import { projectSessionCatalogRow, replaceCatalogTotals } from "../../../session/control/session-catalog-row.js"
 import { editedSessionLabels } from "../../../session/metadata/session-label.js"
 import type { DurableSessionCatalogRow } from "../../../session/metadata/catalog/session-catalog-types.js"

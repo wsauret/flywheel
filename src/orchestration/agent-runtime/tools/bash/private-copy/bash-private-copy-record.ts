@@ -22,6 +22,7 @@ import type { MutationGuardKind } from "./bash-mutation-guard.js";
 import type { MirroredFile } from "./bash-private-copy-mirror.js";
 import type { RepositoryState } from "./bash-copy-repository-state.js";
 import type { StateDigest } from "./bash-copy-state-digest.js";
+import { PRIVATE_COPY_RECORD } from "../../../../../infra/paths.js";
 
 /** A real project file's state when the copy was taken, pinned by hash when it changed too recently for its timestamps alone. */
 type RealFileState = MirroredFile["source"];
@@ -48,8 +49,6 @@ export interface CopiedProject {
   readonly links: ReadonlyMap<string, string>;
 }
 
-/** The copy's record, in its home. Taking the copy writes it last. */
-export const PRIVATE_COPY_RECORD = "copy.json";
 /** The index filename, in the private Git directory or the home of a version 2 copy. */
 export const PRIVATE_INDEX = "index";
 /** Legacy Git identity is retained for recovery, not promoted to the current execution policy. */

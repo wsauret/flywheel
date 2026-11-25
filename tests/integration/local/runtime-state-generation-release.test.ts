@@ -57,7 +57,7 @@ const realSessionStore = await import("../../../src/orchestration/session-store/
 const realAppService = await import("../../../src/orchestration/app-service/app-service.js")
 const realAvailability = await import("../../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js")
 const realRoleProjection = await import("../../../src/orchestration/app-service/auth/models/role-protocol-projection.js")
-const realSessionAuth = await import("../../../src/orchestration/session/metadata/session-auth-profile.js")
+const realSessionAuth = await import("../../../src/orchestration/auth/session-auth-profile.js")
 const EventStoreLive = realEventStoreEffect.EventStoreLive
 const createEventStoreWriterLane = realWriterLane.createEventStoreWriterLane
 const createSessionManager = realManager.createSessionManager
@@ -163,7 +163,7 @@ function workspace(name: string) {
       projectRoot,
       accountHome,
       userDataRoot,
-      workerUrl: new URL("../../../src/orchestration/app-service/background/worker-entry.ts", import.meta.url).href,
+      workerUrl: new URL("../../../src/cli/composition/worker-entry.ts", import.meta.url).href,
       launcher: createLauncherScope({ spawnOwned: unguardedSpawnOwned(), adoptOwned: () => Promise.reject(new Error("no command is adopted here")) }),
       persistentProcesses: persistentProcessManager.client(),
       allowPersistentProcesses: false,

@@ -7,7 +7,7 @@ import * as path from "node:path";
 import { createBashDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { createHandoffTool, handoffDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
-import { handoffToolSchemaFromOutput } from "../../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
+import { handoffToolSchemaFromOutput } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/handoff-tool-schema.js";
 import { compileOutput } from "../../../../../../src/workflows/output-contract/compile.js";
 import type { OutputObject } from "../../../../../../src/workflows/output-contract/grammar.js";
 import { executePreparedTool, prepareToolCall, preparedToolAdmission, selectedToolNames, type ToolExecutionGate } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
@@ -19,7 +19,8 @@ import { publishSkillRevision } from "../../../../../../src/workflows/skills/ski
 import { admitEveryTool, requestAdmission, testBaseTools } from "../../../../../helpers/request-tool-surface.js";
 import { capabilityAccessHolding, makeContext } from "../_fixtures.js";
 import { bashExecution } from "../bash/_bash-fixtures.js";
-import { composeFirstPartyModules, type ModuleId } from "../../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import type { ModuleId } from "../../../../../../src/orchestration/module-catalog.js";
 import { executeDispatchedTool } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
 import { shortFormTool } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/short-form.js";
 import type { ToolConcurrencyGate } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";

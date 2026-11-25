@@ -12,7 +12,8 @@ import { ContentFilteredError, ContentRefusedError, LlmStreamError } from "../..
 import { normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { withStreamAttempt } from "../../../../../../src/orchestration/agent-runtime/llm/stream/stream-attempt.js";
 import { planHistoryLowering } from "../../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js";
-import { type ConversationMessage, FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { preparedRequest } from "../../llm/_provider-chain-harness.js";
 import { stableSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

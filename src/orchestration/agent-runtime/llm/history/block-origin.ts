@@ -1,4 +1,4 @@
-import type { ConversationMessage } from "../types.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 
 /**
  * Who wrote one block of a request, read from the canonical entry that it came from while lowering still knows it

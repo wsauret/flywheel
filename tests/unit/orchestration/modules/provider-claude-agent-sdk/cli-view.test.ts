@@ -4,7 +4,8 @@ import { prepareAnthropicRequest, type PreparedAnthropicRequest } from "../../..
 import { createClaudeReminders, createModelReminders } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import { ProviderRequestValidationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
 import { cliView, identityDifference, sameCliValue, type BridgeRequest } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
 import { CLAUDE_AGENT_SDK_PROVIDER_ID } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { originsOf } from "./_bridge-harness.js";

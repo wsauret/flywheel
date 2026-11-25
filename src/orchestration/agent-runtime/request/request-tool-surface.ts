@@ -28,14 +28,14 @@ import { exposedToolName, toolRegistryFromComposition } from "../tools/dispatch/
 import type { ExecutionAdmission } from "../tools/dispatch/tool-dispatch.js";
 import type { AdmittedModelRequest, ModelClient, ModelRequestRoute, ServingAttempt, StreamOptions, ToolPresentation } from "../llm/types.js";
 import type { ModelInteractionProfile } from "./prompt/model-interaction-profile.js";
-import type { FirstPartyModuleComposition } from "../../modules.js";
+import type { FirstPartyModuleComposition } from "../../module-catalog.js";
 import { hashToolInputFormat } from "../../session/diagnostics/provider-request-audit-hash.js";
-import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "./request-config.js";
+import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "../../config/request-config.js";
 import type { ModelRuntimeCapture, ProviderConnectionCapture } from "./model-runtime-capture.js";
 import { tokenCountingPolicy, type TokenCountingPolicyIdentity } from "../compaction/token-counter.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "../llm/system-prompt-tiers.js";
 
-import { accessProviderRegistry, type AccessProviderRegistry } from "../llm/routing/access-provider-registry.js";
+import { accessProviderRegistry, type AccessProviderRegistry } from "../../config/models/access-provider-registry.js";
 import { resolveModelInteractionProfile } from "./prompt/model-interaction-profile.js";
 type ProviderToolDef = StreamOptions["tools"][number];
 type AuditToolDef = import("../../session/runtime-facts/provider-request-audit-types.js").ProviderRequestAuditTool;

@@ -6,7 +6,7 @@ import { composeModuleServices } from "../../../../../src/infra/module-service.j
 import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
 import { accountAuthDir } from "../../../../../src/infra/paths.js"
 import type { ModuleProtocolServices } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
-import type { ModuleProcessServices } from "../../../../../src/orchestration/app-service/module-service-host.js"
+import type { ModuleProcessServices } from "../../../../../src/orchestration/app-service/executor/execution/module-service-host.js"
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js"
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js"
 import { ConfigWriteError } from "../../../../../src/orchestration/config/writer.js"

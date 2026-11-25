@@ -355,7 +355,7 @@ describe("a dev service's source snapshot", () => {
   })
 
   test("is held once by a process that the source entry starts from it, such as an executor or a guardian", async () => {
-    const fixture = snapshotFixture(temporaryDirectory("flywheel-snapshot-cli-"), ["scripts/source-cli.ts", "src/cli/index.ts", "src/orchestration/app-service/runtime-executable.ts", "src/infra/diagnostics/startup-trace.ts", "src/cli/root-args.ts", "src/infra/distribution/source-snapshot.ts", "src/infra/update/build-identity.ts", "src/infra/app-version.ts", "package.json"])
+    const fixture = snapshotFixture(temporaryDirectory("flywheel-snapshot-cli-"), ["scripts/source-cli.ts", "src/cli/index.ts", "src/cli/composition/module-registries.ts", "src/infra/distribution/running-build.ts", "src/infra/diagnostics/startup-trace.ts", "src/cli/root-args.ts", "src/infra/distribution/source-snapshot.ts", "src/infra/update/build-identity.ts", "src/infra/app-version.ts", "package.json"])
     const entry = await fixture.importFromSnapshot<typeof import("../../../../scripts/source-cli.js")>("scripts/source-cli.ts")
     const argv = process.argv
     const stdout = spyOn(process.stdout, "write").mockImplementation(() => true)

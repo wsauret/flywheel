@@ -7,7 +7,8 @@ import { messageInput, requestContextInput, type AgentLoopInput } from "../../..
 import { SILENT_REPLY_NUDGE } from "../../../../../src/orchestration/agent-runtime/loop/reply-nudge.js"
 import { fixedRequestToolSurface, RequestToolMap } from "../../../../helpers/request-tool-surface.js"
 import type { RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
-import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ModelClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
+import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ModelClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js"
 import { asModelClient, ownHistoryTarget } from "../_model-client.js"
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 

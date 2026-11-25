@@ -1,4 +1,4 @@
-import type { ContentBlock } from "../../llm/types.js";
+import type { ContentBlock } from "../../../../infra/llm/conversation/conversation-message.js";
 
 export function hasAssistantOutput(content: readonly ContentBlock[]): boolean {
   return content.some((block) => {

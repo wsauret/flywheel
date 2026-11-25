@@ -6,7 +6,7 @@ import type { ProviderRequestOptions } from "../../../../../infra/llm/access/pro
 import type { ModuleId } from "../../../../../protocol/runtime/module-ids.js"
 import type { SkillRegistryRevision } from "../../../../../workflows/skills/skill-schema.js"
 import type { Agent, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "../../../../agent-runtime/types.js"
-import type { BackgroundWorkRegistry } from "../../../../agent-runtime/background-work/background-work.js"
+import type { BackgroundWorkRegistry } from "../../../../session/control/background-work/background-work.js"
 import type { CapabilityAccess } from "../../../../agent-runtime/tools/types.js"
 import type { ChildSlotRegistry } from "../../../../agent-runtime/request/module-services/child-slot-registry.js"
 import type { SubagentToolCallRecord } from "../result/work-log.js"
@@ -15,7 +15,7 @@ import type { PromptKind } from "../../../../agent-runtime/request/prompt/system
 import type { BriefScope } from "../../../../config/models/role-selection.js"
 import type { RoleResolver } from "../../../../config/roles.js"
 import type { ChildSessionAuthority, ChildSessionConversation, ParentNotificationDelivery } from "../../../../module-seams.js"
-import type { DefinitionAvailabilitySnapshot } from "../../../../app-service/definitions/definition-availability.js"
+import type { DefinitionAvailabilitySnapshot } from "../../../../config/policy/definition-availability.js"
 import type { ModuleRuntimeServices } from "../../../../agent-runtime/request/module-services/module-runtime-services.js"
 
 export interface SubagentDispatchDeps {

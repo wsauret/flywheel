@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { createHash } from "node:crypto"
 
 import { loadBundledDefaultCatalog } from "../../../../src/workflows/definitions/bundled-defaults.js"
-import { shippedDefinitionBundles } from "../../../../src/orchestration/modules.js"
+import { shippedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js"
 
 function packageIdentity(files: readonly (readonly [string, string])[]): string {
   const identity = createHash("sha256")

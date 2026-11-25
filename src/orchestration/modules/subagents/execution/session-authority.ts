@@ -2,7 +2,7 @@ import { readCapturedFacts } from "../../../../infra/store/event-store-types.js"
 import type { RecallInput, RecallResult } from "../../../../protocol/transcript/conversation-recall.js"
 import type { SessionManager } from "../../../session/manager.js"
 import { prepareSessionFactAppend } from "../../../session/persistence/session-fact-writer.js"
-import { acquireChildExecutionResources } from "../../../session/control/children/child-execution-resources.js"
+import { acquireChildExecutionResources } from "../../../chat/children/child-execution-resources.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 // oxlint-disable-next-line import/no-cycle -- the module authority schedules the kernel cross-session publication.
@@ -25,7 +25,7 @@ export function createSubagentSessionAuthority(input: SessionStorePorts & {
 }): ChildSessionAuthority {
   const pendingReconciliations = new Set<Promise<void>>()
   const resolveRoles = async (sessionId: string, capture?: import("../../../agent-runtime/request/model-runtime-capture.js").ProviderConnectionCapture) => {
-    const { createSessionRoleResolver } = await import("../../../config/models/session-role-resolver.js")
+    const { createSessionRoleResolver } = await import("../../../agent-runtime/request/roles/session-roles.js")
     return createSessionRoleResolver({ reader: input.projectionReader, projectRoot: input.projectRoot, sessionId })(capture)
   }
   const openExecution = async (publication: Omit<Parameters<ChildSessionAuthority["publish"]>[0], "runBinding" | "forkHistory" | "assignment">) => {

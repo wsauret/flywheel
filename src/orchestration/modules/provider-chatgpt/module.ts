@@ -8,11 +8,11 @@ import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-row
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../agent-runtime/llm/stream/provider-failure.js";
 import { ensureFreshChatGPTTokens, getConnectionChatGPTTokenAccessor, rotateChatGPTTokens } from "../../agent-runtime/llm/adapters/openai/openai-chatgpt.js";
-import { startBrowserFlow } from "../../auth/openai-oauth.js";
+import { startBrowserFlow } from "../../../infra/llm/access/openai-oauth.js";
 import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import { retainWebSocketSession } from "../../agent-runtime/llm/adapters/openai/chatgpt-adapter/websocket-session.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { FirstPartyModule } from "../../module-catalog.js";
 import { canonicalizeChatGptRow, CHATGPT_CATALOG, fetchChatGPTModels } from "./catalog.js";
 import { createChatGPTResetConsumer, createChatGPTUsageReader, isModelWindowMetric } from "./usage-reader.js";
 

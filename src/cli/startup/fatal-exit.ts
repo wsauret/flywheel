@@ -1,3 +1,4 @@
+import { importComposing } from "../composition/module-registries.js"
 import { installCrashPolicy, type UncaughtKind } from "../../infra/crash-policy.js"
 import { errorDetail, errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
@@ -65,7 +66,7 @@ async function fatalExitCode(error: unknown, kind: FatalKind): Promise<number> {
   let startHeldByHost
   let SERVE_EXIT
   try {
-    ;({ failServiceStart, serviceListened } = await import("../../orchestration/update/service-start.js"))
+    ;({ failServiceStart, serviceListened } = await importComposing(() => import("../../orchestration/update/service-start.js")))
     ;({ ServeStartupFailure, startHeldByHost } = await import("../../protocol/runtime/serve-handshake.js"))
     ;({ SERVE_EXIT } = await import("../account-service/serve-contract.js"))
   } catch (loadError) {

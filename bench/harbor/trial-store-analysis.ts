@@ -8,12 +8,12 @@ import { createSqliteEventReadSurface } from "../../src/infra/store/sqlite-event
 import { MAX_CONTENT_FILTER_RETRIES } from "../../src/orchestration/agent-runtime/loop/turn/agent-loop-content-filter.js"
 import { usageEntriesFromFacts } from "../../src/orchestration/session/runtime-facts/durable-usage.js"
 import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/diagnostics/provider-request-audit-projection.js"
-import { reconstructProviderRequestPrompt } from "../../src/orchestration/session/diagnostics/provider-request-audit-reconstruction.js"
+import { reconstructProviderRequestPrompt } from "../../src/orchestration/agent-runtime/loop/provider-request-audit-reconstruction.js"
 import { ProviderRequestOutcomeSchema, type ProviderRequestAuditEntry, type ProviderRequestOutcome } from "../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 // Prompt reconstruction reads the installed module catalog to label the hidden
 // entries that each module wrote, such as the Claude engine's reminders. As in
 // a release, loading the module registry publishes the shipped catalog.
-import "../../src/orchestration/modules.js"
+import "../../scripts/shipped-modules.js"
 
 /** The analysis of one Harbor trial store. Every trial runs the bundle of this
  *  file inside its sandbox through the packaged Flywheel executable, with

@@ -7,7 +7,7 @@ import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/age
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js"
 import type { ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution.js"
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flatten.js"
-import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts.js"
+import { frontendAttempts } from "../../../../src/orchestration/session/metadata/frontend-attempts.js"
 import type { LoadedWorkflowView, WorkflowTree } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { parseProjectionFact } from "../../../../src/infra/projection/event-projection.js"
 import type { OutputIssue } from "../../../../src/workflows/output-contract/paths.js"

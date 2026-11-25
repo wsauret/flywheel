@@ -13,7 +13,7 @@ import { refusingLauncher } from "../../../helpers/launcher-fake.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js"
 import { installCustomProviders } from "../../../helpers/custom-providers.js"
-import { composeRealmModuleSnapshot } from "../../../../src/orchestration/modules.js"
+import { composeRealmModuleSnapshot } from "../../../../src/orchestration/module-composition.js"
 import { authProviders } from "../../../helpers/auth-context.js"
 
 const AUTH_CONTEXT: AuthContext = {

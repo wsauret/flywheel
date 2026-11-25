@@ -5,26 +5,26 @@ import {
   acquireSharedProviderAvailability,
   disposeSharedProviderAvailability,
 } from "../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js";
-import { captureRuntimeConfigRequest } from "../../src/orchestration/agent-runtime/request/request-config.js";
+import { captureRuntimeConfigRequest } from "../../src/orchestration/config/request-config.js";
 import { createRuntimeConfigOwner } from "../../src/orchestration/config/runtime-config-owner.js";
 import { AuthProfileManager } from "../../src/orchestration/auth/auth-profile-manager.js";
 import { startModulePolicy } from "../../src/orchestration/config/policy/module-policy.js";
-import { composeRealmModuleSnapshot, type ModuleId } from "../../src/orchestration/modules.js";
-import { installedAccessProviderIds } from "../../src/orchestration/credential-provider-modules.js";
+import { composeRealmModuleSnapshot, installedAccessProviderIds } from "../../src/orchestration/module-composition.js";
+import { type ModuleId, installedModules } from "../../src/orchestration/module-catalog.js";
 import { createAgentJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
-import { prepareWorkflowDeps, type WorkflowDeps } from "../../src/orchestration/workflow-host/deps.js";
+import { prepareWorkflowDeps, type WorkflowDeps } from "../../src/orchestration/agent-runtime/runner/workflow-deps.js";
 import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";
 import { createInstalledDefinitionRegistry } from "../../src/orchestration/app-service/definitions/definition-catalog.js";
-import { createHeadlessProfileRuntime, resolveHeadlessAuthProfile } from "../../src/orchestration/headless/headless-profile-runtime.js";
+import { createHeadlessProfileRuntime, resolveHeadlessAuthProfile } from "../../src/orchestration/app-service/auth/headless/headless-profile-runtime.js";
 import { getSharedModelsClient } from "../../src/orchestration/config/models/llm-clients.js";
-import { createHeadlessUsageAuthorityOwner } from "../../src/orchestration/headless/headless-usage-authority.js";
+import { createHeadlessUsageAuthorityOwner } from "../../src/orchestration/app-service/auth/headless/headless-usage-authority.js";
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import {
   createForegroundBashHoldController,
   type ForegroundBashHoldController,
-} from "../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
-import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work/background-work.js";
-import type { UsageAuthorityGeneration } from "../../src/orchestration/agent-runtime/request/usage/usage-settlement.js";
+} from "../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
+import { createBackgroundWorkRegistry } from "../../src/orchestration/session/control/background-work/background-work.js";
+import type { UsageAuthorityGeneration } from "../../src/orchestration/session/history/usage-settlement.js";
 import { createSubscriptionUsageService } from "../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { createSubscriptionUsageServicePool } from "../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
 import { createSubscriptionSpendConsentCaptureCache } from "../../src/orchestration/auth/subscription-spend-consent/capture-cache.js";
@@ -33,9 +33,8 @@ import type { SubscriptionSpendConsentCapture } from "../../src/orchestration/au
 import type { LauncherScope } from "../../src/infra/process-supervisor.js";
 import type { ShellRuntimeClient } from "../../src/orchestration/agent-runtime/tools/bash/execution/shell-runtime-types.js";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../src/infra/owned-command.js";
-import { accessProviderRegistry } from "../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
-import { composePortableModuleServices, type ComposedModuleServices } from "../../src/orchestration/app-service/module-service-host.js";
-import { installedModules } from "../../src/orchestration/module-catalog.js";
+import { accessProviderRegistry } from "../../src/orchestration/config/models/access-provider-registry.js";
+import { composePortableModuleServices, type ComposedModuleServices } from "../../src/orchestration/app-service/executor/execution/module-service-host.js";
 import type { ProjectDefinitionRegistry } from "../../src/workflows/definitions/definition-registry.js";
 export interface OwnedBenchmarkRuntime extends AsyncDisposable {
   readonly deps: WorkflowDeps;

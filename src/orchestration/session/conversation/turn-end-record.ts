@@ -1,10 +1,9 @@
 import type { PausedBy } from "../../../infra/output-blocks.js"
 import { toolOutcomeFromProvider } from "../../../infra/runtime-facts/tool-outcome.js"
-import { CONTINUATION_MESSAGES } from "../../agent-runtime/request/prompt/continuation-messages.js"
 import { DEFAULT_WAIT_SECONDS } from "../../agent-runtime/tools/sessions/process.js"
 import { MESSAGE_SESSION_TOOL_NAME } from "../../agent-runtime/tools/sessions/message-session.js"
-import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
-import type { RestoredAgentWait } from "../../agent-runtime/agent-loop-types.js"
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js"
+import type { WaitExpiry } from "../../agent-runtime/loop/agent-loop-state.js"
 import { createWaitToolPolicy, endsOpenWait, type OpenWaitInput } from "../../agent-runtime/loop/agent-loop-wait.js"
 import { messageDisposition } from "../message-disposition.js"
 import type { SessionRelation } from "../../../infra/chat-input-schema.js"
@@ -13,6 +12,28 @@ import type { SessionRelation } from "../../../infra/chat-input-schema.js"
  *  skip a notice, and tell a user message from an answer. A hydrated entry
  *  and a stored one (tool text still referenced) both fit, so the tail read
  *  never hydrates. */
+/** The committed wait batch and any input committed before the new loop attached.
+ *  `parkOnly` is a property of the restored chain: an unexpected exit or an
+ *  ordinary stop cut the wait after its batch, so no continuation authority
+ *  covers it, even under a later planned replacement's successor. The loop
+ *  then parks the turn on its work with no expiry and never starts a request
+ *  itself: the completion of work that runs or that registers later, a
+ *  message, or the person's Resume wakes the turn. A chain of planned cuts
+ *  alone keeps the original deadline and the nothing-pending notice.
+ *  `expiry` is the duration that the wait call asked for and its original
+ *  deadline, absent for a reply wait, which has none, and `replyWaitIds`
+ *  names the reply waits that the wait holds (`OpenWait`). `requestOwed`
+ *  says that input committed after the wait that no request answered, so
+ *  the loop runs that request instead of parking first. `woken` says that
+ *  such input ended the wait (`endsOpenWait`), so the loop opens no wait. */
+export interface RestoredAgentWait {
+  readonly expiry?: WaitExpiry
+  readonly replyWaitIds: readonly string[]
+  readonly requestOwed?: true
+  readonly woken?: true
+  readonly parkOnly?: true
+}
+
 export interface TurnEndEntry {
   readonly kind: string
   readonly id: string
@@ -789,4 +810,20 @@ export function waitsAtRuntimeInterrupt(tail: readonly TurnEndEntry[]): boolean 
     if (message && isTurnContinuation(message)) return false
   }
   return true
+}
+
+/** The texts of the continuation messages that the runtime records to restart a turn. */
+export const CONTINUATION_MESSAGES = {
+  unexpected_exit: "Your process exited unexpectedly. Continue where you left off.",
+  // A Resume of an interrupted turn. The turn-end record before it says who
+  // interrupted the turn; this message is the only one that asks to continue.
+  resumed: "The interrupted turn is resumed. Continue it from where it stopped; do not repeat work that finished.",
+  subagent_resumed: "Continue the saved assignment from where it stopped. Do not repeat work that finished.",
+  stream_stalled: "Your previous response stalled while composing one oversized operation. Produce one small sequential batch in this response. For an edit or generated payload, produce one small section. For parallel calls, launch one small batch. Do not retry the oversized operation as one tool call, and do not wait for the user. Normal batching resumes after this response completes.",
+} as const
+
+/** The continuation of a failed workflow agent that a person or its parent
+ *  resumed, with `failure`, the reason its attempt recorded. */
+export function reopenedContinuation(failure: string): string {
+  return `Your previous attempt at this work failed, and a person or your parent resumed you. The recorded failure: ${failure}\n\nContinue from where you stopped. Do not repeat work that finished. Finish with your handoff.`
 }

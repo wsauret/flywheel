@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { declaredFactRetentionTypes, factOwner } from "../src/infra/store/fact-retention-registry.js";
 import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js";
-import { SHIPPED_MODULES } from "../src/orchestration/modules.js";
+import { SHIPPED_MODULES } from "./shipped-modules.js";
 import { MODULE_IDS } from "../src/protocol/runtime/module-ids.js";
 import { PROTOCOL_MODULES } from "../src/protocol/modules.js";
 import { isUnderAny, MODULE_REGISTRIES, moduleFactHomes, moduleHomeId, moduleHomeImportViolation, moduleHomes } from "./module-homes.js";

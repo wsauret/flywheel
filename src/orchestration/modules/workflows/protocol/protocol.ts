@@ -11,7 +11,7 @@ import { attachedRunnerDelivery } from "../../../app-service/supervisor/session-
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { WHOLE_WORKFLOW } from "../../../session/conversation/addressed-workflow-messages.js"
-import { EARLIER_AGENT_SESSION_REFUSAL, resolveWorkflowDeliveryAddress } from "../../../workflow-host/workflow-addressing.js"
+import { EARLIER_AGENT_SESSION_REFUSAL, resolveWorkflowDeliveryAddress } from "../../../session/control/messaging/workflow-addressing.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { composeWorkflowDetail, createWorkflowDetailPartsReader, createWorkflowDetailReader, WORKFLOW_DETAIL_INPUTS, type WorkflowDetailInput, type WorkflowDetailParts } from "./detail.js"
 import { createStartedAgentStates } from "../../../workflow-host/started-agent-states.js"

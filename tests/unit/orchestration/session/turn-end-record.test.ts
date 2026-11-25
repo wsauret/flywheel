@@ -1,22 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-  carriedTurnEndRecord,
-  chatTurnEndEvidenceOf,
-  chatTurnEndOf,
-  cutRunningToolCall,
-  endsAtTurnEnd,
-  interruptedTurnEnd,
-  interruptedTurnMessage,
-  isResumableTurnEnd,
-  isVisibleTurnEnd,
-  turnEndEntryId,
-  turnEndOfEntry,
-  questionExchangeOf,
-  waitsAtRuntimeInterrupt,
-  waitsForPerson,
-  type TurnEndEntry,
-} from "../../../../src/orchestration/session/conversation/turn-end-record.js"
-import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js"
+import { carriedTurnEndRecord, chatTurnEndEvidenceOf, chatTurnEndOf, cutRunningToolCall, endsAtTurnEnd, interruptedTurnEnd, interruptedTurnMessage, isResumableTurnEnd, isVisibleTurnEnd, turnEndEntryId, turnEndOfEntry, questionExchangeOf, waitsAtRuntimeInterrupt, waitsForPerson, type TurnEndEntry, CONTINUATION_MESSAGES } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { toolResultMessages } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js"
 import { TOOL_OUTCOME_VALUES } from "../../../../src/infra/runtime-facts/tool-outcome.js"
 import { DEFAULT_WAIT_SECONDS } from "../../../../src/orchestration/agent-runtime/tools/sessions/process.js"

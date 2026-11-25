@@ -6,7 +6,7 @@
 
 import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
 import type { SessionIdentity } from "../../../session/control/messaging/session-messaging.js";
-import type { FirstPartyModuleComposition } from "../../../modules.js";
+import type { FirstPartyModuleComposition } from "../../../module-catalog.js";
 import { promptKindForPurpose } from "./agent-purpose.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { BuildSystemPromptOptions } from "./system-prompt.js";

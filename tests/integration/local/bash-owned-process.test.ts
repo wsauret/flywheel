@@ -7,7 +7,7 @@ import { createCliLauncher } from "../../../src/cli/account-service/runtime-laun
 import type { DebugLogRecordInput } from "../../../src/infra/diagnostics/debug-log.js"
 import { Log } from "../../../src/infra/diagnostics/log.js"
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js"
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/session/control/background-work/background-work.js"
 import { createBashDefinition } from "../../../src/orchestration/agent-runtime/tools/bash/bash.js"
 import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js"
 import type { DispatchedToolContext, ToolContext } from "../../../src/orchestration/agent-runtime/tools/types.js"

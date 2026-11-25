@@ -7,20 +7,14 @@ import type { ReasoningEffort } from "../../infra/llm/models/models.js";
 import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/store/event-store-types.js";
 import type { SessionFactWriter } from "../session/persistence/session-fact-writer.js";
 import type { CommittedTree } from "../session/conversation/conversation-projection.js";
-import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/attempt/handoff-tool-schema.js";
+import type { HandoffRejection, HandoffToolSchema } from "./tools/sessions/handoff-tool-schema.js";
 import type { InputSource, LogicalTurnStartedContext, TurnEndedContext, TurnParkedContext } from "../../infra/agent-loop-events.js";
 import type { ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
-import type { UsageSettlement } from "./request/usage/usage-settlement.js";
+import type { UsageSettlement } from "../session/history/usage-settlement.js";
 import type { BackgroundExecutionOwner } from "./background-execution/background-execution-owner.js";
 import type { AfterToolCallHook } from "./loop/tool-calls/agent-loop-tools.js";
-import type {
-  CacheRetention,
-  ContentBlock,
-  ConversationMessage,
-  ServingAttempt,
-  StreamEvent,
-  TurnModelClient,
-} from "./llm/types.js";
+import type { CacheRetention, ServingAttempt, StreamEvent, TurnModelClient } from "./llm/types.js";
+import type { ContentBlock, ConversationMessage } from "../../infra/llm/conversation/conversation-message.js";
 import type { SystemPromptTiers } from "./llm/system-prompt-tiers.js";
 import type { PromptPrefixHold } from "./loop/turn/prompt-prefix-hold.js";
 import type { ModelInteractionProfile } from "./request/prompt/model-interaction-profile.js";
@@ -33,19 +27,15 @@ import type { PersistentProcessClient } from "../../infra/supervision/persistent
 import type { BridgedPersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-bridge.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
 import type { StreamingEditValidationService } from "./tools/edit/streaming-edit-validation.js";
-import type { AgentRunTally, PersonWait, WaitExpiry } from "./loop/agent-loop-state.js";
+import type { RestoredAgentWait } from "../session/conversation/turn-end-record.js";
+import type { FinalizedCheckpointSwap } from "../session/conversation/tree/conversation-tree-writer.js";
+import type { AgentRunTally, PersonWait } from "./loop/agent-loop-state.js";
 
 interface HandoffContent {
   [key: string]: unknown;
 }
 
 type UserMessageOrigin = "user" | "system";
-
-export interface FinalizedCheckpointSwap {
-  readonly kind: string;
-  readonly key: string;
-  readonly expectedRaw: string;
-}
 
 /** What follows a context reset: the next model request (`continue`), or
  *  the input wait with no request (`park`), as after a /compact the person
@@ -141,28 +131,6 @@ export type AgentLoopSeed =
  *  a background notification folds into history. */
 export interface AgentLoopMaintenance {
   readonly personWait?: PersonWait;
-}
-
-/** The committed wait batch and any input committed before the new loop attached.
- *  `parkOnly` is a property of the restored chain: an unexpected exit or an
- *  ordinary stop cut the wait after its batch, so no continuation authority
- *  covers it, even under a later planned replacement's successor. The loop
- *  then parks the turn on its work with no expiry and never starts a request
- *  itself: the completion of work that runs or that registers later, a
- *  message, or the person's Resume wakes the turn. A chain of planned cuts
- *  alone keeps the original deadline and the nothing-pending notice.
- *  `expiry` is the duration that the wait call asked for and its original
- *  deadline, absent for a reply wait, which has none, and `replyWaitIds`
- *  names the reply waits that the wait holds (`OpenWait`). `requestOwed`
- *  says that input committed after the wait that no request answered, so
- *  the loop runs that request instead of parking first. `woken` says that
- *  such input ended the wait (`endsOpenWait`), so the loop opens no wait. */
-export interface RestoredAgentWait {
-  readonly expiry?: WaitExpiry;
-  readonly replyWaitIds: readonly string[];
-  readonly requestOwed?: true;
-  readonly woken?: true;
-  readonly parkOnly?: true;
 }
 
 interface AgentLoopLifecycle {

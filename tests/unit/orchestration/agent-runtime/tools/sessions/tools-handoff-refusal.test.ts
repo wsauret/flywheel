@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { createHandoffTool } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
 import { makeContext } from "../_fixtures.js";
-import { createRefusedHandoff, handoffToolSchemaFromOutput } from "../../../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
+import { createRefusedHandoff, handoffToolSchemaFromOutput } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/handoff-tool-schema.js";
 import { compileOutput } from "../../../../../../src/workflows/output-contract/compile.js";
 import type { OutputObject } from "../../../../../../src/workflows/output-contract/grammar.js";
 

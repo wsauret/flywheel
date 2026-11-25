@@ -11,14 +11,14 @@ import type { AuthContext } from "../../../../src/infra/auth/auth-context"
 import { createChatSession } from "../../../../src/orchestration/chat/session"
 import type { ChatSessionDeps } from "../../../../src/orchestration/chat/types"
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types"
+import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
 import { asModelClient } from "../agent-runtime/_model-client"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { interruptedTurnMessage, turnEndEntryId, turnEndOfEntry, type TurnEnd } from "../../../../src/orchestration/session/conversation/turn-end-record"
-import { redactMessage } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history"
+import { redactMessage } from "../../../../src/orchestration/session/conversation/redact-message"
 import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
 import type { AskUserController } from "../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller"
 import type { OutputSession } from "../../../../src/orchestration/session-store/output-session"
 import type { SessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
@@ -36,7 +36,7 @@ export function makeMemoryTreeWriter(): ConversationTreeWriterController {
   // accumulating idle user turns and canonical in-loop messages, so
   // `buildContext()` returns the model-visible history the same way a real
   // tree would.
-  const messages: import("../../../../src/orchestration/agent-runtime/llm/types").ConversationMessage[] = []
+  const messages: import("../../../../src/infra/llm/conversation/conversation-message").ConversationMessage[] = []
   const keys = new Set<string>()
   let entryId = 0
   return {

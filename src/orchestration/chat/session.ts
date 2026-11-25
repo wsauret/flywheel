@@ -17,7 +17,7 @@ import { wireSessionSubscribers } from "../session/persistence/create-session-in
 import { createOutputSession } from "../session-store/output-session.js"
 import { SessionEventAdapter } from "../session-store/event-adapter.js"
 import { deleteSessionArtifacts } from "../session/persistence/storage/session-artifacts.js"
-import { generateSessionTitle, type SessionTitleGeneration } from "../session/metadata/session-title.js"
+import { generateSessionTitle, type SessionTitleGeneration } from "../agent-runtime/session-title-generation.js"
 import { createAskUserController } from "../agent-runtime/tools/sessions/ask-user-controller.js"
 import { voidUnclaimedDecisions } from "../session/agent-input/agent-input-decision.js"
 import { readChatTurnEnd } from "../session/control/chat-session-run-evidence.js"

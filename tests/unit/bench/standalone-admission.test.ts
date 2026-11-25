@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it, spyOn } from "bun:test";
-import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,15 +16,15 @@ import { join } from "node:path";
 import { main } from "../../../bench/ab-persona/bench.js";
 import { captureProviderConnection, type AuthContext } from "../../../src/infra/auth/auth-context.js";
 import type { FailoverPlan } from "../../../src/infra/llm/access/access-provider.js";
-import type { UsageAuthorityGeneration } from "../../../src/orchestration/agent-runtime/request/usage/usage-settlement.js";
+import type { UsageAuthorityGeneration } from "../../../src/orchestration/session/history/usage-settlement.js";
 import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import type { RunConfig } from "../../../src/orchestration/modules/development/benchmark/scoring/run-store.js";
 import { createPersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
-import type { WorkflowDeps } from "../../../src/orchestration/workflow-host/deps.js";
+import type { WorkflowDeps } from "../../../src/orchestration/agent-runtime/runner/workflow-deps.js";
 import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { testDirectories } from "../../helpers/directories.js";
 import { testProviderRegistry } from "../../helpers/provider-authority.js";
 import { roleCapture } from "../../helpers/role-capture.js";
@@ -32,7 +32,7 @@ import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js"
 import { authProviders } from "../../helpers/auth-context.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
 import { refusingLauncher } from "../../helpers/launcher-fake.js";
-import { makeWorkflowDeps } from "../orchestration/headless/_headless-run-fixtures.js";
+import { makeWorkflowDeps } from "../orchestration/app-service/headless/_headless-run-fixtures.js";
 
 const { userDataRoot, accountHome } = testDirectories(process.cwd());
 

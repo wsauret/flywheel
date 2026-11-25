@@ -18,7 +18,8 @@ import { GenerateContentResponse } from "@google/genai";
 import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
 import { toGoogleGenerativeAiRequest } from "../../../../../../../src/orchestration/agent-runtime/llm/conversions/google-generative-ai.js";
 import { createGoogleAdapter } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/google/google.js";
-import type { ConversationMessage, LLMClient, ProviderStreamEvent } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { LLMClient, ProviderStreamEvent } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../../src/infra/llm/conversation/conversation-message.js";
 import { isFailoverFailure, ProviderAttemptFailure } from "../../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { ContentRefusedError } from "../../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 

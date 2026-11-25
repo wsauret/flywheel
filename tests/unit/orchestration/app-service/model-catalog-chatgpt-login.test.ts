@@ -17,10 +17,9 @@ import { chatgptModule } from "../../../../src/orchestration/modules/provider-ch
 import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/models/model-assignment-providers.js";
 import { providerModelEligibilityDecision } from "../../../../src/orchestration/config/models/provider-model-eligibility.js";
 import type { ProviderModelInventoryCandidate } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
-import { installedCredentialProviderIds } from "../../../../src/orchestration/credential-provider-modules.js";
-import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
-import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
+import { composeFirstPartyModules, installedCredentialProviderIds } from "../../../../src/orchestration/module-composition.js";
+import { accessProviderRegistry } from "../../../../src/orchestration/config/models/access-provider-registry.js";
+import { credentialSlotClassifier } from "../../../../src/orchestration/module-catalog.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js";

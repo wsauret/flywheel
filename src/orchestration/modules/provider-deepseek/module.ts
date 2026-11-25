@@ -8,7 +8,7 @@ import { apiKey } from "../../../infra/auth/auth-context.js";
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { FirstPartyModule } from "../../module-catalog.js";
 import { createDeepSeekUsageReader } from "./usage-reader.js";
 
 const BASE_URL = "https://api.deepseek.com";

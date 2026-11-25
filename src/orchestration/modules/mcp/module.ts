@@ -1,6 +1,6 @@
 import { MCP_COMMAND, MCP_COMMAND_NAME, MCP_SURFACE, mcpProtocol } from "../../../protocol/modules/mcp.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { FirstPartyModule } from "../../module-catalog.js"
 import type { CliCommandContext } from "../../cli-contribution.js"
 import { MCP_USAGE } from "./cli/args.js"
 import { mcpConfigSection } from "./config.js"
@@ -20,7 +20,7 @@ const runMcpVerb = (verb: string) => async (args: readonly string[], { directori
 /** The Claude logins of the resolved auth profile for one command, read through the Claude provider module's
  *  service, as a runtime reads them. The command builds that one service, and none while the module is off. */
 async function commandClaudeLogins(directories: CliCommandContext["directories"], launcher: CliCommandContext["launcher"]["scope"], config: Pick<RuntimeConfigOwner, "snapshot" | "subscribe" | "mutateSection">, enabledModuleIds: readonly string[]): Promise<CommandClaudeLogins> {
-  const [{ installedModules }, { composePortableModuleServices }] = await Promise.all([import("../../module-catalog.js"), import("../../app-service/module-service-host.js")])
+  const [{ installedModules }, { composePortableModuleServices }] = await Promise.all([import("../../module-catalog.js"), import("../../app-service/executor/execution/module-service-host.js")])
   const provider = installedModules().filter((module) => module.id === CLAUDE_PROVIDER_MODULE_ID)
   const services = composePortableModuleServices(provider, () => enabledModuleIds, { directories, config, launcher, onSelectionChanged: () => () => {} })
   services.start()

@@ -14,7 +14,7 @@ import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery/re
 import { commitWorkflowEvent, publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures";
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog";
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/vm/recovery/workflow-view";
-import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts";
+import { frontendAttempts } from "../../../../src/orchestration/session/metadata/frontend-attempts";
 import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent";
 import { readWorkflowLiveView } from "../../../../src/orchestration/modules/workflows/protocol/live-protocol";
 import { readAttemptStarts } from "../../../../src/workflows/vm/host/attempt-conversations";

@@ -6,9 +6,9 @@ import type { AccessProviderCandidate } from "../../../../../../src/infra/llm/ac
 import { createAgentRuntime } from "../../../../../../src/orchestration/agent-runtime/runner/factory.js";
 import { captureAccountConnection, providerAdapter, type AccessProviderBuild } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
-import { accessProviderRegistry } from "../../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js";
 import { createClaudeAgentSdkModule } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
 import { installedModules } from "../../../../../../src/orchestration/module-catalog.js";
 import { authProviders } from "../../../../../helpers/auth-context.js";
 import { observedLogins } from "../../../../../helpers/login-observations.js";

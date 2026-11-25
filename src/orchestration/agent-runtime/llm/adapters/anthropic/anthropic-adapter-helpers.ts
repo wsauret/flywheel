@@ -4,10 +4,11 @@ import type { AccessProviderId } from "../../../../../infra/llm/access/access-pr
 import type { ModelInfo } from "../../../../../infra/llm/models/models.js";
 import { toAnthropicMessagesRequest } from "../../conversions/anthropic-messages.js";
 import { ANTHROPIC_STANDARD_CONTEXT_WINDOW, classifyQuotaError, ContentFilteredError, ContextLengthExceededError, extendedContextRefusal, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError } from "../../errors.js";
-import { supportsAdaptiveThinking, supportsEagerToolStreamingOnCopilot, supportsPerTurnEffort } from "../../model-compat.js";
+import { supportsAdaptiveThinking, supportsEagerToolStreamingOnCopilot, supportsPerTurnEffort } from "../../../../../infra/llm/models/model-compat.js";
 import { isTransientNetworkError } from "../../stream/provider-failure.js";
 import { STREAM_TTFT_TIMEOUT_MS } from "../../stream/stream-liveness.js";
-import type { ConversationMessage, StreamOptions } from "../../types.js";
+import type { StreamOptions } from "../../types.js";
+import type { ConversationMessage } from "../../../../../infra/llm/conversation/conversation-message.js";
 import type { SystemPromptTiers } from "../../system-prompt-tiers.js";
 import type { ProviderHistoryTarget } from "../../history/provider-history.js";
 

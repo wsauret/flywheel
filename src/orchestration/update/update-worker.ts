@@ -28,7 +28,7 @@ import { connectOwnedProcessBridge } from "../../infra/owned-process-bridge.js";
 import { updateAuthorityDbFile } from "../../infra/paths.js";
 import type { SelectedRelease } from "../../infra/update/release-manifest.js";
 import { createUpdateAuthority, UPDATE_PROTOCOL_VERSION } from "../../infra/update/update-authority.js";
-import type { WorkerSelf } from "../app-service/project-state/worker/bun-worker-rpc.js";
+import type { WorkerSelf } from "../../infra/process/workers/bun-worker-rpc.js";
 import { systemUpdateScheduler } from "./update-check.js";
 import { createUpdateInstaller } from "./update-install.js";
 import { createUpdatePolicyStore } from "./update-policy.js";

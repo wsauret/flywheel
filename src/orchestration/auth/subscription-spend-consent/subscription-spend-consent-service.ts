@@ -1,9 +1,10 @@
-import type { SubscriptionSpendConsentStatus, SubscriptionSpendEnvelope } from "../../../infra/auth/subscription/subscription-spend-consent.js";
+import type { SubscriptionSpendAuthorization, SubscriptionSpendConsentStatus, SubscriptionSpendEnvelope } from "../../../infra/auth/subscription/subscription-spend-consent.js";
 import { createSubscriptionSpendEnvelope } from "../../../infra/auth/subscription/subscription-spend-consent.js";
 import { SubscriptionSpendConsentCorruptError, SubscriptionSpendConsentStaleError, type SubscriptionSpendConsentStore } from "../../../infra/auth/subscription/subscription-spend-consent-store.js";
-import { createSubscriptionAccountIdentity, type SubscriptionAccountIdentity } from "../../../infra/auth/subscription/subscription-account-identity.js";
+import { createSubscriptionAccountIdentity } from "../../../infra/auth/subscription/subscription-account-identity.js";
 import type { SubscriptionUsageSpendSource } from "../../../infra/llm/usage/subscription-usage.js";
 import type { SubscriptionUsageService } from "../provider-observations/subscription-usage-service.js";
+import type { SubscriptionSpendConsentEvidence } from "../../agent-runtime/llm/routing/provider-availability-types.js";
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE, subscriptionSpendAccountCorrelationId, type SubscriptionSpendConsentMutation, type SubscriptionSpendConsentMutationResult, type SubscriptionSpendConsentView } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js";
 
 interface SubscriptionSpendConsentRow {
@@ -12,21 +13,11 @@ interface SubscriptionSpendConsentRow {
   readonly label?: string;
 }
 
-export interface SubscriptionSpendAuthorization {
-  readonly envelope: SubscriptionSpendEnvelope;
-  readonly profileId: string;
-  readonly account: SubscriptionAccountIdentity;
-  readonly authorityIncarnation: string;
-  readonly authorityRevision: number;
-}
-
-export interface SubscriptionSpendConsentCapture {
-  readonly profileId: string;
+export interface SubscriptionSpendConsentCapture extends SubscriptionSpendConsentEvidence {
   readonly usageGeneration?: number;
   /** The consent authority that the capture read; absent when the capture failed. */
   readonly authority?: { readonly incarnation: string; readonly revision: number };
   readonly rows: readonly SubscriptionSpendConsentRow[];
-  readonly authorizations: ReadonlyMap<string, SubscriptionSpendAuthorization>;
   readonly message?: typeof SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE;
 }
 

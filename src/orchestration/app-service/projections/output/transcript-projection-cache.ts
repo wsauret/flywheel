@@ -1,5 +1,5 @@
 import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
-import { createSessionToolSummaryReader } from "../../../modules.js"
+import { createSessionToolSummaryReader } from "../../../session/runtime-facts/module-tool-history.js"
 import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../../module-seams.js"
 import {
   SessionTranscriptProjection,

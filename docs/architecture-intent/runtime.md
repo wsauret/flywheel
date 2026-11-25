@@ -11,7 +11,7 @@ Not: A runtime or mode registry that switches agent semantics per caller.
 
 ## ARCH-RUNTIME-002: The runner host consumes authorities and owns none of them
 
-The runner host owns runner-context construction, one logical turn lease, explicit resume, interruption, settlement, and the prepared model presentation of each serving attempt. It does not own provider-request admission, workflow control, session lifecycle, durable conversation authority, benchmark policy, or capability admission: it consumes those owners through ports and mirrors none of their state.
+The runner host owns runner-context construction, one logical generation and its recovery, interruption, settlement, and the prepared model presentation of each serving attempt. The turn slot of the chat runner owns the turn lease of the chat, its reservation, and explicit resume. It does not own provider-request admission, workflow control, session lifecycle, durable conversation authority, benchmark policy, or capability admission: it consumes those owners through ports and mirrors none of their state.
 
 ## ARCH-RUNTIME-003: One recovery policy restarts unattended runs
 

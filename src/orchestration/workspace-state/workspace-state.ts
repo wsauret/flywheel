@@ -1,4 +1,4 @@
-import { installedWorkspaceMigrations } from "../modules.js"
+import { installedWorkspaceMigrations } from "../module-catalog.js"
 import * as fs from "node:fs"
 import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME, type ProjectDirectories } from "../../infra/directory-authorities.js"

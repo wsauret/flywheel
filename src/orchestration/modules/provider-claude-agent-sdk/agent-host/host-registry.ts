@@ -3,7 +3,7 @@ import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access/access-provider.js";
 import type { ModelInfo } from "../../../../infra/llm/models/models.js";
 import { mapAnthropicAdaptiveEffort } from "../../../agent-runtime/llm/adapters/anthropic/anthropic-options.js";
-import { supportsAdaptiveThinking } from "../../../agent-runtime/llm/model-compat.js";
+import { supportsAdaptiveThinking } from "../../../../infra/llm/models/model-compat.js";
 import { orderedJson } from "../cli-view.js";
 import { registerHostDrain } from "../engine/live-bridges.js";
 import type { ExtraUsage } from "../bridge/extra-usage-guard.js";

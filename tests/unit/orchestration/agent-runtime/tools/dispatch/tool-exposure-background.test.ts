@@ -6,8 +6,8 @@ import { executePreparedTool, prepareToolCall } from "../../../../../../src/orch
 import { testKernelToolDeps, admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { withCapabilityGrant, type CapabilityAccess } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { createForegroundBashHoldController } from "../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
+import { createForegroundBashHoldController } from "../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { makeContext } from "../_fixtures.js";
 import { bashExecution } from "../bash/_bash-fixtures.js";

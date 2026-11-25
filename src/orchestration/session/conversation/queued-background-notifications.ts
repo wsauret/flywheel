@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightSwap, InFlightWrite } from "../../../infra/store/event-store-types.js"
-import { redactMessage } from "../../agent-runtime/loop/turn/agent-loop-history.js"
-import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
+import { redactMessage } from "./redact-message.js"
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js"
 import type { QueuedUserInputDestination } from "./queued-user-inputs.js"
 
 export const QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND = "chat.queued_background_notification"
@@ -122,4 +122,13 @@ export function queuedBackgroundNotificationMessage(
 
 export function queuedBackgroundNotificationDrops(keys: readonly string[]): InFlightWrite[] {
   return keys.map((key) => ({ op: "drop", kind: QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, key }))
+}
+
+/** The prefix of the durable key of a subagent completion notification, which encodes the runs it covers. */
+export const SUBAGENT_COMPLETIONS_KEY_PREFIX = "subagent-completions:"
+
+/** Run coverage encoded by the durable notification producer in a hold or entry id. */
+export function subagentCompletionRunIds(key: string): readonly string[] {
+  if (!key.startsWith(SUBAGENT_COMPLETIONS_KEY_PREFIX)) return []
+  return key.slice(SUBAGENT_COMPLETIONS_KEY_PREFIX.length).split(",").map(decodeURIComponent)
 }

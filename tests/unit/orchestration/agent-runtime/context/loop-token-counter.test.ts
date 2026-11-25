@@ -8,7 +8,7 @@ import {
   tokenCountingPolicy,
 } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import { createStaleToolResultMasker } from "../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
 
 const IMAGE_TOKEN_ESTIMATE = imageTokensForModel("anthropic");
 /** The character heuristic of a model with no local tokenizer. */

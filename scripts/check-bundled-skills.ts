@@ -35,10 +35,13 @@ import type { DefinitionBundle } from "../src/workflows/definitions/loader.js";
 
 import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js";
 import { installedDefinitionBundles, installModuleCatalog } from "../src/orchestration/module-catalog.js";
-import { composeFirstPartyModules, SHIPPED_OTHER_MODULES } from "../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../src/orchestration/module-composition.js";
+// The credential provider registry publishes its half of the catalog when it loads.
+import "../src/orchestration/credential-provider-modules.js";
+import { SHIPPED_OTHER_MODULES } from "../src/orchestration/modules.js";
 import { installedPersonaToolEntries } from "../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { UNATTENDED_CHAT_TERM } from "../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
-import { agentTypeOf } from "../src/orchestration/app-service/definitions/definition-availability.js";
+import { agentTypeOf } from "../src/orchestration/config/policy/definition-availability.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
 
 interface CheckDirectories {

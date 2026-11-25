@@ -13,7 +13,7 @@
  *  disabled after it started never refuses its workers mid-run, and nothing
  *  below it reads the live projection or looks the definition up again. */
 
-import { agentCompositions, type DefinitionAvailabilityOwner, type DefinitionAvailabilitySnapshot } from "../../app-service/definitions/definition-availability.js"
+import { agentCompositions, type DefinitionAvailabilityOwner, type DefinitionAvailabilitySnapshot } from "../../config/policy/definition-availability.js"
 import { attendedClosureMembers, describeClosureFailure } from "../../../workflows/skills/skill-closure.js"
 import { capabilityAccessFor, type CapabilityAccess } from "../../agent-runtime/tools/types.js"
 import type { WorkflowCapabilityBoundary } from "../../../workflows/run/run-facts.js"

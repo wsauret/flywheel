@@ -2,7 +2,7 @@ import { afterEach, describe, it, expect } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { collectModuleSkillPackageFiles } from "../../../../scripts/build-manifest.js";
-import { shippedDefinitionBundles } from "../../../../src/orchestration/modules.js";
+import { shippedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
 import { loadWorkflowFiles } from "../../../helpers/workflow-files.js";
 import type { AssetLocation } from "../../../../src/workflows/definitions/definition-assets.js";
 import { loadSkillDefinitions } from "../../../../src/workflows/skills/skills.js";

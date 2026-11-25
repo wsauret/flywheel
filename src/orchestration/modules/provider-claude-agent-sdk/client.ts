@@ -6,7 +6,8 @@ import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/stream/
 import { engineModelId, createClaudeReminders, environmentFacts } from "../../agent-runtime/llm/history/runtime-reminders.js";
 import { credentialForCandidate, providerAdapter, type AccessProviderBuild } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type ProviderAdapter, type ToolPresentation } from "../../agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, type ProviderAdapter, type ToolPresentation } from "../../agent-runtime/llm/types.js";
+import { trailingRuntimeNotices } from "../../../infra/llm/conversation/conversation-message.js";
 import { processUsageReadings } from "./account-usage.js";
 import { makeBridge } from "./bridge/bridge.js";
 import type { BridgeConfig } from "./bridge/bridge-state.js";

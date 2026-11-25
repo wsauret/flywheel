@@ -4,7 +4,7 @@ import { applyPatchDefinition } from "../agent-runtime/tools/edit/apply-patch.js
 import { editDefinition } from "../agent-runtime/tools/edit/edit.js"
 import { readDefinition, wholeFileReadDefinition } from "../agent-runtime/tools/read/read.js"
 import { writeDefinition } from "../agent-runtime/tools/edit/write.js"
-import type { FirstPartyModule } from "../modules.js"
+import type { FirstPartyModule } from "../module-catalog.js"
 
 function policy(tool: RuntimeTool, order: number): Omit<ToolDeclaration, "registrations"> {
   return {

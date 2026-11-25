@@ -2,26 +2,17 @@ import { openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../
 import { heldDirectoryDerivation } from "../../../infra/watched-directory-values.js"
 import { SUBSCRIPTION_SPEND_CONSENT_FILE, subscriptionSpendConsentRevision, type SubscriptionSpendConsentRevision } from "../../../infra/auth/subscription/subscription-spend-consent-store.js"
 import type { AccessProviderCandidate, AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js"
-import { providerSettingValues, type AccessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js"
+import { providerSettingValues, type AccessProviderRegistry } from "../../config/models/access-provider-registry.js"
 import { availableSubscriptionUsageResetCredits } from "../../../infra/llm/usage/subscription-usage.js"
 import { metricUsedFraction } from "../../../infra/llm/usage/subscription-usage-store-codec.js"
-import type { RequestAdmission, SubscriptionAllowanceAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionExpiringResetResolver } from "../../agent-runtime/llm/routing/provider-availability-types.js"
-import type { RuntimeConfigRequestCapture } from "../../agent-runtime/request/request-config.js"
+import type { SubscriptionAdmissionCapture, SubscriptionAllowanceAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionExpiringResetResolver } from "../../agent-runtime/llm/routing/provider-availability-types.js"
+import type { RuntimeConfigRequestCapture } from "../../config/request-config.js"
 import type { SubscriptionUsageProfile } from "../provider-observations/subscription-usage-service.js"
 import type { SubscriptionUsageServiceLease, SubscriptionUsageServicePool } from "../provider-observations/subscription-usage-service-pool.js"
 import type { SubscriptionSpendConsentCaptureCache } from "./capture-cache.js"
 import { createSubscriptionSpendConsentRuntime } from "./runtime-composition.js"
-import type { SubscriptionSpendAuthorization, SubscriptionSpendConsentCapture } from "./subscription-spend-consent-service.js"
-import type { ProviderConnection } from "../../../infra/auth/auth-context.js"
-import { createSubscriptionAccountIdentity } from "../../../infra/auth/subscription/subscription-account-identity.js"
+import type { SubscriptionSpendConsentCapture } from "./subscription-spend-consent-service.js"
 import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js"
-
-export interface SubscriptionAdmissionCapture {
-  readonly consent: SubscriptionSpendConsentCapture
-  readonly subscriptionAllowanceFor: SubscriptionAllowanceResolver
-  readonly bankedResetFor: SubscriptionBankedResetResolver
-  readonly expiringResetFor: SubscriptionExpiringResetResolver
-}
 
 const CONSENT_REVISION = heldDirectoryDerivation<SubscriptionSpendConsentRevision>([SUBSCRIPTION_SPEND_CONSENT_FILE])
 const UNKNOWN_ALLOWANCE: SubscriptionAllowanceAdmission = Object.freeze({ allowance: "unknown" })
@@ -111,33 +102,4 @@ export async function captureSubscriptionAdmission(input: {
   } finally {
     if (input.residentLease === undefined) await lease.release()
   }
-}
-
-/** Builds the request admission that one subscription capture states for `connection`: only a paid-use authorization that names one of its accounts admits a paid spend mode. */
-export async function requestAdmissionFromCaptures(capture: SubscriptionAdmissionCapture | undefined, connection: ProviderConnection | undefined): Promise<RequestAdmission> {
-  const authorizations = new Map<string, SubscriptionSpendAuthorization>()
-  const consent = capture?.consent
-  if (consent !== undefined) {
-    const accountMatches = (providerId: string, instanceId: string, subjectDigest: string): boolean => {
-      if (connection?.profileId === undefined || connection.profileId !== consent.profileId) return false
-      const account = connection.subscriptionCredentials.get(providerId)?.find((candidate) => candidate.instanceId === instanceId)
-      return account?.identity !== undefined
-        && createSubscriptionAccountIdentity(providerId, instanceId, account.identity).subjectDigest === subjectDigest
-    }
-    for (const authorization of consent.authorizations.values()) {
-      const envelope = authorization.envelope
-      if (authorization.profileId !== consent.profileId
-        || authorization.account.providerId !== envelope.providerId
-        || authorization.account.instanceId !== envelope.instanceId
-        || authorization.account.subjectDigest !== envelope.subjectDigest
-        || !accountMatches(envelope.providerId, envelope.instanceId, envelope.subjectDigest)) continue
-      authorizations.set(`${envelope.providerId}\0${envelope.instanceId}\0${envelope.mode}`, authorization)
-    }
-  }
-  return Object.freeze({
-    subscriptionSpendAuthorizationFor: (candidate: AccessProviderCandidate) => candidate.kind === "subscription"
-      ? authorizations.get(`${candidate.providerId}\0${candidate.instanceId}\0${candidate.spendMode}`)
-      : undefined,
-    ...(capture === undefined ? {} : { subscriptionAllowanceFor: capture.subscriptionAllowanceFor, bankedResetFor: capture.bankedResetFor, expiringResetFor: capture.expiringResetFor }),
-  })
 }

@@ -9,7 +9,7 @@ import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store
 import { createRuntimeEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
 import type { UsageEntry } from "../../../../src/infra/llm/usage/usage-entry.js"
 import { computeUsagePrice } from "../../../../src/infra/llm/models/llm-helpers.js"
-import { createProcessUsageSettlement, createSessionUsageSettlement, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../../../src/orchestration/agent-runtime/request/usage/usage-settlement.js"
+import { createProcessUsageSettlement, createSessionUsageSettlement, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/history/usage-settlement.js"
 import { createRuntimeUsageDeps } from "../../../../src/orchestration/modules/subscription-usage/provider-deps.js"
 import { wireSessionSubscribers, type MetricsWriter } from "../../../../src/orchestration/session/persistence/create-session-infra.js"
 import { acquireSessionResources } from "../../../../src/orchestration/session/persistence/session-resources-service.js"

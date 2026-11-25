@@ -13,21 +13,10 @@ import { summarizeProviderError, type ProviderErrorDiagnostic } from "../../../.
 import { classifyApiError } from "../../../../infra/llm/errors/provider-error-copy.js";
 import { type AgentRuntimeError, ApiError, fromStreamError, ProviderAuditSettlementError, StreamStalled } from "../../llm/routing/runtime-errors.js";
 import { ProviderAttemptFailure, type ProviderFailure } from "../../llm/stream/provider-failure.js";
-import {
-  type ConversationMessage,
-  type AssistantMetadata,
-  type LLMClient,
-  type LlmStopReason,
-  type ProviderRequestAttribution,
-  providerRequestAttribution,
-  presentToolHistory,
-  type ProviderStreamEvent,
-  type RepetitionGuard,
-  type ServingAttempt,
-  type StreamOptions,
-} from "../../llm/types.js";
+import { type AssistantMetadata, type LLMClient, type ProviderRequestAttribution, providerRequestAttribution, presentToolHistory, type ProviderStreamEvent, type RepetitionGuard, type ServingAttempt, type StreamOptions } from "../../llm/types.js";
+import { type LlmStopReason, modelFamilyApi } from "../../../../infra/llm/conversation/messages.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { ContextLengthExceededError, StreamIdleTimeoutError } from "../../llm/errors.js";
-import { modelFamilyApi } from "../../llm/messages.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "../../llm/system-prompt-tiers.js";
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "../../llm/provider-request-audit.js";
 import type { ModelInteractionProfile } from "../../request/prompt/model-interaction-profile.js";
@@ -38,7 +27,7 @@ import { type AssistantTurnResult, handleStreamEvent, settledTextOf, type TurnOu
 import { hasAssistantOutput } from "./assistant-output.js";
 import { createRequestStreamTelemetry } from "./stream-telemetry.js";
 import { isProviderResponseEvent, type PrefixHoldTicket } from "./prompt-prefix-hold.js";
-import type { UsageSettlement } from "../../request/usage/usage-settlement.js";
+import type { UsageSettlement } from "../../../session/history/usage-settlement.js";
 
 const log = Log.create({ service: "assistant-turn-stream" });
 

@@ -14,7 +14,7 @@ import { asModelClient, ownHistoryTarget } from "../../agent-runtime/_model-clie
 import { ContextLengthExceededError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { loadProviderRequestAuditFromEvents } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-projection.js";
-import { reconstructProviderRequestPrompt } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-reconstruction.js";
+import { reconstructProviderRequestPrompt } from "../../../../../src/orchestration/agent-runtime/loop/provider-request-audit-reconstruction.js";
 import { reconcileChildSessionCompletions } from "../../../../../src/orchestration/session/control/children/child-session-reconciliation.js";
 import { loadSubagentRunsFromEvents } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";

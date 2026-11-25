@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
-import type { ConversationMessage, ProviderStreamEvent, ToolCall } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js";
+import type { ProviderStreamEvent, ToolCall } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message.js";
 import type { RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import type { AgentLoopTerminal, RestoredAgentWait } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
+import type { AgentLoopTerminal } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
+import type { RestoredAgentWait } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
 import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/loop/turn/run-lifecycle.js";
 import { SILENT_REPLY_NUDGE } from "../../../../../src/orchestration/agent-runtime/loop/reply-nudge.js";
 import { createProcessTool, DEFAULT_WAIT_SECONDS } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";

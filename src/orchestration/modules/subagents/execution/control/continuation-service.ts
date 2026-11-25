@@ -1,9 +1,9 @@
 import { moduleServiceHandle } from "../../../../../infra/module-service.js"
 import { errorMessage } from "../../../../../infra/error-message.js"
-import type { ModuleProcessServices } from "../../../../app-service/module-service-host.js"
+import type { ModuleProcessServices } from "../../../../app-service/executor/execution/module-service-host.js"
 import { readSubagentRuns } from "../../history/subagent-run-projection.js"
 import type { SubagentResult } from "../dispatch/control-actions.js"
-import { parentHost } from "../../../../session/control/live-session-control.js"
+import { parentHost } from "../../../../chat/children/parent-host.js"
 import { subagentsRuntime } from "./runtime-binding.js"
 
 export interface SubagentContinuationService {
@@ -37,12 +37,12 @@ export function createSubagentContinuationService(services: ContinuationServices
         }
         const environment = services.executionEnvironment()
         const initial = (await environment.authAdmission.admit(childSessionId)).workflowDeps
-        const { bindWorkflowDepsToSession } = await import("../../../../workflow-host/deps.js")
+        const { bindWorkflowDepsToSession } = await import("../../../../agent-runtime/runner/workflow-deps.js")
         const deps = bindWorkflowDepsToSession(initial, {
           capture: async () => (await environment.authAdmission.admit(childSessionId)).workflowDeps,
           current: () => environment.authAdmission.current(childSessionId).workflowDeps,
         })
-        const { createSessionRoleResolver } = await import("../../../../config/models/session-role-resolver.js")
+        const { createSessionRoleResolver } = await import("../../../../agent-runtime/request/roles/session-roles.js")
         const resolveRoles = createSessionRoleResolver({ reader: services.projectionReader, projectRoot: services.directories.projectRoot, sessionId: childSessionId, userDataRoot: deps.userDataRoot, capture: deps.captureProviderConnection })
         return runtime.resume(childSessionId, {
           createRunner: deps.createAgent,

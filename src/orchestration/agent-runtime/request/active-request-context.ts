@@ -12,11 +12,12 @@ import {
   tokenCountingPolicy,
   type TokenCountingPolicy,
 } from "../compaction/token-counter.js";
-import type { AdmittedModelRequest, ConversationMessage, ModelClient, ModelRequestRoute, ServingAttempt, StreamEvent, ToolPresentation } from "../llm/types.js";
+import type { AdmittedModelRequest, ModelClient, ModelRequestRoute, ServingAttempt, StreamEvent, ToolPresentation } from "../llm/types.js";
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
 import { presentToolHistory } from "../llm/types.js";
 import type { PreparedRequestAttempt, RequestToolSurfaceOwner } from "./request-tool-surface.js";
 import type { ModelInteractionProfile } from "./prompt/model-interaction-profile.js";
-import type { FirstPartyModuleComposition } from "../../modules.js";
+import type { FirstPartyModuleComposition } from "../../module-catalog.js";
 import type { ToolExecutionGate } from "../tools/dispatch/tool-dispatch.js";
 import { projectToolHistory, type ToolHistoryProjection } from "../llm/history/tool-history-projection.js";
 import { applyContentRepairs } from "../llm/history/content-repair.js";

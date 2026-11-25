@@ -1,7 +1,7 @@
 import type { AccessProviderId } from "../../../../infra/llm/access/access-provider.js";
 import type { RefusedPart } from "../../../../infra/llm/content-repair.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import type { ContentBlock, ConversationMessage } from "../types.js";
+import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 
 type AssistantMessage = Extract<ConversationMessage, { kind: "assistant" }>;
 type ToolResultMessage = Extract<ConversationMessage, { kind: "toolResult" }>;

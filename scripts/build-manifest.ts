@@ -156,7 +156,8 @@ export async function collectSkillPackageFiles(packageDir = BUNDLED_SKILL_DIR): 
  *  The shipped catalog never names the development bundle, so no release
  *  carries it. */
 export async function collectModuleSkillPackageFiles(): Promise<{ [bundle: string]: TextByPath }> {
-  const { shippedDefinitionBundles } = await import("../src/orchestration/modules.js");
+  await import("./shipped-modules.js");
+  const { shippedDefinitionBundles } = await import("../src/orchestration/module-catalog.js");
   const bundles: { [bundle: string]: TextByPath } = {};
   for (const { id, root } of shippedDefinitionBundles()) bundles[id] = await collectSkillPackageFiles(join(root, "skills"));
   return bundles;

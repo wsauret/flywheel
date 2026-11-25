@@ -1,9 +1,9 @@
 import { imageOmittedPlaceholder, splitToolOutputParts } from "../../../../infra/llm/tool-output-part-schema.js";
 import type { ReasoningEffort } from "../../../../infra/llm/models/models.js";
-import { healConversation } from "../history/heal-messages.js";
+import { healConversation } from "../../../session/conversation/tree/heal-messages.js";
 import { lowerProviderHistory, type ProviderHistoryTarget } from "../history/provider-history.js";
-import { isSameAccessProviderReplay, isSameProviderReplay } from "../messages.js"
-import type { ContentBlock, ConversationMessage } from "../types.js";
+import { isSameAccessProviderReplay, isSameProviderReplay } from "../../../../infra/llm/conversation/messages.js"
+import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { sanitizeSurrogates } from "../history/sanitize-unicode.js";
 import { deterministicMessageId, ProviderIdConversionError, ProviderIdNormalizer, type CanonicalProviderIds } from "./provider-id.js";
 

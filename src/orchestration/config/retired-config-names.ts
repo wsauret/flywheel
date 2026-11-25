@@ -1,6 +1,8 @@
 import { removeSemanticSubtree, renameSemanticTable, quoteTomlKey, rewriteSemanticAssignmentKeys, type SemanticKeyRewrite } from "./config-assignment.js";
 import { parseBriefRoleId } from "../../protocol/auth/brief-role-id.js";
 import { RETIRED_BRIEFS } from "../../workflows/definitions/retired-bindings.js";
+import { canonicalModelId } from "../../infra/model-id.js";
+import type { RoleSettings } from "../session/metadata/schemas.js";
 
 /** Retired config names: the role-id spellings that user config, the
  *  `FLYWHEEL_ROLES` table, and stored session role snapshots may carry, and
@@ -90,4 +92,22 @@ export function patchRetiredConfigKeys(source: string): string {
 
 function isRecord(value: unknown): value is { [key: string]: unknown } {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/** One role assignment table in canonical form: each model id canonical,
+ *  and each role id current (refer to `canonicalRoleId`), so a snapshot
+ *  that a run stored under a retired seat name reads as its current seat.
+ *  A table that holds both spellings of one seat keeps the current one. */
+export function normalizeRoleAssignments(roles: RoleSettings): RoleSettings {
+  const normalized: { [roleId: string]: RoleSettings[string] } = {};
+  for (const [roleId, assignment] of Object.entries(roles)) {
+    const current = canonicalRoleId(roleId);
+    if (current !== roleId && Object.hasOwn(roles, current)) continue;
+    normalized[current] = {
+      ...(assignment.model === undefined ? {} : { model: canonicalModelId(assignment.model) }),
+      ...(assignment.effort === undefined ? {} : { effort: assignment.effort }),
+      ...(assignment.providerOptions === undefined ? {} : { providerOptions: assignment.providerOptions }),
+    };
+  }
+  return normalized;
 }

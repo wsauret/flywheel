@@ -1,11 +1,13 @@
 import { lowerProviderHistory, planHistoryLowering } from "../../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js";
 import { describe, expect, test } from "bun:test";
-import type { ConversationMessage, StreamOptions } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { StreamOptions } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
 import { toOpenAIResponsesRequestInput } from "../../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 import { toAnthropicMessagesRequest } from "../../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { toGoogleGenerativeAiRequest } from "../../../../../../src/orchestration/agent-runtime/llm/conversions/google-generative-ai.js";
 import { chatCompletionsTarget, toChatCompletionsMessages } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions-messages.js";
-import { createClaudeReminders, createModelReminders, parseRuntimeReminder } from "../../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
+import { createClaudeReminders, createModelReminders } from "../../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
+import { parseRuntimeReminder } from "../../../../../../src/infra/llm/runtime-reminder-format.js";
 import { captureForkMessages } from "../../../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history.js";
 import { createHostedAgentEntries, DISPATCH_TEXT } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { AGENT_APPENDIX, AGENT_IDENTITY, conversationTierEntry } from "../../../../../helpers/hosted-engine-text.js";

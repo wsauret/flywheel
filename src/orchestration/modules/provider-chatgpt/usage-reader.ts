@@ -4,7 +4,7 @@ import type { UnknownRecord } from "../../../infra/record.js";
 import { boundedProviderText, readBoundedSubscriptionUsageJson, unsupportedSubscriptionUsageOutcome, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageResetConsumer, type SubscriptionUsageResetCredits, type SubscriptionUsageJson, type SubscriptionUsageSpendSource } from "../../../infra/llm/usage/subscription-usage.js";
 import { malformed, oauthTokens, percent, prepaidBalance, readerIdentity, requiredNumber, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/usage/subscription-usage-reader.js";
 import { ensureFreshChatGPTTokens } from "../../agent-runtime/llm/adapters/openai/openai-chatgpt.js";
-import { ChatGPTTokenRefreshError } from "../../auth/openai-oauth.js";
+import { ChatGPTTokenRefreshError } from "../../../infra/llm/access/openai-oauth.js";
 
 const CHATGPT_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
 const CHATGPT_RESET_CREDITS_URL = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits";

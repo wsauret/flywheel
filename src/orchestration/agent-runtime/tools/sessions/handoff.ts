@@ -1,4 +1,4 @@
-import type { HandoffToolSchema } from "../../../workflow-host/attempt/handoff-tool-schema.js";
+import type { HandoffToolSchema } from "./handoff-tool-schema.js";
 import { createHandoffToolCore } from "./handoff-tool.js";
 import type { RuntimeTool, ToolContext } from "../types.js";
 

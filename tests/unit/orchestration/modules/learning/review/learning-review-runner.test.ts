@@ -2,7 +2,7 @@ import type { PreparedPackage } from "../../../../../../src/orchestration/agent-
 import { describe, expect, it } from "bun:test";
 import { createLearningReviewExecution } from "../../../../../../src/orchestration/modules/learning/review/learning-review-runner.js";
 import { captureProviderConnection as captureAuthProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
-import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
+import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js";
 import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type ServingAttempt } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { publishSkillRevision, type BundledSkillPackage } from "../../../../../../src/workflows/skills/skill-schema.js";
 

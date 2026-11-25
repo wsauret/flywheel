@@ -1,7 +1,7 @@
 import type { EmitFn } from "../../../infra/event-bus.js"
 import type { TurnParkedContext } from "../../../infra/agent-loop-events.js"
 import { interruptedLabel } from "../../../infra/output/run-labels.js"
-import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js"
 import { isRuntimeInterruption, type ControlInterruption, type PlannedCutInterrupt, type TurnInterruption } from "../../session/conversation/turn-end-record.js"
 import type { WorkflowAgentInput } from "./agent-inputs.js"
 

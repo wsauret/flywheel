@@ -5,7 +5,7 @@
 //
 // Adapted from pi `packages/ai/src/api/github-copilot-headers.ts` (MIT); credited in THIRD-PARTY-NOTICES.md.
 
-import { trailingAlternatingMessage, type ConversationMessage } from "../../agent-runtime/llm/types.js";
+import { trailingAlternatingMessage, type ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
 
 interface StringFields { [key: string]: string }
 

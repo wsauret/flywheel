@@ -1,4 +1,4 @@
-import type { ConversationMessage } from "../../../../agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../../../infra/llm/conversation/conversation-message.js"
 import type { CapabilityAccess } from "../../../../agent-runtime/tools/types.js"
 import type { CapabilityCheck } from "../../../../../infra/capability-text.js"
 import type { ContextAdmission } from "../../../../agent-runtime/compaction/compaction-policy.js"

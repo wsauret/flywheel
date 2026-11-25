@@ -15,10 +15,10 @@ import type { AddressedAddendum } from "../../../../../src/workflows/context-bun
 import type { ResolvedAgent } from "../../../../../src/workflows/definitions/agent-resolution.js"
 import { compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js"
 import { loadQueueFromEvents } from "../../../../../src/workflows/vm/recovery/workflow-view.js"
-import { frontendAttempts } from "../../../../../src/orchestration/workflow-host/frontend-attempts.js"
+import { frontendAttempts } from "../../../../../src/orchestration/session/metadata/frontend-attempts.js"
 import { createWorkflowViewProtocolReader } from "../../../../../src/orchestration/modules/workflows/protocol/view-protocol.js"
 import { resolveWorkflowAgents } from "../../../../../src/workflows/definitions/agent-resolution.js"
-import { addressReachesStartedAgent } from "../../../../../src/orchestration/workflow-host/workflow-addressing.js"
+import { addressReachesStartedAgent } from "../../../../../src/orchestration/session/control/messaging/workflow-addressing.js"
 import {
   createMemoryStore,
   fixtureSkills,

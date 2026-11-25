@@ -1,4 +1,4 @@
-import { createSessionToolSummaryReader } from "../../../../src/orchestration/modules.js"
+import { createSessionToolSummaryReader } from "../../../../src/orchestration/session/runtime-facts/module-tool-history.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { describe, expect, it, spyOn } from "bun:test"
 import { Hash } from "node:crypto"

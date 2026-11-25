@@ -8,16 +8,16 @@ import {
   type PreparedBenchmarkRuntime,
 } from "../../../bench/shared/runtime.js";
 import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/session/control/background-work/background-work.js";
 import {
   createForegroundBashHoldController,
   type ForegroundBashHoldController,
-} from "../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
-import type { UsageAuthorityGeneration } from "../../../src/orchestration/agent-runtime/request/usage/usage-settlement.js";
+} from "../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
+import type { UsageAuthorityGeneration } from "../../../src/orchestration/session/history/usage-settlement.js";
 import { createInstalledDefinitionRegistry } from "../../../src/orchestration/app-service/definitions/definition-catalog.js";
 import { refusingLauncher } from "../../helpers/launcher-fake.js";
-import { makeWorkflowDeps } from "../orchestration/headless/_headless-run-fixtures.js";
-import type { ComposedModuleServices } from "../../../src/orchestration/app-service/module-service-host.js";
+import { makeWorkflowDeps } from "../orchestration/app-service/headless/_headless-run-fixtures.js";
+import type { ComposedModuleServices } from "../../../src/orchestration/app-service/executor/execution/module-service-host.js";
 
 const deps = makeWorkflowDeps();
 const launcher = refusingLauncher;

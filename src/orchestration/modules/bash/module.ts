@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url"
 import { advertisedBashTool, bashShellCommand, createBashDefinition } from "../../agent-runtime/tools/bash/bash.js"
 import type { KernelToolDeps } from "../../agent-runtime/tools/kernel-tool-deps.js"
 import type { ToolDeclaration } from "../../module-seams.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { FirstPartyModule } from "../../module-catalog.js"
 import { backgroundShellModuleRequirements } from "../../module-requirements.js"
 import { moduleDisabledReason } from "../../../protocol/runtime/module-ids.js"
 

@@ -4,7 +4,7 @@ import type { ExternalLoginProblem, ExternalLoginQuestion, LoginWaitAnswer } fro
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { RouteUnavailableError } from "../../../agent-runtime/llm/errors.js"
 import { classifyProviderFailure } from "../../../agent-runtime/llm/stream/provider-failure.js"
-import type { ModuleHealthReport } from "../../../module-health.js"
+import type { ModuleHealthReport } from "../../../app-service/definitions/commands/module-health.js"
 import { GOOGLE_ANTIGRAVITY_LABEL, LOGIN_PROGRAM_LABEL } from "../names.js"
 import { reachedKeyringKinds, type TokenStoreKind, type TokenStoreObservation } from "../engine/token-store.js"
 import type { ExternalAccount } from "../../../../infra/auth/provider-account.js"

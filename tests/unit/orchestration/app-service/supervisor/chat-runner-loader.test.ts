@@ -6,7 +6,7 @@ import { EventStoreLive } from "../../../../../src/infra/store/event-store-effec
 import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
 import type { ChatRunnerDeps } from "../../../../../src/orchestration/chat/runner.js"
 import { createChatRunnerLoader } from "../../../../../src/orchestration/app-service/supervisor/chat-runner-loader.js"
-import { createSessionAuthAdmission } from "../../../../../src/orchestration/session/metadata/session-auth-profile.js"
+import { createSessionAuthAdmission } from "../../../../../src/orchestration/auth/session-auth-profile.js"
 import { mockRunner, testSessionAuthAdmission } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { unusedChildSessionControl } from "../../../../helpers/child-session-control.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"

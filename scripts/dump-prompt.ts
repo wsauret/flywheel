@@ -18,6 +18,8 @@
  * representative session scratch path in for the live one.
  */
 
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "./shipped-modules.js"
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInstalledDefinitionRegistry } from "../src/orchestration/app-service/definitions/definition-catalog.js";
@@ -28,7 +30,7 @@ import type { SkillRegistryRevision } from "../src/workflows/skills/skill-schema
 import { assembleAgentPrompt } from "../src/workflows/context-bundle/prompt-assembly.js";
 import type { AttemptRow } from "../src/workflows/view/types.js";
 import { loadStandalonePersonaRegistry } from "../src/workflows/agents/registry.js";
-import { handoffToolSchemaFromOutput } from "../src/orchestration/workflow-host/attempt/handoff-tool-schema.js";
+import { handoffToolSchemaFromOutput } from "../src/orchestration/agent-runtime/tools/sessions/handoff-tool-schema.js";
 import { loadAgentInstructions } from "../src/orchestration/agent-runtime/request/prompt/instructions/project-instructions.js";
 import { buildSubagentTask, SUBAGENT_HANDOFF_SCHEMA } from "../src/orchestration/modules/subagents/execution/prompts.js";
 import type { SystemPromptPart } from "../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
@@ -36,9 +38,9 @@ import { readModuleMemory } from "../src/orchestration/agent-runtime/request/pro
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../src/infra/agent-assets/system-prompt.js";
 import { personaToolEntries, toolRegistryFromComposition } from "../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
-import { captureRuntimeConfigRequest } from "../src/orchestration/agent-runtime/request/request-config.js";
+import { captureRuntimeConfigRequest } from "../src/orchestration/config/request-config.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
-import { composeFirstPartyModules } from "../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../src/orchestration/module-composition.js";
 import { loadConfig } from "../src/orchestration/config/loader.js";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";
 import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/request/prompt/capability-checks.js";

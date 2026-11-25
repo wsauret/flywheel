@@ -4,7 +4,7 @@ import { AuthProfileStore } from "../../../../../src/infra/auth/store/auth-profi
 import { createAccessProviderSelection } from "../../../../../src/infra/llm/access/access-provider.js";
 import { createModelListingClient } from "../../../../../src/infra/llm/access/model-listing.js";
 import { testCapabilityModules, testProviderSelection } from "../../../../helpers/provider-authority.js";
-import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/credential-slot-classifier.js";
+import { credentialSlotClassifier } from "../../../../../src/orchestration/module-catalog.js";
 import { AUTH_NONE } from "../../../orchestration/config/_model-listing-fixtures.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
 import { modelInfo } from "../../../../helpers/model-tier-fixtures.js";

@@ -11,7 +11,7 @@ import { createSkillManageTool, type SkillManageToolDeps } from "../../../../../
 import type { CapabilityAccess, DispatchedToolContext, RuntimeTool } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { requestAdmission } from "../../../../../helpers/request-tool-surface.js";
-import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
+import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js";
 import { capabilityAccessHolding, makeContext as makeToolContext, testGrant } from "../../../agent-runtime/tools/_fixtures.js";
 import { publishSkillRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";

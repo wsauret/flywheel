@@ -8,8 +8,8 @@ import { createClient, providerAdapter, type AccessProviderFactory } from "../..
 import { QuotaExhaustedError, RouteUnavailableError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import type { AdmittedModelRequestExecution, ProviderSessionLifetime } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { accessProviderRegistry } from "../../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
+import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
 import { authProviders } from "../../../../../helpers/auth-context.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { fakeModelsClient } from "../../../../../helpers/model-tier-fixtures.js";

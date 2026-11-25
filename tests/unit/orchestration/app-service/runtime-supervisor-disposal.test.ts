@@ -7,7 +7,7 @@ import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types
 import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import { writePreReadinessTurn } from "../../../../src/orchestration/app-service/supervisor/actor/session-chat-durability.js"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work.js"
 import { createMessageSessionTool } from "../../../../src/orchestration/agent-runtime/tools/sessions/message-session.js"
 import { registerLiveSessionControl } from "../../../../src/orchestration/session/control/live-session-control.js"
 import { createSessionMessaging } from "../../../../src/orchestration/session/control/messaging/session-messaging.js"

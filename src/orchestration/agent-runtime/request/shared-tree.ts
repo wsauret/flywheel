@@ -1,4 +1,4 @@
-import type { FirstPartyModuleComposition } from "../../modules.js";
+import type { FirstPartyModuleComposition } from "../../module-catalog.js";
 
 /**
  * What every agent of one chat tree shares while the tree's shared agent host can serve it (ARCH-PROVIDERS-006, ARCH-PROVIDERS-031,

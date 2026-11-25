@@ -19,8 +19,8 @@
  */
 
 import { displayRelativePath } from "../../../../infra/tools/detail-helpers.js";
-import type { LlmToolOutputPart } from "../../llm/messages.js";
-import type { ContentBlock } from "../../llm/types.js";
+import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-schema.js";
+import type { ContentBlock } from "../../../../infra/llm/conversation/conversation-message.js";
 import { truncateHeadTail } from "../../../../infra/output/truncate-output.js";
 import { saveFullOutput } from "./output-breadcrumb.js";
 import type { RetainedFullContent } from "../types.js";

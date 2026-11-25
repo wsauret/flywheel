@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { createSubscriptionUsageService } from "../../../../../src/orchestration/modules/subscription-usage/service.js"
 import { subscriptionUsageConfigSection } from "../../../../../src/orchestration/modules/subscription-usage/config.js"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
 import { decodeCanonicalConfigText } from "../../../../../src/orchestration/config/loader.js"
 import type { RuntimeConfigOwner, RuntimeConfigSnapshot } from "../../../../../src/orchestration/config/runtime-config-owner.js"
 import { runtimeConfigView } from "../../../../helpers/runtime-config-view.js"

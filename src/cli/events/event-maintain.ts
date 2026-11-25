@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { invalidateSupersededModuleFacts } from "../../orchestration/modules.js"
+import { invalidateSupersededModuleFacts } from "../../orchestration/module-catalog.js"
 import type { SupersededFactInvalidationResult } from "../../orchestration/module-seams.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"

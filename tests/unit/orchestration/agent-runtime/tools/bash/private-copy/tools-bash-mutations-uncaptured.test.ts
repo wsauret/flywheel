@@ -5,14 +5,14 @@ import { DebugLog } from "../../../../../../../src/infra/diagnostics/debug-log.j
 import { createBashDefinition } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import { loadBashParser } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import * as mutationGuard from "../../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-mutation-guard.js";
-import { createForegroundBashHoldController } from "../../../../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js";
+import { createForegroundBashHoldController } from "../../../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
 import { temporaryDirectories } from "../../../../../../helpers/directories.js";
 import { bashExecution, mutationSpawnProbe, makeMockOps } from "../_bash-fixtures.js";
 import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext } from "../../_fixtures.js";
 import { bashMutationHarness } from "./_bash-mutations-harness.js";
 import { PersistenceWriteRefused } from "../../../../../../../src/infra/store/event-store-types.js";
 import { runAgentTurn } from "../../../../../../../src/orchestration/agent-runtime/runner/turn-host/agent-turn.js";
-import { createBackgroundWorkRegistry } from "../../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../../../src/orchestration/session/control/background-work/background-work.js";
 
 const createDirectory = temporaryDirectories();
 

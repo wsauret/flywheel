@@ -1,6 +1,6 @@
 import { RECLAIM_STORAGE_COMMAND, RECLAIM_STORAGE_COMMAND_NAME, RECLAIM_STORAGE_SURFACE, storageCursor, reclaimStorageProtocol } from "../../../protocol/modules/reclaim-storage.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { FirstPartyModule } from "../../module-catalog.js"
 import { createStorageService, storageService } from "./service.js"
 
 /** The project's store size and the Reclaim storage command (PI-INTERACTION-182,

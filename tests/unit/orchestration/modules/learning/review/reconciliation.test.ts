@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { CapabilityAdmission, CapabilityRequest } from "../../../../../../src/orchestration/config/policy/module-policy.js";
 import { asAsyncEventReadSurface, type StoredFact } from "../../../../../../src/infra/store/event-store-types.js";
-import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
 import { reconcileLearning } from "../../../../../../src/orchestration/modules/learning/review/reconciliation.js";
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js";
 import { countStateRequests, factsRead } from "../../../../../helpers/state-requests.js";

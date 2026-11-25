@@ -38,9 +38,9 @@ import type { ProviderAffordabilityCapability } from "./provider-affordability.j
 import type { AdmittedModelRequest, AdmittedModelRequestPreparation, AdmittedModelRequestRun, AdapterAdmission, LLMClient, ModelClient, ModelRequestCapture, PreparedCandidate, ProviderAdapter, ProviderRequestAdmission, ProviderSessionLifetime, ServingAttempt, StagedProviderClient, StreamOptions } from "../types.js";
 import { ApiError, fromStreamError, ModelUnavailable } from "./runtime-errors.js";
 
-import type { AccessProviderRegistry } from "./access-provider-registry.js";
+import type { AccessProviderRegistry } from "../../../config/models/access-provider-registry.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
-import { credentialSlotClassifier } from "../../../auth/credential-slot-classifier.js";
+import { credentialSlotClassifier } from "../../../module-catalog.js";
 const log = Log.create({ service: "llm-client-factory" });
 
 export type EffectiveProviderConnection = ProviderConnection & { readonly profileId: string };

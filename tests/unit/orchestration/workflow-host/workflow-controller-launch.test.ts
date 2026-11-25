@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, mock, spyOn } from "bun:test"
 import { DebugLog } from "../../../../src/infra/diagnostics/debug-log"
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
-import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definitions/definition-availability.js"
+import { createDefinitionAvailability } from "../../../../src/orchestration/config/policy/definition-availability.js"
 import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { repoModules } from "../../../helpers/project-definitions.js"
@@ -12,7 +12,8 @@ import { MODULE_IDS } from "../../../../src/protocol/runtime/module-ids.js"
 import { plannedCapabilities, planPromptRequest, type PromptAssembly } from "../../../../scripts/prompt-assembly.js"
 import { capabilityAccessFor, type CapabilityAccess } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { loadConfig } from "../../../../src/orchestration/config/loader.js"
-import { composeFirstPartyModules, unattendedModuleIds } from "../../../../src/orchestration/modules.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { unattendedModuleIds } from "../../../../src/orchestration/module-catalog.js"
 import { installedPersonaToolEntries } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js"
 import { createProjectDefinitionRegistry } from "../../../../src/workflows/definitions/definition-registry.js"
 import {
@@ -26,7 +27,7 @@ import {
   seedWorkflowRequest,
   until,
 } from "./_workflow-controller-fixtures"
-import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request/request-config"
+import { captureRuntimeConfigRequest } from "../../../../src/orchestration/config/request-config"
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema"
 import type { AgentOptions, AgentPurpose } from "../../../../src/orchestration/agent-runtime/types"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures"

@@ -19,22 +19,22 @@ import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event
 import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import type { RoleResolver } from "../../../config/roles.js";
-import type { FirstPartyModuleSnapshot } from "../../../modules.js";
+import type { FirstPartyModuleSnapshot } from "../../../module-catalog.js";
 import type { AskUserController } from "../../tools/sessions/ask-user-controller.js";
 import type { ProviderRequestAuditFact } from "../../../session/runtime-facts/provider-request-audit-facts.js";
 import type { RecallPort } from "../../../../protocol/transcript/conversation-recall.js"
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js";
 import type { BackgroundExecutionOwner } from "../../background-execution/background-execution-owner.js";
-import type { ForegroundBashHoldController } from "../../background-work/foreground-bash-hold.js";
+import type { ForegroundBashHoldController } from "../../../session/control/background-work/foreground-bash-hold.js";
 import type { CaptureProviderConnection, LLMClientFactory } from "../model-runtime-capture.js";
 import type { ProviderRequestAuditWriter } from "../../llm/provider-request-audit.js";
-import type { CaptureRuntimeConfig } from "../request-config.js";
+import type { CaptureRuntimeConfig } from "../../../config/request-config.js";
 import type { ChildSlotRegistry } from "./child-slot-registry.js";
 import type { PromptKind } from "../prompt/system-prompt.js";
 import type { ExternalSkillChildGrant } from "../../tools/definitions/skill.js";
 import type { ShellRuntimeClient } from "../../tools/bash/execution/shell-runtime-types.js";
-import type { UsageSettlement } from "../usage/usage-settlement.js";
+import type { UsageSettlement } from "../../../session/history/usage-settlement.js";
 import type { Agent, AgentOptions, AgentPurpose, CreateChildConversation, RuntimeToolSurfaces, RunnableAgentOptions } from "../../types.js";
 import type { CapabilityAccess } from "../../tools/types.js";
 import type { ServingModel } from "../../tools/kernel-tool-deps.js";

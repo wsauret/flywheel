@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { CAPABILITY_PHRASES, findCapabilityTableDrift, findCapabilityTermViolations, realCapabilityVocabulary } from "../../../scripts/capability-terms.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
-import { SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
+import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
 
 const REPO_ROOT = resolve(import.meta.dir, "../../..");
 // One vocabulary of the real catalog for every case: building it reads every bundled definition once.

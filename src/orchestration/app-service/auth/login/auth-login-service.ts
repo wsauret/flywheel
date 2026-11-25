@@ -14,7 +14,7 @@ import { installedModules } from "../../../module-catalog.js"
 import { canonicalModuleIds } from "../../../../protocol/runtime/module-ids.js"
 import type { ExternalLoginDefinition, ExternalLoginQuestion, OAuthLoginPrompt } from "../../../../infra/llm/access/access-provider.js"
 import { isExternalLoginDefinition } from "../../../../infra/auth/provider-account.js"
-import { installedAccessProviderDefinitions } from "../../../credential-provider-modules.js"
+import { installedAccessProviderDefinitions } from "../../../module-composition.js"
 
 type LoginRecovery = Pick<ExternalLoginDefinition["auth"], "answerLogin" | "settleLogin">
 

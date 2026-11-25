@@ -5,7 +5,8 @@ import { z } from "zod";
 import { wireResponse } from "../../_wire-fixtures.js";
 import type { ModelInfo, ReasoningEffort } from "../../../../../../../src/infra/llm/models/models.js";
 import { createAnthropicAdapter, operationsFromAnthropicClient, prepareAnthropicRequest } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
-import type { ConversationMessage, LLMClient } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { LLMClient } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../../src/infra/llm/conversation/conversation-message.js";
 import type { AccessProviderId } from "../../../../../../../src/infra/llm/access/access-provider.js";
 
 interface UnknownRecord {

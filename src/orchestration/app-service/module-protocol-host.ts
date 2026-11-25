@@ -7,7 +7,7 @@ import type { BackgroundSnapshotOf, ProtocolDomainQuery, ProtocolDomainSnapshot,
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { RuntimeUiPatchSequencer } from "./projections/runtime-ui-patch-sequencer.js"
 import type { ProjectDefinitionRegistry } from "../../workflows/definitions/definition-registry.js"
-import type { FirstPartyModule } from "../modules.js"
+import type { FirstPartyModule } from "../module-catalog.js"
 import type { SessionStore } from "../session-store/types.js"
 import type { SessionManager } from "../session/manager.js"
 import type { SessionKind } from "../session/metadata/types.js"

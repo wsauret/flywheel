@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import type { AuthContext } from "../../../src/infra/auth/auth-context.js";
-import { composeFirstPartyModules, moduleSelectionFromConfig, normalizeModuleSelection } from "../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
+import { moduleSelectionFromConfig, normalizeModuleSelection } from "../../../src/orchestration/config/module-descriptor.js";
 import { MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js";
 import { ToolActionSchema } from "../../../src/infra/workflow-types.js";
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
@@ -14,7 +15,7 @@ import { learningModule } from "../../../src/orchestration/modules/learning.js";
 import { NO_MODULE_RUNTIMES } from "../../../src/infra/module-runtime.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
 
-import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../src/orchestration/config/models/access-provider-registry.js";
 import { authProviders } from "../../helpers/auth-context.js";
 import { promptCapabilities, promptOptions } from "../../helpers/prompt-capabilities.js";
 const fixturePath = resolve(import.meta.dir, "../../fixtures/modules/baseline.json");

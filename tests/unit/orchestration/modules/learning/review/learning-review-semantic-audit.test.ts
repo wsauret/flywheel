@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "bun:test";
 import { createSkillManageTool } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import { capabilityAccessFor, type ToolResult } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
+import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js";
 import { createLearningReview } from "../../../../../../src/orchestration/modules/learning/review/learning-review.js";
 import { verifySkillSemanticAudit } from "../../../../../../src/orchestration/modules/learning/skills/skill-semantic-audit.js";
 import { BUNDLED_SKILL_DIR } from "../../../../../../src/workflows/skills/skill-source-inventory.js";

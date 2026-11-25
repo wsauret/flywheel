@@ -1,3 +1,4 @@
+import { importComposing } from "../composition/module-registries.js"
 import { existsSync, mkdirSync } from "node:fs"
 import { isatty } from "node:tty"
 
@@ -10,7 +11,7 @@ import { startupTrace } from "../../infra/diagnostics/startup-trace.js"
 import { createStartupTimeline } from "../../infra/diagnostics/startup-timeline.js"
 import { registerLiveBuild } from "../../infra/update/live-builds.js"
 import { serveLaneFor, type ServeLane } from "../../infra/cli-subprocess.js"
-import type { HeadlessFailure, HeadlessOutputObserver } from "../../orchestration/headless/headless-output.js"
+import type { HeadlessFailure, HeadlessOutputObserver } from "../../orchestration/app-service/headless/headless-output.js"
 import type { RemoteAttach, TerminalRemoteChoice, TerminalRemoteRequest } from "../../orchestration/terminal-remote.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../protocol/runtime-liveness.js"
 import { hasHeadlessFlag, isHeadlessChat, needsHeadlessUsage } from "../headless-args.js"
@@ -124,7 +125,7 @@ const liveBoundaries: StartupBoundaries = {
   installCrashPolicy: installAccountCrashPolicy,
   createAttach: async (options) => (await import("../account-service/runtime-attach.js")).createAccountRuntimeAttach(options),
   boundServiceErrorLog: (userDataRoot) => keepServiceErrorLogBounded(accountServeErrorLogPath(userDataRoot), 2),
-  admitServiceStart: async (userDataRoot) => (await import("../../orchestration/update/service-start.js")).admitServiceStart({ userDataRoot, nowMs: Date.now() }),
+  admitServiceStart: async (userDataRoot) => (await importComposing(() => import("../../orchestration/update/service-start.js"))).admitServiceStart({ userDataRoot, nowMs: Date.now() }),
 }
 
 /** Settles the run's directories and, for the terminal run mode, starts the
@@ -138,7 +139,7 @@ export async function prepareCliStartup(rootAction: Exclude<RootCliAction, { kin
   const preparationStarted = performance.now()
   const args = process.argv.slice(2)
   const jsonlMode = args.includes("--headless") && args.includes("--jsonl") && !isHeadlessChat(args)
-  const output = jsonlMode ? (await import("../../orchestration/headless/headless-output.js")).createHeadlessOutputObserver(process.stdout) : undefined
+  const output = jsonlMode ? (await import("../../orchestration/app-service/headless/headless-output.js")).createHeadlessOutputObserver(process.stdout) : undefined
   if (rootAction.kind === "error") {
     const { rootUsage } = await import("../root-help.js")
     process.stderr.write(`${rootAction.message}\n\n${await rootUsage()}\n`)
@@ -165,7 +166,7 @@ export async function prepareCliStartup(rootAction: Exclude<RootCliAction, { kin
   startupTrace("startup directories selected")
 
   if (process.env.FLYWHEEL_INTERNAL_COMPOSITION_PROBE === "1") {
-    const { runCompositionProbe } = await import("./composition-probe.js")
+    const { runCompositionProbe } = await importComposing(() => import("./composition-probe.js"))
     runCompositionProbe(directories)
     return undefined
   }

@@ -3,7 +3,7 @@ import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-s
 import { originOf } from "../../../agent-runtime/llm/history/block-origin.js";
 import type { ProviderHistoryTarget } from "../../../agent-runtime/llm/history/provider-history.js";
 import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR, type SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js";
-import type { ContentBlock, ConversationMessage } from "../../../agent-runtime/llm/types.js";
+import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 
 /**
  * Flywheel history as the text that an Antigravity engine session reads in its system text

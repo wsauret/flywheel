@@ -6,7 +6,7 @@ import type { SessionRelation } from "../../../../../src/infra/chat-input-schema
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store"
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types"
+import type { ConversationMessage } from "../../../../../src/infra/llm/conversation/conversation-message"
 import { createConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { readParentMessages } from "../../../../../src/orchestration/workflow-host/attempt/request-addenda"
 import { conversationHoldsEntries, readConversationToolUseIds } from "../../../../../src/orchestration/session/conversation/session-message-entries"

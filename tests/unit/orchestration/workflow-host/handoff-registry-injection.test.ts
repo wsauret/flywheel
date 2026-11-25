@@ -14,10 +14,10 @@ const REVISION_CAPTURE_ALLOWLIST = new Set([
   // Direct chat and headless task starts capture the persona roster for that
   // admitted runner before any model request is assembled.
   "src/orchestration/chat/runner.ts",
-  "src/orchestration/headless/run-headless-task.ts",
+  "src/orchestration/app-service/headless/run-headless-task.ts",
   "src/orchestration/modules/workflows/migrations/workflow-identity-chain.ts",
   "src/orchestration/workflow-host/lifecycle/controller.ts",
-  "src/orchestration/app-service/definitions/definition-availability.ts",
+  "src/orchestration/config/policy/definition-availability.ts",
   // Each request's tool plan reads the published revision once, so its skill
   // catalog and its capability checks come from one revision.
   "src/orchestration/agent-runtime/request/request-inputs.ts",

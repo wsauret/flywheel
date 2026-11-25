@@ -27,17 +27,18 @@ import type { RuntimeEvent } from "../infra/runtime-facts/runtime-event-types.js
 import type { FlywheelEvent } from "../infra/events.js"
 import type { RecordedRuntimeInvocation } from "../infra/runtime-facts/runtime-fact-types.js"
 import type { MetricsWriter } from "./session/persistence/create-session-infra.js"
-import type { ActiveBackgroundCommandDescriptor, BackgroundWorkTracking } from "./agent-runtime/background-work/background-work.js"
+import type { ActiveBackgroundCommandDescriptor, BackgroundWorkTracking } from "./session/control/background-work/background-work.js"
 import type { RoleResolver } from "./config/roles.js"
-import type { ConversationMessage } from "./agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../infra/llm/conversation/conversation-message.js"
 import type { WorkflowDeliveryAddress } from "./session/conversation/addressed-workflow-messages.js"
-import type { ChildExecutionResources } from "./session/control/children/child-execution-resources.js"
-import type { WorkflowRunCut, WorkflowRunReader, WorkflowRunWriter } from "./workflow-host/run-record.js"
+import type { ChildExecutionResources } from "./chat/children/child-execution-resources.js"
+import type { WorkflowRunCut, WorkflowRunReader, WorkflowRunWriter } from "./session/metadata/workflow-run-record.js"
 import type { WorkflowPublication, WorkflowLaunchBinding } from "./session/control/children/child-session-publication.js"
 import type { WorkflowSessionFact } from "../workflows/vm/facts/session-facts.js"
 import type { ToolAction } from "../infra/workflow-types.js"
 import type { ToolInteractionContract } from "./agent-runtime/request/prompt/model-interaction-profile.js"
-import type { AdvertisedTool, CapabilityAccess, RuntimeTool, RuntimeToolExecution, RuntimeToolInput, ShellCommand } from "./agent-runtime/tools/types.js"
+import type { AdvertisedTool, CapabilityAccess, RuntimeTool, RuntimeToolInput, ShellCommand } from "./agent-runtime/tools/types.js"
+import type { RuntimeToolExecution } from "../infra/tools/types.js"
 
 /** Installed run reads stay available when new workflow admission is disabled. */
 /** Where workflows sit in the session tree, for an owner that walks
@@ -57,7 +58,7 @@ export interface ModuleWorkflowRuns {
     readonly modules: ModuleServices
     readonly projectRoot: string
     readonly controller: import("./workflow-host/lifecycle/controller.js").WorkflowController
-    readonly auth: import("./workflow-host/auth-owner.js").WorkflowAuthOwner
+    readonly auth: import("./auth/session-auth-profile.js").WorkflowAuthOwner
     readonly authStatus: Pick<import("./app-service/auth/auth-status-projection.js").AuthStatusProjection, "view">
     readonly supervisor: Pick<import("./app-service/supervisor/runtime-supervisor-types.js").RuntimeSupervisor, "interruptSession">
     readonly deletion: Pick<SessionManager, "admitDeletion" | "finalizeDeletionTarget">
@@ -95,7 +96,7 @@ export interface ModuleWorkflowRuns {
   deletion(workflowId: string, now: number): readonly EventStoreAppend[]
   settleDeletion(input: Omit<Parameters<ModuleSessionDeletion["settle"]>[0], "sessionId" | "session"> & {
     readonly workflowId: string
-    readonly run: import("./workflow-host/run-record.js").WorkflowRunRecord
+    readonly run: import("./session/metadata/workflow-run-record.js").WorkflowRunRecord
   }): Promise<void>
 }
 
@@ -166,7 +167,7 @@ export interface ChildSessionTarget extends ChildSessionPorts {
 }
 export interface WorkflowWorkTarget extends ChildSessionPorts {
   readonly workflowId: string
-  readonly run: import("./workflow-host/run-record.js").WorkflowRunRecord
+  readonly run: import("./session/metadata/workflow-run-record.js").WorkflowRunRecord
 }
 
 /** The answer of a child control: done, or why not, in words the parent
@@ -444,7 +445,7 @@ export interface ChildSessionConversation extends ChildConversation {
   commitQueuedUserInput(input: import("./session/conversation/queued-user-inputs.js").QueuedUserInputCell): Promise<"committed" | "contended">
   /** Records the child's turn end as interrupted by `by`, the record a
    *  resumed child and the successor's recovery read. */
-  commitTurnEnd(by: import("./session/conversation/turn-end-record.js").TurnInterruption): Promise<import("./agent-runtime/llm/types.js").ConversationMessage>
+  commitTurnEnd(by: import("./session/conversation/turn-end-record.js").TurnInterruption): Promise<import("../infra/llm/conversation/conversation-message.js").ConversationMessage>
   /** Holds a background outcome durably for the child's next run, which
    *  commits it into the conversation before it reads its context. A key
    *  names the hold, so a repeat of the outcome commits once: nothing is held

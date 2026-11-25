@@ -3,12 +3,11 @@ import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { AuthCatalogSettlement } from "./auth-actions.js"
 import { resolveProviderModelCatalog } from "../config/models/model-assignment-providers.js"
-import { type FirstPartyModuleSnapshot, webAuthProviderDefinitions } from "../modules.js"
-import { installedCredentialProviderIds } from "../credential-provider-modules.js"
+import { type FirstPartyModuleSnapshot, credentialSlotClassifier } from "../module-catalog.js"
+import { webAuthProviderDefinitions, installedCredentialProviderIds } from "../module-composition.js"
 import type { AccessProviderDefinition } from "../../infra/llm/access/access-provider.js"
 
-import { accessProviderRegistry } from "../agent-runtime/llm/routing/access-provider-registry.js"
-import { credentialSlotClassifier } from "./credential-slot-classifier.js"
+import { accessProviderRegistry } from "../config/models/access-provider-registry.js"
 import { credentialIdOf, type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../infra/auth/provider-account.js"
 
 export interface CatalogSettlementOptions {

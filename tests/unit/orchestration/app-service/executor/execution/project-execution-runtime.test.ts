@@ -49,7 +49,7 @@ const WORKER_BOOT_TEST_TIMEOUT_MS = 60_000
 function composeExecution(f: ReturnType<typeof fixture>, persistent: ReturnType<typeof createPersistentProcessManager>) {
   return createProjectExecutionRuntime({
     ...f.paths, state: f.state,
-    workerUrl: new URL("../../../../../../src/orchestration/app-service/background/worker-entry.ts", import.meta.url).href,
+    workerUrl: new URL("../../../../../../src/cli/composition/worker-entry.ts", import.meta.url).href,
     launcher: {
       spawnOwned: async () => { throw new Error("No process may start during this test") },
       adoptOwned: async () => { throw new Error("No command may be adopted during this test") },

@@ -19,7 +19,7 @@ import { EventReaderService, EventStoreWriterService } from "../../../../src/inf
 import { createSessionStore } from "../../../../src/orchestration/session-store/store"
 import { createOutputSession } from "../../../../src/orchestration/session-store/output-session"
 import { createSessionStoreTestContext } from "./_session-store-fixtures"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work"
 
 const { runtime, cleanup } = createSessionStoreTestContext()
 afterAll(cleanup)

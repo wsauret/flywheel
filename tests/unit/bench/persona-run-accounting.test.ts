@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-factory.js";
@@ -14,7 +14,7 @@ import {
 } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
 import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
-import { captureRuntimeConfigRequest } from "../../../src/orchestration/agent-runtime/request/request-config.js";
+import { captureRuntimeConfigRequest } from "../../../src/orchestration/config/request-config.js";
 import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema/schema.js";
 import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
 import { runGroups } from "../../../src/orchestration/modules/development/benchmark/campaign/matrix-runner.js";

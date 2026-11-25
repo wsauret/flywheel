@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import { SHIPPED_MODULES, moduleProtocolRows } from "../../../../../src/orchestration/modules.js"
+import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js"
+import { moduleProtocolRows } from "../../../../../src/orchestration/module-catalog.js"
 import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js"
 import {
   activate,

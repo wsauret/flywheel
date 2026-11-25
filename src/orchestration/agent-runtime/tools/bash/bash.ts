@@ -17,7 +17,7 @@ import { resolveToolPath, sessionPathInput } from "../files/tool-paths.js";
 import { checkNumericRange } from "../input/numeric-input.js";
 import type { AdvertisedTool, BashOperations, RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolResult } from "../types.js";
 import type { RuntimePlatform } from "./bash-script.js";
-import type { ForegroundBashHoldController } from "../../background-work/foreground-bash-hold.js";
+import type { ForegroundBashHoldController } from "../../../session/control/background-work/foreground-bash-hold.js";
 import type { ShellRuntimeClient } from "./execution/shell-runtime-types.js";
 import { DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS, POST_EXIT_DRAIN_GRACE_MS } from "./execution/shell-execution.js";
 import { createToolEnvironmentFactory, refuseBackgroundCommand, runPersistentCommand } from "./shell-environment.js";

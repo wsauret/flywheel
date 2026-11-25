@@ -5,8 +5,8 @@ import type { RuntimeAuthStatusScope } from "../../../protocol/auth/auth-status-
 import type { AuthProfileResolution } from "../../auth/auth-profile-manager.js"
 import type { SubscriptionUsageServiceLease, SubscriptionUsageServicePool } from "../../auth/provider-observations/subscription-usage-service-pool.js"
 import type { SessionManager } from "../../session/manager.js"
-import type { WorkflowAuthOwner } from "../../workflow-host/auth-owner.js"
-import { resolveSessionAuthProfile, sessionAuthFacts, type ResidentSessionAuthFacts, type WorkflowAuthRuns } from "./auth-profile-scope.js"
+import type { WorkflowAuthOwner } from "../../auth/session-auth-profile.js"
+import { resolveSessionAuthProfile, sessionAuthFacts, type ResidentSessionAuthFacts, type WorkflowAuthRuns } from "../../auth/auth-profile-scope.js"
 
 const log = Log.create({ service: "auth-runtime" })
 

@@ -6,7 +6,8 @@ import { sanitizeSurrogates } from "../../history/sanitize-unicode.js";
 import { extractSystemPrompt } from "./openai-helpers.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "../../system-prompt-tiers.js";
 import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "../../provider-description.js";
-import type { ConversationMessage, StreamOptions, ToolPresentation } from "../../types.js";
+import type { StreamOptions, ToolPresentation } from "../../types.js";
+import type { ConversationMessage } from "../../../../../infra/llm/conversation/conversation-message.js";
 import type { ProviderHistoryTarget } from "../../history/provider-history.js";
 
 interface ServiceTierTracker {

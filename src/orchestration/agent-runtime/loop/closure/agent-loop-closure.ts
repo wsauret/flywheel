@@ -1,6 +1,6 @@
 import type { AgentLoopTerminal } from "../../agent-loop-types.js";
-import type { BackgroundWorkRegistry } from "../../background-work/background-work.js";
-import type { ConversationMessage } from "../../llm/types.js";
+import type { BackgroundWorkRegistry } from "../../../session/control/background-work/background-work.js";
+import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import { handoffNudge } from "../../../../workflows/shared/handoff-observer.js";
 import { MESSAGE_SESSION_TOOL_NAME } from "../../tools/sessions/message-session.js";
 

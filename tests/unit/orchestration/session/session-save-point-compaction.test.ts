@@ -24,7 +24,7 @@ function createController() {
 }
 
 function measureWithPrefix(prefixTokens: number) {
-  return (messages: readonly import("../../../../src/orchestration/agent-runtime/llm/types").ConversationMessage[]) => {
+  return (messages: readonly import("../../../../src/infra/llm/conversation/conversation-message").ConversationMessage[]) => {
     return prefixTokens + estimateConversationTokens(messages, tokenCountingPolicy("unmapped-model", "anthropic"));
   };
 }

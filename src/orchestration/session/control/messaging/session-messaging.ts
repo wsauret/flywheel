@@ -14,7 +14,7 @@ import { installedChildSessionHistory } from "../module-session-operations.js"
 import type { ChildSessionControl } from "./child-session-control.js"
 import { sessionDisplayName, type ReplayedSession, type Session } from "../../metadata/schemas.js"
 import type { WorkflowMembership } from "../../../../infra/session-workflow-membership.js"
-import { resolveWorkflowDeliveryAddress } from "../../../workflow-host/workflow-addressing.js"
+import { resolveWorkflowDeliveryAddress } from "./workflow-addressing.js"
 import type { WorkflowMessageAddress } from "../../../../workflows/context-bundle/context-facts.js"
 import { deliverSessionInput, deliverWorkflowInput, readRecipientState, readWorkflowRecipientState, readWorkflowRecipientStates, type SessionInputDeliveryDeps } from "./session-input-delivery.js"
 

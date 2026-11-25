@@ -6,14 +6,13 @@
  */
 
 import type { AccessProviderCandidate, AccessProviderModelEligibility, FailoverPlan } from "../../../infra/llm/access/access-provider.js";
-import type { RequestAdmission } from "../llm/routing/provider-availability-types.js";
+import type { RequestAdmission, SubscriptionAdmissionCapture } from "../llm/routing/provider-availability-types.js";
 import type { ModelClient, ProviderSessionLifetime } from "../llm/types.js";
 import type { EffectiveProviderConnection } from "../llm/routing/client-factory.js";
-import type { AccessProviderRegistry } from "../llm/routing/access-provider-registry.js";
+import type { AccessProviderRegistry } from "../../config/models/access-provider-registry.js";
 import type { AgentFactory } from "../types.js";
-import type { FirstPartyModuleComposition } from "../../modules.js";
-import type { RuntimeConfigRequestCapture } from "./request-config.js";
-import type { SubscriptionAdmissionCapture } from "../../auth/subscription-spend-consent/admission-capture.js";
+import type { FirstPartyModuleComposition } from "../../module-catalog.js";
+import type { RuntimeConfigRequestCapture } from "../../config/request-config.js";
 
 /** Builds a client of `model` whose provider resources `providerSessionLifetime` owns. An absent snapshot or
  *  configuration reads the runtime's current one. */

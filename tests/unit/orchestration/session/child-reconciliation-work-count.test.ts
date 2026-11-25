@@ -21,7 +21,7 @@ import { countStateRequests, factsRead } from "../../../helpers/state-requests"
 import { addSubagentChild, addWorkflowChild, reconcileChatLaunchedWorkflowCompletions, recordTerminalResult, replaceWorkflowState, setupWorkflowParent } from "./_child-session-reconciliation-fixtures"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import { buildSubagentCompleted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
-import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/session/control/background-work/background-work"
 import { registerLiveSessionControl, registerLiveWorkflowControl } from "../../../../src/orchestration/session/control/live-session-control"
 
 const temporaryDirectory = temporaryDirectories()

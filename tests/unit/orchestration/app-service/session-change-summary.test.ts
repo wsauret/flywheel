@@ -114,7 +114,7 @@ test("the Worker summary requires real durable metadata and counts a durable New
   mkdirSync(join(home, "log"))
   const prepared = prepareWorkspaceState(directories)
   const store = createSqliteEventStore(resolveEventStoreDbFile(root))
-  const owner = createProcessBackgroundClient({ workerUrl: new URL("../../../../src/orchestration/app-service/background/worker-entry.ts", import.meta.url).href, logBase: join(home, "log") })
+  const owner = createProcessBackgroundClient({ workerUrl: new URL("../../../../src/cli/composition/worker-entry.ts", import.meta.url).href, logBase: join(home, "log") })
   const background = owner.acquire(root)
   try {
     const manager = createSessionManager({ projectRoot: root, executionCwd: root, store })

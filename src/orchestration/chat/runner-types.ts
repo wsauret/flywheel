@@ -1,15 +1,15 @@
-import type { AnyBlock } from "../../infra/output-blocks.js"
 import type { CapabilityCheck } from "../../infra/capability-text.js"
 import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
-import type { Runner } from "../agent-runtime/runner/turn-host/types.js"
+import type { Runner } from "../agent-runtime/runner/runner-types.js"
 import type { AgentInputAnswers } from "../../protocol/session/question-protocol-types.js"
 import type { ModuleRuntimes } from "../../infra/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
 import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
 import type { HeldRetainedOperation } from "../module-seams.js"
 import type { DeliveryOutcome, LiveRecipientState } from "../session/message-disposition.js"
-import type { BackgroundWorkTracking } from "../agent-runtime/background-work/background-work.js"
+import type { BackgroundWorkTracking } from "../session/control/background-work/background-work.js"
 import type { ChatTurnEnding } from "./runner-completion.js"
+import type { PooledRunner } from "../session-store/types.js"
 
 /** What a person's message to a chat came to. `recorded` is a message the
  *  conversation already held under its submission identity: a client sent it
@@ -17,8 +17,7 @@ import type { ChatTurnEnding } from "./runner-completion.js"
  *  `ended` is a chat, or its one-shot invocation, that takes no more input. */
 export type ChatSendResult = "accepted" | "recorded" | "ended"
 
-export interface ChatRunner extends Runner {
-  abort(): void
+export interface ChatRunner extends Runner, PooledRunner {
   /** Cuts the running turn and any running tool call and hands the turn to
    *  the person: the one resumable cut. False when nothing runs. */
   interrupt(): boolean
@@ -115,11 +114,5 @@ export interface ChatRunner extends Runner {
    *  has settled, and never rejects: what it cannot adopt is left for a later
    *  host. Every turn waits for it before its first model request. */
   adoptHandedOver(): Promise<void>
-  /** Seed the display blocks the store accumulated before attach, whose first
-   *  block sits at absolute index `sequenceStart`. The store's
-   *  attachChatRunner calls this in the same synchronous frame that makes the
-   *  runner the block authority, so no pre-runner append can fall between the
-   *  capture and the handoff. */
-  seedDisplayBlocks(blocks: readonly AnyBlock[], sequenceStart: number): void
   publishCommittedNotice?(notice: { readonly id: string; readonly message: string; readonly timestamp: number }): void
 }

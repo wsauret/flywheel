@@ -33,7 +33,7 @@ import { createReplyNudge, SILENT_REPLY_NUDGE } from "./reply-nudge.js";
 import { createTurnContext } from "../request/prompt/agent-loop-turn-context.js";
 import { createRunEndProcessNotice } from "./nudges/run-end-process-notice.js";
 import { createContextAdmission } from "../compaction/compaction-policy.js";
-import type { ConversationMessage, LlmStopReason, ToolCall } from "../llm/types.js";
+import type { ToolCall } from "../llm/types.js";
 import { repairContentRefusal } from "../llm/history/content-repair.js";
 import { createStreamedEditTurn } from "./tool-calls/streamed-edit-turn.js";
 import { prepareLocalTokenizer } from "../../../infra/local-tokenizer.js";
@@ -67,8 +67,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     admitsProviderMessages: () => !handoffTracker.isHandingOff,
   });
   const { pushMessage, pushAssistant, pushUser, pushToolResults, requestContext, appendRequestEntries, initialInteractionProfile } = preparation;
-  const snapshotConversation = (): Promise<ConversationMessage[]> =>
-    captureForkMessages(preparation.messages, persistence.captureCommittedForkMessages);
+  const snapshotConversation = () => captureForkMessages(preparation.messages, persistence.captureCommittedForkMessages);
   const turnHop = trackTurnHop(() => preparation.messages);
   // Tool batches open it per request, dispatch tools hold the results that they size, and delivered input is charged to it.
   const contextAdmission = createContextAdmission(() => ({ promptTokens: contextAnchor.estimate(), contextLimit: preparation.planned.contextLimit }));
@@ -651,7 +650,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
     const { assistantContent, toolCalls, outcome } = settled.turn;
 
-    const stopReason: LlmStopReason = outcome.kind === "ok" ? outcome.stopReason : "unknown";
+    const stopReason = outcome.kind === "ok" ? outcome.stopReason : "unknown";
     tally.stopReason = stopReason;
 
     switch (outcome.kind) {

@@ -13,7 +13,7 @@ import { createSessionManager, type SessionManager } from "../../../../../src/or
 import { prepareSessionFactAppend } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { authorizePlannedSessionContinuation, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, retirePlannedSessionContinuation } from "../../../../../src/orchestration/session/control/planned-session-continuation.js"
 import { loadQueueSnapshotFromReader } from "../../../../../src/workflows/vm/recovery/workflow-view.js"
-import { frontendAttempts, readWorkflowRunRecords } from "../../../../../src/orchestration/workflow-host/frontend-attempts.js"
+import { frontendAttempts, readWorkflowRunRecords } from "../../../../../src/orchestration/session/metadata/frontend-attempts.js"
 import { workflowCard, workflowCardCut, workflowCardSettled } from "../../../../../src/protocol/client/workflow-card.js"
 import { workflowOutline } from "../../../../../src/protocol/client/workflow-outline.js"
 import * as outline from "../../../../../src/protocol/client/workflow-outline.js"

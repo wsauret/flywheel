@@ -34,7 +34,7 @@ const idleGuardian: Pick<GuardianControl, "openGeneration"> = {
   }),
 };
 
-const WORKER_URL = new URL("../../../../../src/orchestration/app-service/background/worker-entry.ts", import.meta.url).href;
+const WORKER_URL = new URL("../../../../../src/cli/composition/worker-entry.ts", import.meta.url).href;
 // The maintenance Worker loads the runtime module graph in a fresh isolate,
 // which can take over 5 s on a loaded runner, so each Worker test owns its
 // deadline.

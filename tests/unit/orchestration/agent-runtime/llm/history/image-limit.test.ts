@@ -10,7 +10,7 @@ import { asModelClient, fakeAttempt } from "../../_model-client.js";
 import { IMAGE_REMOVED } from "../../../../../../src/orchestration/agent-runtime/llm/history/image-limit.js";
 import { applyHistoryLowering, lowerProviderHistory, planHistoryLowering, type ProviderHistoryTarget } from "../../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js";
 import { stableSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../src/infra/llm/conversation/conversation-message.js";
 import { chatCompletionsRequestBody } from "../_wire-fixtures.js";
 
 const UPSTREAM_MODEL_REQUEST = resolve("inspiration/opencode/packages/core/src/session/model-request.ts");

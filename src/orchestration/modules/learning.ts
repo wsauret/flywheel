@@ -15,7 +15,7 @@ import type { ModuleRuntimeServices } from "../agent-runtime/request/module-serv
 import { createMemoryTool, type MemoryToolDeps } from "./learning/tools/memory.js";
 import { createSkillManageTool, type SkillManageToolDeps } from "./learning/tools/skill-manage.js";
 import type { ToolDeclaration } from "../module-seams.js";
-import type { FirstPartyModule } from "../modules.js";
+import type { FirstPartyModule } from "../module-catalog.js";
 import type { CliCommandContext, CliNounContribution, CliVerb } from "../cli-contribution.js";
 
 /** The durable-learning write surfaces of one runner. Both are always built

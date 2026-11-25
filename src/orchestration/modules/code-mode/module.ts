@@ -1,5 +1,5 @@
 import type { ToolDeclaration } from "../../module-seams.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { FirstPartyModule } from "../../module-catalog.js"
 import { codeModeRuntime, createCodeModeRuntime } from "./runtime.js"
 import { codeModeService, createCodeModeService } from "./service.js"
 

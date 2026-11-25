@@ -4,7 +4,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightWrite } from
 import { errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { readWorkflowControlStatuses } from "../../../../workflows/vm/recovery/control-status.js"
-import type { WorkflowRunRecord } from "../../../workflow-host/run-record.js"
+import type { WorkflowRunRecord } from "../../metadata/workflow-run-record.js"
 import { childCallOf, readPendingTurnEnd, workflowInteractionRefusal, workflowStopRefusal } from "../chat-session-run-evidence.js"
 import { workflowRunReader, workflowRunOwner } from "../../../module-catalog.js"
 import { readChildSessionRunEvidence, type ChildSessionRunEvidence } from "../child-session-run-evidence.js"
@@ -21,7 +21,7 @@ import {
   type QueuedUserInputCell,
   type QueuedUserInputDestination,
 } from "../../conversation/queued-user-inputs.js"
-import { conversationPersonMessage, holdPersonMessageOnce, recordPersonMessageReceipt, workflowPersonMessage, type PersonMessageRecord } from "../../conversation/person-message-ledger.js"
+import { conversationPersonMessage, holdPersonMessageOnce, recordPersonMessageReceipt, workflowPersonMessage, type PersonMessageRecord } from "./person-message-ledger.js"
 import { liveSessionControl, liveWorkflowControl, type LiveSessionControl } from "../live-session-control.js"
 import { messageDisposition, type DeliveryOutcome, type RecipientState } from "../../message-disposition.js"
 import { endReplyWaitsByMessage, observeSessionChanged } from "./reply-waits.js"

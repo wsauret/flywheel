@@ -30,7 +30,7 @@ import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models
 import { ContentRefusedError, LlmStreamError, OutputLengthExceededError } from "../../errors.js";
 import { classifyGoogleError } from "./google-errors.js";
 import { GOOGLE_CACHE_RATES } from "../../provider-description.js";
-import { geminiThinkingConfigMode } from "../../model-compat.js";
+import { geminiThinkingConfigMode } from "../../../../../infra/llm/models/model-compat.js";
 import { normalizeProviderAttemptFailure } from "../../stream/provider-failure.js";
 import { throwIfLivenessFailure, withStreamAttempt } from "../../stream/stream-attempt.js";
 import { invokeProviderAttempt } from "../../stream/provider-attempt-boundary.js";
@@ -38,7 +38,8 @@ import { googleHistoryTarget, toGoogleGenerativeAiRequest } from "../../conversi
 import { sanitizeSurrogates } from "../../history/sanitize-unicode.js";
 import { renderSystemPrompt } from "../../system-prompt-tiers.js";
 import { observeProviderTelemetry } from "../../stream/stream-observe.js";
-import { FUNCTION_TOOL_PRESENTATION, type CompletedStopReason, type ConnectedClient, type LLMClient, type ProviderStreamEvent, type StreamOptions, type ToolPresentation } from "../../types.js";
+import { FUNCTION_TOOL_PRESENTATION, type ConnectedClient, type LLMClient, type ProviderStreamEvent, type StreamOptions, type ToolPresentation } from "../../types.js";
+import type { CompletedStopReason } from "../../../../../infra/llm/conversation/messages.js";
 
 interface UnknownFields { [key: string]: unknown }
 function isUnknownFields<T>(value: T): value is T & UnknownFields {

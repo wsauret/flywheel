@@ -6,6 +6,8 @@
  * credential degrades instead of disabling search.
  */
 
+import type { AuthContext, ProviderConnection } from "../../../infra/auth/auth-context.js";
+import { credentialSlotClassifier, type FirstPartyModuleComposition } from "../../module-catalog.js";
 import { WebSearchError, type WebSearchPort, type WebSearchProvider, type WebSearchProviderId } from "./types.js";
 
 export interface CreateWebSearchOptions {
@@ -44,4 +46,23 @@ export function createWebSearch(options: CreateWebSearchOptions): WebSearchPort 
       return provider.run(command, runOptions);
     },
   };
+}
+
+/** The web search providers of a composition's enabled web backends, each built once. */
+export function createWebSearchProviderResolver(options: {
+  readonly authDir: string
+  readonly getAuth: () => AuthContext
+  readonly connection?: ProviderConnection
+}): (composition: FirstPartyModuleComposition) => readonly WebSearchProvider[] {
+  const providers = new Map<WebSearchProviderId, WebSearchProvider>()
+  return (composition) => composition.contributions
+    .filter((contribution) => contribution.domain === "webBackends")
+    .map((contribution) => {
+      if (contribution.id !== contribution.value.id) throw new Error(`Web backend contribution ${contribution.id} contains backend ${contribution.value.id}`)
+      const existing = providers.get(contribution.value.id)
+      if (existing) return existing
+      const provider = contribution.value.create({ ...options, credentialSlotClassifier: credentialSlotClassifier(composition) })
+      providers.set(provider.id, provider)
+      return provider
+    })
 }

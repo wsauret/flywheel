@@ -1,7 +1,7 @@
 import type { MutationEvidence } from "../../../../../infra/mutation-evidence.js";
 import type { NotAppliedFilesSummary } from "../../../../../infra/not-applied-files.js";
 import type { CommandHandoverHost } from "../../../background-execution/command-handover.js";
-import type { ForegroundBashHoldController } from "../../../background-work/foreground-bash-hold.js";
+import type { ForegroundBashHoldController } from "../../../../session/control/background-work/foreground-bash-hold.js";
 import type { ForegroundView } from "./bash-output-tail.js";
 import type { PrivateCopyPool } from "../private-copy/bash-private-copy-pool.js";
 import type { RuntimePlatform } from "../bash-script.js";

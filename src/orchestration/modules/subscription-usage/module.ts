@@ -1,7 +1,7 @@
 import { USAGE_COMMAND, USAGE_COMMAND_NAME, USAGE_SURFACE, USAGE_STATS_COMMAND, USAGE_STATS_COMMAND_NAME, USAGE_STATS_SURFACE, subscriptionUsageProtocol } from "../../../protocol/modules/subscription-usage.js"
 import { DEFAULT_USAGE_ALERT_THRESHOLDS, subscriptionUsageConfigSection } from "./config.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { FirstPartyModule } from "../../module-catalog.js"
 import { createSubscriptionUsageProtocol } from "./protocol.js"
 import { createSubscriptionUsageService, subscriptionUsageService } from "./service.js"
 

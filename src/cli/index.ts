@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { importComposing } from "./composition/module-registries.js"
 import { EXECUTABLE_ROLES, internalExecutableRole, type ExecutableRole } from "../infra/executable-roles.js"
 
 const internalRoles = {
@@ -8,7 +9,7 @@ const internalRoles = {
     await runMutationGitMain()
   },
   [EXECUTABLE_ROLES.projectExecutor]: async () => {
-    const { runProjectExecutorMain } = await import("../orchestration/app-service/executor/execution/project-executor-main.js")
+    const { runProjectExecutorMain } = await importComposing(() => import("../orchestration/app-service/executor/execution/project-executor-main.js"))
     await runProjectExecutorMain()
   },
   [EXECUTABLE_ROLES.guardian]: async () => {
@@ -20,7 +21,7 @@ const internalRoles = {
     await runCommandSupervisorMain(process.argv)
   },
   [EXECUTABLE_ROLES.binaryInstall]: async () => {
-    const { runBinaryInstall } = await import("./binary-install.js")
+    const { runBinaryInstall } = await importComposing(() => import("./binary-install.js"))
     process.exit(await runBinaryInstall())
   },
   [EXECUTABLE_ROLES.antigravityGate]: async () => {
@@ -40,7 +41,7 @@ export async function runFlywheelCli(): Promise<void> {
     if (role) return await internalRoles[role]()
     // Read first: the service and the terminal both name the build they run
     // by this one read of the build directory they started from.
-    const { processRunningBuild } = await import("../orchestration/app-service/runtime-executable.js")
+    const { processRunningBuild } = await import("../infra/distribution/running-build.js")
     processRunningBuild()
     const [{ startupTrace }, { rootCliAction }] = await Promise.all([import("../infra/diagnostics/startup-trace.js"), import("./root-args.js")])
     startupTrace("cli main")

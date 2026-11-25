@@ -26,7 +26,7 @@ import { isBriefEntry } from "../tree/brief-entry.js";
 import { rawToolUseId } from "../../../../protocol/transcript/block-identity.js";
 import { sessionMessageRecoveryNotice } from "../../../../infra/chat-input.js";
 import { watchNoticeRow } from "../../../../infra/watch-notices.js";
-import { CONTINUATION_MESSAGES } from "../../../agent-runtime/request/prompt/continuation-messages.js";
+import { CONTINUATION_MESSAGES } from "../../conversation/turn-end-record.js";
 import { assignSubagentCards, childCall, ownsSubagentCard, ownSubagentCard, type SubagentCardAssignment } from "./subagent-card-ownership.js";
 import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js";
 

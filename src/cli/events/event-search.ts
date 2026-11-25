@@ -7,10 +7,8 @@ import { analyzeStreamGaps, formatStreamGapReport } from "../../orchestration/se
 import { formatEventSearchMatch, formatEventTypeSummary, formatReconstruction } from "./event-search-format.js"
 import { withEventStore } from "../../infra/store/with-event-store.js"
 import { loadProviderRequestAuditFromEvents } from "../../orchestration/session/diagnostics/provider-request-audit-projection.js"
-import {
-  reconstructProviderRequestPrompt,
-  type ProviderRequestPromptReconstruction,
-} from "../../orchestration/session/diagnostics/provider-request-audit-reconstruction.js"
+import type { ProviderRequestPromptReconstruction } from "../../orchestration/agent-runtime/loop/provider-request-audit-reconstruction.js"
+import { importComposing } from "../composition/module-registries.js"
 import { type CliOptions, MAX_TIMEOUT_SECONDS, parseArgs, eventSearchUsage } from "./event-search-args.js"
 
 type EventSearchOptions = CliOptions & { readonly projectRoot: string }
@@ -156,9 +154,6 @@ function printGapAnalysis(options: EventSearchOptions): void {
 
 async function printReconstruction(options: EventSearchOptions, requestId: string): Promise<void> {
   if (!options.sessionId) throw new Error("--reconstruct requires --session <id>")
-  // The fold reads the installed module catalog, and a release entry installs
-  // it only when a command loads the registry. The other modes never read it.
-  await import("../../orchestration/modules.js")
   const result = await reconstructPromptForRequest({
     projectRoot: options.projectRoot,
     sessionId: options.sessionId,
@@ -206,6 +201,8 @@ function toSearchQuery(options: EventSearchOptions): EventSearchQuery {
 async function reconstructPromptForRequest(
   request: { projectRoot: string; sessionId: string; requestId: string },
 ): Promise<ProviderRequestPromptReconstruction> {
+  // Only a reconstruction reads the module catalog, so only it loads the registries (ARCH-STRUCTURE-012).
+  const { reconstructProviderRequestPrompt } = await importComposing(() => import("../../orchestration/agent-runtime/loop/provider-request-audit-reconstruction.js"))
   return withEventStore(request.projectRoot, (store) => {
     const sessionEvents = [
       ...store.read({ aggregateId: `session:${request.sessionId}` }),

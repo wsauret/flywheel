@@ -5,7 +5,7 @@ import type { RoleAssignmentSnapshot } from "../../../session/metadata/schemas.j
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { createBackgroundLane } from "../../../../infra/ordered-lane.js"
 import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/store/event-store-types.js"
-import { agentPersonas, installedPersonaRole } from "../../../workflow-host/frontend-attempts.js"
+import { agentPersonas, installedPersonaRole } from "../../../session/metadata/frontend-attempts.js"
 import { createRoleAssignmentReader } from "./role-assignment-projection.js"
 import { workflowRunOwner, workflowRunReader } from "../../../module-catalog.js"
 import type { RuntimeOwnership } from "../../runtime/runtime-ownership.js"

@@ -143,7 +143,7 @@ async function openScenarioRuntime(place: ScenarioPlace, launcher: LauncherScope
   const options: RuntimeCompositionOptions = {
     projectRoot: place.projectRoot, executionCwd: place.projectRoot, accountHome: place.accountHome, userDataRoot: place.userDataRoot,
     // Only a source run installs this module, so the source Worker entry is always present.
-    workerUrl: new URL("../../../app-service/background/worker-entry.ts", import.meta.url).href,
+    workerUrl: new URL("../../../../cli/composition/worker-entry.ts", import.meta.url).href,
     launcher, persistentProcesses: processes.client(), allowPersistentProcesses: false,
   };
   const composition = await assembleProjectRuntime(options, (scope, lane) => createRuntimeChatKernel(options, scope, lane));

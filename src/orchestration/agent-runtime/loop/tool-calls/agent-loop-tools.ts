@@ -30,7 +30,7 @@ import { createToolOutputRecovery, measureOriginalContent, type ToolOutputRecove
 import type { StreamEvent, ToolCall } from "../../llm/types.js";
 import { toTextParts } from "../../../../infra/llm/tool-output-part-schema.js";
 import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-schema.js";
-import { interruptedToolText } from "../../llm/history/heal-messages.js";
+import { interruptedToolText } from "../../../session/conversation/tree/heal-messages.js";
 import { prepareToolCall, type ExecutionAdmission, type PreparedToolCall, type ToolExecutionGate } from "../../tools/dispatch/tool-dispatch.js";
 import { createNestedToolDispatchBatch, createNestedToolFactPublisher, executeDispatchedTool } from "../../tools/dispatch/nested-tool-dispatch.js";
 import { runtimeToolExecution, type RuntimeTool, type ToolAttributionIdentity, type ToolContext, type ToolDispatchContext, type ToolResult } from "../../tools/types.js";
@@ -44,7 +44,7 @@ import { MutationEvidenceSchema } from "../../../../infra/mutation-evidence-sche
 import { asRecord } from "../../../../infra/record.js";
 import {
   checkpointFinalizedToolResult,
-} from "../../../session/history/finalized-tool-result-checkpoint.js";
+} from "./finalized-tool-result-checkpoint.js";
 
 const log = Log.create({ service: "agent-loop" });
 

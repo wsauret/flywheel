@@ -17,7 +17,7 @@ import { assistantMessage } from "../session/_save-point-fixtures.js"
 import { cleanupProjectRoots, createCapabilities, createDeps, makeWorkflowDeps } from "../workflow-host/_workflow-controller-fixtures.js"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection.js"
 import type { WorkflowRunner } from "../../../../src/orchestration/workflow-host/runner-types.js"
-import { createSessionAuthAdmission } from "../../../../src/orchestration/session/metadata/session-auth-profile.js"
+import { createSessionAuthAdmission } from "../../../../src/orchestration/auth/session-auth-profile.js"
 import type { AgentFactory } from "../../../../src/orchestration/agent-runtime/types.js"
 import { reconcileChildSessionCompletions } from "../../../../src/orchestration/session/control/children/child-session-reconciliation.js"
 import { EventBus } from "../../../../src/infra/event-bus.js"
@@ -28,7 +28,7 @@ import { modelWorkflowLaunchOrigin } from "../../../../src/orchestration/workflo
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { basename, join } from "node:path"
 import { resolveSessionDir } from "../../../../src/infra/paths.js"
-import { stageWorkflowSource } from "../../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
+import { stageWorkflowSource } from "../../../../src/orchestration/agent-runtime/tools/definitions/workflow-staging.js"
 
 const contexts: SupervisorTestContext[] = []
 const supervisors: RuntimeSupervisor[] = []

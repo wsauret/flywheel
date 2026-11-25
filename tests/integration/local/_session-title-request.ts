@@ -1,4 +1,4 @@
-import { SESSION_TITLE_PURPOSE } from "../../../src/orchestration/session/metadata/session-title.js"
+import { SESSION_TITLE_PURPOSE } from "../../../src/orchestration/agent-runtime/session-title-generation.js"
 
 /** Whether a Chat Completions request that a fixture provider receives asks
  *  for a session title. A title request carries its chat tree's tools and

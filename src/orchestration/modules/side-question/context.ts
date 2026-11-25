@@ -1,4 +1,4 @@
-import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js"
 
 /** The result text of a source call that has no result yet: the main conversation still runs it. */
 const SIDE_QUESTION_PENDING_RESULT = "The main conversation has not received the result of this call yet, so a side question cannot read it."

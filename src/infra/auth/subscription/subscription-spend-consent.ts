@@ -11,6 +11,16 @@ export interface SubscriptionSpendEnvelope extends SubscriptionAccountIdentity {
   readonly mode: SubscriptionSpendMode;
 }
 
+/** An accepted spend envelope of one profile's account, with the consent
+ *  authority revision that accepted it. */
+export interface SubscriptionSpendAuthorization {
+  readonly envelope: SubscriptionSpendEnvelope;
+  readonly profileId: string;
+  readonly account: SubscriptionAccountIdentity;
+  readonly authorityIncarnation: string;
+  readonly authorityRevision: number;
+}
+
 export interface SubscriptionSpendEnvelopeState {
   readonly envelope: SubscriptionSpendEnvelope;
   readonly status: SubscriptionSpendConsentStatus;

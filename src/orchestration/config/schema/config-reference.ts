@@ -2,7 +2,7 @@ import { Result, Schema } from "effect";
 import * as SchemaAST from "effect/SchemaAST";
 import { installedConfigSchema } from "./schema.js";
 import { isPresentedSettingId, presentedSettingRow, settingDefinitions } from "./setting-definitions.js";
-import { moduleSelectionFromConfig } from "../../modules.js";
+import { moduleSelectionFromConfig } from "../module-descriptor.js";
 
 import { persistedDisabledModuleIds } from "../../../protocol/runtime/module-ids.js";
 type Ownership = "generated-writer" | "custom-writer" | "runtime-owned" | "retained-section";

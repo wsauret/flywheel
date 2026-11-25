@@ -2,9 +2,10 @@ import { describe, expect, it } from "bun:test";
 import { Redacted } from "effect";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
 import { createExaWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/exa.js";
-import { createWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/select.js";
+import { createWebSearch, createWebSearchProviderResolver } from "../../../../../src/orchestration/agent-runtime/web-search/select.js";
 import type { WebSearchProvider } from "../../../../../src/orchestration/agent-runtime/web-search/types.js";
-import { composeFirstPartyModules, createWebSearchProviderResolver, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js";
 import type { ModuleId } from "../../../../../src/protocol/runtime/module-ids.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
 

@@ -5,7 +5,7 @@
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/diagnostics/log.js";
 import { applyCompaction, type ApplyCompactionInput, type ApplyCompactionResult } from "./apply.js";
-import type { ConversationMessage } from "../llm/types.js";
+import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js";
 import type { CompactionAfter } from "../agent-loop-types.js";
 
 const log = Log.create({ service: "agent-loop" });

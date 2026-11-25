@@ -11,7 +11,7 @@ import { admitBenchmark } from "../../../src/orchestration/modules/development/b
 import { RESEARCH_SNAPSHOT } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import type { AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
-import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
 import { publishSkillRevision } from "../../../src/workflows/skills/skill-schema.js";
 import { dryRunBenchmarkAdmission, dryRunBenchmarkRuntime } from "../../helpers/benchmark-admission.js";
 import { temporaryDirectories } from "../../helpers/directories.js";

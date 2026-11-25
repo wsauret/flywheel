@@ -40,7 +40,7 @@ import { mapRuntimeEventToSessionRuntimeFacts } from "../../../infra/runtime-fac
 import type { RuntimeEvent } from "../../../infra/runtime-facts/runtime-event-types.js"
 import { extractToolContentFact } from "../../../infra/runtime-facts/tool-content-extraction.js"
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../agent-runtime/background-execution/background-execution-owner.js"
-import { createBackgroundWorkRegistry } from "../../agent-runtime/background-work/background-work.js"
+import { createBackgroundWorkRegistry } from "../../session/control/background-work/background-work.js"
 import { settleCommandHandover, type CommandHandoverAuthority } from "../../agent-runtime/background-execution/command-handover.js"
 import { emitBackgroundCommandRecorded, emitToolExecutionOutputRecorded } from "../../agent-runtime/runner/emit.js"
 import type { ManagedCommand } from "../../agent-runtime/tools/bash/execution/managed-command.js"

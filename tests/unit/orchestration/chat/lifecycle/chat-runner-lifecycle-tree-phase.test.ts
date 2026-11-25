@@ -10,7 +10,8 @@ import {
   makeMemoryTreeWriter,
   outputSessionStub,
 } from "../_chat-session-agent-runtime-fixtures"
-import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../src/orchestration/modules"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js"
 import type { ModuleChatObserverContext } from "../../../../../src/orchestration/module-seams"
 
 async function flushMicrotasks(): Promise<void> {

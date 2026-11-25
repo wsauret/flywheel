@@ -1,6 +1,6 @@
 import { NOTIFICATIONS_COMMAND, NOTIFICATIONS_COMMAND_NAME, NOTIFICATIONS_SURFACE, projectNotificationsProtocol } from "../../../protocol/modules/project-notifications.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { FirstPartyModule } from "../../module-catalog.js"
 import { createProjectNotificationsProtocol } from "./protocol.js"
 import { createProjectNotificationsService, projectNotificationsService } from "./service.js"
 import { recoverProjectNotificationHistory } from "./recovery.js"
