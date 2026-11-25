@@ -14,8 +14,8 @@ import { deriveProviderModelPreferences, resolveAccountProviderModelPreferences,
 import { getSharedModelListingClient } from "./llm-clients.js";
 import { isListableRoute, sharedModelInfos } from "../../../infra/llm/catalog/provider-model-info.js";
 import { customProviderById } from "../../../infra/llm/custom-provider-registry.js";
-import { composeFirstPartyModules, installedCredentialProviderIds } from "../../module-composition.js";
-import { type FirstPartyModuleSnapshot, credentialSlotClassifier } from "../../module-catalog.js";
+import { composeFirstPartyModules, installedCredentialProviderIds } from "../../module-contract/module-composition.js";
+import { type FirstPartyModuleSnapshot, credentialSlotClassifier } from "../../module-contract/module-catalog.js";
 
 import { accessProviderRegistry } from "./access-provider-registry.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";

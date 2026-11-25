@@ -1,4 +1,4 @@
-import { installedModules, workflowRunOwner, prepareDefinitionReconciliation, shippedDefinitionBundles, type FirstPartyModuleComposition } from "../../../module-catalog.js";
+import { installedModules, workflowRunOwner, prepareDefinitionReconciliation, shippedDefinitionBundles, type FirstPartyModuleComposition } from "../../../module-contract/module-catalog.js";
 import { composeRoleProtocolProjection } from "../../auth/models/role-protocol-projection.js"
 import { createModuleTransports, type ModuleTransports } from "./module-transports.js"
 import { resolve } from "node:path"
@@ -37,7 +37,7 @@ import { createRuntimeConfigOwner } from "../../../config/runtime-config-owner.j
 import { publishCustomProvidersFromConfig } from "../../../config/custom-providers.js"
 import { startModulePolicy } from "../../../config/policy/module-policy.js"
 import { createRuntimeModuleComposer } from "./runtime-module-composition.js"
-import { installedAccessProviderIds } from "../../../module-composition.js";
+import { installedAccessProviderIds } from "../../../module-contract/module-composition.js";
 import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js"
 import { definitionRoots, type ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import { watchDefinitionRoots } from "../../definitions/definition-root-watcher.js"

@@ -18,7 +18,7 @@ import { createConversationTree, tryOpenConversationTree } from "../../../../src
 import { interruptedTurnMessage, turnEndEntryId, turnEndOfEntry, type TurnEnd } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { redactMessage } from "../../../../src/orchestration/session/conversation/redact-message"
 import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import type { AskUserController } from "../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller"
 import type { OutputSession } from "../../../../src/orchestration/session-store/output-session"
 import type { SessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"

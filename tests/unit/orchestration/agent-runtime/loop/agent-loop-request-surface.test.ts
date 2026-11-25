@@ -15,7 +15,7 @@ import type { ProviderRequestAuditWriter } from "../../../../../src/orchestratio
 import type { RuntimeTool, ToolAttributionIdentity } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { asModelClient, ownHistoryTarget } from "../_model-client.js"
 import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { RequestToolMap, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js"
 import type { GitAiAttributionService } from "../../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 import { chain, fakeAvailability, fakeClient, singletonCandidate, textStream } from "../llm/_provider-chain-harness.js"

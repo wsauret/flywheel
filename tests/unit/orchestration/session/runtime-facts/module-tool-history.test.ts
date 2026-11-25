@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test"
-import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../../../../src/orchestration/module-seams.js"
+import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../../../../src/orchestration/module-contract/module-seams.js"
 import { createModuleToolHistoryReader } from "../../../../../src/orchestration/session/runtime-facts/module-tool-history.js"
 
 function summary(toolUseId: string, totalToolCount = 0): ToolHistorySummary {

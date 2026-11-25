@@ -13,7 +13,7 @@ import { updateModelAssignments } from "../../../../src/orchestration/config/wri
 import { fakeModelInfos, fakeModelsClient, tierAvailableModels } from "../../../helpers/model-tier-fixtures.js";
 import { step, tierOptions as baseTierOptions, USER_DATA_ROOT, withTempDir, NO_CREDENTIALS } from "./_config-models-fixtures.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { loadStandalonePersonaRegistry } from "../../../../src/workflows/agents/registry.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
 

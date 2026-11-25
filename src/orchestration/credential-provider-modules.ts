@@ -1,5 +1,5 @@
 import { customProviderModules } from "./agent-runtime/llm/custom-provider-modules.js"
-import { publishCustomProviderModules, publishShippedCredentialProviders, type FirstPartyModule } from "./module-catalog.js"
+import { publishCustomProviderModules, publishShippedCredentialProviders, type FirstPartyModule } from "./module-contract/module-catalog.js"
 import { anthropicApiModule } from "./modules/provider-anthropic-api/module.js"
 import { chatgptModule } from "./modules/provider-chatgpt/module.js"
 import { claudeAgentSdkModule } from "./modules/provider-claude-agent-sdk/module.js"

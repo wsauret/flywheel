@@ -1,6 +1,6 @@
 import { canonicalize } from "../../infra/canonical-name.js";
 import { buildCustomProviderSlice, publishCustomProviderSlice, type CustomProviderDefinition, type CustomProviderRejection, type CustomProviderSlice } from "../../infra/llm/custom-provider-registry.js";
-import { catalogCredentialProviderIds } from "../module-composition.js";
+import { catalogCredentialProviderIds } from "../module-contract/module-composition.js";
 import { modelIdHasTerminalControl } from "../../infra/model-catalog-rows.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import type { FlywheelConfig } from "./schema/schema.js";

@@ -1,4 +1,4 @@
-import { type FirstPartyModuleComposition, credentialSlotClassifier } from "../../module-catalog.js";
+import { type FirstPartyModuleComposition, credentialSlotClassifier } from "../../module-contract/module-catalog.js";
 /**
  * Process-shared LLM metadata clients.
  *

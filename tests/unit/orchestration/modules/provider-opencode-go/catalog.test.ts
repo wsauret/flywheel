@@ -4,7 +4,7 @@ import { Redacted } from "effect";
 import { accessProviderAccountKey } from "../../../../../src/infra/auth/provider-account.js";
 import { createModelListingClient } from "../../../../../src/infra/llm/access/model-listing.js";
 import { createModelsClient } from "../../../../../src/infra/llm/models/models.js";
-import { credentialSlotClassifier } from "../../../../../src/orchestration/module-catalog.js";
+import { credentialSlotClassifier } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { combinedModelsDevProviders, modelsDevDocument } from "../../../../helpers/model-catalog-fixtures.js";
 import { testCapabilityModules, testProviderSelection } from "../../../../helpers/provider-authority.js";

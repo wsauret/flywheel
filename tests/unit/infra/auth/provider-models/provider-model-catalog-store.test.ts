@@ -8,8 +8,8 @@ import { adoptPreviousProviderModelCatalogs, deleteProviderModelCatalog, liveMod
 import type { AccessProviderDefinition } from "../../../../../src/infra/llm/access/access-provider.js";
 import type { CatalogCanonicalRow } from "../../../../../src/infra/model-catalog-rows.js";
 import { accessProviderRegistry } from "../../../../../src/orchestration/config/models/access-provider-registry.js";
-import { credentialSlotClassifier } from "../../../../../src/orchestration/module-catalog.js";
-import { composeFirstPartyModules, installedCredentialProviderIds } from "../../../../../src/orchestration/module-composition.js";
+import { credentialSlotClassifier } from "../../../../../src/orchestration/module-contract/module-catalog.js";
+import { composeFirstPartyModules, installedCredentialProviderIds } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { TEST_CATALOG_LIMITS } from "../../../../helpers/model-catalog-fixtures.js";
 import { modelInfo } from "../../../../helpers/model-tier-fixtures.js";
 import { catalogProfile } from "../../../../helpers/catalog-profile.js";

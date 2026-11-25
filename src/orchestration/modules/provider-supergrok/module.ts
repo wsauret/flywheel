@@ -13,7 +13,7 @@ import { isRecord } from "../../../infra/record.js";
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { applyXaiSubscriptionHeaders, XAI_SUBSCRIPTION_BASE_URL } from "./auth-types.js";
 import { loginXai } from "./oauth.js";
 import { createXaiTokenAccessor, ensureFreshXaiTokens, rotateXaiTokens, XaiTokenRefreshError, type XaiTokenAccessor } from "./token-refresh.js";

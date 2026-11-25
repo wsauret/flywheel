@@ -22,7 +22,7 @@ import { fourLaneControl, wideBindings } from "../../../workflows/vm/_tree-fixtu
 import { flattenWorkflowView } from "../../../../../src/workflows/vm/view/view-flatten.js"
 import { buildWorkflowControlInitializedFact } from "../../../../../src/workflows/control-facts/family.js"
 import { recordChildWorkflowStop } from "../../../../../src/orchestration/session/control/children/child-workflow-result.js"
-import { workflowRunReader } from "../../../../../src/orchestration/module-catalog.js"
+import { workflowRunReader } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 import { seedModelWorkflowCall } from "../../workflow-host/_workflow-progress-fixtures.js"
 import { contentEvidence } from "../../../../../src/infra/runtime-facts/content-evidence.js"
 import { buildSubagentCompleted } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"

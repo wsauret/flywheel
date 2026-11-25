@@ -16,7 +16,7 @@ import type { ConversationSessionEntry } from "../../../../../src/orchestration/
 import { CommandOutcomeSchema } from "../../../../../src/protocol/commands/command-catalog-protocol-schemas.js"
 import type { ChatModuleHostContribution } from "../../../../../src/orchestration/chat/chat-module-host.js"
 import { composeModules } from "../../../../../src/infra/module-descriptor.js"
-import type { FirstPartyModule } from "../../../../../src/orchestration/module-catalog.js"
+import type { FirstPartyModule } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 import { makeLifecycle } from "../../chat/lifecycle/_chat-runner-lifecycle-fixtures.js"
 
 type Runner = { readonly chatModuleHosts: ReturnType<typeof composeModuleRuntimes> }

@@ -13,7 +13,7 @@ import { contentEvidence } from "../../../../../../src/infra/runtime-facts/conte
 import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer"
 import { readToolExecution } from "../../../../../../src/orchestration/session/runtime-facts/tool-execution-projection"
 import { ConversationTreeStorage } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-storage"
-import { workflowRunReader } from "../../../../../../src/orchestration/module-catalog"
+import { workflowRunReader } from "../../../../../../src/orchestration/module-contract/module-catalog"
 import { deliverWorkflowInput } from "../../../../../../src/orchestration/session/control/messaging/session-input-delivery"
 
 afterEach(cleanupTmpRoot)

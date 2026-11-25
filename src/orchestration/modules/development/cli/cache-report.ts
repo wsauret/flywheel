@@ -21,7 +21,7 @@ import {
   PREFIX_READBACK_THRESHOLD,
   type TurnCacheReport,
 } from "../../../session/diagnostics/cache-report-analysis.js"
-import type { CliVerb } from "../../../cli-contribution.js"
+import type { CliVerb } from "../../../module-contract/cli-contribution.js"
 
 interface CliOptions {
   sessionId?: string

@@ -1,6 +1,6 @@
 import { createRecallTool, RECALL_TOOL_DEFINITION } from "../agent-runtime/tools/sessions/recall.js"
-import type { ToolDeclaration } from "../module-seams.js"
-import type { FirstPartyModule } from "../module-catalog.js"
+import type { ToolDeclaration } from "../module-contract/module-seams.js"
+import type { FirstPartyModule } from "../module-contract/module-catalog.js"
 
 const recall = {
   category: "opt-in",

@@ -23,7 +23,7 @@ import { availabilityAuthorityDbFile } from "../../src/infra/paths.js";
 import { createProviderAvailability } from "../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
 import { getAuthStatusWithDiagnostics } from "../../src/orchestration/auth/auth-actions.js";
 import { AuthProfileManager } from "../../src/orchestration/auth/auth-profile-manager.js";
-import { installedAccessProviderDefinitions, installedAccessProviderSelection } from "../../src/orchestration/module-composition.js";
+import { installedAccessProviderDefinitions, installedAccessProviderSelection } from "../../src/orchestration/module-contract/module-composition.js";
 
 /** What the stores state about one account of the arm. */
 export type AccountQuota = { readonly providerId: string; readonly account: string } & (

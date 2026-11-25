@@ -11,7 +11,7 @@
  */
 
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
-import type { FirstPartyModuleComposition } from "../../../module-catalog.js";
+import type { FirstPartyModuleComposition } from "../../../module-contract/module-catalog.js";
 import type { HistorySink } from "../../agent-loop-types.js";
 import type { ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 

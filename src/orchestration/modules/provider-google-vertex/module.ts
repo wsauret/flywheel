@@ -14,7 +14,7 @@ import { LlmStreamError } from "../../agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/stream/provider-failure.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 
 /** Vertex AI in express mode: the Gemini wire on aiplatform.googleapis.com,
  *  authenticated with an API key (Google Cloud "AQ." keys). Enterprise keys

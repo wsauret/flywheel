@@ -7,7 +7,7 @@ import { errorMessage } from "../../../../../infra/error-message.js"
 import { Schema } from "effect"
 import type { ModuleId } from "../../../../../protocol/runtime/module-ids.js"
 import type { SubagentDispatchDeps } from "./dispatch-deps.js"
-import type { ChildSessionResumeAttempt } from "../../../../module-seams.js"
+import type { ChildSessionResumeAttempt } from "../../../../module-contract/module-seams.js"
 import { readSubagentRuns } from "../../history/subagent-run-projection.js"
 
 export interface SubagentInput {

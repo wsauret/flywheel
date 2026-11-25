@@ -7,7 +7,7 @@ import { fetchCatalog } from "../../../infra/llm/access/model-listing.js";
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { createOpenCodeGoUsageReader } from "./usage-reader.js";
 import { OPENCODE_GO_API_BASE, OPENCODE_GO_BILLING_URL, OPENCODE_GO_METADATA_PROVIDER, OPENCODE_GO_V1_BASE } from "./wire.js";
 

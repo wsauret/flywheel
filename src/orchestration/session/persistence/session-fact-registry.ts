@@ -1,5 +1,5 @@
 import { collectFactSchemas, createFactParser } from "../../../infra/event-registry.js"
-import { installedModules } from "../../module-catalog.js"
+import { installedModules } from "../../module-contract/module-catalog.js"
 import { FileMutationFactSchemas } from "../file-mutations/file-mutation-facts.js"
 import { SessionForkFactSchemas } from "../metadata/session-fork-facts.js"
 import { SessionMetadataFactSchemas } from "../metadata/session-metadata-facts.js"

@@ -2,7 +2,7 @@ import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import { mergeProviderOptions } from "../../../infra/llm/access/provider-options.js";
 import { canonicalCatalogModelId, canonicalModelId } from "../../../infra/model-id.js";
 import { isCustomProviderModel } from "../../../infra/llm/custom-provider-registry.js";
-import { installedAccessProviderDefinitions } from "../../module-composition.js";
+import { installedAccessProviderDefinitions } from "../../module-contract/module-composition.js";
 import { getSharedModelsClient } from "./llm-clients.js";
 import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../../infra/auth/store/auth-profile-store.js";
 import { savedProviderModelIds } from "../../../infra/auth/provider-models/provider-model-catalog-store.js";

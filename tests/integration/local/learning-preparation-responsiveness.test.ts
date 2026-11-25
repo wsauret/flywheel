@@ -9,7 +9,7 @@ import { createLearningReview, reviewReplay } from "../../../src/orchestration/m
 import type { ConversationMessage } from "../../../src/infra/llm/conversation/conversation-message.js";
 import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { capabilityAccessFor } from "../../../src/orchestration/agent-runtime/tools/types.js";
-import { composeRealmModuleSnapshot } from "../../../src/orchestration/module-composition.js";
+import { composeRealmModuleSnapshot } from "../../../src/orchestration/module-contract/module-composition.js";
 
 const directories = temporaryDirectories();
 

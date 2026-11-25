@@ -17,7 +17,7 @@ import { createSubscriptionAccountIdentity, type SubscriptionAccountIdentity } f
 import { expiredSignInMessage } from "../../../infra/llm/errors/auth-error.js"
 import type { AccessProviderRegistry } from "../../config/models/access-provider-registry.js"
 import { createOrderedLane } from "../../../infra/ordered-lane.js"
-import { credentialSlotClassifier } from "../../module-catalog.js"
+import { credentialSlotClassifier } from "../../module-contract/module-catalog.js"
 import type { CredentialSlotClassifier } from "../../../infra/auth/store/auth-store-types.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
 const SUBSCRIPTION_USAGE_CHECK_INTERVAL_MS = 5 * 60 * 1_000

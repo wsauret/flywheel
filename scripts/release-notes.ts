@@ -9,6 +9,8 @@
  *  Usage: bun run scripts/release-notes.ts --surface terminal|vscode [--version <x.y.z>] [--out <path>]
  */
 
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "./shipped-modules.js";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";

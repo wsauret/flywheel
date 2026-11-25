@@ -13,6 +13,9 @@ import type { ConversationMessage } from "../../../infra/llm/conversation/conver
  *  durable in the waiter's conversation. */
 export const REPLY_WAIT_IN_FLIGHT_KIND = "session.reply_wait"
 
+/** The tool whose call with `wait` opens a reply wait. */
+export const MESSAGE_SESSION_TOOL_NAME = "message_session"
+
 const log = Log.create({ service: "reply-wait-cells" })
 
 /** The wait that one cell holds: who it waits on, and the call that opened it. */

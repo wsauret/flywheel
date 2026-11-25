@@ -8,14 +8,14 @@ import { captureHeadlessSnapshotConnection, consumeHeadlessAuthSnapshot, writeHe
 import { createToolEnvironmentFactory } from "../../../../../../src/orchestration/agent-runtime/tools/bash/shell-environment.js"
 import { makeContext } from "../../../agent-runtime/tools/_fixtures.js"
 import { testDirectories } from "../../../../../helpers/directories.js"
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js"
 
 import { credentialIdOf } from "../../../../../../src/infra/auth/provider-account.js"
 import { createClaudeAgentSdkModule } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js"
 import { readSavedProviderModels, recordProviderModelAccess, writeProviderModelCandidates } from "../../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js"
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../../../src/infra/model-catalog-rows.js"
 import { catalogProfile } from "../../../../../helpers/catalog-profile.js"
-import { credentialSlotClassifier } from "../../../../../../src/orchestration/module-catalog.js"
+import { credentialSlotClassifier } from "../../../../../../src/orchestration/module-contract/module-catalog.js"
 import { LOGIN_ACCOUNTS_DIRECTORY, LOGIN_PROGRAM_LABEL } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js"
 import { PROVIDERS, privateStage, withChatGptRefresh } from "./_auth-snapshot-fixtures.js"
 

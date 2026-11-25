@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { Log } from "../../../../../src/infra/diagnostics/log.js"
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
-import type { ModuleId } from "../../../../../src/orchestration/module-catalog.js"
+import type { ModuleId } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 import { configuredAgentTypes, createDefinitionAvailability, type DefinitionAvailabilitySnapshot } from "../../../../../src/orchestration/config/policy/definition-availability.js"
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js"
 import { moduleDescriptor } from "../../../../../src/orchestration/config/module-descriptor.js"

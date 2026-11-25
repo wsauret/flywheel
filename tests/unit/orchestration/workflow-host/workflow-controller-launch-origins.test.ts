@@ -7,7 +7,7 @@ import { approvalRefusal, workflowLaunchTargets } from "../../../../src/orchestr
 import { WORKFLOW_LAUNCH_OPERATION_KIND, type WorkflowLaunchOperation } from "../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract.js"
 import { loadAgentInputProjection } from "../../../../src/orchestration/session/agent-input/agent-input-projection.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
-import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { publishTestWorkflow } from "../session/_session-manager-fixtures.js"
 import { APPROVED_INTENT, cleanupProjectRoots, createDeps, fixtureSource, launchingController, makeWorkflowDeps, seedLaunchApproval, trackEventStore, until } from "./_workflow-controller-fixtures.js"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures.js"

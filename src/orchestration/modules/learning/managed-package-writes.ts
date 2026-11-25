@@ -1,4 +1,4 @@
-import type { ManagedPackageMutation, ManagedPackageReach, ManagedPackageWrites } from "../../module-seams.js"
+import type { ManagedPackageMutation, ManagedPackageReach, ManagedPackageWrites } from "../../module-contract/module-seams.js"
 import type { SkillManageToolDeps } from "./tools/skill-manage.js"
 import { planSkillMutation } from "./skills/skill-mutation-plan.js"
 import { publishSkillMutation } from "./skills/skill-mutation-publisher.js"

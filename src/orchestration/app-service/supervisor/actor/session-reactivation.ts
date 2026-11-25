@@ -1,6 +1,6 @@
 import { isVisibleMessageBlock, type AnyBlock } from "../../../../infra/output-blocks.js"
 import { readTranscript, readReconciledTranscript } from "../../../session/conversation/tree/conversation-tree-handle.js"
-import { recoverSessionHistory } from "../../../module-catalog.js"
+import { recoverSessionHistory } from "../../../module-contract/module-catalog.js"
 import { reconcileAgentInput } from "../../../session/history/agent-input-reconciliation.js"
 import { createSessionToolExecutionStore, repairInterruptedToolExecutions } from "../../../session/persistence/tool-execution-store.js"
 import { createToolExecutionProjection } from "../../../session/runtime-facts/tool-execution-projection.js"

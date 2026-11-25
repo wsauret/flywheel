@@ -1,5 +1,5 @@
 import type { RoleAssignments } from "../../../session/metadata/schemas.js"
-import { type FirstPartyModuleSnapshot, workflowRunReader } from "../../../module-catalog.js"
+import { type FirstPartyModuleSnapshot, workflowRunReader } from "../../../module-contract/module-catalog.js"
 import { agentPersonas, installedPersonaRole } from "../../../session/metadata/frontend-attempts.js"
 import type { RuntimeModelRolesResult } from "../../../../protocol/auth/model-role-protocol-types.js"
 import { modelRoleAdmission, publishedModelRoles } from "./model-role-projection.js"

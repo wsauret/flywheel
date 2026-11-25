@@ -1,4 +1,4 @@
-import type { ModuleId } from "../../../module-catalog.js"
+import type { ModuleId } from "../../../module-contract/module-catalog.js"
 import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js"
 import type { PausedBy } from "../../../../infra/output-blocks.js"
 import type { HashMap } from "effect"

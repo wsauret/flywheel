@@ -1,11 +1,11 @@
 import type { ReplyWaitTasks } from "../../../session/control/messaging/reply-waits.js";
+import { MESSAGE_SESSION_TOOL_NAME } from "../../../session/conversation/reply-wait-cells.js";
 import type { MessageSessionResult, SessionMessaging } from "../../../session/control/messaging/session-messaging.js";
 import type { ReplayedSession } from "../../../session/metadata/schemas.js";
 import type { ContentBlock, ConversationMessage } from "../../../../infra/llm/conversation/conversation-message.js";
 import type { AdvertisedTool, RuntimeTool, ToolResult } from "../types.js";
 import { parseWorkflowTargets } from "./workflow-targets.js";
 
-export const MESSAGE_SESSION_TOOL_NAME = "message_session";
 const ASK_USER_TOOL_NAME = "ask_user";
 
 function blockText(block: ContentBlock): string | undefined {

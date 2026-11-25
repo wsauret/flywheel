@@ -11,7 +11,7 @@ import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/r
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema.js";
 import { pruneStaleConfig, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
 import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { createPersonaRegistryOwner, type PersonaRegistryRevision } from "../../../../src/workflows/agents/registry.js";
 import { testDirectories } from "../../../helpers/directories.js";
 import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js";

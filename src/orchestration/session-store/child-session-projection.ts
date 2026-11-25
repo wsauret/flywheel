@@ -1,6 +1,6 @@
 import { createEmit } from "../../infra/event-bus.js"
 import { isVisibleMessageBlock, messageSenderOf } from "../../infra/output-blocks.js"
-import type { AttachChildSessionProjection } from "../module-seams.js"
+import type { AttachChildSessionProjection } from "../module-contract/module-seams.js"
 import { SessionTranscriptProjection } from "../session/conversation/transcript/transcript-projection.js"
 import { SessionEventAdapter } from "./event-adapter.js"
 import { createRunnerBusBridge } from "../agent-runtime/runner/bus-bridge.js"

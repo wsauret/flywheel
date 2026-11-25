@@ -32,6 +32,8 @@
  * visit: <url>" and reads the code that the page shows; agy, which finds no display in a container or over SSH, signs
  * in with its pasted-code flow. `flywheel auth login` asks the person to paste the code.
  */
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "./shipped-modules.js";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

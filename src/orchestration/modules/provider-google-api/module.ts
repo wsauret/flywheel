@@ -8,7 +8,7 @@ import { isRecord } from "../../../infra/record.js";
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 
 /** The listing pages by `pageToken`, the way the Gemini Developer API's model list does. */
 function nextModelsPage(body: unknown, currentUrl: string): string | undefined {

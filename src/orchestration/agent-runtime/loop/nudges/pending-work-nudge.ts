@@ -8,7 +8,7 @@
  * again.
  */
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { DEFAULT_WAIT_SECONDS } from "../../tools/sessions/process.js";
+import { DEFAULT_WAIT_SECONDS } from "../../../session/conversation/turn-end-record.js";
 
 const log = Log.create({ service: "agent-loop" });
 

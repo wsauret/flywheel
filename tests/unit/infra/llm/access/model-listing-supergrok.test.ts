@@ -11,7 +11,7 @@ import type { AccessAuditProgressListener } from "../../../../../src/infra/llm/a
 import { createModelsClient } from "../../../../../src/infra/llm/models/models.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../../src/infra/model-catalog-rows.js";
 import { testCapabilityModules, testProviderSelection } from "../../../../helpers/provider-authority.js";
-import { credentialSlotClassifier } from "../../../../../src/orchestration/module-catalog.js";
+import { credentialSlotClassifier } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { AUTH_NONE } from "../../../orchestration/config/_model-listing-fixtures.js";
 import { combinedModelsDevProviders, modelsDevDocument } from "../../../../helpers/model-catalog-fixtures.js";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-factory.js";

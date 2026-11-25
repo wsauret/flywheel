@@ -1,8 +1,8 @@
 import { commandSyntax, rootHelp } from "../src/cli/root-help.js";
 import { builtInCommandDeclarations, builtInCommandDescriptor } from "../src/orchestration/app-service/definitions/commands/kernel-commands.js";
-import { composeFirstPartyModules } from "../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "./shipped-modules.js";
-import type { FirstPartyModule } from "../src/orchestration/module-catalog.js";
+import type { FirstPartyModule } from "../src/orchestration/module-contract/module-catalog.js";
 import { buildCommandDefinitions } from "../src/tui/commands/command-definitions.js";
 import type { CommandSpec } from "../src/tui/commands/command-types.js";
 import { HELP_SHORTCUT_SECTIONS, helpShortcuts } from "../src/tui/components/modal/help/modal-help-shortcuts.js";

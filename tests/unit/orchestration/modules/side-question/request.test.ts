@@ -4,7 +4,7 @@ import type { AgentOptions, AgentRunResult } from "../../../../../src/orchestrat
 import { createChatRunnerLifecycle } from "../../../../../src/orchestration/chat/lifecycle/runner-lifecycle.js"
 import { ChatSessionState } from "../../../../../src/orchestration/chat/types.js"
 import { sideQuestionHost } from "../../../../../src/orchestration/modules/side-question/host.js"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { askUserStub, createTestChatSessionDeps, outputSessionStub } from "../../chat/_chat-session-agent-runtime-fixtures.js"
 import { createChatSession } from "../../../../../src/orchestration/chat/session.js"
 import { newTestRunner } from "../../../../helpers/agent-runner.js"

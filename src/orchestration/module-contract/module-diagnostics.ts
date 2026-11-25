@@ -1,5 +1,5 @@
-import type { StoredFact } from "../infra/store/event-store-types.js"
-import type { AttemptRow } from "../workflows/view/types.js"
+import type { StoredFact } from "../../infra/store/event-store-types.js"
+import type { AttemptRow } from "../../workflows/view/types.js"
 
 /** Retained attempt identity, timing, and request attribution. No execution authority. */
 export interface AttemptExecutionHistory {

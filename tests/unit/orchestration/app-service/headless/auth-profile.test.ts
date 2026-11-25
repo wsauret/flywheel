@@ -12,7 +12,7 @@ import { AuthProfileManager } from "../../../../../src/orchestration/auth/auth-p
 import { authDir } from "../../../../../src/infra/paths.js"
 import { prepareWorkflowDeps as prepareDeps } from "../../../../../src/orchestration/agent-runtime/runner/workflow-deps.js"
 import { testDirectories } from "../../../../helpers/directories.js"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { testProviderEligibility } from "../../../../helpers/provider-authority.js"
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js"
 import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access/access-provider.js"

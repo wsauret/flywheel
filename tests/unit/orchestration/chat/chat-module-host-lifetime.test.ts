@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { composeModules } from "../../../../src/infra/module-descriptor"
 import { moduleRuntimeHandle } from "../../../../src/infra/module-runtime"
-import type { FirstPartyModule } from "../../../../src/orchestration/module-catalog.js"
+import type { FirstPartyModule } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { flushMicrotasks, makeLifecycle } from "./lifecycle/_chat-runner-lifecycle-fixtures"
 
 describe("chat module host session lifetime", () => {

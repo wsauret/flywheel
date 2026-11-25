@@ -22,8 +22,8 @@ import type { RuntimeTool, RuntimeToolInput } from "../../../../src/orchestratio
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
 import { decodeModuleState, workflowsModeOf } from "../../../../src/orchestration/config/module-descriptor.js";
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
-import { installedDefinitionBundles, effectiveModuleIds, type FirstPartyModuleComposition } from "../../../../src/orchestration/module-catalog.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js";
+import { installedDefinitionBundles, effectiveModuleIds, type FirstPartyModuleComposition } from "../../../../src/orchestration/module-contract/module-catalog.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../../scripts/shipped-modules.js";
 import { reviewInstruction } from "../../../../src/orchestration/modules/learning/review/learning-review-prompts.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "../../../../src/orchestration/modules/subagents/execution/prompts.js";

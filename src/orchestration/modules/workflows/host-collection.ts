@@ -1,6 +1,6 @@
 import type { EventStoreRuntime } from "../../../infra/store/event-store-effect.js"
 import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
-import type { AttachChildSessionProjection } from "../../module-seams.js"
+import type { AttachChildSessionProjection } from "../../module-contract/module-seams.js"
 import type { WorkflowInterruption } from "../../session/conversation/turn-end-record.js"
 import type { WorkflowHosts } from "../../workflow-host/host-collection.js"
 import { WorkflowPreflightError, type WorkflowRunner } from "../../workflow-host/runner-types.js"

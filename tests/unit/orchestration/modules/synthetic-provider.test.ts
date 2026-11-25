@@ -11,8 +11,8 @@ import { accessProviderRegistry } from "../../../../src/orchestration/config/mod
 import type { AccessProviderFactory } from "../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"
 import { providerLoginFlow } from "../../../../src/orchestration/auth/auth-actions.js"
 import { anthropicApiModule } from "../../../../src/orchestration/modules/provider-anthropic-api/module.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
-import { installedProviderSettings, type FirstPartyModule } from "../../../../src/orchestration/module-catalog.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
+import { installedProviderSettings, type FirstPartyModule } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
 

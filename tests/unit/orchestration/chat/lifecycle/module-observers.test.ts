@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
 import { createModuleChatObservers } from "../../../../../src/orchestration/chat/lifecycle/module-observers.js"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
-import type { FirstPartyModuleComposition } from "../../../../../src/orchestration/module-catalog.js"
-import type { ModuleChatObserverContext } from "../../../../../src/orchestration/module-seams.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
+import type { FirstPartyModuleComposition } from "../../../../../src/orchestration/module-contract/module-catalog.js"
+import type { ModuleChatObserverContext } from "../../../../../src/orchestration/module-contract/module-seams.js"
 import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js"
 import { createTestChatSessionDeps } from "../_chat-session-agent-runtime-fixtures.js"
 

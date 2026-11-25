@@ -1,6 +1,6 @@
 import { Log } from "../../../../infra/diagnostics/log.js"
 import type { PausedBy } from "../../../../infra/output-blocks.js"
-import type { ChildControlAnswer, ChildStopAnswer, ChildSessionPorts, ChildSessionTarget, WorkflowWorkTarget } from "../../../module-seams.js"
+import type { ChildControlAnswer, ChildStopAnswer, ChildSessionPorts, ChildSessionTarget, WorkflowWorkTarget } from "../../../module-contract/module-seams.js"
 import type { ChildCut } from "../child-continuation.js"
 import { installedChildSession } from "../module-session-operations.js"
 import { observeSessionChanged, waitsReach } from "./reply-waits.js"
@@ -10,7 +10,7 @@ import { listState, type RecipientState, type SessionListState } from "../../mes
 import { resolveWorkflowDeliveryAddress } from "./workflow-addressing.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../../conversation/addressed-workflow-messages.js"
 import type { BackgroundWorkTracking } from "../background-work/background-work.js"
-import { workflowRunOwner, workflowRunReader } from "../../../module-catalog.js"
+import { workflowRunOwner, workflowRunReader } from "../../../module-contract/module-catalog.js"
 
 const log = Log.create({ service: "child-session-control" })
 

@@ -22,7 +22,7 @@ import { hostKey, processAgentHosts, type HostRegistry } from "../../../../../..
 import type { AgentHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { holdSharedTree } from "../../../../../../src/orchestration/agent-runtime/request/shared-tree.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.js";
 
 const directory = temporaryDirectories();

@@ -14,7 +14,7 @@ import type { QuestionSettlementOutcome, ResumeChatOutcome, RuntimeRunnerCapabil
 import type { TranscriptProjectionCache } from "../../projections/output/transcript-projection-cache.js"
 import type { WorkflowController } from "../../../workflow-host/lifecycle/controller.js"
 import type { RuntimeInterruption } from "../../../session/conversation/turn-end-record.js"
-import type { ModuleRetainedOperationAuthority, RetainedOperationAcceptance } from "../../../module-seams.js"
+import type { ModuleRetainedOperationAuthority, RetainedOperationAcceptance } from "../../../module-contract/module-seams.js"
 import type { ChildSessionDeletionPlan } from "../../../session/control/children/child-session-deletion.js"
 
 export interface AgentInputAnswers {

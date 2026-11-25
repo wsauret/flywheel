@@ -23,7 +23,7 @@ import type { RuntimeConfigRequestCapture } from "../../config/request-config.js
 import type { ProjectDefinitionRegistry } from "../../../workflows/definitions/definition-registry.js";
 import type { AgentDefinition } from "../../../infra/agent-definition.js";
 import type { SkillDefinition } from "../../../workflows/skills/skill-schema.js";
-import { type FirstPartyModule, type FirstPartyModuleComposition, disabledAgentTypes, installedModules } from "../../module-catalog.js";
+import { type FirstPartyModule, type FirstPartyModuleComposition, disabledAgentTypes, installedModules } from "../../module-contract/module-catalog.js";
 import { createToolRegistry } from "../tools/dispatch/tool-catalog.js";
 import { skillLoadedFact } from "../../../workflows/skills/skill-facts.js";
 import { selectedToolNames } from "../tools/dispatch/tool-dispatch.js";

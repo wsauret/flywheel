@@ -20,8 +20,8 @@ import { resolveEnabledProviderModelCatalog } from "../../config/models/model-as
 import type { AccessProviderModelEligibility } from "../../../infra/llm/access/access-provider.js"
 import { capabilityAccessFor, type CapabilityAccess } from "../tools/types.js"
 import type { ModulePolicy } from "../../config/policy/module-policy.js"
-import { type FirstPartyModuleComposition, type FirstPartyModuleSnapshot, credentialSlotClassifier } from "../../module-catalog.js"
-import { installedCredentialProviderIds } from "../../module-composition.js"
+import { type FirstPartyModuleComposition, type FirstPartyModuleSnapshot, credentialSlotClassifier } from "../../module-contract/module-catalog.js"
+import { installedCredentialProviderIds } from "../../module-contract/module-composition.js"
 
 import type { ModuleServices } from "../../../infra/module-service.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"

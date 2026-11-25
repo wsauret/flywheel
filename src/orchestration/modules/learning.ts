@@ -14,9 +14,9 @@ import type { MutationEvidence } from "../../infra/mutation-evidence.js";
 import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js";
 import { createMemoryTool, type MemoryToolDeps } from "./learning/tools/memory.js";
 import { createSkillManageTool, type SkillManageToolDeps } from "./learning/tools/skill-manage.js";
-import type { ToolDeclaration } from "../module-seams.js";
-import type { FirstPartyModule } from "../module-catalog.js";
-import type { CliCommandContext, CliNounContribution, CliVerb } from "../cli-contribution.js";
+import type { ToolDeclaration } from "../module-contract/module-seams.js";
+import type { FirstPartyModule } from "../module-contract/module-catalog.js";
+import type { CliCommandContext, CliNounContribution, CliVerb } from "../module-contract/cli-contribution.js";
 
 /** The durable-learning write surfaces of one runner. Both are always built
  *  for an enabled module so the tool schema surface stays identical across

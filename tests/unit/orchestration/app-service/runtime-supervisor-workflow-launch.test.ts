@@ -2,7 +2,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test"
 import { until } from "../workflow-host/_workflow-controller-fixtures.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications.js"
 import { cleanup, compose, context, parentChat, branch, modelCall, quietAgent } from "./_runtime-supervisor-workflow-launch-fixtures.js"
-import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
 
 afterEach(cleanup)
 

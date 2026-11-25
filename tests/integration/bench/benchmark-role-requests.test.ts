@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
-import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
 import type { AgentOptions } from "../../../src/orchestration/agent-runtime/types.js";

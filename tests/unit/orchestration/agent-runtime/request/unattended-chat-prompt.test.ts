@@ -7,10 +7,10 @@ import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../src/in
 import { captureRuntimeConfigRequest } from "../../../../../src/orchestration/config/request-config.js";
 import type { AgentPurpose } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { loadConfig } from "../../../../../src/orchestration/config/loader.js";
-import { installedDefinitionBundles, unattendedModuleIds, type FirstPartyModuleComposition } from "../../../../../src/orchestration/module-catalog.js";
+import { installedDefinitionBundles, unattendedModuleIds, type FirstPartyModuleComposition } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { CapabilityRequest } from "../../../../../src/orchestration/config/policy/module-policy.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { canonicalModuleIds } from "../../../../../src/protocol/runtime/module-ids.js";
 import { installedPersonaToolEntries } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../../../../src/workflows/definitions/definition-registry.js";

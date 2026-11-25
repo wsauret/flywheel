@@ -5,8 +5,8 @@ import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtur
 import { branchBlocks } from "../../../helpers/branch-blocks"
 import type { MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { formatAgentFailureDisplay } from "../../../../src/infra/output/output-formatter"
-import type { ToolHistorySummary } from "../../../../src/orchestration/module-seams"
-import { installedModules } from "../../../../src/orchestration/module-catalog"
+import type { ToolHistorySummary } from "../../../../src/orchestration/module-contract/module-seams"
+import { installedModules } from "../../../../src/orchestration/module-contract/module-catalog"
 
 // Projection reads the module catalog, and the first read in a test process
 // loads the whole module registry: about 0.5 s here, and over 5 s on a loaded

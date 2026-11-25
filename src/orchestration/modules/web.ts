@@ -1,9 +1,9 @@
 import { moduleRuntimeHandle } from "../../infra/module-runtime.js";
-import type { ToolDeclaration } from "../module-seams.js";
+import type { ToolDeclaration } from "../module-contract/module-seams.js";
 import { createWebTool, WEB_TOOL_DEFINITION } from "../agent-runtime/tools/web.js";
 import type { RuntimeToolSurfaces } from "../agent-runtime/types.js";
 import { webSearchRemedy } from "../agent-runtime/web-search/select.js";
-import type { FirstPartyModule } from "../module-catalog.js";
+import type { FirstPartyModule } from "../module-contract/module-catalog.js";
 
 /** The generation's web retrieval port factory. Availability is read per plan,
  *  so a credential that lands mid-session exposes the tool on the next request

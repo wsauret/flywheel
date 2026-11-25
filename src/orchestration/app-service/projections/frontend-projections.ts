@@ -22,7 +22,7 @@ import type { RuntimeBackgroundLane } from "../background/runtime-background-lan
 import type { CommandKeeper } from "../runtime/command-keeper.js"
 import { createRuntimeSummaryProjection } from "./catalog/runtime-summary-projection.js"
 import { createSessionPlacements } from "../../session/metadata/catalog/session-metadata-store.js"
-import { workflowPlacements } from "../../module-catalog.js"
+import { workflowPlacements } from "../../module-contract/module-catalog.js"
 import { awaitsPlannedContinuation, onPlannedContinuationRetired } from "../../session/control/planned-session-continuation.js"
 import { keptCommandsOf } from "../../session/command-handover.js"
 import { readSessionDurationFromReader } from "../../session/runtime-facts/session-duration-projection.js"

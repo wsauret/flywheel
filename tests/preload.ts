@@ -10,7 +10,7 @@ import { afterAll, afterEach } from "bun:test"
 import { createRequire } from "node:module"
 import { AGENT_SESSION_ENV } from "../src/infra/cli-subprocess.js"
 import { Log } from "../src/infra/diagnostics/log.js"
-import { installModuleCatalog } from "../src/orchestration/module-catalog.js"
+import { installModuleCatalog } from "../src/orchestration/module-contract/module-catalog.js"
 import { removeTestAccountHome, testAccountHome } from "./helpers/directories.js"
 import { assertNoNetworkRequests, installNetworkGuard } from "./helpers/network-guard.js"
 

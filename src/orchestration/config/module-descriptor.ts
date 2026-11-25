@@ -1,5 +1,5 @@
-import { effectiveModuleIds, installedModules, installedRetiredModuleConfig, moduleSelectionVocabulary, selectionPolicyError, type ModuleId } from "../module-catalog.js";
-import { composeFirstPartyModules } from "../module-composition.js";
+import { effectiveModuleIds, installedModules, installedRetiredModuleConfig, moduleSelectionVocabulary, selectionPolicyError, type ModuleId } from "../module-contract/module-catalog.js";
+import { composeFirstPartyModules } from "../module-contract/module-composition.js";
 import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js";
 
 import { canonicalModuleIds, EMPTY_MODULE_IDS, MODULE_IDS } from "../../protocol/runtime/module-ids.js";

@@ -48,11 +48,11 @@ import type { PersistentProcessClient } from "../../infra/supervision/persistent
 import type { BridgedPersistentProcessClient } from "../../infra/supervision/persistent/persistent-process-bridge.js";
 import type { SkillRegistryRevision } from "../../workflows/skills/skill-schema.js";
 import type { ForegroundBashHoldController } from "../session/control/background-work/foreground-bash-hold.js";
-import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../module-catalog.js";
+import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../module-contract/module-catalog.js";
 import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js";
 import type { GitAiAttributionService } from "./git-ai-attribution-service.js";
 import type { StreamingEditValidationService } from "./tools/edit/streaming-edit-validation.js";
-import type { ChildSessionAuthority } from "../module-seams.js";
+import type { ChildSessionAuthority } from "../module-contract/module-seams.js";
 import type { SessionContext } from "../session/conversation/tree/conversation-tree-context.js";
 import type { ShellRuntimeClient } from "./tools/bash/execution/shell-runtime-types.js";
 

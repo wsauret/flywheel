@@ -11,7 +11,7 @@
  */
 
 import type { RuntimeEvent } from "../../../../../infra/runtime-facts/runtime-event-types.js";
-import { toolIdentity } from "../../../../agent-runtime/tools/dispatch/tool-catalog.js";
+import { toolIdentity } from "../../../../module-contract/module-catalog.js";
 
 interface ToolInput {
   [key: string]: unknown;

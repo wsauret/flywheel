@@ -3,7 +3,7 @@ import { composeModules } from "../../../../infra/module-descriptor.js"
 import { moduleDisabledReason } from "../../../../protocol/runtime/module-ids.js"
 import { personaToolEntries, registrationNamed, toolRegistryFromComposition, type ToolRegistry } from "./tool-registry.js"
 import type { RuntimeToolInput, ShellCommand } from "../types.js"
-import { installedModules, validateModuleFactPrefixes, type FirstPartyModule, type FirstPartyModuleComposition } from "../../../module-catalog.js"
+import { installedModules, RETIRED_SHELL_NAME, validateModuleFactPrefixes, type FirstPartyModule, type FirstPartyModuleComposition } from "../../../module-contract/module-catalog.js"
 
 /** One metadata registry per catalog. The catalog is fixed for the realm, so
  *  the complete registry derived from it is a value every reader shares rather
@@ -21,21 +21,6 @@ export function createToolRegistry(modules: readonly FirstPartyModule[] = instal
   const registry = toolRegistryFromComposition(composition)
   registries.set(modules, registry)
   return registry
-}
-
-// Remove after 2027-10-30: transcripts that builds before 2026-10-30 wrote for
-// gpt-6-luna call the shell as `exec`, with its directory in `working_directory`.
-// No registration carries the name now, so history readers resolve it here.
-const RETIRED_SHELL_NAME = "exec"
-
-/** The tool that a provider-visible or recorded name calls: `apply_patch`
- *  calls `edit`, and a recorded `exec` called the shell tool. A reader that holds only
- *  a name judges the tool through this, whichever registration the model saw.
- *  A name that no installed registration carries is its own identity. */
-export function toolIdentity(name: string): string {
-  const registry = createToolRegistry()
-  if (name === RETIRED_SHELL_NAME) return [...registry.values()].find((registration) => registration.action === "shell_exec")?.tool ?? name
-  return registrationNamed(name, registry)?.tool ?? name
 }
 
 /** The shell command and absolute directory of a call to the registration

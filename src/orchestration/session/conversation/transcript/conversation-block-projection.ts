@@ -12,8 +12,8 @@ import { contractReadRow, declaredMutationField, getToolDisplay, isHiddenFromTra
 import type { MessageEntry, ConversationEntry } from "../conversation-entry-types.js";
 import type { ConversationTreeTranscriptEntry } from "../conversation-projection.js";
 import type { ToolResultDisplayMeta } from "./tool-result-display-meta.js";
-import type { ToolHistorySummary } from "../../../module-seams.js";
-import { installedRuntimeInvocationTool } from "../../../module-catalog.js";
+import type { ToolHistorySummary } from "../../../module-contract/module-seams.js";
+import { installedRuntimeInvocationTool } from "../../../module-contract/module-catalog.js";
 import { createProvisionalDiffInput } from "../../../../infra/output/streaming/provisional-diff-input.js";
 import { mutationEvidenceSummaryDisplayPaths, provisionalDiffDisplayPaths } from "../../../../infra/output/display-paths.js";
 import { resetFailedFileChange } from "../../../../infra/output/projector/file-change-settlement.js";

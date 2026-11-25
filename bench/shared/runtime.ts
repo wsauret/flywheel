@@ -1,3 +1,6 @@
+// The benchmark runtime composes from the installed module catalog, which
+// loading both module registries publishes.
+import "../../scripts/shipped-modules.js";
 import { createOwnedCredentialCommandRunner, createKeyResolver } from "../../src/infra/auth/resolve-key.js";
 import { selectStartupDirectories, type StartupDirectories } from "../../src/infra/directory-authorities.js";
 import { findConfigFile } from "../../src/infra/paths.js";
@@ -9,8 +12,8 @@ import { captureRuntimeConfigRequest } from "../../src/orchestration/config/requ
 import { createRuntimeConfigOwner } from "../../src/orchestration/config/runtime-config-owner.js";
 import { AuthProfileManager } from "../../src/orchestration/auth/auth-profile-manager.js";
 import { startModulePolicy } from "../../src/orchestration/config/policy/module-policy.js";
-import { composeRealmModuleSnapshot, installedAccessProviderIds } from "../../src/orchestration/module-composition.js";
-import { type ModuleId, installedModules } from "../../src/orchestration/module-catalog.js";
+import { composeRealmModuleSnapshot, installedAccessProviderIds } from "../../src/orchestration/module-contract/module-composition.js";
+import { type ModuleId, installedModules } from "../../src/orchestration/module-contract/module-catalog.js";
 import { createAgentJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { prepareWorkflowDeps, type WorkflowDeps } from "../../src/orchestration/agent-runtime/runner/workflow-deps.js";
 import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";

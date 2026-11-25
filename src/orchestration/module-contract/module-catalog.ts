@@ -1,41 +1,42 @@
-import { createModuleCatalogSlot, type ModuleComposition, type ModuleDescriptor } from "../infra/module-descriptor.js"
-import type { DefinitionBundle } from "../workflows/definitions/loader.js"
-import type { AnyFactSchema } from "../infra/event-registry.js"
-import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../infra/store/event-store-types.js"
-import type { WorkflowRunReader, WorkflowRunWriter } from "./session/metadata/workflow-run-record.js"
-import type { SessionManager } from "./session/manager.js"
-import { errorMessage } from "../infra/error-message.js"
-import { MODULE_IDS, type ModuleId as WireModuleId } from "../protocol/runtime/module-ids.js"
-import type { RetiredServiceInstallation } from "./app-service/account/installation/account-service-platform.js"
-import type { ModuleRuntimeHandle, ModuleRuntimes } from "../infra/module-runtime.js"
-import type { ChatModuleHostContribution } from "./chat/chat-module-host.js"
+import { composeModules, createModuleCatalogSlot, type ModuleComposition, type ModuleDescriptor } from "../../infra/module-descriptor.js"
+import type { DefinitionBundle } from "../../workflows/definitions/loader.js"
+import type { AnyFactSchema } from "../../infra/event-registry.js"
+import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
+import type { WorkflowRunReader, WorkflowRunWriter } from "../session/metadata/workflow-run-record.js"
+import type { SessionManager } from "../session/manager.js"
+import { errorMessage } from "../../infra/error-message.js"
+import { MODULE_IDS, type ModuleId as WireModuleId } from "../../protocol/runtime/module-ids.js"
+import type { RetiredServiceInstallation } from "../app-service/account/installation/account-service-platform.js"
+import type { ModuleRuntimeHandle, ModuleRuntimes } from "../../infra/module-runtime.js"
+import type { ChatModuleHostContribution } from "../chat/chat-module-host.js"
 import type { TerminalRemoteContribution } from "./terminal-remote.js"
-import type { ModuleServiceHandle, ModuleServices } from "../infra/module-service.js"
-import type { NotificationEpisodeInput } from "../infra/notification-episode.js"
-import type { ModuleProtocolRow, ModuleProviderSetting, ModuleSetting, ModuleSettingControl } from "../protocol/runtime/module-protocol-types.js"
-import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
-import type { RuntimeTool } from "./agent-runtime/tools/types.js"
-import type { ModuleRuntimeServices } from "./agent-runtime/request/module-services/module-runtime-services.js"
-import type { AccessProviderDefinition } from "../infra/llm/access/access-provider.js"
-import type { AuthContext, ProviderConnection } from "../infra/auth/auth-context.js"
-import type { CredentialSlot, CredentialSlotClassifier } from "../infra/auth/store/auth-store-types.js"
-import type { WebProviderDefinition } from "../infra/auth/web-providers.js"
-import type { SubscriptionUsageReader } from "../infra/llm/usage/subscription-usage.js"
-import type { WebSearchProvider, WebSearchProviderId } from "./agent-runtime/web-search/types.js"
-import type { CommandMenuPosition, CommandOutcome, CommandReading, CommandSurfaceTarget } from "../protocol/commands/command-catalog-protocol-types.js"
-import type { ModuleHealthCheck } from "./app-service/definitions/commands/module-health.js"
+import type { ModuleServiceHandle, ModuleServices } from "../../infra/module-service.js"
+import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
+import type { ModuleProtocolRow, ModuleProviderSetting, ModuleSetting, ModuleSettingControl } from "../../protocol/runtime/module-protocol-types.js"
+import type { KernelToolDeps } from "../agent-runtime/tools/kernel-tool-deps.js"
+import type { RuntimeTool } from "../agent-runtime/tools/types.js"
+import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js"
+import type { AccessProviderDefinition } from "../../infra/llm/access/access-provider.js"
+import type { AuthContext, ProviderConnection } from "../../infra/auth/auth-context.js"
+import type { CredentialSlot, CredentialSlotClassifier } from "../../infra/auth/store/auth-store-types.js"
+import type { WebProviderDefinition } from "../../infra/auth/web-providers.js"
+import type { SubscriptionUsageReader } from "../../infra/llm/usage/subscription-usage.js"
+import type { WebSearchProvider, WebSearchProviderId } from "../agent-runtime/web-search/types.js"
+import type { CommandMenuPosition, CommandOutcome, CommandReading, CommandSurfaceTarget } from "../../protocol/commands/command-catalog-protocol-types.js"
+import type { ModuleHealthCheck } from "../app-service/definitions/commands/module-health.js"
 import type { CliNounContribution } from "./cli-contribution.js"
-import type { CommandHost } from "./app-service/definitions/commands/command-host.js"
-import type { AccountModuleProtocolServices, ModuleProtocolContribution } from "./app-service/module-protocol-host.js"
-import type { AccountModuleService, AccountModuleServiceInputs, AccountModuleServiceOptions, AccountProjectModuleServices, ModuleProcessServices, ModuleServiceInstance, PortableModuleServices } from "./app-service/executor/execution/module-service-host.js"
-import type { ModuleConfigSection } from "./config/schema/config-section.js"
-import type { AuthProviderStatus } from "../protocol/auth/auth-status-protocol-types.js"
+import type { CommandHost } from "../app-service/definitions/commands/command-host.js"
+import type { AccountModuleProtocolServices, ModuleProtocolContribution } from "../app-service/module-protocol-host.js"
+import type { ModuleProcessServices, ModuleServiceInstance, PortableModuleServices } from "../app-service/executor/execution/module-service-host.js"
+import type { AccountModuleService, AccountModuleServiceInputs, AccountModuleServiceOptions, AccountProjectModuleServices, ControlModuleServices } from "../app-service/account/projects/account-module-services.js"
+import type { ModuleConfigSection } from "../config/schema/config-section.js"
+import type { AuthProviderStatus } from "../../protocol/auth/auth-status-protocol-types.js"
 import type { DefinitionContribution, DefinitionReconciliationInput, ToolDeclaration, ModuleChildSessionHistory, ModuleDefinitionReconciliation, ModuleMaintenance, ModuleMaintenanceInput, ManagedPackageWrites, MemoryContribution, ModuleChatObserver, ModuleChatObserverContext, ModuleRetainedOperationContribution, ModuleSessionHistory, ModuleSessionAdmission, ModuleSessionDeletion, ModuleChildSession, QuestionDecisionContribution, SessionHistoryRecoveryInput, SkillChildGrantContribution, SupersededFactInvalidationResult, WorkspaceMigration, ModuleRuntimeInvocationTool } from "./module-seams.js"
 import type { ModuleRetainedDiagnostics } from "./module-diagnostics.js"
 import type { ModuleAgentTasks } from "./module-agent-tasks.js"
-import type { ToolExecutionGate } from "./agent-runtime/tools/dispatch/tool-dispatch.js"
-import type { CapabilityCheck } from "../infra/capability-text.js"
-import type { TurnReminderStatement, TurnReminderText } from "./agent-runtime/request/prompt/turn-reminders.js"
+import type { ToolExecutionGate } from "../agent-runtime/tools/dispatch/tool-dispatch.js"
+import type { CapabilityCheck } from "../../infra/capability-text.js"
+import type { TurnReminderStatement, TurnReminderText } from "../agent-runtime/request/prompt/turn-reminders.js"
 
 /** What every installed module declares for its durable history. The catalog
  *  reads it whether or not a project enables the module, because history that
@@ -227,6 +228,67 @@ export function installedRuntimeInvocationTool(modules: readonly FirstPartyModul
   return tool
 }
 
+// Remove after 2027-10-30: transcripts that builds before 2026-10-30 wrote for
+// gpt-6-luna call the shell as `exec`, with its directory in `working_directory`.
+// No registration carries the name now, so history readers resolve it here.
+export const RETIRED_SHELL_NAME = "exec"
+
+/** One name-to-tool table per catalog, which is fixed for the realm, and
+ *  the shell tool that the catalog installs, if any. */
+interface ToolIdentities {
+  readonly table: ReadonlyMap<string, string>
+  readonly shell: string | undefined
+}
+const toolIdentities = new WeakMap<readonly FirstPartyModule[], ToolIdentities>()
+
+function installedToolIdentities(): ToolIdentities {
+  const modules = installedModules()
+  let identities = toolIdentities.get(modules)
+  if (identities === undefined) {
+    identities = toolIdentityTable(modules)
+    toolIdentities.set(modules, identities)
+  }
+  return identities
+}
+
+/** The tool that a provider-visible or recorded name calls: `apply_patch`
+ *  calls `edit`, and a recorded `exec` called the shell tool. A reader that holds only
+ *  a name judges the tool through this, whichever registration the model saw.
+ *  A name that no installed registration carries is its own identity.
+ *  The table reads the installed tool declarations and builds no tool, so a
+ *  history reader below the agent runtime can ask it. It leaves out the
+ *  kernel tools: the model calls each one by its own tool name, which is
+ *  then its identity. */
+export function toolIdentity(name: string): string {
+  return installedToolIdentities().table.get(name) ?? name
+}
+
+/** Whether a provider-visible or recorded name calls the shell tool: the
+ *  installed tool whose declaration runs shell commands. */
+export function callsShellTool(name: string): boolean {
+  const { shell } = installedToolIdentities()
+  return shell !== undefined && toolIdentity(name) === shell
+}
+
+/** A registration id names its own registration's tool. A tool name or a
+ *  provider-visible name that several registrations carry names the first
+ *  in registry order. */
+function toolIdentityTable(modules: readonly FirstPartyModule[]): ToolIdentities {
+  const registrations = composeModules(modules).contributions
+    .flatMap((contribution) => contribution.domain === "tools"
+      ? Object.entries(contribution.value.declaration.registrations).map(([id, registration]) => ({ id, tool: contribution.value.name, exposedName: registration.exposedName, declaration: contribution.value.declaration }))
+      : [])
+    .toSorted((left, right) => left.declaration.registryOrder - right.declaration.registryOrder)
+  const table = new Map<string, string>()
+  for (const { tool, exposedName } of registrations) {
+    for (const name of exposedName === undefined ? [tool] : [tool, exposedName]) if (!table.has(name)) table.set(name, tool)
+  }
+  for (const { id, tool } of registrations) table.set(id, tool)
+  const shell = registrations.find((registration) => registration.declaration.action === "shell_exec")
+  if (shell !== undefined) table.set(RETIRED_SHELL_NAME, shell.tool)
+  return { table, shell: shell?.tool }
+}
+
 /** The fact types beyond `session.deleted` that delete a session's
  *  conversation, from every installed module: a disabled module's deletions
  *  are still history that the transcript index must honor. */
@@ -340,7 +402,7 @@ interface FirstPartyContributionMap {
   readonly accountServices: AccountModuleServiceContribution
   readonly agentTasks: ModuleAgentTasks
   readonly providers:
-    { readonly definition: AccessProviderDefinition; readonly createClient: import("./agent-runtime/llm/routing/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../infra/llm/usage/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("./agent-runtime/llm/routing/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("./agent-runtime/llm/routing/provider-availability-types.js").ProviderAllowanceFactory }
+    { readonly definition: AccessProviderDefinition; readonly createClient: import("../agent-runtime/llm/routing/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../../infra/llm/usage/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("../agent-runtime/llm/routing/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("../agent-runtime/llm/routing/provider-availability-types.js").ProviderAllowanceFactory }
   readonly tools: { readonly kind: "tool"; readonly name: string; readonly declaration: ToolDeclaration<string>; readonly associatedPromptRosterIds?: readonly PromptRosterContribution["definition"][] }
   readonly promptFragments: PromptFragmentContribution
   readonly turnReminders: TurnReminderContribution
@@ -383,7 +445,7 @@ interface WorkflowObserverContext {
   readonly getContextPercent: () => Promise<number>
 }
 
-type WorkflowObserverFactory = (context: WorkflowObserverContext) => import("./agent-runtime/loop/batch-observers.js").BatchObserver
+type WorkflowObserverFactory = (context: WorkflowObserverContext) => import("../agent-runtime/loop/batch-observers.js").BatchObserver
 
 interface FirstPartyObserverMap {
   readonly workflow: WorkflowObserverFactory
@@ -458,7 +520,7 @@ export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, First
   }
   | {
     readonly host: "control"
-    readonly service?: ModuleServiceDeclaration<ModuleServiceInstance, import("./app-service/executor/execution/module-service-host.js").ControlModuleServices>
+    readonly service?: ModuleServiceDeclaration<ModuleServiceInstance, ControlModuleServices>
     readonly protocol?: ModuleProtocolContribution<AccountModuleProtocolServices>
   }
 )

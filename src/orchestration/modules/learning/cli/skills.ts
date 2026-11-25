@@ -14,7 +14,7 @@ import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../../conf
 import { restoreSkill } from "../skills/skill-store.js"
 import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js"
 import { prepareWorkspaceState } from "../../../workspace-state/workspace-state.js"
-import { moduleRequirementsForContribution } from "../../../module-requirements.js"
+import { moduleRequirementsForContribution } from "../../../module-contract/module-requirements.js"
 import { createInstalledDefinitionRegistry } from "../../../app-service/definitions/definition-catalog.js"
 
 /** Maintenance CLI over the managed skill library: `skills list` makes load

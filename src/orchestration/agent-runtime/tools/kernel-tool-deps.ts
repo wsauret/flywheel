@@ -16,7 +16,7 @@ import type { ForegroundBashHoldController } from "../../session/control/backgro
 import type { ShellRuntimeClient } from "./bash/execution/shell-runtime-types.js";
 import type { ExternalSkillChildGrant } from "./definitions/skill.js";
 import type { CapabilityAccess } from "./types.js";
-import type { FirstPartyModuleComposition } from "../../module-catalog.js";
+import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { DefinitionAvailabilitySnapshot } from "../../config/policy/definition-availability.js";
 import type { RuntimeConfigRequestCapture } from "../../config/request-config.js";

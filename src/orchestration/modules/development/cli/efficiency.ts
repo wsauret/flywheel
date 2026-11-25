@@ -12,7 +12,7 @@ import {
   type StepEfficiencySummary,
   summarizeStepEfficiency,
 } from "../diagnostics/step-efficiency-projection.js"
-import type { CliVerb } from "../../../cli-contribution.js"
+import type { CliVerb } from "../../../module-contract/cli-contribution.js"
 
 type Mode = "steps" | "interval"
 

@@ -1,7 +1,7 @@
 import type { AuthContext } from "../../../infra/auth/auth-context.js";
 import { resolveAuthContext } from "../../../infra/auth/auth-context.js";
-import { installedCredentialProviderIds } from "../../module-composition.js";
-import { credentialSlotClassifier } from "../../module-catalog.js";
+import { installedCredentialProviderIds } from "../../module-contract/module-composition.js";
+import { credentialSlotClassifier } from "../../module-contract/module-catalog.js";
 import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import { offeringTransportFamily } from "../../../infra/llm/catalog/model-catalog-resolution.js";
 import type { ResolvedProviderModels } from "../../../infra/auth/provider-models/provider-model-preferences.js";

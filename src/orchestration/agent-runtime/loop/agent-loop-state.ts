@@ -1,4 +1,5 @@
 import type { AssistantTurnResult } from "./turn/assistant-turn-result.js";
+import type { WaitExpiry } from "../../session/conversation/turn-end-record.js";
 
 /** Two automatic continuations are allowed; the third consecutive overflow stops. */
 export const OUTPUT_OVERFLOW_CONTINUATION_LIMIT = 2;
@@ -40,11 +41,6 @@ export interface PersonWait {
 export interface OpenWait {
   readonly expiry?: WaitExpiry;
   readonly replyWaitIds: readonly string[];
-}
-
-export interface WaitExpiry {
-  readonly seconds: number;
-  readonly deadlineMs: number;
 }
 
 /** A wait of `seconds` from now, or park-only when `seconds` is undefined. */

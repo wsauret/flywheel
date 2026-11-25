@@ -12,7 +12,7 @@ import { composeModuleProcessServices, type ModuleProcessServices } from "../../
 import { configSection, installedConfigSections, type ModuleConfigSection } from "../../../../src/orchestration/config/schema/config-section.js"
 import { CONFIG_DEFAULTS, installedConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema/schema.js"
 import { settingDefinitions } from "../../../../src/orchestration/config/schema/setting-definitions.js"
-import type { FirstPartyModule } from "../../../../src/orchestration/module-catalog.js"
+import type { FirstPartyModule } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { kernelPorts } from "../../../helpers/module-kernel.js"
 import { runtimeConfigView } from "../../../helpers/runtime-config-view.js"
 

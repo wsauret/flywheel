@@ -4,7 +4,7 @@ import { captureProviderConnection } from "../../../../../src/infra/auth/auth-co
 import { createExaWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/exa.js";
 import { createWebSearch, createWebSearchProviderResolver } from "../../../../../src/orchestration/agent-runtime/web-search/select.js";
 import type { WebSearchProvider } from "../../../../../src/orchestration/agent-runtime/web-search/types.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js";
 import type { ModuleId } from "../../../../../src/protocol/runtime/module-ids.js";
 import { authProviders } from "../../../../helpers/auth-context.js";

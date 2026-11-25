@@ -36,7 +36,7 @@ import { decodeSessionMetadataFactForReplay } from "../../session/metadata/sessi
 import { readToolExecutions } from "../../session/runtime-facts/tool-execution-projection.js"
 import type { SessionLifecycleState } from "../../session/metadata/types.js"
 import type { WorkflowRunRecord } from "../../session/metadata/workflow-run-record.js"
-import { workflowRunReader } from "../../module-catalog.js"
+import { workflowRunReader } from "../../module-contract/module-catalog.js"
 import { PROJECT_STATE_MAX_PAGE_ROWS } from "../project-state/project-state-protocol.js"
 
 const log = Log.create({ service: "background-index" })

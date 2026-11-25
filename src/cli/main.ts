@@ -106,7 +106,7 @@ async function runCommand(args: readonly string[], subcommand: SubcommandDispatc
   }
   // Must branch before startTUI() registers a global terminal raw-mode handler
   if (hasHeadlessFlag(args)) {
-    const { composeFirstPartyModules } = await importComposing(() => import("../orchestration/module-composition.js"))
+    const { composeFirstPartyModules } = await importComposing(() => import("../orchestration/module-contract/module-composition.js"))
     for (const warning of composeFirstPartyModules().warnings) Log.Default.warn(warning)
 
     // A headless command that hosts its runtime prepares it here. The

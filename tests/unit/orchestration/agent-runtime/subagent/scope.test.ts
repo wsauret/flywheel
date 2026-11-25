@@ -10,7 +10,7 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/s
 import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { fixedAvailability } from "../../../../helpers/project-definitions.js";
 import { grantOf, makeCapabilityAccess, makeDeps } from "./_fixtures.js";
 

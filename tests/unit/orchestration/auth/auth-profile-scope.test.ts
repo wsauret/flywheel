@@ -5,7 +5,7 @@ import type { AuthProfileResolution } from "../../../../src/orchestration/auth/a
 import { authScopesForProfile, resolveAuthProfileScope, resolveSessionAuthProfile } from "../../../../src/orchestration/auth/auth-profile-scope.js"
 import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 import { createWorkflowAuthOwner } from "../../../../src/orchestration/auth/session-auth-profile.js"
-import { workflowRunReader, workflowRunWriter } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunReader, workflowRunWriter } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { makeDepsWithStore, publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"

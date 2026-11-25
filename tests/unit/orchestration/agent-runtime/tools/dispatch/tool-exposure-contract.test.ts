@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../../../../src/infra/module-runtime.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { createToolRegistry } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js";
 import type { KernelToolDeps } from "../../../../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { planToolExposure, type ToolExposureInput } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { learningReviewToolNames, toolRegistryFromComposition } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
-import type { RegisteredTool } from "../../../../../../src/orchestration/module-seams.js";
+import type { RegisteredTool } from "../../../../../../src/orchestration/module-contract/module-seams.js";
 import { mcpPortsOver, mcpRuntimeOver } from "../../../../../helpers/mcp.js";
 import { codeModeRuntimeOver } from "../../../../../helpers/code-mode-worker.js";
 import { testDirectories } from "../../../../../helpers/directories.js";

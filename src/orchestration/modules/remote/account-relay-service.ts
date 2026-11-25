@@ -8,7 +8,7 @@ import type { AccountService } from "../../app-service/account/account-service.j
 import type { RelayChannelSocket } from "../../../protocol/modules/remote/relay-channel.js"
 import { decodeJsonFrame, DEFAULT_RELAY_URL, DEFAULT_REMOTE_APP_ORIGIN, fromBase64Url, type OpenFrame, type Placement } from "../../../protocol/modules/remote/relay-protocol.js"
 import { decodeRemoteAccountRequest, type RemoteAccountAnswer, type RemoteAccountRequest } from "../../../protocol/modules/remote/account-requests.js"
-import type { AccountModuleRequestServer } from "../../app-service/executor/execution/module-service-host.js"
+import type { AccountModuleRequestServer } from "../../app-service/account/projects/account-module-services.js"
 import { decodeProjectCreateRequest, machinePlacementId, type ProjectCreateRequest, type ProjectCreationAnswer } from "../../../protocol/modules/remote/project-creation.js"
 import { sealedSocket } from "../../../protocol/modules/remote/sealed-socket.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../protocol/runtime-liveness.js"

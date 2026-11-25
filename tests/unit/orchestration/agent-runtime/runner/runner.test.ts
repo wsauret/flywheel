@@ -16,7 +16,7 @@ import { createBackgroundExecutionOwner } from "../../../../../src/orchestration
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work"
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/session/control/background-work/foreground-bash-hold.js"
 import { capabilityAccessHolding, testGrant } from "../tools/_fixtures.js"
-import { composeRealmModuleSnapshot } from "../../../../../src/orchestration/module-composition.js"
+import { composeRealmModuleSnapshot } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { ProviderRuntimeCache } from "../../../../../src/orchestration/agent-runtime/request/provider-runtime-cache.js"
 import { AllCandidatesExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"

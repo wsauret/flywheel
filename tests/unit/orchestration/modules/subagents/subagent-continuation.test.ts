@@ -14,7 +14,7 @@ import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../../sr
 import { createSubagentSessionAuthority } from "../../../../../src/orchestration/modules/subagents/execution/session-authority.js"
 import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { asModelClient } from "../../agent-runtime/_model-client.js"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js"
 import { createHeadlessUsageAuthorityOwner } from "../../../../../src/orchestration/app-service/auth/headless/headless-usage-authority.js"
 import { createUsageAuthority } from "../../../../../src/infra/llm/usage/usage-authority.js"

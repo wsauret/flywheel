@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createWaitToolPolicy } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-wait.js";
+import { createSettledBatchObservation, createWaitToolPolicy } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-wait.js";
 import type { ToolCall } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { processToolDefinition } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
@@ -64,6 +64,20 @@ describe("wait tool policy delivery", () => {
     policy.settleWaitCalls([reply]);
     policy.settleWaitCalls([reply, { ...waitCall, input: { action: "wait", soft_timeout: 600 } }]);
     expect(durations).toEqual([undefined, 600]);
+  });
+});
+
+describe("settled wait batches", () => {
+  test("a batch of native waits reads the live background work once, whatever its size", async () => {
+    // The read scans the session's background work, so it must not run once per call.
+    for (const size of [1, 32]) {
+      let reads = 0;
+      const policy = createWaitToolPolicy(() => { reads += 1; return true; }, () => undefined);
+      const observation = createSettledBatchObservation(policy, () => undefined, () => undefined);
+      const calls = Array.from({ length: size }, (_, index): ToolCall => ({ ...waitCall, id: `w${index}` }));
+      expect(await observation.observe(calls, calls.map((call) => ({ toolUseId: call.id, outcome: "ok" as const })), "ok")).toBe(true);
+      expect({ size, reads }).toEqual({ size, reads: 1 });
+    }
   });
 });
 

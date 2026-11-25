@@ -8,8 +8,8 @@ import { captureAccountConnection, providerAdapter, type AccessProviderBuild } f
 import { normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js";
 import { createClaudeAgentSdkModule } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
-import { installedModules } from "../../../../../../src/orchestration/module-catalog.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
+import { installedModules } from "../../../../../../src/orchestration/module-contract/module-catalog.js";
 import { authProviders } from "../../../../../helpers/auth-context.js";
 import { observedLogins } from "../../../../../helpers/login-observations.js";
 import { temporaryDirectories, testDirectories } from "../../../../../helpers/directories.js";

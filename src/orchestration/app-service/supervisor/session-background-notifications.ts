@@ -3,7 +3,7 @@ import { completionWorkIds } from "../../session/control/background-work/backgro
 import type { ChatRunner } from "../../chat/runner-types.js"
 import { createConversationTreeWriterController } from "../../chat/tree-writer.js"
 import type { SessionEntry, SessionStore } from "../../session-store/types.js"
-import type { ParentNotificationDelivery } from "../../module-seams.js"
+import type { ParentNotificationDelivery } from "../../module-contract/module-seams.js"
 import { readConversationBackgroundNotifications, type HeldBackgroundNotification } from "../../session/conversation/queued-background-notifications.js"
 import { liveWorkflowControl } from "../../session/control/live-session-control.js"
 

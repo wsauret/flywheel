@@ -11,7 +11,7 @@ import type { ModelClient, ProviderSessionLifetime } from "../llm/types.js";
 import type { EffectiveProviderConnection } from "../llm/routing/client-factory.js";
 import type { AccessProviderRegistry } from "../../config/models/access-provider-registry.js";
 import type { AgentFactory } from "../types.js";
-import type { FirstPartyModuleComposition } from "../../module-catalog.js";
+import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js";
 import type { RuntimeConfigRequestCapture } from "../../config/request-config.js";
 
 /** Builds a client of `model` whose provider resources `providerSessionLifetime` owns. An absent snapshot or

@@ -19,8 +19,8 @@ import { publishSkillRevision } from "../../../../../../src/workflows/skills/ski
 import { admitEveryTool, requestAdmission, testBaseTools } from "../../../../../helpers/request-tool-surface.js";
 import { capabilityAccessHolding, makeContext } from "../_fixtures.js";
 import { bashExecution } from "../bash/_bash-fixtures.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
-import type { ModuleId } from "../../../../../../src/orchestration/module-catalog.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
+import type { ModuleId } from "../../../../../../src/orchestration/module-contract/module-catalog.js";
 import { executeDispatchedTool } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
 import { shortFormTool } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/short-form.js";
 import type { ToolConcurrencyGate } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { contentEvidence } from "../../../../infra/runtime-facts/content-evidence.js"
-import type { SessionHistoryRecoveryInput } from "../../../module-seams.js"
+import type { SessionHistoryRecoveryInput } from "../../../module-contract/module-seams.js"
 import { createConversationTreeWriterController } from "../../../chat/tree-writer.js"
 import { isSessionOwnerGone } from "../../../session/pid-lock.js"
 import { createSessionFactWriter, prepareSessionFactAppend } from "../../../session/persistence/session-fact-writer.js"

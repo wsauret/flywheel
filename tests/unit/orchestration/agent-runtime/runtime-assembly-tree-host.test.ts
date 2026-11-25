@@ -8,7 +8,7 @@ import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/t
 import type { AgentOptionsOverride } from "./_runner-options.js"
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/request/shared-tree.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { createConversationMessageEntry } from "../../../../src/orchestration/session/conversation/tree/conversation-tree.js"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"

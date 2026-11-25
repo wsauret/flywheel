@@ -29,7 +29,7 @@ import type { WorkflowDefinition } from "../../../../../src/workflows/schema/wor
 import { retiredFixtureWorkflow } from "../../../../helpers/retired-fixture-briefs.js"
 
 import { installedPersonaToolEntries } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js"
-import { installedDefinitionBundles } from "../../../../../src/orchestration/module-catalog.js"
+import { installedDefinitionBundles } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 import { DEVELOPMENT_MODULES } from "../../../../../src/orchestration/development-modules.js"
 import { retainedProject } from "../../../../fixtures/retired-workflows/retained-project.js"
 const tmpRoot = path.join(os.tmpdir(), `flywheel-identity-migration-${process.pid}-${Date.now()}`)

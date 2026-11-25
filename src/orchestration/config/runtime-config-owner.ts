@@ -8,7 +8,7 @@ import { ConfigPublicationError, heldConfigIdentity, publishedConfigIdentity, re
 import { ConfigLoadError, decodeCanonicalConfigText, type ConfigDiagnostic } from "./loader.js";
 import { type ModuleConfigSection, configSection, installedModuleConfigSettings } from "./schema/config-section.js";
 import type { Schema } from "effect";
-import { installedProviderSettings } from "../module-catalog.js";
+import { installedProviderSettings } from "../module-contract/module-catalog.js";
 import { PERSISTED_SETTING_DEFINITIONS, PROJECT_SHOW_BUILD_DEFAULT, profileBooleanSettingDefinition, settingDefinitions, type ApplicationMode, type PersistedSettingDefinition, type ProfileBooleanSettingId, type SettingApplication, type SettingDefinition, type SettingDefinitionId } from "./schema/setting-definitions.js";
 import { ConfigWriteError, patchDefinedSetting, patchProfileBoolean, patchProfileProviderSetting, patchProjectShowBuild } from "./writer.js";
 import { hasRetiredConfigTables, retireConfigTables } from "./retired-config-tables.js";

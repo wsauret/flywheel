@@ -12,7 +12,7 @@ import { buildDefinitionDriftRejectedFact } from "../../../../src/workflows/prov
 import { workflowControlInitializedEvent, workflowLaunchEvents } from "../../workflows/vm/_workflow-control-fixtures.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/runs/duration.js"
-import { workflowRunWriter } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunWriter } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
 import { readWorkflowRecovery } from "../../../../src/workflows/vm/recovery/recovery-fold.js"

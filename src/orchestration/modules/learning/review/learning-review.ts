@@ -29,8 +29,8 @@ import type { SessionFactWriter } from "../../../session/persistence/session-fac
 
 import type { CapabilityCheck } from "../../../../infra/capability-text.js";
 import { reviewInstruction, type ReviewHalf } from "./learning-review-prompts.js";
-import type { ModuleId, FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../module-catalog.js";
-import { moduleRequirementsForContribution, hasModuleContribution } from "../../../module-requirements.js";
+import type { ModuleId, FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../module-contract/module-catalog.js";
+import { moduleRequirementsForContribution, hasModuleContribution } from "../../../module-contract/module-requirements.js";
 
 import { canonicalModuleIds } from "../../../../protocol/runtime/module-ids.js";
 const log = Log.create({ service: "learning-review" });

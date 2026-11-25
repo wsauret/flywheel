@@ -1,5 +1,5 @@
 import type { CapabilityCheck } from "../../src/infra/capability-text.js";
-import { toolIdentity } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
+import { toolIdentity } from "../../src/orchestration/module-contract/module-catalog.js";
 import type { BuildSystemPromptOptions } from "../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 
 /** The fields of a tool that the system prompt reads. */

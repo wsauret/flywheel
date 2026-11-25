@@ -20,8 +20,8 @@ import { pathToFileURL } from "node:url";
 
 import type { ContainedDirectory } from "../../../src/infra/descriptor-directory/descriptor-directory-contract.js";
 import { heldDirectoryPrototype } from "../../helpers/contained-directory-spies.js";
-import { moduleProtocolRows, type ModuleId, effectiveModuleIds } from "../../../src/orchestration/module-catalog.js";
-import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../src/orchestration/module-composition.js";
+import { moduleProtocolRows, type ModuleId, effectiveModuleIds } from "../../../src/orchestration/module-contract/module-catalog.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
 import { migrateLegacyCapabilityModules, decodeModuleState } from "../../../src/orchestration/config/module-descriptor.js";
 import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
@@ -45,7 +45,7 @@ import type { RuntimeModulesView } from "../../../src/protocol/runtime/module-pr
 import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
 import { admitWorkflowOperation } from "../../../src/orchestration/workflow-host/lifecycle/workflow-admission.js";
 import { loadWorkflowFile } from "../../../src/workflows/vm/admission/workflow-file.js";
-import { moduleRequirementsForContribution } from "../../../src/orchestration/module-requirements.js";
+import { moduleRequirementsForContribution } from "../../../src/orchestration/module-contract/module-requirements.js";
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 import { makeContext } from "../../unit/orchestration/agent-runtime/tools/_fixtures.js";
 import { accessProviderRegistry } from "../../../src/orchestration/config/models/access-provider-registry.js";

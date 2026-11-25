@@ -34,8 +34,8 @@ import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from 
 import type { DefinitionBundle } from "../src/workflows/definitions/loader.js";
 
 import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js";
-import { installedDefinitionBundles, installModuleCatalog } from "../src/orchestration/module-catalog.js";
-import { composeFirstPartyModules } from "../src/orchestration/module-composition.js";
+import { installedDefinitionBundles, installModuleCatalog } from "../src/orchestration/module-contract/module-catalog.js";
+import { composeFirstPartyModules } from "../src/orchestration/module-contract/module-composition.js";
 // The credential provider registry publishes its half of the catalog when it loads.
 import "../src/orchestration/credential-provider-modules.js";
 import { SHIPPED_OTHER_MODULES } from "../src/orchestration/modules.js";

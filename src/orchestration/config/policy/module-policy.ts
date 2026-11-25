@@ -15,7 +15,7 @@
  *  later automatic review, or an unrelated write asks for a new grant. */
 
 import { Log } from "../../../infra/diagnostics/log.js";
-import { selectionPolicyError, type ModuleId } from "../../module-catalog.js";
+import { selectionPolicyError, type ModuleId } from "../../module-contract/module-catalog.js";
 import { readConfigAt, type ConfigFileLocation } from "../config-file.js";
 import { defaultModuleState, moduleDescriptor, observeModuleState, type ModuleState } from "../module-descriptor.js";
 import type { ConfigWriteResult } from "../writer.js";

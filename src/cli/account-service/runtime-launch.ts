@@ -6,7 +6,7 @@ import { createLauncherScope, createProcessSupervisor, guardianCommand, type Lau
 import { startupTrace } from "../../infra/diagnostics/startup-trace.js"
 import type { AttachedRuntimeClient } from "../../protocol/runtime/app-service-types.js"
 import type { RuntimeIdentity as DisplayedRuntimeIdentity } from "../../protocol/client/runtime-identity.js"
-import type { RemoteAttach } from "../../orchestration/terminal-remote.js"
+import type { RemoteAttach } from "../../orchestration/module-contract/terminal-remote.js"
 import type { TerminalAttach } from "../../tui/terminal-attach.js"
 import type { AccountRuntimeAttach } from "./runtime-attach.js"
 import type { RuntimeIdentity } from "./runtime-identity-record.js"

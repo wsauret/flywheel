@@ -8,7 +8,7 @@ import type { ContentResolver } from "../../../../infra/runtime-facts/tool-conte
 import { sanitizeExternalText } from "../../../../infra/control-characters.js"
 import { asRecord } from "../../../../infra/record.js"
 import { canonicalize } from "../../../../infra/canonical-name.js"
-import { installedRuntimeInvocationTool } from "../../../module-catalog.js"
+import { installedRuntimeInvocationTool } from "../../../module-contract/module-catalog.js"
 import { getToolDisplay, isHiddenFromTranscript } from "../../../../infra/tools/tool-display-registry.js"
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
 import { createOrderedLane } from "../../../../infra/ordered-lane.js"

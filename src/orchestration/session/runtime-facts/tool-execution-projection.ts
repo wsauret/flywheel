@@ -3,7 +3,7 @@ import { heldProjection } from "../../../infra/projection/projection-registry.js
 import type { AsyncEventReadSurface, AsyncEventStateReadSurface, StoredFact } from "../../../infra/store/event-store-types.js"
 import { InvariantViolation } from "../../../infra/invariant.js"
 import { emptyPrefixView, prefixAppend, prefixGet, type PrefixView } from "../../../infra/prefix-view.js"
-import { installedRuntimeInvocationTool } from "../../module-catalog.js"
+import { installedRuntimeInvocationTool } from "../../module-contract/module-catalog.js"
 import { storedToolCallIdentity } from "../../../infra/store/tool-content-hydration.js"
 import { workflowCallLaunched } from "../../../infra/tools/workflow-call-source.js"
 import type { ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js"

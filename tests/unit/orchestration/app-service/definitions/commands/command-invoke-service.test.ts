@@ -13,7 +13,7 @@ import { createCommandInvokeService, type CommandInvokeDeps } from "../../../../
 import type { CommandHost } from "../../../../../../src/orchestration/app-service/definitions/commands/command-host.js"
 import type { ModuleHealthCheck } from "../../../../../../src/orchestration/app-service/definitions/commands/module-health.js"
 import { SHIPPED_MODULES } from "../../../../../../scripts/shipped-modules.js"
-import type { FirstPartyModule, FirstPartyModuleComposition } from "../../../../../../src/orchestration/module-catalog.js"
+import type { FirstPartyModule, FirstPartyModuleComposition } from "../../../../../../src/orchestration/module-contract/module-catalog.js"
 import type { ChatInputLike } from "../../../../../../src/infra/chat-input.js"
 import { createDefinitionAvailability } from "../../../../../../src/orchestration/config/policy/definition-availability.js"
 import { moduleDescriptor } from "../../../../../../src/orchestration/config/module-descriptor.js"

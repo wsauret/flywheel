@@ -5,7 +5,7 @@ import type { RuntimeOAuthCredential } from "../../../../../../src/infra/auth/au
 import type { AccessProviderDefinition } from "../../../../../../src/infra/llm/access/access-provider.js"
 import { applyWindowsPrivateDirectoryAcl } from "../../../../../../src/infra/windows-private-directory-acl.js"
 import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js"
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js"
 
 /** A stage prepared the way the snapshot reader demands: private to this
  *  account. POSIX states that with the directory mode; Windows keeps no mode

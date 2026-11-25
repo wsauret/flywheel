@@ -4,7 +4,7 @@ import type { ToolExposurePlan } from "../../src/orchestration/agent-runtime/too
 import { createRequestToolSurface, type PlannedRequest, type RequestToolSurfaceOwner } from "../../src/orchestration/agent-runtime/request/request-tool-surface.js";
 import type { KernelToolDeps } from "../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { NO_CAPABILITY_ACCESS, type RuntimeTool } from "../../src/orchestration/agent-runtime/tools/types.js";
-import { composeFirstPartyModules } from "../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../src/orchestration/module-contract/module-composition.js";
 import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema/schema.js";
 import { captureRuntimeConfigRequest, type CaptureRuntimeConfig } from "../../src/orchestration/config/request-config.js";
 import { createToolRegistry } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
@@ -14,7 +14,7 @@ import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/defi
 import type { AgentDefinition } from "../../src/infra/agent-definition.js";
 import { publishSkillRevision } from "../../src/workflows/skills/skill-schema.js";
 import type { ExecutionAdmission } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
-import type { FirstPartyModuleComposition } from "../../src/orchestration/module-catalog.js";
+import type { FirstPartyModuleComposition } from "../../src/orchestration/module-contract/module-catalog.js";
 const toolRegistrations = Object.fromEntries(createToolRegistry());
 
 

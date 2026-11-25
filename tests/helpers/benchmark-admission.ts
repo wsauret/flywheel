@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { OwnedBenchmarkRuntime } from "../../bench/shared/runtime.js";
 import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import type { BenchmarkRuntime } from "../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
-import { composeFirstPartyModules } from "../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../src/orchestration/module-contract/module-composition.js";
 import { createBackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../src/orchestration/session/control/background-work/background-work.js";
 import { createForegroundBashHoldController } from "../../src/orchestration/session/control/background-work/foreground-bash-hold.js";

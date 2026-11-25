@@ -6,7 +6,7 @@ import type { AgentPersonaRoles } from "../../../config/models/role-selection.js
 import { effectiveRoleAssignments, resolveSessionSettings, withInheritedRoles } from "../../../config/models/session-role-resolver.js"
 import type { RoleAssignmentSnapshot, RoleSettings } from "../../../session/metadata/schemas.js"
 import { createSingleSessionMetadataProjection } from "../../../session/metadata/session-metadata-projection.js"
-import { workflowRunOwner } from "../../../module-catalog.js"
+import { workflowRunOwner } from "../../../module-contract/module-catalog.js"
 import type { CaptureProviderConnection, ProviderConnectionCapture } from "../model-runtime-capture.js"
 
 /** Resolves replayed authored fields against the current immutable profile capture.

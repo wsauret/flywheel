@@ -8,7 +8,7 @@ import { tryOpenConversationTree } from "../../../../src/orchestration/session/c
 import { interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { createMockWorkflowHosts, publishWorkerAttempt } from "./_workflow-host-fixtures"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership"
-import { workflowRunReader } from "../../../../src/orchestration/module-catalog"
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog"
 import type { WorkflowControllerDeps } from "../../../../src/orchestration/workflow-host/lifecycle/controller"
 import { cleanupProjectRoots, createCapabilities, createDeps, createMockManager, modelLaunch, until } from "./_workflow-controller-fixtures"
 import { moduleDisabledReason } from "../../../../src/protocol/runtime/module-ids"

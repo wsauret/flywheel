@@ -28,7 +28,7 @@ import { exposedToolName, toolRegistryFromComposition } from "../tools/dispatch/
 import type { ExecutionAdmission } from "../tools/dispatch/tool-dispatch.js";
 import type { AdmittedModelRequest, ModelClient, ModelRequestRoute, ServingAttempt, StreamOptions, ToolPresentation } from "../llm/types.js";
 import type { ModelInteractionProfile } from "./prompt/model-interaction-profile.js";
-import type { FirstPartyModuleComposition } from "../../module-catalog.js";
+import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js";
 import { hashToolInputFormat } from "../../session/diagnostics/provider-request-audit-hash.js";
 import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "../../config/request-config.js";
 import type { ModelRuntimeCapture, ProviderConnectionCapture } from "./model-runtime-capture.js";

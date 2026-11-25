@@ -3,7 +3,7 @@ import type { ConversationTreeTranscriptEntry } from "../conversation-projection
 import { TreeBlockProjection, type ToolBlockReader, type TreeBlockProjectionOptions } from "./conversation-block-projection.js"
 import type { IndexedGroupChildren } from "./tool-result-meta.js"
 import type { ToolResultDisplayMeta } from "./tool-result-display-meta.js"
-import type { ToolHistorySummary } from "../../../module-seams.js"
+import type { ToolHistorySummary } from "../../../module-contract/module-seams.js"
 import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js"
 import { blockEntryKeys, blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 

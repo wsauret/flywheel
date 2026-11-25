@@ -12,7 +12,7 @@ import { briefEntryId, isBriefEntry } from "../../../../src/orchestration/sessio
 import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership";
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery/recovery";
 import { commitWorkflowEvent, publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures";
-import { workflowRunReader } from "../../../../src/orchestration/module-catalog";
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog";
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/vm/recovery/workflow-view";
 import { frontendAttempts } from "../../../../src/orchestration/session/metadata/frontend-attempts";
 import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent";

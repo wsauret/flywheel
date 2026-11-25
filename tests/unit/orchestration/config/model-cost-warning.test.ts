@@ -6,7 +6,7 @@ import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
 import { USER_DATA_ROOT, NO_CREDENTIALS } from "./_config-models-fixtures.js";
 import type { SelectedModelRoute } from "../../../../src/orchestration/config/models/model-assignment-types.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { testProviderSelection } from "../../../helpers/provider-authority.js";
 
 import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";

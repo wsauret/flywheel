@@ -12,7 +12,7 @@ import { bunWorkerRunnerLayer, type WorkerSelf } from "../../../infra/process/wo
 import { createSessionDetailReader } from "../projections/session-detail-projection.js"
 import { classifyRuntimeProtocolErrorKind, RuntimeBackgroundRpc, RuntimeProtocolError } from "../../../protocol/rpc/runtime-protocol-schemas.js"
 import { composeModuleBackgroundReaders } from "../module-protocol-host.js"
-import { installedConversationDeletionFacts, installedModules } from "../../module-catalog.js"
+import { installedConversationDeletionFacts, installedModules } from "../../module-contract/module-catalog.js"
 import { protocolBackgroundSchema } from "../../../protocol/modules.js"
 import { createRuntimeBackgroundSnapshotProjector } from "./runtime-background-snapshot.js"
 import type { RuntimeSessionDetailResult } from "../../../protocol/session/session-detail-protocol-types.js"

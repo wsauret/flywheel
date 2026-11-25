@@ -12,7 +12,7 @@ import type { CapabilityAccess, DispatchedToolContext, RuntimeTool, ToolResult }
 import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js"
 import { captureRuntimeConfigRequest } from "../../src/orchestration/config/request-config.js"
 import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema/schema.js"
-import { composeFirstPartyModules } from "../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../src/orchestration/module-contract/module-composition.js"
 import { definitionAvailabilityOf } from "../../src/orchestration/config/policy/definition-availability.js"
 import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orchestration/agent-runtime/request/prompt/capability-checks.js"
 import { publishSkillRevision } from "../../src/workflows/skills/skill-schema.js"

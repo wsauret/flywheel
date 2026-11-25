@@ -1,5 +1,5 @@
-import { installedModules, workflowRunOwner, workflowRunReader, type FirstPartyModule } from "../../module-catalog.js"
-import type { ChildSessionPorts, ChildStopAnswer, ModuleChildSession, ModuleChildSessionHistory, ModuleRetainedOperationAuthority, ModuleRetainedOperationContribution, ModuleSessionDeletion } from "../../module-seams.js"
+import { installedModules, workflowRunOwner, workflowRunReader, type FirstPartyModule } from "../../module-contract/module-catalog.js"
+import type { ChildSessionPorts, ChildStopAnswer, ModuleChildSession, ModuleChildSessionHistory, ModuleRetainedOperationAuthority, ModuleRetainedOperationContribution, ModuleSessionDeletion } from "../../module-contract/module-seams.js"
 import type { SessionManager } from "../manager.js"
 import type { ReplayedSession } from "../metadata/schemas.js"
 import { readToolExecution } from "../runtime-facts/tool-execution-projection.js"

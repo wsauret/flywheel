@@ -8,7 +8,7 @@ import { startedAgents } from "../../../workflows/vm/host/host-commit-controller
 import { addressReachesAgent } from "../../../workflows/context-bundle/context-facts.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../conversation/addressed-workflow-messages.js"
 import { installedChildSessionHistory, retainedOperationContinuations } from "./module-session-operations.js"
-import type { ChildSessionRun, RetainedOperationContinuation, RetainedOperationContinuationTarget } from "../../module-seams.js"
+import type { ChildSessionRun, RetainedOperationContinuation, RetainedOperationContinuationTarget } from "../../module-contract/module-seams.js"
 import { whenLiveChildRun, type LiveChildControl } from "./live-session-control.js"
 import { readWaitsAtRuntimeInterrupt } from "./chat-session-run-evidence.js"
 import { tryOpenConversationTree } from "../conversation/tree/conversation-tree-handle.js"

@@ -3,7 +3,7 @@
 // vocabulary of selection decoding into the catalog (module-catalog.ts), which
 // the kernel reads. Only a process entry loads it (src/cli/composition/module-registries.ts),
 // so no kernel file depends on a module home.
-import { publishModuleSelectionVocabulary, publishShippedOtherModules, type FirstPartyModule, type ModuleId } from "./module-catalog.js"
+import { publishModuleSelectionVocabulary, publishShippedOtherModules, type FirstPartyModule, type ModuleId } from "./module-contract/module-catalog.js"
 import { askUserModule } from "./modules/ask-user.js"
 import { backgroundCommandsModule } from "./modules/background-commands.js"
 import { bashModule } from "./modules/bash/module.js"

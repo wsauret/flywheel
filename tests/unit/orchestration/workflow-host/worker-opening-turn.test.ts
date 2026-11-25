@@ -9,7 +9,7 @@ import { planCapabilitiesOfRun } from "../../../../src/orchestration/agent-runti
 import { openRequestInputs } from "../../../../src/orchestration/agent-runtime/request/request-inputs"
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/request/runtime-conversation"
 import { toolRegistryFromComposition } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import type { createWorkerCallback } from "../../../../src/orchestration/workflow-host/execution/agent-callback"
 import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution"

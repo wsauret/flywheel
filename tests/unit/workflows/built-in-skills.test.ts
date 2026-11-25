@@ -9,7 +9,7 @@ import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, repoDefinitions, workflowIn } from "../../helpers/project-definitions.js";
 import { loadSkillDefinitions } from "../../../src/workflows/skills/skills.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
-import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
+import { installedDefinitionBundles } from "../../../src/orchestration/module-contract/module-catalog.js";
 import { renderSkillClosure } from "../../../src/workflows/skills/skill-render.js";
 import { skillClosureIds } from "../../../src/workflows/skills/skill-closure.js";
 import { publishSkillRevision, type SkillRegistryRevision } from "../../../src/workflows/skills/skill-schema.js";

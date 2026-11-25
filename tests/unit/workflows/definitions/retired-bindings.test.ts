@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js"
+import { installedDefinitionBundles } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { eligibleLearnedSkills } from "../../../../src/orchestration/modules/learning/skills/learned-skill-eligibility.js"
 import { LEGACY_WORKFLOW_BINDINGS, retiredBindingSha256 } from "../../orchestration/workspace-state/migrations/_pre-cutover-control.js"
 import { installedPersonaToolEntries } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js"

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { repoDefinitions, repoModules } from "../../../../helpers/project-definitions.js"
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
-import type { ModuleId } from "../../../../../src/orchestration/module-catalog.js"
+import type { ModuleId } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 import { createDefinitionAvailability } from "../../../../../src/orchestration/config/policy/definition-availability.js"
 import type { CapabilityAdmission, CapabilityRequest } from "../../../../../src/orchestration/config/policy/module-policy.js"
 import { admitWorkflowOperation } from "../../../../../src/orchestration/workflow-host/lifecycle/workflow-admission.js"

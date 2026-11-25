@@ -22,7 +22,7 @@ import {
   QUEUED_USER_INPUT_IN_FLIGHT_KIND, decodeQueuedUserInput, decodeQueuedUserInputCell,
   holdQueuedUserInput, queuedInputPayload, queuedUserInputPut, readWorkflowQueuedUserInputs,
 } from "../../../../../src/orchestration/session/conversation/queued-user-inputs"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { createWorkerCallback } from "../../../../../src/orchestration/workflow-host/execution/agent-callback"
 import { consumeWorkflowRecoveryInputs } from "../../../../../src/orchestration/workflow-host/execution/recovery-input"
 import { createWorkflowAgentInputs } from "../../../../../src/orchestration/workflow-host/execution/agent-inputs"

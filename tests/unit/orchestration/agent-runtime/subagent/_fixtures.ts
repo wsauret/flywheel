@@ -1,5 +1,5 @@
 import * as os from "node:os";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import * as path from "node:path";
 
 import type { SubagentDispatchDeps } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
@@ -16,14 +16,14 @@ import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-
 import { testDirectories } from "../../../../helpers/directories.js";
 import { capabilityAccessFor, type CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest } from "../../../../../src/orchestration/config/policy/module-policy.js";
-import type { ModuleId } from "../../../../../src/orchestration/module-catalog.js";
+import type { ModuleId } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
 import type { SummarizeSubagentWorkInput } from "../../../../../src/orchestration/modules/subagents/execution/result/summarize-work.js";
 import type { AsyncEventStateReadSurface } from "../../../../../src/infra/store/event-store-types.js";
 import type { ConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
-import type { ChildSessionAuthority } from "../../../../../src/orchestration/module-seams.js";
+import type { ChildSessionAuthority } from "../../../../../src/orchestration/module-contract/module-seams.js";
 import { parseSubagentRunFact } from "../../../../../src/orchestration/modules/subagents/facts.js";
 import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js";
 import { createConversationTreeProjection } from "../../../../../src/orchestration/session/conversation/conversation-projection.js";

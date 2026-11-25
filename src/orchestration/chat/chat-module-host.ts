@@ -5,7 +5,7 @@ import type { BackgroundExecutionOwner } from "../agent-runtime/background-execu
 import type { ForegroundBashHoldController } from "../session/control/background-work/foreground-bash-hold.js"
 import type { ConversationMessage } from "../../infra/llm/conversation/conversation-message.js"
 import type { ChatSessionDeps, ChatSessionState } from "./types.js"
-import type { FirstPartyModuleSnapshot } from "../module-catalog.js"
+import type { FirstPartyModuleSnapshot } from "../module-contract/module-catalog.js"
 import type { ChatTurnMailbox } from "./turn-mailbox.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import { errorMessage } from "../../infra/error-message.js"

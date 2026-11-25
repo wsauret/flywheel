@@ -6,7 +6,7 @@ import { captureProviderConnection, type AuthContext } from "../../../../src/inf
 import { getAuthStatusWithDiagnostics } from "../../../../src/orchestration/auth/auth-actions.js";
 import { createAuthStatusProjection } from "../../../../src/orchestration/app-service/auth/auth-status-projection.js";
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js";
-import { composeFirstPartyModules, installedCredentialProviderIds } from "../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules, installedCredentialProviderIds } from "../../../../src/orchestration/module-contract/module-composition.js";
 
 import { accessProviderRegistry } from "../../../../src/orchestration/config/models/access-provider-registry.js";
 import { authProviders } from "../../../helpers/auth-context.js";

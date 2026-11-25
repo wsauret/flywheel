@@ -32,7 +32,7 @@ import { createShellRuntime } from "../src/orchestration/agent-runtime/backgroun
 import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import type { CapabilityAccess, RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
-import { type FirstPartyModuleComposition, disabledAgentTypes } from "../src/orchestration/module-catalog.js";
+import { type FirstPartyModuleComposition, disabledAgentTypes } from "../src/orchestration/module-contract/module-catalog.js";
 import { createCodeModeRuntime } from "../src/orchestration/modules/code-mode/runtime.js";
 import { createCodeModeService } from "../src/orchestration/modules/code-mode/service.js";
 import type { BenchmarkAdmissionDeps } from "../src/orchestration/modules/development/benchmark/persona/admission.js";

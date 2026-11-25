@@ -1,11 +1,11 @@
 import { resolve } from "node:path";
 import type { AuthContext } from "../../../src/infra/auth/auth-context.js";
-import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
 import { moduleSelectionFromConfig, normalizeModuleSelection } from "../../../src/orchestration/config/module-descriptor.js";
 import { MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js";
 import { ToolActionSchema } from "../../../src/infra/workflow-types.js";
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
-import type { ToolRegistration } from "../../../src/orchestration/module-seams.js";
+import type { ToolRegistration } from "../../../src/orchestration/module-contract/module-seams.js";
 import type { AdvertisedTool } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { buildSystemPromptParts } from "../../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import { buildCommandCatalog } from "../../helpers/command-catalog.js";

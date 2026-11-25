@@ -7,8 +7,8 @@ import { loadAuthStoreWithDiagnostics } from "../../../../../src/infra/auth/stor
 import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
-import { credentialSlotClassifier } from "../../../../../src/orchestration/module-catalog.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { credentialSlotClassifier } from "../../../../../src/orchestration/module-contract/module-catalog.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { googleVertexModule } from "../../../../../src/orchestration/modules/provider-google-vertex/module.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";

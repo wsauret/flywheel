@@ -14,7 +14,7 @@ import { reconcileChildSessionCompletions } from "../../../../src/orchestration/
 import { recordChildWorkflowResume, recordChildWorkflowStartFailure, recordChildWorkflowStop } from "../../../../src/orchestration/session/control/children/child-workflow-result.js"
 import { readToolExecution } from "../../../../src/orchestration/session/runtime-facts/tool-execution-projection"
 import { readChildCall, readChildStop, workflowSessionActions, workflowToolCall } from "../../../../src/orchestration/session/control/chat-session-run-evidence"
-import { workflowRunReader, workflowRunOwner } from "../../../../src/orchestration/module-catalog"
+import { workflowRunReader, workflowRunOwner } from "../../../../src/orchestration/module-contract/module-catalog"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications"
 import { WorkflowSessionFactSchema } from "../../../../src/workflows/vm/facts/session-facts"
 import { replaceWorkflowState, terminalWorkflowFacts } from "./_child-session-reconciliation-fixtures"

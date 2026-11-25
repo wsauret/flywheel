@@ -40,7 +40,7 @@ import { loadEngineeringDoctrine, loadSystemPrompt } from "../src/infra/agent-as
 import { personaToolEntries, toolRegistryFromComposition } from "../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import { captureRuntimeConfigRequest } from "../src/orchestration/config/request-config.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
-import { composeFirstPartyModules } from "../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../src/orchestration/module-contract/module-composition.js";
 import { loadConfig } from "../src/orchestration/config/loader.js";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";
 import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/request/prompt/capability-checks.js";

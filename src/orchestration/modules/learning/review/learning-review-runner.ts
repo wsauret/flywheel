@@ -99,7 +99,7 @@ class LearningReviewRequestError extends Error {
 
 /** Resolve each review request from one profile capture and retain its admitted runtime through settlement. */
 export function createLearningReviewExecution(deps: Partial<LearningReviewModelSetting> & LearningReviewRoots & {
-  readonly moduleSelection: import("../../../module-catalog.js").FirstPartyModuleComposition;
+  readonly moduleSelection: import("../../../module-contract/module-catalog.js").FirstPartyModuleComposition;
   readonly signal?: AbortSignal;
   readonly onBudgetEvent?: (event: RuntimeEvent) => void;
   readonly captureProviderConnection: CaptureProviderConnection;

@@ -31,10 +31,10 @@ import type { ChatEntryPatch } from "../session-store/types.js"
 import type { WorkflowsMode } from "../../protocol/runtime/module-protocol-types.js"
 import type { ModulePolicy } from "../config/policy/module-policy.js"
 import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
-import { unattendedModuleIds } from "../module-catalog.js"
+import { unattendedModuleIds } from "../module-contract/module-catalog.js"
 
 import type { RecallInput, RecallResult } from "../../protocol/transcript/conversation-recall.js"
-import type { AttachChildSessionProjection } from "../module-seams.js"
+import type { AttachChildSessionProjection } from "../module-contract/module-seams.js"
 import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
 type ChatUpdateEntryFn = (patch: ChatEntryPatch) => void
 

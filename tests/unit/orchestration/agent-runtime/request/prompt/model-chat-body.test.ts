@@ -11,8 +11,8 @@ import { FLYWHEEL_CHAT_HOST, MODEL_GUIDANCE, renderAgentGuidance, renderChatBody
 import type { AgentPurpose } from "../../../../../../src/orchestration/agent-runtime/types.js";
 import { captureRuntimeConfigRequest } from "../../../../../../src/orchestration/config/request-config.js";
 import { loadConfig } from "../../../../../../src/orchestration/config/loader.js";
-import { installedDefinitionBundles } from "../../../../../../src/orchestration/module-catalog.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import { installedDefinitionBundles } from "../../../../../../src/orchestration/module-contract/module-catalog.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "../../../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { installedPersonaToolEntries } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { createProjectDefinitionRegistry } from "../../../../../../src/workflows/definitions/definition-registry.js";

@@ -37,7 +37,7 @@ import { workflowParentBinding } from "../../../helpers/workflow-parent.js"
 import { Database } from "bun:sqlite"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages.js"
 import { createSessionAuthAdmission, createWorkflowAuthOwner } from "../../../../src/orchestration/auth/session-auth-profile.js"
-import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection.js"
 import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/runs/duration.js"
 

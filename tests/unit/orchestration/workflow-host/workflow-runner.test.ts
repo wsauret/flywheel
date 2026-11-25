@@ -12,7 +12,7 @@ import { createWorkflowLaunchLifecycle } from "../../../../src/orchestration/wor
 import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/lifecycle/publish.js"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection.js"
 import { createWorkflowHosts } from "../../../../src/orchestration/modules/workflows/host-collection.js"
-import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { childSessionProjectionAttachment } from "../../../../src/orchestration/session-store/child-session-projection.js"
 import type { WorkflowDefinition } from "../../../../src/workflows/schema/workflow-schema.js"
 import type { WorkflowDeps } from "../../../../src/orchestration/agent-runtime/runner/workflow-deps.js"

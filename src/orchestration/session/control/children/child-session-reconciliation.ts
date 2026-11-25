@@ -7,7 +7,7 @@ import {
   hasDurableSubagentNotificationEvidence,
 } from "../background-work/background-work-notifications.js"
 import { installedChildSessionHistory } from "../module-session-operations.js"
-import type { ChildSessionRun, ModuleChildSessionHistory } from "../../../module-seams.js"
+import type { ChildSessionRun, ModuleChildSessionHistory } from "../../../module-contract/module-seams.js"
 import { readPendingTurnEnds } from "../chat-session-run-evidence.js"
 import { subagentRunCut } from "../child-continuation.js"
 import { extractToolContentFact } from "../../../../infra/runtime-facts/tool-content-extraction.js"
@@ -22,7 +22,7 @@ import { terminalOnlyCompletionContent, workflowCompletionContent, type Workflow
 import { readChildCompletionConversation } from "./child-completion-conversation.js"
 import { createSessionPlacementProjection, createSingleSessionMetadataProjection, sessionMetadataStateOf } from "../../metadata/session-metadata-projection.js"
 import type { ReplayedSession } from "../../metadata/schemas.js"
-import { workflowRunReader } from "../../../module-catalog.js"
+import { workflowRunReader } from "../../../module-contract/module-catalog.js"
 import type { WorkflowRunRecord } from "../../metadata/workflow-run-record.js"
 import { prepareSessionFactAppend } from "../../persistence/session-fact-writer.js"
 import { buildSessionMetadataAppend } from "../../metadata/catalog/session-metadata-store.js"

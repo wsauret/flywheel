@@ -1,5 +1,5 @@
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry, type ProjectDefinitionRegistryOptions } from "../../../workflows/definitions/definition-registry.js"
-import { installedDefinitionBundles } from "../../module-catalog.js"
+import { installedDefinitionBundles } from "../../module-contract/module-catalog.js"
 import { installedPersonaToolEntries } from "../../agent-runtime/tools/dispatch/tool-catalog.js"
 
 /** One project's definition registry over this realm's installed catalog: the

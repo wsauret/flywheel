@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test"
-import { asAsyncEventReadSurface } from "../../../src/infra/store/event-store-types.js"
-import type { LauncherScope } from "../../../src/infra/process-supervisor.js"
-import { NO_CAPABILITY_ACCESS } from "../../../src/orchestration/agent-runtime/tools/types.js"
-import { installedWorkspaceMigrations, prepareDefinitionReconciliation, recoverSessionHistory, runModuleMaintenance, type FirstPartyModule } from "../../../src/orchestration/module-catalog.js"
-import type { ToolHistorySummary } from "../../../src/orchestration/module-seams.js"
-import { inMemoryEventReader } from "../../helpers/in-memory-event-reader.js"
-import { refusingEventWriter } from "../../helpers/event-writer-doubles.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
+import type { LauncherScope } from "../../../../src/infra/process-supervisor.js"
+import { NO_CAPABILITY_ACCESS } from "../../../../src/orchestration/agent-runtime/tools/types.js"
+import { installedWorkspaceMigrations, prepareDefinitionReconciliation, recoverSessionHistory, runModuleMaintenance, type FirstPartyModule } from "../../../../src/orchestration/module-contract/module-catalog.js"
+import type { ToolHistorySummary } from "../../../../src/orchestration/module-contract/module-seams.js"
+import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 function owner(id: string, hooks: Partial<Pick<FirstPartyModule, "sessionHistory" | "maintenance" | "definitionReconciliation" | "workspaceMigrations">>): FirstPartyModule {
   return { id, dependencies: [], contributions: [], ...hooks }

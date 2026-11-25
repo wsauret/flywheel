@@ -6,7 +6,7 @@ import { runMachines } from "../../../../../../src/orchestration/modules/remote/
 import { createRemoteAccess, type RemoteAccess } from "../../../../../../src/orchestration/modules/remote/remote-access.js"
 import { openTerminalDeviceStore } from "../../../../../../src/orchestration/modules/remote/terminal/terminal-device-store.js"
 import { pickerView, terminalRemote } from "../../../../../../src/orchestration/modules/remote/terminal/terminal-remote.js"
-import type { ReleaseSide, TerminalRemoteChoice } from "../../../../../../src/orchestration/terminal-remote.js"
+import type { ReleaseSide, TerminalRemoteChoice } from "../../../../../../src/orchestration/module-contract/terminal-remote.js"
 import * as channel from "../../../../../../src/protocol/modules/remote/relay-channel.js"
 import * as creating from "../../../../../../src/protocol/modules/remote/project-creation.js"
 import { machinePlacementId } from "../../../../../../src/protocol/modules/remote/project-creation.js"

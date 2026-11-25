@@ -9,7 +9,7 @@ import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type EventRea
 import { createSqliteEventStore } from "../src/infra/store/sqlite-event-store.js"
 import { factRowsChanged } from "../src/infra/store/sqlite-event-store-core.js"
 import { resolveEventStoreDbFile } from "../src/infra/paths.js"
-import { installedWorkspaceMigrations } from "../src/orchestration/module-catalog.js"
+import { installedWorkspaceMigrations } from "../src/orchestration/module-contract/module-catalog.js"
 import { migrateAgentInputAnswers } from "../src/orchestration/workspace-state/migrations/agent-input-answer.js"
 import { createSessionDetailProjection } from "../src/orchestration/app-service/projections/session-detail-projection.js"
 import { createTranscriptProjectionCache } from "../src/orchestration/app-service/projections/output/transcript-projection-cache.js"

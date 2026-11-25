@@ -1,7 +1,7 @@
 import { createAccessProviderSelection, type AccessProviderDefinition, type AccessProviderId, type ProviderSettingValues } from "../../../infra/llm/access/access-provider.js"
 import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../infra/llm/usage/subscription-usage.js"
 import type { ModuleProviderSetting } from "../../../protocol/runtime/module-protocol-types.js"
-import type { FirstPartyModuleComposition } from "../../module-catalog.js"
+import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js"
 import type { AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js"
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/routing/provider-affordability.js"
 import type { ProviderAllowanceFactory } from "../../agent-runtime/llm/routing/provider-availability-types.js"

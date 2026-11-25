@@ -14,7 +14,7 @@ import type { SessionFactWriter } from "../../../../session/persistence/session-
 import type { PromptKind } from "../../../../agent-runtime/request/prompt/system-prompt.js"
 import type { BriefScope } from "../../../../config/models/role-selection.js"
 import type { RoleResolver } from "../../../../config/roles.js"
-import type { ChildSessionAuthority, ChildSessionConversation, ParentNotificationDelivery } from "../../../../module-seams.js"
+import type { ChildSessionAuthority, ChildSessionConversation, ParentNotificationDelivery } from "../../../../module-contract/module-seams.js"
 import type { DefinitionAvailabilitySnapshot } from "../../../../config/policy/definition-availability.js"
 import type { ModuleRuntimeServices } from "../../../../agent-runtime/request/module-services/module-runtime-services.js"
 

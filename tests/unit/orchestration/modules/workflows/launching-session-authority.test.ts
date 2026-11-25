@@ -11,7 +11,7 @@ import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from ".
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js"
 import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/request/module-services/module-runtime-services.js"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { loadPathWorkflow } from "../../../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js"

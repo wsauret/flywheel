@@ -1,4 +1,4 @@
-import type { ModuleWorkflowRuns } from "../../module-seams.js"
+import type { ModuleWorkflowRuns } from "../../module-contract/module-seams.js"
 import { recordChildWorkflowStop } from "../../session/control/children/child-workflow-result.js"
 import { reconcileChildSessionCompletions } from "../../session/control/children/child-session-reconciliation.js"
 

@@ -15,7 +15,7 @@ import type { RoleAssignments } from "../../../../../../src/orchestration/sessio
 import { temporaryDirectories, testDirectories } from "../../../../../helpers/directories.js"
 import { fakeModelInfos, fakeModelsClient, makeModelsClient, modelInfo } from "../../../../../helpers/model-tier-fixtures.js"
 import { chatEntry } from "../../app-service-doubles.js"
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js"
 import { CONFIG_DEFAULTS } from "../../../../../../src/orchestration/config/schema/schema.js"
 import { captureRoleAssignments } from "../../../../../../src/orchestration/config/models/session-role-resolver.js"
 import { fakeListingClient } from "../../../../../helpers/fake-listing-client.js"

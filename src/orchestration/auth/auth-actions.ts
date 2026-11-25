@@ -48,7 +48,7 @@ import { customProviderRejections } from "../../infra/llm/custom-provider-regist
 // Stored accounts keep their classification and labels while their module is
 // off. Login lookup describes a flow; CLI and runtime callers admit the provider
 // through their effective selection before they invoke it.
-import { installedAccessProviderDefinitions, installedAccessProviderSelection, installedCredentialProviderIds, installedCredentialSlotClassifier, installedUsageReader, installedWebAuthProviderDefinitions } from "../module-composition.js";
+import { installedAccessProviderDefinitions, installedAccessProviderSelection, installedCredentialProviderIds, installedCredentialSlotClassifier, installedUsageReader, installedWebAuthProviderDefinitions } from "../module-contract/module-composition.js";
 import { credentialIdOf, isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../infra/auth/provider-account.js";
 const destination = (authDir: string, writeAccess?: AuthProfileAccess) => writeAccess ?? authDir;
 const log = Log.create({ service: "auth-actions" });

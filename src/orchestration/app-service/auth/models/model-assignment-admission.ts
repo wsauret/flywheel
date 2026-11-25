@@ -6,7 +6,7 @@ import type { ModelAssignmentRow, RuntimeGlobalDefaultRolesResult, RuntimeModelA
 import { canonicalModelId } from "../../../../infra/model-id.js"
 import { TRAINING_ROUTES_REQUIRED } from "../../../../protocol/auth/provider-model-preference-protocol-types.js"
 import type { RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
-import type { FirstPartyModuleSnapshot } from "../../../module-catalog.js"
+import type { FirstPartyModuleSnapshot } from "../../../module-contract/module-catalog.js"
 import { ensureSessionAuthProfile, resolveSessionAuthProfile, type SessionAuthAdmission, type SessionAuthProfileSelection, type SessionAuthProfileMaterializer } from "../../../auth/session-auth-profile.js"
 import type { SessionManager } from "../../../session/manager.js"
 import type { SessionStore } from "../../../session-store/types.js"

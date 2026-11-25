@@ -7,7 +7,7 @@ import { loadQueueSnapshotFromReader } from "../../../workflows/vm/recovery/work
 import { workflowRecoveryBasis } from "../../../workflows/vm/recovery/recovery.js"
 import { readToolExecution } from "../../session/runtime-facts/tool-execution-projection.js"
 import { turnEndEntryId } from "../../session/conversation/turn-end-record.js"
-import { workflowRunReader } from "../../module-catalog.js"
+import { workflowRunReader } from "../../module-contract/module-catalog.js"
 import { retirePlannedSessionContinuation } from "../../session/control/planned-session-continuation.js"
 import { WORKFLOW_LAUNCH_OPERATION_KIND, workflowLaunchHost, type WorkflowLaunchOperation } from "../../workflow-host/lifecycle/launch-operation-contract.js"
 import type {
@@ -15,7 +15,7 @@ import type {
   ModuleRetainedOperationContribution,
   RetainedOperationCell,
   RetainedOperationContinuation,
-} from "../../module-seams.js"
+} from "../../module-contract/module-seams.js"
 
 const log = Log.create({ service: "workflow-launch-operation" })
 

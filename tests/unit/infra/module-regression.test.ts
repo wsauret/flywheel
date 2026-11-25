@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { AccessProviderId } from "../../../src/infra/llm/access/access-provider.js";
-import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
 import { MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js";
 import { createObserverChain } from "../../../src/orchestration/agent-runtime/loop/batch-observers.js";

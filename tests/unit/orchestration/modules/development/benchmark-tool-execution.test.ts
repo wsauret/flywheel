@@ -29,7 +29,7 @@ import { isRecord, type UnknownRecord } from "../../../../../src/infra/record.js
 import { fixedDefinitions } from "../../../../helpers/project-definitions.js";
 import { makeContext } from "../../agent-runtime/tools/_fixtures.js";
 import { testDirectories } from "../../../../helpers/directories.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js";
 import { DEVELOPMENT_MODULES } from "../../../../../src/orchestration/development-modules.js";
 import { withRequestAdmission } from "../../agent-runtime/_model-client.js";

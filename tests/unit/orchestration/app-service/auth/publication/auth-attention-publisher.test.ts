@@ -4,8 +4,8 @@ import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../
 import type { AuthFileAttention, RuntimeAuthView } from "../../../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { composeModules } from "../../../../../../src/infra/module-descriptor.js"
 import { composeModuleProcessServices, createNotifySeam } from "../../../../../../src/orchestration/app-service/executor/execution/module-service-host.js"
-import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js"
-import type { FirstPartyModule } from "../../../../../../src/orchestration/module-catalog.js"
+import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-contract/module-composition.js"
+import type { FirstPartyModule } from "../../../../../../src/orchestration/module-contract/module-catalog.js"
 import { kernelPorts } from "../../../../../helpers/module-kernel.js"
 
 const view = (fileAttention?: AuthFileAttention): RuntimeAuthView => ({

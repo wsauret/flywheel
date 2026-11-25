@@ -12,7 +12,7 @@ import { createBashDefinition } from "../../../../../../src/orchestration/agent-
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js"
 import { planToolExposure } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js"
 import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/session/control/background-work/background-work.js"
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js"
 import { MANDATORY_PROTECTED_PATHS } from "../../../../../../src/orchestration/modules/experiments/charter.js"
 import { makeContext } from "../../../agent-runtime/tools/_fixtures.js"
 import { bashExecution } from "../../../agent-runtime/tools/bash/_bash-fixtures.js"

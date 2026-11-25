@@ -11,7 +11,7 @@ import type { LauncherContext } from "../../../../../src/infra/process-superviso
 import * as sqliteEventStore from "../../../../../src/infra/store/sqlite-event-store.js";
 import type { UsageEntry } from "../../../../../src/infra/llm/usage/usage-entry.js";
 import { Log } from "../../../../../src/infra/diagnostics/log.js";
-import type { CommandProcessResources } from "../../../../../src/orchestration/cli-contribution.js";
+import type { CommandProcessResources } from "../../../../../src/orchestration/module-contract/cli-contribution.js";
 import { hashSystemPrompt, hashToolSurface } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-hash.js";
 import { buildSessionCreatedFact } from "../../../../../src/orchestration/session/metadata/session-metadata-facts.js";
 import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js";

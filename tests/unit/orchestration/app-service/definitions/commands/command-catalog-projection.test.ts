@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { FirstPartyModuleComposition, ModuleId } from "../../../../../../src/orchestration/module-catalog.js"
-import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js"
+import type { FirstPartyModuleComposition, ModuleId } from "../../../../../../src/orchestration/module-contract/module-catalog.js"
+import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-contract/module-composition.js"
 import { createCommandCatalogProjection } from "../../../../../../src/orchestration/app-service/definitions/commands/command-catalog-projection.js"
 import { composeModules } from "../../../../../../src/infra/module-descriptor.js"
 import { fixedDefinitions, repoModules } from "../../../../../helpers/project-definitions.js"

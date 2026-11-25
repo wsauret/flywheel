@@ -1,5 +1,5 @@
 import { canonicalDirectory } from "../../infra/directory-authorities.js"
-import { workflowRunOwner } from "../module-catalog.js"
+import { workflowRunOwner } from "../module-contract/module-catalog.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreAppend, type EventStoreReadSurface, type LocalEventWrites, type GuardedAppendResult, type GuardedEventStoreAppend } from "../../infra/store/event-store-types.js"
 import { createWorkflowPublication, type WorkflowAdoption, type WorkflowCommitPublication } from "./publication/workflow-publication.js"
 import { Log } from "../../infra/diagnostics/log.js"

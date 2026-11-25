@@ -11,7 +11,7 @@ import { readStoredSession } from "./_session-metadata-test-helpers";
 import { adoptTestWorkflow, cleanupTmpRoot, makeDeps, makeDepsWithStore, makeTmpDir, publishTestWorkflow, racingPublicationWriter } from "./_session-manager-fixtures";
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js";
 import { WorkflowParentRefusal } from "../../../../src/orchestration/session/control/children/child-session-publication";
-import { workflowRunReader, workflowRunWriter } from "../../../../src/orchestration/module-catalog";
+import { workflowRunReader, workflowRunWriter } from "../../../../src/orchestration/module-contract/module-catalog";
 import { recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures";
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts";
 import { decodeSessionMetadataFactForReplay } from "../../../../src/orchestration/session/metadata/session-metadata-facts";

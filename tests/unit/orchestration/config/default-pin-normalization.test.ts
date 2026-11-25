@@ -11,7 +11,7 @@ import {
   normalizeAssignmentPatch,
 } from "../../../../src/orchestration/config/models/model-assignments.js";
 import { createModelAssignmentController } from "../../../../src/orchestration/config/models/model-assignment-controller.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
 import { USER_DATA_ROOT, withTempDir, NO_CREDENTIALS } from "./_config-models-fixtures.js";

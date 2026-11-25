@@ -14,7 +14,7 @@ import {
 import { capabilityAccessFor } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentRunResult, AgentRunTerminal } from "../../../../../../src/orchestration/agent-runtime/types.js";
 import type { SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
-import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js";
+import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { Log } from "../../../../../../src/infra/diagnostics/log.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 type ReviewNotice = Parameters<SpawnedReview["recordSystemMessage"]>[0];

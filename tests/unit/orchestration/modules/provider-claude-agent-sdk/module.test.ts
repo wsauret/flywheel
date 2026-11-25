@@ -9,8 +9,8 @@ import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/mod
 import { processUsageReadings } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/account-usage.js";
 import type { CliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { updateModuleMember } from "../../../../../src/orchestration/config/policy/module-selection-writer.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
-import { moduleProtocolRows } from "../../../../../src/orchestration/module-catalog.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
+import { moduleProtocolRows } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { moduleSelectionFromConfig } from "../../../../../src/orchestration/config/module-descriptor.js";
 import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js";
 import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js";

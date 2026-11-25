@@ -1,5 +1,5 @@
 import type { AuthContext } from "../../../infra/auth/auth-context.js";
-import type { FirstPartyModuleSnapshot } from "../../module-catalog.js";
+import type { FirstPartyModuleSnapshot } from "../../module-contract/module-catalog.js";
 import type { KeyResolver } from "../../../infra/auth/resolve-key.js";
 import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import type { ModelListingClient } from "../../../infra/llm/access/model-listing.js";

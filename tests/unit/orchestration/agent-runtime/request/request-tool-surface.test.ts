@@ -7,9 +7,9 @@ import { NO_CAPABILITY_ACCESS } from "../../../../../src/orchestration/agent-run
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { fixedRequestToolSurface, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
 import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
-import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js";
-import type { FirstPartyModule } from "../../../../../src/orchestration/module-catalog.js";
+import type { FirstPartyModule } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { hashToolInputFormat } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-hash.js";
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/provider-description.js";

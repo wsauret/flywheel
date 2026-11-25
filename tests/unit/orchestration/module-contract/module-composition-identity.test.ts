@@ -1,15 +1,26 @@
 import { describe, expect, test } from "bun:test"
-import { installCustomProviders } from "../../helpers/custom-providers.js"
-import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js"
-import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js"
-import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../src/orchestration/module-composition.js"
-import { installedModules } from "../../../src/orchestration/module-catalog.js"
-import { createToolRegistry } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js"
-import { EMPTY_MODULE_IDS, MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js"
+import { installCustomProviders } from "../../../helpers/custom-providers.js"
+import { toolRegistryFromComposition } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js"
+import { SHIPPED_MODULES } from "../../../../scripts/shipped-modules.js"
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../src/orchestration/module-contract/module-composition.js"
+import { callsShellTool, installedModules, RETIRED_SHELL_NAME, toolIdentity } from "../../../../src/orchestration/module-contract/module-catalog.js"
+import { createToolRegistry } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js"
+import { EMPTY_MODULE_IDS, MODULE_IDS } from "../../../../src/protocol/runtime/module-ids.js"
 
 const everyShipped = SHIPPED_MODULES.map((module) => module.id)
 
 describe("module composition identity", () => {
+  // The catalog's name table reads tool declarations only, without the kernel
+  // tools, so a history reader below the agent runtime can ask it.
+  test("every name the model calls names the tool that the full tool registry names", () => {
+    for (const [id, registration] of createToolRegistry()) {
+      expect(toolIdentity(registration.exposedName ?? id)).toBe(registration.tool)
+      expect(toolIdentity(registration.tool)).toBe(registration.tool)
+    }
+    expect(toolIdentity(RETIRED_SHELL_NAME)).toBe("bash")
+    expect([callsShellTool("bash"), callsShellTool(RETIRED_SHELL_NAME), callsShellTool("apply_patch"), callsShellTool("process")]).toEqual([true, true, false, false])
+  })
+
   test("equal inputs return one frozen value", () => {
     const composition = composeFirstPartyModules(SHIPPED_MODULES)
     expect(composeFirstPartyModules(SHIPPED_MODULES)).toBe(composition)

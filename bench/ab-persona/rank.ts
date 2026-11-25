@@ -5,6 +5,8 @@
 // runtime, no profile, no provider request. It prints the policy that the
 // records imply and leaves ROLE_MODEL_DEFAULTS to an approved change.
 
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../../scripts/shipped-modules.js";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { selectStartupDirectories } from "../../src/infra/directory-authorities.js";

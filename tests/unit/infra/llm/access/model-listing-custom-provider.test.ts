@@ -3,7 +3,7 @@ import { accessProviderAccountKey } from "../../../../../src/infra/auth/provider
 import { installCustomProviders } from "../../../../helpers/custom-providers.js";
 import { createModelListingClient } from "../../../../../src/infra/llm/access/model-listing.js";
 import { staticOfferingMap } from "../../../../../src/infra/llm/access/model-listing-rows.js";
-import { credentialSlotClassifier } from "../../../../../src/orchestration/module-catalog.js";
+import { credentialSlotClassifier } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { testCapabilityModules, testProviderSelection } from "../../../../helpers/provider-authority.js";
 import { AUTH_DIR, AUTH_NONE } from "../../../orchestration/config/_model-listing-fixtures.js";
 import { authProviders } from "../../../../helpers/auth-context.js";

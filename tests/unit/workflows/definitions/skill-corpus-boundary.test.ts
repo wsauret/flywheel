@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { createProjectDefinitionRegistry } from "../../../../src/workflows/definitions/definition-registry.js";
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
 import { bashModule } from "../../../../src/orchestration/modules/bash/module.js";
-import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
+import { installedDefinitionBundles } from "../../../../src/orchestration/module-contract/module-catalog.js";
 import {
   skillPackageManifestIdentity,
   publishSkillRevision,

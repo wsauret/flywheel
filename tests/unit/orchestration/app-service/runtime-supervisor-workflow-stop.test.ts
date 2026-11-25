@@ -9,7 +9,7 @@ import { createSessionFactWriter } from "../../../../src/orchestration/session/p
 import { readChildStop } from "../../../../src/orchestration/session/control/chat-session-run-evidence.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications.js"
 import { cleanup, compose, context, parentChat, branch, modelCall } from "./_runtime-supervisor-workflow-launch-fixtures.js"
-import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { workflowProtocol } from "./app-service-doubles.js"
 import { EventReaderService } from "../../../../src/infra/store/event-store-effect.js"
 

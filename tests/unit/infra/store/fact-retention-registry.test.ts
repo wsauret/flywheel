@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { declaredFactRetentionTypes, declaredRetiredFactTypes, factOwner, factRetention } from "../../../../src/infra/store/fact-retention-registry"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { SHIPPED_MODULES } from "../../../../scripts/shipped-modules.js"
-import type { FirstPartyModule } from "../../../../src/orchestration/module-catalog.js"
+import type { FirstPartyModule } from "../../../../src/orchestration/module-contract/module-catalog.js"
 
 describe("fact retention registry ownership", () => {
   test("every classified family records one owner", () => {

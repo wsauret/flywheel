@@ -10,7 +10,8 @@ import type { AgentLoopTerminal } from "../../../../../src/orchestration/agent-r
 import type { RestoredAgentWait } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
 import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/loop/turn/run-lifecycle.js";
 import { SILENT_REPLY_NUDGE } from "../../../../../src/orchestration/agent-runtime/loop/reply-nudge.js";
-import { createProcessTool, DEFAULT_WAIT_SECONDS } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
+import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
+import { DEFAULT_WAIT_SECONDS } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
 import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
 import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/execution/injection-queue.js";

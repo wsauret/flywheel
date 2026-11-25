@@ -27,7 +27,7 @@ import { bridgeExternalPromise } from "../../agent-runtime/external-promise-brid
 import { createRelayControlChannel, linkConnection, linkFailure, type ControlFailure, type RelayLink, type ServedClient } from "./relay-control-channel.js"
 import { dialRelayDataChannel } from "./relay-data-channel.js"
 import type { AccountServiceInstallation } from "../../app-service/account/installation/account-service-platform.js"
-import type { AccountModuleFaults } from "../../app-service/executor/execution/module-service-host.js"
+import type { AccountModuleFaults } from "../../app-service/account/projects/account-module-services.js"
 import { ensureRemoteIdentity, type RemoteIdentity } from "./pairing/remote-identity.js"
 import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./pairing/remote-pairing-exchange.js"
 

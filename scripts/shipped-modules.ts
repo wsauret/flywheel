@@ -3,7 +3,7 @@
 // catalog they publish (module-catalog.ts).
 import { CREDENTIAL_PROVIDER_MODULES } from "../src/orchestration/credential-provider-modules.js"
 import type { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js"
-import type { FirstPartyModule, ModuleId } from "../src/orchestration/module-catalog.js"
+import type { FirstPartyModule, ModuleId } from "../src/orchestration/module-contract/module-catalog.js"
 import { SHIPPED_OTHER_MODULES } from "../src/orchestration/modules.js"
 
 /** The catalog every release composes from. */

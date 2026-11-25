@@ -11,7 +11,7 @@ import { cancelledSubagentContent, stoppedSubagentContent } from "../result/resu
 import { prepareSessionFactAppend } from "../../../../session/persistence/session-fact-writer.js"
 import { reconcileChildSessionCompletions } from "../../../../session/control/children/child-session-reconciliation.js"
 import { Log } from "../../../../../infra/diagnostics/log.js"
-import type { ChildStopAnswer, ParentNotificationDelivery } from "../../../../module-seams.js"
+import type { ChildStopAnswer, ParentNotificationDelivery } from "../../../../module-contract/module-seams.js"
 
 const log = Log.create({ service: "subagent-control" })
 

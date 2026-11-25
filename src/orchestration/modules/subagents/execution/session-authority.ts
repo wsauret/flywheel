@@ -15,7 +15,7 @@ import { liveChildRun, registerLiveSessionControl } from "../../../session/contr
 import { settleUnreadMessages, wakeAfterSettlement } from "../../../session/control/messaging/session-input-delivery.js"
 // oxlint-disable-next-line import/no-cycle -- planned continuation is a kernel authorization consumed by the module run owner.
 import { preparePlannedSessionContinuationConsumption, readPlannedSessionContinuationAsync } from "../../../session/control/planned-session-continuation.js"
-import type { AttachChildSessionProjection, ChildSessionAuthority, SessionStorePorts } from "../../../module-seams.js"
+import type { AttachChildSessionProjection, ChildSessionAuthority, SessionStorePorts } from "../../../module-contract/module-seams.js"
 
 const log = Log.create({ service: "subagent-session-authority" })
 export function createSubagentSessionAuthority(input: SessionStorePorts & {

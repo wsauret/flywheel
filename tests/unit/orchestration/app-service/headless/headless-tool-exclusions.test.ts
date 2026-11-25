@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createRuntimeModuleComposer } from "../../../../../src/orchestration/app-service/executor/execution/runtime-module-composition.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";

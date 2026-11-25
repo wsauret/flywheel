@@ -3,7 +3,7 @@ import { workflowCallLaunched } from "../../../../infra/tools/workflow-call-sour
 import { readAdvancingCompletionEvidence, readTerminalHandoff, terminalWorkflow, workflowStartFailureContent, workflowStopContent, type AgentResult, type FailedAgent, type TerminalHandoff } from "../../../../workflows/vm/recovery/workflow-completion.js"
 import { createReplayingWorkflowView } from "../../../../workflows/vm/recovery/workflow-view.js"
 import { readWorkflowControl } from "../../../../workflows/vm/recovery/recovery-fold.js"
-import { workflowRunOwner } from "../../../module-catalog.js"
+import { workflowRunOwner } from "../../../module-contract/module-catalog.js"
 import type { WorkflowRunRecord } from "../../metadata/workflow-run-record.js"
 import { readParentTools, type ChildReconciliationReadContext } from "./child-reconciliation-index.js"
 import { retainedSettledContent, workflowNotificationLabel } from "./child-session-completion.js"

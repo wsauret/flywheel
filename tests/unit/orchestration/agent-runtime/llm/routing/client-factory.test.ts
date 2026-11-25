@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Exit, Redacted, Scope } from "effect";
 import { captureProviderConnection, resolveAuthContext } from "../../../../../../src/infra/auth/auth-context.js";
-import { credentialSlotClassifier, installedModules } from "../../../../../../src/orchestration/module-catalog.js";
+import { credentialSlotClassifier, installedModules } from "../../../../../../src/orchestration/module-contract/module-catalog.js";
 import { createSubscriptionSpendEnvelope } from "../../../../../../src/infra/auth/subscription/subscription-spend-consent.js";
 import { createSubscriptionAccountIdentity } from "../../../../../../src/infra/auth/subscription/subscription-account-identity.js";
 import { isAgentRuntimeError } from "../../../../../../src/orchestration/agent-runtime/llm/routing/runtime-errors.js";
@@ -14,7 +14,7 @@ import { captureAccountConnection, createAdmittedClient, createClient, providerA
 import { ModelAccessRefusedError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { isFailoverFailure, normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { anthropicApiModule } from "../../../../../../src/orchestration/modules/provider-anthropic-api/module.js";
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js";
 import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";

@@ -2,7 +2,7 @@ import { createRequire } from "node:module"
 
 import { runningSourceSnapshot } from "../src/infra/cli-subprocess.js"
 import type { SourceEntry } from "../src/infra/distribution/source-snapshot.js"
-import { installModuleCatalog } from "../src/orchestration/module-catalog.js"
+import { installModuleCatalog } from "../src/orchestration/module-contract/module-catalog.js"
 
 /** Runs the Flywheel CLI from the source tree this file belongs to: the
  *  snapshot of a checkout that the dev entry chose, or a checkout whose

@@ -11,7 +11,7 @@ import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { createClaudeReminders } from "../../agent-runtime/llm/history/runtime-reminders.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 
 /** The listing pages by `after_id`, the way the Messages API's model list does. */
 function nextModelsPage(body: unknown, currentUrl: string): string | undefined {

@@ -1,4 +1,4 @@
-import type { CliCommandContext, CliNounContribution, CliVerb } from "../../../cli-contribution.js"
+import type { CliCommandContext, CliNounContribution, CliVerb } from "../../../module-contract/cli-contribution.js"
 import { REMOTE_USAGE } from "./usage.js"
 
 type RemoteCli = typeof import("./index.js")

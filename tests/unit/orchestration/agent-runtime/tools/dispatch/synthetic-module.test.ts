@@ -9,10 +9,10 @@ import { composeModules } from "../../../../../../src/infra/module-descriptor.js
 import type { ModuleRuntimeServices } from "../../../../../../src/orchestration/agent-runtime/request/module-services/module-runtime-services.js";
 import { planToolExposure } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { toolRegistryFromComposition } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
-import type { ToolDeclaration } from "../../../../../../src/orchestration/module-seams.js";
+import type { ToolDeclaration } from "../../../../../../src/orchestration/module-contract/module-seams.js";
 import type { RuntimeTool } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { SHIPPED_MODULES } from "../../../../../../scripts/shipped-modules.js";
-import type { FirstPartyModule, FirstPartyModuleComposition } from "../../../../../../src/orchestration/module-catalog.js";
+import type { FirstPartyModule, FirstPartyModuleComposition } from "../../../../../../src/orchestration/module-contract/module-catalog.js";
 import { testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";
 import { moduleRuntimeServices } from "../../../../../helpers/module-runtime-services.js";
 import { promptCapabilities } from "../../../../../helpers/prompt-capabilities.js";

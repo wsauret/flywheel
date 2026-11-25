@@ -4,7 +4,7 @@ import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../../he
 import { createWorkflowController } from "../../../../src/orchestration/workflow-host/lifecycle/controller"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures"
-import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog"
+import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog"
 import { workflowParentBinding } from "../../../helpers/workflow-parent"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts"
 import { workflowRootControl } from "../../../../src/workflows/control-facts/family"

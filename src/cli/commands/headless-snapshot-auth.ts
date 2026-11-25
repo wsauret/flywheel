@@ -7,7 +7,7 @@ import { isAuthProfileName } from "../../infra/paths.js"
 import { accessProviderRegistry } from "../../orchestration/config/models/access-provider-registry.js"
 import { publishCustomProvidersFromConfig } from "../../orchestration/config/custom-providers.js"
 import { createRuntimeConfigOwner } from "../../orchestration/config/runtime-config-owner.js"
-import { composeFirstPartyModules } from "../../orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../orchestration/module-contract/module-composition.js"
 
 const USAGE = "Usage: flywheel headless snapshot-auth --auth-profile <id-or-unique-display-name> --output </private/flywheel-auth-bundle-*/auth.json> [--provider <id>]... [--min-valid-seconds <n>] [--as-profile <id>]\n" +
   "  --provider           Export only this credential provider's credentials, such as chatgpt. Repeat it to keep more providers.\n" +

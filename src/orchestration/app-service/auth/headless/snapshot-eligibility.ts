@@ -2,7 +2,7 @@ import type { ProviderConnection } from "../../../../infra/auth/auth-context.js"
 import { createModelListingClient } from "../../../../infra/llm/access/model-listing.js"
 import type { ModelsClient } from "../../../../infra/llm/models/models.js"
 import { accessProviderRegistry } from "../../../config/models/access-provider-registry.js"
-import { credentialSlotClassifier, type FirstPartyModuleSnapshot } from "../../../module-catalog.js"
+import { credentialSlotClassifier, type FirstPartyModuleSnapshot } from "../../../module-contract/module-catalog.js"
 import { resolveProviderModelCatalog } from "../../../config/models/model-assignment-providers.js"
 
 /** The eligibility sources of a run that serves from a captured connection,

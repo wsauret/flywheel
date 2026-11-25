@@ -2,7 +2,7 @@ import { isActiveActivity } from "../../../../protocol/runtime/app-service-types
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
 import type { ChatRunner } from "../../../chat/runner-types.js"
-import type { HeldRetainedOperation } from "../../../module-seams.js"
+import type { HeldRetainedOperation } from "../../../module-contract/module-seams.js"
 import { entryActivity } from "../../../session-store/activity.js"
 import { readChatTurnEnd } from "../../../session/control/chat-session-run-evidence.js"
 import { isResumableTurnEnd, isVisibleTurnEnd } from "../../../session/conversation/turn-end-record.js"

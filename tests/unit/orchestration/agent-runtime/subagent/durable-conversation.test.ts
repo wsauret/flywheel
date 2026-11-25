@@ -17,7 +17,7 @@ import { readConversationBackgroundNotifications } from "../../../../../src/orch
 import { readConversationQueuedUserInputs } from "../../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { readSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"
-import type { ChildSessionConversation } from "../../../../../src/orchestration/module-seams.js"
+import type { ChildSessionConversation } from "../../../../../src/orchestration/module-contract/module-seams.js"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js"
 import { createConversationRecall } from "../../../../../src/orchestration/session/conversation-records/conversation-recall.js"
 import { childTask, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js"

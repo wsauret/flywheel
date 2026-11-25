@@ -17,7 +17,7 @@ import type { ProjectDefinitionRegistry } from "../../../workflows/definitions/d
 import { createBreadcrumbMaintenance } from "../../session/persistence/storage/session-artifacts.js";
 import { createWebSearch, createWebSearchProviderResolver } from "../web-search/select.js";
 import type { WebSearchProviderId } from "../web-search/types.js";
-import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../module-catalog.js";
+import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../module-contract/module-catalog.js";
 import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "../../config/request-config.js";
 import type { StreamingEditValidationService } from "../tools/edit/streaming-edit-validation.js";
 import { requestAdmissionFromCaptures } from "../llm/routing/request-admission.js";

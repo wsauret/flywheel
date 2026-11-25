@@ -1,53 +1,11 @@
-import { isYieldPlaceholderCommand } from "../tools/bash/policy/bash-command-policy.js";
-import { toolIdentity } from "../tools/dispatch/tool-catalog.js";
-import { DEFAULT_WAIT_SECONDS, formatWaitNoopNotification, isParkingWaitCall, processWaitSeconds } from "../tools/sessions/process.js";
+import { formatWaitNoopNotification } from "../tools/sessions/process.js";
 import type { ToolCall } from "../llm/types.js";
 import { agentLoopTransition, type AgentLoopState } from "./agent-loop-state.js";
 import type { BackgroundWorkRegistry } from "../../session/control/background-work/background-work.js";
-import type { RestoredAgentWait } from "../../session/conversation/turn-end-record.js";
+import { isWaitCall, openedWaitOf, type RestoredAgentWait } from "../../session/conversation/turn-end-record.js";
 import type { ToolResultEntry } from "./turn/agent-state.js";
 import type { TurnOutcome } from "./turn/assistant-turn-result.js";
 import { createRepetitionGuard } from "./nudges/doom-loop.js";
-
-/** The tag of the notice that a wait's expiry delivers, which ends the wait. */
-export const WAIT_EXPIRED_TAG = "wait_expired";
-
-/** Whether a stored message's content is the notice of a wait's expiry. */
-function isWaitExpiredNotice(content: unknown): boolean {
-  return typeof content === "string" && content.startsWith(`<${WAIT_EXPIRED_TAG}>`);
-}
-
-/** One input that an open wait meets: a Resume, or a message in the live
- *  loop's input shape (`origin` `human`, `session`, or `silent-system`) or in
- *  its stored shape (`origin` `human` or `system`; a notification keeps
- *  `replyRequired` where the ids it carried live are gone). */
-export type OpenWaitInput =
-  | { readonly kind: "resume"; readonly continuesWait: boolean }
-  | {
-      readonly kind: "message";
-      readonly origin?: string;
-      readonly producer?: { readonly kind: string };
-      readonly backgroundNotificationIds?: readonly string[];
-      readonly replyRequired?: true;
-      readonly content?: unknown;
-    };
-
-/** Whether one input ends the open wait that holds `replyWaitIds`: a
- *  background notification, the notice of the wait's expiry, a person's
- *  message, a Resume that does not continue a planned cut's wait, or, for a
- *  message from another session, the reply that ends a reply wait the open
- *  wait holds (the registry ends that reply wait before the message
- *  commits, so `holdsWait` no longer names it). Every other input, such as a
- *  runtime or module notice, the reply nudge, or an unrelated session's
- *  message, only re-drives the turn. The live loop and the restore reader
- *  both decide by this rule, so a restart restores the wait the live loop
- *  held. */
-export function endsOpenWait(input: OpenWaitInput, replyWaitIds: readonly string[], holdsWait: (toolUseId: string) => boolean): boolean {
-  if (input.kind === "resume") return !input.continuesWait;
-  if ((input.backgroundNotificationIds?.length ?? 0) > 0 || input.replyRequired === true || isWaitExpiredNotice(input.content)) return true;
-  if (input.producer?.kind === "session") return replyWaitIds.some((id) => !holdsWait(id));
-  return input.origin !== "system" && input.origin !== "silent-system";
-}
 
 /** Restores the original deadline only while work can still wake the turn.
  *  A park-only start (`RestoredAgentWait.parkOnly`) arms no deadline, since
@@ -71,18 +29,6 @@ export interface WaitToolPolicy {
   readonly settleWaitCalls: (calls: readonly ToolCall[]) => boolean;
 }
 
-/** Whether a call is a yield placeholder (bash-command-policy.ts): a bash
- *  call, live or recorded under a retired name, whose command only parks the
- *  turn while background work is pending. A background launch is never a
- *  placeholder, whatever its command: it starts work that the turn then owes
- *  (ARCH-TOOLS-031), so the turn continues and the pending-work reminder
- *  applies. */
-function isYieldPlaceholderToolCall(toolCall: ToolCall, hasPendingBackgroundWork: boolean): boolean {
-  if (!hasPendingBackgroundWork || toolIdentity(toolCall.name) !== "bash" || toolCall.input.background === true) return false;
-  const command = toolCall.input.command;
-  return typeof command === "string" && isYieldPlaceholderCommand(command);
-}
-
 export function createWaitToolPolicy(
   hasLiveBackgroundWork: () => boolean,
   markWaitRequested: (seconds: number | undefined, replyWaitIds: readonly string[]) => void,
@@ -92,19 +38,12 @@ export function createWaitToolPolicy(
   holdsWait?: (toolUseId: string) => boolean,
 ): WaitToolPolicy {
   return {
-    isWaitCall: (call) => isParkingWaitCall(call)
-      || isYieldPlaceholderToolCall(call, hasLiveBackgroundWork())
-      || holdsWait?.(call.id) === true,
+    isWaitCall: (call) => isWaitCall(call, hasLiveBackgroundWork, holdsWait),
     settleWaitCalls: (calls) => {
       if (calls.length === 0) return false;
       if (hasLiveBackgroundWork()) {
-        const seconds = calls.map((call) => isParkingWaitCall(call) ? processWaitSeconds(call.input) : undefined).find((duration) => duration !== undefined);
-        markWaitRequested(
-          seconds ?? (calls.some((call) => isYieldPlaceholderToolCall(call, true)) ? DEFAULT_WAIT_SECONDS : undefined),
-          // A process wait or a placeholder is a wait by its own input; asking
-          // whether it holds a reply wait would cost a restore a read.
-          calls.flatMap((call) => !isParkingWaitCall(call) && !isYieldPlaceholderToolCall(call, true) && holdsWait?.(call.id) === true ? [call.id] : []),
-        );
+        const { seconds, replyWaitIds } = openedWaitOf(calls, holdsWait);
+        markWaitRequested(seconds, replyWaitIds);
         return true;
       }
       enqueueRuntimeNotice?.(formatWaitNoopNotification());

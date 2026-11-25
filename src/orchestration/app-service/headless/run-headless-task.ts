@@ -11,7 +11,7 @@ import type { BridgedPersistentProcessClient } from "../../../infra/supervision/
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../infra/auth/resolve-key.js"
 import { resolveConversationSearchDbFile, resolveSessionDir } from "../../../infra/paths.js"
 import { acquireConversationSearchIndex } from "../../../infra/store/conversation-fts.js"
-import { installedConversationDeletionFacts } from "../../module-catalog.js"
+import { installedConversationDeletionFacts } from "../../module-contract/module-catalog.js"
 import type { AuthProfileManager } from "../../auth/auth-profile-manager.js"
 import { prepareWorkflowDeps } from "../../agent-runtime/runner/workflow-deps.js"
 import { createSessionFactWriter, type SessionFactWriter } from "../../session/persistence/session-fact-writer.js"

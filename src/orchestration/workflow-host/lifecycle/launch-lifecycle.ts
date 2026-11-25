@@ -19,7 +19,7 @@ import type { SessionManager } from "../../session/manager.js"
 import type { SessionLifecycleState } from "../../session/metadata/types.js"
 import type { WorkflowHosts } from "../host-collection.js"
 import type { WorkflowCompletionAcknowledgement, WorkflowResult } from "../runner-types.js"
-import { workflowRunReader } from "../../module-catalog.js"
+import { workflowRunReader } from "../../module-contract/module-catalog.js"
 
 const log = Log.create({ service: "workflow-controller" })
 

@@ -5,7 +5,7 @@ import type { CommandEvidence, ReadCommandEvidence } from "../../../workflows/ou
 import { tryOpenConversationTree } from "../../session/conversation/tree/conversation-tree-handle.js";
 import { parseSessionRuntimeFact } from "../../session/runtime-facts/session-runtime-event-types.js";
 import { parseBashResultDetails } from "../../agent-runtime/tools/bash/bash.js";
-import { workflowRunReader } from "../../module-catalog.js";
+import { workflowRunReader } from "../../module-contract/module-catalog.js";
 import { parseFileMutationFact } from "../../session/file-mutations/file-mutation-facts.js";
 import { recordedExecutionCwd } from "../../session/metadata/session-execution-directory.js";
 import { shellCommandOf } from "../../agent-runtime/tools/dispatch/tool-catalog.js";

@@ -6,7 +6,7 @@ import { credentialForCandidate, providerAdapter, type AccessProviderFactory } f
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/routing/provider-affordability.js";
 import type { ProviderAllowanceFactory } from "../../agent-runtime/llm/routing/provider-availability-types.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { copilotAffordability } from "./affordability.js";
 import { captureCopilotAllowanceAdmission } from "./allowance-admission.js";
 import { copilotTokensToCredential } from "./auth-types.js";

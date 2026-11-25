@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite"
-import { workflowRunOwner } from "../../../module-catalog.js"
+import { workflowRunOwner } from "../../../module-contract/module-catalog.js"
 import { mkdirSync } from "node:fs"
 import { basename, dirname, resolve } from "node:path"
 

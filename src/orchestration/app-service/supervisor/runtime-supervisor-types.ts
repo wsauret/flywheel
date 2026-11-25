@@ -33,7 +33,7 @@ import type { ChatRunnerLoader } from "./chat-runner-loader.js"
 import type { RecallInput, RecallResult } from "../../../protocol/transcript/conversation-recall.js"
 import type { ControlInterruption, WorkflowInterruption } from "../../session/conversation/turn-end-record.js"
 import type { ContinuationLanes } from "../../session/control/planned-session-continuation.js"
-import type { ModuleRetainedOperationAuthority, RetainedOperationAcceptance } from "../../module-seams.js"
+import type { ModuleRetainedOperationAuthority, RetainedOperationAcceptance } from "../../module-contract/module-seams.js"
 import type { SessionStops } from "../../session/control/module-session-operations.js"
 import type { WorkflowDeliveryAddress } from "../../session/conversation/addressed-workflow-messages.js"
 

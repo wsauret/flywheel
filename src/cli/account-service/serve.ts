@@ -32,7 +32,7 @@ import { SCHEDULED_TASK_ARGUMENT, SERVICE_NAMES } from "../../orchestration/app-
 import { createServiceRegistrationRefresh, registrationReloadGuard, takeManagerStartEnvironment, type ServiceRegistrationRefresh } from "../../orchestration/app-service/account/installation/service-registration-refresh.js"
 import { createAccountHubHandler, type AccountHubOptions, type Hub } from "../../orchestration/app-service/account/web-serving/hub.js"
 import { releaseHarnessHub } from "./release-harness.js"
-import { retiredServiceInstallations } from "../../orchestration/module-composition.js"
+import { retiredServiceInstallations } from "../../orchestration/module-contract/module-composition.js"
 import { installedBuild, runningBuildId, type InstalledBuild } from "../../orchestration/app-service/runtime-executable.js"
 import { processRunningBuild, runningDisplayBuildId } from "../../infra/distribution/running-build.js"
 import { confirmServiceStart, endServiceStart, failServiceStart, type ProbationSchedule, withdrawServiceStart } from "../../orchestration/update/service-start.js"

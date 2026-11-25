@@ -7,7 +7,7 @@ import type { CurrentTurnInterruption } from "./turn/run-lifecycle.js";
 import type { PlannedCompactionOperation } from "../compaction/triggers.js";
 import type { TurnHopTracker } from "./turn-hop.js";
 import type { OpenWait, PersonWait } from "./agent-loop-state.js";
-import { WAIT_EXPIRED_TAG } from "./agent-loop-wait.js";
+import { WAIT_EXPIRED_TAG } from "../../session/conversation/turn-end-record.js";
 
 const log = Log.create({ service: "agent-loop" });
 

@@ -6,7 +6,7 @@ import { captureProviderConnection } from "../../../../../../src/infra/auth/auth
 import { candidateProviderId, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan } from "../../../../../../src/infra/llm/access/access-provider.js";
 import { authDir } from "../../../../../../src/infra/paths.js";
 import { createAdmittedClient } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { providerModelEligibilityDecision } from "../../../../../../src/orchestration/config/models/provider-model-eligibility.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { fakeAvailability } from "../_provider-chain-harness.js";

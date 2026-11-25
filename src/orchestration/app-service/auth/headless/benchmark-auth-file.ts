@@ -14,7 +14,7 @@ import type { AccessProviderDefinition, ExternalTokenLogin } from "../../../../i
 import { readSavedProviderModels } from "../../../../infra/auth/provider-models/provider-model-catalog-store.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { AuthProfileManager } from "../../../auth/auth-profile-manager.js"
-import { installedCredentialProviderIds } from "../../../module-composition.js"
+import { installedCredentialProviderIds } from "../../../module-contract/module-composition.js"
 import { credentialIdOf, type AccessProviderAccountIdentity, accessProviderAccountKey } from "../../../../infra/auth/provider-account.js"
 
 const MAX_BYTES = 64 * 1024

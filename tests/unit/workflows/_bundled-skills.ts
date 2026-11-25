@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { shippedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
+import { shippedDefinitionBundles } from "../../../src/orchestration/module-contract/module-catalog.js";
 import type { DefinitionBundle } from "../../../src/workflows/definitions/loader.js";
 import { renderSkillBody } from "../../../src/workflows/skills/skill-references.js";
 import type { SkillDefinition } from "../../../src/workflows/skills/skill-schema.js";

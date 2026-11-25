@@ -35,11 +35,11 @@ import { createProviderModelPreferenceService } from "../../../src/orchestration
 import { providerModelPreferencePersistence } from "../../../src/orchestration/app-service/auth/models/provider-model-preference-persistence.js";
 import { createSubscriptionUsageService } from "../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { createSubscriptionUsageServicePool } from "../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
-import { credentialSlotClassifier, installedDefinitionBundles, type FirstPartyModule } from "../../../src/orchestration/module-catalog.js";
+import { credentialSlotClassifier, installedDefinitionBundles, type FirstPartyModule } from "../../../src/orchestration/module-contract/module-catalog.js";
 import { getSharedModelsClient } from "../../../src/orchestration/config/models/llm-clients.js";
 import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
-import { composeRealmModuleSnapshot, installedAccessProviderDefinitions, installedAccessProviderIds, installedCredentialProviderIds } from "../../../src/orchestration/module-composition.js";
+import { composeRealmModuleSnapshot, installedAccessProviderDefinitions, installedAccessProviderIds, installedCredentialProviderIds } from "../../../src/orchestration/module-contract/module-composition.js";
 import { captureSubscriptionAdmission } from "../../../src/orchestration/auth/subscription-spend-consent/admission-capture.js";
 import { createSubscriptionSpendConsentCaptureCache } from "../../../src/orchestration/auth/subscription-spend-consent/capture-cache.js";
 import type { SubscriptionSpendConsentCapture } from "../../../src/orchestration/auth/subscription-spend-consent/subscription-spend-consent-service.js";

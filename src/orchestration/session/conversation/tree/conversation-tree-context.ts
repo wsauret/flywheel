@@ -4,8 +4,8 @@ import type { CompactionEntry, MessageEntry, ConversationEntry } from "../conver
 import type { DegradedTranscriptRecord } from "../conversation-projection.js";
 import { repairToolAdjacencyWork } from "./conversation-tool-adjacency.js";
 import { parseRuntimeReminder } from "../../../../infra/llm/runtime-reminder-format.js";
-import { installedModules } from "../../../module-catalog.js";
-import type { ModuleHistoricalFraming } from "../../../module-seams.js";
+import { installedModules } from "../../../module-contract/module-catalog.js";
+import type { ModuleHistoricalFraming } from "../../../module-contract/module-seams.js";
 
 // Cooperative history work in this file yields once per branch entry or
 // provider message, because branch length is the dimension that grows without

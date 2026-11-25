@@ -1,12 +1,182 @@
 import type { PausedBy } from "../../../infra/output-blocks.js"
 import { toolOutcomeFromProvider } from "../../../infra/runtime-facts/tool-outcome.js"
-import { DEFAULT_WAIT_SECONDS } from "../../agent-runtime/tools/sessions/process.js"
-import { MESSAGE_SESSION_TOOL_NAME } from "../../agent-runtime/tools/sessions/message-session.js"
 import type { ConversationMessage } from "../../../infra/llm/conversation/conversation-message.js"
-import type { WaitExpiry } from "../../agent-runtime/loop/agent-loop-state.js"
-import { createWaitToolPolicy, endsOpenWait, type OpenWaitInput } from "../../agent-runtime/loop/agent-loop-wait.js"
+import { callsShellTool } from "../../module-contract/module-catalog.js"
 import { messageDisposition } from "../message-disposition.js"
+import { MESSAGE_SESSION_TOOL_NAME } from "./reply-wait-cells.js"
 import type { SessionRelation } from "../../../infra/chat-input-schema.js"
+
+/** The duration of a wait and its deadline. */
+export interface WaitExpiry {
+  readonly seconds: number
+  readonly deadlineMs: number
+}
+
+// The wait rule: which tool calls park a turn, for how long, and which input
+// ends the wait. The live loop (agent-loop-wait.ts) and the restore readers
+// below both judge by it, so a restart restores the wait the live loop held.
+
+export const PROCESS_TOOL_NAME = "process"
+export const DEFAULT_WAIT_SECONDS = 240
+/** Every wait ends after at most one hour, so that the agent reassesses
+ *  the work it waits on (PI-AGENT-080). The schema's maximum states it. */
+export const WAIT_CEILING_SECONDS = 3600
+
+/** A tool call as the wait rule reads it: a live call or a recorded one. */
+interface WaitRuleCall {
+  readonly id: string
+  readonly name: string
+  readonly input: { readonly [field: string]: unknown }
+  readonly registrationId?: string
+}
+
+/** The duration of a native wait: the four-minute default without an
+ *  estimate, the estimate up to the one-hour ceiling, or undefined for an
+ *  estimate that is not positive finite seconds. A model's estimate is
+ *  external input, so a value above the ceiling is read as the ceiling, not
+ *  refused. A restore replays recorded calls through this function, so a
+ *  longer wait that an earlier build recorded also restores at the ceiling. */
+export function processWaitSeconds(input: WaitRuleCall["input"]): number | undefined {
+  if (input.soft_timeout === undefined) return DEFAULT_WAIT_SECONDS
+  const seconds = input.soft_timeout
+  return typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0
+    ? Math.min(seconds, WAIT_CEILING_SECONDS) : undefined
+}
+
+// Remove after 2027-10-30: transcripts that builds before 2026-10-30 wrote for
+// gpt-6-luna hold `process` calls of this retired registration. Its wait that
+// named a process returned after its own bound instead of parking the turn.
+const RETIRED_BOUNDED_WAIT_REGISTRATION_ID = "process.luna"
+
+/** Whether a call parks the turn on session work. A native wait always parks
+ *  on every process and ignores a `process_id`. A recorded call of the retired
+ *  bounded-wait registration that names a process did not park. A call with no
+ *  registration reads as native: it comes from a build that stamped no
+ *  registration, in which every `process` wait parked. */
+function isParkingWaitCall(call: WaitRuleCall): boolean {
+  if (call.name !== PROCESS_TOOL_NAME || call.input.action !== "wait") return false
+  if (call.registrationId === RETIRED_BOUNDED_WAIT_REGISTRATION_ID && call.input.process_id !== undefined) return false
+  return processWaitSeconds(call.input) !== undefined
+}
+
+// A yield-placeholder is a bash call whose only purpose is to park the turn
+// (a tool call is the opposite of yielding). It executes like any other
+// command - every provider transcript must carry a result for every call, so
+// nothing is erased - but a turn whose calls were all wait-shaped parks on
+// background work afterwards instead of re-requesting (agent-loop.ts).
+// Classification only counts while background work is pending: the completing
+// task re-drives the loop, so the park always wakes. With nothing in flight
+// there is nothing to wake the loop, so every shape below is an ordinary
+// command with no park semantics.
+//
+// With background work pending, two shapes qualify:
+//
+//   1. Every statement is a bare no-op (`true`, `:`) or a bare `sleep N`,
+//      optionally with a trailing comment. Zero semantic content beyond
+//      timing, and with background work pending the timing is pointless.
+//      No wait-intent text required.
+//   2. The LEADING statement is a no-op (echo/printf, sleep, `true`, `:`)
+//      that itself expresses wait/yield intent. This agent narrates in
+//      prose, never via echo, so a command that opens with such a no-op
+//      while it is waiting on background work is a yield signal even if junk
+//      trails it (`echo waiting; yielding`). Only the no-op's own words
+//      count: a wait word in a later statement, such as a file name in
+//      `sleep 1; cat pending.log`, is not intent, and a leading echo that
+//      redirects into a file writes it, so it is no no-op. Over-classifying
+//      is bounded: the completing task re-drives the loop.
+//
+// The wait-intent requirement on shape 2 keeps harmless `echo hello` from
+// parking the turn. `isYieldPlaceholderCall` judges the call itself: which
+// tool it calls, whether it runs in the background, and whether work is
+// pending.
+const BARE_NOOP_PATTERN = /^(true|:)\s*(#.*)?$/
+const BARE_SLEEP_PATTERN = /^sleep\s+\d+(\.\d+)?[smhd]?\s*(#.*)?$/
+const NOOP_COMMAND_PATTERN = /^(echo|printf|sleep|true|:)(\s|$)/
+const WAIT_INTENT_PATTERN = /\b(wait|yield|standby|stand by|standing by|idle|holding|pending|in progress|still (?:run|work|process))/i
+
+function isYieldPlaceholderCommand(command: string): boolean {
+  const segments = command
+    .split(/(?:&&|\|\||[;&|\n])/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+  const [first] = segments
+  if (!first) return false
+  if (segments.every((seg) => BARE_SLEEP_PATTERN.test(seg) || BARE_NOOP_PATTERN.test(seg))) return true
+  return NOOP_COMMAND_PATTERN.test(first) && !first.includes(">") && WAIT_INTENT_PATTERN.test(first)
+}
+
+/** Whether a call is a yield placeholder: a bash call, live or recorded
+ *  under a retired name, whose command only parks the turn while background
+ *  work is pending. A background launch is never a placeholder, whatever its
+ *  command: it starts work that the turn then owes (ARCH-TOOLS-031), so the
+ *  turn continues and the pending-work reminder applies. */
+function isYieldPlaceholderCall(call: WaitRuleCall, hasPendingBackgroundWork: () => boolean): boolean {
+  if (!callsShellTool(call.name) || call.input.background === true) return false
+  const command = call.input.command
+  // The pending-work read is last: it scans the session's background work, so
+  // only a call that already has a placeholder's shape pays for it.
+  return typeof command === "string" && isYieldPlaceholderCommand(command) && hasPendingBackgroundWork()
+}
+
+const WORK_PENDING = (): boolean => true
+
+/** Whether a call waits: a process wait, a yield placeholder while work is
+ *  pending, or a call that opened a reply wait that is still open
+ *  (`holdsWait`), which parks the turn after its batch until the reply or
+ *  another end. */
+export function isWaitCall(call: WaitRuleCall, hasPendingBackgroundWork: () => boolean, holdsWait?: (toolUseId: string) => boolean): boolean {
+  return isParkingWaitCall(call) || isYieldPlaceholderCall(call, hasPendingBackgroundWork) || holdsWait?.(call.id) === true
+}
+
+/** The wait that a batch of wait calls opens while work is pending: the
+ *  duration of its first process wait, else the default for a yield
+ *  placeholder, else none, and the reply waits that its other calls hold. */
+export function openedWaitOf(calls: readonly WaitRuleCall[], holdsWait?: (toolUseId: string) => boolean): OpenedWait {
+  const seconds = calls.map((call) => isParkingWaitCall(call) ? processWaitSeconds(call.input) : undefined).find((duration) => duration !== undefined)
+    ?? (calls.some((call) => isYieldPlaceholderCall(call, WORK_PENDING)) ? DEFAULT_WAIT_SECONDS : undefined)
+  // A process wait or a placeholder is a wait by its own input; asking
+  // whether it holds a reply wait would cost a restore a read.
+  const replyWaitIds = calls.flatMap((call) => !isParkingWaitCall(call) && !isYieldPlaceholderCall(call, WORK_PENDING) && holdsWait?.(call.id) === true ? [call.id] : [])
+  return { ...(seconds === undefined ? {} : { seconds }), replyWaitIds }
+}
+
+/** The tag of the notice that a wait's expiry delivers, which ends the wait. */
+export const WAIT_EXPIRED_TAG = "wait_expired"
+
+/** Whether a stored message's content is the notice of a wait's expiry. */
+function isWaitExpiredNotice(content: unknown): boolean {
+  return typeof content === "string" && content.startsWith(`<${WAIT_EXPIRED_TAG}>`)
+}
+
+/** One input that an open wait meets: a Resume, or a message in the live
+ *  loop's input shape (`origin` `human`, `session`, or `silent-system`) or in
+ *  its stored shape (`origin` `human` or `system`; a notification keeps
+ *  `replyRequired` where the ids it carried live are gone). */
+export type OpenWaitInput =
+  | { readonly kind: "resume"; readonly continuesWait: boolean }
+  | {
+      readonly kind: "message"
+      readonly origin?: string
+      readonly producer?: { readonly kind: string }
+      readonly backgroundNotificationIds?: readonly string[]
+      readonly replyRequired?: true
+      readonly content?: unknown
+    }
+
+/** Whether one input ends the open wait that holds `replyWaitIds`: a
+ *  background notification, the notice of the wait's expiry, a person's
+ *  message, a Resume that does not continue a planned cut's wait, or, for a
+ *  message from another session, the reply that ends a reply wait the open
+ *  wait holds (the registry ends that reply wait before the message
+ *  commits, so `holdsWait` no longer names it). Every other input, such as a
+ *  runtime or module notice, the reply nudge, or an unrelated session's
+ *  message, only re-drives the turn. */
+export function endsOpenWait(input: OpenWaitInput, replyWaitIds: readonly string[], holdsWait: (toolUseId: string) => boolean): boolean {
+  if (input.kind === "resume") return !input.continuesWait
+  if ((input.backgroundNotificationIds?.length ?? 0) > 0 || input.replyRequired === true || isWaitExpiredNotice(input.content)) return true
+  if (input.producer?.kind === "session") return replyWaitIds.some((id) => !holdsWait(id))
+  return input.origin !== "system" && input.origin !== "silent-system"
+}
 
 /** What the turn-end readers need of an entry: enough to name the record,
  *  skip a notice, and tell a user message from an answer. A hydrated entry
@@ -466,11 +636,10 @@ function noteSucceeded(succeeded: Set<string>, message: NonNullable<TurnEndEntry
 function waitOpenedBy(calls: ReturnType<typeof toolUses>, later: readonly StoredInput[], holdsWait?: (id: string) => boolean): { readonly wait: OpenedWait; readonly wokenBy: (input: StoredInput) => boolean } | undefined {
   const answeredBy = (id: string, input: StoredInput): boolean => input.producer?.kind === "session" && input.producer.sessionId !== undefined
     && calls.some((call) => call.id === id && call.name === MESSAGE_SESSION_TOOL_NAME && call.input.wait === true && call.input.to === input.producer?.sessionId)
-  let wait: OpenedWait | undefined
-  const policy = createWaitToolPolicy(() => true, (seconds, replyWaitIds) => { wait = { ...(seconds === undefined ? {} : { seconds }), replyWaitIds } }, undefined,
-    (id) => holdsWait?.(id) === true || later.some((input) => answeredBy(id, input)))
-  policy.settleWaitCalls(calls.filter(policy.isWaitCall))
-  if (wait === undefined) return undefined
+  const holds = (id: string): boolean => holdsWait?.(id) === true || later.some((input) => answeredBy(id, input))
+  const waitCalls = calls.filter((call) => isWaitCall(call, WORK_PENDING, holds))
+  if (waitCalls.length === 0) return undefined
+  const wait = openedWaitOf(waitCalls, holds)
   const { replyWaitIds } = wait
   return { wait, wokenBy: (input) => endsOpenWait(storedWaitInput(input), replyWaitIds, (id) => holdsWait?.(id) === true || !answeredBy(id, input)) }
 }
@@ -550,6 +719,7 @@ function openWaitBefore<Entry extends TurnEndEntry>(tail: readonly Entry[], end:
   return "older"
 }
 
+/** The wait that a batch of wait calls opened (`openedWaitOf`). */
 interface OpenedWait {
   /** Absent for a reply wait, which has no expiry. */
   readonly seconds?: number

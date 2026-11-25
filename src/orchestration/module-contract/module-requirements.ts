@@ -1,7 +1,7 @@
 import { installedModules, type FirstPartyModule, type FirstPartyModuleComposition, type ModuleId } from "./module-catalog.js"
 import type { DefinitionContribution } from "./module-seams.js"
 
-import { canonicalModuleIds } from "../protocol/runtime/module-ids.js"
+import { canonicalModuleIds } from "../../protocol/runtime/module-ids.js"
 
 function installedModule(modules: readonly FirstPartyModule[], id: string): FirstPartyModule {
   const module = modules.find((candidate) => candidate.id === id)

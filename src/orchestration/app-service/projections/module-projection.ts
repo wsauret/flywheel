@@ -14,8 +14,8 @@ import type { RuntimeConfigOwner } from "../../config/runtime-config-owner.js"
 import { ConfigStaleWriteError, type ConfigWriteResult } from "../../config/writer.js"
 import { applyModulePreset, updateModuleMember, updatePersistentProcessPermission, updateWorkflowsMode } from "../../config/policy/module-selection-writer.js"
 import { persistentProcessPolicy, type PersistentProcessPolicy } from "../../config/policy/persistent-process-policy.js"
-import { composeRealmModuleSnapshot } from "../../module-composition.js"
-import { moduleProtocolRows } from "../../module-catalog.js"
+import { composeRealmModuleSnapshot } from "../../module-contract/module-composition.js"
+import { moduleProtocolRows } from "../../module-contract/module-catalog.js"
 import {
   capabilitiesCursor,
   type BinaryModule,

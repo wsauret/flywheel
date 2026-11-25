@@ -10,7 +10,7 @@ import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime
 import { createModelReminders } from "../../agent-runtime/llm/history/runtime-reminders.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/routing/provider-affordability.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { createOpenRouterAffordability } from "./affordability.js";
 import { OPENROUTER_API_BASE, OPENROUTER_API_HOST } from "./api.js";
 import { canonicalizeOpenRouterCatalogRow, canonicalizeOpenRouterWireId, openRouterModelOutputCap } from "./model-support.js";

@@ -6,7 +6,7 @@ import { CONFIG_DEFAULTS, installedConfigSchema } from "../../../../src/orchestr
 import { parseSchema } from "../../../helpers/schema-assertions.js"
 import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js"
 import type { RoleAssignments } from "../../../../src/orchestration/session/metadata/schemas.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 import { testDirectories } from "../../../helpers/directories.js"

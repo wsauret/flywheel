@@ -5,7 +5,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../i
 import { Log } from "../../../../infra/diagnostics/log.js"
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
 import type { CommandOutcome, RuntimeCommandInvocation } from "../../../../protocol/commands/command-catalog-protocol-types.js"
-import type { FirstPartyModuleSnapshot, ModuleCommandMetadata } from "../../../module-catalog.js"
+import type { FirstPartyModuleSnapshot, ModuleCommandMetadata } from "../../../module-contract/module-catalog.js"
 import type { SessionManager } from "../../../session/manager.js"
 import { recordedExecutionCwd } from "../../../session/metadata/session-execution-directory.js"
 import { createSessionFactWriter, type SessionFactWriter } from "../../../session/persistence/session-fact-writer.js"

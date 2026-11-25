@@ -25,7 +25,7 @@ import type { SuccessorRows } from "../executor/project-executor-protocol.js"
 import { entryActivity, turnInFlight } from "../../session-store/activity.js"
 import { claimComposerReturns } from "../../session/control/messaging/composer-returns.js"
 import { isActiveActivity } from "../../../protocol/runtime/app-service-types.js"
-import type { RetainedOperationAcceptance } from "../../module-seams.js"
+import type { RetainedOperationAcceptance } from "../../module-contract/module-seams.js"
 import {
   executeChildSessionDeletionPlan as executeDeletionPlan,
   type ChildSessionDeletionPlan,

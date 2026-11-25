@@ -12,8 +12,8 @@ import { clearSharedModelListingClients, getSharedModelListingClient, getSharedM
 import { createAdmittedClient, createClient, type AccessProviderBuild } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import type { AdapterAdmission } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ModelInfo } from "../../../../../../src/infra/llm/models/models.js";
-import { credentialSlotClassifier } from "../../../../../../src/orchestration/module-catalog.js";
-import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-composition.js";
+import { credentialSlotClassifier } from "../../../../../../src/orchestration/module-contract/module-catalog.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { testRuntimeConfigCapture } from "../../../../../helpers/request-tool-surface.js";
 import { AccessProviderCandidateSchema, createAccessProviderSelection, type AccessProviderCandidate } from "../../../../../../src/infra/llm/access/access-provider.js";
 

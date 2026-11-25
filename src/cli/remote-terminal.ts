@@ -6,7 +6,7 @@ import { collapseHome } from "../infra/home-path.js"
 import { Log } from "../infra/diagnostics/log.js"
 import { startupTrace } from "../infra/diagnostics/startup-trace.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
-import { releaseFit, type ReleaseSide, type TerminalRemote, type TerminalRemoteChoice, type TerminalRemoteRequest, type RemoteAttach } from "../orchestration/terminal-remote.js"
+import { releaseFit, type ReleaseSide, type TerminalRemote, type TerminalRemoteChoice, type TerminalRemoteRequest, type RemoteAttach } from "../orchestration/module-contract/terminal-remote.js"
 import type { AttachedRuntimeClient } from "../protocol/runtime/app-service-types.js"
 import type { ReleaseInstall } from "../protocol/client/runtime-fault-copy.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../protocol/runtime-liveness.js"
@@ -22,7 +22,7 @@ import type { TerminalHandoff, TerminalSuccessor } from "./account-service/termi
 const log = Log.create({ service: "remote-terminal" })
 
 async function loadTerminalRemote(): Promise<TerminalRemote> {
-  const { installedTerminalRemote } = await importComposing(() => import("../orchestration/module-catalog.js"))
+  const { installedTerminalRemote } = await importComposing(() => import("../orchestration/module-contract/module-catalog.js"))
   const contribution = installedTerminalRemote()
   if (contribution === undefined) throw new Error("This build of Flywheel cannot open a project on another machine.")
   return await contribution.load()

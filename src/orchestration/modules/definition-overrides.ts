@@ -2,10 +2,10 @@ import { moduleRuntimeHandle } from "../../infra/module-runtime.js"
 import { definitionOverridesProtocol } from "../../protocol/modules/definition-overrides.js"
 import type { DefinitionOverrideOperations } from "../../workflows/definitions/override-staleness.js"
 import { createDefinitionOverridesTool, DEFINITION_OVERRIDES_TOOL_DEFINITION, type DefinitionOverridesToolDeps } from "../agent-runtime/tools/definitions/definition-overrides.js"
-import { MESSAGE_SESSION_TOOL_NAME } from "../agent-runtime/tools/sessions/message-session.js"
-import type { ToolDeclaration } from "../module-seams.js"
+import { MESSAGE_SESSION_TOOL_NAME } from "../session/conversation/reply-wait-cells.js"
+import type { ToolDeclaration } from "../module-contract/module-seams.js"
 import { moduleProtocol } from "../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../module-catalog.js"
+import type { FirstPartyModule } from "../module-contract/module-catalog.js"
 import { createDefinitionOverridesProtocol } from "./definition-overrides/protocol.js"
 
 /** The runtime-owned definition resolution and mutation surface, when the

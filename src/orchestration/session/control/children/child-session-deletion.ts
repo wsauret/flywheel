@@ -1,9 +1,9 @@
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
-import type { ParentNotificationDelivery } from "../../../module-seams.js"
+import type { ParentNotificationDelivery } from "../../../module-contract/module-seams.js"
 import { settleInstalledSessionDeletion } from "../module-session-operations.js"
 import { wakeAfterSettlement, type ReturnedNotice } from "../messaging/session-input-delivery.js"
 import type { ReplayedSession } from "../../metadata/schemas.js"
-import { workflowRunOwner, workflowRunReader } from "../../../module-catalog.js"
+import { workflowRunOwner, workflowRunReader } from "../../../module-contract/module-catalog.js"
 import { workflowMembershipReader } from "../../metadata/workflow-membership.js"
 import { readWorkflowActivity } from "../../../../workflows/vm/recovery/control-status.js"
 

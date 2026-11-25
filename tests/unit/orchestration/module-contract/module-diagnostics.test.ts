@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { retainedExecutionDiagnostics, type ModuleRetainedDiagnostics } from "../../../src/orchestration/module-diagnostics.js"
+import { retainedExecutionDiagnostics, type ModuleRetainedDiagnostics } from "../../../../src/orchestration/module-contract/module-diagnostics.js"
 
 const diagnostics: ModuleRetainedDiagnostics = {
   attempts: () => ({ attempts: [{ id: "step", name: "Task", definitionId: "task", workflowDefinitionId: "flow", status: "completed", startedAt: 10, completedAt: 20 }], conversationAttempts: new Map([["conversation", [{ attemptId: "step", startedAt: 10 }]]]) }),

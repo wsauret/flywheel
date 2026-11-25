@@ -36,7 +36,7 @@ export async function prepareProjectDefaults(directories: StartupDirectories, op
     const [{ publishBundledReferences }, { loadBundledDefaultCatalog }, { shippedDefinitionBundles }] = await Promise.all([
       import("../workflows/definitions/installer.js"),
       import("../workflows/definitions/bundled-defaults.js"),
-      importComposing(() => import("../orchestration/module-catalog.js")),
+      importComposing(() => import("../orchestration/module-contract/module-catalog.js")),
     ])
     await publishBundledReferences(directories.userDataRoot, loadBundledDefaultCatalog(shippedDefinitionBundles()))
   } else {

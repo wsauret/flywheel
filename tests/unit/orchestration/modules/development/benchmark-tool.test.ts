@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { Redacted } from "effect";

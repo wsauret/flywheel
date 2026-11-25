@@ -1,5 +1,5 @@
-import { retainedExecutionDiagnostics, type ChildExecutionMetrics, type AttemptExecutionHistory, type ConversationAttemptStart } from "../../../module-diagnostics.js"
-import { installedModules } from "../../../module-catalog.js"
+import { retainedExecutionDiagnostics, type ChildExecutionMetrics, type AttemptExecutionHistory, type ConversationAttemptStart } from "../../../module-contract/module-diagnostics.js"
+import { installedModules } from "../../../module-contract/module-catalog.js"
 import type { AttemptStatus } from "../../../../workflows/view/types.js"
 import type { StoredFact } from "../../../../infra/store/event-store-types.js"
 import { loadProviderRequestAuditFromEvents } from "../../../session/diagnostics/provider-request-audit-projection.js"

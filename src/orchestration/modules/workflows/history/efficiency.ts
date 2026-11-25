@@ -2,7 +2,7 @@ import { parseProjectionFact } from "../../../../infra/projection/event-projecti
 import type { StoredFact } from "../../../../infra/store/event-store-types.js"
 import { attemptIdOf, parseWorkflowQueueFact } from "../../../../workflows/view/view-facts.js"
 import { loadQueueFromEvents } from "../../../../workflows/vm/recovery/workflow-view.js"
-import type { AttemptExecutionHistory, ConversationAttemptStart } from "../../../module-diagnostics.js"
+import type { AttemptExecutionHistory, ConversationAttemptStart } from "../../../module-contract/module-diagnostics.js"
 
 /** Read the retained attempt timing and conversation links without starting work.
  *  The queue projection carries each attempt's timing; every conversation an

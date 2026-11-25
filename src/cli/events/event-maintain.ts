@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { invalidateSupersededModuleFacts } from "../../orchestration/module-catalog.js"
-import type { SupersededFactInvalidationResult } from "../../orchestration/module-seams.js"
+import { invalidateSupersededModuleFacts } from "../../orchestration/module-contract/module-catalog.js"
+import type { SupersededFactInvalidationResult } from "../../orchestration/module-contract/module-seams.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import { resolveEventStoreDbFile } from "../../infra/paths.js"

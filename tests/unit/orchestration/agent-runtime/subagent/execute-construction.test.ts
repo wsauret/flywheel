@@ -24,7 +24,7 @@ import type { RunnableAgentOptions } from "../../../../../src/orchestration/agen
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { subagentsRuntime } from "../../../../../src/orchestration/modules/subagents/execution/control/runtime-binding.js";
 import { definitionAvailabilityOf } from "../../../../../src/orchestration/config/policy/definition-availability.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { asModelClient } from "../_model-client.js";
 import { makeOptions } from "../_runner-options.js";
 import type { EnvCaptureResolver } from "../../../../../src/infra/env-detection.js";

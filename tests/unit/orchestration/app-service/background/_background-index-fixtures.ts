@@ -19,7 +19,7 @@ import { createSessionFactWriter } from "../../../../../src/orchestration/sessio
 import type { ActiveBackgroundCommandView } from "../../../../../src/protocol/session/status-protocol-types"
 import { temporaryDirectories } from "../../../../helpers/directories"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager"
-import { workflowRunWriter } from "../../../../../src/orchestration/module-catalog"
+import { workflowRunWriter } from "../../../../../src/orchestration/module-contract/module-catalog"
 import { publishTestWorkflow } from "../../session/_session-manager-fixtures"
 import { replayWorkflowControl } from "../../../../../src/workflows/vm/recovery/fact-fold"
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../../src/workflows/vm/control/transition"

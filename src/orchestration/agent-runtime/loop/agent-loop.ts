@@ -14,7 +14,8 @@ import type { PersistenceWriteRefused } from "../../../infra/store/event-store-t
 import { createContentFilterRecovery } from "./turn/agent-loop-content-filter.js";
 import { createAgentLoopToolContext } from "./tool-calls/agent-loop-tool-context.js";
 import { hasAssistantOutput } from "./turn/assistant-output.js";
-import { createSettledBatchObservation, createWaitToolPolicy, endsOpenWait, restoreAgentLoopWait, type OpenWaitInput } from "./agent-loop-wait.js";
+import { createSettledBatchObservation, createWaitToolPolicy, restoreAgentLoopWait } from "./agent-loop-wait.js";
+import { endsOpenWait, type OpenWaitInput } from "../../session/conversation/turn-end-record.js";
 import { finalReplyText, hasLiveBackgroundWork, inputClosedTerminal, missingHandoffReminder, resolveAgentLoopClosureMode } from "./closure/agent-loop-closure.js";
 import { streamAssistantTurn, type AssistantTurnRequest } from "./turn/assistant-turn-stream.js";
 import { openRequestPreparation } from "./turn/request-preparation.js";

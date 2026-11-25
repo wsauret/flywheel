@@ -10,8 +10,8 @@ import { createWebTool } from "../../../../../src/orchestration/agent-runtime/to
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
-import type { ModuleId } from "../../../../../src/orchestration/module-catalog.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
+import type { ModuleId } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import type { RuntimeToolInput, DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { WebSearchError, type WebSearchCommand, type WebSearchPort, type WebSearchProvider, type WebSearchResponse } from "../../../../../src/orchestration/agent-runtime/web-search/types.js";
 import { createChatGptWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/chatgpt.js";

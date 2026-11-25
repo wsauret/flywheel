@@ -1,7 +1,7 @@
 import { factDescriptors, factTypes } from "../../../infra/event-registry.js"
 import { factRowsChanged } from "../../../infra/store/sqlite-event-store-core.js"
 import { WorkflowQueueFactSchemas } from "../../../workflows/view/view-facts.js"
-import type { SupersededFactInvalidationResult } from "../../module-seams.js"
+import type { SupersededFactInvalidationResult } from "../../module-contract/module-seams.js"
 import { openMaintenanceDb } from "../../session/persistence/storage/event-store-maintenance.js"
 import { QUEUE_STEP_SKILL_ID_UPGRADES } from "./migrations/queue-step-skill-id.js"
 import { RETIRED_SELF_REVIEW_QUEUE_UPGRADES } from "./migrations/retired-self-review.js"

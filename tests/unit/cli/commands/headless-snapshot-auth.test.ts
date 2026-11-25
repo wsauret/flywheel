@@ -6,7 +6,7 @@ import { runHeadlessSnapshotAuth, snapshotAuthProviders } from "../../../../src/
 import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js"
 import { installCustomProviders } from "../../../helpers/custom-providers.js"
 import { accessProviderRegistry } from "../../../../src/orchestration/config/models/access-provider-registry.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { applyWindowsPrivateDirectoryAcl } from "../../../../src/infra/windows-private-directory-acl.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 

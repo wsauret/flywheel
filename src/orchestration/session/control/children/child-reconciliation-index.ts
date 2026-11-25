@@ -3,7 +3,7 @@ import { CorruptEventRowError, type AsyncEventReadSurface, type AsyncEventStateR
 import { heldProjection, pinHeldProjection } from "../../../../infra/projection/projection-registry.js"
 import { yieldToNextTask } from "../../../../infra/task-scheduling.js"
 import { storedToolCallIdentity } from "../../../../infra/store/tool-content-hydration.js"
-import { workflowRunOwner } from "../../../module-catalog.js"
+import { workflowRunOwner } from "../../../module-contract/module-catalog.js"
 import { installedChildSessionHistory } from "../module-session-operations.js"
 import { decodeSessionMetadataFactForReplay } from "../../metadata/session-metadata-facts.js"
 import { parseSessionRuntimeFact } from "../../runtime-facts/session-runtime-event-types.js"

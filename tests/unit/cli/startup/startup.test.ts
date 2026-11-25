@@ -12,7 +12,7 @@ import type { StartupDirectories } from "../../../../src/infra/directory-authori
 import { writeLaunchState, type LaunchState } from "../../../../src/infra/distribution/launch-state.js"
 import { LAUNCH_STATE_ENV, REMOTE_HANDOFF_ENV } from "../../../../src/cli/account-service/terminal-handoff.js"
 import { AccountHomeRefusal } from "../../../../src/infra/directory-authorities.js"
-import type { RemoteAttach, TerminalRemoteRequest } from "../../../../src/orchestration/terminal-remote.js"
+import type { RemoteAttach, TerminalRemoteRequest } from "../../../../src/orchestration/module-contract/terminal-remote.js"
 import { Log } from "../../../../src/infra/diagnostics/log.js"
 import { DebugLog } from "../../../../src/infra/diagnostics/debug-log.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"

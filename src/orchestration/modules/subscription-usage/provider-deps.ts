@@ -3,7 +3,7 @@ import { loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../infra/a
 import { subscriptionSpendAccountCorrelationId } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 import type { MeteredUsageSource } from "./usage-projection.js"
 import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
-import { type FirstPartyModuleComposition, credentialSlotClassifier } from "../../module-catalog.js"
+import { type FirstPartyModuleComposition, credentialSlotClassifier } from "../../module-contract/module-catalog.js"
 
 import { accessProviderRegistry } from "../../config/models/access-provider-registry.js"
 import { isUsageAttemptLive, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../session/history/usage-settlement.js"

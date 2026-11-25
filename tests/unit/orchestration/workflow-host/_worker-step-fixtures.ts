@@ -7,7 +7,7 @@ import type { CommandHandoverAuthority } from "../../../../src/orchestration/age
 import type { ActiveBackgroundCommandDescriptor } from "../../../../src/orchestration/session/control/background-work/background-work"
 import type { AgentFactory } from "../../../../src/orchestration/agent-runtime/types"
 import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 import { createWorkerCallback } from "../../../../src/orchestration/workflow-host/execution/agent-callback"

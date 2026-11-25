@@ -1,6 +1,6 @@
 import { ASK_USER_TOOL_DEFINITION, createAskUserTool, type AskUserToolDeps } from "../agent-runtime/tools/sessions/ask-user.js"
-import type { ToolDeclaration } from "../module-seams.js"
-import type { FirstPartyModule } from "../module-catalog.js"
+import type { ToolDeclaration } from "../module-contract/module-seams.js"
+import type { FirstPartyModule } from "../module-contract/module-catalog.js"
 
 const askUser = {
   category: "opt-in",

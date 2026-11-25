@@ -8,7 +8,7 @@ import type { SessionPlacements } from "../../../session/metadata/catalog/sessio
 import { GENERATION_FACT_TYPE, sessionSummaryFactTypes } from "../../../session/metadata/catalog/session-summary-index.js"
 import { isLaunchedDescendantKind } from "../../../session/metadata/catalog/session-summary-index-sql.js"
 import { readySummaryView, type RuntimeSummarySource, type RuntimeSummaryView } from "./runtime-summary-read.js"
-import type { WorkflowPlacements } from "../../../module-seams.js"
+import type { WorkflowPlacements } from "../../../module-contract/module-seams.js"
 import { workflowAggregateId } from "../../../../workflows/run/run-facts.js"
 
 /** The catalog error families a summary read states. Each complete summary

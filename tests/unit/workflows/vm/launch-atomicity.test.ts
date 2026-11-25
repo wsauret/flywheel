@@ -19,7 +19,7 @@ import { testDirectories } from "../../../helpers/directories.js"
 import { FILE, pathSetup } from "../../orchestration/workflow-host/_path-launch-fixtures.js"
 import { createSessionAuthAdmission, createWorkflowAuthOwner } from "../../../../src/orchestration/auth/session-auth-profile.js"
 import { createMockWorkflowHosts } from "../../orchestration/workflow-host/_workflow-host-fixtures.js"
-import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const roots: string[] = []

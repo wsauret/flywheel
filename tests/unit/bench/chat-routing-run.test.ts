@@ -3,7 +3,7 @@ import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
 import type { RuntimeToolInput } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { ChatRoutingFailure, chatRoutingGuidance, runChatRoutingTask } from "../../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
-import { composeFirstPartyModules } from "../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
 import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
 import { publishSkillRevision } from "../../../src/workflows/skills/skill-schema.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";

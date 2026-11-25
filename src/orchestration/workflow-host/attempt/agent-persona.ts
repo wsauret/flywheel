@@ -5,7 +5,7 @@ import { grantedSubagentTypes, personaToolNames, workflowAgentSubagents } from "
 import type { CapabilityCheck } from "../../../infra/capability-text.js"
 import type { SkillRegistryRevision } from "../../../workflows/skills/skill-schema.js"
 import { availableToolNames, gitDisciplineRule, isReadOnlyPersona } from "../../agent-runtime/request/prompt/persona-tool-rules.js"
-import type { FirstPartyModuleComposition } from "../../module-catalog.js"
+import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js"
 
 /** How an agent of a workflow whose record names a `persona` runs: as that
  *  persona runs when a subagent dispatch starts it ("persona" in docs/terminology.md).

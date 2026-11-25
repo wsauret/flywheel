@@ -1,5 +1,5 @@
 import { retainedOperationHostHandle } from "../../../infra/retained-operation-hosts.js"
-import type { ChildControlAnswer, RetainedOperationCell, RetainedOperationCommitResult } from "../../module-seams.js"
+import type { ChildControlAnswer, RetainedOperationCell, RetainedOperationCommitResult } from "../../module-contract/module-seams.js"
 import type { ChildCut } from "../../session/control/child-continuation.js"
 import type { WorkflowLaunchAgentModels } from "../../../infra/workflow-types.js"
 import type { WorkflowDeliveryAddress } from "../../session/conversation/addressed-workflow-messages.js"

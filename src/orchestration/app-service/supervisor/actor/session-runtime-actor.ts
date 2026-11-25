@@ -22,7 +22,7 @@ import { holdChildReconciliationIndex } from "../../../session/control/children/
 import { createBackgroundNotificationDelivery } from "../session-background-notifications.js"
 import { executionCwdFromSession } from "../../../session/metadata/session-execution-directory.js"
 import { reconcileAgentInput } from "../../../session/history/agent-input-reconciliation.js"
-import { moduleRequirementsForContribution } from "../../../module-requirements.js"
+import { moduleRequirementsForContribution } from "../../../module-contract/module-requirements.js"
 import { chatInputParts, observeSessionDispatch, questionSettlementDisplay, questionSettlementFact, runnerSendOutcome, settleWithin, validAgentInputAnswers } from "./session-runtime-actor-helpers.js"
 import type { ChildSessionDeletionPlan } from "../../../session/control/children/child-session-deletion.js"
 import { createChatSessionControl } from "../chat-session-control.js"

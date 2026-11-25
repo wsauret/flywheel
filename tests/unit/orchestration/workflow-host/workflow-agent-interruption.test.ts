@@ -26,7 +26,7 @@ import { workflowMembershipReader } from "../../../../src/orchestration/session/
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/vm/recovery/workflow-view"
 import { attemptIdOf, attemptNodeIdOf } from "../../../../src/workflows/control-facts/graph-types"
 import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/runs/duration"
-import { workflowRunReader } from "../../../../src/orchestration/module-catalog"
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog"
 import { frontendAttempts } from "../../../../src/orchestration/session/metadata/frontend-attempts"
 import { readWorkflowLiveView } from "../../../../src/orchestration/modules/workflows/protocol/live-protocol"
 import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent"

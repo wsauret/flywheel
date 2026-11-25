@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import type { ProtocolExposure, SettingApplication } from "./setting-definitions.js";
-import { installedModules, type FirstPartyModule } from "../../module-catalog.js";
+import { installedModules, type FirstPartyModule } from "../../module-contract/module-catalog.js";
 
 /** The module-facing half of the configuration file: what a module declares
  *  to own one retained section through its `config` contribution (ARCH-RUNTIME-064),

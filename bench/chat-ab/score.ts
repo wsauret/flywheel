@@ -11,6 +11,8 @@
 //
 //   bun --conditions=browser bench/chat-ab/score.ts --campaign <dir> [--campaign <dir> ...]
 //     [--auth-profile <id>] [--report-only]
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../../scripts/shipped-modules.js";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";

@@ -12,7 +12,7 @@ import { createStartupTimeline } from "../../infra/diagnostics/startup-timeline.
 import { registerLiveBuild } from "../../infra/update/live-builds.js"
 import { serveLaneFor, type ServeLane } from "../../infra/cli-subprocess.js"
 import type { HeadlessFailure, HeadlessOutputObserver } from "../../orchestration/app-service/headless/headless-output.js"
-import type { RemoteAttach, TerminalRemoteChoice, TerminalRemoteRequest } from "../../orchestration/terminal-remote.js"
+import type { RemoteAttach, TerminalRemoteChoice, TerminalRemoteRequest } from "../../orchestration/module-contract/terminal-remote.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../protocol/runtime-liveness.js"
 import { hasHeadlessFlag, isHeadlessChat, needsHeadlessUsage } from "../headless-args.js"
 import { installAccountCrashPolicy } from "./fatal-exit.js"

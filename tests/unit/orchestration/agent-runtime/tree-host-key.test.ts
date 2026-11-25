@@ -13,7 +13,7 @@ import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/request/shared-tree.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import type { AgentOptionsOverride } from "./_runner-options.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import type { AgentHost } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js"
 import { processAgentHosts, type HostPlace, type HostRegistry } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js"
 import { createClaudeAgentSdkClient } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js"

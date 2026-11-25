@@ -1,7 +1,7 @@
 import type { CompleteOverrideContent, DefinitionOverrideOperations, OverrideResolutionAction, PreparedOverrideResolution } from "../../../../workflows/definitions/override-staleness.js"
 import { claimAnsweredDecision } from "../../../session/agent-input/agent-input-decision.js"
 import { packagePathRefusal } from "../../../../workflows/skills/skill-package-path.js"
-import type { ManagedPackageMutation, ManagedPackageReach, ManagedPackageWrites } from "../../../module-seams.js"
+import type { ManagedPackageMutation, ManagedPackageReach, ManagedPackageWrites } from "../../../module-contract/module-seams.js"
 import type { AdvertisedTool, RuntimeTool } from "../types.js"
 
 interface DefinitionOverrideInput {

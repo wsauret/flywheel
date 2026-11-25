@@ -10,7 +10,7 @@ import { createWorkflowRunner } from "../../../../src/orchestration/workflow-hos
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, readWorkflowQueuedUserInputs } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import { workflowParentBinding } from "../../../helpers/workflow-parent"
-import { workflowRunOwner } from "../../../../src/orchestration/module-catalog"
+import { workflowRunOwner } from "../../../../src/orchestration/module-contract/module-catalog"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
 import { initialFacts, testHost, fixtureSkills, workflow } from "../../workflows/vm/host-test-support"

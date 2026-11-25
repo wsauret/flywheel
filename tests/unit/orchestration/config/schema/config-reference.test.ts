@@ -4,7 +4,7 @@ import { configReference } from "../../../../../src/orchestration/config/schema/
 import { decodeConfigObject } from "../../../../../src/orchestration/config/loader.js";
 import { installedConfigSchema } from "../../../../../src/orchestration/config/schema/schema.js";
 import { McpConfigSchema } from "../../../../../src/orchestration/modules/mcp/config.js";
-import { disabledAgentTypes } from "../../../../../src/orchestration/module-catalog.js";
+import { disabledAgentTypes } from "../../../../../src/orchestration/module-contract/module-catalog.js";
 import { isRecord, type UnknownRecord } from "../../../../../src/infra/record.js";
 
 function tomlTable(text: string): UnknownRecord {

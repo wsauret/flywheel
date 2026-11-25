@@ -7,7 +7,7 @@ import type { AccessProviderCandidateAttribution, AccessProviderDefinition } fro
 import { ApiError } from "./routing/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "./routing/client-factory.js";
 import { describeProvider } from "./provider-description.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 
 /**
  * Materializes one capability module per [custom_providers] entry in the

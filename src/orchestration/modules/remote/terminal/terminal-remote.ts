@@ -3,7 +3,7 @@ import { createRuntimeConnection } from "../../../../protocol/client/connection.
 import { canCreateProject, creationDetail, creationOn, machineStatus, projectPlacements, projectStatus, type MachinePickerSnapshot, type RemoteCreation } from "../../../../protocol/modules/remote/machine-picker.js"
 import { createRelayClient, type RelayClient } from "../../../../protocol/modules/remote/relay-client.js"
 import type { RemoteSelection } from "../../../../protocol/modules/remote/relay-device.js"
-import { releaseFit, type RemoteAttach, type TerminalRemote, type TerminalRemoteChoice, type TerminalRemoteRequest } from "../../../terminal-remote.js"
+import { releaseFit, type RemoteAttach, type TerminalRemote, type TerminalRemoteChoice, type TerminalRemoteRequest } from "../../../module-contract/terminal-remote.js"
 import { openTerminalDeviceStore, terminalPairedMachineCount } from "./terminal-device-store.js"
 
 /** The terminal as a paired device of a remote machine (PI-REMOTE-016): the

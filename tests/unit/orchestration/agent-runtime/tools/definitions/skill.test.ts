@@ -17,7 +17,7 @@ import { fileTemporaryDirectory, temporaryDirectories } from "../../../../../hel
 import { promptOptions } from "../../../../../helpers/prompt-capabilities.js";
 import { moduleDisabledReason } from "../../../../../../src/protocol/runtime/module-ids.js";
 import { agentCapabilityCheck } from "../../../../../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import type { AgentDefinition } from "../../../../../../src/infra/agent-definition.js";
 import { fixedAvailability } from "../../../../../helpers/project-definitions.js";
 

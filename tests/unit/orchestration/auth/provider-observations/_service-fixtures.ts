@@ -7,7 +7,7 @@ import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "..
 
 import { accessProviderRegistry, type AccessProviderRegistry } from "../../../../../src/orchestration/config/models/access-provider-registry.js"
 import type { AccessProviderFactory } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"
-import type { FirstPartyModule } from "../../../../../src/orchestration/module-catalog.js"
+import type { FirstPartyModule } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 /** Creates isolated profiles. Each test file must register cleanup in its own afterEach hook. */
 export function createProfileFixture() {
   const roots: string[] = []

@@ -7,7 +7,7 @@ import { detectModelFamily } from "../../src/infra/llm/models/model-family.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE, resolveModelInteractionProfile } from "../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import type { ModelInteractionProfileId } from "../../src/orchestration/session/runtime-facts/provider-request-audit-types.js";
 import { exposedToolName } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
-import type { ToolDeclaration } from "../../src/orchestration/module-seams.js";
+import type { ToolDeclaration } from "../../src/orchestration/module-contract/module-seams.js";
 import { bashModule } from "../../src/orchestration/modules/bash/module.js";
 import { CREDENTIAL_PROVIDER_MODULES } from "../../src/orchestration/credential-provider-modules.js";
 import type { AccessProviderDefinition } from "../../src/infra/llm/access/access-provider.js";

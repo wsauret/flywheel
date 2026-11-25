@@ -7,11 +7,11 @@ import { AuthProfileStore } from "../../../../../../src/infra/auth/store/auth-pr
 import { apiKey, captureProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
 import { writeProviderModelCatalog } from "../../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
 import { accessProviderRegistry } from "../../../../../../src/orchestration/config/models/access-provider-registry.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogCanonicalRow } from "../../../../../../src/infra/model-catalog-rows.js";
 import { accessProviderAccountKey } from "../../../../../../src/infra/auth/provider-account.js";
 import { createModelListingClient } from "../../../../../../src/infra/llm/access/model-listing.js";
-import { credentialSlotClassifier, installedModules } from "../../../../../../src/orchestration/module-catalog.js";
+import { credentialSlotClassifier, installedModules } from "../../../../../../src/orchestration/module-contract/module-catalog.js";
 import { modelsSnapshotFile } from "../../../../../../src/infra/paths.js";
 import { createHeadlessProfileRuntime } from "../../../../../../src/orchestration/app-service/auth/headless/headless-profile-runtime.js";
 import { clearSharedModelListingClients, getSharedModelsClient } from "../../../../../../src/orchestration/config/models/llm-clients.js";

@@ -16,7 +16,7 @@ import { convertWorkflowAgentSessions } from "../../../../../src/orchestration/m
 import { workflowMembershipReader } from "../../../../../src/orchestration/session/metadata/workflow-membership"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-user-inputs"
 import { historicalWorkerTaskRootId } from "../../../../../src/orchestration/workflow-host/attempt/historical-worker-task"

@@ -40,7 +40,7 @@ import { ApiError, fromStreamError, ModelUnavailable } from "./runtime-errors.js
 
 import type { AccessProviderRegistry } from "../../../config/models/access-provider-registry.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
-import { credentialSlotClassifier } from "../../../module-catalog.js";
+import { credentialSlotClassifier } from "../../../module-contract/module-catalog.js";
 const log = Log.create({ service: "llm-client-factory" });
 
 export type EffectiveProviderConnection = ProviderConnection & { readonly profileId: string };

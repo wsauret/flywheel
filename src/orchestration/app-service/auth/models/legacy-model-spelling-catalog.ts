@@ -1,6 +1,6 @@
 import { modelsDevBaseline } from "../../../../infra/llm/access/model-listing-rows.js"
 import { getSharedModelsClient } from "../../../config/models/llm-clients.js"
-import { installedAccessProviderDefinitions } from "../../../module-composition.js"
+import { installedAccessProviderDefinitions } from "../../../module-contract/module-composition.js"
 import type { ProviderModelEligibilityState } from "./provider-model-preference-service.js"
 
 /** The catalog evidence migrateLegacyModelSpellings needs to tell a former model spelling apart: each model of a

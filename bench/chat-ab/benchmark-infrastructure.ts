@@ -22,7 +22,7 @@ export async function benchmarkInfrastructureIdentity(repoRoot = REPO_ROOT): Pro
     Bun.file(join(repoRoot, "package.json")).bytes(),
     Bun.file(join(repoRoot, "bun.lock")).bytes(),
     Bun.file(join(repoRoot, "scripts/source-cli.ts")).bytes(),
-    Bun.file(join(repoRoot, "src/orchestration/module-catalog.ts")).bytes(),
+    Bun.file(join(repoRoot, "src/orchestration/module-contract/module-catalog.ts")).bytes(),
     benchmarkHarnessIdentity(repoRoot),
   ]);
   return structuredIdentity({

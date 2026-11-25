@@ -14,7 +14,7 @@ import type { AuthOperationNotice } from "../../../../src/protocol/auth/auth-sta
 import { startModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
 import { defaultModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { createAuthStatusProjection } from "../../../../src/orchestration/app-service/auth/auth-status-projection.js";
-import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 import { observedLogins } from "../../../helpers/login-observations.js";
 

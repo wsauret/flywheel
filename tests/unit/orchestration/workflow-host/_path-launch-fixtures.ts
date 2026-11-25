@@ -11,7 +11,7 @@ import type { WorkflowLaunchRefusal } from "../../../../src/orchestration/agent-
 import { modelWorkflowLaunchOrigin, workflowLaunchTargets } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createSessionAuthAdmission, createWorkflowAuthOwner } from "../../../../src/orchestration/auth/session-auth-profile.js"
-import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { fixtureDefinitions } from "../../../helpers/project-definitions.js"

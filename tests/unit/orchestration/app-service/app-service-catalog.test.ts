@@ -5,7 +5,7 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/pr
 import { runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
 import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/auth/models/eligibility-preparation.js"
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"

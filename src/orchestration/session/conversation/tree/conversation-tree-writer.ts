@@ -8,7 +8,7 @@ import { repairToolAdjacencyWork } from "./conversation-tool-adjacency.js";
 import type { ConversationTree } from "./conversation-tree.js";
 import type { QueuedUserInputCell, QueuedUserInputCommitResult } from "../queued-user-inputs.js";
 import { cutRunningToolCall, interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnEndEntry, type TurnInterruption } from "../turn-end-record.js";
-import type { HeldRetainedOperation } from "../../../module-seams.js";
+import type { HeldRetainedOperation } from "../../../module-contract/module-seams.js";
 
 /** A swap of one finalized in-flight checkpoint that a canonical flush retires with its turn. */
 export interface FinalizedCheckpointSwap {

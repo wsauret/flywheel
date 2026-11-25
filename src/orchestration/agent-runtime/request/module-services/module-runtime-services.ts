@@ -19,7 +19,7 @@ import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event
 import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import type { RoleResolver } from "../../../config/roles.js";
-import type { FirstPartyModuleSnapshot } from "../../../module-catalog.js";
+import type { FirstPartyModuleSnapshot } from "../../../module-contract/module-catalog.js";
 import type { AskUserController } from "../../tools/sessions/ask-user-controller.js";
 import type { ProviderRequestAuditFact } from "../../../session/runtime-facts/provider-request-audit-facts.js";
 import type { RecallPort } from "../../../../protocol/transcript/conversation-recall.js"
@@ -42,7 +42,7 @@ import type { CapabilityCheck } from "../../../../infra/capability-text.js";
 import type { RuntimeConversation } from "../runtime-conversation.js";
 import { deriveChildRuntimeSurfaces } from "../../tools/dispatch/tool-registry.js";
 import { ownedCommandRunner } from "../../../../infra/owned-command.js";
-import type { ChildSessionAuthority } from "../../../module-seams.js";
+import type { ChildSessionAuthority } from "../../../module-contract/module-seams.js";
 
 export interface ModuleRuntimeServices {
   readonly userDataRoot: string;

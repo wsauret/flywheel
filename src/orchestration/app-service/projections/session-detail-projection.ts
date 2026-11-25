@@ -41,7 +41,7 @@ import { displayedReplyWait } from "../../../protocol/client/session-controls.js
 import type { RuntimeSummaryProjection } from "./catalog/runtime-summary-projection.js"
 import { budgetViewFromRuntimeSummary, type RuntimeSummaryView } from "./catalog/runtime-summary-read.js"
 import type { SessionRow } from "../../../protocol/runtime/app-service-types.js"
-import { workflowRunReader } from "../../module-catalog.js"
+import { workflowRunReader } from "../../module-contract/module-catalog.js"
 
 export interface SessionDetailProjection {
   sessionDetail(sessionId: string): Promise<RuntimeSessionDetailResult>

@@ -5,7 +5,7 @@ import type { MessageEntry } from "../../../../src/orchestration/session/convers
 import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/transcript/conversation-block-projection"
 import { branchBlocks } from "../../../helpers/branch-blocks"
 import { formatToolInputProblems } from "../../../../src/orchestration/agent-runtime/tools/input/validate-input"
-import type { ToolHistorySummary } from "../../../../src/orchestration/module-seams"
+import type { ToolHistorySummary } from "../../../../src/orchestration/module-contract/module-seams"
 
 const CWD = "/scratch/project"
 const T0 = "2026-07-02T10:00:00.000Z"

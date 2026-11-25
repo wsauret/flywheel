@@ -1,5 +1,5 @@
 /** Loads the module registries, which publish the shipped catalog that every
- *  composition reads (`orchestration/module-catalog.ts`). No kernel file
+ *  composition reads (`orchestration/module-contract/module-catalog.ts`). No kernel file
  *  imports a registry, so a process loads them here, once, before it loads
  *  code that reads the catalog. A source or test entry that installed its own
  *  catalog keeps it: publishing never replaces an installed override.

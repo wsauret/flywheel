@@ -1,8 +1,8 @@
 import { Log } from "../../../infra/diagnostics/log.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import type { EventBus, Unsubscribe } from "../../../infra/event-bus.js"
-import type { FirstPartyModuleComposition } from "../../module-catalog.js"
-import type { ModuleChatObserver, ModuleChatObserverContext } from "../../module-seams.js"
+import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js"
+import type { ModuleChatObserver, ModuleChatObserverContext } from "../../module-contract/module-seams.js"
 
 const log = Log.create({ service: "chat-module-observers" })
 

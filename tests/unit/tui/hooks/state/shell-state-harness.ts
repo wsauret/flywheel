@@ -32,7 +32,7 @@ import type { SessionManager } from "../../../../../src/orchestration/session/ma
 import type { ReplayedSession } from "../../../../../src/orchestration/session/metadata/schemas"
 import type { ChatRunner } from "../../../../../src/orchestration/chat/runner-types"
 import type { SessionStore } from "../../../../../src/orchestration/session-store/types"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { durableCatalogRowFromSession } from "../../../../../src/orchestration/session/control/session-catalog-row.js"
 import { EventStoreLive, EventStoreService, EventReaderService } from "../../../../../src/infra/store/event-store-effect.js"
 import { fakeProjections, runtimeSupervisor } from "../../../orchestration/app-service/app-service-doubles.js"

@@ -4,7 +4,7 @@ import { attendedClosureMembers } from "../../../workflows/skills/skill-closure.
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js";
 import { definitionAvailabilityOf } from "../../config/policy/definition-availability.js";
 import { canonicalModuleIds } from "../../../protocol/runtime/module-ids.js";
-import { disabledAgentTypes, type FirstPartyModuleComposition, type ModuleId } from "../../module-catalog.js";
+import { disabledAgentTypes, type FirstPartyModuleComposition, type ModuleId } from "../../module-contract/module-catalog.js";
 import { contributedToolIdentities, treeCapabilityCheck } from "./prompt/capability-checks.js";
 import type { CapabilityAccess } from "../tools/types.js";
 import type { AgentDefinition } from "../../../infra/agent-definition.js";

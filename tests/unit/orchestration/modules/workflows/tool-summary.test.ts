@@ -34,7 +34,7 @@ import { SESSION_DURATION_FACT_TYPES } from "../../../../../src/orchestration/se
 import { EPISODE_EVIDENCE_FACT_TYPES } from "../../../../../src/orchestration/session-store/duration.js"
 import { publishWorkerAttempt } from "../../workflow-host/_workflow-host-fixtures.js"
 import { memberCreated, usageV4Fact } from "../../../../fixtures/session-summary-history.js"
-import type { SessionToolSummaryReader, ToolHistorySummary } from "../../../../../src/orchestration/module-seams.js"
+import type { SessionToolSummaryReader, ToolHistorySummary } from "../../../../../src/orchestration/module-contract/module-seams.js"
 
 const tmp = temporaryDirectories()
 let store: LocalSqliteEventStore

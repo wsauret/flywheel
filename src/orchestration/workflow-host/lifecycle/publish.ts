@@ -10,7 +10,7 @@ import { decodeWorkflowInput, type WorkflowInputValue } from "../../../workflows
 import { commandEvidenceRefusal } from "../../../workflows/output-contract/envelope.js"
 import type { AgentDefinition } from "../../../infra/agent-definition.js"
 import { disabledToolReason } from "../../agent-runtime/tools/dispatch/tool-catalog.js"
-import type { FirstPartyModuleComposition } from "../../module-catalog.js"
+import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js"
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"
 import { compileWorkflowControl, launchGuardrailLimits } from "../../../workflows/vm/compile/compile.js"
 import { worstCaseAttempts } from "../../../workflows/vm/graph/structural-admission.js"

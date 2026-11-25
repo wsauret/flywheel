@@ -1,7 +1,7 @@
-import type { StartupDirectories } from "../infra/directory-authorities.js"
-import type { LauncherContext } from "../infra/process-supervisor.js"
-import type { PersistentProcessManager } from "../infra/supervision/persistent/persistent-process-manager.js"
-import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/runtime/account-attach.js"
+import type { StartupDirectories } from "../../infra/directory-authorities.js"
+import type { LauncherContext } from "../../infra/process-supervisor.js"
+import type { PersistentProcessManager } from "../../infra/supervision/persistent/persistent-process-manager.js"
+import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../../protocol/runtime/account-attach.js"
 
 /** The process-lifetime resources a command that composes a runtime needs.
  *  Utility verbs ignore them; only a run mode reaches this far. */

@@ -8,7 +8,7 @@ import { SESSION_TITLE_PURPOSE } from "../../../../../src/orchestration/agent-ru
 import type { ProviderSession } from "../../../../../src/orchestration/agent-runtime/request/provider-runtime-cache.js"
 import type { Claim } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RequestPreparer } from "../../../../../src/orchestration/agent-runtime/loop/turn/request-preparation.js"
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { testDirectories } from "../../../../helpers/directories.js"
 import { countStateRequests } from "../../../../helpers/state-requests.js"
 import { fakeAttempt, withRequestAdmission } from "../../agent-runtime/_model-client.js"

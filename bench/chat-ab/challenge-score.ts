@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../../scripts/shipped-modules.js";
 import { join, resolve } from "node:path";
 import { Schema } from "effect";
 import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";

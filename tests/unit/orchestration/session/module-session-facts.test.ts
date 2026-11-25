@@ -1,5 +1,5 @@
 import { expect, expectTypeOf, test } from "bun:test"
-import type { ModuleSessionFact } from "../../../../src/orchestration/module-seams.js"
+import type { ModuleSessionFact } from "../../../../src/orchestration/module-contract/module-seams.js"
 import { parseSessionFact } from "../../../../src/orchestration/session/persistence/session-fact-registry.js"
 import type { SessionFact } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 

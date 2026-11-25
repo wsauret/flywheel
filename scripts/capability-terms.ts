@@ -7,7 +7,7 @@ import type { AgentDefinition } from "../src/infra/agent-definition.js";
 import { agentTypeOf, createDefinitionAvailability } from "../src/orchestration/config/policy/definition-availability.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
 import { decodeModuleState } from "../src/orchestration/config/module-descriptor.js";
-import { installedDefinitionBundles, type FirstPartyModule } from "../src/orchestration/module-catalog.js";
+import { installedDefinitionBundles, type FirstPartyModule } from "../src/orchestration/module-contract/module-catalog.js";
 import { installedPersonaToolEntries } from "../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { createProjectDefinitionRegistry } from "../src/workflows/definitions/definition-registry.js";
 import { isUnderAny, moduleHomes } from "./module-homes.js";

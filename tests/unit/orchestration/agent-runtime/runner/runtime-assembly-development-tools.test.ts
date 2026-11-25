@@ -29,7 +29,7 @@ import { createForegroundBashHoldController } from "../../../../../src/orchestra
 import { publishSkillRevision } from "../../../../../src/workflows/skills/skill-schema.js"
 import { testSkill } from "../../../../helpers/skill-fixtures.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js"
-import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../src/orchestration/module-contract/module-composition.js"
 import { checkpointTestPersistences } from "../../../../helpers/checkpoint-store.js"
 import { join } from "node:path"
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js"

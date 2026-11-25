@@ -5,7 +5,7 @@ import { normalizeRoleAssignments } from "../../../../src/orchestration/config/r
 import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
 import { createDefinitionAvailability, type DefinitionAvailabilityOwner } from "../../../../src/orchestration/config/policy/definition-availability.js"
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js"
-import type { ModuleId } from "../../../../src/orchestration/module-catalog.js"
+import type { ModuleId } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import type { ModelFamily } from "../../../../src/infra/llm/models/model-family.js"

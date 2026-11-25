@@ -17,7 +17,7 @@ import type { ConversationMessage } from "../../../infra/llm/conversation/conver
 import { presentToolHistory } from "../llm/types.js";
 import type { PreparedRequestAttempt, RequestToolSurfaceOwner } from "./request-tool-surface.js";
 import type { ModelInteractionProfile } from "./prompt/model-interaction-profile.js";
-import type { FirstPartyModuleComposition } from "../../module-catalog.js";
+import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js";
 import type { ToolExecutionGate } from "../tools/dispatch/tool-dispatch.js";
 import { projectToolHistory, type ToolHistoryProjection } from "../llm/history/tool-history-projection.js";
 import { applyContentRepairs } from "../llm/history/content-repair.js";

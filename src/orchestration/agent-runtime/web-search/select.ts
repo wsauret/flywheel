@@ -7,7 +7,7 @@
  */
 
 import type { AuthContext, ProviderConnection } from "../../../infra/auth/auth-context.js";
-import { credentialSlotClassifier, type FirstPartyModuleComposition } from "../../module-catalog.js";
+import { credentialSlotClassifier, type FirstPartyModuleComposition } from "../../module-contract/module-catalog.js";
 import { WebSearchError, type WebSearchPort, type WebSearchProvider, type WebSearchProviderId } from "./types.js";
 
 export interface CreateWebSearchOptions {

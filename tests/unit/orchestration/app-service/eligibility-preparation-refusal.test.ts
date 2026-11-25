@@ -5,7 +5,7 @@ import { captureProviderConnection } from "../../../../src/infra/auth/auth-conte
 import { authDir } from "../../../../src/infra/paths.js"
 import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/auth/models/eligibility-preparation.js"
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"

@@ -22,10 +22,10 @@ import { reconcileWorkflowAgentInput } from "../../../../src/orchestration/workf
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types.js"
 import { createWorkflowAgentInputs, type WorkflowAgentInputs } from "../../../../src/orchestration/workflow-host/execution/agent-inputs"
 
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
 import { definition } from "../../workflows/vm/host-test-support"
 import { childSessionProjectionAttachment } from "../../../../src/orchestration/session-store/child-session-projection"
-import type { AttachChildSessionProjection } from "../../../../src/orchestration/module-seams"
+import type { AttachChildSessionProjection } from "../../../../src/orchestration/module-contract/module-seams"
 import type { AnyBlock } from "../../../../src/infra/output-blocks"
 let baseDir: string
 let store: LocalSqliteEventStore

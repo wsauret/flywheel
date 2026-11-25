@@ -4,7 +4,7 @@ import { accessProviderCandidateKey, createAccessProviderSelection, type AccessP
 import { createModelListingClient, type ModelDiscoveryMode } from "../../../../src/infra/llm/access/model-listing.js";
 import { AUTH_ALL, AUTH_DIR, AUTH_NONE } from "./_model-listing-fixtures.js";
 import { testCapabilityModules, testProviderSelection } from "../../../helpers/provider-authority.js";
-import { credentialSlotClassifier } from "../../../../src/orchestration/module-catalog.js";
+import { credentialSlotClassifier } from "../../../../src/orchestration/module-contract/module-catalog.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { fakeModelsClient, modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { fakeFetch } from "../../../helpers/fake-fetch.js";

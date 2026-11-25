@@ -25,7 +25,7 @@ import type { WorkflowsMode } from "../../../../../../src/protocol/runtime/modul
 import type { ModuleId } from "../../../../../../src/protocol/runtime/module-ids.js";
 import { createRecordingFileMutationStore, makeContext } from "../_fixtures.js";
 import { ALL_CAPABILITIES, askUserController, plan, skillRevision, subagentsRuntime, userDataRoot } from "./_planner-fixtures.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../../../../scripts/shipped-modules.js";
 import { createToolRegistry } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import { DEVELOPMENT_MODULES } from "../../../../../../src/orchestration/development-modules.js";

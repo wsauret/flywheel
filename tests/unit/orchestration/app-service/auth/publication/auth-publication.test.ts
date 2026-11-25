@@ -11,7 +11,7 @@ import { authScopesForProfile } from "../../../../../../src/orchestration/auth/a
 import { createAuthStatusProjection } from "../../../../../../src/orchestration/app-service/auth/auth-status-projection.js"
 import { createProviderModelPreferenceService } from "../../../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
 import { createRuntimeUiBus } from "../../../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-composition.js"
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js"
 import { createCursorIntake } from "../../../../../../src/protocol/client/cursor-intake.js"
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { durableRow } from "../../_frontend-projection-fixtures.js"

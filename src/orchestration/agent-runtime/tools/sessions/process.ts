@@ -7,47 +7,14 @@ import { formatRuntimeNotification } from "../../../session/control/background-w
 import { readBoundedSpoolTail, type BoundedSpoolTail, type RandomAccessSpool } from "../bash/execution/bash-output-tail.js";
 import type { AdvertisedTool, ToolContext, RuntimeTool, RuntimeToolInput, ToolResult } from "../types.js";
 import { parseWorkflowTargets } from "./workflow-targets.js";
+import { DEFAULT_WAIT_SECONDS, PROCESS_TOOL_NAME, processWaitSeconds, WAIT_CEILING_SECONDS } from "../../../session/conversation/turn-end-record.js";
 
-const PROCESS_TOOL_NAME = "process";
 /** The targeting rules that a child with addresses states beside them in its status, so they reach only an agent
  *  that has such a child (ARCH-CONTEXT-033). */
 const CHILD_ADDRESS_GUIDANCE = "These addresses name item keys and named-agent ids for targeted direction, and agent session ids for direct messages and replies. Never substitute an agent session id for this child's process id. When a workflow runs a phase over a list or a phase of named agents, name item keys or agent ids from its status in targets for interrupt and resume. Omit targets only to act on the whole workflow. Interrupt refuses the entire request if any named agent has not started; interrupt it once it runs, or interrupt the whole workflow. Unknown or finished targets refuse the action and list valid alternatives.";
 const PROCESS_TARGETS_SCHEMA = { type: "array", items: { type: "string" }, description: "interrupt or resume: item keys or agent ids from the child's status. Omit for the whole child." } as const;
-export const DEFAULT_WAIT_SECONDS = 240;
-/** Every wait ends after at most one hour, so that the agent reassesses
- *  the work it waits on (PI-AGENT-080). The schema's maximum states it. */
-const WAIT_CEILING_SECONDS = 3600;
 const PROCESS_WAIT_TIMEOUT_SCHEMA = { type: "number", exclusiveMinimum: 0, maximum: WAIT_CEILING_SECONDS, description: `wait: seconds, from your estimate of the remaining work. Default ${DEFAULT_WAIT_SECONDS}.` } as const;
 const PROCESS_WAIT_GUIDANCE = "When everything left depends on managed work, call process with action='wait' and soft_timeout from your estimate of all remaining managed work; never poll, sleep, or stop or restart a command to wait. Completion or expiry wakes you once without stopping the work. After a wake or a status check, if nothing needs action or a reply, wait again with a fresh estimate and no visible text; do not send status chatter.";
-
-/** The duration of a native wait: the four-minute default without an
- *  estimate, the estimate up to the one-hour ceiling, or undefined for an
- *  estimate that is not positive finite seconds. A model's estimate is
- *  external input, so a value above the ceiling is read as the ceiling, not
- *  refused. A restore replays recorded calls through this function, so a
- *  longer wait that an earlier build recorded also restores at the ceiling. */
-export function processWaitSeconds(input: RuntimeToolInput): number | undefined {
-  if (input.soft_timeout === undefined) return DEFAULT_WAIT_SECONDS;
-  const seconds = input.soft_timeout;
-  return typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0
-    ? Math.min(seconds, WAIT_CEILING_SECONDS) : undefined;
-}
-
-// Remove after 2027-10-30: transcripts that builds before 2026-10-30 wrote for
-// gpt-6-luna hold `process` calls of this retired registration. Its wait that
-// named a process returned after its own bound instead of parking the turn.
-const RETIRED_BOUNDED_WAIT_REGISTRATION_ID = "process.luna";
-
-/** Whether a call parks the turn on session work. A native wait always parks
- *  on every process and ignores a `process_id`. A recorded call of the retired
- *  bounded-wait registration that names a process did not park. A call with no
- *  registration reads as native: it comes from a build that stamped no
- *  registration, in which every `process` wait parked. */
-export function isParkingWaitCall(call: { readonly name: string; readonly input: RuntimeToolInput; readonly registrationId?: string }): boolean {
-  if (call.name !== PROCESS_TOOL_NAME || call.input.action !== "wait") return false;
-  if (call.registrationId === RETIRED_BOUNDED_WAIT_REGISTRATION_ID && call.input.process_id !== undefined) return false;
-  return processWaitSeconds(call.input) !== undefined;
-}
 
 /** The input schema. Only a workflow child has addresses, so `targets` is left
  *  out where no workflow target exists (see `processToolDefinition`). */

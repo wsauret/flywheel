@@ -19,9 +19,9 @@ import { loadStandalonePersonaRegistry } from "../../../../src/workflows/agents/
 import { grantedSubagentTypes, personaToolNames } from "../../../../src/workflows/agents/subagent-reachability.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
 import { createToolRegistry } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../../scripts/shipped-modules.js";
-import type { ModuleId } from "../../../../src/orchestration/module-catalog.js";
+import type { ModuleId } from "../../../../src/orchestration/module-contract/module-catalog.js";
 import { renderSkillClosure } from "../../../../src/workflows/skills/skill-render.js";
 import { isReadOnlyPersona, toolGrantRules } from "../../../../src/orchestration/agent-runtime/request/prompt/persona-tool-rules.js";
 import { toolNotice } from "../../../../src/orchestration/agent-runtime/request/tool-notice.js";

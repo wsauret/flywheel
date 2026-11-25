@@ -8,7 +8,7 @@ import { readPristineWorkflowLaunch } from "../../workflows/vm/recovery/launch-r
 import { queueFactsForState } from "../../workflows/view/view-diff.js"
 import { flattenWorkflowView } from "../../workflows/vm/view/view-flatten.js"
 import type { ResolvedAgent } from "../../workflows/definitions/agent-resolution.js"
-import { workflowRunReader } from "../module-catalog.js"
+import { workflowRunReader } from "../module-contract/module-catalog.js"
 import { describeWorkflowRecoveryDegradation, workflowRecoveryBasis } from "../../workflows/vm/recovery/recovery.js"
 import { buildWorkflowControlRecoveredFact, type WorkflowRecoveryDegradationReason } from "../../workflows/control-facts/family.js"
 import { workflowAggregateId } from "../../workflows/run/run-facts.js"

@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, test } from "bun:test";
 import { startModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
 import { globalConfigFile } from "../../../../src/infra/paths.js";
-import { moduleRequirementsForContribution } from "../../../../src/orchestration/module-requirements.js";
+import { moduleRequirementsForContribution } from "../../../../src/orchestration/module-contract/module-requirements.js";
 
 const created: string[] = [];
 

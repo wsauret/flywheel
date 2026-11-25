@@ -1,6 +1,6 @@
 import { createOrderedLane } from "../../../infra/ordered-lane.js"
-import { installedModules, type FirstPartyModule } from "../../module-catalog.js"
-import type { ModuleSessionHistory, SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../module-seams.js"
+import { installedModules, type FirstPartyModule } from "../../module-contract/module-catalog.js"
+import type { ModuleSessionHistory, SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../module-contract/module-seams.js"
 
 interface PendingHistoryUpdate {
   position: number

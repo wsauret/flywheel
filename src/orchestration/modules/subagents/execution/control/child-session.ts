@@ -1,5 +1,5 @@
 import { formatElapsed } from "../../../../../protocol/client/format.js"
-import type { ChildSessionTarget, ModuleChildSession } from "../../../../module-seams.js"
+import type { ChildSessionTarget, ModuleChildSession } from "../../../../module-contract/module-seams.js"
 import { readPendingTurnEnd } from "../../../../session/control/chat-session-run-evidence.js"
 import { parentMayContinue, personCutRefusal, subagentRunCut, type ChildCut } from "../../../../session/control/child-continuation.js"
 import { liveChildRun } from "../../../../session/control/live-session-control.js"

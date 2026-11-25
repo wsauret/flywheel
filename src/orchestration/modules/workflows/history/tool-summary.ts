@@ -11,7 +11,7 @@ import { workflowOutline, type WorkflowRunActivity } from "../../../../protocol/
 import { frontendAttempts, readWorkflowRunRecords, type WorkflowRunRecords } from "../../../session/metadata/frontend-attempts.js"
 import { workflowAggregateId } from "../../../../workflows/run/run-facts.js"
 import type { AgentFailureDisplay, PausedBy } from "../../../../infra/output-blocks.js"
-import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../../module-seams.js"
+import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../../module-contract/module-seams.js"
 import { readChatTurnEnd, readChildStop } from "../../../session/control/chat-session-run-evidence.js"
 import { holdsForPerson, type ChatTurnEnd } from "../../../session/conversation/turn-end-record.js"
 import { createWorkflowRunReader } from "../runs/run-record.js"

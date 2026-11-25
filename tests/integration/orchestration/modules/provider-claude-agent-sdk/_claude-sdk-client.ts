@@ -21,7 +21,7 @@ import type { ContentBlock, ConversationMessage } from "../../../../../src/infra
 import { engineModelId } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";
 import { holdSharedTree, type SharedTree } from "../../../../../src/orchestration/agent-runtime/request/shared-tree.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/module-composition.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
 import { inPlaceGate, runInPlaceSelfTest } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/in-place-check.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js";

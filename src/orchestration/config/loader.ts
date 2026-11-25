@@ -4,7 +4,7 @@ import { Result, Schema } from "effect";
 import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import { configurationReferenceFile } from "../../infra/paths.js";
-import { installedModules } from "../module-catalog.js";
+import { installedModules } from "../module-contract/module-catalog.js";
 import { installedConfigSections } from "./schema/config-section.js";
 import { decodeModuleSelection } from "./module-descriptor.js";
 import { buildCustomProvidersFromConfig } from "./custom-providers.js";

@@ -7,7 +7,7 @@ import type { AccessProviderDefinition, ExternalLoginPorts } from "../../../infr
 import type { AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { moduleServiceHandle } from "../../../infra/module-service.js";
 import type { ModuleServiceInstance, PortableModuleServices } from "../../app-service/executor/execution/module-service-host.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { SEVEN_DAY_METRIC } from "./account-usage.js";
 import { historicalEngineFraming } from "./agent-host/engine-text.js";
 import { claudeSdkDynamicCatalog } from "./catalog.js";

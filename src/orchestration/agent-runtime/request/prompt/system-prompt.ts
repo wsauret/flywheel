@@ -19,7 +19,7 @@ import { renderCapabilityText, type CapabilityCheck } from "../../../../infra/ca
 import type { SessionIdentity } from "../../../session/control/messaging/session-messaging.js";
 import { renderSessionIdentity } from "./session-identity-prompt.js";
 import { FLYWHEEL_CHAT_HOST, orchestrationRule, renderAgentGuidance, renderChatBody, type ModelGuidance } from "./model-chat-body.js";
-import { MESSAGE_SESSION_TOOL_NAME } from "../../tools/sessions/message-session.js";
+import { MESSAGE_SESSION_TOOL_NAME } from "../../../session/conversation/reply-wait-cells.js";
 import { LIST_SESSIONS_TOOL_NAME } from "../../tools/sessions/list-sessions.js";
 import type { AgentPurpose } from "../../types.js";
 

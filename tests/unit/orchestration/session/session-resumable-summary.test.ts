@@ -12,7 +12,7 @@ import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
 import { publishTestWorkflow } from "./_session-manager-fixtures.js"
 import { workflowSessionActions } from "../../../../src/orchestration/session/control/chat-session-run-evidence.js"
-import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
 
 const dirs: string[] = []
 const stores: LocalSqliteEventStore[] = []

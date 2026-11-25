@@ -1,6 +1,6 @@
 import type { DebugLogRecordInput } from "../../../infra/diagnostics/debug-log.js"
 import type { StartupDirectories } from "../../../infra/directory-authorities.js"
-import { runModuleMaintenance } from "../../module-catalog.js"
+import { runModuleMaintenance } from "../../module-contract/module-catalog.js"
 import { installCrashPolicy, recordFatal } from "../../../infra/crash-policy.js"
 import { errorDetail, errorMessage } from "../../../infra/error-message.js"
 import { createMessagePortProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"

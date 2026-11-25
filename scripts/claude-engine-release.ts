@@ -16,6 +16,8 @@
  * `bun run check:claude-engine` answers the first question from the npm registry. Ordinary development, startup, and
  * unit tests never reach the registry: only this command, readiness, and the release script run it.
  */
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "./shipped-modules.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ageDays, day, exitWithVerdict, FRESHNESS_WINDOW_DAYS, holdVerdict, isRecord, parseHold, plural, readOptionalText, type EngineBump, type FreshnessVerdict, type HoldRule } from "./engine-freshness.js";

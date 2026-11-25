@@ -13,7 +13,7 @@ import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-s
 import type { RuntimeAuthProfileMutation, RuntimeAuthProfileMutationResult } from "../../../../../src/protocol/auth/auth-profile-selection-protocol-types.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
 import { MODULE_PRESETS, normalizeModuleSelection, workflowsModeOf, decodeModuleState } from "../../../../../src/orchestration/config/module-descriptor.js"
-import { effectiveModuleIds as effectiveSelection, moduleProtocolRows, type ModuleId } from "../../../../../src/orchestration/module-catalog.js"
+import { effectiveModuleIds as effectiveSelection, moduleProtocolRows, type ModuleId } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 import type { SettingsRow } from "../../../../../src/tui/modals/settings/settings-modal-types.js"
 import type { SettingsDestination } from "../../../../../src/tui/modals/settings/settings-destination.js"
 import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigValues, RuntimeConfigView } from "../../../../../src/protocol/settings/runtime-config-protocol-types.js"

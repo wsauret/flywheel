@@ -10,7 +10,7 @@ import type { FrontendWorkflowView } from "../../../../protocol/session/workflow
 import { workflowViewCursor } from "../../../../protocol/modules/workflows.js"
 import type { RuntimeUiPatchInput } from "../../../../protocol/runtime/runtime-ui-protocol-types.js"
 import { workflowMembershipReader } from "../../../session/metadata/workflow-membership.js"
-import { workflowRunReader } from "../../../module-catalog.js"
+import { workflowRunReader } from "../../../module-contract/module-catalog.js"
 import { readAttemptStarts } from "../../../../workflows/vm/host/attempt-conversations.js"
 
 export interface WorkflowViewProtocolProjection {

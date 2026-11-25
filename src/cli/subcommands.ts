@@ -19,8 +19,8 @@ import { importComposing } from "./composition/module-registries.js"
 import type { StartupDirectories } from "../infra/directory-authorities.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
 import type { ProjectStateStandby } from "../orchestration/app-service/project-state/project-state-standby.js"
-import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/module-catalog.js"
-import type { CliVerbSummary, CommandProcessResources } from "../orchestration/cli-contribution.js"
+import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/module-contract/module-catalog.js"
+import type { CliVerbSummary, CommandProcessResources } from "../orchestration/module-contract/cli-contribution.js"
 import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/runtime/account-attach.js"
 
 export type SubcommandDispatch = (args: readonly string[], directories: StartupDirectories, launcher: LauncherContext, resources: CommandProcessResources) => void | Promise<void>
@@ -95,7 +95,7 @@ export const SUBCOMMANDS: KernelNouns = {
       const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/auth/resolve-key.js")
       const { openExternalUrl } = await import("../infra/open-external-url.js")
       const { promptFromReadline } = await import("./readline-prompt.js")
-      const { composeRealmModuleSnapshot } = await importComposing(() => import("../orchestration/module-composition.js"))
+      const { composeRealmModuleSnapshot } = await importComposing(() => import("../orchestration/module-contract/module-composition.js"))
       const { MODULE_IDS } = await import("../protocol/runtime/module-ids.js")
       const { AUTH_OPERATIONS, runAuth } = await importComposing(() => import("./commands/auth.js"))
       const { createCatalogSettlement } = await importComposing(() => import("../orchestration/auth/catalog-settlement.js"))
@@ -221,7 +221,7 @@ export const SUBCOMMANDS: KernelNouns = {
  *  refusal. */
 async function projectModuleSelection(directories: StartupDirectories, modules: readonly FirstPartyModule[] | undefined): Promise<FirstPartyModuleComposition> {
   const { startModulePolicy } = await importComposing(() => import("../orchestration/config/policy/module-policy.js"))
-  const { composeRealmModuleSnapshot } = await importComposing(() => import("../orchestration/module-composition.js"))
+  const { composeRealmModuleSnapshot } = await importComposing(() => import("../orchestration/module-contract/module-composition.js"))
   const started = await startModulePolicy({ userDataRoot: directories.userDataRoot })
   try {
     if (started.notice) console.error(started.notice)
@@ -272,7 +272,7 @@ function moduleNounDispatch(noun: InstalledCliNoun, catalog: readonly FirstParty
 export async function subcommandDispatch(name: string, modules?: readonly FirstPartyModule[]): Promise<SubcommandDispatch | undefined> {
   if (Object.hasOwn(SUBCOMMANDS, name)) return SUBCOMMANDS[name]?.dispatch
   if (name.startsWith("-")) return undefined
-  const { installedCliNouns } = await importComposing(() => import("../orchestration/module-catalog.js"))
+  const { installedCliNouns } = await importComposing(() => import("../orchestration/module-contract/module-catalog.js"))
   const noun = installedCliNouns(modules).get(name)
   return noun && moduleNounDispatch(noun, modules)
 }

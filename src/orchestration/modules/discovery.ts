@@ -1,8 +1,8 @@
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
-import type { ToolDeclaration } from "../module-seams.js"
+import type { ToolDeclaration } from "../module-contract/module-seams.js"
 import { listDefinition } from "../agent-runtime/tools/search/list.js"
 import { searchDefinition } from "../agent-runtime/tools/search/search.js"
-import type { FirstPartyModule } from "../module-catalog.js"
+import type { FirstPartyModule } from "../module-contract/module-catalog.js"
 
 /** `summary` gives the tool a short form on an unattended tree, whose agents rarely call it (ARCH-CONTEXT-038). */
 function declaration(tool: RuntimeTool, order: number, summary?: string): ToolDeclaration {

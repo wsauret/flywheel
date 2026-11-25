@@ -3,7 +3,7 @@ import { createConversationTreeWriter } from "../../../../src/orchestration/sess
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer";
 import { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import type { ConversationMessage } from "../../../../src/infra/llm/conversation/conversation-message";
-import type { HeldRetainedOperation } from "../../../../src/orchestration/module-seams";
+import type { HeldRetainedOperation } from "../../../../src/orchestration/module-contract/module-seams";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
 import { Log } from "../../../../src/infra/diagnostics/log";
 import { chatTurnEndOf, isResumableTurnEnd, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record";

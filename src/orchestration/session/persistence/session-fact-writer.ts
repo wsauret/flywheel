@@ -3,7 +3,7 @@ import type { EventStoreDrainResult, EventStoreEnqueueResult, EventStoreWriterLe
 import { Log } from "../../../infra/diagnostics/log.js"
 import { loggedOperation } from "../../../infra/operation-log.js"
 import type { ToolContentRow } from "../../../infra/runtime-facts/tool-content.js"
-import type { ModuleSessionFact } from "../../module-seams.js"
+import type { ModuleSessionFact } from "../../module-contract/module-seams.js"
 import type { FileMutationFact } from "../file-mutations/file-mutation-facts.js"
 import type { SessionRuntimeFact, ToolContentReferenceFact } from "../runtime-facts/session-runtime-event-types.js"
 import type { AgentInputFact } from "../agent-input/agent-input-facts.js"

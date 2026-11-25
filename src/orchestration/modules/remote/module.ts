@@ -1,7 +1,7 @@
 import { serveLaneFor } from "../../../infra/cli-subprocess.js"
 import { REMOTE_COMMAND, REMOTE_COMMAND_NAME, REMOTE_SURFACE, remoteProtocol } from "../../../protocol/modules/remote.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../../module-catalog.js"
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js"
 import { remoteNoun } from "./cli/registration.js"
 import { remoteConfigSection } from "./config.js"
 import { createRemoteProtocol } from "./protocol.js"

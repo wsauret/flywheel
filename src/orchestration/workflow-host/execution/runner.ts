@@ -31,7 +31,7 @@ import { dropQueuedUserInput, readWorkflowQueuedUserInputs } from "../../session
 import type { CapabilityAdmission } from "../../config/policy/module-policy.js"
 import { createWorkflowAgentInputs } from "./agent-inputs.js"
 import { nextRunCut, type WorkflowRunCut, strongestInterrupt } from "../../session/metadata/workflow-run-record.js"
-import { workflowRunReader, workflowRunOwner } from "../../module-catalog.js"
+import { workflowRunReader, workflowRunOwner } from "../../module-contract/module-catalog.js"
 import { readWorkflowUsage } from "../member-totals.js"
 import { workflowMembershipReader } from "../../session/metadata/workflow-membership.js"
 

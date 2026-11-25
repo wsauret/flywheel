@@ -12,7 +12,7 @@ import { startBrowserFlow } from "../../../infra/llm/access/openai-oauth.js";
 import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import { retainWebSocketSession } from "../../agent-runtime/llm/adapters/openai/chatgpt-adapter/websocket-session.js";
-import type { FirstPartyModule } from "../../module-catalog.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { canonicalizeChatGptRow, CHATGPT_CATALOG, fetchChatGPTModels } from "./catalog.js";
 import { createChatGPTResetConsumer, createChatGPTUsageReader, isModelWindowMetric } from "./usage-reader.js";
 

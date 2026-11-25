@@ -4,7 +4,7 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/s
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer"
 import { backgroundIndexEntries } from "../../../../../src/protocol/client/background-index"
-import { workflowRunWriter } from "../../../../../src/orchestration/module-catalog"
+import { workflowRunWriter } from "../../../../../src/orchestration/module-contract/module-catalog"
 import { publishTestWorkflow } from "../../session/_session-manager-fixtures"
 import { validateWorkflowBootstrap } from "../../../../../src/workflows/vm/recovery/bootstrap-validation"
 import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/metadata/catalog/session-metadata-store"

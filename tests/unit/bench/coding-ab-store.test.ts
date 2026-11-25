@@ -252,8 +252,8 @@ describe("coding campaign resume", () => {
 
 test("pins adapter bytes and decoded protocol contracts in controller infrastructure identity", async () => {
   const root = temporary("coding-infrastructure-");
-  for (const path of ["src/infra", "src/cli", "scripts", "src/orchestration"]) await mkdir(join(root, path), { recursive: true });
-  for (const path of ["package.json", "bun.lock", "scripts/source-cli.ts", "src/orchestration/module-catalog.ts"]) {
+  for (const path of ["src/infra", "src/cli", "scripts", "src/orchestration/module-contract"]) await mkdir(join(root, path), { recursive: true });
+  for (const path of ["package.json", "bun.lock", "scripts/source-cli.ts", "src/orchestration/module-contract/module-catalog.ts"]) {
     await cp(join(REPO_ROOT, path), join(root, path));
   }
   const benchmark = "src/orchestration/modules/development/benchmark";

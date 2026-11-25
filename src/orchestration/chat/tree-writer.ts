@@ -18,7 +18,7 @@ import { createConversationTreeProjection, type ConversationTreeProjectionState 
 import { createConversationMessageEntry, type ContextOpening, type ConversationTree } from "../session/conversation/tree/conversation-tree.js"
 import type { RecordCompaction } from "../agent-runtime/agent-loop-types.js"
 import { recoverFinalizedToolResultCheckpoints } from "../agent-runtime/loop/tool-calls/finalized-tool-result-checkpoint.js"
-import type { HeldRetainedOperation } from "../module-seams.js"
+import type { HeldRetainedOperation } from "../module-contract/module-seams.js"
 import { noteBackgroundNotificationHeld } from "../session/control/messaging/reply-waits.js"
 
 interface ConversationTreeWriterDeps {
