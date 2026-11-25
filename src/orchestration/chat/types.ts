@@ -84,6 +84,12 @@ export interface ChatSessionDeps {
   sessionId: string
   conversationId: string
   updateEntry: (patch: ChatEntryPatch) => void
+  /** Puts the conversation's stored transcript in place of the chat's open
+   *  display, and resolves once it is in place. The runner asks for it after
+   *  its writer landed entries that no event of a turn shows, such as the
+   *  input held behind a settled question (ARCH-SESSIONS-050). The caller
+   *  asks only while its display shows nothing that the conversation lacks. */
+  refreshDisplay: () => Promise<void>
   metricsWriter?: MetricsWriter
   /** Persists chat metadata (provider continuation token) outside the live
    *  entry so a later process can resume the same prompt-cache slot. */

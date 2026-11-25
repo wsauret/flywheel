@@ -174,8 +174,11 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
   }
 
   async function compact(): Promise<boolean> {
-    if (lifecycle.requestCompact()) {
-      session.pushSystemMessage("Queued /compact; it will run after the current response. Interrupt to start it sooner.", Date.now())
+    const requested = lifecycle.requestCompact()
+    if (requested !== "started") {
+      session.pushSystemMessage(requested === "queued"
+        ? "Queued /compact; it will run after the current response. Interrupt to start it sooner."
+        : "Queued /compact; it will run after the question is answered or skipped.", Date.now())
       session.flush()
     }
     return true
@@ -202,9 +205,14 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
     if (by === "replacement" && interruptForReplacementCut()) return
     // A pending question survives the stop for the person to answer after
     // the restart.
-    suspendedOnQuestion = askUser.suspendAll() || suspendedOnQuestion
+    const suspendedNow = askUser.suspendAll()
+    suspendedOnQuestion ||= suspendedNow
     if (suspendedOnQuestion) {
-      deps.treeWriter.suspendPending()
+      // Only the stop that suspends the question drops the turn's buffer.
+      // An orderly stop runs this twice, and between the two the settling
+      // batch buffers the results of the ask's sibling calls, which must land
+      // behind the ask (ARCH-SESSIONS-050).
+      if (suspendedNow) deps.treeWriter.suspendPending()
       controls.abort()
       return
     }
@@ -313,6 +321,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
     releaseForegroundBash: (toolUseId) => inSession(() => lifecycle.releaseForegroundBash(toolUseId)),
     transferForegroundForReplacement: () => inSession(() => lifecycle.transferForegroundForReplacement()),
     adoptHandedOver: () => inSession(() => lifecycle.adoptHandedOver()),
+    adoptHeldInput: () => inSession(() => lifecycle.adoptHeldInput()),
     recallQueuedMessage: () => inSession(() => controls.recallQueuedMessage()),
     abort() {
       inSession(() => {

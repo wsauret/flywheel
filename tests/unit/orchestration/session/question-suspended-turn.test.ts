@@ -3,6 +3,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { reconcileAgentInput } from "../../../../src/orchestration/session/history/agent-input-reconciliation";
 import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
 import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
+import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
 import { chatTurnEndOf } from "../../../../src/orchestration/session/conversation/turn-end-record";
 import {
   checkpointFinalizedToolResult,
@@ -147,7 +148,10 @@ describe.each<ResultLanding>(["loop", "checkpoint"])("a turn suspended on a ques
     expect(chatTurnEndOf(await tree.getBranch())).toBeUndefined();
     const resumed = await attachingProcess(ctx);
     await resumed.recordInterruptedTurn("crash", { ownerDead: true });
-    await createConversationTreeWriter({ tree: resumed }).commitUserTurn(userMessage("one more thing"));
+    // The question still waits, so the message waits in its hold (ARCH-SESSIONS-050).
+    const held: ConversationMessage[] = [];
+    expect(await createConversationTreeWriter({ tree: resumed, holdBehindQuestion: async (message) => { held.push(message); } }).commitUserTurn(userMessage("one more thing"))).toBeNull();
+    expect(held).toHaveLength(1);
     expect(JSON.stringify(await resumed.getBranch())).not.toContain("exited before the turn finished");
   });
 

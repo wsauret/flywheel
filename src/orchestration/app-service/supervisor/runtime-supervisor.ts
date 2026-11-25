@@ -342,11 +342,18 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       else await ensureActor(sessionId).dispatch({ kind: "background.terminate", toolUseId })
     }
   }
+  /** An answer or a skip continues the chat's turn, so it activates a
+   *  paused chat as a message and a Resume do (PI-INTERACTION-185). */
+  async function settleQuestion(sessionId: string, command: { readonly kind: "question.answer"; readonly toolUseId: string; readonly answers: QuestionAnswers } | { readonly kind: "question.cancel"; readonly toolUseId: string }): Promise<QuestionSettlementOutcome> {
+    const outcome = await ensureActor(sessionId).dispatch(command)
+    if (outcome.ok && isResidentChat(sessionId)) await markActive(sessionId)
+    return outcome
+  }
   function answerQuestion(sessionId: string, toolUseId: string, answers: QuestionAnswers): Promise<QuestionSettlementOutcome> {
-    return ensureActor(sessionId).dispatch({ kind: "question.answer", toolUseId, answers })
+    return settleQuestion(sessionId, { kind: "question.answer", toolUseId, answers })
   }
   function cancelQuestion(sessionId: string, toolUseId: string): Promise<QuestionSettlementOutcome> {
-    return ensureActor(sessionId).dispatch({ kind: "question.cancel", toolUseId })
+    return settleQuestion(sessionId, { kind: "question.cancel", toolUseId })
   }
   function compactChat(sessionId: string): Promise<boolean> {
     const member = liveSessionControl(reader, sessionId)?.member

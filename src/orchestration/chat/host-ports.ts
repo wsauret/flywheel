@@ -81,8 +81,12 @@ export interface ChatPorts {
    *  (`SessionEngines.servingChanged`). */
   servingChanged(): void
   abortGeneration(): void
-  /** Queues manual compaction behind active work. Returns false when it starts immediately. */
-  requestCompact(): boolean
+  /** Queues manual compaction behind active work, or behind a question
+   *  that waits for the person, which starts no turn. Says which it did. */
+  requestCompact(): "started" | "queued" | "behind_question"
+  /** When a question waits, takes the input held behind it into the
+   *  mailbox in arrival order (`ChatRunner.adoptHeldInput`). */
+  adoptHeldInput(): Promise<void>
   learn(): boolean
   settle(): Promise<void>
   readonly pendingTurnSettlement: Promise<void> | undefined

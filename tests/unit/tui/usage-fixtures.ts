@@ -8,7 +8,7 @@ export const usageMetric = (metricKey: string, label: string, usedFraction: numb
 
 const metadata = { profileId: "profile", authorityIncarnation: "authority", revision: 4, generation: 2, asOf: usageNow } as const
 const period = { startMs: Date.parse("2026-01-01T00:00:00.000Z"), endMs: usageNow, trackingStartMs: Date.parse("2026-01-03T00:00:00.000Z"), partial: true, incomplete: true } as const
-const quotaAccounting = { state: "available", windows: [{ state: "available", metricKey: "primary_window", startMs: Date.parse("2026-09-02T00:00:00.000Z"), endMs: usageNow, trackingStartMs: period.trackingStartMs, partial: true, attempts: 2, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true, tokens: { input: 600, output: 200, cacheRead: 100, cacheWrite: 50, reasoning: 25, total: 975 }, includedValueUsd: 21, priceUnavailable: false }] } as const
+const quotaAccounting = { state: "available", windows: [{ state: "available", metricKey: "primary_window", startMs: Date.parse("2026-09-02T00:00:00.000Z"), endMs: usageNow, trackingStartMs: period.trackingStartMs, partial: true, attempts: 2, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true, tokens: { input: 600, output: 200, cacheRead: 100, cacheWrite: 50, reasoning: 25, total: 950 }, includedValueUsd: 21, priceUnavailable: false }] } as const
 const activity = { state: "available", ...period, attempts: 5, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true, tokens: usageTokens(2_500), estimatedBilledUsd: 0, includedValueUsd: 42, priceUnavailable: false } as const
 
 export const usageAccounts: UsageAccountsResult = {

@@ -61,7 +61,7 @@ function lifecycleStub(): ChatPorts {
     restartWithQueuedInputs(_inputs: readonly ChatInputLike[]) {},
     resumeCommitted() { return false },
     async awaitOwedCapacity() { return false },
-    requestCompact() { return false },
+    requestCompact() { return "started" as const },
     learn() { return false },
     interruptGeneration() { return false },
     turnRunning: false,
@@ -80,6 +80,7 @@ function lifecycleStub(): ChatPorts {
     releaseForegroundBash() { return false },
     transferForegroundForReplacement: async () => {},
     adoptHandedOver: async () => {},
+    adoptHeldInput: async () => {},
   }
 }
 
@@ -90,6 +91,10 @@ function treeWriterStub(): ConversationTreeWriterController {
     releaseMessageId() {},
     commitQueuedUserInput: async () => { throw new Error("unused") },
     acceptRetainedOperation: async () => {},
+    holdsForQuestion: () => false,
+    awaitsAnswer: async () => false,
+    readHeldMessages: async () => [],
+    releaseHeldInput: async () => {},
     commitSystemTurn: async () => { throw new Error("unused") },
     commitBackgroundNotification: async () => { throw new Error("unused") },
     commitSystemMessage: async () => { throw new Error("unused") },

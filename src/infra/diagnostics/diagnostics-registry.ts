@@ -175,6 +175,12 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   // the question's tool call, and the reason; no content. A refusal follows a
   // person's tap, so it fires at most once per tap.
   ["question.settlement.refused", { tier: "info" }],
+  // One record per answer or skip of a question that an earlier build left
+  // behind later entries, which the settlement delivered as its own entry:
+  // the session, the question's tool call, the outcome, and how many entries
+  // followed the ask; no content. It fires at most once per question, and the
+  // path goes away with its conversion after 2027-05-24.
+  ["question.settlement.delivered_late", { tier: "info" }],
   // One record per deleted chat; passes without deletions stay at DEBUG.
   ["session.auto_delete.deleted", { tier: "info" }],
   ["session.auto_delete.swept", { tier: "debug" }],

@@ -32,7 +32,7 @@ export type OutputProjectionEvent =
   | { type: "set-model-phase"; phase: StreamPhase; timestamp: number }
   | { type: "push-user-message"; text: string; timestamp: number; entryId?: string; pending?: boolean; injected?: boolean; submissionIds?: readonly string[]; dispatchIds?: readonly string[]; images?: readonly UserMessageImage[]; from?: MessageSender }
   | { type: "push-system-message"; id?: string; message: string; timestamp: number; level?: "info" | "error"; mutationEvidence?: MutationEvidence; watch?: SystemWatch }
-  | { type: "push-divider"; label: string; timestamp: number }
+  | { type: "push-divider"; id?: string; label: string; timestamp: number }
   | { type: "tool-use"; toolUseId?: string; name: string; input?: ToolInput; timestamp: number; parentToolUseId?: string; nestedInCode?: true; leadingTextId?: string }
   | { type: "tool-input-delta"; toolUseId: string; partialJson: string; parentToolUseId?: string }
   | { type: "tool-preview-check"; toolUseId: string; operation: { type: "set"; advice: string } | { type: "clear" } }

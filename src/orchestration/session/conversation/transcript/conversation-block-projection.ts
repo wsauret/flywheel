@@ -17,6 +17,7 @@ import { installedRuntimeInvocationTool } from "../../../module-catalog.js";
 import { createProvisionalDiffInput } from "../../../../infra/substrate/output/streaming/provisional-diff-input.js";
 import { mutationEvidenceSummaryDisplayPaths, provisionalDiffDisplayPaths } from "../../../../infra/substrate/output/display-paths.js";
 import { resetFailedFileChange } from "../../../../infra/substrate/output/projector/file-change-settlement.js";
+import { invocationBoundaryId } from "./invocation-boundary.js";
 import { redactSecrets } from "../../../../infra/redact-secrets.js";
 import type { AgentInputEntry } from "../../agent-input/agent-input-projection.js";
 import { formatAgentInputAnswers } from "../../../../protocol/session/question-protocol-types.js";
@@ -322,7 +323,7 @@ export class TreeBlockProjection {
     // Inline step/skill invocations render as their divider plus the raw
     // user arguments; the expanded prompt body is model-facing only.
     if (message.invocation) {
-      this.append({ kind: "divider", id: `${id}:boundary`, label: message.invocation.label, timestamp });
+      this.append({ kind: "divider", id: invocationBoundaryId(id), label: message.invocation.label, timestamp });
       if (message.invocation.args) {
         this.append({ kind: "userMessage", id, content: message.invocation.args, timestamp, pending: false, injected: false, ...(message.submissionIds?.length ? { submissionIds: message.submissionIds } : {}) });
       }

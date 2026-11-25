@@ -52,6 +52,8 @@ export interface ChatRunnerDeps {
   /** Definition owner of this project: briefs, workflows, and skill revisions. */
   definitions: ProjectDefinitionRegistry
   updateEntry: ChatUpdateEntryFn
+  /** `ChatSessionDeps.refreshDisplay`. */
+  refreshDisplay: () => Promise<void>
   attachChildProjection?: AttachChildSessionProjection
   runtime: EventStoreRuntime
   projectionReader: AsyncEventStateReadSurface
@@ -249,6 +251,7 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
       conversationId: deps.conversationId,
       metricsWriter: updateEntry,
       updateEntry,
+      refreshDisplay: deps.refreshDisplay,
       onChatMetadata: deps.onChatMetadata,
       onSessionName: deps.onSessionName,
       hasPriorBlocks: deps.hasPriorBlocks,

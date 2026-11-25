@@ -5,6 +5,7 @@ import { recordGeneratedSessionName } from "../../../session/manager.js"
 import { modelWorkflowLaunchOrigin } from "../../../workflow-host/lifecycle/launch-origin.js"
 import type { ChatRunnerDeps } from "../../../chat/runner.js"
 import type { RuntimeRunnerCapabilities } from "../runtime-supervisor-types.js"
+import { refreshOpenChatDisplay } from "./session-reactivation.js"
 import type { SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
 
 const log = Log.create({ service: "session-runtime-actor" })
@@ -33,6 +34,7 @@ export function chatRunnerDeps(input: {
     projectionReader: ctx.projectionReader,
     manager: ctx.manager,
     updateEntry: (patch) => ctx.sessionStore.updateChatEntry(sessionId, patch),
+    refreshDisplay: () => refreshOpenChatDisplay(ctx, sessionId),
     attachChildProjection: childSessionProjectionAttachment(ctx.sessionStore),
     // The durable label is the single gate: updateLabel refuses generated
     // titles once the session is user-named, and only an accepted write

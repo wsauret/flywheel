@@ -4,6 +4,7 @@ import { InvariantViolation } from "../../../infra/guards/invariant.js"
 import { hydrateToolContentFact } from "../../../infra/substrate/store/tool-content-hydration.js"
 import { parseSessionRuntimeFact } from "../runtime-facts/session-runtime-event-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
+import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
 import { answeredAskUserResult, retiredWorkflowLaunchText } from "../../agent-runtime/tools/sessions/ask-user.js"
 import { ASK_USER_CANCELLED_RESULT } from "../../../infra/substrate/output/tools/displays/ask-user.js"
 import { interruptedToolResult } from "../../agent-runtime/llm/history/heal-messages.js"
@@ -12,6 +13,8 @@ import { loadAgentInputProjection, type AgentInputEntry } from "../agent-input/a
 import { createSessionFactWriter } from "../persistence/session-fact-writer.js"
 import type { ConversationEntry } from "../conversation/conversation-entry-types.js"
 import { tryOpenConversationTree } from "../conversation/tree/conversation-tree-handle.js"
+import { holdQueuedBackgroundNotification } from "../conversation/queued-background-notifications.js"
+import type { AgentInputAnswers } from "../../../protocol/session/question-protocol-types.js"
 
 const log = Log.create({ service: "agent-input-reconciliation" })
 
@@ -132,6 +135,59 @@ export async function reconcileAgentInput(options: ReconcileAgentInputOptions): 
       protectedToolUseIds: toolUseIdsWithoutResults(interactionToolUseIds, refreshed),
       pendingToolUseIds,
     }
+  } finally {
+    tree.dispose()
+  }
+}
+
+/** How a settlement reaches the agent (`settleLateQuestion`). `held`
+ *  carries the notice that waits in its cell. */
+export type LateQuestionSettlement =
+  | { readonly kind: "in_place" | "appended" }
+  | { readonly kind: "held"; readonly notice: { readonly key: string; readonly text: string } }
+
+/** Places the settlement of a question that an earlier build left behind
+ *  later entries, which hold no place for the ask's result, before the
+ *  settlement's fact is recorded, so a stop between the two loses neither:
+ *  the person's answer or skip lands as one runtime-composed entry, which
+ *  the next request reads as its input (PI-INTERACTION-185). Behind a newer
+ *  question that waits, the entry waits in a held notice under the same id,
+ *  which that question's settlement releases (ARCH-SESSIONS-050).
+ *  `in_place` for an ask whose result belongs in the last exchange or that
+ *  already has one: the answer then lands as its tool result. A retry finds
+ *  the entry or its hold and adds nothing.
+ *  Since the hold, no build leaves a waiting question behind other entries.
+ *  Remove after 2027-05-24. */
+export async function settleLateQuestion(
+  options: ReconcileAgentInputOptions,
+  interaction: Extract<AgentInputEntry, { kind: "pending" }>,
+  settlement: { readonly kind: "answered"; readonly answers: AgentInputAnswers } | { readonly kind: "cancelled" },
+): Promise<LateQuestionSettlement> {
+  const { toolUseId } = interaction
+  const tree = await tryOpenConversationTree({ ...options, store: options.projectionReader ?? options.store })
+  if (!tree) return { kind: "in_place" }
+  try {
+    const branch = await tree.getBranch()
+    const askIndex = branch.findIndex((entry) => entry.kind === "message" && entry.message.kind === "assistant" && typeof entry.message.content !== "string"
+      && entry.message.content.some((block) => block.type === "tool_use" && block.id === toolUseId))
+    const ask = branch[askIndex]
+    // In place when only results follow the ask: activation's reconciliation
+    // appends the answer as the call's result there.
+    if (!ask || toolResultIds(branch).has(toolUseId) || branch.slice(askIndex + 1).every((entry) => entry.kind === "message" && entry.message.kind === "toolResult")) return { kind: "in_place" }
+    const entryId = `late-question-settlement:${toolUseId}`
+    if (await tree.getEntry(entryId)) return { kind: "appended" }
+    const settled = settlement.kind === "answered"
+      ? answeredAskUserResult(interaction.request, settlement.answers, interaction.decision, toolUseId).content
+      : `User skipped the question:\n${interaction.request.map(({ question }) => `- ${question}`).join("\n")}`
+    const content = `<late-question-settlement tool-use-id="${toolUseId}">Other input reached you after you called ask_user, so its answer arrives here instead of as the call's result.\n${settled}</late-question-settlement>`
+    // A newer question that waits holds the conversation; this ask, behind
+    // later entries, is not the one that holds it.
+    const placed: LateQuestionSettlement = tree.awaitsAnswer() && !tree.lastExchange().some((entry) => entry.id === ask.id)
+      ? { kind: "held", notice: { key: entryId, text: (await holdQueuedBackgroundNotification(options.writer, options.sessionId, options.conversationId, content, entryId)).text } }
+      : { kind: "appended" }
+    if (placed.kind === "appended") await tree.appendMessage({ kind: "user", origin: "system", content }, entryId)
+    DebugLog.record({ type: "question.settlement.delivered_late", sessionId: options.sessionId, payload: { conversationId: options.conversationId, toolUseId, outcome: settlement.kind, placed: placed.kind, entriesAfterAsk: branch.length - askIndex - 1 } })
+    return placed
   } finally {
     tree.dispose()
   }

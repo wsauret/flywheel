@@ -7,7 +7,7 @@ import { entryActivity } from "../../../session-store/activity.js"
 import { readChatTurnEnd } from "../../../session/control/chat-session-run-evidence.js"
 import { isResumableTurnEnd, isVisibleTurnEnd } from "../../../session/conversation/turn-end-record.js"
 import { reconcileAgentInput } from "../../../session/history/agent-input-reconciliation.js"
-import { activateDurableChat } from "./session-reactivation.js"
+import { activateDurableChat, refreshOpenChatDisplay } from "./session-reactivation.js"
 import type { SessionMutation, SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
 import type { ResumeChatOutcome } from "../runtime-supervisor-types.js"
 import type { createBackgroundNotificationDelivery } from "../session-background-notifications.js"
@@ -99,11 +99,16 @@ export function createSessionContinuation(
     }
     const turnEnd = (await readChatTurnEnd(ctx.projectionReader, entry.conversationId))?.end
     if (!isResumableTurnEnd(turnEnd)) return refused("Nothing to resume: the last turn finished, or the person ended it")
-    await owner.backgroundNotifications.drainHeld(entry)
-    if (activation.status !== "opened") {
-      await reconcileAgentInput({ conversationId: entry.conversationId, sessionId, store: ctx.projectionReader, projectionReader: ctx.projectionReader, writer: ctx.eventWriter })
-    }
-    const started = continueCommitted((runner) => runner.resume({ announce: isVisibleTurnEnd(turnEnd) }))
+    if ((await owner.backgroundNotifications.drainHeld(entry)).landed) await refreshOpenChatDisplay(ctx, sessionId)
+    const recovered = activation.status === "opened" ? activation
+      : await reconcileAgentInput({ conversationId: entry.conversationId, sessionId, store: ctx.projectionReader, projectionReader: ctx.projectionReader, writer: ctx.eventWriter })
+    // A settled question whose turn never started, as when its runner could
+    // not start, reads as an unfinished turn. The Resume is then the
+    // settlement's own continuation: it lands the input held behind the
+    // question after the result (ARCH-SESSIONS-050). A runner that a stalled
+    // stream handed to the person refuses that continuation; its turn
+    // started and landed the input, so the person's Resume continues it.
+    const started = continueCommitted((runner) => (recovered.completedLeaf && runner.resumeCommitted()) || runner.resume({ announce: isVisibleTurnEnd(turnEnd) }))
     return async () => await started() ? { ok: true } : { ok: false, reason: "The runner did not resume the turn" }
   }
 

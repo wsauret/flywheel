@@ -143,6 +143,7 @@ export function chatRunner(sessionId: string): ChatRunner {
     releaseForegroundBash: () => false,
     transferForegroundForReplacement: async () => {},
     adoptHandedOver: async () => {},
+    adoptHeldInput: async () => {},
     answerQuestion: () => {},
     cancelQuestion: () => {},
     seedDisplayBlocks: () => {},

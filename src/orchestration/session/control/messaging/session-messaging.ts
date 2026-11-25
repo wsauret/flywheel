@@ -27,7 +27,7 @@ type Addressed = { readonly to: string; readonly name?: string }
  *  that the call opened a reply wait. */
 export type MessageSessionResult = Addressed & (
   | { readonly status: "delivered"; readonly waiting: boolean }
-  | { readonly status: "held"; readonly reason: "interrupted" | "no_reader" | "wake_limit"; readonly waiting: boolean }
+  | { readonly status: "held"; readonly reason: "interrupted" | "no_reader" | "wake_limit" | "awaiting_answer"; readonly waiting: boolean }
   | { readonly status: "refused"; readonly reason: "not_found" | "deleted" | "settled" | "handing_off" | "self" | "waits_on_you" | "not_parent_or_child" | "duplicate" }
   /** `targets` named no item or agent that reads the message now. `detail`
    *  says why and lists every valid target with its state. */

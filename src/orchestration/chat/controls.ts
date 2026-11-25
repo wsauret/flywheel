@@ -1,6 +1,6 @@
 import type { EventBusDrainResult, Unsubscribe } from "../../infra/substrate/events/event-bus.js"
 import { Log } from "../../infra/diagnostics/log.js"
-import { chatInputImages, chatInputText, normalizeChatInput, type ChatInput, type ChatInputLike } from "../../infra/substrate/events/chat-input.js"
+import { chatInputText, normalizeChatInput, type ChatInput, type ChatInputLike } from "../../infra/substrate/events/chat-input.js"
 import { interruptedLabel, RESUMED_LABEL } from "../../infra/substrate/output/run-labels.js"
 import { isRuntimeInterruption, type ControlInterruption, type PlannedCutInterrupt, type RuntimeInterruption, type TurnInterruption } from "../session/conversation/turn-end-record.js"
 import type { ConversationTreeWriterController } from "./tree-writer.js"
@@ -8,6 +8,7 @@ import type { ChatCallbacks, ChatSessionState } from "./types.js"
 import type { ChatPorts } from "./host-ports.js"
 import type { OutputSession } from "../session-store/output-session.js"
 import type { ChatSendResult } from "./runner-types.js"
+import { showMessageRow } from "./message-row.js"
 import { personMessageKey } from "../session/conversation/queued-user-inputs.js"
 import { recordPersonMessageReceipt } from "../session/conversation/person-message-ledger.js"
 
@@ -213,24 +214,6 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
     }
   }
 
-  /** Shows the person's message. Its row carries the client's submission
-   *  ids, which is the client's proof of delivery, so it is shown only once
-   *  the message is durable. A queued row also names its held cell, by which
-   *  a recall withdraws exactly that row. */
-  function showSent(input: ChatInputLike, queued: boolean, entryId: string | undefined): void {
-    const { invocation, submissionIds, dispatchIds } = normalizeChatInput(input)
-    const identity = { ...(submissionIds?.length ? { submissionIds } : {}), ...(dispatchIds?.length ? { dispatchIds } : {}) }
-    if (invocation) {
-      // Inline step/skill invocation: paint the divider and the raw user
-      // arguments; the expanded prompt body is model-facing only.
-      session.pushDivider(invocation.label, Date.now())
-      if (invocation.args) session.pushUserMessage(invocation.args, Date.now(), { entryId, queued, injected: false, ...identity })
-    } else {
-      const images = chatInputImages(input)
-      session.pushUserMessage(chatInputText(input), Date.now(), { entryId, queued, injected: false, ...identity, ...(images.length ? { images } : {}) })
-    }
-  }
-
   /** Each message is read against the ledger, saved, and handed to the
    *  runner only after the message sent before it settled. So the runner
    *  takes messages in send order, and a later copy of a submission always
@@ -265,7 +248,9 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
       return "ended"
     }
     const text = chatInputText(input)
-    const queued = lifecycle.turnState === "active"
+    // A message to a chat whose question waits is held behind it, as a
+    // message into a running turn is (ARCH-SESSIONS-050).
+    const queued = lifecycle.turnState === "active" || await treeWriter.awaitsAnswer()
 
     if (lifecycle.turnState === "idle" && !state.providerConversationId) {
       log.debug("chat first send; queueing fresh runner")
@@ -291,7 +276,7 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
     // A chat that ended meanwhile has no runner to take the message, which
     // its conversation keeps.
     if (state.ended) return "accepted"
-    showSent(saved.input, queued, saved.entryId)
+    showMessageRow(session, saved.input, { queued, entryId: saved.entryId })
     lifecycle.enqueueInput(saved.input)
     return "accepted"
   }
@@ -329,7 +314,7 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
   function requestWithContext(input: ChatInputLike, context: string): boolean {
     if (!lifecycle.requestWithContext(input, context)) return false
     // Never a queued row: the mailbox never recalls a context request.
-    showSent(input, false, undefined)
+    showMessageRow(session, input, { queued: false, entryId: undefined })
     return true
   }
 

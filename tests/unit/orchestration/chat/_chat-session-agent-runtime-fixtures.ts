@@ -43,6 +43,10 @@ export function makeMemoryTreeWriter(): ConversationTreeWriterController {
     recordedPersonMessage: async () => undefined,
     reserveMessageId: async () => crypto.randomUUID(),
     releaseMessageId() {},
+    holdsForQuestion: () => false,
+    awaitsAnswer: async () => false,
+    readHeldMessages: async () => [],
+    releaseHeldInput: async () => {},
     async commitUserTurn(input: ChatInputLike) {
       messages.push({ kind: "user", content: chatInputContent(input) })
       entryId += 1
@@ -300,6 +304,7 @@ export function createTestChatSessionDeps(
     treeWriter: makeMemoryTreeWriter(),
     onTreeFailure: noopOnTreeFailure,
     updateEntry: () => {},
+    refreshDisplay: async () => {},
     refreshEnvironment: async () => {},
     ...overrides,
   }

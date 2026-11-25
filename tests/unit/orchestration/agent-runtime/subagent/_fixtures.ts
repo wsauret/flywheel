@@ -420,6 +420,10 @@ function memoryConversation(): ConversationTreeWriterController {
     releaseMessageId() {},
     commitQueuedUserInput: async () => "committed",
     acceptRetainedOperation: async () => {},
+    holdsForQuestion: () => false,
+    awaitsAnswer: async () => false,
+    readHeldMessages: async () => [],
+    releaseHeldInput: async () => {},
     commitSystemTurn: async (text, key) => {
       if (key !== undefined && keys.has(key)) return key;
       if (key !== undefined) keys.add(key);

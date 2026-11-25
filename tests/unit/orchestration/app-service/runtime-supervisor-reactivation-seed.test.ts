@@ -333,7 +333,9 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     await supervisor.disposeAll()
   })
 
-  test.each(["answer", "dismiss"] as const)("%s keeps an interrupted durable question settled without reopening its tool exchange", async (action) => {
+  // The previous shape (ANS-4): an earlier build left the open question
+  // behind a later entry. Remove with the conversion after 2027-05-24.
+  test.each(["answer", "dismiss"] as const)("%s of a question an earlier build left behind a later entry reaches the model as one entry and continues the chat once", async (action) => {
     const sessionId = `reactivate-interrupted-question-${action}`
     await ctx.manager.createChat({ name: "Interrupted Chat", initialState: "inactive", id: sessionId })
     const conversationId = await appendPendingQuestion(sessionId, true)
@@ -354,16 +356,20 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
 
     expect(await settled).toEqual({ ok: true })
     expect((await loadAgentInputProjection(asAsyncEventReadSurface(ctx.store), sessionId)).get("ask-1")?.kind).toBe(action === "answer" ? "answered" : "cancelled")
-    expect(resumes).toBe(0)
+    expect(resumes).toBe(1)
     const tree = await openExistingTree({ conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
     const branch = await tree.getBranch()
+    const context = await tree.buildContext()
     await tree.dispose()
-    expect(branch.at(-1)).toMatchObject({
-      kind: "message",
-      message: { kind: "system", content: "Interrupted by user." },
-      displayOnly: true,
-    })
     expect(branch.some((entry) => entry.kind === "message" && entry.message.kind === "toolResult" && entry.message.toolUseId === "ask-1")).toBe(false)
+    expect(branch.at(-2)).toMatchObject({ kind: "message", message: { kind: "system", content: "Interrupted by user." }, displayOnly: true })
+    expect(branch.at(-1)).toMatchObject({ kind: "message", id: "late-question-settlement:ask-1", message: { kind: "user", origin: "system" } })
+    const delivered = context.messages.at(-1)
+    expect(delivered?.kind).toBe("user")
+    const text = delivered?.kind === "user" && typeof delivered.content === "string" ? delivered.content : JSON.stringify(delivered?.content)
+    expect(text).toContain("Continue?")
+    expect(text).toContain(action === "answer" ? "Continue?: Yes" : "User skipped the question")
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
 
     await supervisor.disposeAll()
   })
