@@ -50,10 +50,10 @@ import { randomUUID } from "node:crypto";
 import * as path from "node:path";
 import { Database, SQLiteError } from "bun:sqlite";
 import { Schema } from "effect";
-import { errorMessage } from "../error-message.js";
-import type { ContainedDirectory } from "../descriptor-directory/descriptor-directory-contract.js";
-import { openContainedDirectory } from "../descriptor-directory.js";
-import { applySqliteBusyTimeout, applySqliteDurabilityPragmas } from "../sqlite-durability.js";
+import { errorMessage } from "../diagnostics/error-message.js";
+import type { ContainedDirectory } from "../platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openContainedDirectory } from "../platform/files/descriptor-directory.js";
+import { applySqliteBusyTimeout, applySqliteDurabilityPragmas } from "../platform/files/sqlite-durability.js";
 
 /** Bumped when the stored shape changes. The file name carries this version
  *  (`updateAuthorityDbFile`), so binaries speaking different protocols

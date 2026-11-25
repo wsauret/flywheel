@@ -1,7 +1,7 @@
-import { errorDetail, errorMessage } from "../../../../infra/error-message.js"
+import { errorDetail, errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../infra/notification-episode.js"
-import { loggedOperation, type OperationFailure } from "../../../../infra/operation-log.js"
+import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../infra/substrate/events/notification-episode.js"
+import { loggedOperation, type OperationFailure } from "../../../../infra/diagnostics/operation-log.js"
 import { coalesceRepeats } from "../../../../infra/diagnostics/repeat-coalescer.js"
 import type { RuntimeAuthView } from "../../../../protocol/auth/auth-status-protocol-types.js"
 

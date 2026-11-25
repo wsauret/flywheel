@@ -10,7 +10,7 @@ import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runti
 import { estimateConversationTokens, tokenCountingPolicy } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import { createAgentRunTally } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-state.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
-import { messageInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js";
+import { messageInput, type AgentLoopInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 
 const loopIdentity = { userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", providerSessionKey: "loop-safety", promptCacheKey: "loop-safety", artifactScopeId: "loop-safety", retrievalSessionId: "loop-safety" };
 

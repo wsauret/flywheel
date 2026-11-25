@@ -27,8 +27,8 @@ import {
   resumeInput,
   sameProducer,
   wakeInput,
-} from "../../infra/agent-loop-events.js";
-import { normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike } from "../../infra/chat-input.js";
+} from "../../infra/substrate/events/agent-loop-events.js";
+import { normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike } from "../../infra/substrate/events/chat-input.js";
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js";
 import type { HumanInputQueue, QueuedInputWithdrawal } from "../session/control/messaging/queued-input-recall.js";
 

@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import type { DefinitionLayer } from "../../infra/definition-resolution.js";
+import type { DefinitionLayer } from "../../infra/definitions/definition-resolution.js";
 
 /** Where a definition came from: one of the registry's layers, or `session`
  *  for a workflow file that a chat agent wrote in its own session scratch and

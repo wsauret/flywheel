@@ -1,6 +1,6 @@
-import type { AsyncEventReadSurface, CorruptEventRowError, StoredFact } from "../../../../infra/store/event-store-types.js"
-import { createEventProjection } from "../../../../infra/projection/event-projection.js"
-import { heldProjection } from "../../../../infra/projection/projection-registry.js"
+import type { AsyncEventReadSurface, CorruptEventRowError, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
+import { createEventProjection } from "../../../../infra/substrate/projection/event-projection.js"
+import { heldProjection } from "../../../../infra/substrate/projection/projection-registry.js"
 import { emptyExperimentState, recordExperimentRun, startExperimentSegment } from "./state-reconstruction.js"
 import type { ExperimentMetric, ExperimentRun, ExperimentState } from "./types.js"
 import {

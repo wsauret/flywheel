@@ -6,10 +6,10 @@
  */
 import { afterEach, expect, test } from "bun:test";
 import { Redacted } from "effect";
-import { captureProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
-import type { AuthContext } from "../../../../../../src/infra/auth/auth-context.js";
-import { createModelsClient } from "../../../../../../src/infra/llm/models/models.js";
-import { authDir, modelsSnapshotFile } from "../../../../../../src/infra/paths.js";
+import { captureProviderConnection } from "../../../../../../src/infra/providers/auth/auth-context.js";
+import type { AuthContext } from "../../../../../../src/infra/providers/auth/auth-context.js";
+import { createModelsClient } from "../../../../../../src/infra/providers/llm/models/models.js";
+import { authDir, modelsSnapshotFile } from "../../../../../../src/infra/platform/files/paths.js";
 import { createAdmittedClient } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { testCapabilityModules, testEligibility, testProviderSessionLifetime } from "../../../../../helpers/provider-authority.js";
@@ -51,7 +51,7 @@ test("an admitted grok plan requests subscription Responses with the captured be
   });
   const providers = accessProviderRegistry(testCapabilityModules());
   const eligibility = testEligibility({
-    candidateOfferings: (candidate: import("../../../../../../src/infra/llm/access/access-provider.js").AccessProviderCandidate, model: string) => [{
+    candidateOfferings: (candidate: import("../../../../../../src/infra/providers/llm/access/access-provider.js").AccessProviderCandidate, model: string) => [{
       candidate,
       wireModelId: model,
       dataUse: "standard" as const,

@@ -38,8 +38,8 @@
  *  source snapshot module, and neither lane loads the install engine until
  *  it returns. */
 
-import type { SourceSnapshotLocation } from "../../infra/cli-subprocess.js";
-import { errorMessage } from "../../infra/error-message.js";
+import type { SourceSnapshotLocation } from "../../infra/platform/cli-subprocess.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import type { BuildRef } from "../../infra/update/build-identity.js";
 import { ownBuild } from "../../infra/update/live-builds.js";
@@ -124,8 +124,8 @@ function installedLane(userDataRoot: string, build: BuildRef): FallbackLane {
 function devLane(snapshot: SourceSnapshotLocation): FallbackLane {
   return {
     build: snapshot.digest,
-    prove: async () => (await import("../../infra/distribution/source-snapshot.js")).recordSnapshotProved(snapshot),
-    returnToProved: async (reason) => (await import("../../infra/distribution/source-snapshot.js")).refuseSourceSnapshot(snapshot, reason),
+    prove: async () => (await import("../../infra/update/distribution/source-snapshot.js")).recordSnapshotProved(snapshot),
+    returnToProved: async (reason) => (await import("../../infra/update/distribution/source-snapshot.js")).refuseSourceSnapshot(snapshot, reason),
   };
 }
 

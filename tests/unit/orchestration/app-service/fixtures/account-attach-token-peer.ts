@@ -3,7 +3,7 @@ import { parentPort, workerData } from "node:worker_threads"
 import { Redacted } from "effect"
 
 import { readOrCreateAccountAttachToken } from "../../../../../src/orchestration/app-service/account/account-attach-token.js"
-import { accountServeTokenPath } from "../../../../../src/infra/paths.js"
+import { accountServeTokenPath } from "../../../../../src/infra/platform/files/paths.js"
 
 /** One participant of a token race, on its own thread. It goes through the
  *  roots in order. A `create` peer reads or creates each token, as a client and

@@ -1,6 +1,6 @@
 import type { Rpc } from "effect/rpc"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import { createOrderedLane, type OrderedLane } from "../../../../infra/ordered-lane.js"
+import { createOrderedLane, type OrderedLane } from "../../../../infra/async/ordered-lane.js"
 
 const log = Log.create({ service: "session-holds" })
 

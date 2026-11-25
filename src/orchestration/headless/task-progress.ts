@@ -1,6 +1,6 @@
-import type { FlywheelEvent, FlywheelEventType } from "../../infra/events.js"
-import type { MeasuredUsageEntry } from "../../infra/llm/usage/usage-entry.js"
-import type { SessionNoticeOperation } from "../../infra/session-notice.js"
+import type { FlywheelEvent, FlywheelEventType } from "../../infra/substrate/events/events.js"
+import type { MeasuredUsageEntry } from "../../infra/providers/llm/usage/usage-entry.js"
+import type { SessionNoticeOperation } from "../../infra/substrate/events/session-notice.js"
 import type { ProviderRequestAuditFact } from "../session/runtime-facts/provider-request-audit-facts.js"
 
 export const HEADLESS_PROGRESS_EVENT_TYPES = [

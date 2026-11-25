@@ -30,9 +30,9 @@
  */
 
 import { handoverChannelAddress, removeHandoverRemains, type OutcomeRecordRead } from "../../../infra/supervision/launch/command-handover.js"
-import type { ServeLane } from "../../../infra/cli-subprocess.js"
-import { errorMessage } from "../../../infra/error-message.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/store/event-store-types.js"
+import type { ServeLane } from "../../../infra/platform/cli-subprocess.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import type { OwnedProcess } from "../../../infra/supervision/launch/owned-subprocess.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"

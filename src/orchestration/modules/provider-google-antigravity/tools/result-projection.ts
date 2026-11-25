@@ -1,4 +1,4 @@
-import type { CapabilityCheck } from "../../../../infra/capability-text.js"
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js"
 import { limitOutput, savedOutputNotice } from "../../../agent-runtime/tools/results/truncation.js"
 import type { LlmToolOutputPart } from "../../../agent-runtime/llm/messages.js"
 

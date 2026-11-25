@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto"
 import { Redacted } from "effect"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
-import type { KeyResolver } from "../../../../infra/auth/resolve-key.js"
-import { errorMessage } from "../../../../infra/error-message.js"
-import type { ExternalUrlOpener } from "../../../../infra/open-external-url.js"
-import type { OperationLogger } from "../../../../infra/operation-log.js"
+import type { KeyResolver } from "../../../../infra/providers/auth/resolve-key.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import type { ExternalUrlOpener } from "../../../../infra/substrate/output/notify/open-external-url.js"
+import type { OperationLogger } from "../../../../infra/diagnostics/operation-log.js"
 import { disconnectProviderInstance, LoginRefusedError, loginWithApiKey, logoutProvider, reconnectWithApiKey, renameProviderInstance, type AuthCatalogSettlement, type ProviderOAuthLogin } from "../../../auth/auth-actions.js"
 
 import type { AuthOperationNotice, AuthOperationSettlement, AuthProviderStatus } from "../../../../protocol/auth/auth-status-protocol-types.js"
@@ -12,8 +12,8 @@ import type { RuntimeAuthLoginMutation, RuntimeAuthLoginResult } from "../../../
 import type { CapabilityGrant, ModulePolicy } from "../../../config/policy/module-policy.js"
 import { installedModules } from "../../../module-catalog.js"
 import { canonicalModuleIds } from "../../../../protocol/runtime/module-ids.js"
-import type { ExternalLoginDefinition, ExternalLoginQuestion, OAuthLoginPrompt } from "../../../../infra/llm/access/access-provider.js"
-import { isExternalLoginDefinition } from "../../../../infra/auth/provider-account.js"
+import type { ExternalLoginDefinition, ExternalLoginQuestion, OAuthLoginPrompt } from "../../../../infra/providers/llm/access/access-provider.js"
+import { isExternalLoginDefinition } from "../../../../infra/providers/auth/provider-account.js"
 import { installedAccessProviderDefinitions } from "../../../credential-provider-modules.js"
 
 type LoginRecovery = Pick<ExternalLoginDefinition["auth"], "answerLogin" | "settleLogin">

@@ -1,4 +1,4 @@
-import type { ReadSessionContentNode, SessionContentNode, StageSessionContentNodes } from "../../src/infra/session-content.js"
+import type { ReadSessionContentNode, SessionContentNode, StageSessionContentNodes } from "../../src/infra/substrate/session-content.js"
 
 export function sessionContentFixture() {
   const nodes = new Map<string, SessionContentNode>()

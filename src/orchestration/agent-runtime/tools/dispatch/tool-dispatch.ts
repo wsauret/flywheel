@@ -12,12 +12,12 @@
  *   - `executePreparedTool` runs the handler of a prepared call.
  */
 
-import { mergeAbortSignals } from "../../../../infra/abort.js";
-import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js";
-import { errorDetail, errorMessage } from "../../../../infra/error-message.js";
+import { mergeAbortSignals } from "../../../../infra/timing/abort.js";
+import { PersistenceWriteRefused } from "../../../../infra/substrate/store/event-store-types.js";
+import { errorDetail, errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../../infra/module-runtime.js";
-import { durationMs, logCompletion } from "../../../../infra/operation-log.js";
+import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../../infra/modules/module-runtime.js";
+import { durationMs, logCompletion } from "../../../../infra/diagnostics/operation-log.js";
 import type { ToolCall, ToolInputRepair } from "../../llm/types.js";
 import type { AgentOptions } from "../../types.js";
 import type { GateAdmission } from "./tool-concurrency-gate.js";

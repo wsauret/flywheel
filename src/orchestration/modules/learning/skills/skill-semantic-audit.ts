@@ -1,5 +1,5 @@
 import type { PreparedPackage, SkillSemanticAuditEvidence, SkillSemanticAuditResult } from "../../../agent-runtime/request/module-services/review-types.js";
-import { parseFrontmatter } from "../../../../infra/yaml/frontmatter.js";
+import { parseFrontmatter } from "../../../../infra/parsing/yaml/frontmatter.js";
 import { resolveSkillClosure } from "../../../../workflows/skills/skill-closure.js";
 import { normalizeSkillFrontmatter, SKILL_FILE, type SkillPackageIdentity, type SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 

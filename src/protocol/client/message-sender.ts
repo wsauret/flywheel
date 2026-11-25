@@ -1,5 +1,5 @@
 import type { FrontendMessageSender } from "../runtime/app-service-types.js"
-import type { ToolEntry, UserMessageBlock } from "../../infra/output-blocks.js"
+import type { ToolEntry, UserMessageBlock } from "../../infra/substrate/events/output-blocks.js"
 
 const RELATION_NAMES = {
   parent: "parent",

@@ -1,4 +1,4 @@
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import type { ChildSessionRow, RuntimeClient, SessionCatalogRow, SessionRow } from "../runtime/app-service-types.js"
 import type { RuntimeUiPatch } from "../runtime/runtime-ui-protocol-types.js"
 import type { RuntimeSessionDetailView } from "../session/session-detail-protocol-types.js"

@@ -1,5 +1,5 @@
 import { isAbsolute, sep, win32 } from "node:path";
-import { physicalPathWithMissingTail } from "../../../../../infra/canonical-path.js";
+import { physicalPathWithMissingTail } from "../../../../../infra/platform/files/canonical-path.js";
 
 export type ShellDialect = "bash" | "powershell";
 export interface ExpandedWord {

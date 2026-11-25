@@ -1,5 +1,5 @@
 import { Option, Schema } from "effect"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { coalesceRepeats } from "../../../../infra/diagnostics/repeat-coalescer.js"
 import {

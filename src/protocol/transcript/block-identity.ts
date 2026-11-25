@@ -1,4 +1,4 @@
-import type { AnyBlock } from "../../infra/output-blocks.js"
+import type { AnyBlock } from "../../infra/substrate/events/output-blocks.js"
 
 /** The shape `blockIdentity` reads: any block kind with its natural or minted
  *  id. Both the runtime's `AnyBlock` and the projected `FrontendOutputBlock`

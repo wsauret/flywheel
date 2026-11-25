@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { isRecord } from "../../infra/record.js";
+import { isRecord } from "../../infra/guards/record.js";
 import type { CompiledField } from "../output-contract/compile.js";
 import type { FieldMap } from "../output-contract/grammar.js";
 import type { WorkflowTreeCoverage } from "../../protocol/session/workflow-view-protocol-types.js";

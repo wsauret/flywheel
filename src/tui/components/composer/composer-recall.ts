@@ -1,4 +1,4 @@
-import type { ChatInputLike } from "../../../infra/chat-input.js"
+import type { ChatInputLike } from "../../../infra/substrate/events/chat-input.js"
 
 /** Applies the shared first-row Up rule. Local pending input precedes runtime
  * recall; only the main composer supplies a history fallback. */

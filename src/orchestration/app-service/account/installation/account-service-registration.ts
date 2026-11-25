@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 
 import { Schema } from "effect"
 
-import type { ServeLane } from "../../../../infra/cli-subprocess.js"
+import type { ServeLane } from "../../../../infra/platform/cli-subprocess.js"
 
 /** The texts the service managers register for the account service, one per
  *  platform, and the fingerprint each one carries of itself.

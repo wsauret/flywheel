@@ -25,12 +25,12 @@ import type { HydratedOutputGroupChildrenBatch, HydratedOutputRange, HydratedOut
   ProjectFilesRequest,
   ProjectFilesResult,
 } from "../transcript/transcript-protocol-types.js"
-import type { ChatInputLike } from "../../infra/chat-input.js"
-import type { SessionNotice } from "../../infra/session-notice.js"
-import type { MutationEvidence } from "../../infra/mutation-evidence.js"
-import type { ToolResultAction } from "../../infra/tool-result-action.js"
-import type { ToolAction } from "../../infra/workflow-types.js"
-import type { AgentFailureDisplay, ContainerKind, DegradedBlock, DiffOmission, MessageSender, ProvisionalDiff, PausedBy, SystemWatch, ToolPresentation, WorkflowCard } from "../../infra/output-blocks.js"
+import type { ChatInputLike } from "../../infra/substrate/events/chat-input.js"
+import type { SessionNotice } from "../../infra/substrate/events/session-notice.js"
+import type { MutationEvidence } from "../../infra/substrate/mutation-evidence.js"
+import type { ToolResultAction } from "../../infra/substrate/events/tool-result-action.js"
+import type { ToolAction } from "../../infra/workflow/workflow-types.js"
+import type { AgentFailureDisplay, ContainerKind, DegradedBlock, DiffOmission, MessageSender, ProvisionalDiff, PausedBy, SystemWatch, ToolPresentation, WorkflowCard } from "../../infra/substrate/events/output-blocks.js"
 import type {
   EffortOptionRow,
   ModelAssignmentRow,
@@ -218,7 +218,7 @@ export interface ProtocolChatAttachment {
 export interface ProtocolChatInputObject {
   readonly text: string
   readonly attachments?: readonly ProtocolChatAttachment[]
-  /** Inline skill invocation display metadata (see infra/chat-input.ts). */
+  /** Inline skill invocation display metadata (see infra/substrate/events/chat-input.ts). */
   readonly invocation?: { readonly label: string; readonly args?: string }
   /** The identities the sending client shows this input under until the
    *  runtime's transcript shows it back. */
@@ -692,7 +692,7 @@ export interface WorkflowDefinitionDrift {
 interface WorkflowAgentSessionRowBase extends SessionRowBase {
   readonly kind: "workflow-agent"
   readonly inputMode: { readonly kind: "message" }
-  readonly workflowMembership: import("../../infra/session-workflow-membership.js").WorkflowMembership
+  readonly workflowMembership: import("../../infra/workflow/session-workflow-membership.js").WorkflowMembership
   readonly admittedActions: readonly ("session.send" | "chat.interrupt" | "chat.resume" | "session.delete")[]
 }
 export type ChildSessionRow = (ChildSessionRowBase | WorkflowAgentSessionRowBase) & SessionCatalogTotals

@@ -1,7 +1,7 @@
 /** Journal-before-publication boundary for managed skill mutations. */
 import { randomUUID } from "node:crypto";
-import type { FactRecorder } from "../../../../infra/fact-recorder.js";
-import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js";
+import type { FactRecorder } from "../../../../infra/substrate/facts/fact-recorder.js";
+import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js";
 import { skillWrittenFact, type SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
 import { discardPendingAudit, openPendingAudit, settlePendingAudit, type AuditWriter, type PendingAudit } from "./learning-journal.js";
 import { publishGlobalSkillMutation } from "./global-skill-mutation.js";

@@ -1,11 +1,11 @@
 import { createInterface } from "node:readline"
 import { Writable } from "node:stream"
 
-import { apiKeyHint } from "../infra/auth/store/api-key-hint.js"
+import { apiKeyHint } from "../infra/providers/auth/store/api-key-hint.js"
 import type {
   StartupDirectoryFallback,
   StartupDirectoryFallbackCandidate,
-} from "../infra/directory-authorities.js"
+} from "../infra/platform/files/directory-authorities.js"
 
 /** How a person can end a prompt without an answer: an empty answer or the
  *  end of input (Ctrl+D, or a closed pipe), or an interrupt (Ctrl+C). */

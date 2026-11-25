@@ -1,8 +1,8 @@
-import { errorMessage } from "../../../../infra/error-message.js";
-import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import { PersistenceWriteRefused } from "../../../../infra/substrate/store/event-store-types.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { createOrderedLane } from "../../../../infra/ordered-lane.js";
-import { runInTaskSlices } from "../../../../infra/task-scheduling.js";
+import { createOrderedLane } from "../../../../infra/async/ordered-lane.js";
+import { runInTaskSlices } from "../../../../infra/process/task-scheduling.js";
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
 import { repairToolAdjacencyWork } from "./conversation-tool-adjacency.js";
 import type { ConversationTree } from "./conversation-tree.js";

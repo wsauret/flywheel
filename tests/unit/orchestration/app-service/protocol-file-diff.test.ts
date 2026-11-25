@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
 import { hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 

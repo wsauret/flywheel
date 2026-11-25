@@ -1,5 +1,5 @@
 import type { AuthProviderAccountStatus, AuthProviderStatus, RuntimeAuthLoginQuestion } from "../auth/auth-status-protocol-types.js"
-import type { SubscriptionUsageSpendSource } from "../../infra/llm/usage/subscription-usage.js"
+import type { SubscriptionUsageSpendSource } from "../../infra/providers/llm/usage/subscription-usage.js"
 
 /** What every client says about one provider login and one account, so the terminal, the web client, and the
  *  phone name a problem and its repair in the same words. */

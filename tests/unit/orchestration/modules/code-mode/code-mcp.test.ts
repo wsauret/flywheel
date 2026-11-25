@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
+import { composeModuleRuntimes, NO_MODULE_RUNTIMES } from "../../../../../src/infra/modules/module-runtime.js";
 import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
 import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";

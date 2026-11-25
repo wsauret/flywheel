@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { createAuthAttentionPublisher } from "../../../../../../src/orchestration/app-service/auth/publication/auth-attention-publisher.js"
-import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../../../src/infra/notification-episode.js"
+import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../../../src/infra/substrate/events/notification-episode.js"
 import type { AuthFileAttention, RuntimeAuthView } from "../../../../../../src/protocol/auth/auth-status-protocol-types.js"
 import { composeModules } from "../../../../../../src/infra/module-descriptor.js"
 import { composeModuleProcessServices, createNotifySeam } from "../../../../../../src/orchestration/app-service/module-service-host.js"

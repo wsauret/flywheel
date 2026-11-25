@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks"
-import { errorMessage } from "../../../../infra/error-message.js"
-import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
-import type { EventStoreWriteAdmission } from "../../../../infra/store/event-store-writer-lane-types.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js"
+import type { EventStoreWriteAdmission } from "../../../../infra/substrate/store/event-store-writer-lane-types.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 
 const log = Log.create({ service: "session-recovery-gate" })

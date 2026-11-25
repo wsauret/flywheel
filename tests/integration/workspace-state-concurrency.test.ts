@@ -19,8 +19,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { ProjectDirectories } from "../../src/infra/directory-authorities.js";
-import { resolveEventStoreDbFile } from "../../src/infra/paths.js";
+import type { ProjectDirectories } from "../../src/infra/platform/files/directory-authorities.js";
+import { resolveEventStoreDbFile } from "../../src/infra/platform/files/paths.js";
 import { openWorkspaceState, prepareWorkspaceState } from "../../src/orchestration/workspace-state/workspace-state.js";
 import { EVENT_STORE_MEMBER } from "../../src/orchestration/workspace-state/workspace-state-generation-members.js";
 import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state/workspace-state-retirement.js";

@@ -1,6 +1,6 @@
 import { Exit, Schema } from "effect"
 import { createBoundedWorkerSpawner } from "../../../infra/process/workers/bounded-worker-spawner.js"
-import { embeddedEntrySpecifier, runsThroughBun } from "../../../infra/cli-subprocess.js"
+import { embeddedEntrySpecifier, runsThroughBun } from "../../../infra/platform/cli-subprocess.js"
 import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
 import { trackLoopSpan } from "../../../infra/diagnostics/event-loop-lag.js"
 import { terminateWorker } from "../../../infra/process/workers/worker-termination.js"

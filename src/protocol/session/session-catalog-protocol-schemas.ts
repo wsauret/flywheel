@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { WorkflowMembershipSchema } from "../../infra/session-workflow-membership.js"
-import { CAPACITY_WAIT_REASONS, SESSION_NOTICE_PRESENTATION_IDS } from "../../infra/error-presentation.js"
+import { WorkflowMembershipSchema } from "../../infra/workflow/session-workflow-membership.js"
+import { CAPACITY_WAIT_REASONS, SESSION_NOTICE_PRESENTATION_IDS } from "../../infra/substrate/events/error-presentation.js"
 import type { SessionCatalogError, SessionRow } from "../runtime/app-service-types.js"
 
 const SessionNoticeSchema = Schema.Struct({

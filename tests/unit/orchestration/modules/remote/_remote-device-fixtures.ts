@@ -5,7 +5,7 @@ import type { RemoteAccess } from "../../../../../src/orchestration/modules/remo
 import { openPairingChannel, type DeviceChannel } from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import { sealedSocket, type SealedIdentity, type SealedPeer, type SealedSocket } from "../../../../../src/protocol/modules/remote/sealed-socket.js"
 import { asKeyPair, decodeJsonFrame, decodePairingResult, fromBase64Url, keyDigest, ownedBytes, parsePairingCodeUrl } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
-import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js"
+import type { NotificationEpisodeInput } from "../../../../../src/infra/substrate/events/notification-episode.js"
 import type { RuntimeRemoteView } from "../../../../../src/protocol/modules/remote.js"
 
 /** A phone's side of the relay for tests of a runtime placement: its

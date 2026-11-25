@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
 
-import type { WebPushMessage, WebPushOutcome } from "../../../../../src/infra/web-push.js"
+import type { WebPushMessage, WebPushOutcome } from "../../../../../src/infra/substrate/output/notify/web-push.js"
 import type { PushTarget } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import { createRemoteNotifier, type RemoteNotifierOptions } from "../../../../../src/orchestration/modules/remote/remote-notifier.js"
 import type { FrontendEvent, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"

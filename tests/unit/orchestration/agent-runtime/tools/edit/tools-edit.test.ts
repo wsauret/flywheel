@@ -9,7 +9,7 @@ import { executePreparedTool, prepareToolCall } from "../../../../../../src/orch
 import { admitEveryTool } from "../../../../../helpers/request-tool-surface.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
 import { readDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/read/read.js";
-import { canonicalMutationPath, withMutationQueueKey } from "../../../../../../src/infra/locks/file-mutation-queue.js";
+import { canonicalMutationPath, withMutationQueueKey } from "../../../../../../src/infra/process/locks/file-mutation-queue.js";
 import { createRecordingFileMutationStore, makeContext } from "../_fixtures.js";
 
 describe("edit tool", () => {

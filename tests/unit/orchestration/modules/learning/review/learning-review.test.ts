@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, spyOn } from "bun:test";
 import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
-import { buildMutationDiff } from "../../../../../../src/infra/mutation-diff.js";
-import { buildMutationDiffEvidence } from "../../../../../../src/infra/mutation-diff-evidence.js";
-import type { SessionContentNode, StageSessionContentNodes } from "../../../../../../src/infra/session-content.js";
+import { readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/mutation-evidence.js";
+import { buildMutationDiff } from "../../../../../../src/infra/substrate/mutation-diff.js";
+import { buildMutationDiffEvidence } from "../../../../../../src/infra/substrate/mutation-diff-evidence.js";
+import type { SessionContentNode, StageSessionContentNodes } from "../../../../../../src/infra/substrate/session-content.js";
 import {
   createLearningReview,
   createReviewUsageAccounting,

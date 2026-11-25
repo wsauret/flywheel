@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { errorMessage } from "../../../../infra/error-message.js";
-import { displayRelativePath } from "../../../../infra/tools/detail-helpers.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import { displayRelativePath } from "../../../../infra/substrate/output/tools/detail-helpers.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import { executePathBatch, missingPathHint, prepareReadOnlyPathInput, resolveToolPath, widenToExistingParent } from "../files/tool-paths.js";
 import { checkNumericRange } from "../input/numeric-input.js";

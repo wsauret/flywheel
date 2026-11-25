@@ -6,7 +6,7 @@
  *  the installer - belongs to the coordinator and is proved there. */
 
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import type { StartupDirectories } from "../../../../src/infra/directory-authorities.js";
+import type { StartupDirectories } from "../../../../src/infra/platform/files/directory-authorities.js";
 import type { LauncherContext, LauncherScope } from "../../../../src/infra/process-supervisor.js";
 import { runUpdate, type UpdateRunResult } from "../../../../src/cli/commands/update.js";
 import * as updateService from "../../../../src/orchestration/update/update-service.js";

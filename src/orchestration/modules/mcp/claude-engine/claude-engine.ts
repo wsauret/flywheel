@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import type { Redacted } from "effect";
-import { processEngineHost } from "../../../../infra/claude-engine.js";
+import { processEngineHost } from "../../../../infra/providers/claude-engine.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { osAccount } from "../../../../infra/os-account.js";
+import { osAccount } from "../../../../infra/platform/os-account.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
-import { createOrderedLane } from "../../../../infra/ordered-lane.js";
+import { createOrderedLane } from "../../../../infra/async/ordered-lane.js";
 import type { ClaudeClientOAuth } from "../clients.js";
 import { EngineServerAnswer, launchClaudeEngineSession, type CapturedTool, type ClaudeEngineControl, type ClaudeEngineSession, type EngineServerConfig, type EngineServerStatus } from "./claude-engine-session.js";
 import { redactMcpError } from "../config.js";

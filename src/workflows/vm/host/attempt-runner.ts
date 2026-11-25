@@ -1,11 +1,11 @@
-import { assertNever } from "../../../infra/assert-never.js";
-import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import { isAbortError } from "../../../infra/abort.js";
-import { errorMessage } from "../../../infra/error-message.js";
-import { InvariantViolation } from "../../../infra/invariant.js";
+import { assertNever } from "../../../infra/guards/assert-never.js";
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
+import { isAbortError } from "../../../infra/timing/abort.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
+import { InvariantViolation } from "../../../infra/guards/invariant.js";
 import { Result, Schema } from "effect";
 import { Log } from "../../../infra/diagnostics/log.js";
-import type { UnknownRecord } from "../../../infra/record.js";
+import type { UnknownRecord } from "../../../infra/guards/record.js";
 import { classifyError, type ErrorType, WorkerFailedError } from "../../context-bundle/error-classifier.js";
 import { HandoffError, HandoffNotProducedError } from "../../context-bundle/handoff-errors.js";
 import { assembleAgentPrompt } from "../../context-bundle/prompt-assembly.js";

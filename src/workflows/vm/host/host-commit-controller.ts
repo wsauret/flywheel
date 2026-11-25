@@ -1,6 +1,6 @@
 import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
-import { errorMessage } from "../../../infra/error-message.js"
-import type { StoredFact } from "../../../infra/store/event-store-types.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { addressReachesAgent, type AddressedAddendum, type AddressedAgent, type RequestAddendumMessage } from "../../context-bundle/context-facts.js"
 import type { WorkflowView } from "../../view/types.js"

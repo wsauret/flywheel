@@ -45,7 +45,7 @@
  *  recovers reports nothing. */
 
 import { Log } from "../../infra/diagnostics/log.js";
-import { shutdownSignals, type ShutdownSignal } from "../../infra/shutdown-signals.js";
+import { shutdownSignals, type ShutdownSignal } from "../../infra/process/shutdown-signals.js";
 import type { BuildRef } from "../../infra/update/build-identity.js";
 import { ownBuild } from "../../infra/update/live-builds.js";
 import { countServiceStart, recordServiceListened, recordServiceServed, recordServiceStartFailure, type StartCauseKind, uncountServiceStart } from "../../infra/update/service-start-record.js";

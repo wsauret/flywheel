@@ -1,11 +1,11 @@
 import { Log } from "../../../infra/diagnostics/log.js"
 import { DebugLog } from "../../../infra/diagnostics/debug-log.js"
-import { PersistenceWriteRefused } from "../../../infra/store/event-store-types.js"
-import type { ConnectionState } from "../../../infra/output-blocks.js"
-import { asNoticePresentation } from "../../../infra/error-presentation.js"
-import type { SessionNoticeOperation } from "../../../infra/session-notice.js"
+import { PersistenceWriteRefused } from "../../../infra/substrate/store/event-store-types.js"
+import type { ConnectionState } from "../../../infra/substrate/events/output-blocks.js"
+import { asNoticePresentation } from "../../../infra/substrate/events/error-presentation.js"
+import type { SessionNoticeOperation } from "../../../infra/substrate/events/session-notice.js"
 import { failureTerminal, type AgentFailureReason, type AgentRunResult } from "../types.js"
-import { boundProviderDetail, providerErrorProse } from "../../../infra/llm/errors/provider-error-copy.js"
+import { boundProviderDetail, providerErrorProse } from "../../../infra/providers/llm/errors/provider-error-copy.js"
 import { blockedFailureMessage, blockedFailureRecord, describeAgentFailure, type AgentFailureCopy } from "./failure-message.js"
 import type { RetryState } from "../llm/retry-budget.js"
 
@@ -73,7 +73,7 @@ export function reportPersistenceWriteRefusal(error: PersistenceWriteRefused, de
 }
 
 /** The one publisher for terminal failures. Every failure renders on exactly
- *  the channel its copy registered in `infra/error-presentation.ts` - never
+ *  the channel its copy registered in `infra/substrate/events/error-presentation.ts` - never
  *  two surfaces for one fact. A notice-registered failure without a notice
  *  channel falls back to the transcript so headless callers lose nothing. */
 function publishBlockedFailure(copy: AgentFailureCopy, deps: ResilienceDeps): void {

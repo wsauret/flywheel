@@ -1,5 +1,5 @@
-import type { ServeLane } from "../../../infra/cli-subprocess.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import type { ServeLane } from "../../../infra/platform/cli-subprocess.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { startRefusalCopy } from "../../../protocol/client/runtime-fault-copy.js"
 import { startRefusalOf } from "../../../protocol/runtime/serve-handshake.js"
 import type { AccountProjectRegistry } from "./account-project-registry.js"

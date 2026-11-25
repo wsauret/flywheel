@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
+import { composeModuleRuntimes } from "../../../../../src/infra/modules/module-runtime.js"
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js"
 import type { ExternalSkillChildGrant } from "../../../../../src/orchestration/agent-runtime/tools/definitions/skill.js"
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js"

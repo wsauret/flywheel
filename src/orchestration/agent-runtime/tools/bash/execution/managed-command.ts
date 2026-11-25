@@ -1,8 +1,8 @@
 import type { CommandHandover } from "../../../../../infra/supervision/launch/command-handover.js";
-import { createStreamingSanitizer } from "../../../../../infra/control-characters.js";
+import { createStreamingSanitizer } from "../../../../../infra/substrate/output/control-characters.js";
 import type { HandoverAnswer, OwnedProcess } from "../../../../../infra/supervision/launch/owned-subprocess.js";
 import { formatDuration } from "../../../../../protocol/client/format.js";
-import { formatNotAppliedFiles } from "../../../../../infra/not-applied-files.js";
+import { formatNotAppliedFiles } from "../../../../../infra/substrate/not-applied-files.js";
 import type { BackgroundWorkRegistry, SettledProjectMutation } from "../../../background-work/background-work.js";
 import type { BackgroundKillSource, BackgroundWorkResult, CommandExit, ToolCallIdentity } from "../../../background-work/background-work-types.js";
 import { boundedExecutionOutputTail, createShellOutputAccumulator, createTailEmitter, readBackgroundProcessOutput, readSpoolGrowth, type SettledShellOutput, shellObservation } from "./bash-output-tail.js";
@@ -10,7 +10,7 @@ import type { PrivateCopy, ProjectMutationLanding } from "./shell-runtime-types.
 import { createStderrTail, drainStderr, silentFailureStderr } from "./shell-stderr.js";
 import { armUnheldDeadline, NEVER_HELD, type HeldTime } from "./processor-claims.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
-import { watchEndKey } from "../../../../../infra/watch-notices.js";
+import { watchEndKey } from "../../../../../infra/substrate/events/watch-notices.js";
 import { formatWatchEnded } from "../../../background-work/background-work-notifications.js";
 import { createWatchStream, type WatchLimiterState, type WatchOverLimit } from "./watch-stream.js";
 

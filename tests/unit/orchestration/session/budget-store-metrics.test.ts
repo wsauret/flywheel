@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 
-import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
+import type { RuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-types";
 import { committedUsageEvent, contextEvent, makeSessionBudgetStore } from "./_budget-store-fixtures";
 
 const TMP_ROOT = path.join(

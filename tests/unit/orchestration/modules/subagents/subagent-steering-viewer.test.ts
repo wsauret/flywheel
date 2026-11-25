@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js"
+import { createRuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js"
 import { liveChildRun } from "../../../../../src/orchestration/session/control/live-session-control.js"
 import { deliverSessionInput } from "../../../../../src/orchestration/session/control/messaging/session-input-delivery.js"
 import type { AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"

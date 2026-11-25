@@ -16,7 +16,7 @@ import type { SessionFactWriter } from "../../../../../../src/orchestration/sess
 import type { AgentRunResult } from "../../../../../../src/orchestration/agent-runtime/types.js";
 import { makeContext, testGrant } from "../../../agent-runtime/tools/_fixtures.js";
 import { sessionContentFixture } from "../../../../../helpers/session-content.js";
-import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
+import { readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/mutation-evidence.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 
 const ROOT = join(tmpdir(), `flywheel-learning-review-semantic-audit-${randomUUID()}`);

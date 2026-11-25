@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { Redacted } from "effect";
-import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
+import { captureProviderConnection } from "../../../../../src/infra/providers/auth/auth-context.js";
 import { createExaWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/exa.js";
 import { createWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/select.js";
 import type { WebSearchProvider } from "../../../../../src/orchestration/agent-runtime/web-search/types.js";

@@ -1,8 +1,8 @@
-import type { EmitFn } from "../../../infra/event-bus.js";
-import type { AsyncEventReadSurface, StoredFact } from "../../../infra/store/event-store-types.js";
+import type { EmitFn } from "../../../infra/substrate/events/event-bus.js";
+import type { AsyncEventReadSurface, StoredFact } from "../../../infra/substrate/store/event-store-types.js";
 import type { BudgetLimits } from "../../../workflows/run/budget.js";
 import type { SessionRuntimeFact } from "./session-runtime-event-types.js";
-import type { DurableOwner } from "../../../infra/durable-owner.js";
+import type { DurableOwner } from "../../../infra/substrate/facts/durable-owner.js";
 
 export interface SessionBudgetStoreDeps {
   sessionId: string;

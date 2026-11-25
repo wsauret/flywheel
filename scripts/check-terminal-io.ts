@@ -9,7 +9,7 @@ export interface TerminalIoViolation {
 }
 
 const INTENTIONAL_STDOUT_WRITE_ALLOWLIST = new Set([
-  "src/infra/desktop-notify.ts",
+  "src/infra/substrate/output/notify/desktop-notify.ts",
   "src/tui/components/error-boundary.tsx",
   "src/tui/terminal/clipboard.ts",
 ]);
@@ -36,7 +36,7 @@ const INHERITED_STDIO_FILE_ALLOWLIST = new Set([
   // The successor a terminal becomes where no process image can be replaced:
   // it owns the terminal from its first frame, and the terminal that started
   // it has suspended its renderer and only waits for its status.
-  "src/infra/distribution/foreground-successor.ts",
+  "src/infra/update/distribution/foreground-successor.ts",
 ]);
 
 const INHERITED_STDIO_LINE_RE = /\b(?:stdout|stderr)\s*:\s*["'`]inherit["'`]/;

@@ -1,5 +1,5 @@
-import type { LearningScope } from "../../../../infra/learning-scope.js";
-import type { MutationEvidence } from "../../../../infra/mutation-evidence.js";
+import type { LearningScope } from "../../../../infra/learning/learning-scope.js";
+import type { MutationEvidence } from "../../../../infra/substrate/mutation-evidence.js";
 import type { SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 
 /** The typed callbacks carried by an admitted review runner. The runner

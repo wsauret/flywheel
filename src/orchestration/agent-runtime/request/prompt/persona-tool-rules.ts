@@ -1,5 +1,5 @@
-import type { AgentDefinition } from "../../../../infra/agent-definition.js";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { AgentDefinition } from "../../../../infra/definitions/agent-definition.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import type { FirstPartyModuleComposition } from "../../../modules.js";
 import { READ_ONLY_SHELL_GUIDANCE } from "../../tools/bash/bash-guidance.js";
 import { registrationNamed, toolRegistryFromComposition } from "../../tools/dispatch/tool-registry.js";

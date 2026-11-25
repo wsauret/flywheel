@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath, accountServeTokenPath } from "../../../src/infra/paths.js"
+import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath, accountServeTokenPath } from "../../../src/infra/platform/files/paths.js"
 import { encodeAccountAttach } from "../../../src/protocol/runtime/account-attach.js"
 import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"
 import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account/account-project-registry.js"

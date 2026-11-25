@@ -6,7 +6,7 @@ import type { SessionSurface } from "../hooks/state/sessions/create-session-surf
 import type { RuntimeClient, SessionRow } from "../../protocol/runtime/app-service-types.js"
 import { NavigationProvider } from "../context/navigation.js"
 import { parseSessionLink } from "../../protocol/client/session-links.js"
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 
 export interface ChildPlaces {
   openChild(child: Pick<SessionRow, "id" | "kind">): void

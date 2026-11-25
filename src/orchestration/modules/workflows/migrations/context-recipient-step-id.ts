@@ -1,4 +1,4 @@
-import { isRecord } from "../../../../infra/record.js"
+import { isRecord } from "../../../../infra/guards/record.js"
 import { parseWorkflowContextFact } from "../../../../workflows/context-bundle/context-facts.js"
 import { migrateFactVersions, type FactMigrationResult } from "../../../workspace-state/migrations/engine.js"
 

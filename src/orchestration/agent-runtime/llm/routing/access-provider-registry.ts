@@ -1,5 +1,5 @@
-import { createAccessProviderSelection, type AccessProviderDefinition, type AccessProviderId, type ProviderSettingValues } from "../../../../infra/llm/access/access-provider.js"
-import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../infra/llm/usage/subscription-usage.js"
+import { createAccessProviderSelection, type AccessProviderDefinition, type AccessProviderId, type ProviderSettingValues } from "../../../../infra/providers/llm/access/access-provider.js"
+import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../infra/providers/llm/usage/subscription-usage.js"
 import type { ModuleProviderSetting } from "../../../../protocol/runtime/module-protocol-types.js"
 import type { FirstPartyModuleComposition } from "../../../modules.js"
 import type { AccessProviderFactory } from "./client-factory.js"

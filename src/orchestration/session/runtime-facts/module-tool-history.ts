@@ -1,4 +1,4 @@
-import { createOrderedLane } from "../../../infra/ordered-lane.js"
+import { createOrderedLane } from "../../../infra/async/ordered-lane.js"
 import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../module-seams.js"
 
 interface PendingHistoryUpdate {

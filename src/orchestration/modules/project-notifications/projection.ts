@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../../infra/store/event-store-types.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import type { ProjectNotificationEpisode, ProjectNotificationProjection } from "../../../protocol/modules/project-notifications.js"
 import { visibleNotifications } from "../../../protocol/modules/project-notifications.js"
 import { parseProjectNotificationFact } from "./facts.js"

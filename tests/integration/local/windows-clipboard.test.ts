@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { dlopen, FFIType, toArrayBuffer } from "bun:ffi"
 
-import { windowsClipboard } from "../../../src/infra/windows-clipboard.js"
+import { windowsClipboard } from "../../../src/infra/platform/windows-clipboard.js"
 
 const onWindows = process.platform === "win32"
 

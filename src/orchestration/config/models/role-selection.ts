@@ -1,4 +1,4 @@
-import { deslugify } from "../../../infra/canonical-name.js";
+import { deslugify } from "../../../infra/providers/canonical-name.js";
 import type { AttemptRow } from "../../../workflows/view/types.js";
 import { AGENT_ROLE_IDS, AUX_ROLE_IDS, DEFAULT_ROLES, parentRoleId, type ResolvedRole, type ResolvedRoles, type RoleId, TOP_LEVEL_ROLE_IDS } from "../roles.js";
 import { parseBriefRoleId, briefPersonaRoleId } from "../../../protocol/auth/brief-role-id.js";

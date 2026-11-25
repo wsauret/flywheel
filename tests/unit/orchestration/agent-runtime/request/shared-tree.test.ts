@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, spyOn } from "bun:test"
 import { Effect, Exit, Scope } from "effect"
 import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log.js"
-import { detectModelFamily } from "../../../../../src/infra/llm/models/model-family.js"
+import { detectModelFamily } from "../../../../../src/infra/providers/llm/models/model-family.js"
 import type { ConversationMessage, ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js"

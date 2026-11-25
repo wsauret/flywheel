@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { runFont } from "../../../../src/cli/commands/font.js"
-import type { AccountDirectories } from "../../../../src/infra/directory-authorities.js"
+import type { AccountDirectories } from "../../../../src/infra/platform/files/directory-authorities.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
 
 /** An unknown command must answer before it reads a directory or launches. */

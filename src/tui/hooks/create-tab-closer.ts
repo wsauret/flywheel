@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 import { batch } from "solid-js"
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import type { RuntimeClient, SessionCatalogRow } from "../../protocol/runtime/app-service-types.js"
 
 import type { ShellServices } from "./state/shell-state.js"

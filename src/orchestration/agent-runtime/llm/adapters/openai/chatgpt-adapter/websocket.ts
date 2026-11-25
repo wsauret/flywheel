@@ -2,8 +2,8 @@
 import { isDeepStrictEqual } from "node:util";
 import { dumpFailedChatGptRequest, logRejectedChatGptRequest } from "../openai-chatgpt.js";
 import type { ResponseInput, ResponseStreamEvent } from "openai/resources/responses/responses.js";
-import { isAbortError } from "../../../../../../infra/abort.js";
-import { parseToolArguments } from "../../../../../../infra/llm/json-parse.js";
+import { isAbortError } from "../../../../../../infra/timing/abort.js";
+import { parseToolArguments } from "../../../../../../infra/providers/llm/json-parse.js";
 import { sanitizeSurrogates } from "../../../history/sanitize-unicode.js";
 import { ChatGptAdapterApiError } from "../../../chatgpt-adapter-error.js";
 import { mapChatGptAdapterEvents } from "./sse.js";

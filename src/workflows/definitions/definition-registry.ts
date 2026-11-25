@@ -1,21 +1,21 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { errorMessage } from "../../infra/error-message.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import { skillDefinitions as bundledSkillDefinitions, moduleSkillDefinitions } from "../provenance/asset-manifest.js";
 import { formerStepSkillWarnings } from "./retired-bindings.js";
-import type { DefinitionResolution } from "../../infra/definition-resolution.js";
+import type { DefinitionResolution } from "../../infra/definitions/definition-resolution.js";
 import type { DefinitionBundle } from "./loader.js";
 import { validateSkillDependencies } from "../skills/skill-closure.js";
 import { formatDefinitionError } from "../provenance/definition-provenance.js";
 import type { SkillRegistryRevision, SkillSource } from "../skills/skill-schema.js";
 import { publishSkillRevision } from "../skills/skill-schema.js";
-import type { ProjectDirectories } from "../../infra/directory-authorities.js";
+import type { ProjectDirectories } from "../../infra/platform/files/directory-authorities.js";
 import type { SkillLoad, SkillStoreRoot } from "../skills/skills.js";
 import { loadSkillDefinitions, skillStoreRoots } from "../skills/skills.js";
 import { BUNDLED_SKILL_DIR } from "../skills/skill-source-inventory.js";
 import { createPersonaRegistryOwner, type PersonaRegistryRevision, type PersonaToolRegistryEntry } from "../agents/registry.js";
-import type { AgentDefinition } from "../../infra/agent-definition.js";
+import type { AgentDefinition } from "../../infra/definitions/agent-definition.js";
 import { loadEngineeringDoctrineResolution, loadSystemPromptResolution } from "../../infra/agent-assets/system-prompt.js";
 import type { DefinitionOverrideOperations } from "./override-staleness.js";
 

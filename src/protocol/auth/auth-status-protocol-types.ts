@@ -1,5 +1,5 @@
-import type { CredentialProviderId } from "../../infra/auth/store/auth-store-types.js"
-import type { AccessProviderCandidate } from "../../infra/llm/access/access-provider.js"
+import type { CredentialProviderId } from "../../infra/providers/auth/store/auth-store-types.js"
+import type { AccessProviderCandidate } from "../../infra/providers/llm/access/access-provider.js"
 import type { ProviderCatalogDiscovery } from "./provider-model-preference-protocol-types.js"
 import type { RuntimeCursorIdentity, RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 import type { SubscriptionSpendConsentView } from "./subscription-spend-consent-protocol-types.js"

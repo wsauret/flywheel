@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { CONTROL_RPC_DEADLINE_MS, MODEL_CONFIG_RPC_DEADLINE_MS, OUTPUT_HISTORY_RPC_DEADLINE_MS } from "../../infra/with-deadline.js"
+import { CONTROL_RPC_DEADLINE_MS, MODEL_CONFIG_RPC_DEADLINE_MS, OUTPUT_HISTORY_RPC_DEADLINE_MS } from "../../infra/timing/with-deadline.js"
 import { PROTOCOL_MODULE_READS } from "../modules.js"
 import { protocolQueryTable } from "../protocol-module.js"
 

@@ -1,10 +1,10 @@
 import { type BigIntStats, closeSync, constants, fstatSync, lstatSync, openSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
-import { canonicalPathWithMissingTail } from "../../../../../infra/canonical-path.js";
+import { canonicalPathWithMissingTail } from "../../../../../infra/platform/files/canonical-path.js";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
-import { readFullSync } from "../../../../../infra/read-full.js";
-import { globalAgentsFile } from "../../../../../infra/paths.js";
+import { readFullSync } from "../../../../../infra/platform/files/read-full.js";
+import { globalAgentsFile } from "../../../../../infra/platform/files/paths.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { extractMentionPaths } from "./instruction-mentions.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../../llm/system-prompt-tiers.js";

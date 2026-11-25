@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import type { AgentOptionsOverride } from "../_runner-options.js";
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js";
 import type { ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient } from "../_model-client.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";

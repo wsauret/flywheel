@@ -3,7 +3,7 @@ import { HARD_EXIT_CLOCK_URL } from "../process/workers/hard-exit-clock.js"
 import { threadProcessProbeSource, type ThreadProcessProbe } from "./launch/owned-subprocess-backend.js"
 import { terminationRecordLine, type TerminationDecision } from "../process/container/process-container.js"
 import { terminateWorker } from "../process/workers/worker-termination.js"
-import { withDeadline } from "../with-deadline.js"
+import { withDeadline } from "../timing/with-deadline.js"
 import { Log } from "../diagnostics/log.js"
 
 const log = Log.create({ service: "process-watchdog" })

@@ -1,4 +1,4 @@
-import { authStoreObservationKey, reportAuthStoreObservation, type AuthStoreCondition, type AuthStoreLoadResult } from "../../infra/auth/store/auth-store.js"
+import { authStoreObservationKey, reportAuthStoreObservation, type AuthStoreCondition, type AuthStoreLoadResult } from "../../infra/providers/auth/store/auth-store.js"
 import { Log } from "../../infra/diagnostics/log.js"
 
 const log = Log.create({ service: "auth-conditions" })

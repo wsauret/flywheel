@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import type { LocalSqliteEventStore, EventStoreAppend, GuardedEventStoreAppend } from "../../../../src/infra/store/event-store-types";
+import type { LocalSqliteEventStore, EventStoreAppend, GuardedEventStoreAppend } from "../../../../src/infra/substrate/store/event-store-types";
 
-import { canonicalDirectory } from "../../../../src/infra/directory-authorities";
-import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types";
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
+import { canonicalDirectory } from "../../../../src/infra/platform/files/directory-authorities";
+import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
 import { createSessionManager, ParentPublicationContendedError } from "../../../../src/orchestration/session/manager";
 import { buildWorkflowPausedFact } from "../../../../src/workflows/vm/transitions/fact-drafts";
 import { readStoredSession } from "./_session-metadata-test-helpers";

@@ -1,8 +1,8 @@
 import { Redacted } from "effect"
 import { existsSync, mkdirSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
-import { antigravityHomeLayout } from "../../../../infra/antigravity-engine.js"
-import { writeFileAtomic } from "../../../../infra/atomic-write.js"
+import { antigravityHomeLayout } from "../../../../infra/providers/antigravity-engine.js"
+import { writeFileAtomic } from "../../../../infra/platform/files/atomic-write.js"
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
 import type { GateHookHandler } from "./hook-command.js"
 

@@ -1,9 +1,9 @@
 import { Database } from "bun:sqlite"
 import { describe, expect, test, afterEach } from "bun:test"
 import { dbFile, readyBudget, sourceFor, removeIndexDirectories } from "./_summary-index-fixtures.js"
-import { asAsyncEventReadSurface, CorruptEventRowError, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, CorruptEventRowError, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { acquireSessionSummaryIndex } from "../../../../src/orchestration/session/metadata/catalog/session-summary-index.js"
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { readWorkflowUsage } from "../../../../src/orchestration/workflow-host/member-totals.js"
 import {
   createdFact,

@@ -1,8 +1,8 @@
 /** How a refusal that a request proved reaches the profile's eligibility: saved, republished at a new revision
  *  after any owned discovery, then handed to the host. */
 import { describe, expect, test } from "bun:test"
-import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js"
-import { authDir } from "../../../../src/infra/paths.js"
+import { captureProviderConnection } from "../../../../src/infra/providers/auth/auth-context.js"
+import { authDir } from "../../../../src/infra/platform/files/paths.js"
 import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/auth/models/eligibility-preparation.js"
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"

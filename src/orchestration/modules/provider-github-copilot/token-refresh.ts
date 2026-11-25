@@ -1,11 +1,11 @@
-import { awaitWithAbortSignal } from "../../../infra/abort.js";
+import { awaitWithAbortSignal } from "../../../infra/timing/abort.js";
 import { createHash } from "node:crypto";
 import { Redacted } from "effect";
-import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
+import { readBoundedJson } from "../../../infra/providers/auth/bounded-json.js";
 import { COPILOT_STATIC_HEADERS, type CopilotStoredTokens } from "./auth-types.js";
-import { isRecord } from "../../../infra/record.js";
+import { isRecord } from "../../../infra/guards/record.js";
 import { getCopilotAuthUrls } from "./base-url.js";
-import { oauthExpiryFromUnixSeconds } from "../../../infra/auth/oauth-expiry.js";
+import { oauthExpiryFromUnixSeconds } from "../../../infra/providers/auth/oauth-expiry.js";
 
 const MAX_OAUTH_RESPONSE_BYTES = 256 * 1024;
 const MAX_TOKEN_LENGTH = 8 * 1024;

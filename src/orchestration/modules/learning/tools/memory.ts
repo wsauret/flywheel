@@ -9,15 +9,15 @@ import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 import { memoryWrittenFact } from "../../../../workflows/learning/memory/memory-fact-writers.js";
 import type { MemoryWrittenFact } from "../../../../workflows/learning/memory/memory-facts.js";
-import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { normalizeMemoryTitle } from "../../../../infra/tools/memory-title.js";
-import type { LearningScope } from "../../../../infra/learning-scope.js";
-import type { MutationEvidence } from "../../../../infra/mutation-evidence.js";
-import { buildMutationDiffEvidence } from "../../../../infra/mutation-diff-evidence.js";
+import { normalizeMemoryTitle } from "../../../../infra/substrate/output/tools/memory-title.js";
+import type { LearningScope } from "../../../../infra/learning/learning-scope.js";
+import type { MutationEvidence } from "../../../../infra/substrate/mutation-evidence.js";
+import { buildMutationDiffEvidence } from "../../../../infra/substrate/mutation-diff-evidence.js";
 import { openPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../skills/learning-journal.js";
-import { requireContainedDirectory } from "../../../../infra/write-file-under.js";
+import { requireContainedDirectory } from "../../../../infra/platform/files/write-file-under.js";
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 import {
   applyMemoryBatch,

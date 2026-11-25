@@ -1,5 +1,5 @@
 import type { BuiltInCommandDescriptor, CommandOutcome, CommandSurfaceTarget, KernelSurface, OffCommandDescriptor } from "../../../../protocol/commands/command-catalog-protocol-types.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { KERNEL_COMMAND_NAMES } from "../../../../protocol/commands/command-names.js"
 import type { ModuleHealthCheck } from "../../../module-health.js"
 import type { FirstPartyModuleComposition, ModuleCommandIdentity, ModuleCommandMetadata } from "../../../modules.js"

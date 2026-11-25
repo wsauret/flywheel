@@ -1,6 +1,6 @@
 import { batch } from "solid-js"
-import type { CredentialProviderId } from "../../../../../infra/auth/store/auth-store-types.js"
-import type { ExternalUrlOpener } from "../../../../../infra/open-external-url.js"
+import type { CredentialProviderId } from "../../../../../infra/providers/auth/store/auth-store-types.js"
+import type { ExternalUrlOpener } from "../../../../../infra/substrate/output/notify/open-external-url.js"
 import type { AuthProviderAccountStatus, RuntimeAuthStatusScope, RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import type { RuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
 import { paidModeAwaitsAnswer, subscriptionSpendAccountCorrelationId } from "../../../../../protocol/auth/subscription-spend-consent-protocol-types.js"

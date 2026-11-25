@@ -4,11 +4,11 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Result, Schema } from "effect"
 
-import { writeFileAtomic } from "../../atomic-write.js"
+import { writeFileAtomic } from "../../platform/files/atomic-write.js"
 import { Log } from "../../diagnostics/log.js"
-import { privateTemporaryRoot, type PrivateTemporaryRootStem } from "../../private-temporary-root.js"
+import { privateTemporaryRoot, type PrivateTemporaryRootStem } from "../../platform/files/private-temporary-root.js"
 import { unixGroupRuns, unixProcessIdentity, windowsProcessIdentity, type ProcessIdentity } from "../../process/container/process-container.js"
-import { applyWindowsPrivateDirectoryAcl } from "../../windows-private-directory-acl.js"
+import { applyWindowsPrivateDirectoryAcl } from "../../platform/files/windows/windows-private-directory-acl.js"
 
 /** The retained output of one persistent process, and how long it lives.
  *

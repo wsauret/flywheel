@@ -1,4 +1,4 @@
-import { isAgentInFlight, type AgentGroupBlock, type WorkflowAgentState } from "../../infra/output-blocks.js"
+import { isAgentInFlight, type AgentGroupBlock, type WorkflowAgentState } from "../../infra/substrate/events/output-blocks.js"
 import { agentGroupInitializing } from "./agent-group-summary.js"
 import { formatElapsed } from "./format.js"
 import { activeTimeMs } from "./session-time.js"

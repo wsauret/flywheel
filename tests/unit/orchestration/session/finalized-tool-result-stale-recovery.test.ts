@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { Database } from "bun:sqlite";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
 import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import { recoverFinalizedToolResultCheckpoints, retireLegacyFinalizedToolResultCheckpoints } from "../../../../src/orchestration/session/history/finalized-tool-result-checkpoint";
-import { buildMutationEvidence, buildMutationFileEvidence } from "../../../../src/infra/mutation-evidence";
-import { hydrateToolContentFact } from "../../../../src/infra/store/tool-content-hydration";
-import { buildMutationDiff } from "../../../../src/infra/mutation-diff";
+import { buildMutationEvidence, buildMutationFileEvidence } from "../../../../src/infra/substrate/mutation-evidence";
+import { hydrateToolContentFact } from "../../../../src/infra/substrate/store/tool-content-hydration";
+import { buildMutationDiff } from "../../../../src/infra/substrate/mutation-diff";
 import { retireRecordedFinalizedToolResultCheckpointPage } from "../../../../src/orchestration/workspace-state/migrations/finalized-tool-result-checkpoints";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
 import {
   assistantToolUseMessage,
   createSavePointContext,

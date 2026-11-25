@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { reconcileWorkflowAgentInput } from "../../../../../src/orchestration/workflow-host/execution/agent-input-recovery.js"
 import { createSavePointContext, disposeSavePointContext, type SavePointTestContext, userMessage } from "../../session/_save-point-fixtures.js"
 

@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { isRecord } from "../../infra/record.js"
+import { isRecord } from "../../infra/guards/record.js"
 import type { RuntimeEventFrame } from "../runtime/app-service-types.js"
 import type { RuntimeClientDiagnostic } from "../runtime/runtime-client-diagnostics.js"
 import { RuntimeCursorIdentitySchema } from "../rpc/runtime-cursor-schemas.js"

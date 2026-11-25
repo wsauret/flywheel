@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { accessProviderCandidateKey } from "../../../../../../src/infra/llm/access/access-provider.js";
+import { accessProviderCandidateKey } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
 import { createProviderAvailability } from "../../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
 import { subscription, availabilityFixtures } from "../_provider-availability-harness.js";
 

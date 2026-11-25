@@ -1,5 +1,5 @@
 import { afterAll, afterEach } from "bun:test";
-import { composeModuleServices } from "../../src/infra/module-service.js";
+import { composeModuleServices } from "../../src/infra/modules/module-service.js";
 import { trackWorkerClose } from "../../src/infra/process/workers/worker-termination.js";
 import type { RuntimeTool } from "../../src/orchestration/agent-runtime/tools/types.js";
 import { runGuest } from "../../src/orchestration/modules/code-mode/invocation-guest.js";

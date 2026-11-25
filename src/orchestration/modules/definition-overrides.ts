@@ -1,4 +1,4 @@
-import { moduleRuntimeHandle } from "../../infra/module-runtime.js"
+import { moduleRuntimeHandle } from "../../infra/modules/module-runtime.js"
 import { definitionOverridesProtocol } from "../../protocol/modules/definition-overrides.js"
 import type { DefinitionOverrideOperations } from "../../workflows/definitions/override-staleness.js"
 import { createDefinitionOverridesTool, DEFINITION_OVERRIDES_TOOL_DEFINITION, type DefinitionOverridesToolDeps } from "../agent-runtime/tools/definitions/definition-overrides.js"

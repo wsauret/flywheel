@@ -5,7 +5,7 @@ import { connectLines } from "../../process/channels/line-channel.js"
 import { Log } from "../../diagnostics/log.js"
 import { emptyContainers, type ManagedContainer, type ProcessIdentity, type TerminationCause } from "../../process/container/process-container.js"
 import { unsettledEmptyingStreak } from "../../process/process-probe-streak.js"
-import { withDeadline } from "../../with-deadline.js"
+import { withDeadline } from "../../timing/with-deadline.js"
 
 const log = Log.create({ service: "owned-command-control" })
 

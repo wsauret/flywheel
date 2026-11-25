@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { composeModules } from "../../../../src/infra/module-descriptor"
-import { moduleRuntimeHandle } from "../../../../src/infra/module-runtime"
+import { moduleRuntimeHandle } from "../../../../src/infra/modules/module-runtime"
 import type { FirstPartyModule } from "../../../../src/orchestration/modules"
 import { flushMicrotasks, makeLifecycle } from "./lifecycle/_chat-runner-lifecycle-fixtures"
 

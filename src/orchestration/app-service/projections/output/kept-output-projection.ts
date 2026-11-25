@@ -1,5 +1,5 @@
 import { Log } from "../../../../infra/diagnostics/log.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 import type { CommandKeeper, KeptOutputChange } from "../../runtime/command-keeper.js"
 import type { OutputSequence } from "./output-sequence.js"

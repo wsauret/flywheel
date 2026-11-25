@@ -7,7 +7,7 @@ import {
   nativeEnv,
   verifyNativeAssets,
 } from "./binary-native-assets.js";
-import { runningSourceSnapshot, sourceCheckout } from "../src/infra/cli-subprocess.js";
+import { runningSourceSnapshot, sourceCheckout } from "../src/infra/platform/cli-subprocess.js";
 import { createProcessTemporaryDirectory } from "../src/infra/process/process-temporary-directory.js";
 import type { runSourceCli } from "./source-cli.js";
 
@@ -33,7 +33,7 @@ Object.assign(process.env, nativeEnv(nativeDir));
 // loaded (ARCH-DISTRIBUTION-030). An entry that already runs from a snapshot never takes
 // another.
 const entry = runningSourceSnapshot() === undefined
-  ? await (await import("../src/infra/distribution/source-snapshot.js")).enterSourceSnapshot(ROOT)
+  ? await (await import("../src/infra/update/distribution/source-snapshot.js")).enterSourceSnapshot(ROOT)
   : undefined
 
 // The CLI loads after the native environment is staged, from the tree this
@@ -51,8 +51,8 @@ try {
   if (entry !== undefined && entry.kind !== "failed") {
     const [{ SERVE_EXIT, startsServiceProcess }, { refuseFailedServiceStart }, { errorMessage }] = await Promise.all([
       import("../src/cli/account-service/serve-contract.js"),
-      import("../src/infra/distribution/source-snapshot.js"),
-      import("../src/infra/error-message.js"),
+      import("../src/infra/update/distribution/source-snapshot.js"),
+      import("../src/infra/diagnostics/error-message.js"),
     ]);
     if (startsServiceProcess(process.argv) && refuseFailedServiceStart(entry, errorMessage(error))) {
       process.stderr.write(`flywheel: failed to start: ${errorMessage(error)}\n`);

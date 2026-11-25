@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto"
 
-import { executableRoleCommand } from "./cli-subprocess.js"
+import { executableRoleCommand } from "./platform/cli-subprocess.js"
 import { readOutcomeRecord, type OutcomeRecordRead } from "./supervision/launch/command-handover.js"
 import { unmarkedEnvironment } from "./process/container/container-mark.js"
-import { errorMessage } from "./error-message.js"
-import { EXECUTABLE_ROLES } from "./executable-roles.js"
+import { errorMessage } from "./diagnostics/error-message.js"
+import { EXECUTABLE_ROLES } from "./platform/executable-roles.js"
 import { namedExitStatus } from "./supervision/launch/exit-status.js"
-import { durationMs } from "./operation-log.js"
+import { durationMs } from "./diagnostics/operation-log.js"
 import { onTermination, recordTermination, type TerminationCause } from "./process/container/process-container.js"
 import { createProcessDiagnosticReader, KERNEL_API_SERVICE, relayProcessDiagnostic } from "./process/kernel/process-diagnostic-reader.js"
 import { Log } from "./diagnostics/log.js"
@@ -30,7 +30,7 @@ import {
 import { proveProcessEnded } from "./process/container/prove-process-ended.js"
 import { startupTrace } from "./diagnostics/startup-trace.js"
 import { platformGuardianLedger } from "./supervision/guardian/guardian-ledger.js"
-import { withDeadline } from "./with-deadline.js"
+import { withDeadline } from "./timing/with-deadline.js"
 import type { ProcessPriority } from "./process/container/process-priority.js"
 
 const log = Log.create({ service: "process-supervisor" })

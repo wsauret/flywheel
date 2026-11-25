@@ -1,4 +1,4 @@
-import { composeModuleRuntimes } from "../../../../../../src/infra/module-runtime.js";
+import { composeModuleRuntimes } from "../../../../../../src/infra/modules/module-runtime.js";
 import type { KernelToolDeps } from "../../../../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { planToolExposure, type ToolExposureInput } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import type { AskUserController } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller.js";

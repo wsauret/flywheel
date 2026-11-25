@@ -3,9 +3,9 @@ import * as fs from "node:fs"
 import { basename, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { flywheelCacheDirectory, runsThroughBun } from "../../cli-subprocess.js"
-import { errorMessage } from "../../error-message.js"
-import { EXECUTABLE_ROLES } from "../../executable-roles.js"
+import { flywheelCacheDirectory, runsThroughBun } from "../../platform/cli-subprocess.js"
+import { errorMessage } from "../../diagnostics/error-message.js"
+import { EXECUTABLE_ROLES } from "../../platform/executable-roles.js"
 
 /** Which code a launch of the command supervisor runs.
  *

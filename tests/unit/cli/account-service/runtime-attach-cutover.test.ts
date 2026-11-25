@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { createAccountRuntimeAttach, requestAccountReplacement, type RuntimeAttachSeams } from "../../../../src/cli/account-service/runtime-attach.js"
 import { displayedRuntimeIdentity, type RuntimeIdentity } from "../../../../src/cli/account-service/runtime-identity-record.js"
 import type { TerminalSuccessor } from "../../../../src/cli/account-service/terminal-handoff.js"
-import { AGENT_SESSION_ENV, serveLaneFor, sourceCheckout, type SourceSnapshotLocation } from "../../../../src/infra/cli-subprocess.js"
+import { AGENT_SESSION_ENV, serveLaneFor, sourceCheckout, type SourceSnapshotLocation } from "../../../../src/infra/platform/cli-subprocess.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 

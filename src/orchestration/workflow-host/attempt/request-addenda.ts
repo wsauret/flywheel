@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import type { RequestAddendumMessage } from "../../../workflows/context-bundle/context-facts.js"
 import { readSessionMessageEntries, type SessionMessageEntry } from "../../session/conversation/session-message-entries.js"

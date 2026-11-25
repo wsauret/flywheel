@@ -8,7 +8,7 @@ import { statusLineParts } from "../../../../../../src/tui/components/activity/s
 import type { SpinnerStatus } from "../../../../../../src/tui/components/activity/spinner-status-model.js"
 import { noticeSpinnerStatus } from "../../../../../../src/tui/components/activity/spinner-status-notice.js"
 import { capacityWaitNotice } from "../../../../../../src/orchestration/session/control/capacity-wait.js"
-import type { SessionNotice } from "../../../../../../src/infra/session-notice.js"
+import type { SessionNotice } from "../../../../../../src/infra/substrate/events/session-notice.js"
 import type { KeyHintSpec } from "../../../../../../src/tui/components/composer/frame/key-hint-row-state.js"
 import { offeredSessionControls } from "../../../../../../src/protocol/client/session-controls.js"
 import { contrastRatio } from "../../../../../../src/tui/context/theme/color-contrast.js"

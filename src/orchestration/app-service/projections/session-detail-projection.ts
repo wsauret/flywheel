@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { ReplayedSession } from "../../session/metadata/schemas.js"
 import type { SessionStore } from "../../session-store/types.js"

@@ -27,7 +27,7 @@
  */
 
 import type { ContentBlock, ConversationMessage } from "../llm/types.js";
-import { DELIVERY_CONFIRMATION } from "../../../infra/delivery-confirmation.js";
+import { DELIVERY_CONFIRMATION } from "../../../infra/substrate/output/notify/delivery-confirmation.js";
 import { editInputEntries } from "../../../infra/file-edit/edit-input.js";
 import { isToolContractResult } from "../tools/dispatch/short-form.js";
 

@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../../infra/store/event-store-types.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 import { projectNotificationsCursor, type ProjectNotificationPatchPayload } from "../../../protocol/modules/project-notifications.js"

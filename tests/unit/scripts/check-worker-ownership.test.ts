@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
-import { loadTreeSitterParser } from "../../../src/infra/tree-sitter-parser.js"
+import { loadTreeSitterParser } from "../../../src/infra/parsing/tree-sitter-parser.js"
 import {
   findWorkerOwnershipViolations,
   type WorkerOwnershipViolation,

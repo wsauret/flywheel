@@ -8,7 +8,7 @@ import { useCopySelection } from "../use-copy-selection.js"
 import type { Clipboard } from "../../terminal/clipboard.js"
 import { AttachmentImagesProvider } from "../../context/attachment-images.js"
 import { openImageViewer } from "./image-viewer.js"
-import type { UserMessageImage } from "@infra/output-blocks"
+import type { UserMessageImage } from "@infra/substrate/events/output-blocks"
 
 const ModalCtx = createContext<ModalContext>()
 const OverlayCtx = createContext<OverlayLayers>()

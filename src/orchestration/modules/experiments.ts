@@ -1,7 +1,7 @@
 import { ExperimentFactSchemas } from "./experiments/state/facts.js"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import type { InFlightWrite } from "../../infra/store/event-store-types.js"
+import type { InFlightWrite } from "../../infra/substrate/store/event-store-types.js"
 import type { ToolDeclaration } from "../module-seams.js"
 import type { FirstPartyModule } from "../modules.js"
 import { createExperimentChatObserver } from "./experiments/chat-observer.js"

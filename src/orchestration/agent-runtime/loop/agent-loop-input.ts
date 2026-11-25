@@ -1,5 +1,5 @@
-import type { AgentLoopInput } from "../../../infra/agent-loop-events.js";
-import { chatInputContent } from "../../../infra/chat-input.js";
+import type { AgentLoopInput } from "../../../infra/substrate/events/agent-loop-events.js";
+import { chatInputContent } from "../../../infra/substrate/events/chat-input.js";
 import type { ContentBlock } from "../llm/types.js";
 import type { LoopUserMetadata } from "./turn/agent-loop-history.js";
 import { CONTINUATION_MESSAGES } from "../request/prompt/continuation-messages.js";

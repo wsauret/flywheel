@@ -1,4 +1,4 @@
-import { CliArgsError, type CliArgsResult, parseArgsResult, parseTimeInput, requiredValue } from "../../infra/cli-args.js"
+import { CliArgsError, type CliArgsResult, parseArgsResult, parseTimeInput, requiredValue } from "../../infra/parsing/cli-args.js"
 
 export interface CliOptions {
   pattern?: string

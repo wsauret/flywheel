@@ -1,5 +1,5 @@
-import { normalizeChatInput } from "../../../infra/chat-input.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { normalizeChatInput } from "../../../infra/substrate/events/chat-input.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import type { FrontendMutation, MutationResult } from "../../../protocol/runtime/app-service-types.js"
 import type { ModuleProtocolRoutes } from "../module-protocol-host.js"

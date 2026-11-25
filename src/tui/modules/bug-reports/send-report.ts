@@ -1,6 +1,6 @@
 import type { TuiControllerHost } from "../../tui-module.js"
 import { crashReportText, reportStatus, submitTuiReport } from "./report.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 
 /** The terminal's Report a bug: it sends a manual report at once, with the
  *  command's argument as the note, and says how it settled. A report that

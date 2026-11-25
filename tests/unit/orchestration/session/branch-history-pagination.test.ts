@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { AnyBlock } from "../../../../src/infra/output-blocks"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks"
 import { threadHistoryRangeIndices } from "../../../../src/orchestration/session/conversation/transcript/branch-history-pagination"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder"
 

@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { createRuntimeFaultReporting } from "./runtime-fault-reporting.js"
 import type { Log } from "../../../infra/diagnostics/log.js"
 import type { FrontendMutation, RuntimeExecutorState, RuntimeQuery } from "../../../protocol/runtime/app-service-types.js"

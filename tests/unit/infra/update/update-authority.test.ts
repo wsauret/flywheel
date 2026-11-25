@@ -15,7 +15,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { updateAuthorityDbFile } from "../../../../src/infra/paths.js";
+import { updateAuthorityDbFile } from "../../../../src/infra/platform/files/paths.js";
 import { UPDATE_PROTOCOL_VERSION, createUpdateAuthority } from "../../../../src/infra/update/update-authority.js";
 import { HOUR_MS, MINUTE_MS, claimAt, createUpdateAuthorityHarness, thrownBy, winFence } from "../../../helpers/update-authority-harness.js";
 import { storedAuthorityState } from "../../../helpers/update-authority-state.js";

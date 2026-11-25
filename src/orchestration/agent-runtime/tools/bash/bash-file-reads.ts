@@ -21,7 +21,7 @@ import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
-import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js";
 import type { ResolvedShellCommands } from "./policy/bash-command-policy.js";
 import { shownUncompressed } from "./execution/bash-compressor.js";
 import type { LineRange } from "../files/file-read-ledger.js";

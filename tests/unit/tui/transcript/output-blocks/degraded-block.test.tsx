@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { DegradedBlock as DegradedBlockType } from "../../../../../src/infra/output-blocks.js"
+import type { DegradedBlock as DegradedBlockType } from "../../../../../src/infra/substrate/events/output-blocks.js"
 
 async function renderDegradedBlock(block: DegradedBlockType) {
   const [{ testRender }, { createComponent }, { DegradedBlock }, { ThemeProvider }] = await Promise.all([

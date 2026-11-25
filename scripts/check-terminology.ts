@@ -72,7 +72,7 @@ const HISTORY_PATHS: readonly string[] = [
   // The view of a run that the step grammar recorded, read for history only.
   "src/workflows/vm/recovery/view-history-tree.ts",
   // Recorded calls of the retired step tool.
-  "src/infra/tools/displays/step.ts",
+  "src/infra/substrate/output/tools/displays/step.ts",
 ];
 
 /** Line shapes that hold a stored spelling, which a release before the agent
@@ -106,7 +106,7 @@ const ORDINAL_LINES: readonly RegExp[] = [/\b(next|first|one) step\b|step[- ]by[
 /** Kernel senses of the prose words that a workflow path still names: the
  *  connection lane of a client, and the ordered lane primitive of infra. */
 const KERNEL_SENSE_LINES: readonly RegExp[] = [
-  /\/infra\/ordered-lane\.js"/,
+  /\/infra\/async\/ordered-lane\.js"/,
   /\bconnection lanes?\b/i,
   /\b(fakeLanes|onLane|lostWithLane|LANE_BREAK)\b/,
   /\blanes\.(end|open|onLane)\b/,
@@ -142,7 +142,7 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   "src/workflows/definitions/agent-resolution.ts",
   "src/workflows/context-bundle/context.ts",
   // The event search formatter and the decode-only schema of the older usage fact.
-  "src/infra/runtime-facts/runtime-fact-types.ts",
+  "src/infra/substrate/runtime-facts/runtime-fact-types.ts",
   "src/cli/events/event-search-format.ts",
   "src/orchestration/agent-runtime/request/usage/usage-settlement.ts",
   "src/orchestration/session/runtime-facts/provider-request-audit-facts.ts",

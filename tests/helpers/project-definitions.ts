@@ -7,7 +7,7 @@ import { decodeWorkflowFile } from "../../src/workflows/vm/admission/workflow-fi
 import { withLoadedContent } from "../../src/workflows/definitions/loader.js";
 import { definitionAssets } from "../../src/workflows/definitions/definition-assets.js";
 import { testAccountHome, testDirectories } from "./directories.js";
-import type { AgentDefinition } from "../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../src/infra/definitions/agent-definition.js";
 
 import { DEVELOPMENT_MODULES } from "../../src/orchestration/development-modules.js";
 import { installedDefinitionBundles } from "../../src/orchestration/module-catalog.js";

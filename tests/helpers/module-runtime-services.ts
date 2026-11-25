@@ -1,4 +1,4 @@
-import { NO_MODULE_SERVICES } from "../../src/infra/module-service.js"
+import { NO_MODULE_SERVICES } from "../../src/infra/modules/module-service.js"
 import { createChildSlotRegistry } from "../../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js"
 import { createProviderRequestAuditWriter } from "../../src/orchestration/agent-runtime/llm/provider-request-audit.js"
 import type { ModuleRuntimeServices } from "../../src/orchestration/agent-runtime/request/module-services/module-runtime-services.js"

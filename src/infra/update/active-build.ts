@@ -16,10 +16,10 @@ import { randomBytes } from "node:crypto";
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
 import { Schema } from "effect";
-import type { ContainedDirectory } from "../descriptor-directory/descriptor-directory-contract.js";
-import { openExistingContainedDirectory } from "../descriptor-directory.js";
-import { errorMessage } from "../error-message.js";
-import { CURRENT_BUILD_LINK, versionsDir } from "../paths.js";
+import type { ContainedDirectory } from "../platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../platform/files/descriptor-directory.js";
+import { errorMessage } from "../diagnostics/error-message.js";
+import { CURRENT_BUILD_LINK, versionsDir } from "../platform/files/paths.js";
 import type { BuildRef } from "./build-identity.js";
 
 /** The private name an activation is written under before its rename,

@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { formatElapsed } from "../../../../protocol/client/format.js"
-import type { ThinkingBlock as ThinkingBlockType } from "@infra/output-blocks"
+import type { ThinkingBlock as ThinkingBlockType } from "@infra/substrate/events/output-blocks"
 import { StyledText, bold as stBold, fg as stFg, italic as stItalic, type TextChunk, type TextRenderable } from "@opentui/core"
 import { CollapsibleBox } from "@tui/components/layout/collapsible-box"
 import { useTheme } from "@tui/context/theme"

@@ -8,7 +8,7 @@ import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from 
 import { hashContent } from "../../../../src/workflows/provenance/definition-hash.js";
 import { renderSkillClosure, renderSkillContext } from "../../../../src/workflows/skills/skill-render.js";
 import type { SkillDefinition } from "../../../../src/workflows/skills/skill-schema.js";
-import type { AgentDefinition } from "../../../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../../../src/infra/definitions/agent-definition.js";
 import type { AttemptRow } from "../../../../src/workflows/view/types.js";
 import type { ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/definitions/agent-resolution.js";

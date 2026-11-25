@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { AgentGroupBlock, WorkflowCard } from "../../../../src/infra/output-blocks.js"
+import type { AgentGroupBlock, WorkflowCard } from "../../../../src/infra/substrate/events/output-blocks.js"
 import { workflowCard, workflowCardHeaderParts, workflowCardLines, workflowCardTime, workflowPlanAbsence, workflowViewCardStatus, type WorkflowCardChoices, type WorkflowCardLine } from "../../../../src/protocol/client/workflow-card.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
 import type { LoadedWorkflowView, WorkflowAgentLive, WorkflowTreeNode } from "../../../../src/protocol/session/workflow-view-protocol-types.js"

@@ -2,8 +2,8 @@ import { createHash } from "node:crypto"
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 
-import { writeFileAtomic } from "../../../../infra/atomic-write.js"
-import { buildMutationDiff, type MutationDiff } from "../../../../infra/mutation-diff.js"
+import { writeFileAtomic } from "../../../../infra/platform/files/atomic-write.js"
+import { buildMutationDiff, type MutationDiff } from "../../../../infra/substrate/mutation-diff.js"
 import type { BundledDefaultCatalog } from "../../../../workflows/definitions/bundled-defaults.js"
 import type {
   CompleteOverrideContent,

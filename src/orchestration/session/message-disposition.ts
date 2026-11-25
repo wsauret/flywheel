@@ -1,5 +1,5 @@
-import type { TurnParkState } from "../../infra/agent-loop-events.js"
-import type { SessionRelation } from "../../infra/chat-input-schema.js"
+import type { TurnParkState } from "../../infra/substrate/events/agent-loop-events.js"
+import type { SessionRelation } from "../../infra/substrate/events/chat-input-schema.js"
 
 /** The state of a live recipient at the moment its control takes a message.
  *  A control with no runner attached is at rest. A session of any kind whose

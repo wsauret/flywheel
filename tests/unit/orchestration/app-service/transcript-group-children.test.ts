@@ -4,13 +4,13 @@ import * as crypto from "node:crypto"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
-import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js"
-import { getToolDisplay } from "../../../../src/infra/tools/tool-display-registry.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types.js"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory.js"
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
-import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js"
+import type { AnyBlock, ToolEntry } from "../../../../src/infra/substrate/events/output-blocks.js"
+import { getToolDisplay } from "../../../../src/infra/substrate/output/tools/tool-display-registry.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths.js"
+import { createRuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
+import { OutputProjector } from "../../../../src/infra/substrate/output/projector/output-projector.js"
 import { hydrateDerivedOutputGroupChildren, paginateOutputGroupChildren } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import {
   createFilteredSubagentStream,
@@ -19,7 +19,7 @@ import {
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/runtime-facts/session-runtime-event-types.js"
 import { createToolResultDisplayMetaCursorReader } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-facts/runtime-fact-mapper.js"
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/substrate/runtime-facts/runtime-fact-mapper.js"
 
 function child(id: string): Extract<AnyBlock, { kind: "tool" }> {
   return { kind: "tool", id, name: "read", presentation: { name: "Read", detail: `${id}.ts` }, status: "completed", timestamp: 1 }
@@ -403,7 +403,7 @@ describe("agent-update child of an agent group across settlement", () => {
     appendChildMemoryCall(store)
     appendChildMemoryResult(store, "ok")
     const { createMutationEvidenceRecovery } = await import("../../../../src/orchestration/session/history/mutation-evidence-recovery.js")
-    const { readMutationEvidenceFiles } = await import("../../../../src/infra/mutation-evidence.js")
+    const { readMutationEvidenceFiles } = await import("../../../../src/infra/substrate/mutation-evidence.js")
     const { completePatch, resolveRetainedPatch } = await import("../../../../src/orchestration/session/metadata/catalog/session-change-sources.js")
     const reader = createMutationEvidenceRecovery(asAsyncEventReadSurface(store), asAsyncEventWriter(store)).reader
     const children = (await createToolResultDisplayMetaCursorReader(reader, SESSION_ID).replay()).children(PARENT_TOOL_USE_ID, {

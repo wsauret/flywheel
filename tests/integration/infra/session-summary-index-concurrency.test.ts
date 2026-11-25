@@ -3,7 +3,7 @@ import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
-import { configureSqliteEventStore } from "../../../src/infra/store/sqlite-event-store-core.js"
+import { configureSqliteEventStore } from "../../../src/infra/substrate/store/sqlite-event-store-core.js"
 import { terminateWorker } from "../../../src/infra/process/workers/worker-termination.js"
 import { usageV4Fact } from "../../fixtures/session-summary-history.js"
 

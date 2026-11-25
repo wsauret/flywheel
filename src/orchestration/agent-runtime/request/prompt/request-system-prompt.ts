@@ -4,7 +4,7 @@
  * (scripts/dump-prompt.ts), so the dump shows the prompt that a request sends.
  */
 
-import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
+import type { ModuleRuntimes } from "../../../../infra/modules/module-runtime.js";
 import type { SessionIdentity } from "../../../session/control/messaging/session-messaging.js";
 import type { FirstPartyModuleComposition } from "../../../modules.js";
 import { promptKindForPurpose } from "./agent-purpose.js";

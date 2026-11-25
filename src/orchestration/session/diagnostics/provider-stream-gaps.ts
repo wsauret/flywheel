@@ -1,5 +1,5 @@
-import { searchEvents, type EventSearchQuery } from "../../../infra/store/event-search.js"
-import type { StoredFact } from "../../../infra/store/event-store-types.js"
+import { searchEvents, type EventSearchQuery } from "../../../infra/substrate/store/event-search.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { formatDuration } from "../../../protocol/client/format.js"
 import { canonicalProviderStreamSummary, readProviderRequestAuditFact, type ProviderRequestAuditFact } from "../runtime-facts/provider-request-audit-facts.js"
 import type { ProviderStreamSummary } from "../runtime-facts/provider-request-audit-types.js"

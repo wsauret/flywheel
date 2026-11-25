@@ -1,5 +1,5 @@
-import { serveLaneFor } from "../../../infra/cli-subprocess.js"
-import { moduleServiceHandle } from "../../../infra/module-service.js"
+import { serveLaneFor } from "../../../infra/platform/cli-subprocess.js"
+import { moduleServiceHandle } from "../../../infra/modules/module-service.js"
 import { ownedCommandRunner } from "../../../infra/owned-command.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { EMPTY_REMOTE_VIEW, remoteCursor } from "../../../protocol/modules/remote.js"

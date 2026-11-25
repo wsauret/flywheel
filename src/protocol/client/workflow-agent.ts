@@ -6,7 +6,7 @@
  * workflow's outline.
  */
 
-import type { WorkflowAgentState } from "../../infra/output-blocks.js"
+import type { WorkflowAgentState } from "../../infra/substrate/events/output-blocks.js"
 import type { FrontendOutputBlock } from "../runtime/app-service-types.js"
 import type { LoadedWorkflowView, WorkflowAgentLive } from "../session/workflow-view-protocol-types.js"
 import { workflowAgentPlace, workflowOutline, workflowPhaseTitle, workflowStreamAgents, workflowTreeIndex, workflowWaitingText, type WorkflowActiveTime, type WorkflowOutline, type WorkflowAgentSeat, type WorkflowPhaseAgent } from "./workflow-outline.js"

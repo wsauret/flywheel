@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { readDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/read/read.js";
 import { readTextWindows } from "../../../../../../src/orchestration/agent-runtime/tools/read/read-text-windows.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
-import { canonicalMutationPath } from "../../../../../../src/infra/locks/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../../../src/infra/process/locks/file-mutation-queue.js";
 import * as treeSitter from "../../../../../../src/orchestration/agent-runtime/tools/read/tree-sitter-code.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { makeContext } from "../_fixtures.js";

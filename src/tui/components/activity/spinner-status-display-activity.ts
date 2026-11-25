@@ -1,4 +1,4 @@
-import type { StreamPhase } from "../../../infra/output-blocks.js"
+import type { StreamPhase } from "../../../infra/substrate/events/output-blocks.js"
 
 const STATUS_CONFIRM_MS = 200
 const STATUS_MIN_DWELL_MS = 400

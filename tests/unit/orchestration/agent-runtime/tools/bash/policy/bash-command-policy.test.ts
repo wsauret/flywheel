@@ -3,7 +3,7 @@ import { mkdirSync, realpathSync } from "node:fs";
 import { join, sep } from "node:path";
 import { Parser } from "web-tree-sitter";
 
-import * as treeSitter from "../../../../../../../src/infra/tree-sitter-parser.js";
+import * as treeSitter from "../../../../../../../src/infra/parsing/tree-sitter-parser.js";
 import { interceptBashCommand, refusedShellWrite } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-command-policy.js";
 import { loadBashParser } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import { fileTemporaryDirectory } from "../../../../../../helpers/directories.js";

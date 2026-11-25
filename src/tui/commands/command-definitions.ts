@@ -1,4 +1,4 @@
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { fontInstallSummary, fontStatusSummary, getFontStatus, installBundledFont } from "../terminal/font-installer.js"
 import { ownedCommandRunner } from "../../infra/owned-command.js"
 import { createAsyncReporter } from "../context/toast-presenter.js"

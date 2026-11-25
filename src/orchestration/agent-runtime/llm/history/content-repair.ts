@@ -1,5 +1,5 @@
-import type { AccessProviderId } from "../../../../infra/llm/access/access-provider.js";
-import type { RefusedPart } from "../../../../infra/llm/content-repair.js";
+import type { AccessProviderId } from "../../../../infra/providers/llm/access/access-provider.js";
+import type { RefusedPart } from "../../../../infra/providers/llm/content-repair.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import type { ContentBlock, ConversationMessage } from "../types.js";
 

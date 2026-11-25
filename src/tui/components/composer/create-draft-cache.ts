@@ -1,4 +1,4 @@
-import { normalizeChatInput, type ChatInputLike } from "../../../infra/chat-input.js"
+import { normalizeChatInput, type ChatInputLike } from "../../../infra/substrate/events/chat-input.js"
 import { attachmentMarker, nextAttachmentOrdinal } from "../../../protocol/client/attachments.js"
 import { draftMarkers, mergeComposerDrafts, replaceDraftMarker, type ComposerDraft } from "./composer-draft.js"
 import type { QuestionFormDraft, QuestionFormDrafts } from "./question-dock-form.js"

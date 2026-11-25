@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
-import { EventStoreWriterService } from "../../../../src/infra/store/event-store-effect.js"
+import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { EventStoreWriterService } from "../../../../src/infra/substrate/store/event-store-effect.js"
 import { createCommandInvokeService } from "../../../../src/orchestration/app-service/definitions/commands/command-invoke-service.js"
 import type { RuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor-types.js"
 import { buildPapercutDrain } from "../../../../src/orchestration/modules/papercuts/drain.js"

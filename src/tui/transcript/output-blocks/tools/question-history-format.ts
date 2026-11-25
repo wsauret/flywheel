@@ -1,4 +1,4 @@
-import type { QuestionBlock } from "@infra/output-blocks"
+import type { QuestionBlock } from "@infra/substrate/events/output-blocks"
 import { questionRecordState } from "../../../../protocol/client/question-settlement.js"
 import type { ToolRenderEntry } from "../tool-entry-helpers.js"
 

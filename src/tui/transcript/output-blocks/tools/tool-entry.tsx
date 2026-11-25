@@ -1,11 +1,11 @@
 /** @jsxImportSource @opentui/solid */
 
-import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry as ToolEntryType, type ToolStreamingText } from "@infra/output-blocks"
+import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry as ToolEntryType, type ToolStreamingText } from "@infra/substrate/events/output-blocks"
 import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 import { toolActivity, toolProcess } from "../../../../protocol/client/transcript-model.js"
 import { conflictMarkersNotice, isShellMutationEntry, isShellMutationRunning, notAppliedNotice, presentsAsFileChange, rowPresentation, rowWritePolicy, selectFileChangeBody, shellMutationFiles, showsShellMutationOutput } from "../../../../protocol/client/file-change-body.js"
 import { totalDiffOmittedLines } from "../../../../protocol/transcript/diff-omission.js"
-import { getToolDisplay } from "@infra/tools/tool-display-registry.js"
+import { getToolDisplay } from "@infra/substrate/output/tools/tool-display-registry.js"
 import { StyledText, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { highlightExecuteInputs, highlightToolDetail, linkifyChunks } from "@tui/adapters/tool-detail-highlight.js"
 import { CollapsibleBox } from "@tui/components/layout/collapsible-box"
@@ -36,7 +36,7 @@ import {
 } from "../tool-entry-helpers.js"
 import { wrapToolRowChunks } from "./tool-row-wrap.js"
 import { processControlChunks, processorWaitChunks, rowProcessControl, rowWaitsForProcessor, type RowProcessControl, type RowProcessControls } from "../stop-affordance.js"
-import { markToolResultMounted } from "../../../../infra/render-probe.js"
+import { markToolResultMounted } from "../../../../infra/substrate/output/render-probe.js"
 import { PreviewViewport } from "./preview-viewport.js"
 
 

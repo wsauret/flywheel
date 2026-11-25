@@ -13,9 +13,9 @@
 
 import { createRequire } from "node:module";
 import { isAbsolute, resolve } from "node:path";
-import { sourceCheckout } from "../../../../infra/cli-subprocess.js";
-import { errorMessage } from "../../../../infra/error-message.js";
-import { buildPlatformArch, nativeAssetDir } from "../../../../infra/native-assets.js";
+import { sourceCheckout } from "../../../../infra/platform/cli-subprocess.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import { buildPlatformArch, nativeAssetDir } from "../../../../infra/platform/native-assets.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import type { SearchStop } from "../search/search-rules.js";
 

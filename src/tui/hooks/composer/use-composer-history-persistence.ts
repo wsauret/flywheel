@@ -1,6 +1,6 @@
 import { onCleanup } from "solid-js";
-import { appendFileEnsuringDir, writeFileAtomic } from "../../../infra/atomic-write.js";
-import { resolveComposerHistoryPath } from "../../../infra/paths.js";
+import { appendFileEnsuringDir, writeFileAtomic } from "../../../infra/platform/files/atomic-write.js";
+import { resolveComposerHistoryPath } from "../../../infra/platform/files/paths.js";
 import { registerPreExitCleanup } from "../../terminal/exit.js";
 import { createPromptHistory } from "../../components/composer/create-composer-history.js";
 import { loadPromptHistorySync } from "./composer-history-loader.js";

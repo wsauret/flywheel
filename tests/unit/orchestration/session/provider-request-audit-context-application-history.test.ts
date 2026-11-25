@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { InvariantViolation } from "../../../../src/infra/invariant"
+import { InvariantViolation } from "../../../../src/infra/guards/invariant"
 import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-facts"
 import { hashSystemPrompt, hashToolSurface } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-hash"
 import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-projection"

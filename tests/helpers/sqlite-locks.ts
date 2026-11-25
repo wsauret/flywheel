@@ -1,7 +1,7 @@
 import { FFIType, ptr } from "bun:ffi"
 import { closeSync, openSync } from "node:fs"
 
-import { bindLibc } from "../../src/infra/libc.js"
+import { bindLibc } from "../../src/infra/platform/libc.js"
 
 /** Linux open-file-description locks conflict with the classic record locks
  *  that SQLite takes, even inside the process that holds them. So only Linux

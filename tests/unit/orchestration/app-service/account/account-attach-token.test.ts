@@ -5,7 +5,7 @@ import { Worker } from "node:worker_threads"
 import { Redacted } from "effect"
 
 import { readOrCreateAccountAttachToken } from "../../../../../src/orchestration/app-service/account/account-attach-token.js"
-import { accountServeDir, accountServeTokenPath } from "../../../../../src/infra/paths.js"
+import { accountServeDir, accountServeTokenPath } from "../../../../../src/infra/platform/files/paths.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 
 const tempDir = temporaryDirectories()

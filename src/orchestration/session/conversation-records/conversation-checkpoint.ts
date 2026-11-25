@@ -1,11 +1,11 @@
 import { Schema } from "effect";
-import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import { CHECKPOINT_SECTIONS, CHECKPOINT_SECTION_TITLES as TITLES, type CheckpointSection } from "../../../infra/checkpoint-sections.js";
-import { contentEvidence } from "../../../infra/runtime-facts/content-evidence.js";
-import { durableOwnerAggregate, type DurableOwner } from "../../../infra/durable-owner.js";
-import { createEventProjection, parseProjectionFact } from "../../../infra/projection/event-projection.js";
-import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js";
-import { heldProjection } from "../../../infra/projection/projection-registry.js";
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
+import { CHECKPOINT_SECTIONS, CHECKPOINT_SECTION_TITLES as TITLES, type CheckpointSection } from "../../../infra/definitions/checkpoint-sections.js";
+import { contentEvidence } from "../../../infra/substrate/runtime-facts/content-evidence.js";
+import { durableOwnerAggregate, type DurableOwner } from "../../../infra/substrate/facts/durable-owner.js";
+import { createEventProjection, parseProjectionFact } from "../../../infra/substrate/projection/event-projection.js";
+import type { AsyncEventReadSurface } from "../../../infra/substrate/store/event-store-types.js";
+import { heldProjection } from "../../../infra/substrate/projection/projection-registry.js";
 import { ConversationCheckpointSchema, parseConversationCheckpointFact, parseSessionIntentInheritedFact, type CheckpointDecision, type ConversationCheckpoint } from "../persistence/conversation-checkpoint-facts.js";
 import type { SessionFactWriter } from "../persistence/session-fact-writer.js";
 

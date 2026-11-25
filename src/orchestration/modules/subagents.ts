@@ -28,8 +28,8 @@ import type { ModuleId, FirstPartyModule } from "../modules.js"
 import { moduleProtocol, type ModuleProtocolRuntime, type ModuleProtocolServices } from "../app-service/module-protocol-host.js"
 import { subagentsProtocol } from "../../protocol/modules/subagents.js"
 import type { DefinitionAvailabilitySnapshot } from "../app-service/definitions/definition-availability.js"
-import type { AgentDefinition } from "../../infra/agent-definition.js"
-import type { CapabilityCheck } from "../../infra/capability-text.js"
+import type { AgentDefinition } from "../../infra/definitions/agent-definition.js"
+import type { CapabilityCheck } from "../../infra/definitions/capability-text.js"
 import { disabledTypesOf, subagentsConfigSection } from "./subagents/config.js"
 
 const EMPTY_ROLE_RESOLVER: RoleResolver = async () => new Map()

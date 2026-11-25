@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
-import { createFactParser } from "../../../../src/infra/event-registry";
-import { messageInput } from "../../../../src/infra/agent-loop-events";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
+import { createFactParser } from "../../../../src/infra/substrate/facts/event-registry";
+import { messageInput } from "../../../../src/infra/substrate/events/agent-loop-events";
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/loop/agent-loop";
 import { redactMessage } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history";
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";

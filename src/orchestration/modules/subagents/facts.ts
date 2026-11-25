@@ -1,5 +1,5 @@
 import { Schema, SchemaTransformation } from "effect"
-import { defineFact } from "../../../infra/event-registry.js"
+import { defineFact } from "../../../infra/substrate/facts/event-registry.js"
 import { canonicalModuleIds, ModuleIdSchema, type ModuleId } from "../../../protocol/runtime/module-ids.js"
 
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))

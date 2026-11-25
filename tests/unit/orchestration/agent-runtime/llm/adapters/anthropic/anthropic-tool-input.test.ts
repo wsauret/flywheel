@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
-import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../../../src/infra/providers/llm/models/models.js";
 import { createAnthropicAdapter, operationsFromAnthropicClient } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type ToolCall, type ToolPresentation } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { wireResponse } from "../../_wire-fixtures.js";

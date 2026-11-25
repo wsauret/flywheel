@@ -16,10 +16,10 @@
  * runner (see `session/session-artifacts.ts`).
  */
 
-import { errorMessage } from "../../../../infra/error-message.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import { redactSecretsWork } from "../../../../infra/redact-secrets.js";
-import { runInTaskSlices } from "../../../../infra/task-scheduling.js";
+import { runInTaskSlices } from "../../../../infra/process/task-scheduling.js";
 import { writeArtifactBreadcrumb } from "../../../session/persistence/storage/session-artifacts.js";
 
 const log = Log.create({ service: "agent-output-breadcrumb" });

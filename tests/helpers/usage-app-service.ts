@@ -1,5 +1,5 @@
-import { composeModuleServices } from "../../src/infra/module-service.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../src/infra/store/event-store-types.js"
+import { composeModuleServices } from "../../src/infra/modules/module-service.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../src/infra/substrate/store/event-store-types.js"
 import { createMemoryStore } from "../unit/workflows/vm/host-test-support.js"
 import type { RuntimeAuthStatusScope } from "../../src/protocol/auth/auth-status-protocol-types.js"
 import { createFlywheelAppService, type FlywheelAppServiceDeps } from "../../src/orchestration/app-service/app-service.js"

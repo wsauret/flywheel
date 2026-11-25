@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { wakeInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js";
+import { wakeInput, type AgentLoopInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/llm/routing/runtime-errors.js";
 import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";

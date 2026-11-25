@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { RefusedPart } from "../../../../../infra/llm/content-repair.js";
-import { isRecord } from "../../../../../infra/record.js";
+import type { RefusedPart } from "../../../../../infra/providers/llm/content-repair.js";
+import { isRecord } from "../../../../../infra/guards/record.js";
 import type { AnthropicWireMessage } from "./anthropic-adapter-helpers.js";
 import { anthropicToolResultParts, type BlockOrigins } from "../../conversions/anthropic-messages.js";
 import { ContentRefusedError } from "../../errors.js";

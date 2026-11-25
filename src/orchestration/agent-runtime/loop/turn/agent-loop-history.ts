@@ -1,6 +1,6 @@
 import { redactDeep, redactSecrets } from "../../../../infra/redact-secrets.js";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
-import { stripProviderReasoningBlocks } from "../../../../infra/llm/provider-reasoning-blocks.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
+import { stripProviderReasoningBlocks } from "../../../../infra/providers/llm/provider-reasoning-blocks.js";
 import type { ContentBlock, ConversationMessage, ServingAttempt } from "../../llm/types.js";
 import type { LlmToolOutputPart } from "../../llm/messages.js";
 import { healConversation } from "../../llm/history/heal-messages.js";
@@ -9,10 +9,10 @@ interface ToolInput {
   [key: string]: unknown;
 }
 import type { AgentLoopOptions, AgentLoopPersistence, AgentLoopSeed, HistorySink } from "../../agent-loop-types.js";
-import type { UserInputProducer } from "../../../../infra/chat-input.js";
+import type { UserInputProducer } from "../../../../infra/substrate/events/chat-input.js";
 import type { AssistantProvenance } from "./assistant-message-settlement.js";
 import { toolResultMessages, type ToolResultEntry } from "./agent-state.js";
-import { isAnthropicNarration } from "../../../../infra/llm/anthropic-narration.js";
+import { isAnthropicNarration } from "../../../../infra/providers/llm/anthropic-narration.js";
 
 /** One canonical append funnel for produced content, tool results, and user input.
  * Produced content is redacted; human-typed content passes through unchanged. A system message is echoed to

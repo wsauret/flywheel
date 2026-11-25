@@ -15,8 +15,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted } from "effect";
 
-import { captureProviderConnection, type AuthContext } from "../../../../../src/infra/auth/auth-context.js";
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-facts/runtime-event-factory.js";
+import { captureProviderConnection, type AuthContext } from "../../../../../src/infra/providers/auth/auth-context.js";
+import { createRuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js";
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import type { BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/persona/admission.js";
@@ -25,14 +25,14 @@ import { planToolExposure } from "../../../../../src/orchestration/agent-runtime
 import type { RuntimeTool, DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testProviderEligibility } from "../../../../helpers/provider-authority.js";
 import type { Agent, AgentRunResult, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
-import { isRecord, type UnknownRecord } from "../../../../../src/infra/record.js";
+import { isRecord, type UnknownRecord } from "../../../../../src/infra/guards/record.js";
 import { fixedDefinitions } from "../../../../helpers/project-definitions.js";
 import { makeContext } from "../../agent-runtime/tools/_fixtures.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
 import { DEVELOPMENT_MODULES } from "../../../../../src/orchestration/development-modules.js";
 import { withRequestAdmission } from "../../agent-runtime/_model-client.js";
-import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
+import { composeModuleRuntimes } from "../../../../../src/infra/modules/module-runtime.js";
 import { testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 
 import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";

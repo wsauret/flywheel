@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 import { createEffect, createMemo, onCleanup, untrack } from "solid-js"
-import type { ToolStreamingText } from "../../../../infra/output-blocks.js"
+import type { ToolStreamingText } from "../../../../infra/substrate/events/output-blocks.js"
 import { isInterruptible } from "../../../../protocol/client/session-controls.js"
 import { isActiveActivity, type RuntimeClient, type SessionCatalogRow, type SessionRow } from "../../../../protocol/runtime/app-service-types.js"
 import { sessionActiveMs } from "../../../../protocol/client/session-time.js"

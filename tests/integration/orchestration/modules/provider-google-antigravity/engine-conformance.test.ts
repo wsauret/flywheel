@@ -9,7 +9,7 @@
 import { describe, expect, test } from "bun:test"
 import { ApiError, GoogleGenAI } from "@google/genai"
 import { Redacted } from "effect"
-import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js"
+import { providerModelInfo } from "../../../../../src/infra/providers/llm/catalog/provider-model-info.js"
 import { createGoogleAdapter } from "../../../../../src/orchestration/agent-runtime/llm/adapters/google/google.js"
 import type { ConversationMessage, LLMClient, ToolDef } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js"

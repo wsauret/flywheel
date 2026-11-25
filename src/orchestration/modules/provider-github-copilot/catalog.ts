@@ -1,11 +1,11 @@
 import { Redacted } from "effect";
-import { oauthCredentialDto, type CapturedSubscriptionCredential, type RuntimeOAuthCredential } from "../../../infra/auth/auth-context.js";
-import { replaceCredentialInstance } from "../../../infra/auth/store/auth-store-mutations.js";
-import type { Credential } from "../../../infra/auth/store/auth-store-types.js";
-import type { AccessProviderCatalogFetchInput, AccessProviderCatalogFetchResult } from "../../../infra/llm/access/access-provider.js";
-import { classifyFetchFailure, fetchCatalog } from "../../../infra/llm/access/model-listing.js";
-import { extractDataCatalogRows } from "../../../infra/llm/catalog/model-catalog-resolution.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
+import { oauthCredentialDto, type CapturedSubscriptionCredential, type RuntimeOAuthCredential } from "../../../infra/providers/auth/auth-context.js";
+import { replaceCredentialInstance } from "../../../infra/providers/auth/store/auth-store-mutations.js";
+import type { Credential } from "../../../infra/providers/auth/store/auth-store-types.js";
+import type { AccessProviderCatalogFetchInput, AccessProviderCatalogFetchResult } from "../../../infra/providers/llm/access/access-provider.js";
+import { classifyFetchFailure, fetchCatalog } from "../../../infra/providers/llm/access/model-listing.js";
+import { extractDataCatalogRows } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
 import { COPILOT_STATIC_HEADERS, copilotTokensToCredential, isCopilotTokenExpired, type CopilotStoredTokens } from "./auth-types.js";
 import { getGitHubCopilotBaseUrl } from "./base-url.js";
 import { CopilotTokenRefreshError, refreshGitHubCopilotToken } from "./token-refresh.js";

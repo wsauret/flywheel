@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks"
 import { DebugLog, formatDebugLogLine, type DebugLogRecordInput } from "./debug-log.js"
-import { environmentAccountHome } from "../directory-authorities.js"
-import { errorDetail, errorMessage } from "../error-message.js"
+import { environmentAccountHome } from "../platform/files/directory-authorities.js"
+import { errorDetail, errorMessage } from "./error-message.js"
 import { redactSecrets } from "../redact-secrets.js"
 
 // Namespace singleton is intentional: logging is a cross-cutting infrastructure

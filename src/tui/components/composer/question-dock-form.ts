@@ -1,4 +1,4 @@
-import type { QuestionBlock, QuestionChoice, QuestionEntry } from "@infra/output-blocks"
+import type { QuestionBlock, QuestionChoice, QuestionEntry } from "@infra/substrate/events/output-blocks"
 import { formatQuestionChoiceAnswer, type AgentInputAnswer } from "../../../protocol/session/question-protocol-types.js"
 import { type Accessor, batch, createEffect, createSignal, on } from "solid-js"
 import { questionSkip } from "../../../protocol/client/question-settlement.js"

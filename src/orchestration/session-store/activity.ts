@@ -1,4 +1,4 @@
-import type { Activity } from "../../infra/output-blocks.js"
+import type { Activity } from "../../infra/substrate/events/output-blocks.js"
 import type { SessionEntryBase } from "./types.js"
 
 /** The one public activity axis: pool state first, live stream phase while the

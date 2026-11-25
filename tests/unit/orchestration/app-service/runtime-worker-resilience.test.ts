@@ -4,8 +4,8 @@ import { Database } from "bun:sqlite"
 import { existsSync, readdirSync } from "node:fs"
 import { dirname } from "node:path"
 
-import { availabilityAuthorityDbFile } from "../../../../src/infra/paths.js"
-import { AVAILABILITY_PROTOCOL_VERSION } from "../../../../src/infra/llm/access/availability-store.js"
+import { availabilityAuthorityDbFile } from "../../../../src/infra/platform/files/paths.js"
+import { AVAILABILITY_PROTOCOL_VERSION } from "../../../../src/infra/providers/llm/access/availability-store.js"
 import {
   acquireSharedProviderAvailability,
   disposeSharedProviderAvailability,

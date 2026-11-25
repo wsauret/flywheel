@@ -1,5 +1,5 @@
 import type { CommandHandover } from "./command-handover.js"
-import { errorMessage } from "../../error-message.js"
+import { errorMessage } from "../../diagnostics/error-message.js"
 import { Log } from "../../diagnostics/log.js"
 import type { OwnedChild, OwnedExitStatus } from "./owned-command-control.js"
 import type { TerminationCause } from "../../process/container/process-container.js"

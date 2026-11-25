@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { defineFact, factDescriptors } from "../../infra/event-registry.js"
+import { defineFact, factDescriptors } from "../../infra/substrate/facts/event-registry.js"
 import { ArtifactContractSchema } from "../schema/artifact-contracts.js"
 import type { WorkflowInputValue } from "../output-contract/compile.js"
 

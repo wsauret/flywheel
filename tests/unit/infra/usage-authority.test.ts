@@ -3,10 +3,10 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
-import { createUsageAuthority, UsageEntryConflictError, type UsageLedgerGroup } from "../../../src/infra/llm/usage/usage-authority.js";
-import type { MeasuredUsageEntry, UsageEntry } from "../../../src/infra/llm/usage/usage-entry.js";
-import { subscriptionUsageAuthorityDbFile } from "../../../src/infra/paths.js";
-import * as subscriptionUsageMigration from "../../../src/infra/llm/usage/subscription-usage-store-migration.js";
+import { createUsageAuthority, UsageEntryConflictError, type UsageLedgerGroup } from "../../../src/infra/providers/llm/usage/usage-authority.js";
+import type { MeasuredUsageEntry, UsageEntry } from "../../../src/infra/providers/llm/usage/usage-entry.js";
+import { subscriptionUsageAuthorityDbFile } from "../../../src/infra/platform/files/paths.js";
+import * as subscriptionUsageMigration from "../../../src/infra/providers/llm/usage/subscription-usage-store-migration.js";
 
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });

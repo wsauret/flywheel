@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { asAsyncEventReadSurface, CorruptEventRowError, type StoredFact } from "../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, CorruptEventRowError, type StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { recoverWorkflowContext } from "../../../../../src/workflows/context-bundle/context-recovery.js"
 import { validateWorkflowBootstrap } from "../../../../../src/workflows/vm/recovery/bootstrap-validation.js"
 import { createMemoryStore, initialFacts, testHost, workflow } from "../host-test-support.js"

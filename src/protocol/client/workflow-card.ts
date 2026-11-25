@@ -7,7 +7,7 @@
  * workflow view, so the two cannot disagree.
  */
 
-import { isAgentInFlight, type AgentGroupBlock, type ToolPresentation, type WorkflowAgentState, type WorkflowCard } from "../../infra/output-blocks.js"
+import { isAgentInFlight, type AgentGroupBlock, type ToolPresentation, type WorkflowAgentState, type WorkflowCard } from "../../infra/substrate/events/output-blocks.js"
 import type { FrontendActivity, WorkflowDefinitionDrift } from "../runtime/app-service-types.js"
 import type { LoadedWorkflowView, WorkflowAgentLive } from "../session/workflow-view-protocol-types.js"
 import { workflowDriftExplanation } from "./workflow-drift-copy.js"

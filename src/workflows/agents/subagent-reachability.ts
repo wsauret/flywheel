@@ -1,4 +1,4 @@
-import { roleCovers, type AgentDefinition } from "../../infra/agent-definition.js";
+import { roleCovers, type AgentDefinition } from "../../infra/definitions/agent-definition.js";
 import { CHECKPOINT_TOOL_NAMES } from "../../infra/agent-assets/session-notes.js";
 
 /** Resolves a definition's `subagentRoles` grant against a registry: the names

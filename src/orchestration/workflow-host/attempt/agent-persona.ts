@@ -2,7 +2,7 @@ import type { DefinitionAvailabilitySnapshot } from "../../app-service/definitio
 import type { ResolvedAgent } from "../../../workflows/definitions/agent-resolution.js"
 import { personaInstructions } from "../../../workflows/agents/persona-instructions.js"
 import { grantedSubagentTypes, personaToolNames, workflowAgentSubagents } from "../../../workflows/agents/subagent-reachability.js"
-import type { CapabilityCheck } from "../../../infra/capability-text.js"
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js"
 import type { SkillRegistryRevision } from "../../../workflows/skills/skill-schema.js"
 import { availableToolNames, gitDisciplineRule, isReadOnlyPersona } from "../../agent-runtime/request/prompt/persona-tool-rules.js"
 import type { FirstPartyModuleComposition } from "../../modules.js"

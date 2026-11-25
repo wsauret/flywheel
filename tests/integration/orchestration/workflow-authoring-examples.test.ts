@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { readdirSync, readFileSync, realpathSync } from "node:fs"
-import { renderCapabilityText } from "../../../src/infra/capability-text.js"
+import { renderCapabilityText } from "../../../src/infra/definitions/capability-text.js"
 import { join } from "node:path"
-import { ToolActionSchema } from "../../../src/infra/workflow-types.js"
+import { ToolActionSchema } from "../../../src/infra/workflow/workflow-types.js"
 import {
   describeDefinitionRefusal,
   loadPathWorkflow,
@@ -13,7 +13,7 @@ import type { WorkflowInputValue } from "../../../src/workflows/output-contract/
 import type { AccumulatedContext } from "../../../src/workflows/context-bundle/context.js"
 import { createAttemptExecutor, type AttemptExecutorDeps } from "../../../src/workflows/vm/host/attempt-runner.js"
 import { runDefinition } from "../../../src/orchestration/workflow-host/lifecycle/definition-source.js"
-import { asAsyncEventReadSurface } from "../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../src/infra/substrate/store/event-store-types.js"
 import { resolveWorkflowAgents } from "../../../src/workflows/definitions/agent-resolution.js"
 import { authoredGuardrailLimits, compileWorkflowControl } from "../../../src/workflows/vm/compile/compile.js"
 import { SAMPLED_LAUNCH, sampleItems } from "../../../src/workflows/vm/graph/list-expansion.js"

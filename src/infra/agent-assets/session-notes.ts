@@ -1,5 +1,5 @@
 // Adapted from the token-budget messages in OpenAI Codex `codex-rs/models-manager/models.json` (Apache-2.0). Flywheel changed this text; the replacement ledger in tests/unit/orchestration/agent-runtime/session-notes-prompts.test.ts records each change. Credited in THIRD-PARTY-NOTICES.md.
-import type { CapabilityCheck } from "../capability-text.js";
+import type { CapabilityCheck } from "../definitions/capability-text.js";
 
 export interface SessionNotesPromptInput {
   /** The capabilities of the reader: the tree check for the system prompt, the agent check for a turn. */

@@ -1,4 +1,4 @@
-import { assertNever } from "../../../../infra/assert-never.js";
+import { assertNever } from "../../../../infra/guards/assert-never.js";
 import type { PromptKind } from "./system-prompt.js";
 import type { AgentPurpose } from "../../types.js";
 

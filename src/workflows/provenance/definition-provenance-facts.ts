@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { createFactParser, defineFact } from "../../infra/event-registry.js"
+import { createFactParser, defineFact } from "../../infra/substrate/facts/event-registry.js"
 import { Sha256Schema } from "./definition-hash.js"
 import { AgentPolicyRecordSchema } from "../schema/definition-records.js"
 import { DefinitionLoadedV8PayloadSchema } from "./definition-loaded-v8.js"

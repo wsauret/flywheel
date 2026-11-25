@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { resumeInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js"
+import { resumeInput, type AgentLoopInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js"
 import { createAgentLoopInputWaiter } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-input-consumer.js"
 import type { PersonWait } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-state.js"
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { InvariantViolation } from "../../../../../src/infra/invariant.js";
+import { InvariantViolation } from "../../../../../src/infra/guards/invariant.js";
 import { HandoffError } from "../../../../../src/workflows/context-bundle/handoff-errors.js";
 import { createContextAccumulator } from "../../../../../src/workflows/context-bundle/context.js";
 import type { ResolvedAgent } from "../../../../../src/workflows/definitions/agent-resolution.js";

@@ -3,8 +3,8 @@ import type { PreparedPackage, SkillSemanticAuditEvidence } from "../../../agent
  *  one mutation asks for, and the exact package a planned mutation produces.
  *  The planner and the store both speak it, so neither owns a private copy. */
 
-import type { LearningScope } from "../../../../infra/learning-scope.js";
-import type { MutationDiff } from "../../../../infra/mutation-diff.js";
+import type { LearningScope } from "../../../../infra/learning/learning-scope.js";
+import type { MutationDiff } from "../../../../infra/substrate/mutation-diff.js";
 import type { SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 
 

@@ -1,8 +1,8 @@
-import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../src/infra/output-blocks.js"
+import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../src/infra/substrate/events/output-blocks.js"
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { DEFAULT_ESTIMATE, estimateFrontendOutputBlockRows } from "../../../../../src/tui/transcript/transcript-store/output-height-estimates.js"
-import { buildMutationDiffEvidence } from "../../../../../src/infra/mutation-diff-evidence.js"
+import { buildMutationDiffEvidence } from "../../../../../src/infra/substrate/mutation-diff-evidence.js"
 
 function textBlock(content: string): FrontendOutputBlock {
   return { kind: "text", id: "text-1", content, timestamp: 1 }

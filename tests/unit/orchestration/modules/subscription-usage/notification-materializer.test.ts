@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { SubscriptionUsageAlert } from "../../../../../src/infra/llm/usage/subscription-usage-store-codec.js";
+import type { SubscriptionUsageAlert } from "../../../../../src/infra/providers/llm/usage/subscription-usage-store-codec.js";
 import { createSubscriptionUsageNotificationMaterializer } from "../../../../../src/orchestration/modules/subscription-usage/notification-materializer.js";
-import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../../src/infra/notification-episode.js";
+import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../../src/infra/substrate/events/notification-episode.js";
 
 const alert: SubscriptionUsageAlert = {
   id: "alert-1",

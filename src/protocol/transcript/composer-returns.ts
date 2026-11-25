@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { ChatInputObjectSchema } from "../../infra/chat-input-schema.js"
+import { ChatInputObjectSchema } from "../../infra/substrate/events/chat-input-schema.js"
 
 /** Stable transcript identity for input a child finished without reading. */
 export function returnedInputNoticeId(sourceSessionId: string, inputKey: string): string {

@@ -7,7 +7,7 @@
 import { describe, expect, it } from "bun:test"
 import { Effect, Schema } from "effect"
 import { composeModules } from "../../../../src/infra/module-descriptor.js"
-import { moduleServiceHandle } from "../../../../src/infra/module-service.js"
+import { moduleServiceHandle } from "../../../../src/infra/modules/module-service.js"
 import { composeModuleProcessServices, type ModuleProcessServices } from "../../../../src/orchestration/app-service/module-service-host.js"
 import { configSection, installedConfigSections, type ModuleConfigSection } from "../../../../src/orchestration/config/schema/config-section.js"
 import { CONFIG_DEFAULTS, installedConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema/schema.js"

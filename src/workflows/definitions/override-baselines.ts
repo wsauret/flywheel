@@ -3,10 +3,10 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync
 import { dirname, join } from "node:path"
 
 import { Log } from "../../infra/diagnostics/log.js"
-import { isRecord, type UnknownRecord } from "../../infra/record.js"
-import { writeFileAtomic, fsyncDirectory } from "../../infra/atomic-write.js"
-import type { DefinitionFamily, DefinitionResolution } from "../../infra/definition-resolution.js"
-import { acquireLock, releaseLock } from "../../infra/locks/ownership-file-lock.js"
+import { isRecord, type UnknownRecord } from "../../infra/guards/record.js"
+import { writeFileAtomic, fsyncDirectory } from "../../infra/platform/files/atomic-write.js"
+import type { DefinitionFamily, DefinitionResolution } from "../../infra/definitions/definition-resolution.js"
+import { acquireLock, releaseLock } from "../../infra/process/locks/ownership-file-lock.js"
 import type { BundledDefaultCatalog } from "./bundled-defaults.js"
 
 const MANIFEST_NAME = "definition-override-baselines.json"

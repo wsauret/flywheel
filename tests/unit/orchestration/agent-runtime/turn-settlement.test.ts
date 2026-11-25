@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { Effect, Exit, Fiber, Scope } from "effect"
-import type { PersistenceWriteRefused, InFlightPayload } from "../../../../src/infra/store/event-store-types.js"
+import type { PersistenceWriteRefused, InFlightPayload } from "../../../../src/infra/substrate/store/event-store-types.js"
 
 import { createTurnDispatcher, type SettledToolBatch } from "../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-loop-tools.js"
 import { fixedTurnOutputBound } from "../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js"

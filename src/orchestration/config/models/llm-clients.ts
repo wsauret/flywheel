@@ -8,11 +8,11 @@ import type { FirstPartyModuleComposition } from "../../modules.js";
  * production process serves one account, so it holds one models client.
  */
 
-import { captureSubscriptionCredentials } from "../../../infra/auth/auth-context.js";
-import { loadAuthStoreWithDiagnostics } from "../../../infra/auth/store/auth-store.js";
-import { createModelListingClient, type ModelListingClient } from "../../../infra/llm/access/model-listing.js";
-import { createModelsClient, type ModelsClient } from "../../../infra/llm/models/models.js";
-import { modelsSnapshotFile } from "../../../infra/paths.js";
+import { captureSubscriptionCredentials } from "../../../infra/providers/auth/auth-context.js";
+import { loadAuthStoreWithDiagnostics } from "../../../infra/providers/auth/store/auth-store.js";
+import { createModelListingClient, type ModelListingClient } from "../../../infra/providers/llm/access/model-listing.js";
+import { createModelsClient, type ModelsClient } from "../../../infra/providers/llm/models/models.js";
+import { modelsSnapshotFile } from "../../../infra/platform/files/paths.js";
 import { accessProviderRegistry } from "../../agent-runtime/llm/routing/access-provider-registry.js";
 import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js";
 

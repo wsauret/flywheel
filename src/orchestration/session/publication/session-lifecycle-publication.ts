@@ -1,6 +1,6 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedAppendResult, GuardedEventStoreAppend } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedAppendResult, GuardedEventStoreAppend } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { ensureSessionDir } from "../../../infra/paths.js"
+import { ensureSessionDir } from "../../../infra/platform/files/paths.js"
 import { pruneSupersededWorkflowViewFacts } from "../../../workflows/view/view-store.js"
 import { removeOwnerPid, writeOwnerPid } from "../pid-lock.js"
 import { pruneSupersededFileReviewFacts } from "../metadata/catalog/session-change-review.js"

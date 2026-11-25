@@ -3,7 +3,7 @@ import type { RuntimeClient } from "../../../protocol/runtime/app-service-types.
 import type { WorkflowDetail } from "../../../protocol/modules/workflows.js"
 import { dispatchInterrupt, resumeMutation, type ControlRefusal } from "../../../protocol/client/session-controls.js"
 import { workflowAgentOpenTarget, type WorkflowAgentTarget } from "../../../protocol/client/workflow-agent.js"
-import type { WorkflowAgentState } from "../../../infra/output-blocks.js"
+import type { WorkflowAgentState } from "../../../infra/substrate/events/output-blocks.js"
 import type { WorkflowCardChoices } from "../../../protocol/client/workflow-card.js"
 import type { FrontendWorkflowView, WorkflowAgentLive, WorkflowLiveView } from "../../../protocol/session/workflow-view-protocol-types.js"
 import type { WorkflowRoleReadings } from "./serving-labels.js"

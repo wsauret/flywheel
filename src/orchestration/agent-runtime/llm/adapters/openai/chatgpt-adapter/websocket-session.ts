@@ -1,6 +1,6 @@
 // Adapted from pi `packages/ai/src/api/openai-codex-responses.ts` (MIT); credited in THIRD-PARTY-NOTICES.md.
 import type { ResponseInput } from "openai/resources/responses/responses.js";
-import { isAbortError } from "../../../../../../infra/abort.js";
+import { isAbortError } from "../../../../../../infra/timing/abort.js";
 import { formatThrownValue, headersToRecord, runtimeWebSocket } from "./deps.js";
 import { resolveHttpProxyUrlForTarget } from "./proxy.js";
 import { ChatGptAdapterProtocolError } from "./sse.js";

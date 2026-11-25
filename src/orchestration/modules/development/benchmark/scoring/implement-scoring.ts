@@ -3,7 +3,7 @@ import type { ImplementManifest, ManifestPoint } from "../tasks/task-schema.js";
 import type { ImplementTask } from "../catalog.js";
 import { judgeOverheadNote, type ReportArgs, type ReportCounts } from "./reports.js";
 import type { BenchmarkAccounting } from "../accounting/evidence.js";
-import { IMPLEMENT_QUALITY_RUBRIC } from "../../../../../infra/benchmark-rubrics.js";
+import { IMPLEMENT_QUALITY_RUBRIC } from "./benchmark-rubrics.js";
 import { structuredIdentity } from "../campaign/content-identity.js";
 import { formatAccountingObservation } from "../accounting/report-accounting.js";
 

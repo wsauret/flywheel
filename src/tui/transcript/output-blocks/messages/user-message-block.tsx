@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { UserMessageBlock as UserMessageBlockType, UserMessageImage } from "@infra/output-blocks"
+import type { UserMessageBlock as UserMessageBlockType, UserMessageImage } from "@infra/substrate/events/output-blocks"
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { VerticalBarBorder } from "@tui/transcript/output-blocks/border"

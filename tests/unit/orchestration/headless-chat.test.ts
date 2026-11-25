@@ -18,7 +18,7 @@ import { createRuntimeUiBus } from "../../../src/orchestration/app-service/proje
 import { liveSessionControl, registerLiveSessionControl, registerLiveWorkflowControl, runningChildSessionIds, liveWorkflowControls, onLiveWorkChanged } from "../../../src/orchestration/session/control/live-session-control.js"
 import { heldSessionLineage, sessionSubtree, type SessionLineage } from "../../../src/orchestration/session/metadata/catalog/session-subtree.js"
 import { countStateRequests } from "../../helpers/state-requests.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../../src/infra/substrate/store/event-store-types.js"
 import { openReplyWait, suspendReplyWaits, workProgressesWithout, type ReplyWaitDeps } from "../../../src/orchestration/session/control/messaging/reply-waits.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext } from "../../fixtures/runtime-supervisor-fixtures.js"
 

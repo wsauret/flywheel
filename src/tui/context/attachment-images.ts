@@ -1,4 +1,4 @@
-import type { UserMessageImage } from "@infra/output-blocks"
+import type { UserMessageImage } from "@infra/substrate/events/output-blocks"
 import { createContext, useContext, type Accessor } from "solid-js"
 
 interface AttachmentImagePresentation {

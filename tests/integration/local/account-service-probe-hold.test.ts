@@ -4,8 +4,8 @@ import * as path from "node:path"
 
 import { isRuntimeListening, probeRendezvous } from "../../../src/cli/account-service/runtime-attach.js"
 import { readRuntimeIdentity } from "../../../src/cli/account-service/runtime-identity-record.js"
-import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
-import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/paths.js"
+import { serveLaneFor } from "../../../src/infra/platform/cli-subprocess.js"
+import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/platform/files/paths.js"
 import { createIsolatedAccountRuntimeAttach, joinIsolatedAccountService } from "./_account-service.js"
 import { socketTemporaryRoot } from "../../helpers/directories.js"
 

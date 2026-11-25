@@ -1,6 +1,6 @@
 import { emitToolExecutionOutput, emitBackgroundCommandRecorded, emitToolExecutionOutputRecorded } from "../../agent-runtime/runner/emit.js"
-import type { createEmit } from "../../../infra/event-bus.js"
-import type { RuntimeEvent } from "../../../infra/runtime-facts/runtime-event-types.js"
+import type { createEmit } from "../../../infra/substrate/events/event-bus.js"
+import type { RuntimeEvent } from "../../../infra/substrate/runtime-facts/runtime-event-types.js"
 import { createBackgroundExecutionOwner } from "../../agent-runtime/background-execution/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../agent-runtime/background-work/background-work.js"
 import type { ConversationTreeWriterController } from "../tree-writer.js"

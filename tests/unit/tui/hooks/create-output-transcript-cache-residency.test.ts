@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import type { ChatInput } from "../../../../src/infra/chat-input.js"
+import type { ChatInput } from "../../../../src/infra/substrate/events/chat-input.js"
 import { createChatSubmissions } from "../../../../src/protocol/client/chat-submissions.js"
 import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { content, fakeRuntimeClient, liveView, rangeOk, seedComplete, textBlock } from "./_output-transcript-cache-fixtures.js"

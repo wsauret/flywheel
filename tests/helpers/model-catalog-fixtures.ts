@@ -1,5 +1,5 @@
-import type { CatalogSourceRow } from "../../src/infra/llm/catalog/model-catalog-resolution.js";
-import type { CatalogLimits } from "../../src/infra/model-catalog-rows.js";
+import type { CatalogSourceRow } from "../../src/infra/providers/llm/catalog/model-catalog-resolution.js";
+import type { CatalogLimits } from "../../src/infra/providers/model-catalog-rows.js";
 
 export interface TestCatalogRow {
   readonly id?: string;

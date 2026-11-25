@@ -1,5 +1,5 @@
 import type { Accessor } from "solid-js"
-import { errorMessage } from "../../../../../infra/error-message.js"
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js"
 import type { RuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
 import type { RuntimeAuthProfileScope } from "../../../../../protocol/auth/auth-profile-selection-protocol-types.js"
 import type { ShellServices } from "../../../state/shell-state.js"

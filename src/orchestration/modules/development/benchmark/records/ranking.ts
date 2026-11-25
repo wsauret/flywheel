@@ -1,4 +1,4 @@
-import { EFFORT_VALUES } from "../../../../../infra/workflow-types.js";
+import { EFFORT_VALUES } from "../../../../../infra/workflow/workflow-types.js";
 import type { RankedModelTier } from "../../../../config/models/model-tiers.js";
 import { currentGrade, judgeLabel, recordScorer, type CampaignRecords, type CellLine, type RecordJudge, type ScoreLine } from "./benchmark-records.js";
 import type { BenchmarkMode, ImplementTask, ResearchTask, ReviewTask } from "../catalog.js";

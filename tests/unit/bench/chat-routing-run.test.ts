@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../../src/infra/definitions/agent-definition.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
 import type { RuntimeToolInput } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { ChatRoutingFailure, chatRoutingGuidance, runChatRoutingTask } from "../../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
 import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
-import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
+import { composeModuleRuntimes } from "../../../src/infra/modules/module-runtime.js";
 import { publishSkillRevision } from "../../../src/workflows/skills/skill-schema.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
 import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js";

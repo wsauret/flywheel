@@ -4,14 +4,14 @@ import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.
 import { bytesIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import type { HeadlessBenchmarkInput } from "../../src/orchestration/modules/development/benchmark/execution/headless-execution.js";
 import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/execution/headless-execution-contract.js";
-import { errorMessage } from "../../src/infra/error-message.js";
+import { errorMessage } from "../../src/infra/diagnostics/error-message.js";
 import { readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { benchmarkInfrastructureIdentity, requireStrictBenchmarkSettlement } from "./benchmark-infrastructure.js";
 import { campaignArtifactReference } from "./campaign-artifacts.js";
 import { campaignHeadlessOutcome, type CampaignSettlement } from "./campaign-execution.js";
 import type { CampaignCell, CampaignExecutionOutcome, CampaignManifestFields, CampaignManifest, CampaignOutcome, CampaignRoles, createCampaignLedger } from "./campaign-store.js";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
-import type { Effort } from "../../src/infra/workflow-types.js";
+import type { Effort } from "../../src/infra/workflow/workflow-types.js";
 import { REPO_ROOT, RESULTS_ROOT } from "./harness-paths.js";
 import { resolveCampaignSubject, type CampaignInvocationCapture, type CampaignTreatment, type CampaignSubjectKind, type PreparedCampaignSubject } from "./campaign-subject.js";
 import { benchmarkCommandRunner } from "./benchmark-command.js";

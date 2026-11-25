@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js";
-import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js";
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/substrate/store/event-store-types.js";
 interface FactPayload { [key: string]: unknown }
-import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
+import { resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths.js";
 import { createConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { createCommandEvidenceSource } from "../../../../../src/orchestration/workflow-host/attempt/command-evidence.js";
 import { buildSessionCreatedFact } from "../../../../../src/orchestration/session/metadata/session-metadata-facts.js";

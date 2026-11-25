@@ -7,10 +7,10 @@ import { createManagedPackageWrites } from "./learning/managed-package-writes.js
 import { memoryConfigSection, skillsConfigSection } from "./learning/config.js";
 import { migrateMemoryWrittenFacts } from "./learning/migrations/memory-written.js";
 import { migrateSkillFactReach } from "./learning/migrations/skill-scope.js";
-import type { LearningScope } from "../../infra/learning-scope.js";
+import type { LearningScope } from "../../infra/learning/learning-scope.js";
 import { Log } from "../../infra/diagnostics/log.js";
-import { moduleRuntimeHandle } from "../../infra/module-runtime.js";
-import type { MutationEvidence } from "../../infra/mutation-evidence.js";
+import { moduleRuntimeHandle } from "../../infra/modules/module-runtime.js";
+import type { MutationEvidence } from "../../infra/substrate/mutation-evidence.js";
 import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js";
 import { createMemoryTool, type MemoryToolDeps } from "./learning/tools/memory.js";
 import { createSkillManageTool, type SkillManageToolDeps } from "./learning/tools/skill-manage.js";

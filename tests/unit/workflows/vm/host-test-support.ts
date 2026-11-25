@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, type AsyncEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, type AsyncEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
@@ -130,7 +130,7 @@ export function quietHostDeps(writer: AsyncEventWriter): Pick<WorkflowVmHostDeps
 type TestHostOverrides = Partial<WorkflowVmHostDeps> & {
   readonly workflow?: WorkflowDefinition
   readonly skills?: SkillRegistryRevision
-  readonly personas?: ReadonlyMap<string, import("../../../../src/infra/agent-definition.js").AgentDefinition>
+  readonly personas?: ReadonlyMap<string, import("../../../../src/infra/definitions/agent-definition.js").AgentDefinition>
 }
 
 export function testHost(

@@ -1,8 +1,9 @@
-import { errnoCode, errorDetail, errorMessage } from "../../infra/error-message.js";
+import { errorDetail, errorMessage } from "../../infra/diagnostics/error-message.js";
+import { errnoCode } from "../../infra/platform/files/system-error.js";
 import { Log } from "../../infra/diagnostics/log.js";
-import { ownerPidRelativePath, resolveOwnerPidPath } from "../../infra/paths.js";
+import { ownerPidRelativePath, resolveOwnerPidPath } from "../../infra/platform/files/paths.js";
 import { decodeHolderText, encodeHolderText, processHolders } from "../../infra/process/process-holder.js";
-import { readFileUnder, removeFileUnder, writeFileUnder } from "../../infra/write-file-under.js";
+import { readFileUnder, removeFileUnder, writeFileUnder } from "../../infra/platform/files/write-file-under.js";
 
 const log = Log.create({ service: "session-pid-lock" });
 

@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { RUNTIME_EVENT_DEFINITIONS, type RuntimeEvent } from "../../src/infra/runtime-facts/runtime-event-types.js"
+import { RUNTIME_EVENT_DEFINITIONS, type RuntimeEvent } from "../../src/infra/substrate/runtime-facts/runtime-event-types.js"
 
 /** Decodes untyped event data with the schema of its runtime event definition,
  *  as a value read across a process boundary is decoded. Throws on data that

@@ -2,10 +2,10 @@ import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { Redacted } from "effect"
-import type { SubscriptionUsageReader } from "../../../../../src/infra/llm/usage/subscription-usage.js"
-import type { AccessProviderDefinition } from "../../../../../src/infra/llm/access/access-provider.js"
-import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription/subscription-account-identity.js"
-import { createSubscriptionUsageStore } from "../../../../../src/infra/llm/usage/subscription-usage-store.js"
+import type { SubscriptionUsageReader } from "../../../../../src/infra/providers/llm/usage/subscription-usage.js"
+import type { AccessProviderDefinition } from "../../../../../src/infra/providers/llm/access/access-provider.js"
+import { createSubscriptionAccountIdentity } from "../../../../../src/infra/providers/auth/subscription/subscription-account-identity.js"
+import { createSubscriptionUsageStore } from "../../../../../src/infra/providers/llm/usage/subscription-usage-store.js"
 import { createSubscriptionUsageService, type SubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { captureCopilotAllowanceAdmission } from "../../../../../src/orchestration/modules/provider-github-copilot/allowance-admission.js"
 import { createChatGPTUsageReader } from "../../../../../src/orchestration/modules/provider-chatgpt/usage-reader.js"
@@ -13,7 +13,7 @@ import { createRuntimeUsageDeps } from "../../../../../src/orchestration/modules
 import { subscriptionSpendAccountCorrelationId } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js"
 import { createProfileFixture, definition, readerFor, registry, report, writeAccounts } from "./_service-fixtures.js"
-import type { ExternalAccount } from "../../../../../src/infra/auth/provider-account.js"
+import type { ExternalAccount } from "../../../../../src/infra/providers/auth/provider-account.js"
 
 const { profile, cleanup } = createProfileFixture()
 

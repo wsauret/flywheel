@@ -1,5 +1,5 @@
-import { parseProjectionFact } from "../../../../infra/projection/event-projection.js"
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/store/event-store-types.js"
+import { parseProjectionFact } from "../../../../infra/substrate/projection/event-projection.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
 import { parseFileMutationFact } from "../../file-mutations/file-mutation-facts.js"
 import { readProviderRequestAuditFact } from "../../runtime-facts/provider-request-audit-facts.js"
 import { providerRequestIdentityFromPayload } from "../../runtime-facts/provider-request-audit-types.js"

@@ -7,7 +7,7 @@ import { basename, join } from "node:path"
 import { runKill, type KillDependencies } from "../../../../src/cli/commands/kill.js"
 import { Log } from "../../../../src/infra/diagnostics/log.js"
 import type { ProcessAccountHome } from "../../../../src/infra/process/process-account-home.js"
-import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath } from "../../../../src/infra/paths.js"
+import { accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath } from "../../../../src/infra/platform/files/paths.js"
 import type { ProcessRow } from "../../../../src/infra/process/container/process-table.js"
 
 const OWN_HOME = "/Users/me"

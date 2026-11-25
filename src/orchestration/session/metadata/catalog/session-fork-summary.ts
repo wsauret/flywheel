@@ -1,7 +1,7 @@
 import { HashMap, Option } from "effect"
-import type { AsyncEventReadSurface, StoredFact } from "../../../../infra/store/event-store-types.js"
-import { createEventProjection } from "../../../../infra/projection/event-projection.js"
-import { heldProjection } from "../../../../infra/projection/projection-registry.js"
+import type { AsyncEventReadSurface, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
+import { createEventProjection } from "../../../../infra/substrate/projection/event-projection.js"
+import { heldProjection } from "../../../../infra/substrate/projection/projection-registry.js"
 import { SESSION_FORK_FACT_TYPES, reduceSessionForkEvent, type SessionForkRecord } from "../session-fork-projection.js"
 
 interface SessionForks {

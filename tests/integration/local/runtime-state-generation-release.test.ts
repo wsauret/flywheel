@@ -48,11 +48,11 @@ const disposals: string[] = []
 
 // Snapshots, not live namespaces: a module mock replaces the namespace binding
 // too, so a delegating mock that read it back would call itself.
-const realEventStoreEffect = await import("../../../src/infra/store/event-store-effect.js")
+const realEventStoreEffect = await import("../../../src/infra/substrate/store/event-store-effect.js")
 const realManager = await import("../../../src/orchestration/session/manager.js")
 const realMcp = await import("../../../src/orchestration/modules/mcp/manager/manager.js")
 const realLane = await import("../../../src/orchestration/app-service/background/runtime-background-lane.js")
-const realWriterLane = await import("../../../src/infra/store/event-store-writer-lane.js")
+const realWriterLane = await import("../../../src/infra/substrate/store/event-store-writer-lane.js")
 const realSessionStore = await import("../../../src/orchestration/session-store/store.js")
 const realAppService = await import("../../../src/orchestration/app-service/app-service.js")
 const realAvailability = await import("../../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js")

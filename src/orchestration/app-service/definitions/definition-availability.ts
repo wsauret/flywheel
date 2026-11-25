@@ -26,8 +26,8 @@
  *  on, so a disable that lands after an operation started cannot change what it
  *  may reach. */
 
-import type { AgentDefinition } from "../../../infra/agent-definition.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import type { AgentDefinition } from "../../../infra/definitions/agent-definition.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { definitionModuleRequirements, type FirstPartyModule, type ModuleId } from "../../modules.js"
 import { disabledAgentTypes, installedModules } from "../../module-catalog.js"
 import type { RuntimeConfigOwner } from "../../config/runtime-config-owner.js"

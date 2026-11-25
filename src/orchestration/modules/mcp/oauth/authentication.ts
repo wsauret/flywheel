@@ -1,4 +1,4 @@
-import { openExternalUrl } from "../../../../infra/open-external-url.js"
+import { openExternalUrl } from "../../../../infra/substrate/output/notify/open-external-url.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import type { McpOAuthAuthorization } from "./oauth.js"
 

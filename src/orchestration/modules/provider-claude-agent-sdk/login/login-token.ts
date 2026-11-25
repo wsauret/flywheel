@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { loginKeychainPath } from "../../../../infra/macos-keychain.js";
-import type { OsAccount } from "../../../../infra/os-account.js";
+import { loginKeychainPath } from "../../../../infra/platform/macos-keychain.js";
+import type { OsAccount } from "../../../../infra/platform/os-account.js";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import { cliLogin } from "./cli-login.js";
 import { loginOwnerHome } from "../engine/cli-environment.js";

@@ -9,14 +9,14 @@ import { createClaudeReminders, createModelReminders, parseRuntimeReminder } fro
 import { captureForkMessages } from "../../../../../../src/orchestration/agent-runtime/loop/turn/agent-loop-history.js";
 import { createHostedAgentEntries, DISPATCH_TEXT } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { AGENT_APPENDIX, AGENT_IDENTITY, conversationTierEntry } from "../../../../../helpers/hosted-engine-text.js";
-import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/store/event-store-types.js";
-import { resolveEventStoreDbFile } from "../../../../../../src/infra/paths.js";
+import { createSqliteEventStore } from "../../../../../../src/infra/substrate/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/substrate/store/event-store-types.js";
+import { resolveEventStoreDbFile } from "../../../../../../src/infra/platform/files/paths.js";
 import { createConversationTree } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { SHELL_CAPABILITIES } from "../../../../../helpers/prompt-capabilities.js";
 import { Redacted } from "effect";
-import { providerModelInfo } from "../../../../../../src/infra/llm/catalog/provider-model-info.js";
+import { providerModelInfo } from "../../../../../../src/infra/providers/llm/catalog/provider-model-info.js";
 import type { AccessProviderBuild } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { openrouterModule } from "../../../../../../src/orchestration/modules/provider-openrouter/module.js";
 import { fakeAvailability } from "../_provider-chain-harness.js";

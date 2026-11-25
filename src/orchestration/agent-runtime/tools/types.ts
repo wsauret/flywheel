@@ -1,11 +1,11 @@
 import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest, ModulePolicy } from "../../config/policy/module-policy.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
-import type { ToolAction } from "../../../infra/workflow-types.js";
+import type { ToolAction } from "../../../infra/workflow/workflow-types.js";
 import type { SessionFactWriter } from "../../session/persistence/session-fact-writer.js";
-import type { ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js";
+import type { ToolOutcome } from "../../../infra/substrate/runtime-facts/tool-outcome.js";
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
 import type { ToolCallIdentity } from "../background-work/background-work-types.js";
-import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
+import type { LlmToolOutputPart } from "../../../infra/providers/llm/tool-output-part-schema.js";
 import type { ConversationMessage, ToolCall, ToolWirePresentation } from "../llm/types.js";
 import type { FileReadLedger } from "./files/file-read-ledger.js";
 import type { ContextAdmission } from "../compaction/compaction-policy.js";
@@ -16,9 +16,9 @@ import type { HandoffRejection } from "../../workflow-host/attempt/handoff-tool-
 
 import type { PersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-bridge.js";
-import type { ModuleRuntimes } from "../../../infra/module-runtime.js";
-import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js";
+import type { ModuleRuntimes } from "../../../infra/modules/module-runtime.js";
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js";
 import { canonicalModuleIds, MODULE_IDS, type ModuleId } from "../../../protocol/runtime/module-ids.js";
 type ToolExecutionMode = "foreground" | "background";
 type ToolTraceKind = "tool" | "subagent";
@@ -150,7 +150,7 @@ export function toolCallIdentity(context: ToolContext): ToolCallIdentity {
 /**
  * Runtime contract for a tool: input schema, prompt fields, execution
  * semantics, and execute handler. Display metadata lives in
- * `infra/tools/displays/<name>.ts`; it must not decide scheduling or trace
+ * `infra/substrate/output/tools/displays/<name>.ts`; it must not decide scheduling or trace
  * classification.
  */
 
@@ -443,7 +443,7 @@ export interface ToolContext {
   /** Exact asynchronous state reads for interactive tool observations. */
   projectionReader?: AsyncEventStateReadSurface;
   /** Applies a fact only after its durable event commits. Restart applies the same stored event. */
-  applyNestedStoredFact?: (event: import("../../../infra/store/event-store-types.js").StoredFact) => void | Promise<void>;
+  applyNestedStoredFact?: (event: import("../../../infra/substrate/store/event-store-types.js").StoredFact) => void | Promise<void>;
   /** Capability boundary for this call (see CapabilityAccess). Present wherever
    *  a host owns a capability policy; a realm that owns none wires none, and a
    *  tool that needs no optional capability never consults it. */

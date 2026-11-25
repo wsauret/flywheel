@@ -1,4 +1,4 @@
-import type { InFlightWrite, StoredFact } from "../../../../infra/store/event-store-types.js"
+import type { InFlightWrite, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
 import type { ExperimentFact, ExperimentRunRecordedFact } from "../state/facts.js"
 import type { ExperimentKeepResult } from "./git-operations.js"
 import { EXPERIMENT_OPERATION_RETIREMENT } from "../operation-owner.js"

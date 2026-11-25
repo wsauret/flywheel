@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { exactStruct } from "../../infra/exact-struct.js"
+import { exactStruct } from "../../infra/guards/exact-struct.js"
 import type { CommandCatalogPatchPayload, CommandOutcome, RuntimeCommandCatalogResult, RuntimeCommandInvocation } from "./command-catalog-protocol-types.js"
 
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))

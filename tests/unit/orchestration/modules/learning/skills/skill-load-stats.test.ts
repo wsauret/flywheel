@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type StoredFact } from "../../../../../../src/infra/store/event-store-types.js";
-import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type StoredFact } from "../../../../../../src/infra/substrate/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../../src/infra/substrate/store/sqlite-event-store.js";
 import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import {
   collectSkillLoadRecords,

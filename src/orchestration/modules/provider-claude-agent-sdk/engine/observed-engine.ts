@@ -1,6 +1,6 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
-import type { OwnedClaudeProcess } from "../../../../infra/claude-engine-process.js";
+import type { OwnedClaudeProcess } from "../../../../infra/providers/claude-engine-process.js";
 import { debugLineReader, signInTrace, type DebugLine } from "./stderr-signals.js";
 
 /** What the owner of one engine hears of it, each in the order in which the engine wrote it. Each call returns at

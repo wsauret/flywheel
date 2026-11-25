@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
-import type { OrderedLane } from "../../../infra/ordered-lane.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
+import type { OrderedLane } from "../../../infra/async/ordered-lane.js"
 import type { ChatRunner } from "../../chat/runner-types.js"
 import { registerLiveSessionControl } from "../../session/control/live-session-control.js"
 

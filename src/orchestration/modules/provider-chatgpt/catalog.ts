@@ -1,11 +1,11 @@
 import { Redacted } from "effect";
-import { CHATGPT_BACKEND_API_BASE } from "../../../infra/auth/openai/openai-auth-types.js";
-import type { CatalogDiscovery, ModelCatalogContribution } from "../../../infra/llm/catalog/model-catalog-resolution.js";
-import type { CatalogJsonValue } from "../../../infra/catalog-model-offering.js";
-import { fetchCatalog } from "../../../infra/llm/access/model-listing.js";
-import type { ProviderReasoningEffort } from "../../../infra/llm/models/models.js";
-import { providerModelInfo } from "../../../infra/llm/catalog/provider-model-info.js";
-import { currentOpenAiStandardPricing, openAiPricingFromMetadata, openAiPricingMetadata, refreshOpenAiStandardPricing } from "../../../infra/llm/models/openai-pricing.js";
+import { CHATGPT_BACKEND_API_BASE } from "../../../infra/providers/auth/openai/openai-auth-types.js";
+import type { CatalogDiscovery, ModelCatalogContribution } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import type { CatalogJsonValue } from "../../../infra/providers/catalog-model-offering.js";
+import { fetchCatalog } from "../../../infra/providers/llm/access/model-listing.js";
+import type { ProviderReasoningEffort } from "../../../infra/providers/llm/models/models.js";
+import { providerModelInfo } from "../../../infra/providers/llm/catalog/provider-model-info.js";
+import { currentOpenAiStandardPricing, openAiPricingFromMetadata, openAiPricingMetadata, refreshOpenAiStandardPricing } from "../../../infra/providers/llm/models/openai-pricing.js";
 
 const MODELS_URL = `${CHATGPT_BACKEND_API_BASE}/models`;
 const CLIENT_VERSION = "1.0.0";

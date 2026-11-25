@@ -11,11 +11,11 @@
  *  strand either. */
 
 import { dirname } from "node:path";
-import type { ProjectDirectories } from "../../../../infra/directory-authorities.js";
-import type { AsyncEventReadSurface } from "../../../../infra/store/event-store-types.js";
-import { createEventProjection, parseProjectionFact } from "../../../../infra/projection/event-projection.js";
-import { heldProjection } from "../../../../infra/projection/projection-registry.js";
-import { requireContainedDirectory } from "../../../../infra/write-file-under.js";
+import type { ProjectDirectories } from "../../../../infra/platform/files/directory-authorities.js";
+import type { AsyncEventReadSurface } from "../../../../infra/substrate/store/event-store-types.js";
+import { createEventProjection, parseProjectionFact } from "../../../../infra/substrate/projection/event-projection.js";
+import { heldProjection } from "../../../../infra/substrate/projection/projection-registry.js";
+import { requireContainedDirectory } from "../../../../infra/platform/files/write-file-under.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import type { SkillRecommendationRecordedFact } from "../../../../workflows/skills/skill-facts.js";
 import { ownedSkillStoreDirs } from "../../../../workflows/skills/skills.js";

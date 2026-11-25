@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
-import { InvariantViolation } from "../../../../src/infra/invariant.js"
+import { InvariantViolation } from "../../../../src/infra/guards/invariant.js"
 import type { FrontendMutation, RuntimeQueryResult } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { RuntimeModuleSnapshotResult } from "../../../../src/protocol/runtime/module-protocol-types.js"
 import { papercutsProtocol, type RuntimePapercutCountView } from "../../../../src/protocol/modules/papercuts.js"

@@ -1,4 +1,4 @@
-import { authDir } from "../../../infra/paths.js"
+import { authDir } from "../../../infra/platform/files/paths.js"
 import type { RuntimeAuthStatusScope } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { AuthProfileResolution } from "../../auth/auth-profile-manager.js"
 import type { SessionManager } from "../../session/manager.js"

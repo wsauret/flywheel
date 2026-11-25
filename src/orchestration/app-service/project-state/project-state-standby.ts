@@ -1,5 +1,5 @@
 import { createBoundedWorkerSpawner } from "../../../infra/process/workers/bounded-worker-spawner.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { terminateWorker } from "../../../infra/process/workers/worker-termination.js"
 

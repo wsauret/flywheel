@@ -1,5 +1,5 @@
-import { embeddedEntrySpecifier, runsThroughBun } from "../../infra/cli-subprocess.js"
-import type { StartupDirectories } from "../../infra/directory-authorities.js"
+import { embeddedEntrySpecifier, runsThroughBun } from "../../infra/platform/cli-subprocess.js"
+import type { StartupDirectories } from "../../infra/platform/files/directory-authorities.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import { lockCommandSupervisorEntry } from "../../infra/supervision/launch/command-supervisor-entry.js"
 import { createLauncherScope, createProcessSupervisor, guardianCommand, type LauncherContext, type ProcessSupervisor } from "../../infra/process-supervisor.js"

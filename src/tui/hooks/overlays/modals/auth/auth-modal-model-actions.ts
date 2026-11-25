@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../../../infra/error-message.js"
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js"
 import { createEffect, createSignal, onCleanup, untrack } from "solid-js"
 import type { AttachedRuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
 import { providerCatalogNeedsRetry, type ProviderModelRow, type ProviderModelTarget, type ProviderModelView } from "../../../../../protocol/auth/provider-model-preference-protocol-types.js"

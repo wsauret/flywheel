@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { DegradedBlock as DegradedBlockType } from "@infra/output-blocks"
+import type { DegradedBlock as DegradedBlockType } from "@infra/substrate/events/output-blocks"
 import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { BlockFrame } from "./block-frame.js"

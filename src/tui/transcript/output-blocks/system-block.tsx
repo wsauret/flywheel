@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { DividerBlock as DividerBlockType, SystemBlock as SystemBlockType } from "@infra/output-blocks"
+import type { DividerBlock as DividerBlockType, SystemBlock as SystemBlockType } from "@infra/substrate/events/output-blocks"
 import { watchRowView } from "../../../protocol/client/transcript-model.js"
 import { blockIdentity } from "../../../protocol/transcript/block-identity.js"
 import { isReturnedInputNotice } from "../../../protocol/transcript/composer-returns.js"

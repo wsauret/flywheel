@@ -10,7 +10,7 @@ import {
 import { WorkflowHostLifecycleError } from "../../../../../src/workflows/vm/host/host-types.js"
 import * as factFold from "../../../../../src/workflows/vm/recovery/fact-fold.js"
 import { parseWorkflowControlFact } from "../../../../../src/workflows/control-facts/family.js"
-import type { StoredFact } from "../../../../../src/infra/store/event-store-types.js"
+import type { StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { loadedWorkflow } from "../../../../helpers/workflow-files.js"
 
 /** The machine event type of each committed control proposal, in commit order. */

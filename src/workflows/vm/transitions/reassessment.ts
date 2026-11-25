@@ -1,4 +1,4 @@
-import { assertNever } from "../../../infra/assert-never.js";
+import { assertNever } from "../../../infra/guards/assert-never.js";
 import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js";
 import type { HandoffIssue } from "../../output-contract/facts.js";
 import type { ReassessmentChange, ReassessmentProposal } from "../../control-facts/events.js";

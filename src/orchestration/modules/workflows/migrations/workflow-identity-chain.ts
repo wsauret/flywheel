@@ -3,7 +3,7 @@
 import { Database } from "bun:sqlite"
 import { Schema } from "effect"
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
-import { isRecord } from "../../../../infra/record.js"
+import { isRecord } from "../../../../infra/guards/record.js"
 import {
   DefinitionIdentitySchema,
   type DefinitionIdentity,

@@ -1,5 +1,5 @@
-import type { AsyncEventAppender, AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend, InFlightRecord, InFlightWrite, StoredFact } from "../../../../infra/store/event-store-types.js"
-import { runInTaskSlices, runToCompletion, type TaskSliceScheduling } from "../../../../infra/task-scheduling.js"
+import type { AsyncEventAppender, AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend, InFlightRecord, InFlightWrite, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
+import { runInTaskSlices, runToCompletion, type TaskSliceScheduling } from "../../../../infra/process/task-scheduling.js"
 import { chatEntriesFacts, parseConversationTreeFact, type ConversationTreeFact } from "../conversation-facts.js"
 import { extractTreeFactContent } from "./conversation-tree-content-extraction.js"
 import { branchVisibleTranscriptWork, createConversationTreeProjection, type ConversationTreeProjectionState, type ConversationTreeTranscriptEntry, type DegradedTranscriptSequence } from "../conversation-projection.js"

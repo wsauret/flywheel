@@ -7,7 +7,7 @@ import { chatFamily } from "./chat-family.js";
 import { chatLedger, requireNewChatCampaign, type ChatCampaign } from "./chat-store.js";
 import { HARNESS_DIR, RESULTS_ROOT, TASKS_DIR } from "./harness-paths.js";
 import { listBenchTasks } from "./tasks.js";
-import type { Effort } from "../../src/infra/workflow-types.js";
+import type { Effort } from "../../src/infra/workflow/workflow-types.js";
 
 type StoredTreatment = ChatCampaign["treatments"][number];
 

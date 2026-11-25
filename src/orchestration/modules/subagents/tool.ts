@@ -1,6 +1,6 @@
 import { createSubagentDispatch } from "./execution/tool.js";
 import { MIN_DISPATCH_RATIONALE_LENGTH, subagentDescription } from "./execution/prompts.js";
-import type { CapabilityCheck } from "../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
 import type { SubagentDispatchDeps } from "./execution/dispatch/dispatch-deps.js";
 import { summarizeSubagentWork } from "./execution/result/summarize-work.js";
 import { SUBAGENT_SUMMARY_ROLE_ID } from "../../config/roles.js";

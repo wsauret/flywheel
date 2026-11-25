@@ -16,7 +16,7 @@ import { installedPersonaToolEntries } from "../../../../../src/orchestration/ag
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../../../../src/workflows/definitions/definition-registry.js";
 import { publishSkillRevision, type SkillDefinition } from "../../../../../src/workflows/skills/skill-schema.js";
 import { unusedSessionMessaging } from "../../../../helpers/child-session-control.js";
-import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../../src/infra/definitions/capability-text.js";
 import { interceptBashCommand } from "../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-command-policy.js";
 import { makeContext } from "../tools/_fixtures.js";
 

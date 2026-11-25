@@ -1,4 +1,4 @@
-import { EFFORT_VALUES, type Effort } from "../../../../infra/workflow-types.js";
+import { EFFORT_VALUES, type Effort } from "../../../../infra/workflow/workflow-types.js";
 
 /** An explicitly authored model and effort for one benchmark seat. */
 export interface VariantSpec {

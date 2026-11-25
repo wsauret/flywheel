@@ -3,7 +3,7 @@ import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { migrateWorkflowDefinitionIdentityContext } from "../../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity.js"
 import { migrateWorkflowDefinitionIdentityGraph } from "../../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity-graph.js"
 

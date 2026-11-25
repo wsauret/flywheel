@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { Log } from "../../../../src/infra/diagnostics/log.js";
-import { accountServeStartRecordPath, versionsDir } from "../../../../src/infra/paths.js";
+import { accountServeStartRecordPath, versionsDir } from "../../../../src/infra/platform/files/paths.js";
 import { activeBuildDir } from "../../../../src/infra/update/active-build.js";
 import { lastServiceStartFailure, provedBuild, recordBuildProved } from "../../../../src/infra/update/service-start-record.js";
 import { refusedBuild } from "../../../../src/orchestration/update/refused-build.js";

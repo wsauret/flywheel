@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { createAccountServiceInstallation, currentLoginHome, isLoginHome, serviceCommandLaunch } from "../../../../../../src/orchestration/app-service/account/installation/account-service-installation.js"
-import { osAccount } from "../../../../../../src/infra/os-account.js"
+import { osAccount } from "../../../../../../src/infra/platform/os-account.js"
 import { registrationFingerprint, SERVICE_NAMES, SERVICE_STOP_TIMEOUT_SECONDS } from "../../../../../../src/orchestration/app-service/account/installation/account-service-registration.js"
 import { ACCOUNT_DRAIN_HARD_EXIT_MS } from "../../../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
 import { retired, ok, missing, unanswered, eio, launchdAbsent, launcher, plistPath, unitPath, service, print, printDisabled, bootstrap, removeHelper, submitHelper, taskXmlPath, OLD_PLIST, OLD_UNIT, OLD_TASK_QUERY, printedJob, printedDisabled, listedTask, listedTasks, textOf, bytesOf, fixture, currentPlist, currentUnit, currentTaskXml, isActive, isEnabled, daemonReload, systemctlCommands, taskQuery, taskStatus, taskList, taskUserQuery, type Response } from "../../_account-service-fixtures.js"

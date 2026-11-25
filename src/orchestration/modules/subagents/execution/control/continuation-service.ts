@@ -1,5 +1,5 @@
-import { moduleServiceHandle } from "../../../../../infra/module-service.js"
-import { errorMessage } from "../../../../../infra/error-message.js"
+import { moduleServiceHandle } from "../../../../../infra/modules/module-service.js"
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js"
 import type { ModuleProcessServices } from "../../../../app-service/module-service-host.js"
 import { readSubagentRuns } from "../../history/subagent-run-projection.js"
 import type { SubagentResult } from "../dispatch/control-actions.js"

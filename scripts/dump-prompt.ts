@@ -40,7 +40,7 @@ import { captureRuntimeConfigRequest } from "../src/orchestration/agent-runtime/
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
 import { composeFirstPartyModules } from "../src/orchestration/modules.js";
 import { loadConfig } from "../src/orchestration/config/loader.js";
-import type { AgentDefinition } from "../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../src/infra/definitions/agent-definition.js";
 import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import { grantedSubagentTypes, personaToolNames } from "../src/workflows/agents/subagent-reachability.js";
 import { planPromptRequest, plannedCapabilities, promptParts, type PlanInput, type PlannedRequest, type PromptAssembly } from "./prompt-assembly.js";

@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { DebugLog } from "../../../../../../src/infra/diagnostics/debug-log.js";
-import type { ToolEntry } from "../../../../../../src/infra/output-blocks.js";
+import type { ToolEntry } from "../../../../../../src/infra/substrate/events/output-blocks.js";
 import {
   probeToolRenderPhase,
   renderProbeFrame,
   setRenderProbeEnabled,
-} from "../../../../../../src/infra/render-probe.js";
+} from "../../../../../../src/infra/substrate/output/render-probe.js";
 import { renderToolEntry } from "./_tool-entry-render.js";
 
 afterEach(() => {

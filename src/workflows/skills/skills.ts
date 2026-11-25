@@ -1,12 +1,12 @@
 import { join } from "node:path";
-import { sharedAgentsDir } from "../../infra/paths.js";
-import type { ProjectDirectories } from "../../infra/directory-authorities.js";
-import { contentEvidence } from "../../infra/runtime-facts/content-evidence.js";
-import type { LearningScope } from "../../infra/learning-scope.js";
-import { errorMessage } from "../../infra/error-message.js";
-import { parseFrontmatter } from "../../infra/yaml/frontmatter.js";
+import { sharedAgentsDir } from "../../infra/platform/files/paths.js";
+import type { ProjectDirectories } from "../../infra/platform/files/directory-authorities.js";
+import { contentEvidence } from "../../infra/substrate/runtime-facts/content-evidence.js";
+import type { LearningScope } from "../../infra/learning/learning-scope.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
+import { parseFrontmatter } from "../../infra/parsing/yaml/frontmatter.js";
 import { Log } from "../../infra/diagnostics/log.js";
-import { requireQualifiedSkillId } from "../../infra/skill-id.js";
+import { requireQualifiedSkillId } from "../../infra/learning/skill-id.js";
 import type { SkillDirectoryEntries, ResolvedStepRoot, SkillPackage } from "./skill-context.js";
 import {
   holdsSkillFile,
@@ -17,7 +17,7 @@ import {
 } from "./skill-context.js";
 import type { BundledSkillPackage, SkillAuthority, SkillDefinition, SkillSource } from "./skill-schema.js";
 import { normalizeSkillFrontmatter, publishSkillRevision, SKILL_FILE, SKILL_LIMITS, skillFileByteCap } from "./skill-schema.js";
-import { resolveDefinitionCandidates, shouldLogDefinitionMasking, type DefinitionCandidate, type DefinitionResolution, type DefinitionSource } from "../../infra/definition-resolution.js";
+import { resolveDefinitionCandidates, shouldLogDefinitionMasking, type DefinitionCandidate, type DefinitionResolution, type DefinitionSource } from "../../infra/definitions/definition-resolution.js";
 import type { BundledSkillSourceKind } from "./skill-source-inventory.js";
 import { resolveSkillClosure } from "./skill-closure.js";
 

@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { Redacted } from "effect";
 import { createChatGPTClient } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/chatgpt-client.js";
 import { createChatGPTTokenAccessor, getConnectionChatGPTTokenAccessor } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-chatgpt.js";
-import { captureProviderConnection } from "../../../../../../../src/infra/auth/auth-context.js";
-import { AuthStoreMutationError } from "../../../../../../../src/infra/auth/store/auth-store-mutations.js";
+import { captureProviderConnection } from "../../../../../../../src/infra/providers/auth/auth-context.js";
+import { AuthStoreMutationError } from "../../../../../../../src/infra/providers/auth/store/auth-store-mutations.js";
 import { authProviders } from "../../../../../../helpers/auth-context.js";
 
 /** The request body sizes, in bytes, between which the client compresses a streamed request. */

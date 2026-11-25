@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { DurableFollowUpInputSchema } from "../../infra/chat-input-schema.js";
+import { DurableFollowUpInputSchema } from "../../infra/substrate/events/chat-input-schema.js";
 import { DefinitionIdentitySchema } from "./definition-identity.js";
 import { AttemptSchema, WorkflowGraphSchema } from "./graph-types.js";
 

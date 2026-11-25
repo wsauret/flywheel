@@ -1,5 +1,5 @@
-import { errorDetail, errorMessage } from "../../../../infra/error-message.js"
-import type { StoredFact } from "../../../../infra/store/event-store-types.js"
+import { errorDetail, errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import type { StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { createStartupTimeline } from "../../../../infra/diagnostics/startup-timeline.js"
 import type { SessionCatalogError } from "../../../../protocol/runtime/app-service-types.js"

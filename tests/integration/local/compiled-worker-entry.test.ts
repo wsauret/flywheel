@@ -31,7 +31,7 @@ import type { HostMessage } from "../../../src/orchestration/modules/code-mode/i
 import { CODE_MODE_LIMITS } from "../../../src/orchestration/modules/code-mode/limits.js"
 
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..")
-const CLI_SUBPROCESS = join(REPO_ROOT, "src", "infra", "cli-subprocess.ts")
+const CLI_SUBPROCESS = join(REPO_ROOT, "src", "infra", "platform", "cli-subprocess.ts")
 const [CLI_ENTRY, ...WORKER_ENTRIES] = BINARY_ENTRIES
 const workerNames = WORKER_ENTRIES.map((entry) => basename(entry, ".ts"))
 /** The shipped Code Mode guest entry, and one program for it to run. */

@@ -1,4 +1,4 @@
-import type { DiffOmission } from "../../infra/output-blocks.js"
+import type { DiffOmission } from "../../infra/substrate/events/output-blocks.js"
 
 /** Return the total number of diff lines removed at the history wire edge. */
 export function totalDiffOmittedLines(omission: DiffOmission | undefined): number {

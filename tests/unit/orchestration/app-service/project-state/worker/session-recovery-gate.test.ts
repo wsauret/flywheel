@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import type { EventStoreAppend, EventStoreItemSettlement, EventStoreWriteItem, StoredFact } from "../../../../../../src/infra/store/event-store-types.js"
-import { createEventStoreWriterLane } from "../../../../../../src/infra/store/event-store-writer-lane.js"
-import { buildSessionContent, type SessionContentReference } from "../../../../../../src/infra/session-content.js"
+import type { EventStoreAppend, EventStoreItemSettlement, EventStoreWriteItem, StoredFact } from "../../../../../../src/infra/substrate/store/event-store-types.js"
+import { createEventStoreWriterLane } from "../../../../../../src/infra/substrate/store/event-store-writer-lane.js"
+import { buildSessionContent, type SessionContentReference } from "../../../../../../src/infra/substrate/session-content.js"
 import { createSessionRecoveryGate, settlingGuardReads, type OwedRecovery } from "../../../../../../src/orchestration/app-service/project-state/worker/session-recovery-gate.js"
 
 /** A lane over a writer that records each committed fact's type in order.

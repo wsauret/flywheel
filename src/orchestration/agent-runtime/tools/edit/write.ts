@@ -3,11 +3,11 @@
  *
  * Creates a file with the provided content, including parent directories, or
  * replaces an existing file whose current version this agent loop has read.
- * Display metadata lives in `infra/tools/displays/write.ts`.
+ * Display metadata lives in `infra/substrate/output/tools/displays/write.ts`.
  */
 
 import { LineEndingRestorer } from "../../../../infra/file-edit/text-file.js";
-import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js";
 import { FileEditRefusal } from "../file-edits/file-edit-operation.js";
 import { publishToolFileEdits } from "./file-edit-tool-adapter.js";
 import { RetainedFileEditAuthority } from "../file-edits/retained-file-edit-host.js";

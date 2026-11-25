@@ -1,5 +1,5 @@
-import { asAsyncEventReadSurface, type AsyncEventReadSurface, type EventReader, type StoredFact } from "../../../infra/store/event-store-types.js"
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
+import { asAsyncEventReadSurface, type AsyncEventReadSurface, type EventReader, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { experimentsProtocol, type FrontendExperimentRun, type FrontendExperimentView } from "../../../protocol/modules/experiments.js"
 import { sessionDomainCursor, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"

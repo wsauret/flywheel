@@ -1,4 +1,4 @@
-import type { SubscriptionSpendConsentRevision } from "../../../infra/auth/subscription/subscription-spend-consent-store.js";
+import type { SubscriptionSpendConsentRevision } from "../../../infra/providers/auth/subscription/subscription-spend-consent-store.js";
 
 interface CaptureRequest<TCapture extends object> {
   readonly profileDirectory: string

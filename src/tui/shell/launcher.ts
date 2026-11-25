@@ -1,8 +1,8 @@
 import { join } from "node:path"
 import type { OnLoadCallback, PluginBuilder, PluginConstraints } from "bun"
 
-import { runningSourceSnapshot, sourceSnapshotHome } from "../../infra/cli-subprocess.js"
-import { errorMessage } from "../../infra/error-message.js"
+import { runningSourceSnapshot, sourceSnapshotHome } from "../../infra/platform/cli-subprocess.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import { startupTrace } from "../../infra/diagnostics/startup-trace.js"
 import { keepingStackTraceSettings } from "./solid-transform-stack-trace.js"

@@ -11,8 +11,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
 import OpenAI from "openai";
 
-import type { OAuthPersistencePolicy, ProviderConnection, RuntimeOAuthCredential } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderCandidate } from "../../../infra/llm/access/access-provider.js";
+import type { OAuthPersistencePolicy, ProviderConnection, RuntimeOAuthCredential } from "../../../infra/providers/auth/auth-context.js";
+import type { AccessProviderCandidate } from "../../../infra/providers/llm/access/access-provider.js";
 import {
   COPILOT_STATIC_HEADERS,
   type CopilotStoredTokens,

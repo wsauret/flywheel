@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { describe, expect, it } from "bun:test"
 
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
-import { DELIVERY_CONFIRMATION } from "../../../../../src/infra/delivery-confirmation.js"
+import { DELIVERY_CONFIRMATION } from "../../../../../src/infra/substrate/output/notify/delivery-confirmation.js"
 import { fixedRequestToolSurface, RequestToolMap } from "../../../../helpers/request-tool-surface.js"
 import type { RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js"

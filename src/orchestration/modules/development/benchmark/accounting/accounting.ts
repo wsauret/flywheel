@@ -1,6 +1,6 @@
-import { UsageEntryConflictError } from "../../../../../infra/llm/usage/usage-authority.js";
-import { canonicalUsageEntry } from "../../../../../infra/llm/usage/usage-authority-migration.js";
-import { decodeUsageEntry, type UsageEntry } from "../../../../../infra/llm/usage/usage-entry.js";
+import { UsageEntryConflictError } from "../../../../../infra/providers/llm/usage/usage-authority.js";
+import { canonicalUsageEntry } from "../../../../../infra/providers/llm/usage/usage-authority-migration.js";
+import { decodeUsageEntry, type UsageEntry } from "../../../../../infra/providers/llm/usage/usage-entry.js";
 
 type BenchmarkObservation<Value> =
   | { readonly kind: "observed"; readonly value: Value }

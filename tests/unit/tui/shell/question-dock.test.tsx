@@ -5,7 +5,7 @@ import { createSignal, For, Show } from "solid-js"
 import { testRender } from "@opentui/solid"
 import { createTextAttributes, TextRenderable, type Renderable } from "@opentui/core"
 
-import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
+import type { QuestionBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
 import { QuestionInputProvider, type QuestionInputContext, useQuestionInput } from "../../../../src/tui/components/modal/question-input.js"
 import { ThemeProvider } from "../../../../src/tui/context/theme.js"
 import { createDraftCache } from "../../../../src/tui/components/composer/create-draft-cache.js"

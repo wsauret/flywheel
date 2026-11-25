@@ -1,5 +1,5 @@
-import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
-import type { AnthropicThinkingDisplay } from "../../../../../infra/llm/access/provider-options.js";
+import type { ModelInfo, ReasoningEffort } from "../../../../../infra/providers/llm/models/models.js";
+import type { AnthropicThinkingDisplay } from "../../../../../infra/providers/llm/access/provider-options.js";
 import { clampReasoningEffort, familySettings, type ReasoningEffortTier } from "../../model-compat.js";
 
 /** Assumed tiers for adaptive-thinking models with no models.dev effort

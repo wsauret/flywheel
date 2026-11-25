@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createRoot } from "solid-js"
-import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
+import type { QuestionBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
 import { createDraftCache } from "../../../../src/tui/components/composer/create-draft-cache.js"
 import { createQuestionForm } from "../../../../src/tui/components/composer/question-dock-form.js"
 

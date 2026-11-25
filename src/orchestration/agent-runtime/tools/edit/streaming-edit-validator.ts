@@ -5,7 +5,7 @@ import type { PreparedOperation } from "../../../../infra/file-edit/patch-parser
 import { editInputEntries, parseStringEdits } from "../../../../infra/file-edit/edit-input.js";
 import { assertStringEditable, matchStringEdit, planStringEdits } from "../../../../infra/file-edit/string-edit.js";
 import { StreamingPatch } from "../../../../infra/file-edit/streaming-patch.js";
-import { declaredFieldName, TopLevelJsonStringDecoder } from "../../../../infra/output/streaming/partial-json.js";
+import { declaredFieldName, TopLevelJsonStringDecoder } from "../../../../infra/substrate/output/streaming/partial-json.js";
 
 export type StreamingEditValidationResult =
   | { readonly status: "clear" }

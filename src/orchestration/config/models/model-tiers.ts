@@ -1,7 +1,7 @@
 import type { ModelTier } from "../../../protocol/auth/model-assignment-protocol-types.js";
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
-import type { ModelInfo } from "../../../infra/llm/models/models.js";
-import { callsToolsOnText } from "../../../infra/llm/catalog/provider-model-info.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
+import type { ModelInfo } from "../../../infra/providers/llm/models/models.js";
+import { callsToolsOnText } from "../../../infra/providers/llm/catalog/provider-model-info.js";
 import { clearSharedModelListingClients, getSharedModelsClient } from "./llm-clients.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 

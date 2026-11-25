@@ -15,7 +15,7 @@ import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines, type GlobalGuidelineId } f
 import { systemPromptText as bundledSystemPrompt } from "../../../../infra/agent-assets/manifest.js";
 import { bundledAgentAsset, type AgentAssetName } from "../../../../infra/agent-assets/system-prompt.js";
 import type { RuntimeTool } from "../../tools/types.js";
-import { renderCapabilityText, type CapabilityCheck } from "../../../../infra/capability-text.js";
+import { renderCapabilityText, type CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import type { SessionIdentity } from "../../../session/control/messaging/session-messaging.js";
 import { renderSessionIdentity } from "./session-identity-prompt.js";
 import { FLYWHEEL_CHAT_HOST, orchestrationRule, renderAgentGuidance, renderChatBody, type ModelGuidance } from "./model-chat-body.js";

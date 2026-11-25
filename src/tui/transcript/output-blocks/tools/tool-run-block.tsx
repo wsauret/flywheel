@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { ToolStreamingText } from "@infra/output-blocks"
+import type { ToolStreamingText } from "@infra/substrate/events/output-blocks"
 import { formatDuration } from "../../../../protocol/client/format.js"
 import { presentsAsFileChange } from "../../../../protocol/client/file-change-body.js"
 import { toolActivity, toolProcess } from "../../../../protocol/client/transcript-model.js"
@@ -13,7 +13,7 @@ import { createMemo, Index, Show } from "solid-js"
 import { BlockFrame, BLOCK_GUTTER_WIDTH } from "../block-frame.js"
 import { executedRunLabel, execRunLabel, exploreRunLabel } from "./group-summary.js"
 import { mergeExploreReadRuns } from "../tool-entry-helpers.js"
-import { getToolDisplay } from "@infra/tools/tool-display-registry.js"
+import { getToolDisplay } from "@infra/substrate/output/tools/tool-display-registry.js"
 import { ToolRow } from "./tool-row.js"
 import { ToolEntry } from "./tool-entry.js"
 import type { RowProcessControls } from "../stop-affordance.js"

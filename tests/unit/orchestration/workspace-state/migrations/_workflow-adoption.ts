@@ -8,10 +8,10 @@
 
 import { expect, spyOn } from "bun:test"
 import { join } from "node:path"
-import { canonicalDirectory } from "../../../../../src/infra/directory-authorities.js"
-import type { LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js"
+import { canonicalDirectory } from "../../../../../src/infra/platform/files/directory-authorities.js"
+import type { LocalSqliteEventStore } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { Log } from "../../../../../src/infra/diagnostics/log.js"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { buildRuntimeWorkflowInvocationAppend } from "../../../../../src/orchestration/session/control/children/child-session-publication.js"
 import type { ConversationEntry } from "../../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import { readConversationSnapshotSync } from "../../../../../src/orchestration/session/conversation/conversation-projection.js"

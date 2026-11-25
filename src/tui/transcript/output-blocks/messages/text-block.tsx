@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { TextBlock as TextBlockType } from "@infra/output-blocks"
+import type { TextBlock as TextBlockType } from "@infra/substrate/events/output-blocks"
 import { useLandingBackground } from "@tui/context/transcript/landing-highlight.js"
 import { blockEntryKeys, blockIdentity } from "../../../../protocol/transcript/block-identity.js"
 import { BlockFrame } from "../block-frame.js"

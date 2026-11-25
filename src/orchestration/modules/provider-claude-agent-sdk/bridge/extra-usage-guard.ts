@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { Clock, Deferred, Effect, Exit, Option } from "effect";
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
-import type { AccessProviderCandidate } from "../../../../infra/llm/access/access-provider.js";
-import type { NotificationOccurrence } from "../../../../infra/notification-episode.js";
+import type { AccessProviderCandidate } from "../../../../infra/providers/llm/access/access-provider.js";
+import type { NotificationOccurrence } from "../../../../infra/substrate/events/notification-episode.js";
 import { QuotaExhaustedError } from "../../../agent-runtime/llm/errors.js";
 import { SAFE_RECHECK_MS } from "../../../agent-runtime/llm/routing/provider-availability.js";
 import type { UsageWindows } from "../account-usage.js";

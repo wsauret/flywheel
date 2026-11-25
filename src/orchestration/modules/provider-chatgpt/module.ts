@@ -1,10 +1,10 @@
 import { Effect, Redacted, Scope } from "effect";
-import type { RuntimeOAuthCredential } from "../../../infra/auth/auth-context.js";
-import { replaceCredentialInstance } from "../../../infra/auth/store/auth-store-mutations.js";
-import { type StoredTokens, storedTokensToCredential } from "../../../infra/auth/openai/openai-auth-types.js";
-import { extractDisplayIdentityFromJwt } from "../../../infra/auth/openai/openai-jwt.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
+import type { RuntimeOAuthCredential } from "../../../infra/providers/auth/auth-context.js";
+import { replaceCredentialInstance } from "../../../infra/providers/auth/store/auth-store-mutations.js";
+import { type StoredTokens, storedTokensToCredential } from "../../../infra/providers/auth/openai/openai-auth-types.js";
+import { extractDisplayIdentityFromJwt } from "../../../infra/providers/auth/openai/openai-jwt.js";
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../agent-runtime/llm/stream/provider-failure.js";
 import { ensureFreshChatGPTTokens, getConnectionChatGPTTokenAccessor, rotateChatGPTTokens } from "../../agent-runtime/llm/adapters/openai/openai-chatgpt.js";

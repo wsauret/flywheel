@@ -1,4 +1,4 @@
-import { canonicalize } from "../../infra/canonical-name.js"
+import { canonicalize } from "../../infra/providers/canonical-name.js"
 import type { ModelTier } from "./model-assignment-protocol-types.js"
 
 // A model reference names a model id, a tier, or a family alias of a tier.

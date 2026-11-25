@@ -8,7 +8,7 @@ import { createEffect, createMemo, Show, type Accessor, untrack } from "solid-js
 import { Key } from "@solid-primitives/keyed"
 import { displayWidth } from "../terminal/text.js"
 import { fontTipMessage } from "../terminal/font-installer.js"
-import { collapseHome } from "../../infra/home-path.js"
+import { collapseHome } from "../../infra/platform/files/home-path.js"
 import type { ModuleRow } from "../../protocol/protocol-module.js"
 import { formatRuntimeIdentity, type RuntimeIdentity } from "../../protocol/client/runtime-identity.js"
 import { Button } from "../components/controls/button.js"

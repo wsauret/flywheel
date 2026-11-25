@@ -3,7 +3,7 @@ import { win32 } from "node:path"
 
 import { Log } from "../../diagnostics/log.js"
 import { trustedCommandRun, type TrustedCommandResult } from "./process-container.js"
-import type { TrustedProbeLaunch } from "../../trusted-probe-launch.js"
+import type { TrustedProbeLaunch } from "../../platform/trusted-probe-launch.js"
 import { windowsProcessApi, type WindowsProcessHold } from "../kernel/windows-process-api.js"
 
 /** A process that WMI starts outside every job of this process.

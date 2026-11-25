@@ -9,7 +9,7 @@ import {
 } from "../../../../src/orchestration/config/schema/schema";
 import { resolveRoles } from "../../../../src/orchestration/config/models/role-resolution.js";
 import { fakeModelsClient, tierAvailableModels, tierModelIds } from "../../../helpers/model-tier-fixtures.js";
-import { mergeProviderOptions } from "../../../../src/infra/llm/access/provider-options.js";
+import { mergeProviderOptions } from "../../../../src/infra/providers/llm/access/provider-options.js";
 import { MODULE_IDS } from "../../../../src/protocol/runtime/module-ids.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { profileRoleSettings } from "../../../../src/orchestration/config/env.js";

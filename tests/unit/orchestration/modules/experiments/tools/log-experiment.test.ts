@@ -4,7 +4,7 @@ import { keepExperimentChanges } from "../../../../../../src/orchestration/modul
 import { createExperimentGitSettlement } from "../../../../../../src/orchestration/modules/experiments/git/git-settlement.js"
 import { createExperimentOperation, type ExperimentOperation } from "../../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import type { OwnedCommandRunner } from "../../../../../../src/infra/owned-command.js"
-import type { InFlightRecord } from "../../../../../../src/infra/store/event-store-types.js"
+import type { InFlightRecord } from "../../../../../../src/infra/substrate/store/event-store-types.js"
 import type { ExperimentSnapshot } from "../../../../../../src/orchestration/modules/experiments/state/projection.js"
 import type { ExperimentRunRecordedFact } from "../../../../../../src/orchestration/modules/experiments/state/facts.js"
 import { EXPERIMENT_OPERATION_KIND, experimentInterruptionMessage, makeContext, storedExperimentFact, testExperimentOperation } from "../../../agent-runtime/tools/_fixtures.js"

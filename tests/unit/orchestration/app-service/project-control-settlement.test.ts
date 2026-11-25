@@ -14,7 +14,7 @@ import { Schema } from "effect"
 import { ExecutorGenerationChangedError, runtimeQueryResultSchema } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { servingAccountService } from "../../../helpers/account-service-state.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
-import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 
 const status: StatusView = {

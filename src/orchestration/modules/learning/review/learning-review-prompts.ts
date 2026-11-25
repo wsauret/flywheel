@@ -1,4 +1,4 @@
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import { SKILL_BODY_BUDGET_CHARS } from "../../../../workflows/skills/skill-schema.js";
 
 /** Review prompts for the learning fork: the read

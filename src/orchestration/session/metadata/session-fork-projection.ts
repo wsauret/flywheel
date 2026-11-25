@@ -1,5 +1,5 @@
-import { parseProjectionFact } from "../../../infra/projection/event-projection.js"
-import type { StoredFact } from "../../../infra/store/event-store-types.js"
+import { parseProjectionFact } from "../../../infra/substrate/projection/event-projection.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { parseSessionForkFact, type ForkSelection } from "./session-fork-facts.js"
 
 export interface SessionForkRecord {

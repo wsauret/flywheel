@@ -1,6 +1,6 @@
 import { Log } from "../../diagnostics/log.js"
 import { unixProcessIdentity, windowsProcessIdentity, type ProcessIdentity, type TerminationCause } from "../../process/container/process-container.js"
-import { isProcessAlive } from "../../process-liveness.js"
+import { isProcessAlive } from "../../platform/process-liveness.js"
 import { UNANSWERED_PROBE_WINDOW_MS } from "../../process/process-probe-streak.js"
 import { coalesceRepeats } from "../../diagnostics/repeat-coalescer.js"
 

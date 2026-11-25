@@ -3,7 +3,7 @@ import {
   type LaunchableWorkflowToolDeps,
 } from "./workflow-tool.js";
 import type { RuntimeTool, RuntimeToolInput } from "../types.js";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import type { ModuleRuntimeInvocationTool } from "../../../module-seams.js";
 
 const LAUNCH_DESCRIPTION = "Launch a workflow as a background child of this chat. It keeps running when this chat is interrupted, and its completion or Stop delivers one hidden runtime notification.";

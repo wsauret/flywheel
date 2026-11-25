@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import type { EmitFn } from "../../../../src/infra/event-bus.js";
+import type { EmitFn } from "../../../../src/infra/substrate/events/event-bus.js";
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
 import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/execution/injection-queue.js";

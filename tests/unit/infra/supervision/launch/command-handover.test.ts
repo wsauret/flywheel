@@ -13,7 +13,7 @@ import {
 } from "../../../../../src/infra/supervision/launch/command-handover.js"
 import type { DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js"
 import { Log } from "../../../../../src/infra/diagnostics/log.js"
-import { accountServeDir, accountServeSocketPath } from "../../../../../src/infra/paths.js"
+import { accountServeDir, accountServeSocketPath } from "../../../../../src/infra/platform/files/paths.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 
 const temporary = temporaryDirectories()

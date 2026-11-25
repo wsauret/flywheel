@@ -22,10 +22,10 @@
  *  closes when the job settles. */
 
 import type { DebugLogRecordInput } from "../../infra/diagnostics/debug-log.js";
-import { errorMessage } from "../../infra/error-message.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import { connectOwnedProcessBridge } from "../../infra/owned-process-bridge.js";
-import { updateAuthorityDbFile } from "../../infra/paths.js";
+import { updateAuthorityDbFile } from "../../infra/platform/files/paths.js";
 import type { SelectedRelease } from "../../infra/update/release-manifest.js";
 import { createUpdateAuthority, UPDATE_PROTOCOL_VERSION } from "../../infra/update/update-authority.js";
 import type { WorkerSelf } from "../app-service/project-state/worker/bun-worker-rpc.js";

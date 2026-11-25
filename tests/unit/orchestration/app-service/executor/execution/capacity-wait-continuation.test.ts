@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
-import { EventStoreWriterService } from "../../../../../../src/infra/store/event-store-effect.js"
-import { asAsyncEventReadSurface } from "../../../../../../src/infra/store/event-store-types.js"
+import { EventStoreWriterService } from "../../../../../../src/infra/substrate/store/event-store-effect.js"
+import { asAsyncEventReadSurface } from "../../../../../../src/infra/substrate/store/event-store-types.js"
 import { capacityContinuer } from "../../../../../../src/orchestration/app-service/executor/execution/capacity-wait-continuation.js"
 import { capacityWaitAuthority, registerCapacityWaits } from "../../../../../../src/orchestration/session/control/capacity-wait.js"
 import { authorizePlannedSessionContinuation, readPlannedSessionContinuationAsync, type PlannedContinuationTarget } from "../../../../../../src/orchestration/session/control/planned-session-continuation.js"

@@ -1,5 +1,5 @@
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { loggedOperation, type CompletionLevel, type OperationFailure, type OperationLogger } from "../../../infra/operation-log.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { loggedOperation, type CompletionLevel, type OperationFailure, type OperationLogger } from "../../../infra/diagnostics/operation-log.js"
 import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 import type { FrontendMutation, FrontendEvent, RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { declinedByPausedProject, lostWithLane, supersededByGenerationChange } from "../../../protocol/client/connection-failures.js"

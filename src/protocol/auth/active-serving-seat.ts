@@ -1,5 +1,5 @@
 import { briefAtRoleId, briefPersonaRoleId, briefRoleId } from "./brief-role-id.js"
-import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js"
+import type { ProviderRequestOptions } from "../../infra/providers/llm/access/provider-options.js"
 
 interface ServingSeat {
   readonly briefId: string

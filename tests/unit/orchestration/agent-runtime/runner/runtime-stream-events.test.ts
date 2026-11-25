@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import type { ConnectionState } from "../../../../../src/infra/output-blocks.js"
-import { applySessionNoticeOperation, type SessionNotice, type SessionNoticeOperation } from "../../../../../src/infra/session-notice.js"
+import type { ConnectionState } from "../../../../../src/infra/substrate/events/output-blocks.js"
+import { applySessionNoticeOperation, type SessionNotice, type SessionNoticeOperation } from "../../../../../src/infra/substrate/events/session-notice.js"
 import type { StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import { createRuntimeStreamEvents } from "../../../../../src/orchestration/agent-runtime/runner/runtime-stream-events.js"
 import { createTurnUsageTracker } from "../../../../../src/orchestration/agent-runtime/request/usage/turn-usage-tracker.js"

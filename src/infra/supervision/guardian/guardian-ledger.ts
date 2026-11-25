@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { Log } from "../../diagnostics/log.js"
-import { privateTemporaryRoot, type PrivateTemporaryRootStem } from "../../private-temporary-root.js"
+import { privateTemporaryRoot, type PrivateTemporaryRootStem } from "../../platform/files/private-temporary-root.js"
 import { decodeStopHold, hasExactKeys, asObjectFields } from "./process-guardian-protocol.js"
 import { decodeHolderFields, processHolders, type GoneProof } from "../../process/process-holder.js"
 import type { StopHold } from "../../process/container/stop-hold.js"

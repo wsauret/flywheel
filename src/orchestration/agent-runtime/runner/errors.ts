@@ -1,4 +1,4 @@
-import { contentDeclinedCopy } from "../../../infra/llm/errors/provider-error-copy.js"
+import { contentDeclinedCopy } from "../../../infra/providers/llm/errors/provider-error-copy.js"
 import type { AgentRuntimeError } from "../llm/routing/runtime-errors.js"
 import type { AgentFailureReason } from "../types.js"
 

@@ -7,7 +7,7 @@ import { temporaryDirectories, testDirectories } from "../../../helpers/director
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work.js";
-import { composeModuleRuntimes } from "../../../../src/infra/module-runtime.js";
+import { composeModuleRuntimes } from "../../../../src/infra/modules/module-runtime.js";
 import { planToolExposure } from "../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
 import { codeModeRuntimeOver } from "../../../helpers/code-mode-worker.js";

@@ -1,4 +1,4 @@
-import { isVisibleMessageBlock, type AnyBlock } from "../../../../infra/output-blocks.js"
+import { isVisibleMessageBlock, type AnyBlock } from "../../../../infra/substrate/events/output-blocks.js"
 import { readTranscript, readReconciledTranscript } from "../../../session/conversation/tree/conversation-tree-handle.js"
 import { recoverSessionHistory } from "../../../modules.js"
 import { reconcileAgentInput } from "../../../session/history/agent-input-reconciliation.js"
@@ -9,7 +9,7 @@ import { recordedExecutionCwd } from "../../../session/metadata/session-executio
 import type { ChatSessionView } from "../../projections/session-view.js"
 import { turnInFlight } from "../../../session-store/activity.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import { durationMs } from "../../../../infra/operation-log.js"
+import { durationMs } from "../../../../infra/diagnostics/operation-log.js"
 import { reactivationShellOptions } from "./reactivation-shell-options.js"
 import type { SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
 

@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js"
 import { publishedDefinitionDrift } from "../../../../workflows/control-facts/definition-identity.js"
 import { readWorkflowRecovery } from "../../../../workflows/vm/recovery/recovery-fold.js"
 import { resumesLiveFailedAgents } from "../../../../workflows/vm/recovery/fact-fold.js"

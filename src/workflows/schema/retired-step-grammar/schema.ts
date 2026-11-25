@@ -6,8 +6,8 @@
  *  identity proofs of a paused run rebuild the identity that such a run
  *  recorded from it. Remove after 2027-04-30. */
 import { Effect, Schema } from "effect";
-import { CanonicalToolScopingSchema, EffortSchema, ToolScopingSchema } from "../../../infra/workflow-types.js";
-import { isWorkflowLocalId } from "../../../infra/workflow-identifiers.js";
+import { CanonicalToolScopingSchema, EffortSchema, ToolScopingSchema } from "../../../infra/workflow/workflow-types.js";
+import { isWorkflowLocalId } from "../../../infra/workflow/workflow-identifiers.js";
 import { ArtifactContractFrontmatterItemSchema, ArtifactContractsFrontmatterSchema } from "../artifact-contracts.js";
 import type { DefinitionProvenance } from "../../provenance/definition-provenance.js";
 import type { RetiredBinding } from "../../definitions/retired-bindings.js";

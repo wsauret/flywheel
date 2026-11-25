@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { privateTemporaryRoot } from "../../../../infra/private-temporary-root.js"
+import { privateTemporaryRoot } from "../../../../infra/platform/files/private-temporary-root.js"
 import { gateHookHandler, type GateHookHandler } from "./hook-command.js"
 
 /** Where the step gate of one login listens, and the id that its hook queries carry (ARCH-PROVIDERS-087). */

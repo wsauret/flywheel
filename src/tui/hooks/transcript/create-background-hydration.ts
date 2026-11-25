@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import type { TranscriptPaging } from "../../transcript/transcript-store/output-transcript-cache-types.js"
 

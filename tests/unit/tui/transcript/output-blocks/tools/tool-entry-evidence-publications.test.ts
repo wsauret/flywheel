@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test"
-import type { ToolEntry as ToolEntryType } from "../../../../../../src/infra/output-blocks.js"
+import type { ToolEntry as ToolEntryType } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import type { MutationEvidenceHandle, MutationPatchHandle, MutationPatchView } from "../../../../../../src/protocol/client/mutation-evidence.js"
-import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../../src/infra/output-blocks.js"
+import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"
 import { renderToolEntries } from "./_tool-entry-render.js"
-import { buildMutationDiff } from "../../../../../../src/infra/mutation-diff.js"
+import { buildMutationDiff } from "../../../../../../src/infra/substrate/mutation-diff.js"
 
 /** A two-hunk patch of `hunkLines` rendered rows behind file and hunk headers. */
 function editDiff(hunkLines: number): string {

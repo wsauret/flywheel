@@ -1,4 +1,4 @@
-import type { ChatInput } from "../../../../infra/chat-input.js"
+import type { ChatInput } from "../../../../infra/substrate/events/chat-input.js"
 import type { AttachChildSessionProjection } from "../../../module-seams.js"
 
 /** One unread human input taken out of its reader's queue, and the way back to its place. */

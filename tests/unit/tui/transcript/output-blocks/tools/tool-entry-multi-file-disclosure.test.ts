@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { ToolEntry as ToolEntryType } from "../../../../../../src/infra/output-blocks.js"
-import { resolveToolRowPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js"
+import type { ToolEntry as ToolEntryType } from "../../../../../../src/infra/substrate/events/output-blocks.js"
+import { resolveToolRowPresentation } from "../../../../../../src/infra/substrate/output/tools/tool-display-registry.js"
 import { createBlockDisclosureChannel } from "../../../../../../src/tui/context/transcript/block-disclosure.js"
 import flywheelThemeJson from "../../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../../src/tui/context/theme/resolve.js"

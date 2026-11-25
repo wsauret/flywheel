@@ -1,9 +1,9 @@
-import { probe, probeToolRenderPhase } from "../../infra/render-probe.js"
-import { RuntimeEventProjector } from "../../infra/output/runtime-event-projector.js"
-import { OutputProjector } from "../../infra/output/projector/output-projector.js"
-import type { AnyBlock, MessageSender, QuestionEntry, SystemMessageOptions, UserMessageBlock, UserMessageImage } from "../../infra/output-blocks.js"
-import type { RuntimeEvent } from "../../infra/runtime-facts/runtime-event-types.js"
-import type { OutputProjectionEvent } from "../../infra/output/output-projection-events.js"
+import { probe, probeToolRenderPhase } from "../../infra/substrate/output/render-probe.js"
+import { RuntimeEventProjector } from "../../infra/substrate/output/projector/runtime-event-projector.js"
+import { OutputProjector } from "../../infra/substrate/output/projector/output-projector.js"
+import type { AnyBlock, MessageSender, QuestionEntry, SystemMessageOptions, UserMessageBlock, UserMessageImage } from "../../infra/substrate/events/output-blocks.js"
+import type { RuntimeEvent } from "../../infra/substrate/runtime-facts/runtime-event-types.js"
+import type { OutputProjectionEvent } from "../../infra/substrate/output/output-projection-events.js"
 import type { SessionEntryBasePatch } from "./types.js"
 interface QuestionAnswers {
   readonly [question: string]: string

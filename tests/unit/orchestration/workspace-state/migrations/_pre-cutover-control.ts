@@ -8,8 +8,8 @@
  *  definition, which the fixtures of those passes compose. Remove after
  *  2027-04-30, together with the passes that this fixture serves. */
 
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
-import type { ToolScoping } from "../../../../../src/infra/workflow-types.js"
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js"
+import type { ToolScoping } from "../../../../../src/infra/workflow/workflow-types.js"
 import { hashContent, hashDefinition } from "../../../../../src/workflows/provenance/definition-hash.js"
 import { renderSkillContext } from "../../../../../src/workflows/skills/skill-render.js"
 import type { StepGrammarWorkflow, WorkflowStep } from "../../../../../src/workflows/schema/retired-step-grammar/schema.js"

@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Redacted } from "effect";
-import { captureProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
-import { openExistingAuthProfileDirectory } from "../../../../../../src/infra/auth/store/auth-profile-store.js";
-import { createSubscriptionSpendConsentStore } from "../../../../../../src/infra/auth/subscription/subscription-spend-consent-store.js";
-import { createSubscriptionSpendEnvelope } from "../../../../../../src/infra/auth/subscription/subscription-spend-consent.js";
-import { createSubscriptionAccountIdentity } from "../../../../../../src/infra/auth/subscription/subscription-account-identity.js";
+import { captureProviderConnection } from "../../../../../../src/infra/providers/auth/auth-context.js";
+import { openExistingAuthProfileDirectory } from "../../../../../../src/infra/providers/auth/store/auth-profile-store.js";
+import { createSubscriptionSpendConsentStore } from "../../../../../../src/infra/providers/auth/subscription/subscription-spend-consent-store.js";
+import { createSubscriptionSpendEnvelope } from "../../../../../../src/infra/providers/auth/subscription/subscription-spend-consent.js";
+import { createSubscriptionAccountIdentity } from "../../../../../../src/infra/providers/auth/subscription/subscription-account-identity.js";
 import { createAgentRuntime } from "../../../../../../src/orchestration/agent-runtime/runner/factory.js";
 import { createSubscriptionUsageServicePool } from "../../../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
 import { createSubscriptionUsageService } from "../../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";

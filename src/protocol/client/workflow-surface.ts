@@ -1,4 +1,4 @@
-import type { AgentGroupBlock } from "../../infra/output-blocks.js"
+import type { AgentGroupBlock } from "../../infra/substrate/events/output-blocks.js"
 import { agentGroupInFlight } from "./agent-group-summary.js"
 
 export type WorkflowSurface =

@@ -1,8 +1,8 @@
-import { currentCredentialLineage } from "../../src/infra/auth/auth-context.js";
-import type { AuthProfileAccess } from "../../src/infra/auth/store/auth-profile-store.js";
-import type { CredentialSlotClassifier } from "../../src/infra/auth/store/auth-store-types.js";
-import type { CatalogProfile } from "../../src/infra/auth/provider-models/provider-model-catalog-store.js";
-import type { AccessProviderDefinition } from "../../src/infra/llm/access/access-provider.js";
+import { currentCredentialLineage } from "../../src/infra/providers/auth/auth-context.js";
+import type { AuthProfileAccess } from "../../src/infra/providers/auth/store/auth-profile-store.js";
+import type { CredentialSlotClassifier } from "../../src/infra/providers/auth/store/auth-store-types.js";
+import type { CatalogProfile } from "../../src/infra/providers/auth/provider-models/provider-model-catalog-store.js";
+import type { AccessProviderDefinition } from "../../src/infra/providers/llm/access/access-provider.js";
 
 /** The profile view that the saved-catalog store writes through, with the production lineage reader over
  *  `definitions`, as the model listing client builds it. */

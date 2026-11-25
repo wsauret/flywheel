@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import type { ConversationTreeWriterController } from "../../chat/tree-writer.js"
 import { readWorkflowBackgroundNotifications } from "../../session/conversation/queued-background-notifications.js"
 import { readWorkflowQueuedUserInputs } from "../../session/conversation/queued-user-inputs.js"

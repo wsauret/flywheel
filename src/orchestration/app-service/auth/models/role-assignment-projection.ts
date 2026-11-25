@@ -1,6 +1,6 @@
 import type { ResolvedRoles } from "../../../config/roles.js"
 import type { RoleSettings, ReplayedSession, RoleAssignmentSnapshot } from "../../../session/metadata/schemas.js"
-import type { WorkflowMembership } from "../../../../infra/session-workflow-membership.js"
+import type { WorkflowMembership } from "../../../../infra/workflow/session-workflow-membership.js"
 import type { RoleAssignmentView, RuntimeRoleAssignments } from "../../../../protocol/auth/role-protocol-types.js"
 import { activeServingSeat } from "../../../../protocol/auth/active-serving-seat.js"
 import { parseBriefRoleId } from "../../../../protocol/auth/brief-role-id.js"

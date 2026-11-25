@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
-import type { AgentLoopInput, InputSource } from "../../../../../../src/infra/agent-loop-events"
-import { EventBus } from "../../../../../../src/infra/event-bus"
+import type { AgentLoopInput, InputSource } from "../../../../../../src/infra/substrate/events/agent-loop-events"
+import { EventBus } from "../../../../../../src/infra/substrate/events/event-bus"
 import { createChatRunnerLifecycle } from "../../../../../../src/orchestration/chat/lifecycle/runner-lifecycle"
 import { learningChatHost } from "../../../../../../src/orchestration/modules/learning/review/chat-review"
 import { ChatSessionState } from "../../../../../../src/orchestration/chat/types"

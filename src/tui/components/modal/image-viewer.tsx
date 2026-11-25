@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { UserMessageImage } from "@infra/output-blocks"
+import type { UserMessageImage } from "@infra/substrate/events/output-blocks"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { useTerminalDimensions } from "@opentui/solid"
 import { createSignal } from "solid-js"

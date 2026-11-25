@@ -3,11 +3,11 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { Schema } from "effect";
-import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../../src/infra/store/event-store-types.js";
-import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
-import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evidence-schema.js";
-import { readSessionContentRange } from "../../../../../../src/infra/session-content.js";
+import { createSqliteEventStore } from "../../../../../../src/infra/substrate/store/sqlite-event-store.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../../src/infra/substrate/store/event-store-types.js";
+import { readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/mutation-evidence.js";
+import { MutationEvidenceSchema } from "../../../../../../src/infra/substrate/mutation-evidence-schema.js";
+import { readSessionContentRange } from "../../../../../../src/infra/substrate/session-content.js";
 import { createSkillManageTool } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { DispatchedToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";

@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { createFactParser, defineFact } from "../../infra/event-registry.js"
+import { createFactParser, defineFact } from "../../infra/substrate/facts/event-registry.js"
 import { AttemptRowSchema, AttemptStatusSchema } from "../schema/attempt-row.js"
 import {
   MutationLogEntrySchema,

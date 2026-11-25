@@ -1,5 +1,5 @@
-import type { ChatInput } from "../../../infra/chat-input.js"
-import { messageSenderOf } from "../../../infra/output-blocks.js"
+import type { ChatInput } from "../../../infra/substrate/events/chat-input.js"
+import { messageSenderOf } from "../../../infra/substrate/events/output-blocks.js"
 import type { AgentHost, AgentHostTurnLease } from "../../agent-runtime/runner/turn-host/types.js"
 import type { OutputSession } from "../../session-store/output-session.js"
 import { heldAtWakeLimit, type DeliveryOutcome, type LiveRecipientState } from "../../session/message-disposition.js"

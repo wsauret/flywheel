@@ -2,13 +2,13 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { selectStartupDirectories } from "../../../../src/infra/directory-authorities.js"
+import { selectStartupDirectories } from "../../../../src/infra/platform/files/directory-authorities.js"
 import { Log } from "../../../../src/infra/diagnostics/log.js"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths.js"
 import { runMaintain } from "../../../../src/cli/events/event-maintain.js"
-import { openExistingContainedDirectory } from "../../../../src/infra/descriptor-directory.js"
-import { registerSharedHolderIn, releaseSharedHolderIn } from "../../../../src/infra/locks/ownership-file-lock.js"
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
+import { openExistingContainedDirectory } from "../../../../src/infra/platform/files/descriptor-directory.js"
+import { registerSharedHolderIn, releaseSharedHolderIn } from "../../../../src/infra/process/locks/ownership-file-lock.js"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
 
 const created: string[] = []
 

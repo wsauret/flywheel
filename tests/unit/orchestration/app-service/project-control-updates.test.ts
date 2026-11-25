@@ -12,7 +12,7 @@ import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service
 import type { UpdateStatusView } from "../../../../src/protocol/runtime/update-protocol-types.js"
 import { servingAccountService } from "../../../helpers/account-service-state.js"
 import { recordingAccountUpdates } from "../../../helpers/account-updates.js"
-import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 
 const unused = (): never => { throw new Error("this case does not reach it") }

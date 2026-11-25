@@ -1,4 +1,4 @@
-import type { AnyBlock } from "../../src/infra/output-blocks.js"
+import type { AnyBlock } from "../../src/infra/substrate/events/output-blocks.js"
 import { BranchHistoryBuilder, type BranchHistoryBuilderOptions } from "../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import type { ConversationTreeTranscriptEntry } from "../../src/orchestration/session/conversation/conversation-projection.js"
 

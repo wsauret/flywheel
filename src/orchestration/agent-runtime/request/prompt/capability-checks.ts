@@ -9,7 +9,7 @@
  * and tool results. It reads the tools that the agent may call and the availability of its own live selection.
  */
 
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import { availableAgentTypes, grantedAgentTypes, type DefinitionAvailabilitySnapshot } from "../../../app-service/definitions/definition-availability.js";
 import type { FirstPartyModuleComposition } from "../../../modules.js";
 import { resolveSkillClosure } from "../../../../workflows/skills/skill-closure.js";

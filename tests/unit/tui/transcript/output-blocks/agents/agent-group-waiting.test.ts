@@ -1,5 +1,5 @@
 import { expect, it } from "bun:test"
-import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../../../src/infra/output-blocks.js"
+import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import { terminalTranscript } from "../../../../../../src/tui/transcript/output-blocks/visible-output-blocks.js"
 
 // A child that waits on a reply says so on its card, so the person sees

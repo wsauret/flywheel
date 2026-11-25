@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Node } from "web-tree-sitter";
-import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js";
+import { loadTreeSitterParser } from "../src/infra/parsing/tree-sitter-parser.js";
 
 // The vendored code-mode interpreter retains donor casts and non-null assertions for direct upstream comparison.
 const SAFETY_EXEMPT_DIRECTORIES = ["src/infra/code-mode/"];

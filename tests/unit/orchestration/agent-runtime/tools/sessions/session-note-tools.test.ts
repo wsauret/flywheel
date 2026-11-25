@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/module-runtime.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../../src/infra/store/event-store-types.js";
-import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store.js";
+import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/modules/module-runtime.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../../src/infra/substrate/store/event-store-types.js";
+import { createSqliteEventStore } from "../../../../../../src/infra/substrate/store/sqlite-event-store.js";
 import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { createConversationCheckpointOwner, emptyConversationCheckpoint, readConversationCheckpoint, readInheritedCheckpointIntent } from "../../../../../../src/orchestration/session/conversation-records/conversation-checkpoint.js";
 import { importLegacyCheckpointNotes } from "../../../../../../src/orchestration/session/conversation-records/checkpoint-note-conversion.js";

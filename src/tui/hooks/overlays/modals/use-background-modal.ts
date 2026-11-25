@@ -1,6 +1,6 @@
 import { batch, createEffect, createMemo, createSignal, type Accessor, type JSX } from "solid-js"
 import { createKeyedListSelection } from "./create-keyed-list-selection.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import type { RuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 import type { BackgroundWorkRow, BackgroundWorkTarget } from "../../../../protocol/session/background-index-protocol-types.js"
 import {

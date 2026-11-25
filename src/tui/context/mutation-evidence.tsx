@@ -1,6 +1,6 @@
 import { type Accessor, type JSX, batch, createContext, createEffect, createMemo, createSignal, on, onCleanup, useContext } from "solid-js"
 import { createStore } from "solid-js/store"
-import type { SessionContentManifestReference } from "../../infra/session-content.js"
+import type { SessionContentManifestReference } from "../../infra/substrate/session-content.js"
 import type { MutationEvidenceHandle, MutationEvidenceReader } from "../../protocol/client/mutation-evidence.js"
 
 /** Open one owner's evidence handle and observe only that owner's publications.

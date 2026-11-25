@@ -1,10 +1,10 @@
 import type { PersistentRead, PersistentSpool } from "./persistent-spool.js"
 import type { PersistentLaunchData } from "./persistent-subprocess.js"
-import { errorMessage } from "../../error-message.js"
+import { errorMessage } from "../../diagnostics/error-message.js"
 import type { PersistentProcessClient, PersistentProcessManager, PersistentProcessRecord, PersistentStopResult } from "./persistent-process-manager.js"
 import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "../../process/channels/internal-process-channel.js"
 import { Log } from "../../diagnostics/log.js"
-import { DeadlineExceeded, withDeadline } from "../../with-deadline.js"
+import { DeadlineExceeded, withDeadline } from "../../timing/with-deadline.js"
 
 interface UnknownFields {
   readonly [key: string]: unknown

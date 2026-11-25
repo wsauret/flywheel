@@ -2,10 +2,10 @@ import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { StepGrammarWorkflowSchema } from "../../../../../src/workflows/schema/retired-step-grammar/schema.js"
 import { retiredStepIdentity } from "../../../../../src/workflows/control-facts/retired-step-grammar/retired-step-identity.js"
-import type { AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../../src/infra/store/event-store-types.js"
+import type { AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import type { WorkflowDefinition } from "../../../../../src/workflows/schema/workflow-schema.js"
 import { compileWorkflowControl } from "../../../../../src/workflows/vm/compile/compile.js"
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js"
 import { hashDefinition } from "../../../../../src/workflows/provenance/definition-hash.js"
 import {
   buildDefinitionIdentity,

@@ -9,10 +9,10 @@
 import { isActiveActivity, type FrontendMutation, type RuntimeClient, type ChatSessionAction, type SessionCatalogRow, type SessionRow, type StoppedBy, type SubagentSessionAction, type WorkflowDefinitionDrift, type WorkflowSessionAction } from "../runtime/app-service-types.js"
 import type { StatusView } from "../session/status-protocol-types.js"
 import type { LoadedWorkflowView, WorkflowAgentLive } from "../session/workflow-view-protocol-types.js"
-import { errorMessage } from "../../infra/error-message.js"
-import type { AgentGroupBlock, PausedBy } from "../../infra/output-blocks.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import type { AgentGroupBlock, PausedBy } from "../../infra/substrate/events/output-blocks.js"
 import { lostToCleanClose } from "./connection-failures.js"
-import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, PARTIAL_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/output/run-labels.js"
+import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, PARTIAL_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/substrate/output/run-labels.js"
 interface WorkControlOwner {
   readonly workflowId: string
   readonly admittedActions: readonly ("workflow.send" | "workflow.interrupt" | "workflow.resume" | "workflow.restart" | "workflow.stop" | "workflow.delete")[]

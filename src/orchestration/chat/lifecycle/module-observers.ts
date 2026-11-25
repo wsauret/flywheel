@@ -1,6 +1,6 @@
 import { Log } from "../../../infra/diagnostics/log.js"
-import { errorMessage } from "../../../infra/error-message.js"
-import type { EventBus, Unsubscribe } from "../../../infra/event-bus.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import type { EventBus, Unsubscribe } from "../../../infra/substrate/events/event-bus.js"
 import type { FirstPartyModuleComposition } from "../../modules.js"
 import type { ModuleChatObserver, ModuleChatObserverContext } from "../../module-seams.js"
 

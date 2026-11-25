@@ -24,7 +24,7 @@ import { readWorkflowQueuedUserInputs } from "../../../../src/orchestration/sess
 import { readHeldAddressedMessages } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
 import { WorkflowPreflightError } from "../../../../src/orchestration/workflow-host/runner-types"
 import { registerLiveWorkflowControl } from "../../../../src/orchestration/session/control/live-session-control"
-import type { ChatInput } from "../../../../src/infra/chat-input"
+import type { ChatInput } from "../../../../src/infra/substrate/events/chat-input"
 import { Database } from "bun:sqlite"
 import { legacyWorkflowFixture } from "../../../helpers/workflow-agent-legacy-fixtures.js"
 import { convertWorkflowAgentSessions } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions.js"

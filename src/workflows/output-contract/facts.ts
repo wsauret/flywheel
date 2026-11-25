@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { contentEvidence } from "../../infra/runtime-facts/content-evidence.js"
-import { defineFact } from "../../infra/event-registry.js"
+import { contentEvidence } from "../../infra/substrate/runtime-facts/content-evidence.js"
+import { defineFact } from "../../infra/substrate/facts/event-registry.js"
 
 /** The durable record of each agent output: `handoff.written` holds the
  *  payload an attempt submitted, and `handoff.validated` holds the verdict

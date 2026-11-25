@@ -2,7 +2,7 @@ import { afterAll, afterEach, onTestFinished } from "bun:test";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { canonicalDirectory, FLYWHEEL_DIR_NAME, type StartupDirectories } from "../../src/infra/directory-authorities.js";
+import { canonicalDirectory, FLYWHEEL_DIR_NAME, type StartupDirectories } from "../../src/infra/platform/files/directory-authorities.js";
 import { removeWhenReleased } from "./remove-when-released.js";
 
 let accountHome: string | undefined;

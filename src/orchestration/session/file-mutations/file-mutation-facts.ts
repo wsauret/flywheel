@@ -1,7 +1,7 @@
 import { Schema } from "effect"
-import { defineFact } from "../../../infra/event-registry.js"
-import { MutationDiffSchema } from "../../../infra/mutation-diff.js"
-import { MutationFileEvidenceSchema } from "../../../infra/mutation-evidence-schema.js"
+import { defineFact } from "../../../infra/substrate/facts/event-registry.js"
+import { MutationDiffSchema } from "../../../infra/substrate/mutation-diff.js"
+import { MutationFileEvidenceSchema } from "../../../infra/substrate/mutation-evidence-schema.js"
 import { FileAccessProofSchema } from "./file-mutation-access.js"
 
 const Sha256Schema = Schema.String.check(Schema.isBetweenLength(64, 64))

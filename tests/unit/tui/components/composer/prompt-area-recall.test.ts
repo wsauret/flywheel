@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
 import { createDraftCache } from "../../../../../src/tui/components/composer/create-draft-cache.js"
-import type { ChatInput, ChatInputLike } from "../../../../../src/infra/chat-input.js"
+import type { ChatInput, ChatInputLike } from "../../../../../src/infra/substrate/events/chat-input.js"
 import { createHistory, mountPrompt, typeAsHuman } from "./prompt-area-fixture.js"
 
 function deferred<T>() {

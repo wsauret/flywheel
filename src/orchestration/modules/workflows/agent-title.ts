@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import { workflowAgentTitle } from "../../../protocol/client/workflow-agent.js"
 import { attemptNodeIdOf } from "../../../workflows/control-facts/graph-types.js"
 import type { WorkflowView } from "../../../workflows/view/types.js"

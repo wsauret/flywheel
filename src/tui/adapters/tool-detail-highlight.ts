@@ -1,4 +1,4 @@
-import type { ToolAction } from "@infra/workflow-types.js"
+import type { ToolAction } from "@infra/workflow/workflow-types.js"
 import { fg as stFg, type TextChunk } from "@opentui/core"
 import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 import { UNDERLINE } from "@tui/terminal/text-attributes.js"

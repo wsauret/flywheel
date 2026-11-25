@@ -4,10 +4,10 @@
  *  prompt snapshot can be traced to the exact file state that produced it. A
  *  store that does not decode is reported with its reason, never shown empty. */
 
-import type { ProjectDirectories } from "../../../../infra/directory-authorities.js"
-import { errorMessage } from "../../../../infra/error-message.js"
-import type { LearningScope } from "../../../../infra/learning-scope.js"
-import { LEARNING_REACHES } from "../../../../infra/learning-scope.js"
+import type { ProjectDirectories } from "../../../../infra/platform/files/directory-authorities.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import type { LearningScope } from "../../../../infra/learning/learning-scope.js"
+import { LEARNING_REACHES } from "../../../../infra/learning/learning-scope.js"
 import {
   createMemoryStoreConfig,
   MEMORY_CHAR_LIMITS,

@@ -1,7 +1,7 @@
 import type { Accessor } from "solid-js"
 import { createEffect } from "solid-js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { renderProbeEnabled } from "../../../infra/render-probe.js"
+import { renderProbeEnabled } from "../../../infra/substrate/output/render-probe.js"
 import type { TranscriptFreshness, TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import type { TranscriptWindowProjection } from "./output-window-projection.js"
 

@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test"
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { canonicalDirectory } from "../../../../../../src/infra/directory-authorities.js"
+import { canonicalDirectory } from "../../../../../../src/infra/platform/files/directory-authorities.js"
 import { createBudgetNudge } from "../../../../../../src/orchestration/agent-runtime/loop/nudges/budget-nudge.js"
 import { limitOutput } from "../../../../../../src/orchestration/agent-runtime/tools/results/truncation.js"
 import type { LlmToolOutputPart } from "../../../../../../src/orchestration/agent-runtime/llm/messages.js"

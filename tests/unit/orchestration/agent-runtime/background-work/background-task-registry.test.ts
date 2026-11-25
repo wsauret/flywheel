@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types.js";
-import type { PausedBy } from "../../../../../src/infra/output-blocks.js";
+import type { PausedBy } from "../../../../../src/infra/substrate/events/output-blocks.js";
 
 function deferred<T>() {
   let resolve!: (v: T) => void;

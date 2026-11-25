@@ -3,7 +3,7 @@
  *  composes approval choices from the file and binds its path and hash,
  *  so model input cannot supply its own approval authority. */
 
-import type { WorkflowCallSource, WorkflowLaunchSource } from "../../../infra/tools/workflow-call-source.js"
+import type { WorkflowCallSource, WorkflowLaunchSource } from "../../../infra/substrate/output/tools/workflow-call-source.js"
 import type { DecisionRefusal } from "../../session/agent-input/agent-input-decision.js"
 import type { AgentInputDecision, WorkflowLaunchApprovalSource } from "../../session/agent-input/agent-input-facts.js"
 import type { ProjectDefinitionRegistryRevision } from "../../../workflows/definitions/definition-registry.js"

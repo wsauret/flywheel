@@ -1,6 +1,6 @@
 import { isActiveActivity } from "../../../../protocol/runtime/app-service-types.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
+import { recordBackgroundFailure } from "../../../../infra/diagnostics/operation-log.js"
 import type { ChatRunner } from "../../../chat/runner-types.js"
 import type { HeldRetainedOperation } from "../../../module-seams.js"
 import { entryActivity } from "../../../session-store/activity.js"

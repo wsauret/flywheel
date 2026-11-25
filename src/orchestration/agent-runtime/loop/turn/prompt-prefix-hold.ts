@@ -23,7 +23,7 @@
  * is disabled never enters the hold.
  */
 
-import { abortableSleep } from "../../../../infra/abort.js"
+import { abortableSleep } from "../../../../infra/timing/abort.js"
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
 import type { PreparedServingRequest, ProviderStreamEvent, ServingAttempt } from "../../llm/types.js"
 

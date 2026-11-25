@@ -5,8 +5,8 @@
  * sit below every one of them.
  */
 
-import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
-import type { PausedBy } from "../../../infra/output-blocks.js";
+import type { MutationEvidence } from "../../../infra/substrate/mutation-evidence.js";
+import type { PausedBy } from "../../../infra/substrate/events/output-blocks.js";
 
 /** The result of background work, by status. */
 export type BackgroundWorkResult =

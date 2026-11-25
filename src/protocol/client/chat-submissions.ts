@@ -1,4 +1,4 @@
-import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
+import type { ChatInput, ChatInputLike } from "../../infra/substrate/events/chat-input.js"
 import type { AttachedRuntimeClient, FrontendOutputBlock } from "../runtime/app-service-types.js"
 import { lostWithLane } from "./connection-failures.js"
 import type { TranscriptChange } from "./transcript-store.js"

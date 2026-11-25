@@ -2,9 +2,9 @@ import { readFileSync, realpathSync } from "node:fs"
 
 import { launchRuntimeClient } from "../../../src/cli/account-service/runtime-launch.js"
 import { isRuntimeListening } from "../../../src/cli/account-service/runtime-attach.js"
-import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
-import type { StartupDirectories } from "../../../src/infra/directory-authorities.js"
-import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/paths.js"
+import { serveLaneFor } from "../../../src/infra/platform/cli-subprocess.js"
+import type { StartupDirectories } from "../../../src/infra/platform/files/directory-authorities.js"
+import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/platform/files/paths.js"
 import type { AttachedRuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"
 import { createIsolatedAccountRuntimeAttach, joinIsolatedAccountService } from "./_account-service.js"
 

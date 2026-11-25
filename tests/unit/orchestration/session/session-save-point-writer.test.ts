@@ -4,7 +4,7 @@ import { createConversationTreeWriterController } from "../../../../src/orchestr
 import { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
 import type { HeldRetainedOperation } from "../../../../src/orchestration/module-seams";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
 import { Log } from "../../../../src/infra/diagnostics/log";
 import { chatTurnEndOf, isResumableTurnEnd, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record";
 import {

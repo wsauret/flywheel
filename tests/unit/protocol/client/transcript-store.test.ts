@@ -415,7 +415,7 @@ describe("transcript store", () => {
   })
 
   test("installs the authoritative reconnect status and proposal", async () => {
-    const mutationEvidence = await (await import("../../../../src/infra/mutation-evidence.js")).buildMutationEvidence([], async () => {})
+    const mutationEvidence = await (await import("../../../../src/infra/substrate/mutation-evidence.js")).buildMutationEvidence([], async () => {})
     const canonical: FrontendToolEntry = {
       kind: "tool", id: "write-1", name: "write", presentation: { name: "Write", detail: "a.ts" },
       status: "completed", timestamp: 1, fileChangeKind: "create", mutationEvidence,

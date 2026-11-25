@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Redacted } from "effect";
-import type { AccessProviderCandidateAttribution } from "../../../../../src/infra/llm/access/access-provider.js";
-import type { CatalogJsonValue } from "../../../../../src/infra/catalog-model-offering.js";
+import type { AccessProviderCandidateAttribution } from "../../../../../src/infra/providers/llm/access/access-provider.js";
+import type { CatalogJsonValue } from "../../../../../src/infra/providers/catalog-model-offering.js";
 import { createOpenRouterAffordability } from "../../../../../src/orchestration/modules/provider-openrouter/affordability.js";
 import { streamAssistantTurn } from "../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";

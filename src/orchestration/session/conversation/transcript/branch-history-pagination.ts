@@ -1,4 +1,4 @@
-import type { AnyBlock } from "../../../../infra/output-blocks.js"
+import type { AnyBlock } from "../../../../infra/substrate/events/output-blocks.js"
 import type { IdentifiedBlock } from "../../../../protocol/transcript/block-identity.js"
 import type { OutputRangeAnchor } from "../../../../protocol/transcript/transcript-protocol-types.js"
 

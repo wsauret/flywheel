@@ -1,5 +1,5 @@
 import type { UsageAccountsResult, UsageHistoryResult, UsageModelSummary, UsageSpendResult, UsageTokens } from "../../../src/protocol/modules/subscription-usage.js"
-import type { SubscriptionUsageMetric } from "../../../src/infra/llm/usage/subscription-usage.js"
+import type { SubscriptionUsageMetric } from "../../../src/infra/providers/llm/usage/subscription-usage.js"
 
 export const usageNow = Date.parse("2026-09-09T00:00:00.000Z")
 export const usageTokens = (total: number): UsageTokens => ({ input: total, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, total })

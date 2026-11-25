@@ -1,4 +1,4 @@
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
 /**
  * Token estimation for agent runtime context management.
  *
@@ -20,11 +20,11 @@ import type { ContentBlock, ConversationMessage } from "../llm/types.js";
 import { modelFamilyApi, type LlmApi, type LlmToolOutputPart } from "../llm/messages.js";
 import { keepsEarlierTurnReasoning } from "../llm/model-compat.js";
 import { deliberationReplays, type DeliberationReplay } from "../llm/history/provider-history.js";
-import { isProgressUpdate } from "../../../infra/llm/anthropic-narration.js";
-import type { AccessProviderId } from "../../../infra/llm/access/access-provider.js";
-import { assertNever } from "../../../infra/assert-never.js";
-import { localTokenizerForModel, type LocalTokenizerIdentity } from "../../../infra/local-tokenizer.js";
-import type { ClaudeTokenizerIdentity } from "../../../infra/model-id.js";
+import { isProgressUpdate } from "../../../infra/providers/llm/anthropic-narration.js";
+import type { AccessProviderId } from "../../../infra/providers/llm/access/access-provider.js";
+import { assertNever } from "../../../infra/guards/assert-never.js";
+import { localTokenizerForModel, type LocalTokenizerIdentity } from "../../../infra/providers/local-tokenizer.js";
+import type { ClaudeTokenizerIdentity } from "../../../infra/providers/model-id.js";
 
 export type TokenCountingPolicyIdentity =
   | `local:${LocalTokenizerIdentity}`

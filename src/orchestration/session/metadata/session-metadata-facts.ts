@@ -1,9 +1,9 @@
 import { Schema } from "effect"
-import { defineFact } from "../../../infra/event-registry.js"
+import { defineFact } from "../../../infra/substrate/facts/event-registry.js"
 import { CanonicalDirectorySchema, RoleAssignmentEntryV1Schema, RoleAssignmentsV1Schema, RoleAssignmentEntrySchema, RoleAssignmentsSchema, HistoricalRoleAssignmentSnapshotSchema, ReplayedSessionSchema, SalvagedSessionSchema, SessionSchema, normalizeRoleAssignments, recoverRoleAssignmentSnapshot, type ReplayedSession, type RoleSettingEntry, type RoleSettings, type SalvagedSession, type Session } from "./schemas.js"
-import { RoleAssignmentSnapshotSchema, RoleSettingEntrySchema } from "../../../infra/role-settings.js"
+import { RoleAssignmentSnapshotSchema, RoleSettingEntrySchema } from "../../../infra/providers/role-settings.js"
 import { SessionLifecycleStateSchema } from "./types.js"
-import { isRecord } from "../../../infra/record.js"
+import { isRecord } from "../../../infra/guards/record.js"
 
 const DateTimeStringSchema = Schema.String.check(
   Schema.makeFilter((value) => !Number.isNaN(Date.parse(value)) || "Expected ISO datetime string"),

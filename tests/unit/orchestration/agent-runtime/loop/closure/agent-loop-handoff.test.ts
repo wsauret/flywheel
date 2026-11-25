@@ -4,7 +4,7 @@ import { createHandoffTracker } from "../../../../../../src/orchestration/agent-
 import type { ToolResultEntry } from "../../../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js";
 import { HandoffCorrectionExhausted } from "../../../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
 import type { ToolCall } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { toTextParts } from "../../../../../../src/infra/llm/tool-output-part-schema.js";
+import { toTextParts } from "../../../../../../src/infra/providers/llm/tool-output-part-schema.js";
 
 let nextId = 0;
 

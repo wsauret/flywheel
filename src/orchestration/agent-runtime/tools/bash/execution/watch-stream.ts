@@ -4,7 +4,7 @@
  * The stream owns no timer and no file: its owner feeds it the log's bytes and
  * ticks it with the time, so a test drives it with a clock of its own.
  */
-import { sanitizeExternalText } from "../../../../../infra/control-characters.js";
+import { sanitizeExternalText } from "../../../../../infra/substrate/output/control-characters.js";
 
 /** The limits of one watch, as the approved design states them. */
 export const WATCH_LIMITS = {

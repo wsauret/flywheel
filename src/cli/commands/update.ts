@@ -16,9 +16,9 @@
  *  command that quietly turned it back on would be worse than one that
  *  refuses. */
 
-import type { AccountDirectories, StartupDirectories } from "../../infra/directory-authorities.js";
-import { buildPlatformArch } from "../../infra/native-assets.js";
-import { updateAuthorityDbFile } from "../../infra/paths.js";
+import type { AccountDirectories, StartupDirectories } from "../../infra/platform/files/directory-authorities.js";
+import { buildPlatformArch } from "../../infra/platform/native-assets.js";
+import { updateAuthorityDbFile } from "../../infra/platform/files/paths.js";
 import type { LauncherContext } from "../../infra/process-supervisor.js";
 import { ownBuildId } from "../../infra/update/live-builds.js";
 import { createUpdateAuthority, UPDATE_PROTOCOL_VERSION } from "../../infra/update/update-authority.js";

@@ -1,5 +1,5 @@
 import { createEffect, createMemo, on, type Accessor } from "solid-js"
-import type { QuestionBlock } from "../../../infra/output-blocks.js"
+import type { QuestionBlock } from "../../../infra/substrate/events/output-blocks.js"
 import type { DraftCache } from "./create-draft-cache.js"
 
 export interface ComposerQuestionOwner {

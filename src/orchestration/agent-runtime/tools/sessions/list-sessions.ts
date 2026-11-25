@@ -1,4 +1,4 @@
-import { SESSION_RELATIONS } from "../../../../infra/chat-input-schema.js";
+import { SESSION_RELATIONS } from "../../../../infra/substrate/events/chat-input-schema.js";
 import type { SessionListing, SessionMessaging } from "../../../session/control/messaging/session-messaging.js";
 import type { AdvertisedTool, RuntimeTool, ToolResult } from "../types.js";
 

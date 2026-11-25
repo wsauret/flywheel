@@ -1,4 +1,4 @@
-import type { AnyBlock } from "../../../../infra/output-blocks.js"
+import type { AnyBlock } from "../../../../infra/substrate/events/output-blocks.js"
 import type { ChatSessionView } from "../../projections/session-view.js"
 import type { SessionRuntimeOptions } from "../../../session-store/types.js"
 

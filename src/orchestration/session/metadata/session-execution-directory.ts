@@ -1,6 +1,6 @@
-import { canonicalDirectory, directoryExists } from "../../../infra/directory-authorities.js"
+import { canonicalDirectory, directoryExists } from "../../../infra/platform/files/directory-authorities.js"
 import type { ReplayedSession, SessionMetadataReader } from "./schemas.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import { workflowRunReader } from "../../module-catalog.js"
 
 /** The directory an owner's paths mean (ARCH-DIRECTORIES-007): the execution

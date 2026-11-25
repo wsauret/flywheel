@@ -20,19 +20,19 @@
 import { chmodSync, existsSync, lstatSync, renameSync, rmdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { fsyncDirectory } from "../../../../infra/atomic-write.js";
-import type { ProjectDirectories } from "../../../../infra/directory-authorities.js";
-import { errorMessage } from "../../../../infra/error-message.js";
+import { fsyncDirectory } from "../../../../infra/platform/files/atomic-write.js";
+import type { ProjectDirectories } from "../../../../infra/platform/files/directory-authorities.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import {
   ensureDirectoryUnder,
   readFileUnder,
   removeFileUnder,
   writeFileUnder,
-} from "../../../../infra/write-file-under.js";
-import { ContainedPathError } from "../../../../infra/descriptor-directory/descriptor-directory-contract.js";
+} from "../../../../infra/platform/files/write-file-under.js";
+import { ContainedPathError } from "../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
 import { SKILL_FILE } from "../../../../workflows/skills/skill-schema.js";
-import { tryWithPackageLocksSync } from "../../../../infra/locks/package-directory-lock.js";
+import { tryWithPackageLocksSync } from "../../../../infra/process/locks/package-directory-lock.js";
 import {
   stagingLockPath,
   legacyStepAuthorityRoots,

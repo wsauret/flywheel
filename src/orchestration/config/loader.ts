@@ -1,9 +1,9 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { Result, Schema } from "effect";
-import { errorMessage } from "../../infra/error-message.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import { Log } from "../../infra/diagnostics/log.js";
-import { configurationReferenceFile } from "../../infra/paths.js";
+import { configurationReferenceFile } from "../../infra/platform/files/paths.js";
 import { installedModules } from "../module-catalog.js";
 import { installedConfigSections } from "./schema/config-section.js";
 import { decodeModuleSelection } from "./module-descriptor.js";

@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test";
-import { candidateProviderId, type AccessProviderCandidate } from "../../../../src/infra/llm/access/access-provider.js";
-import { computeUsagePrice } from "../../../../src/infra/llm/models/llm-helpers.js";
+import { candidateProviderId, type AccessProviderCandidate } from "../../../../src/infra/providers/llm/access/access-provider.js";
+import { computeUsagePrice } from "../../../../src/infra/providers/llm/models/llm-helpers.js";
 import { ANTHROPIC_CACHE_RATES } from "../../../../src/orchestration/agent-runtime/llm/provider-description.js";
-import type { ModelCost } from "../../../../src/infra/llm/models/models.js";
-import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/llm/usage/usage-entry.js";
-import { AssistantDraftProjector } from "../../../../src/infra/output/assistant-draft-projector.js";
-import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js";
+import type { ModelCost } from "../../../../src/infra/providers/llm/models/models.js";
+import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/providers/llm/usage/usage-entry.js";
+import { AssistantDraftProjector } from "../../../../src/infra/substrate/output/projector/assistant-draft-projector.js";
+import { OutputProjector } from "../../../../src/infra/substrate/output/projector/output-projector.js";
 import { createAssistantAttempt, type AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-attempt.js";
 import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";

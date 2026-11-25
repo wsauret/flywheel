@@ -1,5 +1,5 @@
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
-import type { SubscriptionUsageOutcome, SubscriptionUsageReader, SubscriptionUsageReaderContext } from "../../../infra/llm/usage/subscription-usage.js";
+import type { SubscriptionUsageOutcome, SubscriptionUsageReader, SubscriptionUsageReaderContext } from "../../../infra/providers/llm/usage/subscription-usage.js";
 import { processUsageReadings, usageMetrics, usageReplyWindows, usageStatus, type UsageWindows } from "./account-usage.js";
 import { cliLaunch, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
 import { cliLogin } from "./login/cli-login.js";

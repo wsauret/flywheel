@@ -5,10 +5,10 @@
  *  deleted or edited. Admission resolves the definition once and every layer
  *  below it receives the object. */
 
-import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import { readRunDefinitionLineage } from "../../../workflows/run/definition-provenance-projection.js"
 import { recordedWorkflow } from "../../../workflows/definitions/loader.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import type { WorkflowDefinitionResolution, WorkflowDefinitionResolver } from "./workflow-admission.js"
 
 /** The definition an existing run executes. A run that a workflow file

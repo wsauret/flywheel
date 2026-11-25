@@ -1,4 +1,4 @@
-import { recordBackgroundFailure } from "../../../../infra/operation-log.js"
+import { recordBackgroundFailure } from "../../../../infra/diagnostics/operation-log.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { childSessionProjectionAttachment } from "../../../session-store/child-session-projection.js"
 import { recordGeneratedSessionName } from "../../../session/manager.js"

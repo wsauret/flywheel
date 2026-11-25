@@ -16,8 +16,8 @@
  */
 
 import { Cause, Deferred, Effect, Exit, Fiber, Schema, type Scope } from "effect";
-import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js";
-import { errorDetail, errorMessage } from "../../../../infra/error-message.js";
+import { PersistenceWriteRefused } from "../../../../infra/substrate/store/event-store-types.js";
+import { errorDetail, errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
 import type { BackgroundExecutionOwner } from "../../background-execution/background-execution-owner.js";
 import { shouldTerminateToolBatch } from "../../tools/dispatch/tool-batch-termination.js";
@@ -28,20 +28,20 @@ import { enforceTurnBudget, limitOutput, textChars, type TurnBudgetEntry } from 
 import type { TurnOutputBound } from "../../compaction/compaction-policy.js";
 import { createToolOutputRecovery, measureOriginalContent, type ToolOutputRecovery } from "../turn/tool-output-recovery.js";
 import type { StreamEvent, ToolCall } from "../../llm/types.js";
-import { toTextParts } from "../../../../infra/llm/tool-output-part-schema.js";
-import type { LlmToolOutputPart } from "../../../../infra/llm/tool-output-part-schema.js";
+import { toTextParts } from "../../../../infra/providers/llm/tool-output-part-schema.js";
+import type { LlmToolOutputPart } from "../../../../infra/providers/llm/tool-output-part-schema.js";
 import { interruptedToolText } from "../../llm/history/heal-messages.js";
 import { prepareToolCall, type ExecutionAdmission, type PreparedToolCall, type ToolExecutionGate } from "../../tools/dispatch/tool-dispatch.js";
 import { createNestedToolDispatchBatch, createNestedToolFactPublisher, executeDispatchedTool } from "../../tools/dispatch/nested-tool-dispatch.js";
 import { runtimeToolExecution, type RuntimeTool, type ToolAttributionIdentity, type ToolContext, type ToolDispatchContext, type ToolResult } from "../../tools/types.js";
 import { writeToolLifecycleDiagnostic } from "../../tools/dispatch/tool-lifecycle-diagnostics.js";
-import { assertNever } from "../../../../infra/assert-never.js";
-import type { ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js";
+import { assertNever } from "../../../../infra/guards/assert-never.js";
+import type { ToolOutcome } from "../../../../infra/substrate/runtime-facts/tool-outcome.js";
 import { publishFileMutationAttribution } from "../../tools/edit/file-mutation-artifact.js";
 import { redactDeep, redactSecrets } from "../../../../infra/redact-secrets.js";
-import { truncateUtf8Prefix } from "../../../../infra/output/truncate-output.js";
-import { MutationEvidenceSchema } from "../../../../infra/mutation-evidence-schema.js";
-import { asRecord } from "../../../../infra/record.js";
+import { truncateUtf8Prefix } from "../../../../infra/substrate/output/text/truncate-output.js";
+import { MutationEvidenceSchema } from "../../../../infra/substrate/mutation-evidence-schema.js";
+import { asRecord } from "../../../../infra/guards/record.js";
 import {
   checkpointFinalizedToolResult,
 } from "../../../session/history/finalized-tool-result-checkpoint.js";

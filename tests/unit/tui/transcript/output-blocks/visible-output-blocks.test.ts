@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/runtime/app-service-types.js"
-import type { ToolAction } from "../../../../../src/infra/workflow-types.js"
+import type { ToolAction } from "../../../../../src/infra/workflow/workflow-types.js"
 import type { TranscriptWindow } from "../../../../../src/protocol/client/transcript-model.js"
 import { terminalTranscript, visibleBlockIdentity, type ToolRun, type VisibleBlock } from "../../../../../src/tui/transcript/output-blocks/visible-output-blocks.js"
 import { blockIdentity } from "../../../../../src/protocol/transcript/block-identity.js"

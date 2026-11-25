@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, onCleanup, untrack, type Accessor, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
-import { errorMessage } from "../../../../../infra/error-message.js"
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js"
 import type {
   ModelAssignmentRow,
   ModelOptionRow,

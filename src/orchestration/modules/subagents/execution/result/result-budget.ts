@@ -12,9 +12,9 @@
  * states what was cut and where the full content is.
  */
 
-import { displayRelativePath } from "../../../../../infra/tools/detail-helpers.js";
+import { displayRelativePath } from "../../../../../infra/substrate/output/tools/detail-helpers.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
-import { truncateHeadTail } from "../../../../../infra/output/truncate-output.js";
+import { truncateHeadTail } from "../../../../../infra/substrate/output/text/truncate-output.js";
 import { limitOutput } from "../../../../agent-runtime/tools/results/truncation.js";
 import { saveFullOutput } from "../../../../agent-runtime/tools/results/output-breadcrumb.js";
 

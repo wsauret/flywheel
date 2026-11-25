@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { Redacted } from "effect";
-import type { OpenAIAuth } from "../../../../../../../src/infra/auth/openai/openai-auth-types.js";
+import type { OpenAIAuth } from "../../../../../../../src/infra/providers/auth/openai/openai-auth-types.js";
 import { createOpenAITools } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type StreamEvent } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { installChatGptAdapterModuleMocks, state, REASONING_INFO } from "./_openai-chatgpt-adapter-fixtures.js";

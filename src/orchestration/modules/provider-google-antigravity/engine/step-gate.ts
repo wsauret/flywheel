@@ -1,6 +1,6 @@
 import { unlink } from "node:fs/promises"
 
-import type { GateAnswer, GateQuery } from "../../../../infra/antigravity-gate-hook.js"
+import type { GateAnswer, GateQuery } from "../../../../infra/providers/antigravity-gate-hook.js"
 import { connectInternalProcessChannel, listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../../infra/process/channels/internal-process-channel.js"
 import { RouteUnavailableError } from "../../../agent-runtime/llm/errors.js"
 

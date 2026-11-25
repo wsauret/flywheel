@@ -16,7 +16,7 @@
  * with their notes. Safety, permission, policy, and containment remain unchanged.
  */
 
-import { readJsonValue } from "../../../../infra/llm/json-parse.js";
+import { readJsonValue } from "../../../../infra/providers/llm/json-parse.js";
 import { definitionText } from "../../llm/tool-definition-text.js";
 import type { ToolInputRepair } from "../../llm/types.js";
 import { compiledSchema, discriminatedBranch, schemaProblems, type SchemaNode, type SchemaProperties } from "./validate-input.js";

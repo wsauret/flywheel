@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect";
-import { isQualifiedSkillId } from "../../infra/skill-id.js";
-import { EffortSchema } from "../../infra/workflow-types.js";
-import { isWorkflowLocalId } from "../../infra/workflow-identifiers.js";
+import { isQualifiedSkillId } from "../../infra/learning/skill-id.js";
+import { EffortSchema } from "../../infra/workflow/workflow-types.js";
+import { isWorkflowLocalId } from "../../infra/workflow/workflow-identifiers.js";
 import { ArtifactContractFrontmatterItemSchema, ArtifactContractsFrontmatterSchema } from "./artifact-contracts.js";
 import type { DefinitionProvenance } from "../provenance/definition-provenance.js";
 import type { LoadedBriefs } from "../definitions/brief.js";
@@ -25,7 +25,7 @@ export function dotFreeSlugIssue(id: string): string | undefined {
 const LocalIdSchema = Schema.NonEmptyString.check(Schema.makeFilter((id) =>
   isWorkflowLocalId(id) || `a phase or agent name must start with a lowercase letter or digit and contain only lowercase letters, digits, hyphens, or underscores: ${JSON.stringify(id)}`));
 
-/** A qualified skill id (see infra/skill-id.ts). */
+/** A qualified skill id (see infra/learning/skill-id.ts). */
 export const SkillIdSchema = Schema.NonEmptyString.check(Schema.makeFilter((id) =>
   isQualifiedSkillId(id)
   || `skill id must be a dot-delimited lowercase slug ([a-z0-9-]): ${JSON.stringify(id)}`));

@@ -4,8 +4,8 @@ import { AuthProfileManager } from "../../../../../src/orchestration/auth/auth-p
 import { createRuntimeAuthProfileSelectionService } from "../../../../../src/orchestration/app-service/auth/auth-profile-selection-service.js"
 import { dispatchAuthMutation } from "../../../../../src/orchestration/app-service/auth/login/auth-mutations.js"
 import { createSessionManager, type SessionManager } from "../../../../../src/orchestration/session/manager.js"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
-import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
+import { resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths.js"
 import type { RoleAssignments, Session } from "../../../../../src/orchestration/session/metadata/schemas.js"
 import type { RuntimeAuthProfileWriteScope } from "../../../../../src/protocol/auth/auth-profile-selection-protocol-types.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
@@ -18,7 +18,7 @@ import { createRuntimeUiBus } from "../../../../../src/orchestration/app-service
 import { publishTestWorkflow, startTestWorkflowMember } from "../../session/_session-manager-fixtures.js"
 import { workflowRunReader, workflowRunWriter } from "../../../../../src/orchestration/module-catalog.js"
 import { createWorkflowAuthOwner } from "../../../../../src/orchestration/workflow-host/auth-owner.js"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { authMutationDoubles } from "../../../../helpers/auth-mutation-doubles.js"
 
 const temporaryDirectory = temporaryDirectories()

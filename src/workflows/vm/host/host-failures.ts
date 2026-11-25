@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import type { WorkflowView } from "../../view/types.js"
 import type { WorkflowTransitionResult } from "../control/commands.js"
 import { WorkflowCommitStorageError } from "./commit-host.js"

@@ -18,9 +18,9 @@
 
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, sep } from "node:path";
-import { renderCapabilityText } from "../../infra/capability-text.js";
-import { errnoCode } from "../../infra/error-message.js";
-import type { ProjectDirectories } from "../../infra/directory-authorities.js";
+import { renderCapabilityText } from "../../infra/definitions/capability-text.js";
+import { errnoCode } from "../../infra/platform/files/system-error.js";
+import type { ProjectDirectories } from "../../infra/platform/files/directory-authorities.js";
 import { ownedSkillStoreDirs } from "./skills.js";
 import {
   SKILL_BODY_CROWDED_SHARE,

@@ -1,6 +1,6 @@
 import type { ModuleId } from "../../../modules.js"
 import type { WorkflowsMode } from "../../../../protocol/runtime/module-protocol-types.js"
-import type { PausedBy } from "../../../../infra/output-blocks.js"
+import type { PausedBy } from "../../../../infra/substrate/events/output-blocks.js"
 import type { HashMap } from "effect"
 
 type SubagentRunStatus = "created" | "completed" | "partial" | "failed" | "interrupted" | "paused" | "cancelled" | "stopped"

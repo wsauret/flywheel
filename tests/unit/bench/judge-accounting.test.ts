@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { createRuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-factory.js";
-import type { UsageEntry } from "../../../src/infra/llm/usage/usage-entry.js";
+import { createRuntimeEvent } from "../../../src/infra/substrate/runtime-facts/runtime-event-factory.js";
+import type { UsageEntry } from "../../../src/infra/providers/llm/usage/usage-entry.js";
 import type { AgentFactory, AgentRunTerminal } from "../../../src/orchestration/agent-runtime/types.js";
 import {
   completeJudge,

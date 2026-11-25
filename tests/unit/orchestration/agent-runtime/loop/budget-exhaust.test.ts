@@ -26,7 +26,7 @@ import { AllCandidatesExhaustedError, QuotaExhaustedError } from "../../../../..
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { withRequestAdmission, ownHistoryTarget } from "../_model-client.js";
 import { tokenCountingPolicy, type TokenCountingPolicy } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
-import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.js";
+import { prepareLocalTokenizer } from "../../../../../src/infra/providers/local-tokenizer.js";
 import { handoffDefinition } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";

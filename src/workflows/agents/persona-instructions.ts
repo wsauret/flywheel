@@ -1,5 +1,5 @@
-import type { AgentDefinition } from "../../infra/agent-definition.js";
-import { renderCapabilityText, type CapabilityCheck } from "../../infra/capability-text.js";
+import type { AgentDefinition } from "../../infra/definitions/agent-definition.js";
+import { renderCapabilityText, type CapabilityCheck } from "../../infra/definitions/capability-text.js";
 import { renderSkillClosure } from "../skills/skill-render.js";
 import type { SkillRegistryRevision } from "../skills/skill-schema.js";
 

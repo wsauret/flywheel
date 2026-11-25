@@ -1,8 +1,8 @@
 import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
-import { antigravityHomeLayout } from "../../../../infra/antigravity-engine.js"
-import { writeFileAtomic } from "../../../../infra/atomic-write.js"
-import { errnoCode } from "../../../../infra/error-message.js"
+import { antigravityHomeLayout } from "../../../../infra/providers/antigravity-engine.js"
+import { writeFileAtomic } from "../../../../infra/platform/files/atomic-write.js"
+import { errnoCode } from "../../../../infra/platform/files/system-error.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { decodeHolderFields, processHolders, type ProcessHolder } from "../../../../infra/process/process-holder.js"
 

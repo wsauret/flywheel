@@ -1,20 +1,20 @@
 import type { Scope } from "effect";
-import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderCatalogProvenance, AccessProviderId, AccessProviderModelEligibility } from "../../../infra/llm/access/access-provider.js";
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
-import type { CacheRetentionPolicy, ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js";
+import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderCatalogProvenance, AccessProviderId, AccessProviderModelEligibility } from "../../../infra/providers/llm/access/access-provider.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
+import type { CacheRetentionPolicy, ProviderRequestOptions } from "../../../infra/providers/llm/access/provider-options.js";
 import type { CompletedStopReason, LlmApi, LlmStopReason, LlmToolOutputPart } from "./messages.js";
-import type { ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js";
-import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models/models.js";
-import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
-import type { ContentRepair } from "../../../infra/llm/content-repair.js";
+import type { ToolOutcome } from "../../../infra/substrate/runtime-facts/tool-outcome.js";
+import type { ModelInfo, ReasoningEffort } from "../../../infra/providers/llm/models/models.js";
+import type { MutationEvidence } from "../../../infra/substrate/mutation-evidence.js";
+import type { ContentRepair } from "../../../infra/providers/llm/content-repair.js";
 export type { CompletedStopReason, LlmStopReason } from "./messages.js";
 import type { StreamAttemptStartEvent } from "./stream/stream-attempt.js";
 import type { FailoverFailure, ProviderFailure } from "./stream/provider-failure.js";
 import type { RequestAdmission } from "./routing/provider-availability-types.js";
-import type { ClaudeTokenizerIdentity } from "../../../infra/model-id.js";
-import type { ProviderIdentity } from "../../../infra/llm/errors/auth-error.js";
-import type { MessageProducer } from "../../../infra/chat-input.js";
+import type { ClaudeTokenizerIdentity } from "../../../infra/providers/model-id.js";
+import type { ProviderIdentity } from "../../../infra/providers/llm/errors/auth-error.js";
+import type { MessageProducer } from "../../../infra/substrate/events/chat-input.js";
 import type { SystemPromptTiers } from "./system-prompt-tiers.js";
 import type { ProviderTransportContext } from "../../session/runtime-facts/provider-request-audit-types.js";
 import type { SharedTree } from "../request/shared-tree.js";
@@ -84,7 +84,7 @@ interface StreamRetryEvent {
   readonly maxAttempts: number;
   readonly reason: string;
   readonly delayMs: number;
-  readonly error: import("../../../infra/llm/errors/provider-error-diagnostic.js").ProviderErrorDiagnostic;
+  readonly error: import("../../../infra/providers/llm/errors/provider-error-diagnostic.js").ProviderErrorDiagnostic;
   readonly thinkingStall?: {
     readonly blockKey?: string;
     readonly elapsedMs: number;
@@ -672,7 +672,7 @@ export interface ServingAttempt {
   requestEntries?(request: StreamOptions): readonly SystemOriginMessage[];
 
   /** Prices token counts from the immutable models.dev rate card cached for this adapter. */
-  priceFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h?: number; reasoning: number; promptTokens?: number }): import("../../../infra/llm/models/llm-helpers.js").UsagePriceResult;
+  priceFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h?: number; reasoning: number; promptTokens?: number }): import("../../../infra/providers/llm/models/llm-helpers.js").UsagePriceResult;
 }
 
 /** Exact outbound revision evaluated before adapter construction and consumed unchanged by execution. */

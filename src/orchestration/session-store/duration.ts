@@ -1,5 +1,5 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../infra/store/event-store-types.js"
-import { parseProjectionFact } from "../../infra/projection/event-projection.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../infra/substrate/store/event-store-types.js"
+import { parseProjectionFact } from "../../infra/substrate/projection/event-projection.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import type { SessionEntry } from "./types.js"
 import { parseSessionRuntimeFact } from "../session/runtime-facts/session-runtime-event-types.js"

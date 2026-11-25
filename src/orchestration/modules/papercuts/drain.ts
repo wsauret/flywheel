@@ -1,5 +1,5 @@
-import type { CapabilityCheck } from "../../../infra/capability-text.js"
-import type { AsyncEventReadSurface } from "../../../infra/store/event-store-types.js"
+import type { CapabilityCheck } from "../../../infra/definitions/capability-text.js"
+import type { AsyncEventReadSurface } from "../../../infra/substrate/store/event-store-types.js"
 import { createBudgetProjection } from "../../session/runtime-facts/budget-projection.js"
 import { createPapercutBacklogProjection } from "./backlog.js"
 

@@ -1,7 +1,7 @@
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
-import { CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
+import { CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { acquireSessionSummaryIndex } from "../../../../src/orchestration/session/metadata/catalog/session-summary-index.js"
 import type { GenerationMeasurement } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 import { sessionSummaryFact } from "../../../fixtures/session-summary-history.js"

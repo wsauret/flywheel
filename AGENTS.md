@@ -70,7 +70,7 @@ Reaching a skill: `action:"load"` returns one skill's instructions and names the
 ## 3. State Ownership
 
 - Keep one source of truth per value. State drives effects, never the reverse, and everything downstream is a derived view (ARCH-SUBSTRATE-001).
-- Add a runtime event to the `FlywheelEvent` discriminated union in `src/infra/events.ts` and update every exhaustive consumer in the same change (ARCH-SUBSTRATE-010).
+- Add a runtime event to the `FlywheelEvent` discriminated union in `src/infra/substrate/events/events.ts` and update every exhaustive consumer in the same change (ARCH-SUBSTRATE-010).
 - Name events with lowercase dot-delimited domain and action segments, such as `agent.run.started` (ARCH-NAMING-007).
 - Producers emit raw events; subscribers filter (ARCH-STRUCTURE-007).
 
@@ -221,7 +221,7 @@ Each layer and module home owns one kind of concern (ARCH-STRUCTURE-002, ARCH-ST
 - A module's optional per-runner runtime is constructed only while the module is enabled, and tool factories, exposure and execution gates, and prompt fragments read it through the module's typed handle from `{ kernel, modules }` deps (ARCH-STRUCTURE-027). A module's optional process-scoped service is declared the same way and built once per process in dependency order (ARCH-RUNTIME-048).
 - State a condition that a person should see through the composition's notify seam, never by naming the notifications module (ARCH-STRUCTURE-034).
 - Runtime and workflow hooks are typed callbacks on their owning boundary (ARCH-STRUCTURE-042). A hook that affects model-visible context or durable state must be inspectable and recorded (ARCH-CONTEXT-003).
-- Register every projection's lifetime with `src/infra/projection/projection-registry.ts`, and never build one per call: wrap the construction in `heldProjection(reader, key, () => createEventProjection(...))`, where the key names the family and every id the factory closes over (ARCH-SUBSTRATE-016). `createEventProjection` initializes lazily on its first awaited operation, and rebuilding it discards its cursor and repeats history.
+- Register every projection's lifetime with `src/infra/substrate/projection/projection-registry.ts`, and never build one per call: wrap the construction in `heldProjection(reader, key, () => createEventProjection(...))`, where the key names the family and every id the factory closes over (ARCH-SUBSTRATE-016). `createEventProjection` initializes lazily on its first awaited operation, and rebuilding it discards its cursor and repeats history.
 - Read a registered projection with `replay()`. Only an owner that feeds the projection itself through `apply()` reads `getState()` (ARCH-SUBSTRATE-016).
 - `bun run lint:projections` checks projection construction and unfed `getState()` reads through source-text patterns. These checks do not prove registration or freshness through aliases, helpers, or arbitrary source formatting.
 
@@ -262,7 +262,7 @@ Durable per-session state, including each conversation's typed checkpoint and ev
 Instrument every decision so that a person can tell what happened, when, and why, and keep the logs storage-neutral. Every diagnostic record you add or touch follows these rules:
 
 - One INFO record per decision, state change, or finished unit of work, with the evidence it rested on. Every kill, restart, refusal, replacement or update step, registration change, and exit is recorded once (ARCH-RUNTIME-076).
-- Per-call, per-request, and per-iteration paths log at DEBUG. `loggedOperation` in `src/infra/operation-log.ts` writes a start and done pair as one done record with its duration, above DEBUG only past `slowMs` or on failure (ARCH-RUNTIME-076).
+- Per-call, per-request, and per-iteration paths log at DEBUG. `loggedOperation` in `src/infra/diagnostics/operation-log.ts` writes a start and done pair as one done record with its duration, above DEBUG only past `slowMs` or on failure (ARCH-RUNTIME-076).
 - No content in a record: ids, byte counts, hashes, and kinds only. Conversation text, tool output, prompts, and file content live in `.flywheel/flywheel.sqlite`, which `flywheel events search` reads (ARCH-RUNTIME-075).
 - Repeats coalesce: the first occurrence of a condition records, and later repeats become one count reported when the condition ends or changes. `coalesceRepeats` in `src/infra/diagnostics/repeat-coalescer.ts` does this, and an owner whose failures repeat routes them to it through the `onFailure` option of `loggedOperation` (ARCH-RUNTIME-077).
 - `src/infra/diagnostics/diagnostics-registry.ts` decides every record family's tier: `info`, `debug`, or `notable`, which reaches the default level only for a record its producer marks failed or slow. An unregistered type is DEBUG, `bun run lint:diagnostics` enforces the registry, and `tests/integration/local/diagnostics-volume-budget.test.ts` fails when steady-state log volume grows (ARCH-RUNTIME-078).

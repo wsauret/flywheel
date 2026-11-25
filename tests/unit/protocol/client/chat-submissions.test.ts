@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
+import type { ChatInputLike } from "../../../../src/infra/substrate/events/chat-input.js"
 import { adoptedBlocks, createChatSubmissions, undeliveredNotice, type ChatSubmissionResult, type ChatSubmissionsDeps } from "../../../../src/protocol/client/chat-submissions.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { createComposerReturns } from "../../../../src/protocol/client/composer-returns.js"

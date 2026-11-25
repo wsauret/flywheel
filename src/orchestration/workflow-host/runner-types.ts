@@ -1,7 +1,7 @@
 import type { WorkflowView } from "../../workflows/view/types.js"
 import type { WorkflowVmHostFailure } from "../../workflows/vm/host/host-types.js"
 import type { Runner } from "../agent-runtime/runner/turn-host/types.js"
-import type { ModuleRuntimes } from "../../infra/module-runtime.js"
+import type { ModuleRuntimes } from "../../infra/modules/module-runtime.js"
 import type { ControlInterruption, PlannedCutInterrupt, WorkflowInterruption } from "../session/conversation/turn-end-record.js"
 import type { ChildCut } from "../session/control/child-continuation.js"
 import type { BackgroundWorkTracking } from "../agent-runtime/background-work/background-work.js"

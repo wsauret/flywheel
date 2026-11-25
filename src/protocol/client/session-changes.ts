@@ -1,5 +1,5 @@
-import { errorMessage } from "../../infra/error-message.js"
-import type { MutationDiff } from "../../infra/mutation-diff.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import type { MutationDiff } from "../../infra/substrate/mutation-diff.js"
 import type { AttachedRuntimeClient } from "../runtime/app-service-types.js"
 import { changesCursor, type FileEditToken, type SessionChangeDiffResult, type SessionChangeSummaryResult, type SessionChangesResult, type SessionChangesUndoResult } from "../session/session-changes-protocol-types.js"
 import { cursorKey } from "../runtime/runtime-ui-protocol-types.js"

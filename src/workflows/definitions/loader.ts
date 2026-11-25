@@ -7,7 +7,7 @@ import { loadBriefs, loadWorkflowInputContract } from "./brief.js";
 import { convertRetiredWorkflow, type RetiredWorkflowConversion } from "./retired-bindings.js";
 import { convertStepGrammar, isStepGrammarDocument, type StepGrammarConversion } from "../schema/retired-step-grammar/convert.js";
 import { repairAuthoredDocument, type AuthoredRepair } from "./authored-repairs.js";
-import { errorMessage } from "../../infra/error-message.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 
 /** A workflow file is an external boundary, so a key Flywheel once read and no
  *  longer does is dropped rather than refused: `development-only` meant the

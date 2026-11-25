@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { isRecord } from "../../infra/record.js";
+import { isRecord } from "../../infra/guards/record.js";
 import type { Field, FieldMap } from "../output-contract/grammar.js";
 import { byKey, compareCodeUnits, defineReducer, requiredFieldIssue, type JoinContracts, type JoinSelection, type ReducerInput, type ReducerInputSlot, type ReducerOutput } from "./reducer.js";
 

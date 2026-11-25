@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { EffortSchema } from "../../../../../infra/workflow-types.js";
+import { EffortSchema } from "../../../../../infra/workflow/workflow-types.js";
 import { rename } from "node:fs/promises";
 import { delimiter, resolve } from "node:path";
 import { BenchmarkAccountingSchema, unavailableBenchmarkAccounting } from "../accounting/evidence.js";
