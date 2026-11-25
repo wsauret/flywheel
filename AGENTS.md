@@ -257,6 +257,18 @@ No package owns these; they are this system's own substrate rules.
 
 Durable per-session state, including each conversation's typed checkpoint and every earlier version, lives in `.flywheel/flywheel.sqlite` as facts; diagnostics are JSONL records under `.flywheel/log/`. The session directory holds only the `owner.pid` lock and disposable `scratch/`. Legacy Markdown notes are imported into checkpoint Working notes on first use. When debugging a session, start with `flywheel events search` (`bun run events:search` in the source tree).
 
+### Restarting the Dev Service
+
+A chat in a source checkout runs on the dev account service (`scripts/dev.ts serve`), which runs one source snapshot under `node_modules/.cache/flywheel/source/<digest>/` until it restarts. Only the first attach of a new dev client replaces it, so a long-lived dev service can run code that is days old and cannot read files that a newer build wrote. To compare, the running snapshot digest is in the command line of its `project-executor` process (`ps -axo pid,lstart,command | grep project-executor`), and the current digest is in `node_modules/.cache/flywheel/source/latest.json`.
+
+An agent can restart the dev service in place through its service manager. A person uses `/restart` in a terminal client instead. The restart stops every turn on that service, including your own: the runtime resumes your turn on the new build, and a running tool call is cut. So make the restart the last command of its tool call, with nothing after it, and check the result in the next call. Restart only when the person asks for it or approves it.
+
+- macOS: `launchctl kickstart -k gui/$(id -u)/sh.flywl.flywheel.serve-dev`
+- Linux: `systemctl --user restart flywheel-serve-dev.service`
+- Windows: Task Scheduler does not start the service again after it stops, so ask the person to run `/restart` in a terminal client.
+
+The installed service uses the labels without `-dev` (`SERVICE_NAMES` in `src/orchestration/app-service/account-service-registration.ts`). After the restart, confirm that the `project-executor` process has a new start time and runs the digest that `node_modules/.cache/flywheel/source/latest.json` names.
+
 ### Instrumentation
 
 Instrument every decision so that a person can tell what happened, when, and why, and keep the logs storage-neutral. Every diagnostic record you add or touch follows these rules:
