@@ -1,0 +1,132 @@
+scripts/check-diagnostics-registry.ts
+  h_4b47e9e4a8b456 311-315
+src/infra/diagnostics/diagnostics-registry.ts
+  h_4b47e9e4a8b456 178-183
+src/infra/substrate/output/output-projection-events.ts
+  h_4b47e9e4a8b456 35
+src/infra/substrate/output/projector/output-projector.ts
+  h_4b47e9e4a8b456 120
+src/infra/substrate/output/projector/structured-output-builder.ts
+  h_4b47e9e4a8b456 411,413
+src/orchestration/agent-runtime/tools/sessions/message-session.ts
+  h_4b47e9e4a8b456 102
+src/orchestration/app-service/supervisor/actor/chat-runner-deps.ts
+  h_4b47e9e4a8b456 8,37
+src/orchestration/app-service/supervisor/actor/session-chat-durability.ts
+  h_4b47e9e4a8b456 8,101-104,123,125-133,135,137,142
+src/orchestration/app-service/supervisor/actor/session-continuation.ts
+  h_4b47e9e4a8b456 10,102-111
+src/orchestration/app-service/supervisor/actor/session-reactivation.ts
+  h_4b47e9e4a8b456 13-14,30-33,37,108,125-126,139-157,169-183
+src/orchestration/app-service/supervisor/actor/session-runtime-actor-helpers.ts
+  h_4b47e9e4a8b456 9-11,17,23-48
+src/orchestration/app-service/supervisor/actor/session-runtime-actor.ts
+  h_4b47e9e4a8b456 2-3,26,135-137,454,456,470-476,478-479,486-489,565-567,585-586,588-594,654,669-671,682,811-812
+src/orchestration/app-service/supervisor/runtime-supervisor.ts
+  h_4b47e9e4a8b456 345-351,353,356
+src/orchestration/app-service/supervisor/session-background-notifications.ts
+  h_4b47e9e4a8b456 29-34,38,48,54-55,65-74,76-87
+src/orchestration/chat/controls.ts
+  h_4b47e9e4a8b456 3,11,251-253,279,317
+src/orchestration/chat/host-ports.ts
+  h_4b47e9e4a8b456 84-89
+src/orchestration/chat/lifecycle/chat-idle-landing.ts
+  h_4b47e9e4a8b456 1-63
+src/orchestration/chat/lifecycle/chat-question-hold.ts
+  h_4b47e9e4a8b456 1-53
+src/orchestration/chat/lifecycle/runner-lifecycle.ts
+  h_4b47e9e4a8b456 23-25,160-163,335-337,402,482-484,553-561,609-612,619,625-628,649,708-710,733-735,737,739,741
+src/orchestration/chat/lifecycle/runner-message-delivery.ts
+  h_4b47e9e4a8b456 8,20-24,50-55,61,63,77-80
+src/orchestration/chat/message-row.ts
+  h_4b47e9e4a8b456 1-36
+src/orchestration/chat/runner-types.ts
+  h_4b47e9e4a8b456 57-58,120-126
+src/orchestration/chat/runner.ts
+  h_4b47e9e4a8b456 55-56,254
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 177-181,208-209,211-215,324
+src/orchestration/chat/tree-writer.ts
+  h_4b47e9e4a8b456 13,23,86-107,117-118,161-163,251-258,309-340,360,447,565
+src/orchestration/chat/turn-mailbox.ts
+  h_4b47e9e4a8b456 47-53,62-65,81,86,113,148-154,159-187,245,260-264,322,357-361
+src/orchestration/chat/types.ts
+  h_4b47e9e4a8b456 87-92
+src/orchestration/modules/learning/review/chat-review-spawn.ts
+  h_4b47e9e4a8b456 111-118
+src/orchestration/modules/subscription-usage/usage-projection.ts
+  h_4b47e9e4a8b456 102,104
+src/orchestration/session-store/output-session.ts
+  h_4b47e9e4a8b456 53-55,215
+src/orchestration/session/control/messaging/session-messaging.ts
+  h_4b47e9e4a8b456 30
+src/orchestration/session/conversation/queued-background-notifications.ts
+  h_4b47e9e4a8b456 2-4,12-24,28,59-60,67,70,106-114,140-141
+src/orchestration/session/conversation/transcript/conversation-block-projection.ts
+  h_4b47e9e4a8b456 20,326
+src/orchestration/session/conversation/transcript/invocation-boundary.ts
+  h_4b47e9e4a8b456 1-14
+src/orchestration/session/conversation/tree/conversation-tree-writer.ts
+  h_4b47e9e4a8b456 11,24-28,79-83,179-184,193-197,216-221,324-337,385,510
+src/orchestration/session/conversation/tree/conversation-tree.ts
+  h_4b47e9e4a8b456 3,215-236,400-403,457
+src/orchestration/session/history/agent-input-reconciliation.ts
+  h_4b47e9e4a8b456 7,16-17,143-195
+src/orchestration/session/message-disposition.ts
+  h_4b47e9e4a8b456 5-7,12,21,39-40,76
+tests/fixtures/cli-startup-imports.ts
+  h_4b47e9e4a8b456 2-3,19-28,35-40,42,47,49,53,56
+tests/fixtures/runtime-supervisor-fixtures.ts
+  h_4b47e9e4a8b456 274
+tests/unit/orchestration/agent-runtime/subagent/_fixtures.ts
+  h_4b47e9e4a8b456 423-426
+tests/unit/orchestration/app-service/_frontend-projection-fixtures.ts
+  h_4b47e9e4a8b456 146
+tests/unit/orchestration/app-service/_question-hold-fixtures.ts
+  h_4b47e9e4a8b456 1-250
+tests/unit/orchestration/app-service/project-state/worker/_project-state-recovery-fixture.ts
+  h_4b47e9e4a8b456 1-45
+tests/unit/orchestration/app-service/project-state/worker/project-state-question-recovery.test.ts
+  h_4b47e9e4a8b456 1-48
+tests/unit/orchestration/app-service/project-state/worker/project-state-recovery.test.ts
+  h_4b47e9e4a8b456 5,7,26,28
+tests/unit/orchestration/app-service/runtime-supervisor-late-question.test.ts
+  h_4b47e9e4a8b456 1-92
+tests/unit/orchestration/app-service/runtime-supervisor-question-hold-display.test.ts
+  h_4b47e9e4a8b456 1-81
+tests/unit/orchestration/app-service/runtime-supervisor-question-hold.test.ts
+  h_4b47e9e4a8b456 1-554
+tests/unit/orchestration/app-service/runtime-supervisor-reactivation-seed.test.ts
+  h_4b47e9e4a8b456 336-338,359,362,365-372
+tests/unit/orchestration/app-service/supervisor/chat-runner-loader.test.ts
+  h_4b47e9e4a8b456 31
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 46-49,307
+tests/unit/orchestration/chat/chat-controls.test.ts
+  h_4b47e9e4a8b456 64,83,94-97
+tests/unit/orchestration/modules/learning/review/chat-review-recommendation.test.ts
+  h_4b47e9e4a8b456 55,79,89,92,100,202-222
+tests/unit/orchestration/modules/subscription-usage/usage-protocol.test.ts
+  h_4b47e9e4a8b456 100,112
+tests/unit/orchestration/session-store/session-store.test.ts
+  h_4b47e9e4a8b456 43
+tests/unit/orchestration/session/question-suspended-turn.test.ts
+  h_4b47e9e4a8b456 6,151-154
+tests/unit/tui/hooks/state/shell-state-harness.ts
+  h_4b47e9e4a8b456 106
+tests/unit/tui/usage-fixtures.ts
+  h_4b47e9e4a8b456 11
+webview/src/modules/subscription-usage/usage-format.test.ts
+  h_4b47e9e4a8b456 37,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8ca2ee91e77e4d06c7291c785bc9b8e23b32fc68",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
