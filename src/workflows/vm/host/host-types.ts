@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedAppendResult, GuardedEventStoreAppend } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedAppendResult, GuardedEventStoreAppend } from "../../../infra/substrate/store/event-store-types.js"
 import type { WorkflowView } from "../../view/types.js"
 import type { WorkflowContextStore } from "../../context-bundle/context-store.js"
 import type { AddressedAddendum, RequestAddendumMessage } from "../../context-bundle/context-facts.js"

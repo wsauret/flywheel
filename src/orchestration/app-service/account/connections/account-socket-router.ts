@@ -1,6 +1,6 @@
 import { Redacted, type Schema } from "effect"
 import { join } from "node:path"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { startRefusalOf } from "../../../../protocol/runtime/serve-handshake.js"
 import { startupPhase, type StartupReached } from "../../../../protocol/runtime/startup-steps.js"
 import {

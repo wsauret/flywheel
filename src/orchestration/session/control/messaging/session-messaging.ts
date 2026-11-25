@@ -1,7 +1,7 @@
-import type { SessionInputProducer } from "../../../../infra/chat-input.js"
+import type { SessionInputProducer } from "../../../../infra/substrate/events/chat-input.js"
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
 import { coalesceRepeats } from "../../../../infra/diagnostics/repeat-coalescer.js"
-import type { SessionRelation } from "../../../../infra/chat-input-schema.js"
+import type { SessionRelation } from "../../../../infra/substrate/events/chat-input-schema.js"
 import { queuedUserInputKey } from "../../conversation/queued-user-inputs.js"
 import { liveSessionControls, liveWorkflowControls } from "../live-session-control.js"
 import { listState, messageDisposition, type DeliveryOutcome, type SessionListState } from "../../message-disposition.js"
@@ -13,7 +13,7 @@ import { subagentRunCut } from "../child-continuation.js"
 import { installedChildSessionHistory } from "../module-session-operations.js"
 import type { ChildSessionControl } from "./child-session-control.js"
 import { sessionDisplayName, type ReplayedSession, type Session } from "../../metadata/schemas.js"
-import type { WorkflowMembership } from "../../../../infra/session-workflow-membership.js"
+import type { WorkflowMembership } from "../../../../infra/definitions/workflow/session-workflow-membership.js"
 import { resolveWorkflowDeliveryAddress } from "../../../workflow-host/workflow-addressing.js"
 import type { WorkflowMessageAddress } from "../../../../workflows/context-bundle/context-facts.js"
 import { deliverSessionInput, deliverWorkflowInput, readRecipientState, readWorkflowRecipientState, readWorkflowRecipientStates, type SessionInputDeliveryDeps } from "./session-input-delivery.js"
@@ -27,7 +27,7 @@ type Addressed = { readonly to: string; readonly name?: string }
  *  that the call opened a reply wait. */
 export type MessageSessionResult = Addressed & (
   | { readonly status: "delivered"; readonly waiting: boolean }
-  | { readonly status: "held"; readonly reason: "interrupted" | "no_reader" | "wake_limit"; readonly waiting: boolean }
+  | { readonly status: "held"; readonly reason: "interrupted" | "no_reader" | "wake_limit" | "awaiting_answer"; readonly waiting: boolean }
   | { readonly status: "refused"; readonly reason: "not_found" | "deleted" | "settled" | "handing_off" | "self" | "waits_on_you" | "not_parent_or_child" | "duplicate" }
   /** `targets` named no item or agent that reads the message now. `detail`
    *  says why and lists every valid target with its state. */

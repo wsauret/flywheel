@@ -47,18 +47,18 @@
  * failures stop the request.
  */
 
-import { abortableSleep } from "../../../../infra/abort.js";
-import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type LoginWaitAnswer } from "../../../../infra/llm/access/access-provider.js";
-import type { ModelFamily } from "../../../../infra/llm/models/model-family.js";
-import { errorMessage } from "../../../../infra/error-message.js";
+import { abortableSleep } from "../../../../infra/timing/abort.js";
+import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type LoginWaitAnswer } from "../../../../infra/providers/llm/access/access-provider.js";
+import type { ModelFamily } from "../../../../infra/providers/llm/models/model-family.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErrorDetail, waitingClears, type CapacityHold, type CapacityReset, type ProviderUnavailableCause } from "../../../../infra/llm/errors/provider-error-copy.js";
-import { summarizeProviderError } from "../../../../infra/llm/errors/provider-error-diagnostic.js";
-import { providerOptionsUnservableReason, type ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";
+import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErrorDetail, waitingClears, type CapacityHold, type CapacityReset, type ProviderUnavailableCause } from "../../../../infra/providers/llm/errors/provider-error-copy.js";
+import { summarizeProviderError } from "../../../../infra/providers/llm/errors/provider-error-diagnostic.js";
+import { providerOptionsUnservableReason, type ProviderRequestOptions } from "../../../../infra/providers/llm/access/provider-options.js";
 import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError, SUBSCRIPTION_PAID_REVIEW_DETAIL } from "../errors.js";
-import type { ModelRefusal } from "../../../../infra/auth/provider-models/provider-model-catalog-store.js";
+import type { ModelRefusal } from "../../../../infra/providers/auth/provider-models/provider-model-catalog-store.js";
 import { ThinkingStallError } from "../stream/thinking-stall.js";
-import type { AuthStoreCondition } from "../../../../infra/auth/store/auth-store.js";
+import type { AuthStoreCondition } from "../../../../infra/providers/auth/store/auth-store.js";
 import { isFailoverFailure, isProviderAttributedFailure, ProviderAttemptFailure, type FailoverFailure, type ProviderFailure } from "../stream/provider-failure.js";
 import { SAFE_RECHECK_MS } from "./provider-availability.js";
 import type { ProviderAvailability, QuotaExhaustion, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
@@ -75,7 +75,7 @@ import type {
 
 } from "../types.js";
 import type { ProviderAffordabilityCapability } from "./provider-affordability.js";
-import { accessProviderAccountKey } from "../../../../infra/auth/provider-account.js";
+import { accessProviderAccountKey } from "../../../../infra/providers/auth/provider-account.js";
 
 
 export interface ProviderChainDeps {

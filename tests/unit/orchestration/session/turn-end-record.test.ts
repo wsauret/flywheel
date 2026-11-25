@@ -18,7 +18,7 @@ import {
 } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js"
 import { toolResultMessages } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js"
-import { TOOL_OUTCOME_VALUES } from "../../../../src/infra/runtime-facts/tool-outcome.js"
+import { TOOL_OUTCOME_VALUES } from "../../../../src/infra/substrate/runtime-facts/tool-outcome.js"
 import { DEFAULT_WAIT_SECONDS } from "../../../../src/orchestration/agent-runtime/tools/sessions/process.js"
 import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/loop/reply-nudge.js"
 

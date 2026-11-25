@@ -16,11 +16,11 @@
  */
 import { LIVE_AUTH_PROFILE_UNSET, liveAuthProfile } from "../../../scripts/claude-engine-release.js";
 import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../../../src/orchestration/app-service/auth/models/eligibility-preparation.js";
-import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-store.js";
-import { normalizeAuthProfile } from "../../../src/infra/auth/auth-profile-normalization.js";
-import { resolveAuthContext } from "../../../src/infra/auth/auth-context.js";
-import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../src/infra/auth/resolve-key.js";
-import { selectStartupDirectories } from "../../../src/infra/directory-authorities.js";
+import { AuthProfileStore } from "../../../src/infra/providers/auth/store/auth-profile-store.js";
+import { normalizeAuthProfile } from "../../../src/infra/providers/auth/auth-profile-normalization.js";
+import { resolveAuthContext } from "../../../src/infra/providers/auth/auth-context.js";
+import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../src/infra/providers/auth/resolve-key.js";
+import { selectStartupDirectories } from "../../../src/infra/platform/files/directory-authorities.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand, type LauncherScope } from "../../../src/infra/process-supervisor.js";
 import { createAgentRuntime } from "../../../src/orchestration/agent-runtime/runner/factory.js";
 import { AuthProfileManager } from "../../../src/orchestration/auth/auth-profile-manager.js";

@@ -4,11 +4,11 @@
  */
 import { describe, test, expect } from "bun:test";
 
-import { OutputProjector } from "../../../../src/infra/output/projector/output-projector";
-import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector";
-import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory";
-import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
-import type { ContentBlock } from "../../../../src/infra/runtime-facts/runtime-content-blocks";
+import { OutputProjector } from "../../../../src/infra/substrate/output/projector/output-projector";
+import { RuntimeEventProjector } from "../../../../src/infra/substrate/output/projector/runtime-event-projector";
+import { createRuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-factory";
+import type { RuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-types";
+import type { ContentBlock } from "../../../../src/infra/substrate/runtime-facts/runtime-content-blocks";
 
 // ---------------------------------------------------------------------------
 // P2-6: O(n²) syntax highlighting → incremental

@@ -1,6 +1,6 @@
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { createOrderedLane } from "../../../infra/ordered-lane.js"
+import { createOrderedLane } from "../../../infra/async/ordered-lane.js"
 import type { FrontendEvent } from "../../../protocol/runtime/app-service-types.js"
 import { createRuntimeUiPatchSequencer, type RuntimeReadAnchor } from "./runtime-ui-patch-sequencer.js"
 import { cursorKey, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"

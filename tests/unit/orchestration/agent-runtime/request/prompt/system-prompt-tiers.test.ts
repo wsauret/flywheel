@@ -5,11 +5,11 @@ import { withSessionNotes } from "../../context/_loop-fixtures.js";
 import { chatCompletionsRequestBody } from "../../llm/_wire-fixtures.js";
 import { toAnthropicMessagesRequest } from "../../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ModelInfo } from "../../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../../src/infra/providers/llm/models/models.js";
 import { resolveOpenAISystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
 import type { AgentPurpose } from "../../../../../../src/orchestration/agent-runtime/types.js";
 import { promptOptions, type ToolPromptFields } from "../../../../../helpers/prompt-capabilities.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../../src/infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../../src/infra/definitions/agent-assets/system-prompt.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../../../helpers/directories.js";
 
 const realm = testDirectories(fileTemporaryDirectory("system-prompt-tiers-"));

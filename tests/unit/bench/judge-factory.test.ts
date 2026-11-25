@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { createJudge } from "../../../bench/shared/runtime.js";
-import { createRuntimeEvent } from "../../../src/infra/runtime-facts/runtime-event-factory.js";
+import { createRuntimeEvent } from "../../../src/infra/substrate/runtime-facts/runtime-event-factory.js";
 import type { AgentOptions } from "../../../src/orchestration/agent-runtime/types.js";
 import { roleCapture } from "../../helpers/role-capture.js";
 

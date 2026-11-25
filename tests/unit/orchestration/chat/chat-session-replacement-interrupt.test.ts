@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { EventBus } from "../../../../src/infra/event-bus"
-import type { PausedBy } from "../../../../src/infra/output-blocks"
+import { EventBus } from "../../../../src/infra/substrate/events/event-bus"
+import type { PausedBy } from "../../../../src/infra/substrate/events/output-blocks"
 import { createChatSession } from "../../../../src/orchestration/chat/session"
 import type { ChatSessionDeps } from "../../../../src/orchestration/chat/types"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types"

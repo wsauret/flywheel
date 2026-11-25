@@ -1,18 +1,11 @@
-import type { ChatInput } from "../../../infra/chat-input.js"
-import { messageSenderOf } from "../../../infra/output-blocks.js"
+import type { ChatInput } from "../../../infra/substrate/events/chat-input.js"
+import { messageSenderOf } from "../../../infra/substrate/events/output-blocks.js"
 import type { AgentHost, AgentHostTurnLease } from "../../agent-runtime/runner/turn-host/types.js"
 import type { OutputSession } from "../../session-store/output-session.js"
 import { heldAtWakeLimit, type DeliveryOutcome, type LiveRecipientState } from "../../session/message-disposition.js"
 import type { ChatTurnMailbox } from "../turn-mailbox.js"
 import type { ChatWaitState } from "../runner-wait-state.js"
-
-/** One landing of input while no turn runs: whether it commits, and whether
- *  it starts its own turn. The chat runner owns the turn-slot sequence. */
-export interface IdleLanding<T> {
-  admit(waitsForPerson: boolean): { readonly result: T; readonly landing: "refuse" | "hold" | "wake" }
-  commit(): Promise<string | null>
-  wake(): void
-}
+import type { IdleLanding } from "./chat-idle-landing.js"
 
 /** The parts of a chat runner that a message from another session meets. */
 export interface ChatMessageDeliveryPorts {
@@ -24,6 +17,11 @@ export interface ChatMessageDeliveryPorts {
   readonly wait: Pick<ChatWaitState, "leasedState" | "awaitsPerson" | "undecidedStart">
   landWhileIdle(reservation: AgentHostTurnLease, landing: IdleLanding<DeliveryOutcome>): Promise<DeliveryOutcome>
   commitHeldMessage(input: ChatInput): Promise<string | null>
+  /** Whether a question waits for the person (`holdsForQuestion`). */
+  awaitsAnswer(): Promise<boolean>
+  /** Whether the turn that holds the slot is parked on a question for the
+   *  person, read in the caller's tick. */
+  leasedQuestionWaits(): boolean
   wake(input: ChatInput): void
 }
 
@@ -49,13 +47,20 @@ export function createChatMessageDelivery(ports: ChatMessageDeliveryPorts) {
     return outcome
   }
 
+  /** The state a message meets while a turn holds the slot: a question
+   *  that waits holds it, also under a parked turn (PI-INTERACTION-050). */
+  function leasedState(): LiveRecipientState {
+    return ports.leasedQuestionWaits() ? "awaiting_answer" : ports.wait.leasedState()
+  }
+
   return {
     /** The state a message would meet now, read without taking the turn slot. */
     async messageState(): Promise<LiveRecipientState> {
       for (let pending = ports.wait.undecidedStart(); pending; pending = ports.wait.undecidedStart()) await pending
       if (ports.ended()) return "at_rest"
-      if (ports.host.activeTurnLease) return ports.wait.leasedState()
+      if (ports.host.activeTurnLease) return leasedState()
       if (ports.host.turnState === "active") return "running"
+      if (await ports.awaitsAnswer()) return "awaiting_answer"
       return await ports.wait.awaitsPerson() ? "interrupted" : "idle"
     },
 
@@ -69,7 +74,10 @@ export function createChatMessageDelivery(ports: ChatMessageDeliveryPorts) {
     async deliverHeldMessage(input: ChatInput, decide: (state: LiveRecipientState) => DeliveryOutcome): Promise<DeliveryOutcome> {
       for (let pending = ports.wait.undecidedStart(); pending; pending = ports.wait.undecidedStart()) await pending
       if (ports.ended()) return decide("at_rest")
-      if (ports.host.activeTurnLease) return enqueue(decide(ports.wait.leasedState()), input)
+      if (ports.host.activeTurnLease) return enqueue(decide(leasedState()), input)
+      // Behind a waiting question the message waits in the mailbox, as
+      // behind a parked ask, and its sender is told it is held.
+      if (await ports.awaitsAnswer()) return enqueue(decide("awaiting_answer"), input)
       const reservation = ports.host.reserveTurn()
       if (!reservation) return enqueue(decide("running"), input)
       const outcome = await ports.landWhileIdle(reservation, {

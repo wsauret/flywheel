@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPayload } from "../../../infra/store/event-store-types.js"
-import { normalizeChatInput, type ChatInputLike } from "../../../infra/chat-input.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPayload } from "../../../infra/substrate/store/event-store-types.js"
+import { normalizeChatInput, type ChatInputLike } from "../../../infra/substrate/events/chat-input.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { workflowContextRecordsAddendum } from "../../../workflows/context-bundle/context-projection.js"
 import { ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND } from "./addressed-workflow-messages.js"

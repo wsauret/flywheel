@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { join } from "node:path"
 
-import { runGateHook } from "../../../../../src/infra/antigravity-gate-hook.js"
+import { runGateHook } from "../../../../../src/infra/providers/antigravity-gate-hook.js"
 import { listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../../../src/infra/process/channels/internal-process-channel.js"
 import { socketTemporaryRoot } from "../../../../helpers/directories.js"
 

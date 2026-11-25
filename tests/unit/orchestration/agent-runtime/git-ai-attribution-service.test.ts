@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve as resolvePath } from "node:path"
-import { createLoginShellPath } from "../../../../src/infra/login-shell-path.js"
+import { createLoginShellPath } from "../../../../src/infra/environment/login-shell-path.js"
 import type { OwnedCommandOptions, OwnedCommandResult, OwnedCommandRunner } from "../../../../src/infra/owned-command.js"
 import { createGitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 

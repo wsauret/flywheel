@@ -2,7 +2,7 @@ import type { Transport, TransportSendOptions } from "@modelcontextprotocol/sdk/
 import { JSONRPCMessageSchema, type JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js"
 import type { OwnedProcess } from "../../../infra/supervision/launch/owned-subprocess.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
-import { withDeadline } from "../../../infra/with-deadline.js"
+import { withDeadline } from "../../../infra/timing/with-deadline.js"
 
 const PROCESS_EXIT_GRACE_MS = 250
 const READER_JOIN_DEADLINE_MS = 5_000

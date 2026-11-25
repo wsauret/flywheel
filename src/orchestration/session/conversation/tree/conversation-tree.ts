@@ -1,13 +1,13 @@
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
 import { hasInterruptedWork, interruptedTurnEntryId, interruptedWorkMessage, isRecoveredToolResultEntryId, type InterruptedTurnReason } from "./interrupted-turn-summary.js";
-import { chatTurnEndOf, endsAtTurnEnd, isPlannedCut, questionExchangeOf } from "../turn-end-record.js";
+import { chatTurnEndOf, endsAtTurnEnd, isPlannedCut, isSkippedByWalk, questionExchangeOf } from "../turn-end-record.js";
 import { decodeQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND, queuedInputDrops, queuedInputMessage, type QueuedUserInputCell, type QueuedUserInputCommitResult } from "../queued-user-inputs.js";
 import { decodeQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, queuedBackgroundNotificationDrops, queuedBackgroundNotificationMessage, type QueuedBackgroundNotification } from "../queued-background-notifications.js";
 import { replyWaitRetirements } from "../reply-wait-cells.js";
 import type { ConversationInputCapture, ConversationTreeStorage } from "./conversation-tree-storage.js";
-import { InFlightSwapConflictError, type EventStoreAppend, type GuardedEventStoreAppend, type InFlightWrite } from "../../../../infra/store/event-store-types.js";
-import { runInTaskSlices, type TaskSliceScheduling } from "../../../../infra/task-scheduling.js";
-import { InvariantViolation } from "../../../../infra/invariant.js";
+import { InFlightSwapConflictError, type EventStoreAppend, type GuardedEventStoreAppend, type InFlightWrite } from "../../../../infra/substrate/store/event-store-types.js";
+import { runInTaskSlices, type TaskSliceScheduling } from "../../../../infra/process/task-scheduling.js";
+import { InvariantViolation } from "../../../../infra/guards/invariant.js";
 import type { ConversationTreeProjectionState, ConversationTreeTranscriptEntry } from "../conversation-projection.js";
 import type { BranchSummaryEntry, CompactionEntry, MessageEntry, ConversationEntry } from "../conversation-entry-types.js";
 import { AssistantPrefillSessionContextError, buildCommittedForkMessagesWork, buildSessionContextWork, reconstructRawSessionMessages, type BuildSessionContextOptions, type SessionContext } from "./conversation-tree-context.js";
@@ -212,6 +212,28 @@ export class ConversationTree {
     return branchHasUserMessage(this.storage.openedState());
   }
 
+  /** The entries of the exchange that ends the selected branch, as of open
+   *  or the last read, in branch order: the trailing results and skipped
+   *  records, and the entry before them. No new read; the walk costs the
+   *  exchange's results, never the history. */
+  lastExchange(): readonly ConversationEntry[] {
+    const state = this.storage.openedState();
+    const walked: ConversationEntry[] = [];
+    for (let entry = state.leafId === null ? undefined : state.entriesById[state.leafId]; entry; entry = entry.parentId === null ? undefined : state.entriesById[entry.parentId]) {
+      walked.push(entry);
+      if (!isSkippedByWalk(entry) && !(entry.kind === "message" && entry.message.kind === "toolResult")) break;
+    }
+    return walked.toReversed();
+  }
+
+  /** Whether the selected branch, as of open or the last read, ends at an
+   *  exchange whose `ask_user` call has no result: a question waits for the
+   *  person, and the conversation takes only that exchange's results until
+   *  it settles (ARCH-SESSIONS-050). No new read. */
+  awaitsAnswer(): boolean {
+    return questionExchangeOf(this.lastExchange()) === "waiting";
+  }
+
   /** The selected branch for transcript display, with a notice in place of
    *  each fact this build cannot read. */
   async getTranscript(): Promise<ConversationTreeTranscriptEntry[]> {
@@ -375,7 +397,10 @@ export class ConversationTree {
       }
     }
     // A dead owner leaves its queued input for this record to restore,
-    // whichever of a crash or a person's interrupt ended the process.
+    // whichever of a crash or a person's interrupt ended the process. Input
+    // held behind a waiting question stays in its cell: the question's
+    // result lands first, and its turn takes the input (ARCH-SESSIONS-050).
+    if (this.awaitsAnswer()) return;
     await this.recoverQueuedMessages(options.ownsBackgroundNotification, options.ownsQueuedUserInput);
   }
 
@@ -429,7 +454,7 @@ export class ConversationTree {
     const { key } = notification;
     if (await this.getEntry(key)) return;
     const message = queuedBackgroundNotificationMessage(notification);
-    const outcome = await this.storage.appendEntryIfAbsent(key, (state) => this.createMessageEntries([message], state.leafId, key), queuedMessageDrops([message], this.storage.getWorkflowId()));
+    const outcome = await this.storage.appendEntryIfAbsent(key, (state) => this.createMessageEntries([message], state.leafId, key), queuedMessageDrops([message], this.storage.getWorkflowId()) ?? queuedBackgroundNotificationDrops([key]));
     if (outcome.kind === "notCommitted") throw new Error("ConversationTree.recoverQueuedMessages failed", { cause: outcome.cause });
     this.invalidateCache();
   }

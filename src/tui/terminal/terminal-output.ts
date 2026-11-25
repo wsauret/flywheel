@@ -1,6 +1,6 @@
 import type { CliRenderer, CliRendererConfig } from "@opentui/core"
 import { Writable } from "node:stream"
-import { type ConsoleTextWriter, openWindowsConsoleWriter } from "../../infra/windows-console-output.js"
+import { type ConsoleTextWriter, openWindowsConsoleWriter } from "../../infra/platform/windows-console-output.js"
 
 /** Where the renderer's frames go.
  *

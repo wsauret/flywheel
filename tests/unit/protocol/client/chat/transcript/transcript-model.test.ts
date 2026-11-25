@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../../src/protocol/runtime/app-service-types.js"
-import type { ToolAction } from "../../../../../../src/infra/workflow-types.js"
+import type { ToolAction } from "../../../../../../src/infra/definitions/workflow/workflow-types.js"
 import { foldReadRuns } from "../../../../../../src/protocol/client/chat/transcript/tool-run-category.js"
 import { closesToolStretch, foldTranscript, runEnd, toolActivity, waitsForProcessor, type TranscriptModel } from "../../../../../../src/protocol/client/chat/transcript/transcript-model.js"
 

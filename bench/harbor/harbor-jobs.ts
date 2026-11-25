@@ -10,7 +10,7 @@ import { TRIAL_AUTH_PROFILE, type JsonMap, type ResolvedHarborConfig } from "./h
 export const SNAPSHOT_SECRET = "FLYWHEEL_AUTH_SNAPSHOT";
 /** The agent environment variable that hands the shim the run's profile digest, which it records. */
 const PROFILE_SHA256_ENV = "FLYWHEEL_HARBOR_PROFILE_SHA256";
-/** The host of Flywheel's model metadata catalog (`src/infra/llm/models/models.ts`), which an offline agent phase must also admit. */
+/** The host of Flywheel's model metadata catalog (`src/infra/providers/llm/models/models.ts`), which an offline agent phase must also admit. */
 const MODELS_DEV_HOST = "models.dev";
 /** Harbor Hub refuses a secret value longer than this many characters. */
 export const SECRET_VALUE_LIMIT = 16_384;

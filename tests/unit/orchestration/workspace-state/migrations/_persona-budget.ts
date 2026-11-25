@@ -1,4 +1,4 @@
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js"
 
 /** A bundled persona with the turn cap that the builds before the persona
  *  budget cut shipped, whose persona hashes covered the turn cap. A test that

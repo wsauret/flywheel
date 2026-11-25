@@ -4,7 +4,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { migrateFactVersions, type FactUpgrade } from "../../../../../src/orchestration/workspace-state/migrations/engine.js"
 
 const tmpRoot = path.join(os.tmpdir(), `flywheel-fact-migration-watermark-${process.pid}-${Date.now()}`)

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { loginKeychainPath } from "../../../../../../src/infra/macos-keychain.js";
+import { loginKeychainPath } from "../../../../../../src/infra/platform/macos-keychain.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../../src/infra/owned-command.js";
 import { loginToken } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/login/login-token.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";

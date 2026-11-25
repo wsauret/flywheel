@@ -19,9 +19,9 @@
 
 import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { fsyncDirectory } from "../../../../infra/atomic-write.js";
+import { fsyncDirectory } from "../../../../infra/platform/files/atomic-write.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { writeFileUnder } from "../../../../infra/write-file-under.js";
+import { writeFileUnder } from "../../../../infra/platform/files/write-file-under.js";
 import { packageDigestAt } from "./skill-package-planning.js";
 import { destinationMatchesPlan, outgoingDirOf, planStaleness } from "./skill-mutation-plan.js";
 import { openPendingAudit, type PendingAudit } from "./learning-journal.js";

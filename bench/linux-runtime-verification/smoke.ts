@@ -7,7 +7,7 @@ import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runt
 import { createForegroundBashHoldController } from "../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js"
 import { planToolExposure } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js"
 import type { CapabilityAccess, DispatchedToolContext, RuntimeTool, ToolResult } from "../../src/orchestration/agent-runtime/tools/types.js"
-import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js"
+import { NO_MODULE_RUNTIMES } from "../../src/infra/definitions/modules/module-runtime.js"
 import { captureRuntimeConfigRequest } from "../../src/orchestration/agent-runtime/request/request-config.js"
 import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema/schema.js"
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js"

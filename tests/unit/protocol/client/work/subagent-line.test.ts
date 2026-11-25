@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { AgentGroupBlock } from "../../../../../src/infra/output-blocks.js"
+import type { AgentGroupBlock } from "../../../../../src/infra/substrate/events/output-blocks.js"
 import { subagentHeaderParts, subagentLine } from "../../../../../src/protocol/client/work/subagent-line.js"
 import { childCardStatus, subagentCardControls } from "../../../../../src/protocol/client/work/session-controls.js"
 

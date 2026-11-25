@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 
 import { newTestRunner } from "../../../helpers/agent-runner.js";
 import { testDirectories } from "../../../helpers/directories.js";
-import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types";
+import type { RuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-types";
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types";
 import type { AgentOptionsOverride } from "./_runner-options.js";
-import type { ConnectionState } from "../../../../src/infra/output-blocks";
+import type { ConnectionState } from "../../../../src/infra/substrate/events/output-blocks";
 import type { ModelClient, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types";
 import { asModelClient } from "./_model-client";
 import { pricedUsage } from "../../../helpers/usage-price-fixtures.js";

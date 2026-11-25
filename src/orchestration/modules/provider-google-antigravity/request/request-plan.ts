@@ -1,4 +1,4 @@
-import type { ReasoningEffort } from "../../../../infra/llm/models/models.js";
+import type { ReasoningEffort } from "../../../../infra/providers/llm/models/models.js";
 import type { SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js";
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
 import { renderAppend, renderMessages } from "./history-text.js";

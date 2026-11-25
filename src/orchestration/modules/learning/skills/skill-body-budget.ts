@@ -1,4 +1,4 @@
-import { parseFrontmatter } from "../../../../infra/yaml/frontmatter.js";
+import { parseFrontmatter } from "../../../../infra/parsing/yaml/frontmatter.js";
 import { SKILL_BODY_BUDGET_CHARS, SKILL_BODY_HEADROOM_CHARS, SKILL_FILE } from "../../../../workflows/skills/skill-schema.js";
 import type { SkillMutationPlan, SkillStoreConfig } from "./skill-store-types.js";
 

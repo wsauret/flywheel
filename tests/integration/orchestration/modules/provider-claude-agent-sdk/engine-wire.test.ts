@@ -9,7 +9,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Effect } from "effect";
-import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js";
+import { providerModelInfo } from "../../../../../src/infra/providers/llm/catalog/provider-model-info.js";
 import { prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
 import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/history/runtime-reminders.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";

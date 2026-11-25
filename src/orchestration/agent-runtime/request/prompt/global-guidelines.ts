@@ -1,4 +1,4 @@
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import { SECRET_REPLACEMENT } from "../../../../infra/redact-secrets.js";
 import { refusedCallRule } from "./model-chat-body.js";
 

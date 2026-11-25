@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { authDir } from "../../../../src/infra/paths.js"
+import { authDir } from "../../../../src/infra/platform/files/paths.js"
 import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/auth/models/eligibility-preparation.js"
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"

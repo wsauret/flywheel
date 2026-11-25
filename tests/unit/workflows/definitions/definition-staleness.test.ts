@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { deriveDefinitionStalenessReport } from "../../../../src/workflows/definitions/override-staleness.js"
-import { resolveDefinitionCandidates } from "../../../../src/infra/definition-resolution.js"
+import { resolveDefinitionCandidates } from "../../../../src/infra/definitions/definition-resolution.js"
 
 describe("definition override staleness", () => {
   test("derives every status from base and current default identities", () => {

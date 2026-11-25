@@ -7,7 +7,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, wri
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { setContainedDirectoryBackendForTests } from "../../../../src/infra/descriptor-directory.js";
+import { setContainedDirectoryBackendForTests } from "../../../../src/infra/platform/files/descriptor-directory.js";
 import { Log } from "../../../../src/infra/diagnostics/log.js";
 import type { OwnedProcess } from "../../../../src/infra/supervision/launch/owned-subprocess.js";
 import type { LauncherScope, OwnershipClosure } from "../../../../src/infra/process-supervisor.js";

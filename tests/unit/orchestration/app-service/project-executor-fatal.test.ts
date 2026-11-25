@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, jest, spyOn, test } from "bun:test"
 
-import * as crashPolicy from "../../../../src/infra/crash-policy.js"
+import * as crashPolicy from "../../../../src/infra/process/crash-policy.js"
 import * as internalProcessChannel from "../../../../src/infra/process/channels/internal-process-channel.js"
 import { Log } from "../../../../src/infra/diagnostics/log.js"
 import * as processMemory from "../../../../src/infra/process/kernel/process-memory.js"

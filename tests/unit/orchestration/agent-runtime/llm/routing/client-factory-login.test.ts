@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { testEligibility, testProviderSessionLifetime } from "../../../../../helpers/provider-authority.js";
 import { join } from "node:path";
-import { authDir } from "../../../../../../src/infra/paths.js";
-import type { AccessProviderCandidate } from "../../../../../../src/infra/llm/access/access-provider.js";
+import { authDir } from "../../../../../../src/infra/platform/files/paths.js";
+import type { AccessProviderCandidate } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
 import { createAgentRuntime } from "../../../../../../src/orchestration/agent-runtime/runner/factory.js";
 import { captureAccountConnection, providerAdapter, type AccessProviderBuild } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { normalizeProviderAttemptFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";

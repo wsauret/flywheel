@@ -6,7 +6,7 @@ import { prepareWorkspaceState } from "../../../src/orchestration/workspace-stat
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
-import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../src/infra/platform/files/paths.js"
 import { WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state/workspace-state-retirement.js"
 import { manifestPath } from "../../../src/orchestration/modules/learning/skills/skill-operation-manifest.js"
 import { ownedSkillStoreDirs } from "../../../src/workflows/skills/skills.js"

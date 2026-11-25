@@ -12,7 +12,7 @@ export const SNAPSHOT_SOURCE_FILES = new Map([
   ["crates/tokenizer/tokenizer-prebuilt.json", "{}\n"],
   ["crates/tokenizer/flywheel-tokenizer.wasm.zst", "zst"],
   ["src/cli/index.ts", "export {}\n"],
-  ["src/infra/cli-subprocess.ts", "export {}\n"],
+  ["src/infra/platform/cli-subprocess.ts", "export {}\n"],
   ["scripts/dev.ts", "export {}\n"],
   ["webview/build.ts", "export {}\n"],
   ["webview/package.json", "{}\n"],

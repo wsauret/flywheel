@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type InputSource, messageInput } from "../../../../../src/infra/agent-loop-events.js";
+import { type InputSource, messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import type { ConversationMessage, ModelClient, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient } from "../_model-client.js";

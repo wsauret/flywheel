@@ -2,8 +2,8 @@ import * as fs from "node:fs";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import type { Node } from "web-tree-sitter";
-import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js";
-import type { AgentDefinition } from "../src/infra/agent-definition.js";
+import { loadTreeSitterParser } from "../src/infra/parsing/tree-sitter-parser.js";
+import type { AgentDefinition } from "../src/infra/definitions/agent-definition.js";
 import { agentTypeOf, createDefinitionAvailability } from "../src/orchestration/app-service/definitions/definition-availability.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
 import { decodeModuleState } from "../src/orchestration/config/module-descriptor.js";
@@ -288,8 +288,8 @@ export function findCapabilityTableDrift(repoRoot: string, table: CapabilityPhra
 }
 
 /** Bundled markdown and YAML that a model reads, and the TypeScript roots whose literals hold model text. */
-const MARKDOWN_ROOTS = ["src/agent-skills", "src/workflows/agents/personas", "src/infra/agent-assets", "src/orchestration/modules"];
-const TEXT_ROOTS = ["src/orchestration/agent-runtime", "src/infra/agent-assets", "src/workflows/output-contract", "src/workflows/agents", "src/orchestration/modules"];
+const MARKDOWN_ROOTS = ["src/agent-skills", "src/workflows/agents/personas", "src/infra/definitions/agent-assets", "src/orchestration/modules"];
+const TEXT_ROOTS = ["src/orchestration/agent-runtime", "src/infra/definitions/agent-assets", "src/workflows/output-contract", "src/workflows/agents", "src/orchestration/modules"];
 const TEXT_FILES = /^src\/workflows\/skill-[^/]+\.ts$/;
 const MARKDOWN_FILE = /\.(?:md|ya?ml)$/;
 const MODULE_DEFINITIONS = /^src\/orchestration\/modules\/[^/]+\/definitions\//;

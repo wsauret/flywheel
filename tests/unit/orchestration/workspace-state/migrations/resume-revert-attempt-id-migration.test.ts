@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { Database } from "bun:sqlite"
 import * as path from "node:path"
-import type { EventPayload } from "../../../../../src/infra/store/event-store-types.js"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import type { EventPayload } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { migrateResumeRevertAttemptId } from "../../../../../src/orchestration/modules/workflows/migrations/resume-revert-attempt-id.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 

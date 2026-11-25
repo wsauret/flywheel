@@ -1,5 +1,5 @@
-import type { ProjectDirectories } from "../../src/infra/directory-authorities.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../src/infra/store/event-store-types.js"
+import type { ProjectDirectories } from "../../src/infra/platform/files/directory-authorities.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../src/infra/substrate/store/event-store-types.js"
 import { projectStateComposition } from "../../src/orchestration/app-service/project-state/worker/project-state-recovery.js"
 
 type ProjectState = ReturnType<typeof openProjectState>

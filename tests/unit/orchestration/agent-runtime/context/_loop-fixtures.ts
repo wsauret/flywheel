@@ -1,7 +1,7 @@
 import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ModelClient, type ProviderStreamEvent as StreamEvent, type ServingAttempt, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ToolPromptFields } from "../../../../helpers/prompt-capabilities.js";
 import { fixedRequestToolSurface, RequestToolMap, testBaseTools, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
-import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../../src/infra/definitions/capability-text.js";
 import type { ConversationCheckpoint } from "../../../../../src/orchestration/session/persistence/conversation-checkpoint-facts.js";
 import { createAgentLoopCompactionState } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-compaction-state.js";
 import { createActiveRequestContext } from "../../../../../src/orchestration/agent-runtime/request/active-request-context.js";

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll } from "bun:test";
-import { setContainedDirectoryBackendForTests } from "../../src/infra/descriptor-directory.js";
-import { createWin32ContainedDirectoryBackend, type Win32ContainedDirectoryOperations } from "../../src/infra/descriptor-directory/descriptor-directory-win32.js";
+import { setContainedDirectoryBackendForTests } from "../../src/infra/platform/files/descriptor-directory.js";
+import { createWin32ContainedDirectoryBackend, type Win32ContainedDirectoryOperations } from "../../src/infra/platform/files/descriptor-directory/descriptor-directory-win32.js";
 
 /** Run the calling file or `describe` block on the path-held Windows
  *  contained-directory backend, which works on every host, so Windows

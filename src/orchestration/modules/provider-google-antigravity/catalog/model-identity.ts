@@ -1,6 +1,6 @@
-import { QUALIFIED_ANTIGRAVITY_VERSION } from "../../../../infra/distribution/antigravity-engine-pin.js"
-import { canonicalModelId } from "../../../../infra/model-id.js"
-import type { CatalogWireIdentity } from "../../../../infra/llm/catalog/model-catalog-resolution.js"
+import { QUALIFIED_ANTIGRAVITY_VERSION } from "../../../../infra/update/distribution/antigravity-engine-pin.js"
+import { canonicalModelId } from "../../../../infra/providers/model-id.js"
+import type { CatalogWireIdentity } from "../../../../infra/providers/llm/catalog/model-catalog-resolution.js"
 
 /**
  * The Flywheel model that an engine family serves, by the agy version it was observed on, where the family's name

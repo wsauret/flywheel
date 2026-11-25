@@ -12,7 +12,7 @@ import { afterAll, beforeEach, expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { globalConfigFile } from "../../../../src/infra/paths.js";
+import { globalConfigFile } from "../../../../src/infra/platform/files/paths.js";
 import type { GuardianControl } from "../../../../src/infra/process-supervisor.js";
 import { ADMISSION_CLOSED_ERROR } from "../../../../src/orchestration/app-service/mutations/mutation-admission.js";
 import { createAccountUpdates } from "../../../../src/orchestration/update/account-updates.js";

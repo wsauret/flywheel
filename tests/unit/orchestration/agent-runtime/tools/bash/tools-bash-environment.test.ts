@@ -2,13 +2,13 @@ import { beforeAll, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import { loadBashParser } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import * as path from "node:path";
-import { AGENT_SESSION_ENV } from "../../../../../../src/infra/cli-subprocess.js";
+import { AGENT_SESSION_ENV } from "../../../../../../src/infra/platform/cli-subprocess.js";
 
 import { createBashDefinition } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import { bashExecution, makeMockOps, ownedSpawnProbe } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext } from "../_fixtures.js";
 import { prepareMutationGitEnvironment } from "../../../../../../src/orchestration/agent-runtime/tools/bash/git/bash-git-wrapper.js";
-import * as nativeAssets from "../../../../../../src/infra/native-assets.js";
+import * as nativeAssets from "../../../../../../src/infra/platform/native-assets.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import type { BashOperations } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 

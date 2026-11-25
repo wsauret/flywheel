@@ -1,4 +1,4 @@
-import type { CapabilityCheck } from "../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../infra/definitions/capability-text.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import type { ResolvedAgent } from "../definitions/agent-resolution.js";
 import type { SkillRegistryRevision } from "../skills/skill-schema.js";

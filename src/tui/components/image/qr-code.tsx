@@ -3,7 +3,7 @@
 import { RGBA, StyledText, bg as stBg, fg as stFg } from "@opentui/core"
 import type { TextRenderable } from "@opentui/core"
 import { createEffect, createMemo, For } from "solid-js"
-import { qrCodeRows } from "../../../infra/qr-code.js"
+import { qrCodeRows } from "../../../infra/substrate/output/text/qr-code.js"
 
 /** A QR code as terminal text, two module rows per text row through the
  *  half-block glyphs, with a one-module quiet zone.

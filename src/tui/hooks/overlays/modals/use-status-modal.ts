@@ -1,6 +1,6 @@
 import type { Accessor, JSX } from "solid-js"
 import { createSignal } from "solid-js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { formatCostSplit, formatTokens } from "../../../../protocol/client/format.js"
 import { describeUpdateStatus } from "../../../../protocol/client/runtime/copy/update-status-copy.js"
 import type { BudgetView } from "../../../../protocol/session/budget-protocol-types.js"

@@ -1,5 +1,5 @@
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
-import type { Effort } from "../../../infra/workflow-types.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
+import type { Effort } from "../../../infra/definitions/workflow/workflow-types.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 import type { RankedModelTier } from "./model-tiers.js";
 import { canonicalRoleId } from "../retired-config-names.js";

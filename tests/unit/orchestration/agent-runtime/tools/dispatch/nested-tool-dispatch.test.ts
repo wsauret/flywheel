@@ -1,12 +1,12 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import * as treeSitter from "../../../../../../src/infra/tree-sitter-parser.js";
+import * as treeSitter from "../../../../../../src/infra/parsing/tree-sitter-parser.js";
 import { interceptBashCommand } from "../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-command-policy.js";
 import { Effect } from "effect";
 import { createNestedToolDispatchBatch, createNestedToolFactPublisher, type NestedToolFactPublisher } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";
 import type { DispatchedToolContext, RuntimeTool, ToolResult } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
-import type { EventPayload, StoredFact } from "../../../../../../src/infra/store/event-store-types.js";
+import type { EventPayload, StoredFact } from "../../../../../../src/infra/substrate/store/event-store-types.js";
 import { RequestToolMap, requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { SLOW_UNIT_BUDGET_MS } from "../../../../../../src/infra/diagnostics/event-loop-lag.js";
 import { Log } from "../../../../../../src/infra/diagnostics/log.js";

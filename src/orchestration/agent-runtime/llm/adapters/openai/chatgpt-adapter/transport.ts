@@ -15,8 +15,8 @@
  */
 
 import type { ResponseCreateParamsStreaming, ResponseInput, ResponseStreamEvent } from "openai/resources/responses/responses.js";
-import type { StoredTokens } from "../../../../../../infra/auth/openai/openai-auth-types.js";
-import { isAbortError } from "../../../../../../infra/abort.js";
+import type { StoredTokens } from "../../../../../../infra/providers/auth/openai/openai-auth-types.js";
+import { isAbortError } from "../../../../../../infra/timing/abort.js";
 import { Log } from "../../../../../../infra/diagnostics/log.js";
 import { openAISessionAffinityHeaders } from "../openai-prompt-cache.js";
 import type { ChatGPTTokenAccessor } from "../openai-chatgpt.js";

@@ -1,5 +1,5 @@
-import { computeBackoffMs, type BackoffOptions } from "../../../../infra/backoff.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { computeBackoffMs, type BackoffOptions } from "../../../../infra/timing/backoff.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import type { OutputWindowSnapshot, TranscriptUnavailable } from "../../../transcript/transcript-protocol-types.js"
 import { lostWithLane } from "../../runtime/connection-failures.js"
 

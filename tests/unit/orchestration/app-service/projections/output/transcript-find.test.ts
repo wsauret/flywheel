@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { AnyBlock } from "../../../../../../src/infra/output-blocks.js"
+import type { AnyBlock } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import { countFindMatches, findInTranscript } from "../../../../../../src/orchestration/app-service/projections/output/transcript-find.js"
 import { indexOutputBlocks } from "../../../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import type { TranscriptFindRequest } from "../../../../../../src/protocol/transcript/transcript-protocol-types.js"

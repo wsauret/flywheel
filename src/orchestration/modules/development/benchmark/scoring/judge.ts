@@ -1,10 +1,10 @@
-import type { RuntimeEvent } from "../../../../../infra/runtime-facts/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import { failureTerminal, type AgentFactory, type AgentRunTerminal, type RuntimeToolSurfaces } from "../../../../agent-runtime/types.js";
 import { createBenchmarkAccounting } from "../accounting/accounting.js";
 import { invokeBenchmarkAgent } from "../execution/invocation.js";
 import type { JudgeScoreIdentity, JudgeTerminal } from "./run-store.js";
 import type { BenchmarkAccounting } from "../accounting/evidence.js";
-import { buildResearchPairJudgePrompt } from "../../../../../infra/benchmark-rubrics.js";
+import { buildResearchPairJudgePrompt } from "./benchmark-rubrics.js";
 import type { CaptureProviderConnection } from "../../../../agent-runtime/request/model-runtime-capture.js";
 import { resolveSessionRoles } from "../../../../config/models/session-role-resolver.js";
 import type { ResolvedRole } from "../../../../config/roles.js";

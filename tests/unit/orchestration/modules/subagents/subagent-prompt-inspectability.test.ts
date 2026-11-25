@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
 import type {
   LLMClient,

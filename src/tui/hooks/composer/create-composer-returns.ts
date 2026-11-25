@@ -1,7 +1,7 @@
 import { createComposerReturns } from "../../../protocol/client/chat/composer-returns.js"
 import type { AttachedRuntimeClient, SessionRow } from "../../../protocol/runtime/app-service-types.js"
 import type { ChatSubmissions } from "../../../protocol/client/chat/chat-submissions.js"
-import type { ChatInputLike } from "../../../infra/chat-input.js"
+import type { ChatInputLike } from "../../../infra/substrate/events/chat-input.js"
 import type { ComposerHandle } from "../../components/composer/composer-types.js"
 import { mergeInputIntoDraft, type DraftCache } from "../../components/composer/create-draft-cache.js"
 import { onCleanup } from "solid-js"

@@ -24,9 +24,9 @@ import {
   type ToolConfig,
 } from "@google/genai";
 import { Redacted } from "effect";
-import { computeUsagePrice } from "../../../../../infra/llm/models/llm-helpers.js";
-import { providerRequestHeaders } from "../../../../../infra/llm/provider-request-identity.js";
-import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
+import { computeUsagePrice } from "../../../../../infra/providers/llm/models/llm-helpers.js";
+import { providerRequestHeaders } from "../../../../../infra/providers/llm/provider-request-identity.js";
+import type { ModelInfo, ReasoningEffort } from "../../../../../infra/providers/llm/models/models.js";
 import { ContentRefusedError, LlmStreamError, OutputLengthExceededError } from "../../errors.js";
 import { classifyGoogleError } from "./google-errors.js";
 import { GOOGLE_CACHE_RATES } from "../../provider-description.js";

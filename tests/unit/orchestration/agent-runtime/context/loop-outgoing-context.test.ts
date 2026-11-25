@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
-import { compactInput } from "../../../../../src/infra/agent-loop-events.js";
+import { compactInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { estimateConversationTokens, tokenCountingPolicy } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import { FUNCTION_TOOL_PRESENTATION, presentToolHistory, type ConversationMessage, type ProviderStreamEvent, type ServingAttempt, type StreamOptions, type StreamEvent, type ToolPresentation } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -10,7 +10,7 @@ import { makeCaptureClient, withSessionNotes } from "./_loop-fixtures.js";
 import { createStaleToolResultMasker } from "../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
 import { createActiveRequestContext } from "../../../../../src/orchestration/agent-runtime/request/active-request-context.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
-import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.js";
+import { prepareLocalTokenizer } from "../../../../../src/infra/providers/local-tokenizer.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 
 /** A provider that names Flywheel's tools under an MCP namespace, as the Agent SDK bridge does. */

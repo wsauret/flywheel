@@ -1,4 +1,4 @@
-import { isRecord } from "../../../infra/record.js"
+import { isRecord } from "../../../infra/guards/record.js"
 import { classifyRuntimeUiPatch, cursorKey, type RuntimeCursorIdentity, type RuntimeInvalidationReason, type RuntimePatchClassification, type RuntimePosition, type RuntimeUiPatch } from "../../runtime/runtime-ui-protocol-types.js"
 import { isRuntimeInvalidationPayload, isGlobalRuntimeInvalidation } from "../../rpc/runtime-invalidation.js"
 import { runtimeDeliveryPolicy } from "../../rpc/runtime-delivery-policy.js"

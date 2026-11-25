@@ -1,19 +1,19 @@
-import { createRuntimeEvent } from "../../../infra/runtime-facts/runtime-event-factory.js";
-import { redactDurableToolInput } from "../../../infra/runtime-facts/durable-tool-input.js";
+import { createRuntimeEvent } from "../../../infra/substrate/runtime-facts/runtime-event-factory.js";
+import { redactDurableToolInput } from "../../../infra/substrate/runtime-facts/durable-tool-input.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
-import type { ContentBlock } from "../../../infra/runtime-facts/runtime-content-blocks.js";
-import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
-import type { BackgroundCommandRecord } from "../../../infra/runtime-facts/runtime-fact-types.js";
-import type { RuntimeEvent, UsageData } from "../../../infra/runtime-facts/runtime-event-types.js";
+import type { ContentBlock } from "../../../infra/substrate/runtime-facts/runtime-content-blocks.js";
+import type { MutationEvidence } from "../../../infra/substrate/file-mutations/mutation-evidence.js";
+import type { BackgroundCommandRecord } from "../../../infra/substrate/runtime-facts/runtime-fact-types.js";
+import type { RuntimeEvent, UsageData } from "../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import type { LlmToolOutputPart } from "../llm/messages.js";
-import { toolOutcomeToProviderIsError, type ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js";
+import { toolOutcomeToProviderIsError, type ToolOutcome } from "../../../infra/substrate/runtime-facts/tool-outcome.js";
 import type { RuntimeToolExecution } from "../tools/types.js";
-import { probeToolRenderPhase } from "../../../infra/render-probe.js";
-import { sanitizeExternalText } from "../../../infra/control-characters.js";
-import type { ChatInput } from "../../../infra/chat-input.js";
+import { probeToolRenderPhase } from "../../../infra/substrate/output/render-probe.js";
+import { sanitizeExternalText } from "../../../infra/substrate/output/control-characters.js";
+import type { ChatInput } from "../../../infra/substrate/events/chat-input.js";
 import type { ContentBlock as CanonicalContentBlock } from "../llm/types.js";
 import { redactBlock } from "../loop/turn/agent-loop-history.js";
-import { isAnthropicNarration } from "../../../infra/llm/anthropic-narration.js";
+import { isAnthropicNarration } from "../../../infra/providers/llm/anthropic-narration.js";
 
 interface ToolInput {
   [key: string]: unknown;

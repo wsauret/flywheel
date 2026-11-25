@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { createModuleChatObservers } from "../../../../../src/orchestration/chat/lifecycle/module-observers.js"
 import { composeFirstPartyModules, type FirstPartyModuleComposition } from "../../../../../src/orchestration/modules.js"
 import type { ModuleChatObserverContext } from "../../../../../src/orchestration/module-seams.js"
-import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js"
+import { createEmit, EventBus } from "../../../../../src/infra/substrate/events/event-bus.js"
 import { createTestChatSessionDeps } from "../_chat-session-agent-runtime-fixtures.js"
 
 function context(): ModuleChatObserverContext {

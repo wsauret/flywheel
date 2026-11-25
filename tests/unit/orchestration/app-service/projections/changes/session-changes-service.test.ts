@@ -12,7 +12,7 @@ import { bashExecution, mutationSpawnProbe, makeMockOps } from "../../../agent-r
 import { capabilityAccessHolding, makeContext } from "../../../agent-runtime/tools/_fixtures.js"
 import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work.js"
 import { emitToolExecutionOutputRecorded } from "../../../../../../src/orchestration/agent-runtime/runner/emit.js"
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../../src/infra/runtime-facts/runtime-fact-mapper.js"
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../../src/infra/substrate/runtime-facts/runtime-fact-mapper.js"
 import { readToolResultDisplayMeta } from "../../../../../../src/orchestration/session/conversation/transcript/tool-result-meta.js"
 import { backgroundLogPath } from "../../../../../helpers/background-log-path.js"
 import { publishFileEdits } from "../../../../../../src/orchestration/agent-runtime/tools/file-edits/file-edit-operation.js"
@@ -24,14 +24,14 @@ import { buildSessionMetadataAppend } from "../../../../../../src/orchestration/
 import type { Session } from "../../../../../../src/orchestration/session/metadata/schemas.js"
 import { readChangeFact } from "../../../../../../src/orchestration/session/metadata/catalog/session-change-sources.js"
 import { getSessionChangeReview } from "../../../../../../src/orchestration/session/metadata/catalog/session-change-review.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type GuardedEventStoreAppend } from "../../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type GuardedEventStoreAppend } from "../../../../../../src/infra/substrate/store/event-store-types.js"
 import { withStore } from "../../../session/file-mutation-recovery-fixture.js"
 import { fixture as changeReviewFixture } from "../../../session/_session-change-fixtures.js"
-import { buildMutationDiff } from "../../../../../../src/infra/mutation-diff.js"
-import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js"
+import { buildMutationDiff } from "../../../../../../src/infra/substrate/file-mutations/mutation-diff.js"
+import { readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
 import { createMutationEvidenceService } from "../../../../../../src/orchestration/app-service/projections/changes/mutation-evidence-service.js"
 import { Database } from "bun:sqlite"
-import { resolveEventStoreDbFile } from "../../../../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../../../../src/infra/platform/files/paths.js"
 
 type Fixture = Parameters<Parameters<typeof withStore>[0]>[0]
 const queryRpc = RuntimeProtocolRpc.requests.get("RuntimeQuery")!

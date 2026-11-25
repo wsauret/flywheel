@@ -21,7 +21,7 @@ import {
   type Procfs,
   type TerminationDecision,
 } from "../../../../../src/infra/process/container/process-container.js"
-import { trustedProbeLaunch } from "../../../../../src/infra/trusted-probe-launch.js"
+import { trustedProbeLaunch } from "../../../../../src/infra/platform/trusted-probe-launch.js"
 import type { DarwinBootSession, DarwinProcessApi, DarwinProcessQuery } from "../../../../../src/infra/process/kernel/darwin-process-api.js"
 import type { WindowsProcessApi, WindowsProcessQuery } from "../../../../../src/infra/process/kernel/windows-process-api.js"
 import { fakePid } from "../../../../helpers/fake-pid.js"

@@ -1,7 +1,7 @@
 import { lstat, mkdir, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Stats } from "node:fs";
-import { fsyncDirectory } from "../../../../../infra/atomic-write.js";
+import { fsyncDirectory } from "../../../../../infra/platform/files/atomic-write.js";
 
 /** Every path the benchmark names is derived from a configured root and must
  *  stay inside it, including the ones built from directory names read off disk.

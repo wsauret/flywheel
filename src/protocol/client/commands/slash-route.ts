@@ -1,4 +1,4 @@
-import { withDeadline } from "../../../infra/with-deadline.js"
+import { withDeadline } from "../../../infra/timing/with-deadline.js"
 import { runtimeCallPolicies } from "../../rpc/runtime-client-deadlines.js"
 
 /** A client's hold on the runtime's command catalog, which arrives a moment

@@ -1,4 +1,4 @@
-import { diagnosticDetail, errorMessage } from "../../../../infra/error-message.js"
+import { diagnosticDetail, errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
 import { startupTrace } from "../../../../infra/diagnostics/startup-trace.js"

@@ -8,13 +8,13 @@
  */
 
 import { Cause, Effect, Exit } from "effect";
-import { abortableSleep, awaitWithAbortSignal } from "../../../../infra/abort.js";
-import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../infra/auth/openai/openai-auth-types.js";
-import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderId } from "../../../../infra/llm/access/access-provider.js";
-import { errorMessage } from "../../../../infra/error-message.js";
-import type { CapacityHold } from "../../../../infra/llm/errors/provider-error-copy.js";
+import { abortableSleep, awaitWithAbortSignal } from "../../../../infra/timing/abort.js";
+import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../../infra/providers/auth/openai/openai-auth-types.js";
+import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderId } from "../../../../infra/providers/llm/access/access-provider.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import type { CapacityHold } from "../../../../infra/providers/llm/errors/provider-error-copy.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { isRecord } from "../../../../infra/record.js";
+import { isRecord } from "../../../../infra/guards/record.js";
 import {
   AvailabilityCorruptError,
   availabilityKey,
@@ -23,7 +23,7 @@ import {
   AvailabilityProtocolError,
   type AvailabilityRow,
   AvailabilityTransientError,
-} from "../../../../infra/llm/access/availability-store.js";
+} from "../../../../infra/providers/llm/access/availability-store.js";
 import { QUOTA_CODES, QuotaCoordinationError } from "../errors.js";
 import { STREAM_TTFT_TIMEOUT_MS } from "../stream/stream-liveness.js";
 import { startProbeLeaseRenewal } from "./probe-lease-renewal.js";

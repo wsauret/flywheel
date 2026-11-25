@@ -6,14 +6,14 @@ import { join } from "node:path";
 import { buildSystemPrompt as buildSystemPromptTiers, buildSystemPromptParts, type ModulePromptFragment } from "../../../../../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines, type GlobalGuidelineId } from "../../../../../../src/orchestration/agent-runtime/request/prompt/global-guidelines.js";
 import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR as SEPARATOR } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../../src/infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../../src/infra/definitions/agent-assets/system-prompt.js";
 import { createSkillTool } from "../../../../../../src/orchestration/agent-runtime/tools/definitions/skill.js";
 import { advertisedBashTool } from "../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import type { SkillRegistryRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { testSkill, testSkillRevision } from "../../../../../helpers/skill-fixtures.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
-import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/module-runtime.js";
+import { NO_MODULE_RUNTIMES } from "../../../../../../src/infra/definitions/modules/module-runtime.js";
 import { testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";
 import { promptCapabilities, promptOptions, type ToolPromptFields } from "../../../../../helpers/prompt-capabilities.js";
 

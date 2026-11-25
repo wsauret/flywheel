@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:te
 import type { Serve, Server } from "bun";
 import { Redacted } from "effect";
 
-import { CHATGPT_BACKEND_API_BASE } from "../../../../src/infra/auth/openai/openai-auth-types.js";
+import { CHATGPT_BACKEND_API_BASE } from "../../../../src/infra/providers/auth/openai/openai-auth-types.js";
 import { fakeFetch } from "../../../helpers/fake-fetch.js";
 /** The callback handler a test drives, as the browser's request reaches it. */
 type CallbackFetch = (req: Request) => Promise<Response>;

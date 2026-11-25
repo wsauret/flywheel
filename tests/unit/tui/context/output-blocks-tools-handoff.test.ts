@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
-import { isHandoffPath } from "../../../../src/infra/paths";
-import type { ToolInput } from "../../../../src/infra/tools/detail-helpers";
-import { getToolDisplay } from "../../../../src/infra/tools/tool-display-registry";
+import { isHandoffPath } from "../../../../src/infra/platform/files/paths";
+import type { ToolInput } from "../../../../src/infra/substrate/output/tools/detail-helpers";
+import { getToolDisplay } from "../../../../src/infra/substrate/output/tools/tool-display-registry";
 
 /**
  * Output Blocks rendering logic tests — handoff path detection,

@@ -1,8 +1,8 @@
 import { Schema } from "effect"
 import { decodeServeStartRefusal, ServeStartupFailure, startRefusalOf } from "../../../protocol/runtime/serve-handshake.js"
-import { CorruptEventRowError, InFlightSwapConflictError, PersistenceWriteRefused } from "../../../infra/store/event-store-types.js"
-import { InvariantViolation } from "../../../infra/invariant.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { CorruptEventRowError, InFlightSwapConflictError, PersistenceWriteRefused } from "../../../infra/substrate/store/event-store-types.js"
+import { InvariantViolation } from "../../../infra/guards/invariant.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { ParentPublicationContendedError, SessionForkRefusal } from "../../session/manager.js"
 import { WorkflowParentRefusal } from "../../session/control/children/child-session-publication.js"
 

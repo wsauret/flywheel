@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import type { AttachedRuntimeClient, ChildSessionRow, SessionCatalogRow, SessionRow } from "../../runtime/app-service-types.js"
 import { isGlobalRuntimeInvalidation } from "../../rpc/runtime-invalidation.js"
 import type { RuntimeUiPatch } from "../../runtime/runtime-ui-protocol-types.js"

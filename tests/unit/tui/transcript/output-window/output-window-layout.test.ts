@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import { TextRenderable, type BaseRenderable, type ScrollBoxRenderable } from "@opentui/core"
-import type { AnyBlock } from "../../../../../src/infra/output-blocks.js"
+import type { AnyBlock } from "../../../../../src/infra/substrate/events/output-blocks.js"
 import { renderWindow, transcriptOf } from "./_output-window-transcript.js"
 
 function textsUnder(node: BaseRenderable): TextRenderable[] {

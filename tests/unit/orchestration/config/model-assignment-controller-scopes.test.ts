@@ -16,9 +16,9 @@ import { sessionServingSelection } from "../../../../src/protocol/auth/role-prot
 import { roleCapture } from "../../../helpers/role-capture.js"
 import { modelInfo, makeModelsClient } from "../../../helpers/model-tier-fixtures.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
-import type { LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types.js"
+import type { LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
-import { asAsyncEventReadSurface } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
 import type { RoleAssignmentSnapshot } from "../../../../src/orchestration/session/metadata/schemas.js"
 
 const models = ["gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna", "claude-opus-5.5"]

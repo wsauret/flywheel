@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventReader } from "../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventReader } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import {
   prepareFileMutationOperation,
   settleFileMutation,

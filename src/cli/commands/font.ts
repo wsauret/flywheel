@@ -1,5 +1,5 @@
-import { errorMessage } from "../../infra/error-message.js";
-import type { AccountDirectories } from "../../infra/directory-authorities.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
+import type { AccountDirectories } from "../../infra/platform/files/directory-authorities.js";
 import { ownedCommandRunner } from "../../infra/owned-command.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import {

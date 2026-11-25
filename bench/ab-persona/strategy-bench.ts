@@ -28,7 +28,7 @@ import { asPersonaTaskFailure, PersonaTaskFailure, renderPersonaTaskGuidance, ru
 import { runningSourceIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { withSnapshotWorkspace } from "../../src/orchestration/modules/development/benchmark/execution/snapshot-workspace.js";
 import type { BenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
-import type { AgentDefinition } from "../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../src/infra/definitions/agent-definition.js";
 import { createPersonaStore } from "../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import {
   judgeScoreIdentityKey,

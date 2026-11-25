@@ -1,4 +1,4 @@
-import type { ServeLane } from "../../../../infra/cli-subprocess.js"
+import type { ServeLane } from "../../../../infra/platform/cli-subprocess.js"
 import type { RuntimeHealth, RuntimeProtocolRefusal } from "../../../runtime/app-service-types.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../runtime-liveness.js"
 import type { ServeStartRefusal } from "../../../runtime/serve-handshake.js"

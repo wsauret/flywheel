@@ -4,7 +4,7 @@ import type { ModuleId } from "../../runtime/module-ids.js"
 import type { ChangesSummaryState } from "../session/changes/session-changes.js"
 import type { ProviderSummary } from "../providers/provider-summary.js"
 import type { RuntimeAuthLoginQuestion } from "../../auth/auth-status-protocol-types.js"
-import type { NotificationAction } from "../../../infra/notification-episode.js"
+import type { NotificationAction } from "../../../infra/substrate/events/notification-episode.js"
 
 /** What crosses between the web client and the host that mounts it.
  *

@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { ChatInput, ChatInputLike } from "../../../../../src/infra/chat-input.js"
+import type { ChatInput, ChatInputLike } from "../../../../../src/infra/substrate/events/chat-input.js"
 import type { CommandDispatch } from "../../../../../src/tui/commands/command-dispatch.js"
 import { useCommands } from "../../../../../src/tui/hooks/composer/use-commands.js"
 

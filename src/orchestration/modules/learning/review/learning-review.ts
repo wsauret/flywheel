@@ -14,12 +14,12 @@ import type { SkillRecommendation } from "../../../agent-runtime/request/module-
  *  fork's own host wires no review, so a review can never spawn a review. */
 
 import { randomUUID } from "node:crypto";
-import type { LearningScope } from "../../../../infra/learning-scope.js";
-import { runInTaskSlices } from "../../../../infra/task-scheduling.js";
-import { buildMutationEvidence, readMutationEvidenceFiles, type MutationEvidence, type MutationEvidenceEntry } from "../../../../infra/mutation-evidence.js";
-import type { ReadSessionContentNode } from "../../../../infra/session-content.js";
+import type { LearningScope } from "../../../../infra/definitions/learning/learning-scope.js";
+import { runInTaskSlices } from "../../../../infra/process/task-scheduling.js";
+import { buildMutationEvidence, readMutationEvidenceFiles, type MutationEvidence, type MutationEvidenceEntry } from "../../../../infra/substrate/file-mutations/mutation-evidence.js";
+import type { ReadSessionContentNode } from "../../../../infra/substrate/session-content.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import { skillReviewCompletedFact, type SkillReviewCompletedFact } from "../../../../workflows/skills/skill-facts.js";
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
 import { failureTerminal, type AgentRunResult } from "../../../agent-runtime/types.js";
@@ -27,7 +27,7 @@ import { LEARNING_REVIEW_ROLE_ID, requireRole, type ResolvedRole, type ResolvedR
 import { withCapabilityGrant, type CapabilityAccess } from "../../../agent-runtime/tools/types.js";
 import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import { reviewInstruction, type ReviewHalf } from "./learning-review-prompts.js";
 import type { ModuleId, FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../../modules.js";
 import { moduleRequirementsForContribution, hasModuleContribution } from "../../../module-requirements.js";

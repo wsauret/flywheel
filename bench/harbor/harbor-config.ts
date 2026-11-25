@@ -1,15 +1,15 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { errorMessage } from "../../src/infra/error-message.js";
+import { errorMessage } from "../../src/infra/diagnostics/error-message.js";
 import { decodeCanonicalConfigText } from "../../src/orchestration/config/loader.js";
-import { detectModelFamily } from "../../src/infra/llm/models/model-family.js";
+import { detectModelFamily } from "../../src/infra/providers/llm/models/model-family.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE, resolveModelInteractionProfile, type ModelInteractionProfileId } from "../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { exposedToolName } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import type { ToolDeclaration } from "../../src/orchestration/module-seams.js";
 import { bashModule } from "../../src/orchestration/modules/bash/module.js";
 import { CREDENTIAL_PROVIDER_MODULES } from "../../src/orchestration/credential-provider-modules.js";
-import type { AccessProviderDefinition } from "../../src/infra/llm/access/access-provider.js";
+import type { AccessProviderDefinition } from "../../src/infra/providers/llm/access/access-provider.js";
 import { ALL_TASKS, harborBenchmark, type HarborBenchmark } from "./benchmarks.js";
 import { command, harborPython } from "./harbor-process.js";
 import { roundPath } from "./rounds.js";

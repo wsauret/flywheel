@@ -1,6 +1,6 @@
-import { boundProviderDetail, classifyApiError } from "../../../infra/llm/errors/provider-error-copy.js";
-import { createRuntimeEvent } from "../../../infra/runtime-facts/runtime-event-factory.js";
-import type { SessionNoticeOperation } from "../../../infra/session-notice.js";
+import { boundProviderDetail, classifyApiError } from "../../../infra/providers/llm/errors/provider-error-copy.js";
+import { createRuntimeEvent } from "../../../infra/substrate/runtime-facts/runtime-event-factory.js";
+import type { SessionNoticeOperation } from "../../../infra/substrate/events/session-notice.js";
 import { PROVIDER_NOTICE_SCOPE, resolveProviderNotices } from "./agent-resilience.js";
 import type { StreamEvent } from "../llm/types.js";
 import type { RequestToolSurfaceOwner } from "../request/request-tool-surface.js";

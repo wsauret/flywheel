@@ -1,7 +1,7 @@
 import { extname } from "node:path";
 import type { Node, Tree } from "web-tree-sitter";
 
-import { loadTreeSitterParser, type TreeSitterLanguage } from "../../../../infra/tree-sitter-parser.js";
+import { loadTreeSitterParser, type TreeSitterLanguage } from "../../../../infra/parsing/tree-sitter-parser.js";
 
 const TYPESCRIPT_EXTENSIONS = new Set([".ts", ".mts", ".cts"]);
 const TSX_EXTENSIONS = new Set([".tsx", ".jsx"]);

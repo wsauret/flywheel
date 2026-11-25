@@ -1,8 +1,8 @@
 import { createContextTokenAnchor, type OutgoingContextSnapshot } from "./context-token-anchor.js";
-import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
-import { prepareLocalTokenizer } from "../../../infra/local-tokenizer.js";
+import type { ProviderRequestOptions } from "../../../infra/providers/llm/access/provider-options.js";
+import { prepareLocalTokenizer } from "../../../infra/providers/local-tokenizer.js";
 import { createStaleToolResultMasker, maskStaleForTurn, type StaleMaskSeed, type TurnStaleMasking } from "../compaction/stale-tool-result-masker.js";
-import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js";
+import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js";
 import { readProviderRequestAuditFact } from "../../session/runtime-facts/provider-request-audit-facts.js";
 import { providerRequestIdentityFromPayload } from "../../session/runtime-facts/provider-request-audit-types.js";
 import type { AgentLoopPersistence } from "../agent-loop-types.js";

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
-import { resolveEventStoreDbFile } from "../../../../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../../../../src/infra/platform/files/paths.js"
 import { readStoreUsage } from "../../../../../../src/orchestration/session/persistence/storage/event-store-maintenance.js"
 import { reclaimStoreExclusively, sqliteTemporaryDirectory, vacuumSpaceRefusal, vacuumSpaceShortfall } from "../../../../../../src/orchestration/session/persistence/storage/store-reclaim.js"
 import { prepareWorkspaceState } from "../../../../../../src/orchestration/workspace-state/workspace-state.js"

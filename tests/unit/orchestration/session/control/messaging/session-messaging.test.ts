@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, jest, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/store/event-store-types"
-import type { ChatInput, SessionInputProducer } from "../../../../../../src/infra/chat-input"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/substrate/store/event-store-types"
+import type { ChatInput, SessionInputProducer } from "../../../../../../src/infra/substrate/events/chat-input"
 import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types"
 import { createBackgroundWorkRegistry } from "../../../../../../src/orchestration/agent-runtime/background-work/background-work"
 import { createListSessionsTool } from "../../../../../../src/orchestration/agent-runtime/tools/sessions/list-sessions"

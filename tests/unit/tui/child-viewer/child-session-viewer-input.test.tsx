@@ -6,7 +6,7 @@ import { ChildSessionViewer, createChildSessionViewerInput as createInput } from
 import { createTerminalChatSubmissions } from "../../../../src/tui/hooks/create-chat-submissions.js"
 import { createComposerReturns } from "../../../../src/protocol/client/chat/composer-returns.js"
 import type { FrontendMutation } from "../../../../src/protocol/runtime/app-service-types.js"
-import { normalizeChatInput } from "../../../../src/infra/chat-input.js"
+import { normalizeChatInput } from "../../../../src/infra/substrate/events/chat-input.js"
 import { childBodyProps, viewerSurface } from "./_child-session-viewer-fixtures.js"
 import { transcriptOf } from "../transcript/output-window/_output-window-transcript.js"
 import { ComposerBody, ComposerFrame, composerBodyGeometry } from "../../../../src/tui/components/composer/frame/composer-frame.js"

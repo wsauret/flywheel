@@ -6,10 +6,10 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { Redacted } from "effect";
-import { captureProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
-import type { AuthContext } from "../../../../../../src/infra/auth/auth-context.js";
-import { createModelsClient } from "../../../../../../src/infra/llm/models/models.js";
-import { authDir, modelsSnapshotFile } from "../../../../../../src/infra/paths.js";
+import { captureProviderConnection } from "../../../../../../src/infra/providers/auth/auth-context.js";
+import type { AuthContext } from "../../../../../../src/infra/providers/auth/auth-context.js";
+import { createModelsClient } from "../../../../../../src/infra/providers/llm/models/models.js";
+import { authDir, modelsSnapshotFile } from "../../../../../../src/infra/platform/files/paths.js";
 import { createAdmittedClient } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { testDirectories } from "../../../../../helpers/directories.js";
 import { testCapabilityModules, testEligibility, testProviderSessionLifetime } from "../../../../../helpers/provider-authority.js";
@@ -18,7 +18,7 @@ import { fakeAvailability, requestEvents } from "../_provider-chain-harness.js";
 import { accessProviderRegistry } from "../../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { authProviders } from "../../../../../helpers/auth-context.js";
 import { modelInfo } from "../../../../../helpers/model-tier-fixtures.js";
-import { openCodeGoRequestHeaders } from "../../../../../../src/infra/llm/provider-request-identity.js";
+import { openCodeGoRequestHeaders } from "../../../../../../src/infra/providers/llm/provider-request-identity.js";
 import { OPENCODE_GO_V1_BASE } from "../../../../../../src/orchestration/modules/provider-opencode-go/wire.js";
 const DIRECTORIES = testDirectories("/scratch");
 const CREDENTIALS = authDir(DIRECTORIES.userDataRoot, "default");
@@ -57,7 +57,7 @@ async function capturedRequests(model: string): Promise<Array<{ url: string; hea
       ? "openai-responses" as const
       : "chat-completions" as const;
   const eligibility = testEligibility({
-    candidateOfferings: (candidate: import("../../../../../../src/infra/llm/access/access-provider.js").AccessProviderCandidate) => [{
+    candidateOfferings: (candidate: import("../../../../../../src/infra/providers/llm/access/access-provider.js").AccessProviderCandidate) => [{
       candidate,
       wireModelId: model,
       dataUse: "standard" as const,

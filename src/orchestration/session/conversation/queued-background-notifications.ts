@@ -1,14 +1,31 @@
 import { randomUUID } from "node:crypto"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightSwap, InFlightWrite } from "../../../infra/store/event-store-types.js"
+import { Schema } from "effect"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { MutationEvidenceSchema } from "../../../infra/substrate/file-mutations/mutation-evidence-schema.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightSwap, InFlightWrite } from "../../../infra/substrate/store/event-store-types.js"
 import { redactMessage } from "../../agent-runtime/loop/turn/agent-loop-history.js"
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
 import type { QueuedUserInputDestination } from "./queued-user-inputs.js"
 
 export const QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND = "chat.queued_background_notification"
 
+const log = Log.create({ service: "queued-background-notifications" })
+
+/** The optional `systemEntry` field of a held notice: the notice is a
+ *  transcript system entry, such as a learning review's, that waits behind a
+ *  question (ARCH-SESSIONS-050) and lands as that entry, with the cell's text
+ *  as its content. A cell without the field is a user-role notice, as every
+ *  cell was before the field existed. */
+const HeldSystemEntrySchema = Schema.Struct({
+  mutationEvidence: Schema.optionalKey(MutationEvidenceSchema),
+})
+export type HeldSystemEntry = typeof HeldSystemEntrySchema.Type
+const parseHeldSystemEntry = Schema.decodeUnknownSync(HeldSystemEntrySchema, { onExcessProperty: "error" })
+
 export interface QueuedBackgroundNotification {
   readonly key: string
   readonly text: string
+  readonly systemEntry?: HeldSystemEntry
 }
 
 export interface HeldBackgroundNotification {
@@ -39,16 +56,18 @@ function heldPayload(destination: HeldNotificationDestination, text: string) {
     : { conversationId: destination.conversationId, text: message.content }
 }
 
-/** Holds produced notification text before it enters the process-local mailbox. */
+/** Holds produced notification text before it enters the process-local
+ *  mailbox. `systemEntry` holds a system entry instead, which lands as one. */
 export async function holdQueuedBackgroundNotification(
   writer: AsyncEventWriter,
   sessionId: string,
   conversationId: string,
   text: string,
   notificationKey: string = randomUUID(),
+  systemEntry?: HeldSystemEntry,
 ): Promise<HeldBackgroundNotification> {
   const payload = heldPayload(conversation(conversationId), text)
-  await writer.putInFlight(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, notificationKey, payload)
+  await writer.putInFlight(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, notificationKey, systemEntry === undefined ? payload : { ...payload, systemEntry: parseHeldSystemEntry(systemEntry) })
   return { key: notificationKey, text: payload.text }
 }
 
@@ -84,7 +103,15 @@ export function decodeQueuedBackgroundNotification(
 ): QueuedBackgroundNotification | null {
   if (row.kind !== QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND) return null
   if (row.payload.conversationId !== conversationId || typeof row.payload.text !== "string") return null
-  return { key: row.key, text: row.payload.text }
+  if (row.payload.systemEntry === undefined) return { key: row.key, text: row.payload.text }
+  try {
+    return { key: row.key, text: row.payload.text, systemEntry: parseHeldSystemEntry(row.payload.systemEntry) }
+  } catch {
+    // A later build's entry shape: its text still reaches the agent, as a
+    // notice, rather than being lost.
+    log.warn("held system entry has an unknown shape; delivering its text as a notice", { key: row.key })
+    return { key: row.key, text: row.payload.text }
+  }
 }
 
 /** The notices held for conversation `conversationId` of `sessionId`, in
@@ -110,7 +137,8 @@ export async function readWorkflowBackgroundNotifications(store: AsyncEventState
 
 export function queuedBackgroundNotificationMessage(
   notification: QueuedBackgroundNotification,
-): Extract<ConversationMessage, { kind: "user" }> {
+): ConversationMessage {
+  if (notification.systemEntry) return { kind: "system", content: notification.text, ...notification.systemEntry }
   return {
     kind: "user",
     content: notification.text,

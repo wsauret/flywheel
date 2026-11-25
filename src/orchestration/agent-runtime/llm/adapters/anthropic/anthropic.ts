@@ -14,14 +14,14 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
-import { isAbortError } from "../../../../../infra/abort.js";
-import { errorDetail, errorMessage } from "../../../../../infra/error-message.js";
-import type { AccessProviderCandidate, AccessProviderId } from "../../../../../infra/llm/access/access-provider.js";
-import { dashedModelId } from "../../../../../infra/model-id.js";
-import { computeUsagePrice } from "../../../../../infra/llm/models/llm-helpers.js";
-import { providerRequestHeaders } from "../../../../../infra/llm/provider-request-identity.js";
-import type { ModelInfo, ReasoningEffort } from "../../../../../infra/llm/models/models.js";
-import { ANTHROPIC_RESERVED_BODY_KEYS, applyProviderExtraBody, type AnthropicThinkingDisplay } from "../../../../../infra/llm/access/provider-options.js";
+import { isAbortError } from "../../../../../infra/timing/abort.js";
+import { errorDetail, errorMessage } from "../../../../../infra/diagnostics/error-message.js";
+import type { AccessProviderCandidate, AccessProviderId } from "../../../../../infra/providers/llm/access/access-provider.js";
+import { dashedModelId } from "../../../../../infra/providers/model-id.js";
+import { computeUsagePrice } from "../../../../../infra/providers/llm/models/llm-helpers.js";
+import { providerRequestHeaders } from "../../../../../infra/providers/llm/provider-request-identity.js";
+import type { ModelInfo, ReasoningEffort } from "../../../../../infra/providers/llm/models/models.js";
+import { ANTHROPIC_RESERVED_BODY_KEYS, applyProviderExtraBody, type AnthropicThinkingDisplay } from "../../../../../infra/providers/llm/access/provider-options.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "../../errors.js";
 import type { CompletedStopReason } from "../../messages.js";

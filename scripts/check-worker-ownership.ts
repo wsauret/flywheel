@@ -2,7 +2,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import type { Node, Tree } from "web-tree-sitter"
 import { WORKER_GENERATION_BUDGETS } from "../src/infra/process/workers/bounded-worker-spawner.js"
-import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js"
+import { loadTreeSitterParser } from "../src/infra/parsing/tree-sitter-parser.js"
 
 type ConstructorKind = "Worker" | "MessageChannel"
 type SpawnerFactory = "createBoundedWorkerSpawner" | "embeddedWorkerSpawnerSource"
@@ -54,7 +54,7 @@ const APPROVED_SPAWNER_SITES = [
   { role: "hard-exit-clock", file: "src/infra/process/workers/hard-exit-clock.ts", owner: undefined, factory: "createBoundedWorkerSpawner" },
   { role: "streaming-edit-validation", file: "src/orchestration/agent-runtime/tools/edit/streaming-edit-validation.ts", owner: "createStreamingEditValidationService", factory: "createBoundedWorkerSpawner" },
   { role: "bash-private-copy", file: "src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-jobs.ts", owner: "createPrivateCopyJobs", factory: "createBoundedWorkerSpawner" },
-  { role: "models-document", file: "src/infra/llm/models/models-document-job.ts", owner: "runModelsDocumentJob", factory: "createBoundedWorkerSpawner" },
+  { role: "models-document", file: "src/infra/providers/llm/models/models-document-job.ts", owner: "runModelsDocumentJob", factory: "createBoundedWorkerSpawner" },
   { role: "transcript-find", file: "src/orchestration/app-service/projections/output/transcript-find.ts", owner: "countOnWorker", factory: "createBoundedWorkerSpawner" },
   { role: "code-mode-invocation", file: "src/orchestration/modules/code-mode/worker-pool.ts", owner: "spawnInvocationWorker", factory: "createBoundedWorkerSpawner" },
   { role: "runtime-maintenance", file: "src/orchestration/app-service/background/runtime-maintenance-owner.ts", owner: "runMaintenanceWorkerJob", factory: "createBoundedWorkerSpawner" },

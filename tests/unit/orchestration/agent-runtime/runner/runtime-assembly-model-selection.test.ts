@@ -2,11 +2,11 @@ import { expect, test } from "bun:test"
 import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js"
-import { openExistingAuthProfileDirectory } from "../../../../../src/infra/auth/store/auth-profile-store.js"
-import { writeProviderModelCatalog } from "../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js"
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../../src/infra/model-catalog-rows.js"
-import { accessProviderAccountKey } from "../../../../../src/infra/auth/provider-account.js";
+import { captureProviderConnection } from "../../../../../src/infra/providers/auth/auth-context.js"
+import { openExistingAuthProfileDirectory } from "../../../../../src/infra/providers/auth/store/auth-profile-store.js"
+import { writeProviderModelCatalog } from "../../../../../src/infra/providers/auth/provider-models/provider-model-catalog-store.js"
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../../src/infra/providers/model-catalog-rows.js"
+import { accessProviderAccountKey } from "../../../../../src/infra/providers/auth/provider-account.js";
 import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js"
 import { providerModelEligibilityDecision, type ProviderModelEnabledCandidate } from "../../../../../src/orchestration/config/models/provider-model-eligibility.js"
 import { assembleRuntimeForTurn } from "../../../../../src/orchestration/agent-runtime/runner/runtime-assembly.js"
@@ -23,8 +23,8 @@ import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission, type LLMClient, type
 import { resolveSessionRoles } from "../../../../../src/orchestration/config/models/session-role-resolver.js"
 import type { RoleHold } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { capabilityAccessHolding } from "../tools/_fixtures.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js"
 

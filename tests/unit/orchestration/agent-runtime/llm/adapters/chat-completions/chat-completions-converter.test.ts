@@ -11,7 +11,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { createGenerationMeasurement } from "../../../../../../../src/orchestration/agent-runtime/loop/turn/generation-measurement.js";
 import OpenAI from "openai";
-import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../../../src/infra/providers/llm/models/models.js";
 import { createChatCompletionsAdapter } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions.js";
 import { chatCompletionsTarget, toChatCompletionsMessages } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions-messages.js";
 import type { ConversationMessage, ProviderStreamEvent } from "../../../../../../../src/orchestration/agent-runtime/llm/types.js";

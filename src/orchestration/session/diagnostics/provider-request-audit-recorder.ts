@@ -12,7 +12,7 @@ import type {
   ProviderStreamTelemetryStartedInput,
 } from "../runtime-facts/provider-request-audit-types.js"
 import type { SessionFactWriter } from "../persistence/session-fact-writer.js"
-import { durableOwnerId, type DurableOwner } from "../../../infra/durable-owner.js"
+import { durableOwnerId, type DurableOwner } from "../../../infra/substrate/facts/durable-owner.js"
 
 
 /** Durable session audit sink plus optional live observation. Raw stream

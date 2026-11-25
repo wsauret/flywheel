@@ -25,7 +25,7 @@ import { Database } from "bun:sqlite"
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../src/infra/platform/files/paths.js"
 import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js"
 import type { FrontendActivity, FrontendOutputBlock, MutationResult, RuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"
 import { startLoopbackMcpServer } from "../../helpers/code-mode-loopback-mcp.js"

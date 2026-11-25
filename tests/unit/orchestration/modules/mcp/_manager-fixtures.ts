@@ -1,5 +1,5 @@
 import type { McpConnection } from "../../../../../src/orchestration/modules/mcp/connection.js";
-import { accountAuthDir } from "../../../../../src/infra/paths.js";
+import { accountAuthDir } from "../../../../../src/infra/platform/files/paths.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 
 // The account credential directory the composition root publishes. It resolves

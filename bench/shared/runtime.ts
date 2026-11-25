@@ -1,6 +1,6 @@
-import { createOwnedCredentialCommandRunner, createKeyResolver } from "../../src/infra/auth/resolve-key.js";
-import { selectStartupDirectories, type StartupDirectories } from "../../src/infra/directory-authorities.js";
-import { findConfigFile } from "../../src/infra/paths.js";
+import { createOwnedCredentialCommandRunner, createKeyResolver } from "../../src/infra/providers/auth/resolve-key.js";
+import { selectStartupDirectories, type StartupDirectories } from "../../src/infra/platform/files/directory-authorities.js";
+import { findConfigFile } from "../../src/infra/platform/files/paths.js";
 import {
   acquireSharedProviderAvailability,
   disposeSharedProviderAvailability,

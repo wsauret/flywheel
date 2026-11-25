@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { ToolActionSchema } from "../../infra/workflow-types.js";
+import { ToolActionSchema } from "../../infra/definitions/workflow/workflow-types.js";
 
 // Personas are config: Flywheel-authored bundles are producer-gated (parse throws
 // at module init), and user/project persona files get the limited-tolerance config

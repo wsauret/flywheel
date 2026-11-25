@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { EventBus, createEmit } from "../../../../src/infra/event-bus"
+import { EventBus, createEmit } from "../../../../src/infra/substrate/events/event-bus"
 import { createChatSession } from "../../../../src/orchestration/chat/session"
 import { captureBlocks, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
 

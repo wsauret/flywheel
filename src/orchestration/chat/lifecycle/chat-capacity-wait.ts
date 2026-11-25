@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/store/event-store-types.js"
-import type { SessionNoticeOperation } from "../../../infra/session-notice.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
+import type { SessionNoticeOperation } from "../../../infra/substrate/events/session-notice.js"
 import { createUnattendedRecovery } from "../../agent-runtime/runner/unattended-recovery.js"
 import { capacityWaitAuthority } from "../../session/control/capacity-wait.js"
 import { capacityContinuations } from "../../session/control/planned-session-continuation.js"

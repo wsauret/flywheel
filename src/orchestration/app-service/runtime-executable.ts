@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs"
 import { basename, dirname, join, posix } from "node:path"
 
-import { runningSourceSnapshot, runsThroughBun, sourceCheckout } from "../../infra/cli-subprocess.js"
-import type { AccountDirectories, StartupDirectories } from "../../infra/directory-authorities.js"
+import { runningSourceSnapshot, runsThroughBun, sourceCheckout } from "../../infra/platform/cli-subprocess.js"
+import type { AccountDirectories, StartupDirectories } from "../../infra/platform/files/directory-authorities.js"
 import { activeBuildDir } from "../../infra/update/active-build.js"
 import { accountBuildId, executableBuild, ownBuildId } from "../../infra/update/live-builds.js"
 import { installedLauncherPath } from "../../protocol/installation.js"

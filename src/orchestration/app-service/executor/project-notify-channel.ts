@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import type { InternalProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"
-import { NotificationEpisodeInputSchema, type NotificationEpisodeInput } from "../../../infra/notification-episode.js"
-import { withDeadline } from "../../../infra/with-deadline.js"
+import { NotificationEpisodeInputSchema, type NotificationEpisodeInput } from "../../../infra/substrate/events/notification-episode.js"
+import { withDeadline } from "../../../infra/timing/with-deadline.js"
 
 const Request = Schema.Struct({ id: Schema.Int, episode: NotificationEpisodeInputSchema })
 const Reply = Schema.Struct({ id: Schema.Int, error: Schema.optionalKey(Schema.String) })

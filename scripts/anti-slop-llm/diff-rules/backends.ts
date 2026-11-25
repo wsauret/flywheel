@@ -3,7 +3,7 @@ import { experimental_decide } from "ai";
 import { chooseDecisionBackend } from "../../oxlint-plugin-jev/src/backend.ts";
 import { decisionModelFor, decisionProviderOptions } from "../../oxlint-plugin-jev/src/decision-model.ts";
 import type { Backend as DecisionBackend } from "../../oxlint-plugin-jev/src/types.ts";
-import { shellCommandLaunch } from "../../../src/infra/shell-command.ts";
+import { shellCommandLaunch } from "../../../src/infra/platform/shell-command.ts";
 import { withOwnedCommands } from "../owned-commands.ts";
 import type { BackendName, ResolvedConfig } from "./config.ts";
 import { renderJudgePrompt, type JudgeInput } from "./input.ts";

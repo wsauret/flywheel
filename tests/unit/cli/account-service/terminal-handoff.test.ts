@@ -5,8 +5,8 @@ import { join } from "node:path"
 
 import { createTerminalHandoff, LAUNCH_STATE_ENV, REMOTE_HANDOFF_ENV, type TerminalHandoffOptions } from "../../../../src/cli/account-service/terminal-handoff.js"
 import type { ServingBuild } from "../../../../src/cli/account-service/serving-build.js"
-import { takeLaunchState, type LaunchState } from "../../../../src/infra/distribution/launch-state.js"
-import { accountServeDir } from "../../../../src/infra/paths.js"
+import { takeLaunchState, type LaunchState } from "../../../../src/infra/update/distribution/launch-state.js"
+import { accountServeDir } from "../../../../src/infra/platform/files/paths.js"
 
 const roots: string[] = []
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })

@@ -1,5 +1,5 @@
 import { useOverlay } from "@tui/components/modal/modal"
-import type { LaunchState } from "../../infra/distribution/launch-state.js"
+import type { LaunchState } from "../../infra/update/distribution/launch-state.js"
 import { effectiveSessionShortTitle, type AttachedRuntimeClient, type SessionRow } from "../../protocol/runtime/app-service-types.js"
 import type { BackgroundWorkTarget } from "../../protocol/session/background-index-protocol-types.js"
 import { sessionServingLabel } from "../../protocol/auth/role-protocol-types.js"

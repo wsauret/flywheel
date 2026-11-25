@@ -1,4 +1,4 @@
-import { awaitWithAbortSignal } from "../../../infra/abort.js"
+import { awaitWithAbortSignal } from "../../../infra/timing/abort.js"
 
 /** Coordinates profile-keyed refresh work and owns its cancellation lifecycle. */
 export interface ProfileRefreshCoordinator {

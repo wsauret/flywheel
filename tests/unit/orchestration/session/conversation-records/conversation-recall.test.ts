@@ -4,10 +4,10 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../../src/infra/store/event-store-types.js"
-import { createSqliteEventStore, openReadonlyEventReader } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { createSqliteEventStore, openReadonlyEventReader } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { createConversationRecall } from "../../../../../src/orchestration/session/conversation-records/conversation-recall.js"
-import { acquireConversationSearchIndex, CONVERSATION_FTS_TABLE, type ConversationSearchIndex } from "../../../../../src/infra/store/conversation-fts.js"
+import { acquireConversationSearchIndex, CONVERSATION_FTS_TABLE, type ConversationSearchIndex } from "../../../../../src/infra/substrate/store/conversation-fts.js"
 import { tolerantReprojectionFixtures } from "../../../../fixtures/tolerant-reprojection-fixtures.js"
 
 const CONVERSATION_ID = "conv-recall"

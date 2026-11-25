@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
 import type { ActiveInterval, ActivityOpening, WorkflowControlActivity } from "../../../../workflows/vm/recovery/control-activity.js"
 import { readWorkflowControlActivity } from "../../../../workflows/vm/recovery/recovery-fold.js"
 import { readEpisodeEvidenceEnd } from "../../../session-store/duration.js"

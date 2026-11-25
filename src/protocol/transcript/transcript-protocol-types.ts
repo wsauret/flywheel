@@ -1,5 +1,5 @@
-import type { MutationEvidence } from "../../infra/mutation-evidence.js"
-import type { ProvisionalDiff, UserMessageImage } from "../../infra/output-blocks.js"
+import type { MutationEvidence } from "../../infra/substrate/file-mutations/mutation-evidence.js"
+import type { ProvisionalDiff, UserMessageImage } from "../../infra/substrate/events/output-blocks.js"
 import type { FrontendOutputBlock, FrontendToolEntry, FrontendToolStreamingText } from "../runtime/app-service-types.js"
 import type { RuntimePosition } from "../runtime/runtime-ui-protocol-types.js"
 

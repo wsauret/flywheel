@@ -6,7 +6,7 @@ import {
   type FollowUpIdentity,
 } from "./committed-control.js";
 import { ReassessmentChangeV3Schema, SharedEventArmsV3 } from "./historical-codecs.js";
-import { DurableFollowUpInputSchema } from "../../infra/chat-input-schema.js";
+import { DurableFollowUpInputSchema } from "../../infra/substrate/events/chat-input-schema.js";
 import { HandoffIssueSchema } from "./graph-types.js";
 
 const IdSchema = Schema.NonEmptyString;

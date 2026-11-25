@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { authDir } from "../../../../../src/infra/paths.js"
+import { authDir } from "../../../../../src/infra/platform/files/paths.js"
 import type { AuthProfileResolution } from "../../../../../src/orchestration/auth/auth-profile-manager.js"
 import { authScopesForProfile, resolveAuthProfileScope, resolveSessionAuthProfile } from "../../../../../src/orchestration/app-service/auth/auth-profile-scope.js"
 import type { DurableSessionCatalogRow } from "../../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
-import { EventBus } from "../../../../../src/infra/event-bus"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../../src/infra/store/event-store-types"
+import { EventBus } from "../../../../../src/infra/substrate/events/event-bus"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../../src/infra/substrate/store/event-store-types"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { temporaryDirectories } from "../../../../helpers/directories"
 import { createChatRunnerLifecycle } from "../../../../../src/orchestration/chat/lifecycle/runner-lifecycle"
@@ -9,7 +9,7 @@ import { createChatControls } from "../../../../../src/orchestration/chat/contro
 import { ChatSessionState } from "../../../../../src/orchestration/chat/types"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types"
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work/background-work-types"
-import type { ProviderRequestOptions } from "../../../../../src/infra/llm/access/provider-options"
+import type { ProviderRequestOptions } from "../../../../../src/infra/providers/llm/access/provider-options"
 import {
   askUserStub,
   createTestChatSessionDeps,

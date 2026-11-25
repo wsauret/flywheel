@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../../infra/store/event-store-types.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import type { WorkflowView } from "../../view/types.js"
 import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import { workflowInsertionRefusalReason } from "../recovery/fact-fold.js"

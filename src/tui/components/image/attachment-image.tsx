@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { UserMessageImage } from "@infra/output-blocks"
+import type { UserMessageImage } from "@infra/substrate/events/output-blocks"
 import type { ImageRenderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
 import { useAttachmentImages } from "@tui/context/attachment-images.js"

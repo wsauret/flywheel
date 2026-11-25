@@ -1,6 +1,6 @@
-import { editInputEntries, parseStringEdits } from "../../../../infra/file-edit/edit-input.js";
-import { planStringEdits } from "../../../../infra/file-edit/string-edit.js";
-import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
+import { editInputEntries, parseStringEdits } from "../../../../infra/substrate/file-mutations/file-edit/edit-input.js";
+import { planStringEdits } from "../../../../infra/substrate/file-mutations/file-edit/string-edit.js";
+import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js";
 import { coerceToolInput, describeInputRepair } from "../input/coerce-input.js";
 import { publishToolFileEdits } from "./file-edit-tool-adapter.js";
 import { lineRangeOfByteSpans } from "../files/file-read-ledger.js";

@@ -1,8 +1,8 @@
 import { Effect } from "effect"
 import type { Scope } from "effect/Scope"
-import type { EmitFn, EventBus } from "../../../infra/event-bus.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/store/event-store-types.js"
-import { EventReaderService, EventStoreWriterLaneService, EventStoreWriterService } from "../../../infra/store/event-store-effect.js"
+import type { EmitFn, EventBus } from "../../../infra/substrate/events/event-bus.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/substrate/store/event-store-types.js"
+import { EventReaderService, EventStoreWriterLaneService, EventStoreWriterService } from "../../../infra/substrate/store/event-store-effect.js"
 import type { BudgetLimits } from "../../../workflows/run/budget.js"
 import { createWorkflowContextStore as defaultCreateWorkflowContextStore, type WorkflowContextStore } from "../../../workflows/context-bundle/context-store.js"
 import { createWorkflowViewStore as defaultCreateWorkflowViewStore, type WorkflowViewStore } from "../../../workflows/vm/recovery/workflow-view.js"
@@ -12,7 +12,7 @@ import type { SessionFactWriter } from "./session-fact-writer.js"
 import { createSessionFactWriter as defaultCreateSessionFactWriter } from "./session-fact-writer.js"
 import { createSessionToolExecutionStore as defaultCreateSessionToolExecutionStore } from "./tool-execution-store.js"
 import type { SessionToolExecutionStore } from "../runtime-facts/tool-execution-types.js"
-import type { DurableOwner } from "../../../infra/durable-owner.js"
+import type { DurableOwner } from "../../../infra/substrate/facts/durable-owner.js"
 
 
 interface SessionResourceLifecycle {

@@ -1,4 +1,4 @@
-import { errorMessage } from "../../infra/error-message.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import { readExecutionEvidence } from "../../orchestration/session/diagnostics/execution-evidence.js";
 
 const USAGE = "Usage: flywheel events evidence --session <id> [--project-root <dir>]\n\nPrint read-only durable execution evidence as JSON v1.\nPrices are estimates; provider-invoiced cost is unavailable.";

@@ -1,14 +1,14 @@
-import { errorMessage } from "../../../../infra/error-message.js";
-import { PersistenceWriteRefused } from "../../../../infra/store/event-store-types.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import { PersistenceWriteRefused } from "../../../../infra/substrate/store/event-store-types.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { createOrderedLane } from "../../../../infra/ordered-lane.js";
-import { runInTaskSlices } from "../../../../infra/task-scheduling.js";
+import { createOrderedLane } from "../../../../infra/async/ordered-lane.js";
+import { runInTaskSlices } from "../../../../infra/process/task-scheduling.js";
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
 import { repairToolAdjacencyWork } from "./conversation-tool-adjacency.js";
 import type { ConversationTree } from "./conversation-tree.js";
 import type { FinalizedCheckpointSwap } from "../../../agent-runtime/agent-loop-types.js";
 import type { QueuedUserInputCell, QueuedUserInputCommitResult } from "../queued-user-inputs.js";
-import { cutRunningToolCall, interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnEndEntry, type TurnInterruption } from "../turn-end-record.js";
+import { cutRunningToolCall, interruptedTurnEnd, interruptedTurnMessage, questionExchangeOf, turnEndEntryId, type TurnEndEntry, type TurnInterruption } from "../turn-end-record.js";
 import type { HeldRetainedOperation } from "../../../module-seams.js";
 
 const log = Log.create({ service: "conversation-tree-writer" });
@@ -21,6 +21,11 @@ interface ConversationTreeWriterDeps {
   ownsQueuedUserInput?: (key: string) => boolean;
   releaseBackgroundNotification?: (key: string) => void;
   abandonBackgroundNotification?: (key: string) => void;
+  /** Durably holds a commit that meets a waiting question while no turn
+   *  takes it, so it outlives this writer and lands after the question's
+   *  result in the order it arrived (ARCH-SESSIONS-050). Every writer that
+   *  can meet a waiting question has it. */
+  holdBehindQuestion?: (message: ConversationMessage, id?: string) => Promise<void>;
 }
 
 /** Whether a turn of this process is running. Only the turn owner moves it:
@@ -71,6 +76,11 @@ export interface ConversationTreeWriter {
   /** Commit held input only while idle, after finalized-result and interruption
    * recovery. Active turns reject rather than buffer. Append failures propagate. */
   commitQueuedUserInput(cell: QueuedUserInputCell): Promise<QueuedUserInputCommitResult>;
+  /** Commit, in arrival order, the held input that no live reader owns,
+   *  after the same recovery an idle commit runs, then the commits held
+   *  behind the question. The release after a question settles: input held
+   *  behind it lands after its result. Idle only; a running turn rejects. */
+  commitHeldInput(): Promise<void>;
   /** Order module-owned durable work after the turn: it commits when the
    *  turn ends, or at once while the writer is idle, after the same recovery
    *  a person's message gets. It never commits behind a tool call awaiting
@@ -166,12 +176,23 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
       // is the only branch that needs it: a mid-turn arrival means this process
       // is already running the turn.
       await prepareIdleCommit();
+      // Behind a waiting question the entry waits in its durable hold
+      // (ARCH-SESSIONS-050).
+      if (tree.awaitsAnswer()) {
+        await holdBehindQuestion({ message, ...(id === undefined ? {} : { id }) });
+        return null;
+      }
       const committedId = await tree.appendMessage(message, id);
       releaseNotifications([message]);
       return committedId;
     }
     held.push(id === undefined ? { message } : { message, id });
     return null;
+  }
+
+  async function holdBehindQuestion(commit: Extract<HeldCommit, { message: ConversationMessage }>): Promise<void> {
+    if (!deps.holdBehindQuestion) throw new Error("This conversation writer cannot hold a commit behind a waiting question");
+    await deps.holdBehindQuestion(commit.message, commit.id);
   }
 
   async function commitTurnEnd(by: TurnInterruption): Promise<ConversationMessage> {
@@ -190,6 +211,12 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
     if (phase !== "idle") throw new Error("Queued user input cannot commit during an active turn");
     await prepareIdleCommit();
     return tree.commitQueuedUserInput(cell);
+  }
+
+  async function commitHeldInput(): Promise<void> {
+    if (phase !== "idle") throw new Error("Held input cannot commit during an active turn");
+    await prepareIdleCommit();
+    await chainDrain((drained) => drainSavePoint(drained, {}));
   }
 
   async function acceptRetainedOperation(operation: HeldRetainedOperation): Promise<void> {
@@ -294,7 +321,20 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
     // Idle is no exception: a question a stop left open is a tool call that
     // still awaits its result, and its answer must land right after it.
     const tail = turnBatch.at(-1) ?? await committedTail(tree);
-    const releasing = options.release === true || !awaitsToolResults(tail);
+    // A question that waits holds the conversation (ARCH-SESSIONS-050):
+    // nothing held lands behind it, not even at a turn's end, because the
+    // person's answer must follow the call.
+    const questionWaits = questionExchangeOf([...tree.lastExchange(), ...turnBatch.map((message) => tailEntry(message))]) === "waiting";
+    // A turn that ends while its question waits, as a person's interrupt of
+    // the parked ask or a stop ends it, moves the notices it held into their
+    // durable holds, where they wait for the answer as idle input does.
+    if (questionWaits && (options.release === true || phase === "idle")) {
+      for (const notice of held.filter((commit): commit is Extract<HeldCommit, { message: ConversationMessage }> => "message" in commit)) {
+        await holdBehindQuestion(notice);
+        held.splice(held.indexOf(notice), 1);
+      }
+    }
+    const releasing = !questionWaits && (options.release === true || !awaitsToolResults(tail));
     const released = releasing ? held.length : 0;
     const releasedHeld = held.slice(0, released);
     const batch = [...turnBatch];
@@ -342,7 +382,7 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
     // can: a stop that suspends a turn on a question ends the turn while the
     // question stays open, and the person's answer must follow the call.
     if (options.release !== true && phase !== "idle") return;
-    if (awaitsToolResults(batch.at(-1) ?? tail)) return;
+    if (questionWaits || awaitsToolResults(batch.at(-1) ?? tail)) return;
     while (heldOperations.length > 0) {
       const operation = heldOperations[0];
       if (!operation) return;
@@ -467,6 +507,7 @@ async function repairSavePointExtension(
     commitUserTurn,
     commitTurnEnd,
     commitQueuedUserInput,
+    commitHeldInput,
     acceptRetainedOperation,
     beginTurn,
     endTurn,

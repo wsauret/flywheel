@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { ensureSessionDir, resolveSessionDir } from "../../../../src/infra/paths";
+import { ensureSessionDir, resolveSessionDir } from "../../../../src/infra/platform/files/paths";
 import type { OwnedCommandRunner } from "../../../../src/infra/owned-command";
 import { PRIVATE_COPY_RECORD } from "../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-record";
 import { mutationGitDirectoryName, prepareMutationGitEnvironment } from "../../../../src/orchestration/agent-runtime/tools/bash/git/bash-git-wrapper";

@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { InvariantViolation } from "../../infra/invariant.js";
+import { InvariantViolation } from "../../infra/guards/invariant.js";
 import { selectionReport } from "../reducers/list-selection.js";
 import { compareCodeUnits } from "../reducers/reducer.js";
 import { attemptNodeIdOf, roundOfNodeId } from "../control-facts/graph-types.js";

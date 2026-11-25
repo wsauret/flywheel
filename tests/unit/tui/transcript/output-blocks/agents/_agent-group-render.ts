@@ -1,5 +1,5 @@
 import type { CapturedFrame } from "@opentui/core"
-import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../../../src/infra/output-blocks.js"
+import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import type { ChildCardStatus } from "../../../../../../src/protocol/client/work/session-controls.js"
 import type { RoleAssignmentView } from "../../../../../../src/protocol/auth/role-protocol-types.js"
 import type { WorkflowCards } from "../../../../../../src/tui/modules/workflows/cards.js"

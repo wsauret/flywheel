@@ -1,9 +1,9 @@
 import { HashMap } from "effect"
-import type { AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWriter, EventStoreAppend, GuardedAppendResult, GuardedEventStoreAppend, StoredFact } from "../../../../infra/store/event-store-types.js"
-import type { EventProjection } from "../../../../infra/projection/event-projection.js"
+import type { AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWriter, EventStoreAppend, GuardedAppendResult, GuardedEventStoreAppend, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
+import type { EventProjection } from "../../../../infra/substrate/projection/event-projection.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
-import { generateSessionId } from "../../../../infra/session-id.js"
-import { loggedOperation } from "../../../../infra/operation-log.js"
+import { generateSessionId } from "../../../../infra/substrate/session-id.js"
+import { loggedOperation } from "../../../../infra/diagnostics/operation-log.js"
 import type { ReplayedSession, RoleSettingEntry as RoleAssignmentEntry, RoleSettings as RoleAssignments, RoleAssignmentSnapshot, Session } from "../schemas.js"
 import type { SessionMetadataCatalog } from "./session-catalog-types.js"
 import { sessionMetadataCatalogFromState } from "./session-catalog-read.js"
@@ -16,7 +16,7 @@ import {
   type SessionMetadataFact,
 } from "../session-metadata-facts.js"
 import { createSessionMetadataProjection, createSessionPlacementProjection, createSingleSessionMetadataProjection, recoverSessionMetadata, sessionMetadataStateOf, type PerSessionMetadataState, type SessionMetadataProjectionState } from "../session-metadata-projection.js"
-import { createPushFedView } from "../../../../infra/projection/push-fed-view.js"
+import { createPushFedView } from "../../../../infra/substrate/projection/push-fed-view.js"
 import { isValidTransition, type SessionLifecycleState } from "../types.js"
 import { effectiveSessionShortTitle } from "../../../../protocol/runtime/app-service-types.js"
 

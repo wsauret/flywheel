@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { maxEventLoopLagBetween } from "../../../../infra/diagnostics/event-loop-lag.js";
-import { beginOutboundRequest, endOutboundRequest } from "../../../../infra/inflight-requests.js";
+import { beginOutboundRequest, endOutboundRequest } from "./inflight-requests.js";
 import type { StreamTelemetrySink } from "../types.js";
 
 type FetchLike = (url: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

@@ -4,9 +4,9 @@ import { Database } from "bun:sqlite"
 import { pack } from "msgpackr"
 import { encodeProjectStateRequest, encodeProjectStateResponse, PROJECT_STATE_MAX_BYTES } from "../../../../../../src/orchestration/app-service/project-state/project-state-protocol.js"
 import type { ProjectStateContentReference, ProjectStateControlOperation } from "../../../../../../src/orchestration/app-service/project-state/project-state-operation.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, InFlightSwapConflictError, type EventStoreAppend } from "../../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, InFlightSwapConflictError, type EventStoreAppend } from "../../../../../../src/infra/substrate/store/event-store-types.js"
 import { createConversationTree } from "../../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
-import { extractContent } from "../../../../../../src/infra/runtime-facts/tool-content.js"
+import { extractContent } from "../../../../../../src/infra/substrate/runtime-facts/tool-content.js"
 import type { SessionMetadataChange } from "../../../../../../src/orchestration/session/manager.js"
 import { createFrontendProjection } from "../../../../../../src/orchestration/app-service/projections/frontend-projection.js"
 import { durableCatalogRowFromSession, projectSessionCatalogRow } from "../../../../../../src/orchestration/session/control/session-catalog-row.js"
@@ -17,7 +17,7 @@ import { removeOwnerPid } from "../../../../../../src/orchestration/session/pid-
 import { buildDurableSubagentCreated, buildSubagentPrompted } from "../../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { loadSubagentRunsFromEvents, SUBAGENT_RUN_FACT_TYPES } from "../../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import { prepareSessionFactAppend } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js"
-import { buildSessionContent } from "../../../../../../src/infra/session-content.js"
+import { buildSessionContent } from "../../../../../../src/infra/substrate/session-content.js"
 
 afterEach(closeFixtures)
 

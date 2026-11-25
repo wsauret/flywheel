@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../src/infra/store/event-store-types"
+import type { AsyncEventStateReadSurface } from "../../src/infra/substrate/store/event-store-types"
 import type { ControlInterruption, TurnInterruption } from "../../src/orchestration/session/conversation/turn-end-record"
 import { liveChildRun, registerLiveSessionControl } from "../../src/orchestration/session/control/live-session-control"
 import type { ContinuationLanes } from "../../src/orchestration/session/control/planned-session-continuation"

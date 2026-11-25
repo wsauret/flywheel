@@ -1,4 +1,4 @@
-import { isAgentInFlight, type AgentGroupBlock, type WorkflowAgentState } from "../../../infra/output-blocks.js"
+import { isAgentInFlight, type AgentGroupBlock, type WorkflowAgentState } from "../../../infra/substrate/events/output-blocks.js"
 import type { RoleAssignmentView } from "../../auth/role-protocol-types.js"
 import { agentGroupInitializing, agentGroupModelLabel } from "./agent-group-summary.js"
 import { formatElapsed } from "../format.js"

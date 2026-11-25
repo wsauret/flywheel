@@ -4,7 +4,7 @@ import { testRender } from "@opentui/solid"
 import { createComponent, createSignal } from "solid-js"
 import { createStore, reconcile, type DeepMutable } from "solid-js/store"
 import { isServer } from "solid-js/web"
-import type { ProvisionalDiff } from "../../../../../../src/infra/output-blocks.js"
+import type { ProvisionalDiff } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import { ThemeProvider } from "../../../../../../src/tui/context/theme.js"
 import { DiffPreview, parseDiffs } from "../../../../../../src/tui/transcript/output-blocks/tools/diff-preview.js"
 

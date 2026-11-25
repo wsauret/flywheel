@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite"
-import { isRecord } from "../../../infra/record.js"
+import { isRecord } from "../../../infra/guards/record.js"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND, decodeCommandHandover } from "../command-handover.js"
 import { FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND, decodeRecoverableCheckpoint } from "./finalized-tool-result-checkpoint.js"
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, decodeQueuedUserInputCell } from "../conversation/queued-user-inputs.js"

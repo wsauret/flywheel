@@ -1,13 +1,13 @@
-import { holdsPinnedAntigravityBytes, QUALIFIED_ANTIGRAVITY_VERSION, type AntigravityPinnedBytes } from "../../../../infra/distribution/antigravity-engine-pin.js"
-import { errorMessage } from "../../../../infra/error-message.js"
-import type { ExternalLoginProblem, ExternalLoginQuestion, LoginWaitAnswer } from "../../../../infra/llm/access/access-provider.js"
+import { holdsPinnedAntigravityBytes, QUALIFIED_ANTIGRAVITY_VERSION, type AntigravityPinnedBytes } from "../../../../infra/update/distribution/antigravity-engine-pin.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import type { ExternalLoginProblem, ExternalLoginQuestion, LoginWaitAnswer } from "../../../../infra/providers/llm/access/access-provider.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { RouteUnavailableError } from "../../../agent-runtime/llm/errors.js"
 import { classifyProviderFailure } from "../../../agent-runtime/llm/stream/provider-failure.js"
 import type { ModuleHealthReport } from "../../../module-health.js"
 import { GOOGLE_ANTIGRAVITY_LABEL, LOGIN_PROGRAM_LABEL } from "../names.js"
 import { reachedKeyringKinds, type TokenStoreKind, type TokenStoreObservation } from "../engine/token-store.js"
-import type { ExternalAccount } from "../../../../infra/auth/provider-account.js"
+import type { ExternalAccount } from "../../../../infra/providers/auth/provider-account.js"
 
 const log = Log.create({ service: "provider-google-antigravity" })
 

@@ -11,7 +11,7 @@ import { createFlywheelAppService } from "../../../../../../src/orchestration/ap
 import { createFrontendProjection } from "../../../../../../src/orchestration/app-service/projections/frontend-projection.js"
 import { createRuntimeUiBus } from "../../../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import { fakeProjections } from "../../app-service-doubles.js"
-import { asAsyncEventReadSurface } from "../../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../../src/infra/substrate/store/event-store-types.js"
 import { createSessionViewLoader } from "../../../../../../src/orchestration/app-service/projections/session-view.js"
 
 type AutoDeletePorts = Parameters<typeof createSessionAutoDelete>[0]

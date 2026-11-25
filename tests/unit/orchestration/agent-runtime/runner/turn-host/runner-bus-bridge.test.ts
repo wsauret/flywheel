@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
 
-import type { TurnParkedContext } from "../../../../../../src/infra/agent-loop-events.js"
-import { createEmit, EventBus } from "../../../../../../src/infra/event-bus.js"
-import { FLYWHEEL_EVENT_TYPES, type FlywheelEvent } from "../../../../../../src/infra/events.js"
-import { createRuntimeEvent } from "../../../../../../src/infra/runtime-facts/runtime-event-factory.js"
+import type { TurnParkedContext } from "../../../../../../src/infra/substrate/events/agent-loop-events.js"
+import { createEmit, EventBus } from "../../../../../../src/infra/substrate/events/event-bus.js"
+import { FLYWHEEL_EVENT_TYPES, type FlywheelEvent } from "../../../../../../src/infra/substrate/events/events.js"
+import { createRuntimeEvent } from "../../../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js"
 import { createRunnerBusBridge } from "../../../../../../src/orchestration/agent-runtime/runner/turn-host/bus-bridge.js"
 
 function harness(isLive?: () => boolean) {

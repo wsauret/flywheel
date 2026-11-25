@@ -1,5 +1,5 @@
 import type { ChatModuleHost, ChatModuleHostInput } from "../../../chat/chat-module-host.js"
-import { moduleRuntimeHandle } from "../../../../infra/module-runtime.js"
+import { moduleRuntimeHandle } from "../../../../infra/definitions/modules/module-runtime.js"
 import { createLearningReview } from "./learning-review.js"
 import { learningAuditStores, reconcileLearning } from "./reconciliation.js"
 import { learningReviewPolicy } from "../config.js"

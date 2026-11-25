@@ -1,12 +1,12 @@
-import type { AccessProviderId } from "../../../infra/llm/access/access-provider.js";
+import type { AccessProviderId } from "../../../infra/providers/llm/access/access-provider.js";
 
 // Each array is the single source of its union type, so schema mirrors
 // (Schema.Literals) stay total when a member is added.
 export const LLM_APIS = ["openai-responses", "chat-completions", "anthropic-messages", "google-generative-ai"] as const;
 export type LlmApi = (typeof LLM_APIS)[number];
 
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
-// The model-family vocabulary; the type lives in infra/llm/models/model-family.ts.
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
+// The model-family vocabulary; the type lives in infra/providers/llm/models/model-family.ts.
 export const MODEL_FAMILIES = ["openai", "chat-completions", "anthropic", "google"] as const satisfies readonly ModelFamily[];
 
 export const LLM_STOP_REASONS = [
@@ -56,4 +56,4 @@ export function isSameAccessProviderReplay(
   return message.accessProvider === options.accessProvider;
 }
 
-export type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
+export type { LlmToolOutputPart } from "../../../infra/providers/llm/tool-output-part-schema.js";

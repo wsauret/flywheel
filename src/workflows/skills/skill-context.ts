@@ -1,8 +1,8 @@
 import { createHash, type Hash } from "node:crypto";
 import { basename, dirname, join } from "node:path";
-import { ContainedPathError, type ContainedDirectory, type ContainedOwnedFile } from "../../infra/descriptor-directory/descriptor-directory-contract.js";
-import { openContainedDirectory } from "../../infra/descriptor-directory.js";
-import { renderCapabilityText, type CapabilityCheck } from "../../infra/capability-text.js";
+import { ContainedPathError, type ContainedDirectory, type ContainedOwnedFile } from "../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openContainedDirectory } from "../../infra/platform/files/descriptor-directory.js";
+import { renderCapabilityText, type CapabilityCheck } from "../../infra/definitions/capability-text.js";
 import type {
   SkillAuthority,
   SkillDefinition,

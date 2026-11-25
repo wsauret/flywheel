@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import type { SubscriptionUsageHistoryEntry } from "../../../../../src/infra/llm/usage/subscription-usage-store-codec.js"
-import type { SubscriptionUsageMetric } from "../../../../../src/infra/llm/usage/subscription-usage.js"
+import type { SubscriptionUsageHistoryEntry } from "../../../../../src/infra/providers/llm/usage/subscription-usage-store-codec.js"
+import type { SubscriptionUsageMetric } from "../../../../../src/infra/providers/llm/usage/subscription-usage.js"
 import { historyAccount } from "../../../../../src/orchestration/modules/subscription-usage/usage-history.js"
 
 /** The history fold: hourly samples in range, the latest and peak reading per

@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import type { CapacityContinuation } from "./execution/capacity-wait-continuation.js"
 import type { ProjectExecutorCommand, ProjectExecutorEvent } from "./project-executor-protocol.js"
 

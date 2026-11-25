@@ -14,8 +14,8 @@
  * not refused, so the agent's tool notice and its refusals cannot disagree.
  */
 
-import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
-import type { ToolAction } from "../../../../infra/workflow-types.js";
+import type { ModuleRuntimes } from "../../../../infra/definitions/modules/module-runtime.js";
+import type { ToolAction } from "../../../../infra/definitions/workflow/workflow-types.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import type { FirstPartyModuleComposition, ToolExposureGate } from "../../../modules.js";
 import type { KernelToolDeps } from "../kernel-tool-deps.js";

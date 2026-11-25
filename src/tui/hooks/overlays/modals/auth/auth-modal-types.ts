@@ -1,7 +1,7 @@
 import type { Accessor, JSX } from "solid-js"
 import type { RuntimeAuthProfileView, RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import type { AttachedRuntimeClient } from "../../../../../protocol/runtime/app-service-types.js"
-import type { ExternalUrlOpener } from "../../../../../infra/open-external-url.js"
+import type { ExternalUrlOpener } from "../../../../../infra/substrate/output/notify/open-external-url.js"
 import type { ModalContext } from "../../../../components/modal-stack.js"
 import type { Clipboard } from "../../../../terminal/clipboard.js"
 import type { ShellServices } from "../../../state/shell-state.js"

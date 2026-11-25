@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { lstat, open, type FileHandle } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Schema } from "effect";
-import { fsyncDirectory } from "../../../../../infra/atomic-write.js";
+import { fsyncDirectory } from "../../../../../infra/platform/files/atomic-write.js";
 
 /** Symlink-refusing opens for the artifacts a results directory owns.
  *

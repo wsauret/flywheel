@@ -16,7 +16,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Log } from "../../../../src/infra/diagnostics/log.js";
-import { liveBuildsDir, updateAuthorityDbFile, versionsDir } from "../../../../src/infra/paths.js";
+import { liveBuildsDir, updateAuthorityDbFile, versionsDir } from "../../../../src/infra/platform/files/paths.js";
 import { buildCollectionPending, collectBuildTrees } from "../../../../src/infra/update/build-retention.js";
 import { buildExecutable } from "../../../../src/infra/update/build-identity.js";
 import { recordBuildProved } from "../../../../src/infra/update/service-start-record.js";

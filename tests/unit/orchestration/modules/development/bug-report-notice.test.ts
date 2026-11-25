@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test"
 import { Log } from "../../../../../src/infra/diagnostics/log.js"
-import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js"
+import type { NotificationEpisodeInput } from "../../../../../src/infra/substrate/events/notification-episode.js"
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js"
 import { createBugReportNotice } from "../../../../../src/orchestration/modules/development/bug-report-notice.js"
 

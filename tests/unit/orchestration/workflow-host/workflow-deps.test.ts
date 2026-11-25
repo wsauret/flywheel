@@ -7,9 +7,9 @@ import { CONFIG_DEFAULTS, type FlywheelConfig } from "../../../../src/orchestrat
 import type { AgentFactory, AgentOptions } from "../../../../src/orchestration/agent-runtime/types";
 import type { PrepareWorkflowDepsInput } from "../../../../src/orchestration/workflow-host/deps";
 import { fixtureDefinitions, repoDefinitions } from "../../../helpers/project-definitions.js";
-import type { AccountDirectories } from "../../../../src/infra/directory-authorities.js";
+import type { AccountDirectories } from "../../../../src/infra/platform/files/directory-authorities.js";
 import { testDirectories } from "../../../helpers/directories.js";
-import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js";
+import { captureProviderConnection } from "../../../../src/infra/providers/auth/auth-context.js";
 import { testCapabilityModules } from "../../../helpers/provider-authority.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { asModelClient } from "../agent-runtime/_model-client.js";

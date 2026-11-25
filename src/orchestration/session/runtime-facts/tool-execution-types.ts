@@ -1,6 +1,6 @@
-import type { ToolOutcome } from "../../../infra/runtime-facts/tool-outcome.js"
-import type { StoredFact } from "../../../infra/store/event-store-types.js"
-import type { RecordedRuntimeInvocation } from "../../../infra/runtime-facts/runtime-fact-types.js"
+import type { ToolOutcome } from "../../../infra/substrate/runtime-facts/tool-outcome.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import type { RecordedRuntimeInvocation } from "../../../infra/substrate/runtime-facts/runtime-fact-types.js"
 
 export type ToolExecutionStatus =
   | "called"

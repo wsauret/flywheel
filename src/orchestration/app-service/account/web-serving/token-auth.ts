@@ -2,9 +2,9 @@ import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto"
 import { readdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 
-import { acquireLock, releaseLock } from "../../../../infra/locks/ownership-file-lock.js"
-import { ensurePrivateRootDirectoryAsync, PRIVATE_FILE_MODE } from "../../../../infra/private-path.js"
-import { renameThroughSharing } from "../../../../infra/windows-file-replacement.js"
+import { acquireLock, releaseLock } from "../../../../infra/process/locks/ownership-file-lock.js"
+import { ensurePrivateRootDirectoryAsync, PRIVATE_FILE_MODE } from "../../../../infra/platform/files/private-path.js"
+import { renameThroughSharing } from "../../../../infra/platform/files/windows/windows-file-replacement.js"
 
 const TOKEN_PATTERN = /^[0-9a-f]{48}$/
 const STAGING_SUFFIX = /^\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/

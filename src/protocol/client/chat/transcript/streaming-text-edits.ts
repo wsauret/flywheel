@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { ToolStreamingTextSchema } from "../../../../infra/output-blocks.js"
-import type { EditableValue, StreamingToolTextOp, ValueEdit, ValuePath } from "../../../../infra/output/output-block-delta.js"
+import { ToolStreamingTextSchema } from "../../../../infra/substrate/events/output-blocks.js"
+import type { EditableValue, StreamingToolTextOp, ValueEdit, ValuePath } from "../../../../infra/substrate/output/output-block-delta.js"
 import type { FrontendOutputBlock, FrontendToolStreamingText } from "../../../runtime/app-service-types.js"
 import type { OutputView } from "../../../transcript/output-protocol-types.js"
 

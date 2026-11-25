@@ -9,8 +9,8 @@ import {
   producerOrigin,
   resumeInput,
   sameProducer,
-} from "../../../infra/agent-loop-events.js";
-import { normalizeChatInput, type ChatInput, type ChatInputLike } from "../../../infra/chat-input.js";
+} from "../../../infra/substrate/events/agent-loop-events.js";
+import { normalizeChatInput, type ChatInput, type ChatInputLike } from "../../../infra/substrate/events/chat-input.js";
 
 type WaiterWake = "input" | "cancelled";
 interface MessageQueueItem {

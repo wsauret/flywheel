@@ -1,5 +1,5 @@
 import { expect, it, mock } from "bun:test"
-import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../../../src/infra/output-blocks.js"
+import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import { terminalTranscript } from "../../../../../../src/tui/transcript/output-blocks/visible-output-blocks.js"
 import { workflowDetail, processStatus } from "../../../../../helpers/runtime-views.js"
 import { runtimeDispatch } from "../../../../../helpers/runtime-dispatch.js"

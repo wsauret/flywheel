@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { createFactParser, defineFact, factTypes } from "../../infra/event-registry.js";
+import { createFactParser, defineFact, factTypes } from "../../infra/substrate/facts/event-registry.js";
 import {
   CommittedWorkflowControlSchema,
   WorkflowControlV11Schema,
@@ -7,7 +7,7 @@ import {
   IdentifiedFollowUpIdentitySchema,
   type CommittedWorkflowControl,
 } from "./committed-control.js";
-import { DurableFollowUpInputSchema } from "../../infra/chat-input-schema.js";
+import { DurableFollowUpInputSchema } from "../../infra/substrate/events/chat-input-schema.js";
 import {
   encodeHistoricalWorkflowEvent,
   HistoricalFollowUpRequestV1Schema,

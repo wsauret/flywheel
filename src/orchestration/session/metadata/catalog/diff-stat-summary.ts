@@ -1,5 +1,5 @@
-import { parseProjectionFact } from "../../../../infra/projection/event-projection.js"
-import type { StoredFact } from "../../../../infra/store/event-store-types.js"
+import { parseProjectionFact } from "../../../../infra/substrate/projection/event-projection.js"
+import type { StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
 import { parseFileMutationFact } from "../../file-mutations/file-mutation-facts.js"
 
 export const DIFF_STAT_FACT_TYPES = ["file.changed", "file.artifact.recorded"] as const

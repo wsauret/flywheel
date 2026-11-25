@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { trustedCommandRun } from "../../../src/infra/process/container/process-container.js"
-import type { TrustedProbeLaunch } from "../../../src/infra/trusted-probe-launch.js"
+import type { TrustedProbeLaunch } from "../../../src/infra/platform/trusted-probe-launch.js"
 import { lingerAfter, sourceModule } from "../../helpers/process-linger.js"
 
 const IMPORT_RUNS = `import { trustedCommandRun, trustedProbeRun } from ${JSON.stringify(sourceModule("infra/process/container/process-container.ts"))}`

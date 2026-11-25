@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import type { AsyncEventStateReadSurface, EventStoreAppend, StoredFact, InFlightPayload } from "../../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, EventStoreAppend, StoredFact, InFlightPayload } from "../../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { parseSkillFact, skillCleanupCompletedFact } from "../../../../workflows/skills/skill-facts.js"
 import { skillPackageManifestIdentity, type BundledCorpusIdentity, type SkillPackageIdentity, type SkillPackageManifestEntry } from "../../../../workflows/skills/skill-schema.js"

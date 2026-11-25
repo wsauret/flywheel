@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { memoryWriteActor } from "../../../../workflows/learning/memory/memory-fact-writers.js"
 import type { MemoryWrittenFact } from "../../../../workflows/learning/memory/memory-facts.js"
-import { LearningScopeSchema } from "../../../../infra/learning-scope.js"
+import { LearningScopeSchema } from "../../../../infra/definitions/learning/learning-scope.js"
 import { migrateFactVersions, type FactMigrationResult } from "../../../workspace-state/migrations/engine.js"
 
 const MEMORY_WRITTEN_MIGRATION_ID = "memory-written-v3"

@@ -1,5 +1,5 @@
 import { createEffect, onCleanup, type Accessor } from "solid-js"
-import { notifyDesktop } from "../../../infra/desktop-notify.js"
+import { notifyDesktop } from "../../../infra/substrate/output/notify/desktop-notify.js"
 import type { RuntimeClient, SessionRow } from "../../../protocol/runtime/app-service-types.js"
 import { createQuestionPages } from "../../../protocol/client/chat/questions/question-pages.js"
 

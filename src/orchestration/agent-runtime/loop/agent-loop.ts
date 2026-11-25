@@ -1,7 +1,7 @@
 // Agent turn state machine: stream collection, compaction, tool execution. Input arrives through `options.inputSource`; observers are notified at lifecycle moments and may enqueue back into the source.
 import { Effect, Exit, Scope } from "effect";
-import { mergeAbortSignals } from "../../../infra/abort.js";
-import type { AgentLoopInput } from "../../../infra/agent-loop-events.js";
+import { mergeAbortSignals } from "../../../infra/timing/abort.js";
+import type { AgentLoopInput } from "../../../infra/substrate/events/agent-loop-events.js";
 import { Log } from "../../../infra/diagnostics/log.js";
 import { runBudgetExhaustionTurn } from "./budget-exhaust.js";
 import { createBudgetNudge } from "./nudges/budget-nudge.js";
@@ -10,7 +10,7 @@ import { captureForkMessages, recordInterruptedTurn, seedAgentLoopTurn } from ".
 import { createPendingWorkNudge } from "./nudges/pending-work-nudge.js";
 import { agentLoopTransition as loopTransition, createAgentRunTally, initialAgentLoopState as initialLoopState, openWaitFor, OUTPUT_OVERFLOW_CONTINUATION_LIMIT, tallyToolResults } from "./agent-loop-state.js";
 import { createHandoffTracker, HANDOFF_OWED_NOTICE } from "./closure/agent-loop-handoff.js";
-import type { PersistenceWriteRefused } from "../../../infra/store/event-store-types.js";
+import type { PersistenceWriteRefused } from "../../../infra/substrate/store/event-store-types.js";
 import { createContentFilterRecovery } from "./turn/agent-loop-content-filter.js";
 import { createAgentLoopToolContext } from "./tool-calls/agent-loop-tool-context.js";
 import { hasAssistantOutput } from "./turn/assistant-output.js";
@@ -36,7 +36,7 @@ import { createContextAdmission } from "../compaction/compaction-policy.js";
 import type { ConversationMessage, LlmStopReason, ToolCall } from "../llm/types.js";
 import { repairContentRefusal } from "../llm/history/content-repair.js";
 import { createStreamedEditTurn } from "./tool-calls/streamed-edit-turn.js";
-import { prepareLocalTokenizer } from "../../../infra/local-tokenizer.js";
+import { prepareLocalTokenizer } from "../../../infra/providers/local-tokenizer.js";
 import { trackTurnHop } from "./turn-hop.js";
 
 const log = Log.create({ service: "agent-loop" });

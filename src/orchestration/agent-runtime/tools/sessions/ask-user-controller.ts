@@ -1,5 +1,5 @@
-import type { EmitFn } from "../../../../infra/event-bus.js";
-import type { QuestionEntry } from "../../../../infra/output-blocks.js";
+import type { EmitFn } from "../../../../infra/substrate/events/event-bus.js";
+import type { QuestionEntry } from "../../../../infra/substrate/events/output-blocks.js";
 import { formatAgentInputAnswers, type AgentInputAnswers } from "../../../../protocol/session/question-protocol-types.js";
 
 export type AskUserResult =

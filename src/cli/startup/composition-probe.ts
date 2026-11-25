@@ -1,8 +1,8 @@
 // This probe enters before normal command composition and owns its catalog bootstrap.
 import "../../orchestration/modules.js";
-import type { StartupDirectories } from "../../infra/directory-authorities.js";
-import type { CapabilityCheck } from "../../infra/capability-text.js";
-import { isDevelopmentBuild } from "../../infra/development-mode.js";
+import type { StartupDirectories } from "../../infra/platform/files/directory-authorities.js";
+import type { CapabilityCheck } from "../../infra/definitions/capability-text.js";
+import { isDevelopmentBuild } from "../../infra/update/distribution/development-mode.js";
 import { resolveWorkflowAgents } from "../../workflows/definitions/agent-resolution.js";
 import { personaInstructions } from "../../workflows/agents/persona-instructions.js";
 import { assembleSkillInvocation } from "../../workflows/skills/skill-invocation.js";

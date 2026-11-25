@@ -1,6 +1,6 @@
-import type { StoredFact } from "../../infra/store/event-store-types.js"
-import type { createEmit } from "../../infra/event-bus.js"
-import { composeModuleRuntimes, type ModuleRuntimes, type ModuleRuntimeHandle } from "../../infra/module-runtime.js"
+import type { StoredFact } from "../../infra/substrate/store/event-store-types.js"
+import type { createEmit } from "../../infra/substrate/events/event-bus.js"
+import { composeModuleRuntimes, type ModuleRuntimes, type ModuleRuntimeHandle } from "../../infra/definitions/modules/module-runtime.js"
 import type { BackgroundExecutionOwner } from "../agent-runtime/background-execution/background-execution-owner.js"
 import type { ForegroundBashHoldController } from "../agent-runtime/background-work/foreground-bash-hold.js"
 import type { ConversationMessage } from "../agent-runtime/llm/types.js"
@@ -8,7 +8,7 @@ import type { ChatSessionDeps, ChatSessionState } from "./types.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
 import type { ChatTurnMailbox } from "./turn-mailbox.js"
 import { Log } from "../../infra/diagnostics/log.js"
-import { errorMessage } from "../../infra/error-message.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 
 export interface CapturedModuleConfig { readonly [section: string]: unknown }
 

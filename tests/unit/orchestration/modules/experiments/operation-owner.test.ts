@@ -1,8 +1,8 @@
 import { afterEach, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
-import { asAsyncEventWriter, type InFlightRecord } from "../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventWriter, type InFlightRecord } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { Log } from "../../../../../src/infra/diagnostics/log.js"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import {
   createExperimentOperation,
   experimentStopRetirement,

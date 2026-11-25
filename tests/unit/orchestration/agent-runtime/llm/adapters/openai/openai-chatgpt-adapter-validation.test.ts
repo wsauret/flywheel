@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { Redacted } from "effect";
 
-import { captureProviderConnection, type AuthContext, type SubscriptionCredentials } from "../../../../../../../src/infra/auth/auth-context.js";
+import { captureProviderConnection, type AuthContext, type SubscriptionCredentials } from "../../../../../../../src/infra/providers/auth/auth-context.js";
 import { testEligibility, testProviderRegistry } from "../../../../../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../../../../../helpers/request-tool-surface.js";
 import { authProviders } from "../../../../../../helpers/auth-context.js";
@@ -14,7 +14,7 @@ describe("role resolution through captured ChatGPT auth", () => {
     providers: testProviderRegistry(),
     eligibility: testEligibility({
       modelIds: new Set(["gpt-6.1-sol"]),
-      candidateOfferings: (candidate: import("../../../../../../../src/infra/llm/access/access-provider.js").AccessProviderCandidate, model: string) =>
+      candidateOfferings: (candidate: import("../../../../../../../src/infra/providers/llm/access/access-provider.js").AccessProviderCandidate, model: string) =>
         candidate.providerId === providerId
           ? [{ candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-responses" as const }]
           : [],

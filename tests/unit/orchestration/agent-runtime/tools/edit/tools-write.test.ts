@@ -4,8 +4,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Schema } from "effect";
-import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
-import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evidence-schema.js";
+import { readMutationEvidenceFiles } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js";
+import { MutationEvidenceSchema } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence-schema.js";
 import { parseFileMutationOperationHeader, readFileMutationOperation } from "../../../../../../src/orchestration/session/file-mutations/file-mutation-operation.js";
 
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
@@ -13,7 +13,7 @@ import { testBaseTools, admitEveryTool } from "../../../../../helpers/request-to
 import { MAX_FILE_EDIT_BYTES } from "../../../../../../src/orchestration/agent-runtime/tools/file-edits/retained-file-edit-host.js";
 import { FileReadLedger } from "../../../../../../src/orchestration/agent-runtime/tools/files/file-read-ledger.js";
 import { createRecordingFileMutationStore, makeContext } from "../_fixtures.js";
-import type { InFlightPayload } from "../../../../../../src/infra/store/event-store-types.js";
+import type { InFlightPayload } from "../../../../../../src/infra/substrate/store/event-store-types.js";
 
 // Compose prepare + execute exactly as the agent loop's dispatcher does.
 const runTool = (

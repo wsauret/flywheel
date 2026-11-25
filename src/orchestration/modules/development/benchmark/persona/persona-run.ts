@@ -1,9 +1,9 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { AgentDefinition } from "../../../../../infra/agent-definition.js";
-import { errorMessage } from "../../../../../infra/error-message.js";
-import { DURABLE_RUNTIME_EVENT_TYPES, type RuntimeEvent } from "../../../../../infra/runtime-facts/runtime-event-types.js";
-import type { Effort } from "../../../../../infra/workflow-types.js";
+import type { AgentDefinition } from "../../../../../infra/definitions/agent-definition.js";
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js";
+import { DURABLE_RUNTIME_EVENT_TYPES, type RuntimeEvent } from "../../../../../infra/substrate/runtime-facts/runtime-event-types.js";
+import type { Effort } from "../../../../../infra/definitions/workflow/workflow-types.js";
 import { agentTasksFromComposition, type ModuleAgentTasks } from "../../../../module-agent-tasks.js";
 import { composeFirstPartyModules } from "../../../../modules.js";
 import type { WorkflowDeps } from "../../../../workflow-host/deps.js";

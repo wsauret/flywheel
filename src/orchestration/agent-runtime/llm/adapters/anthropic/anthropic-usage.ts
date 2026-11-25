@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { isRecord } from "../../../../../infra/record.js";
+import { isRecord } from "../../../../../infra/guards/record.js";
 import type { ProviderStreamEvent } from "../../types.js";
 
 /** Per-attempt billing counters, cumulative as the provider reports them. */

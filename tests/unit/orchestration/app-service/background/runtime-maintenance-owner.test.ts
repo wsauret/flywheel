@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
-import type { StartupDirectories } from "../../../../../src/infra/directory-authorities.js"
+import type { StartupDirectories } from "../../../../../src/infra/platform/files/directory-authorities.js"
 import { connectOwnedProcessBridge } from "../../../../../src/infra/owned-process-bridge.js"
 import type { GuardianControl } from "../../../../../src/infra/process-supervisor.js"
 import { createMaintenanceQueue, type MaintenanceQueue } from "../../../../../src/orchestration/app-service/background/runtime-maintenance-owner.js"

@@ -24,7 +24,7 @@ import { Database } from "bun:sqlite"
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../src/infra/platform/files/paths.js"
 import type { RuntimeClient, SessionRow } from "../../../src/protocol/runtime/app-service-types.js"
 import { readDebugLogRecords } from "../lib/debug-log-reader.js"
 import { registerProject, startIsolatedServe, waitFor, writeAccountConfig, type IsolatedServe } from "../lib/isolated-serve.js"

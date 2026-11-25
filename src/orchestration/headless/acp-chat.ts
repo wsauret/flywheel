@@ -1,7 +1,7 @@
 import { realpath } from "node:fs/promises"
 import { Schema } from "effect"
-import { readAppVersion } from "../../infra/app-version.js"
-import { errorMessage } from "../../infra/error-message.js"
+import { readAppVersion } from "../../infra/update/distribution/app-version.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import {
   ACP_PROTOCOL_VERSION, AcpCancelParamsSchema, AcpCloseSessionParamsSchema, AcpContinueSessionParamsSchema, AcpInboundResponseSchema, AcpInboundSchema,
   AcpInitializeParamsSchema, AcpNewSessionParamsSchema, AcpPromptParamsSchema, AcpSetConfigOptionParamsSchema,

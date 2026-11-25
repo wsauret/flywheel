@@ -1,6 +1,6 @@
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreReadSurface, type FactQuery, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreReadSurface, type FactQuery, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types"
 import { Schema } from "effect"
-import { contentEvidence } from "../../../../src/infra/runtime-facts/content-evidence"
+import { contentEvidence } from "../../../../src/infra/substrate/runtime-facts/content-evidence"
 import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 import { buildDurableSubagentCreated, buildSubagentCompleted, buildSubagentPaused, buildSubagentPrompted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager"

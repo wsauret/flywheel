@@ -1,6 +1,6 @@
-import type { AsyncEventReadSurface, StoredFact } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventReadSurface, StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { recordBackgroundFailure } from "../../../infra/operation-log.js"
+import { recordBackgroundFailure } from "../../../infra/diagnostics/operation-log.js"
 import { papercutsProtocol, type RuntimePapercutCountView } from "../../../protocol/modules/papercuts.js"
 import { workspaceDomainCursor, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { ModuleProtocolRuntime, ModuleProtocolServices } from "../../app-service/module-protocol-host.js"

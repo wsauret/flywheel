@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { StreamingToolTextOp } from "../../../../../../src/infra/output/output-block-delta.js"
-import type { ToolEntry, ToolStreamingText } from "../../../../../../src/infra/output-blocks.js"
+import type { StreamingToolTextOp } from "../../../../../../src/infra/substrate/output/output-block-delta.js"
+import type { ToolEntry, ToolStreamingText } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import type { CommandKeeper, KeptOutputChange } from "../../../../../../src/orchestration/app-service/runtime/command-keeper.js"
 import { createKeptOutputProjection } from "../../../../../../src/orchestration/app-service/projections/output/kept-output-projection.js"
 import { readOutputSequence, type OutputSequence } from "../../../../../../src/orchestration/app-service/projections/output/output-sequence.js"
@@ -14,7 +14,7 @@ import { chatEntry, fakeSessionStore } from "../../app-service-doubles.js"
 import { sink } from "../../_output-projection-fixtures.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../../../helpers/directories.js"
 import { inMemoryEventReader } from "../../../../../helpers/in-memory-event-reader.js"
-import { asAsyncEventReadSurface } from "../../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../../src/infra/substrate/store/event-store-types.js"
 import { quietOutputCollaborators } from "../../../../../helpers/output-projection-deps.js"
 
 const TAIL = { content: "listening\n" }

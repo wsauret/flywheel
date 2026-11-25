@@ -1,5 +1,5 @@
-import type { ChatInput } from "../../../infra/chat-input.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/store/event-store-types.js"
+import type { ChatInput } from "../../../infra/substrate/events/chat-input.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/substrate/store/event-store-types.js"
 import type { ConversationTreeWriterController } from "../../chat/tree-writer.js"
 import { createHeldCellClaims, readConversationQueuedUserInputs } from "../../session/conversation/queued-user-inputs.js"
 import { readConversationBackgroundNotifications } from "../../session/conversation/queued-background-notifications.js"

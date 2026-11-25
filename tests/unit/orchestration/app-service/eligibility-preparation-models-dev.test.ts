@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js"
-import { authDir } from "../../../../src/infra/paths.js"
-import { createAccessProviderSelection } from "../../../../src/infra/llm/access/access-provider.js"
-import type { ResolvedProviderModels } from "../../../../src/infra/auth/provider-models/provider-model-preferences.js"
-import { createModelListingClient } from "../../../../src/infra/llm/access/model-listing.js"
+import { AuthProfileStore } from "../../../../src/infra/providers/auth/store/auth-profile-store.js"
+import { authDir } from "../../../../src/infra/platform/files/paths.js"
+import { createAccessProviderSelection } from "../../../../src/infra/providers/llm/access/access-provider.js"
+import type { ResolvedProviderModels } from "../../../../src/infra/providers/auth/provider-models/provider-model-preferences.js"
+import { createModelListingClient } from "../../../../src/infra/providers/llm/access/model-listing.js"
 import { createEligibilityPreparation } from "../../../../src/orchestration/app-service/auth/models/eligibility-preparation.js"
 import { createProviderModelPreferenceService, type ProviderModelEligibilityState } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js"
@@ -18,7 +18,7 @@ import type { SubscriptionUsagePublishedSnapshot } from "../../../../src/orchest
 import { Redacted } from "effect"
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
 import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js"
-import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
+import { accessProviderAccountKey } from "../../../../src/infra/providers/auth/provider-account.js"
 
 const DIRECTORIES = testDirectories(process.cwd())
 const PROFILE = { id: "work", directory: authDir(DIRECTORIES.userDataRoot, "work") }

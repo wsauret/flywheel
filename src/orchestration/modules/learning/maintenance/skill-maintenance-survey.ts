@@ -23,7 +23,7 @@
  *  not have had its trigger come up, so a count is not evidence about whether it
  *  should be merged, and offering one invites it to be used as if it were. */
 
-import type { ProjectDirectories } from "../../../../infra/directory-authorities.js";
+import type { ProjectDirectories } from "../../../../infra/platform/files/directory-authorities.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import { eligibleLearnedSkills } from "../skills/learned-skill-eligibility.js";
 import type { SkillFinding } from "../../../../workflows/skills/skill-health.js";

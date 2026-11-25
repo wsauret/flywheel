@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface } from "../../src/infra/store/event-store-types"
+import type { AsyncEventStateReadSurface } from "../../src/infra/substrate/store/event-store-types"
 import type { WorkflowInjectionQueue } from "../../src/orchestration/workflow-host/execution/injection-queue"
 import { createWorkflowAgentInputs, type WorkflowAgentInputs } from "../../src/orchestration/workflow-host/execution/agent-inputs"
 

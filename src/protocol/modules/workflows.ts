@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { RoleAssignmentSnapshotSchema } from "../../infra/role-settings.js"
-import { ToolPresentationSchema } from "../../infra/output-blocks.js"
+import { RoleAssignmentSnapshotSchema } from "../../infra/providers/role-settings.js"
+import { ToolPresentationSchema } from "../../infra/substrate/events/output-blocks.js"
 import { RuntimeAuthViewSchema } from "../auth/auth-status-protocol-schemas.js"
 import { ActivitySchema } from "../session/session-catalog-protocol-schemas.js"
 import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation } from "../protocol-module.js"

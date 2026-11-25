@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import type { Options, Query, SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
-import { ownedClaudeProcess } from "../../../../infra/claude-engine-process.js";
-import { separatedEngineEnvironment, type EngineHost } from "../../../../infra/claude-engine.js";
+import { ownedClaudeProcess } from "../../../../infra/providers/claude-engine-process.js";
+import { separatedEngineEnvironment, type EngineHost } from "../../../../infra/providers/claude-engine.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
 import type { ClaudeClientOAuth } from "../clients.js";
 

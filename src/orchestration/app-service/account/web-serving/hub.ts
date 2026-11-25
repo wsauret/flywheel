@@ -1,5 +1,5 @@
-import type { ServeLane } from "../../../../infra/cli-subprocess.js"
-import { ACCOUNT_HUB_HOSTNAME, accountHubOrigin, accountHubPort } from "../../../../infra/paths.js"
+import type { ServeLane } from "../../../../infra/platform/cli-subprocess.js"
+import { ACCOUNT_HUB_HOSTNAME, accountHubOrigin, accountHubPort } from "../../../../infra/platform/files/paths.js"
 import { brandTileSvg } from "../../../../protocol/client/brand.js"
 import { ServeStartupFailure } from "../../../../protocol/runtime/serve-handshake.js"
 import { applyControlUiSecurityHeaders } from "./control-ui-csp.js"

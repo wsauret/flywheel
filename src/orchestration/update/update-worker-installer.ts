@@ -25,7 +25,7 @@
 
 import { createBoundedWorkerSpawner } from "../../infra/process/workers/bounded-worker-spawner.js";
 import { DebugLog, parseForwardedLogRecord } from "../../infra/diagnostics/debug-log.js";
-import { errorMessage } from "../../infra/error-message.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import { serveOwnedProcessBridge, type OwnedProcessBridge } from "../../infra/owned-process-bridge.js";
 import type { GuardianControl } from "../../infra/process-supervisor.js";

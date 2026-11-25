@@ -1,8 +1,8 @@
-import type { UsageHourlySpend, UsageLedgerGroup, UsageQuotaAccounting as AuthorityQuotaAccounting, UsageRangeEntries } from "../../../infra/llm/usage/usage-authority.js"
-import { availableSubscriptionUsageResetCredits } from "../../../infra/llm/usage/subscription-usage.js"
-import type { SubscriptionUsageHistoryEntry } from "../../../infra/llm/usage/subscription-usage-store-codec.js"
+import type { UsageHourlySpend, UsageLedgerGroup, UsageQuotaAccounting as AuthorityQuotaAccounting, UsageRangeEntries } from "../../../infra/providers/llm/usage/usage-authority.js"
+import { availableSubscriptionUsageResetCredits } from "../../../infra/providers/llm/usage/subscription-usage.js"
+import type { SubscriptionUsageHistoryEntry } from "../../../infra/providers/llm/usage/subscription-usage-store-codec.js"
 import { subscriptionSpendAccountCorrelationId } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
-import type { SubscriptionUsageMetric, SubscriptionUsageSpendSource } from "../../../infra/llm/usage/subscription-usage.js"
+import type { SubscriptionUsageMetric, SubscriptionUsageSpendSource } from "../../../infra/providers/llm/usage/subscription-usage.js"
 import type { UsageAccountSource, UsageAccountsResult, UsageHistoryResult, UsageHistorySource, UsageModelSummary, UsageProtocolMetadata, UsageQuotaAccounting, UsageSpendPoint, UsageSpendResult, UsageSpendSource, UsageSubscriptionObservation, UsageTokens } from "../../../protocol/modules/subscription-usage.js"
 
 interface CurrentUsageAccountBase {
@@ -20,7 +20,7 @@ interface CurrentUsageObservation {
   readonly readerGeneration: number
   readonly metrics: readonly SubscriptionUsageMetric[]
   readonly spendSources: readonly SubscriptionUsageSpendSource[]
-  readonly resetCredits?: import("../../../infra/llm/usage/subscription-usage.js").SubscriptionUsageResetCredits
+  readonly resetCredits?: import("../../../infra/providers/llm/usage/subscription-usage.js").SubscriptionUsageResetCredits
   readonly crossedThresholds: readonly { readonly metricName: string; readonly threshold: number }[]
 }
 
@@ -99,8 +99,9 @@ interface MutableSourceSummary extends MutableSummary {
 
 const emptySummary = (): MutableSummary => ({ attempts: 0, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, estimatedBilledUsd: 0, includedValueUsd: 0, priceUnavailable: false })
 
+/** Output already includes reasoning (ARCH-PROVIDERS-076), so the total leaves the reasoning breakdown out. */
 function tokens(summary: Pick<MutableSummary, "input" | "output" | "cacheRead" | "cacheWrite" | "reasoning">): UsageTokens {
-  return { input: summary.input, output: summary.output, cacheRead: summary.cacheRead, cacheWrite: summary.cacheWrite, reasoning: summary.reasoning, total: summary.input + summary.output + summary.cacheRead + summary.cacheWrite + summary.reasoning }
+  return { input: summary.input, output: summary.output, cacheRead: summary.cacheRead, cacheWrite: summary.cacheWrite, reasoning: summary.reasoning, total: summary.input + summary.output + summary.cacheRead + summary.cacheWrite }
 }
 
 function addGroup(summary: MutableSummary, group: UsageLedgerGroup): void {

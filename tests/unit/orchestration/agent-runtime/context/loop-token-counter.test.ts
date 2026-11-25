@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, spyOn, test } from "bun:test";
 
-import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.js";
+import { prepareLocalTokenizer } from "../../../../../src/infra/providers/local-tokenizer.js";
 import {
   createTokenEstimationCache,
   estimateConversationTokens,

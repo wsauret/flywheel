@@ -7,7 +7,7 @@ import { createSubagentDispatch } from "../../../../../src/orchestration/modules
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../../../src/workflows/definitions/definition-registry.js";
 import { renderSkillClosure } from "../../../../../src/workflows/skills/skill-render.js";
 import type { SkillRegistryRevision } from "../../../../../src/workflows/skills/skill-schema.js";
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js";
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { buildRegistry, grantOf, makeContext, makeDeps, makeMockRunnerFactory, TEST_RATIONALE, childTask } from "./_fixtures.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../../helpers/directories.js";

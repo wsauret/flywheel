@@ -1,4 +1,4 @@
-import type { StreamingToolTextOp, ValueEdit } from "../../../../infra/output/output-block-delta.js"
+import type { StreamingToolTextOp, ValueEdit } from "../../../../infra/substrate/output/output-block-delta.js"
 import type { OutputDelta } from "../../../../protocol/transcript/output-protocol-types.js"
 
 /** The wire bytes of one published group of streaming text changes. A large

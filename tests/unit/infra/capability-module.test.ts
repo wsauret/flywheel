@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { composeModules, type ModuleDescriptor } from "../../../src/infra/module-descriptor.js";
+import { composeModules, type ModuleDescriptor } from "../../../src/infra/definitions/module-descriptor.js";
 
 interface Contributions {
   readonly tools: { readonly name: string };

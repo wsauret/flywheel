@@ -1,4 +1,4 @@
-import type { GuardedEventStoreAppend } from "../../../infra/store/event-store-types.js"
+import type { GuardedEventStoreAppend } from "../../../infra/substrate/store/event-store-types.js"
 import { recordedExecutionCwd } from "../metadata/session-execution-directory.js"
 import {
   buildSessionAuthProfileSelectedFact,

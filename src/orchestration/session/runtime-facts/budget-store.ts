@@ -1,4 +1,4 @@
-import type { StoredFact } from "../../../infra/store/event-store-types.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { budgetExhaustionReason, type BudgetLimits } from "../../../workflows/run/budget.js"
 import {
   budgetMetricsFromProjection,

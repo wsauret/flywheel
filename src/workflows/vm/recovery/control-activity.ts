@@ -1,5 +1,5 @@
-import { parseProjectionFact } from "../../../infra/projection/event-projection.js"
-import { CorruptEventRowError, type StoredFact } from "../../../infra/store/event-store-types.js"
+import { parseProjectionFact } from "../../../infra/substrate/projection/event-projection.js"
+import { CorruptEventRowError, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { parseWorkflowRunFact } from "../../run/run-facts.js"
 import type { CommittedWorkflowControl } from "../../control-facts/committed-control.js"
 import { foldWorkflowControl } from "./fact-fold.js"

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { fileChangeDetail, removedDirectoryGroups } from "../../../../../../src/protocol/client/chat/transcript/file-change-body.js"
-import type { MutationEvidence } from "../../../../../../src/infra/mutation-evidence.js"
+import type { MutationEvidence } from "../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
 
 describe("fileChangeDetail", () => {
   test("names a bounded sample and exact remainder without reading a many-file manifest", () => {

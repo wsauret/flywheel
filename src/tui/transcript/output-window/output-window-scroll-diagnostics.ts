@@ -8,7 +8,7 @@
  */
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { renderProbeEnabled } from "../../../infra/render-probe.js"
+import { renderProbeEnabled } from "../../../infra/substrate/output/render-probe.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { maxScrollTop, type ScrollAnchor } from "./output-window-scroll.js"
 

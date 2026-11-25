@@ -18,7 +18,7 @@
 
 import { connectInternalProcessChannel } from "../../../src/infra/process/channels/internal-process-channel.js"
 import { createReattachableProcessEndpoint } from "../../../src/infra/process/channels/reattachable-process-endpoint.js"
-import type { EventStoreAppend } from "../../../src/infra/store/event-store-types.js"
+import type { EventStoreAppend } from "../../../src/infra/substrate/store/event-store-types.js"
 import { createProjectExecutionState } from "../../../src/orchestration/app-service/project-state/project-execution-state.js"
 import { PROJECT_EXECUTOR_REATTACH_DEADLINE_MS, projectExecutorChannelLimits } from "../../../src/orchestration/app-service/executor/project-executor-protocol.js"
 import { connectProjectStateChannel } from "../../../src/orchestration/app-service/project-state/project-state-channel.js"

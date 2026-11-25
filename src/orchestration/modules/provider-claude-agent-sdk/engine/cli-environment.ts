@@ -1,7 +1,7 @@
 import { Redacted } from "effect";
 import { basename, dirname, resolve } from "node:path";
-import { separatedEngineEnvironment, type EngineHost } from "../../../../infra/claude-engine.js";
-import { MAX_TIMER_MS } from "../../../../infra/timers.js";
+import { separatedEngineEnvironment, type EngineHost } from "../../../../infra/providers/claude-engine.js";
+import { MAX_TIMER_MS } from "../../../../infra/timing/timers.js";
 import { inheritsPerTurnEffort } from "../../../agent-runtime/llm/model-compat.js";
 import type { BridgeRequest } from "../cli-view.js";
 import { LOGIN_ACCOUNTS_DIRECTORY, TOKEN_LOGIN_VARIABLE } from "../names.js";

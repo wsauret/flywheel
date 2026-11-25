@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "bun:test"
-import { buildMutationDiff } from "../../../../src/infra/mutation-diff"
-import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
+import { buildMutationDiff } from "../../../../src/infra/substrate/file-mutations/mutation-diff"
+import { buildMutationDiffEvidence } from "../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 import { branchBlocks } from "../../../helpers/branch-blocks"
 import type { MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
-import { formatAgentFailureDisplay } from "../../../../src/infra/output/output-formatter"
+import { formatAgentFailureDisplay } from "../../../../src/infra/substrate/output/output-formatter"
 import type { ToolHistorySummary } from "../../../../src/orchestration/module-seams"
 import { installedModules } from "../../../../src/orchestration/module-catalog"
 

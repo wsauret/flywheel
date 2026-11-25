@@ -1,6 +1,6 @@
 import { batch, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
-import type { LaunchModalRoute } from "../../infra/distribution/launch-state.js"
+import type { LaunchModalRoute } from "../../infra/update/distribution/launch-state.js"
 
 type KeyHandler = (evt: { name: string; ctrl?: boolean; meta?: boolean; super?: boolean; shift?: boolean; sequence?: string; raw?: string; preventDefault?: () => void }) => void
 type PasteHandler = (text: string) => void

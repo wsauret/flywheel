@@ -3,7 +3,7 @@ import { temporaryDirectories, testDirectories } from "../../../../helpers/direc
 import { legacyWorkflowFixture } from "../../../../helpers/workflow-agent-legacy-fixtures.js"
 import { prepareWorkspaceState } from "../../../../../src/orchestration/workspace-state/workspace-state.js"
 import { convertWorkflowAgentSessions } from "../../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions.js"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { workflowMembershipReader } from "../../../../../src/orchestration/session/metadata/workflow-membership.js"
 import { readWorkflowUsage } from "../../../../../src/orchestration/workflow-host/member-totals.js"
 import { Database } from "bun:sqlite"
@@ -11,7 +11,7 @@ import { recoverSessionMetadata } from "../../../../../src/orchestration/session
 import { readSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import { createHash } from "node:crypto"
 import { readConversationSnapshotSync } from "../../../../../src/orchestration/session/conversation/conversation-projection.js"
-import { buildSessionContent, type SessionContentNodeRow } from "../../../../../src/infra/session-content.js"
+import { buildSessionContent, type SessionContentNodeRow } from "../../../../../src/infra/substrate/session-content.js"
 
 const temporary = temporaryDirectories()
 const contentRow = (content: string) => ({ sha256: createHash("sha256").update(content).digest("hex"), content, bytes: Buffer.byteLength(content) })

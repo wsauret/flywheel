@@ -1,4 +1,4 @@
-import { errorMessage } from "../../error-message.js"
+import { errorMessage } from "../../diagnostics/error-message.js"
 import { KERNEL_API_SERVICE } from "./process-diagnostic-reader.js"
 
 /** Opens one kernel process API on its first use, such as libproc on macOS or

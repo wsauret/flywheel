@@ -8,7 +8,7 @@ import type { ModalContext, ModalHandle } from "../../../components/modal-stack.
 import { mutateRuntimeConfig } from "../../state/create-settings-store.js"
 import type { ShellServices } from "../../state/shell-state.js"
 import type { RuntimeConfigCache } from "../../state/runtime/create-runtime-config-cache.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 
 interface ThemeModalDeps {
   config: RuntimeConfigCache

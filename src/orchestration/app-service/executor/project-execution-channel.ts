@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { Schema } from "effect"
 import { pack, unpack } from "msgpackr"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { trackLoopSpan } from "../../../infra/diagnostics/event-loop-lag.js"
 import type { InternalProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"
 import { Log } from "../../../infra/diagnostics/log.js"

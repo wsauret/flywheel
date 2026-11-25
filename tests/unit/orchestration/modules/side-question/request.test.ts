@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { EventBus } from "../../../../../src/infra/event-bus.js"
+import { EventBus } from "../../../../../src/infra/substrate/events/event-bus.js"
 import type { AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { createChatRunnerLifecycle } from "../../../../../src/orchestration/chat/lifecycle/runner-lifecycle.js"
 import { ChatSessionState } from "../../../../../src/orchestration/chat/types.js"

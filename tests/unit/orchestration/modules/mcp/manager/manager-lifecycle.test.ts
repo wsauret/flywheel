@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { accountAuthDir } from "../../../../../../src/infra/paths.js"
+import { accountAuthDir } from "../../../../../../src/infra/platform/files/paths.js"
 import type { McpConnection } from "../../../../../../src/orchestration/modules/mcp/connection.js"
 import { McpNeedsAuthError } from "../../../../../../src/orchestration/modules/mcp/errors.js"
 import { createMcpManager } from "../../../../../../src/orchestration/modules/mcp/manager/manager.js"

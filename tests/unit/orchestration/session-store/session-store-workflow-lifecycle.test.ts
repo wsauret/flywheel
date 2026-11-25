@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, spyOn } from "bun:test"
-import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/store/event-store-effect.js"
+import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/substrate/store/event-store-effect.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createWorkflowHosts } from "../../../../src/orchestration/modules/workflows/host-collection.js"
 import * as runnerModule from "../../../../src/orchestration/workflow-host/execution/runner.js"

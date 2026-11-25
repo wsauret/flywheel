@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
-import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types"
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths"
 import { createFrontendProjection, type SessionChange } from "../../../../src/orchestration/app-service/projections/frontend-projection"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/protocol/detail"

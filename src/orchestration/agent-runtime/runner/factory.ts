@@ -1,14 +1,14 @@
-import type { AuthContext, ProviderConnection } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../../infra/llm/access/access-provider.js";
+import type { AuthContext, ProviderConnection } from "../../../infra/providers/auth/auth-context.js";
+import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../../infra/providers/llm/access/access-provider.js";
 import type { RequestAdmission } from "../llm/routing/provider-availability-types.js";
-import type { ModelsClient } from "../../../infra/llm/models/models.js";
+import type { ModelsClient } from "../../../infra/providers/llm/models/models.js";
 import { getSharedModelsClient } from "../../config/models/llm-clients.js";
 import { captureAccountConnection, createAdmittedClient, createClient, type AdmittedClientOptions, type CreateClientOptions, type EffectiveProviderConnection } from "../llm/routing/client-factory.js";
 import { LiveAgent } from "./runner.js";
 import { planCapabilitiesOfRun, prepareRunRequest, type CapabilityPlanner, type RequestPreparer } from "../loop/turn/request-preparation.js";
 import type { AgentFactory, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "../types.js";
-import type { ModuleServices } from "../../../infra/module-service.js";
-import type { EnvCaptureResolver } from "../../../infra/env-detection.js";
+import type { ModuleServices } from "../../../infra/definitions/modules/module-service.js";
+import type { EnvCaptureResolver } from "../../../infra/environment/env-detection.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import type { CommandHandoverAuthority } from "../background-execution/command-handover.js";
 import type { PersistentProcessClient } from "../../../infra/supervision/persistent/persistent-process-manager.js";
@@ -25,7 +25,7 @@ import type { AuthConditionOwner } from "../../auth/auth-condition-owner.js";
 import type { UsageAuthorityGeneration } from "../request/usage/usage-settlement.js";
 import { accessProviderRegistry, type AccessProviderRegistry } from "../llm/routing/access-provider-registry.js";
 import type { CaptureProviderConnection, CaptureSubscriptionAdmission, LLMClientFactory } from "../request/model-runtime-capture.js";
-import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js";
+import { accessProviderAccountKey } from "../../../infra/providers/auth/provider-account.js";
 
 interface GenerationRuntimeToolSurfaces {
   moduleServices?: ModuleServices;

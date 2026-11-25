@@ -7,15 +7,15 @@ import type { LearningReviewRun } from "./review-types.js";
  * that module's runtime instance instead.
  */
 
-import type { AgentDefinition } from "../../../../infra/agent-definition.js";
-import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/store/event-store-types.js";
-import type { ModelFamily } from "../../../../infra/llm/models/model-family.js";
-import type { ProviderRequestOptions } from "../../../../infra/llm/access/provider-options.js";
-import type { UsageEntry } from "../../../../infra/llm/usage/usage-entry.js";
+import type { AgentDefinition } from "../../../../infra/definitions/agent-definition.js";
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../../infra/substrate/store/event-store-types.js";
+import type { ModelFamily } from "../../../../infra/providers/llm/models/model-family.js";
+import type { ProviderRequestOptions } from "../../../../infra/providers/llm/access/provider-options.js";
+import type { UsageEntry } from "../../../../infra/providers/llm/usage/usage-entry.js";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
-import { NO_MODULE_SERVICES, type ModuleServices } from "../../../../infra/module-service.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
+import { NO_MODULE_SERVICES, type ModuleServices } from "../../../../infra/definitions/modules/module-service.js";
+import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";
 import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js";
 import type { SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";
 import type { RoleResolver } from "../../../config/roles.js";
@@ -38,7 +38,7 @@ import type { UsageSettlement } from "../usage/usage-settlement.js";
 import type { Agent, AgentOptions, AgentPurpose, CreateChildConversation, RuntimeToolSurfaces, RunnableAgentOptions } from "../../types.js";
 import type { CapabilityAccess } from "../../tools/types.js";
 import type { ServingModel } from "../../tools/kernel-tool-deps.js";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 import type { RuntimeConversation } from "../runtime-conversation.js";
 import { deriveChildRuntimeSurfaces } from "../../tools/dispatch/tool-registry.js";
 import { ownedCommandRunner } from "../../../../infra/owned-command.js";

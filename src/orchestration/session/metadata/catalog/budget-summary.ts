@@ -1,4 +1,4 @@
-import type { AsyncEventReadSurface } from "../../../../infra/store/event-store-types.js"
+import type { AsyncEventReadSurface } from "../../../../infra/substrate/store/event-store-types.js"
 import { contextUtilizationFromProjection, createBudgetProjection, type BudgetProjectionState } from "../../runtime-facts/budget-projection.js"
 
 export interface BudgetSummary {

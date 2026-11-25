@@ -7,7 +7,7 @@ import { promptOptions, type ToolPromptFields } from "../../../../../helpers/pro
 const read = (path: string) => readFileSync(path, "utf8")
 
 test("assembled prompts require the smallest complete verification", () => {
-  const corePrompt = read("src/infra/agent-assets/system-prompt.md")
+  const corePrompt = read("src/infra/definitions/agent-assets/system-prompt.md")
   const tools: ToolPromptFields[] = ["bash", "memory"].map((name) => ({ name, action: "ui_meta", description: name }))
   const compiled = renderSystemPrompt(buildSystemPrompt(promptOptions({ corePrompt, tools, promptKind: "chat" })))
   for (const rule of [
@@ -48,7 +48,7 @@ test("assembled prompts require the smallest complete verification", () => {
 })
 
 test("experiments settle external and runtime claims that code reading cannot", () => {
-  const doctrine = read("src/infra/agent-assets/engineering-doctrine.md")
+  const doctrine = read("src/infra/definitions/agent-assets/engineering-doctrine.md")
   expect(doctrine).toContain("run the probe and reclassify the risk from what you observed")
   const design = read("src/agent-skills/design/SKILL.md")
   expect(design).toContain("settled by a throwaway probe against the real thing")
@@ -56,7 +56,7 @@ test("experiments settle external and runtime claims that code reading cannot", 
     expect(read(`src/agent-skills/${skill}/SKILL.md`)).not.toMatch(/proof[- ]of[- ]concept is unnecessary/u)
   }
   // The core prompt owns the mocked-boundary rule; the verification skill relies on it and does not restate it.
-  expect(read("src/infra/agent-assets/system-prompt.md")).toContain("A test that mocks an external boundary does not prove that boundary")
+  expect(read("src/infra/definitions/agent-assets/system-prompt.md")).toContain("A test that mocks an external boundary does not prove that boundary")
   expect(read("src/agent-skills/verification/SKILL.md")).not.toContain("scratch harnesses")
   const subagentTool = read("src/orchestration/modules/subagents/tool.ts")
   expect(subagentTool).toContain("is not a lookup: it needs an experiment against the real thing, which a read-only agent cannot run")
@@ -67,7 +67,7 @@ test("assembled prompts accept decisive no-change outcomes", () => {
     { name: "edit", action: "file_edit", description: "Edit files" },
     { name: "ask_user", action: "ask_user", description: "Ask the user" },
   ]
-  const corePrompt = read("src/infra/agent-assets/system-prompt.md")
+  const corePrompt = read("src/infra/definitions/agent-assets/system-prompt.md")
   const compiled = renderSystemPrompt(buildSystemPrompt(promptOptions({ corePrompt, tools, promptKind: "chat", chatHost: { communication: true } })))
 
   // The core prompt's CONSTRAINTS own the rule; the delivery block does not restate it.
@@ -78,7 +78,7 @@ test("assembled prompts accept decisive no-change outcomes", () => {
 
 test("verification owners require fresh minimal proof without automatic UAT", () => {
   // The core prompt owns the sufficiency, staleness, and gate rules; the verification skill keeps only its own method.
-  const core = read("src/infra/agent-assets/system-prompt.md")
+  const core = read("src/infra/definitions/agent-assets/system-prompt.md")
   for (const rule of ["Tests alone are sufficient", "Add UAT beyond that only for a specific evidence gap or explicit acceptance requirement", "Assume past observations are stale", "Honor explicit repository gates"]) expect(core).toContain(rule)
   const verification = read("src/agent-skills/verification/SKILL.md")
   expect(verification).toContain("do not prove the current state. Run the selected checks yourself")

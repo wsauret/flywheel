@@ -1,4 +1,4 @@
-import type { AnyBlock, ToolEntry } from "../../../../infra/output-blocks.js"
+import type { AnyBlock, ToolEntry } from "../../../../infra/substrate/events/output-blocks.js"
 import type { FrontendOutputBlock } from "../../../../protocol/runtime/app-service-types.js"
 import { fileChangeDetail, isShellMutationEntry } from "../../../../protocol/client/chat/transcript/file-change-body.js"
 

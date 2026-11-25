@@ -1,4 +1,4 @@
-import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js"
+import type { LlmToolOutputPart } from "../../../infra/providers/llm/tool-output-part-schema.js"
 
 export interface McpCallResult {
   readonly content: LlmToolOutputPart[]

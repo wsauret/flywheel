@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
-import { asRecord } from "../../../../infra/record.js";
+import { asRecord } from "../../../../infra/guards/record.js";
 import { LlmStreamError } from "../../../agent-runtime/llm/errors.js";
 import type { CliBlock, CliMessage } from "../cli-view.js";
 import { CLAUDE_AGENT_SDK_LABEL } from "../names.js";

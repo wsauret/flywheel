@@ -2,8 +2,8 @@
  *  brief or persona composes. `skill-context.ts` reads the package; this file renders it for one reader. */
 
 import { basename } from "node:path";
-import type { CapabilityCheck } from "../../infra/capability-text.js";
-import { contentEvidence } from "../../infra/runtime-facts/content-evidence.js";
+import type { CapabilityCheck } from "../../infra/definitions/capability-text.js";
+import { contentEvidence } from "../../infra/substrate/runtime-facts/content-evidence.js";
 import { offeredSkillResources, type SkillResourceWindow } from "./skill-context.js";
 import { resolveSkillClosure } from "./skill-closure.js";
 import { renderSkillBody, resolveSkillBody } from "./skill-references.js";

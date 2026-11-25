@@ -1,5 +1,5 @@
-import type { PausedBy } from "../../../infra/output-blocks.js"
-import { toolOutcomeFromProvider } from "../../../infra/runtime-facts/tool-outcome.js"
+import type { PausedBy } from "../../../infra/substrate/events/output-blocks.js"
+import { toolOutcomeFromProvider } from "../../../infra/substrate/runtime-facts/tool-outcome.js"
 import { CONTINUATION_MESSAGES } from "../../agent-runtime/request/prompt/continuation-messages.js"
 import { DEFAULT_WAIT_SECONDS } from "../../agent-runtime/tools/sessions/process.js"
 import { MESSAGE_SESSION_TOOL_NAME } from "../../agent-runtime/tools/sessions/message-session.js"
@@ -7,7 +7,7 @@ import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
 import type { RestoredAgentWait } from "../../agent-runtime/agent-loop-types.js"
 import { createWaitToolPolicy, endsOpenWait, type OpenWaitInput } from "../../agent-runtime/loop/agent-loop-wait.js"
 import { messageDisposition } from "../message-disposition.js"
-import type { SessionRelation } from "../../../infra/chat-input-schema.js"
+import type { SessionRelation } from "../../../infra/substrate/events/chat-input-schema.js"
 
 /** What the turn-end readers need of an entry: enough to name the record,
  *  skip a notice, and tell a user message from an answer. A hydrated entry

@@ -22,7 +22,7 @@ import { FFIType } from "bun:ffi";
 import { createHash } from "node:crypto";
 import { chmodSync, constants, copyFileSync, cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync, type BigIntStats, type Dirent } from "node:fs";
 import { join } from "node:path";
-import { bindLibc } from "../../../../../infra/libc.js";
+import { bindLibc } from "../../../../../infra/platform/libc.js";
 import { fileFingerprint, observeFileState, sameObservedState, type ExpectedFileState, type FileFingerprint } from "../../file-edits/file-state.js";
 
 /** A change inside this window of the copy's start can share a timestamp tick

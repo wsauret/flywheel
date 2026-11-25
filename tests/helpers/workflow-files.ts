@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { DefinitionLayer } from "../../src/infra/definition-resolution.js";
+import type { DefinitionLayer } from "../../src/infra/definitions/definition-resolution.js";
 import { DefinitionProvenanceSchema, type DefinitionError, type DefinitionProvenance } from "../../src/workflows/provenance/definition-provenance.js";
 import { definitionAssets, type DefinitionAssetReader, type AssetLocation } from "../../src/workflows/definitions/definition-assets.js";
 import { decodeWorkflowFile, type DecodedWorkflowFile } from "../../src/workflows/vm/admission/workflow-file.js";

@@ -1,5 +1,5 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/store/event-store-types.js"
-import { isRecord } from "../../infra/record.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/substrate/store/event-store-types.js"
+import { isRecord } from "../../infra/guards/record.js"
 import { parseWorkflowControlFact, type WorkflowControlFact, type WorkflowRecoveryDegradationReason } from "../control-facts/family.js"
 import { workflowAggregateId } from "../run/run-facts.js"
 import { WORKFLOW_ROOT_FACT_TYPES, workflowFamilyBoundary } from "../control-facts/workflow-root.js"

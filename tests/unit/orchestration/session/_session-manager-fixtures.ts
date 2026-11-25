@@ -3,9 +3,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js";
-import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type LocalSqliteEventStore, type EventStoreReadSurface } from "../../../../src/infra/store/event-store-types.js";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js";
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type LocalSqliteEventStore, type EventStoreReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths.js";
 import type { SessionManager, SessionManagerDeps } from "../../../../src/orchestration/session/manager";
 import type { RoleSettings, Session } from "../../../../src/orchestration/session/metadata/schemas";
 import type { WorkflowLaunchBinding } from "../../../../src/orchestration/session/control/children/child-session-publication.js";

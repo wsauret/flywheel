@@ -4,7 +4,7 @@ import type { RuntimeAuthProfileSelectionService } from "./auth/auth-profile-sel
 import type { ModuleProjection } from "./projections/module-projection.js"
 import type { RuntimeConfigProjection } from "./projections/runtime-config-projection.js"
 import type { ProviderModelPreferenceService } from "./auth/models/provider-model-preference-service.js"
-import { readAppVersion } from "../../infra/app-version.js"
+import { readAppVersion } from "../../infra/update/distribution/app-version.js"
 import { runningDisplayBuildId } from "./runtime-executable.js"
 import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/runtime/app-service-types.js"
 import { mergeCatalogRow } from "../../protocol/client/session/known-totals.js"
@@ -49,7 +49,7 @@ import { changesCursor } from "../../protocol/session/session-changes-protocol-t
 import type { BackgroundIndexOwner } from "./background/background-index-publisher.js"
 import type { MutationEvidenceService } from "./projections/changes/mutation-evidence-service.js"
 import type { SessionChangesService } from "./projections/changes/session-changes-service.js"
-import type { AsyncEventStateReadSurface } from "../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface } from "../../infra/substrate/store/event-store-types.js"
 
 /** Why an executor refuses a held detail read or its release: only the
  *  account facade holds and publishes `session_detail` (C5). */

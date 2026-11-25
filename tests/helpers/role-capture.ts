@@ -1,4 +1,4 @@
-import { captureProviderConnection } from "../../src/infra/auth/auth-context.js"
+import { captureProviderConnection } from "../../src/infra/providers/auth/auth-context.js"
 import type { ProviderConnectionCapture } from "../../src/orchestration/agent-runtime/request/model-runtime-capture.js"
 import type { FlywheelConfig } from "../../src/orchestration/config/schema/schema.js"
 import { testAuthContext } from "./auth-context.js"

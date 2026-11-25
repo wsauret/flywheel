@@ -1,24 +1,24 @@
 import { createModuleToolHistoryReader } from "./session/runtime-facts/module-tool-history.js"
-import { errorMessage } from "../infra/error-message.js"
+import { errorMessage } from "../infra/diagnostics/error-message.js"
 import { remoteModule } from "./modules/remote/module.js"
 import type { RetiredServiceInstallation } from "./app-service/account/installation/account-service-platform.js"
-import { composeModules, type ModuleDescriptor, type ModuleComposition } from "../infra/module-descriptor.js"
-import type { ModuleRuntimeHandle, ModuleRuntimes } from "../infra/module-runtime.js"
+import { composeModules, type ModuleDescriptor, type ModuleComposition } from "../infra/definitions/module-descriptor.js"
+import type { ModuleRuntimeHandle, ModuleRuntimes } from "../infra/definitions/modules/module-runtime.js"
 import type { ChatModuleHostContribution } from "./chat/chat-module-host.js"
 import type { TerminalRemoteContribution } from "./terminal-remote.js"
-import type { ModuleServiceHandle, ModuleServices } from "../infra/module-service.js"
-import type { NotificationEpisodeInput } from "../infra/notification-episode.js"
+import type { ModuleServiceHandle, ModuleServices } from "../infra/definitions/modules/module-service.js"
+import type { NotificationEpisodeInput } from "../infra/substrate/events/notification-episode.js"
 import { canonicalModuleIds, EMPTY_MODULE_IDS, MODULE_IDS, type ModuleId as WireModuleId } from "../protocol/runtime/module-ids.js"
 import type { ModuleProtocolRow, ModuleProviderSetting, ModuleSetting, ModuleSettingControl, WorkflowsMode } from "../protocol/runtime/module-protocol-types.js"
 import { credentialSlotClassifier } from "./auth/credential-slot-classifier.js"
 import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
 import type { RuntimeTool } from "./agent-runtime/tools/types.js"
 import type { ModuleRuntimeServices } from "./agent-runtime/request/module-services/module-runtime-services.js"
-import type { AccessProviderDefinition } from "../infra/llm/access/access-provider.js"
-import type { AuthContext, ProviderConnection } from "../infra/auth/auth-context.js"
-import type { CredentialSlotClassifier } from "../infra/auth/store/auth-store-types.js"
-import type { WebProviderDefinition } from "../infra/auth/web-providers.js"
-import type { SubscriptionUsageReader } from "../infra/llm/usage/subscription-usage.js"
+import type { AccessProviderDefinition } from "../infra/providers/llm/access/access-provider.js"
+import type { AuthContext, ProviderConnection } from "../infra/providers/auth/auth-context.js"
+import type { CredentialSlotClassifier } from "../infra/providers/auth/store/auth-store-types.js"
+import type { WebProviderDefinition } from "../infra/providers/auth/web-providers.js"
+import type { SubscriptionUsageReader } from "../infra/providers/llm/usage/subscription-usage.js"
 import type { WebSearchProvider, WebSearchProviderId } from "./agent-runtime/web-search/types.js"
 import type { CommandMenuPosition, CommandOutcome, CommandReading, CommandSurfaceTarget } from "../protocol/commands/command-catalog-protocol-types.js"
 import type { ModuleHealthCheck } from "./module-health.js"
@@ -49,7 +49,7 @@ import { learningModule } from "./modules/learning.js"
 import { subscriptionUsageModule } from "./modules/subscription-usage/module.js"
 import { mcpModule } from "./modules/mcp/module.js"
 import { customProviderModules } from "./config/custom-provider-modules.js"
-import { customProviderGeneration } from "../infra/llm/custom-provider-registry.js"
+import { customProviderGeneration } from "../infra/providers/llm/custom-provider-registry.js"
 import { recallModule } from "./modules/recall.js"
 import { papercutsModule } from "./modules/papercuts.js"
 import { projectNotificationsModule } from "./modules/project-notifications/module.js"
@@ -63,7 +63,7 @@ import { webChatgptModule } from "./modules/web-chatgpt.js"
 import { workflowsModule } from "./modules/workflows.js"
 
 import type { ToolExecutionGate } from "./agent-runtime/tools/dispatch/tool-dispatch.js"
-import type { CapabilityCheck } from "../infra/capability-text.js"
+import type { CapabilityCheck } from "../infra/definitions/capability-text.js"
 import type { TurnReminderStatement, TurnReminderText } from "./agent-runtime/request/prompt/turn-reminders.js"
 
 /** What a system prompt fragment renders from: the request's kernel facts and
@@ -137,7 +137,7 @@ interface FirstPartyContributionMap {
   readonly accountServices: AccountModuleServiceContribution
   readonly agentTasks: ModuleAgentTasks
   readonly providers:
-    { readonly definition: AccessProviderDefinition; readonly createClient: import("./agent-runtime/llm/routing/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../infra/llm/usage/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("./agent-runtime/llm/routing/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("./agent-runtime/llm/routing/provider-availability-types.js").ProviderAllowanceFactory }
+    { readonly definition: AccessProviderDefinition; readonly createClient: import("./agent-runtime/llm/routing/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../infra/providers/llm/usage/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("./agent-runtime/llm/routing/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("./agent-runtime/llm/routing/provider-availability-types.js").ProviderAllowanceFactory }
   readonly tools: { readonly kind: "tool"; readonly name: string; readonly declaration: ToolDeclaration<string>; readonly associatedPromptRosterIds?: readonly PromptRosterContribution["definition"][] }
   readonly promptFragments: PromptFragmentContribution
   readonly turnReminders: TurnReminderContribution
@@ -750,7 +750,7 @@ export function unattendedModuleIds(modules: readonly FirstPartyModule[] = insta
   return MODULE_IDS.filter((id) => !attended.has(id))
 }
 /** Preserve one admission across preparation and the later consent-aware pass. */
-export async function prepareDefinitionReconciliation(input: DefinitionReconciliationInput, modules: readonly FirstPartyModule[] = installedModules()): Promise<(reader?: import("../infra/store/event-store-types.js").AsyncEventStateReadSurface) => Promise<void>> {
+export async function prepareDefinitionReconciliation(input: DefinitionReconciliationInput, modules: readonly FirstPartyModule[] = installedModules()): Promise<(reader?: import("../infra/substrate/store/event-store-types.js").AsyncEventStateReadSurface) => Promise<void>> {
   const prepared = await Promise.allSettled(modules.map(async (module) => module.definitionReconciliation?.prepare(input)))
   const errors = prepared.flatMap((result) => result.status === "rejected" ? [result.reason] : [])
   // The members' messages travel in the message, because a start failure

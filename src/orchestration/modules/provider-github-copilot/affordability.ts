@@ -1,4 +1,4 @@
-import type { CatalogJsonValue } from "../../../infra/catalog-model-offering.js";
+import type { CatalogJsonValue } from "../../../infra/providers/catalog-model-offering.js";
 import { copilotRequestInitiator } from "./headers.js";
 import type { ProviderAffordabilityCapability, ProviderAffordabilityDecision, ProviderAffordabilityEvaluation } from "../../agent-runtime/llm/routing/provider-affordability.js";
 

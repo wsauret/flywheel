@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { testEligibility, testProviderSessionLifetime } from "../../../../../helpers/provider-authority.js";
 import { Redacted } from "effect";
-import type { AuthContext, CapturedSubscriptionCredential, ProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
-import { captureProviderConnection } from "../../../../../../src/infra/auth/auth-context.js";
-import { candidateProviderId, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan } from "../../../../../../src/infra/llm/access/access-provider.js";
-import { authDir } from "../../../../../../src/infra/paths.js";
+import type { AuthContext, CapturedSubscriptionCredential, ProviderConnection } from "../../../../../../src/infra/providers/auth/auth-context.js";
+import { captureProviderConnection } from "../../../../../../src/infra/providers/auth/auth-context.js";
+import { candidateProviderId, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
+import { authDir } from "../../../../../../src/infra/platform/files/paths.js";
 import { createAdmittedClient } from "../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
 import { providerModelEligibilityDecision } from "../../../../../../src/orchestration/config/models/provider-model-eligibility.js";
@@ -15,7 +15,7 @@ import { fakeModelsClient } from "../../../../../helpers/model-tier-fixtures.js"
 import { accessProviderRegistry } from "../../../../../../src/orchestration/agent-runtime/llm/routing/access-provider-registry.js";
 import { authProviders } from "../../../../../helpers/auth-context.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
-import { accessProviderAccountKey } from "../../../../../../src/infra/auth/provider-account.js";
+import { accessProviderAccountKey } from "../../../../../../src/infra/providers/auth/provider-account.js";
 // The directory authorities a composition root publishes for a run. No case
 // here reaches the developer's own account state.
 const DIRECTORIES = testDirectories("/scratch");

@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, ManagedRuntime } from "effect"
-import { EventReaderService, EventStoreService, EventStoreWriterLaneService, EventStoreWriterService, type EventStoreRuntime, type RuntimeEventState } from "../../../infra/store/event-store-effect.js"
-import type { EventStoreItemSettlement } from "../../../infra/store/event-store-types.js"
-import { createEventStoreWriterLane } from "../../../infra/store/event-store-writer-lane.js"
+import { EventReaderService, EventStoreService, EventStoreWriterLaneService, EventStoreWriterService, type EventStoreRuntime, type RuntimeEventState } from "../../../infra/substrate/store/event-store-effect.js"
+import type { EventStoreItemSettlement } from "../../../infra/substrate/store/event-store-types.js"
+import { createEventStoreWriterLane } from "../../../infra/substrate/store/event-store-writer-lane.js"
 import { ProjectStateRefusedError, ProjectStateUnavailableError, storedSettlement, type ProjectStateClient } from "./project-state-client.js"
 
 /** Acquires transport backpressure after state startup without opening SQLite.

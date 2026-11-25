@@ -5,7 +5,7 @@ import { subagentRunOutcome, subagentSessionActions, subagentStoppedBy, type Chi
 import { chatSessionActions, workflowSessionActions, workflowToolCall, type ChildCall } from "./chat-session-run-evidence.js"
 import type { ChatTurnEnd } from "../conversation/turn-end-record.js"
 import type { WorkflowView } from "../../../workflows/view/types.js"
-import type { SessionNotice } from "../../../infra/session-notice.js"
+import type { SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 
 /** The durable evidence a row's admitted actions read: a child's run, a
  *  chat's turn end, or the turn end of a workflow's current agent. A catalog

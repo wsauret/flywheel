@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
-import type { AgentLoopInput, InputSource } from "../../../../../../src/infra/agent-loop-events"
-import { EventBus } from "../../../../../../src/infra/event-bus"
+import type { AgentLoopInput, InputSource } from "../../../../../../src/infra/substrate/events/agent-loop-events"
+import { EventBus } from "../../../../../../src/infra/substrate/events/event-bus"
 import { createChatRunnerLifecycle } from "../../../../../../src/orchestration/chat/lifecycle/runner-lifecycle"
 import { learningChatHost } from "../../../../../../src/orchestration/modules/learning/review/chat-review"
 import { ChatSessionState } from "../../../../../../src/orchestration/chat/types"
@@ -52,7 +52,7 @@ function reviewOf(runner: SpawnedRunner) {
 /** Lifecycle with the review enabled. Runner index 0 is the chat runner;
  *  `learn()` spawns the review fork as runner index 1. Zero intervals keep
  *  the counter cadence out of the tests; reflect fires regardless. */
-function makeLifecycle(seedContext?: string) {
+function makeLifecycle(seedContext?: string, treeWriter = makeMemoryTreeWriter()) {
   const runners: SpawnedRunner[] = []
   const chatStarted = Promise.withResolvers<void>()
   const reviewStarted = Promise.withResolvers<void>()
@@ -76,7 +76,7 @@ function makeLifecycle(seedContext?: string) {
       ...capture,
       admit: () => ({ createAgent, createLLMClient: async () => { throw new Error("audit client not expected") } }),
     }),
-    treeWriter: makeMemoryTreeWriter(),
+    treeWriter,
     reviewConfig: { memory: { review_interval_turns: 0 }, skills: { notifications: "off", review_interval_iterations: 0, stale_after_days: 30, archive_after_days: 90 } },
     seedContext,
     // The review's own policy resolves through the same admitted model as Chat.
@@ -86,9 +86,10 @@ function makeLifecycle(seedContext?: string) {
     ]),
   })
   const state = new ChatSessionState(undefined, () => {})
+  const eventBus = new EventBus()
   const lifecycle = createChatRunnerLifecycle({
     deps,
-    eventBus: new EventBus(),
+    eventBus,
     session: outputSessionStub("session-recommendation"),
     state,
     askUser: askUserStub(),
@@ -96,7 +97,7 @@ function makeLifecycle(seedContext?: string) {
     applyNestedStoredFact: () => {},
     awaitDurableFacts: async () => {},
   })
-  return { lifecycle, runners, chatStarted: chatStarted.promise, reviewStarted: reviewStarted.promise }
+  return { lifecycle, runners, eventBus, chatStarted: chatStarted.promise, reviewStarted: reviewStarted.promise }
 }
 
 /** Drive the chat runner to the parked state: logical turn ended, loop
@@ -198,4 +199,25 @@ describe("chat runner lifecycle recommendation delivery", () => {
     expect(drained.text).toContain(RECOMMENDATION.recommendationId)
   })
 
+  // The writer answers null for a notice it did not append: one it holds in
+  // a cell behind a waiting question of a chat at rest (ARCH-SESSIONS-050),
+  // or one it queues behind a running turn.
+  for (const [state, rows] of [["a chat at rest", 0], ["a running turn", 1]] as const) {
+    it(`shows ${rows} row${rows === 1 ? "" : "s"} for a review notice that the writer of ${state} did not append`, async () => {
+      const { lifecycle, runners, eventBus, chatStarted, reviewStarted } = makeLifecycle(undefined, { ...makeMemoryTreeWriter(), commitSystemMessage: async () => null })
+      const shown: string[] = []
+      eventBus.subscribeToType("agent.system_message.recorded", (event) => { shown.push(event.data.message) }, { delivery: "direct", deliveryClass: "critical", label: "review-notice-rows" })
+      const parked = state === "a running turn" ? await startAndParkChatTurn(lifecycle, runners, chatStarted) : undefined
+      expect(lifecycle.learn()).toBe(true)
+      await (parked ? reviewStarted : chatStarted)
+      const review = runners.at(-1)
+      if (!review) throw new Error("expected the review runner")
+      reviewOf(review).onWritten?.({ surface: "skill", name: "deploy-runbook", action: "created", reach: "project" })
+      review.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })
+      await flushMicrotasks()
+      expect(shown).toHaveLength(rows)
+      parked?.abort.abort()
+      await parked?.parked
+    })
+  }
 })

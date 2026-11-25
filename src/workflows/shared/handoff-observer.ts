@@ -19,7 +19,7 @@
  * `workflows/` without importing from `orchestration/`.
  */
 
-import type { TurnEndedContext } from "../../infra/agent-loop-events.js";
+import type { TurnEndedContext } from "../../infra/substrate/events/agent-loop-events.js";
 
 interface InjectionQueueLike {
   enqueue(text: string, opts?: { silent?: boolean }): void;

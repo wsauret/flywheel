@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { createBudgetNudge } from "../../../../../../src/orchestration/agent-runtime/loop/nudges/budget-nudge.js";
 import type { ToolResultEntry } from "../../../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js";
-import { toTextParts } from "../../../../../../src/infra/llm/tool-output-part-schema.js";
+import { toTextParts } from "../../../../../../src/infra/providers/llm/tool-output-part-schema.js";
 
 function entry(id: string, text: string): ToolResultEntry {
   return { toolUseId: id, content: toTextParts(text), outcome: "ok" };

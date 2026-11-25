@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
-import { probeDrain } from "../../../../src/infra/render-probe.js"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
+import { probeDrain } from "../../../../src/infra/substrate/output/render-probe.js"
 import type {
   FrontendEvent,
   SessionCatalogRow,

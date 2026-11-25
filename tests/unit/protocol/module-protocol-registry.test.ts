@@ -34,11 +34,11 @@ import {
   type ProtocolQueryResult,
 } from "../../../src/protocol/protocol-module.js"
 import { composeModuleProtocolRuntimes, type ModuleBackgroundReaders, type ModuleProtocolRoutes, type ModuleProtocolRuntime } from "../../../src/orchestration/app-service/module-protocol-host.js"
-import { asAsyncEventReadSurface } from "../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../helpers/in-memory-event-reader.js"
 import { repoDefinitions } from "../../helpers/project-definitions.js"
 import { fakeManager, fakeSessionStore } from "../orchestration/app-service/app-service-doubles.js"
-import { NO_MODULE_SERVICES } from "../../../src/infra/module-service.js"
+import { NO_MODULE_SERVICES } from "../../../src/infra/definitions/modules/module-service.js"
 import type { FirstPartyModule } from "../../../src/orchestration/modules.js"
 import { runtimeCallPolicies } from "../../../src/protocol/rpc/runtime-client-deadlines.js"
 import { RuntimeCursorIdentitySchema } from "../../../src/protocol/rpc/runtime-cursor-schemas.js"

@@ -1,4 +1,4 @@
-import { isRecord, type UnknownRecord } from "../../infra/record.js";
+import { isRecord, type UnknownRecord } from "../../infra/guards/record.js";
 import { recordedCommandRunKeys, type RecordedCommandRunKey } from "./envelope.js";
 import type { OutputIssue } from "./paths.js";
 

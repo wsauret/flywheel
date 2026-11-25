@@ -1,7 +1,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto"
 import { Redacted, Schema } from "effect"
 import type { InternalProcessChannelLimits, InternalProcessEndpoint } from "../../../infra/process/channels/internal-process-channel.js"
-import { isRecord, type UnknownRecord } from "../../../infra/record.js"
+import { isRecord, type UnknownRecord } from "../../../infra/guards/record.js"
 import { PROJECT_STATE_MAX_BYTES } from "../project-state/project-state-protocol.js"
 import { RuntimeChatDefaultSchema } from "../../../protocol/rpc/runtime-protocol-schemas.js"
 import { ReplacementBlockerSchema, type ReplacementState } from "./replacement-blockers.js"

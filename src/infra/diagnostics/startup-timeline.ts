@@ -1,5 +1,5 @@
 import { DebugLog } from "./debug-log.js"
-import { errorMessage } from "../error-message.js"
+import { errorMessage } from "./error-message.js"
 
 export interface StartupCounts {
   [name: string]: number

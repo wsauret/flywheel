@@ -5,7 +5,7 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { createBenchmarkRuntime } from "../shared/runtime.js";
 import type { JudgeAttemptReport, JudgeSettlement, JudgeVerdict } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { createBenchmarkCatalog, type ImplementTask } from "../../src/orchestration/modules/development/benchmark/catalog.js";
-import { IMPLEMENT_QUALITY_RUBRIC } from "../../src/infra/benchmark-rubrics.js";
+import { IMPLEMENT_QUALITY_RUBRIC } from "../../src/orchestration/modules/development/benchmark/scoring/benchmark-rubrics.js";
 import { implementQualityJudgeInputIdentity, judgeImplementPairs, type ImplementCandidate, type ImplementScore } from "../../src/orchestration/modules/development/benchmark/scoring/implement-scoring.js";
 import { benchmarkTaskIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { runGroups } from "../../src/orchestration/modules/development/benchmark/campaign/matrix-runner.js";

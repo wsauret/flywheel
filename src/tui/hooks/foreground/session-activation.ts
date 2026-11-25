@@ -1,7 +1,7 @@
 import type { SessionCatalogRow, SessionRow, RuntimeClient } from "../../../protocol/runtime/app-service-types.js"
 import { resolveSessionRoute, type SessionRoute } from "../../../protocol/client/session/held-session-details.js"
 import { parseSessionLink } from "../../../protocol/client/session/session-links.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { discardIfTransientForeground } from "./background-foreground.js"
 import type { DraftCache } from "../../components/composer/create-draft-cache.js"
 import type { ShellServices, ShellSignals } from "../state/shell-state.js"

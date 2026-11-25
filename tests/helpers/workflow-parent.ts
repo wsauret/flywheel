@@ -1,6 +1,6 @@
 import { expect } from "bun:test"
-import type { ProjectDirectories } from "../../src/infra/directory-authorities.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../src/infra/store/event-store-types.js"
+import type { ProjectDirectories } from "../../src/infra/platform/files/directory-authorities.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../src/infra/substrate/store/event-store-types.js"
 import { recoverProject } from "./project-recovery.js"
 import { chatSessionActions, readChatTurnEnd } from "../../src/orchestration/session/control/chat-session-run-evidence.js"
 import type { SessionManager } from "../../src/orchestration/session/manager.js"

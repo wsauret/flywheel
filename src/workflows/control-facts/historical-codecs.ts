@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { DurableFollowUpInputSchema } from "../../infra/chat-input-schema.js";
+import { DurableFollowUpInputSchema } from "../../infra/substrate/events/chat-input-schema.js";
 import { DefinitionIdentityV1Schema, DefinitionIdentityV2Schema } from "./historical-identity-codecs.js";
 import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "./events.js";
 import { ArtifactContractSchema } from "../schema/artifact-contracts.js";

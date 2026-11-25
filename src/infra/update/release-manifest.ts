@@ -18,7 +18,7 @@
  *  them. */
 
 import { Schema } from "effect";
-import { errorMessage } from "../error-message.js";
+import { errorMessage } from "../diagnostics/error-message.js";
 import { parseReleaseVersion, type ReleaseVersion } from "./version-order.js";
 
 const OWNER = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;

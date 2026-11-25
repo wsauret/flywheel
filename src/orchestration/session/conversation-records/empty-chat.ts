@@ -1,4 +1,4 @@
-import { CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } from "../../../infra/store/event-store-types.js"
+import { CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import type { StoredConversationEntry } from "../conversation/conversation-entry-schemas.js"
 import type { ConversationEntry } from "../conversation/conversation-entry-types.js"

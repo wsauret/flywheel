@@ -1,4 +1,4 @@
-import type { ServeLane } from "../../../../infra/cli-subprocess.js"
+import type { ServeLane } from "../../../../infra/platform/cli-subprocess.js"
 import { Redacted } from "effect"
 
 import { importLegacyRemotePushSubscriptions, mutateRemotePairingStore, readRemotePairingStore, type RemotePairingStore, type StoredKeyPair } from "../remote-pairing-store.js"

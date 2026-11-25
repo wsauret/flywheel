@@ -1,5 +1,5 @@
-import { errorMessage } from "../../infra/error-message.js"
-import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import type { NotificationEpisodeInput } from "../../infra/substrate/events/notification-episode.js"
 import type { FrontendEvent } from "../../protocol/runtime/app-service-types.js"
 import type { RuntimeOwnership } from "../app-service/runtime/runtime-ownership.js"
 import { createSubscriptionSpendConsentNotificationMaterializer, materializeSubscriptionSpendConsentAuthChange } from "./subscription-spend-consent/notification-materializer.js"

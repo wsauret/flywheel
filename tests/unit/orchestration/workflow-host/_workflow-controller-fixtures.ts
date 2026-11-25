@@ -3,17 +3,17 @@ import { initializedWorkflowFacts } from "../../../helpers/workflow-root-fixture
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/store/event-store-types"
-import { resolveEventStoreDbFile, resolveSessionDir } from "../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store"
-import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types"
+import { resolveEventStoreDbFile, resolveSessionDir } from "../../../../src/infra/platform/files/paths"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store"
+import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/substrate/output/output-block-delta"
 import {
   createWorkflowController,
   type WorkflowController,
   type WorkflowControllerDeps,
 } from "../../../../src/orchestration/workflow-host/lifecycle/controller"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../src/infra/store/event-store-types"
-import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../src/infra/retained-operation-hosts"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types"
+import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../src/infra/definitions/modules/retained-operation-hosts"
 import type { HeldRetainedOperation, RetainedOperationAcceptance, RetainedOperationCommitResult } from "../../../../src/orchestration/module-seams"
 import { bindRetainedOperations } from "../../../../src/orchestration/session/control/module-session-operations"
 import { workflowLaunchHost, type WorkflowLaunchHost } from "../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract"
@@ -42,7 +42,7 @@ import { stagedWorkflowContent } from "../../../helpers/workflow-files.js"
 type WorkflowLaunchDecision = ReturnType<typeof workflowLaunchDecision>["decision"]
 import { createSessionAuthAdmission } from "../../../../src/orchestration/session/metadata/session-auth-profile"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager"
-import { captureProviderConnection } from "../../../../src/infra/auth/auth-context"
+import { captureProviderConnection } from "../../../../src/infra/providers/auth/auth-context"
 import { fakeModelInfos, fakeModelsClient } from "../../../helpers/model-tier-fixtures"
 import { authProviders } from "../../../helpers/auth-context.js"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures.js"

@@ -2,7 +2,7 @@
 
 import { agentGroupClockRuns, agentGroupGlyph, agentGroupInFlight } from "../../../protocol/client/work/agent-group-summary.js"
 import { workflowCardControls } from "../../../protocol/client/work/session-controls.js"
-import type { AgentGroupBlock as AgentGroupBlockModel } from "@infra/output-blocks"
+import type { AgentGroupBlock as AgentGroupBlockModel } from "../../../infra/substrate/events/output-blocks.js"
 import { StyledText, bg as stBg, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { useNavigateUri } from "@tui/context/navigation.js"

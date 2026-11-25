@@ -1,18 +1,18 @@
 import { Schema } from "effect"
-import { RuntimeWorkflowInvocationPayloadSchema } from "../../../infra/runtime-facts/runtime-fact-types.js"
+import { RuntimeWorkflowInvocationPayloadSchema } from "../../../infra/substrate/runtime-facts/runtime-fact-types.js"
 import type { SessionManager, SessionMetadataChange } from "../../session/manager.js"
 import { ReplayedSessionSchema } from "../../session/metadata/schemas.js"
-import { WorkflowMembershipSchema } from "../../../infra/session-workflow-membership.js"
-import { RoleSettingEntrySchema as RoleAssignmentEntrySchema, RoleSettingsSchema as RoleAssignmentsSchema } from "../../../infra/role-settings.js"
+import { WorkflowMembershipSchema } from "../../../infra/definitions/workflow/session-workflow-membership.js"
+import { RoleSettingEntrySchema as RoleAssignmentEntrySchema, RoleSettingsSchema as RoleAssignmentsSchema } from "../../../infra/providers/role-settings.js"
 import { SessionLifecycleStateSchema } from "../../session/metadata/types.js"
 import { PersistedAgentMessageSchema } from "../../session/conversation/conversation-entry-schemas.js"
 import { persistedToConversationMessage } from "../../session/conversation/tree/conversation-tree-context.js"
 import { WorkflowSessionFactSchema } from "../../../workflows/vm/facts/session-facts.js"
 import { WorkflowCapabilityBoundarySchema } from "../../../workflows/run/run-facts.js"
 import type { ChildSessionDeletionTarget } from "../../session/control/children/child-session-deletion.js"
-import { generateSessionId } from "../../../infra/session-id.js"
+import { generateSessionId } from "../../../infra/substrate/session-id.js"
 import { fromStateError, StateErrorSchema, toStateError } from "./project-state-errors.js"
-import { createMicrotaskBatch } from "../../../infra/microtask-batch.js"
+import { createMicrotaskBatch } from "../../../infra/async/microtask-batch.js"
 
 const Id = Schema.NonEmptyString
 const Natural = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))

@@ -1,5 +1,5 @@
-import { CorruptEventRowError, type StoredFact } from "../../../infra/store/event-store-types.js"
-import { InvariantViolation } from "../../../infra/invariant.js"
+import { CorruptEventRowError, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { InvariantViolation } from "../../../infra/guards/invariant.js"
 import { recoverWorkflowContext } from "../../context-bundle/context-recovery.js"
 import { loadQueueFromEvents } from "./workflow-view.js"
 import { QUEUE_FACT_TYPES } from "../../view/view-projection.js"

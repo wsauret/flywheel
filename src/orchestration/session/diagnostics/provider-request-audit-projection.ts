@@ -1,6 +1,6 @@
-import { reduceEvents } from "../../../infra/projection/event-projection.js"
-import type { StoredFact } from "../../../infra/store/event-store-types.js"
-import { InvariantViolation } from "../../../infra/invariant.js"
+import { reduceEvents } from "../../../infra/substrate/projection/event-projection.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { InvariantViolation } from "../../../infra/guards/invariant.js"
 import { canonicalProviderStreamSummary, readProviderRequestAuditFact, type ProviderRequestAuditFact } from "../runtime-facts/provider-request-audit-facts.js"
 import { hashSystemPrompt, hashToolSurface } from "./provider-request-audit-hash.js"
 import {

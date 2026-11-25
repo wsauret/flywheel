@@ -16,9 +16,9 @@
  *  Remove after 2027-04-30. */
 
 import { Schema } from "effect";
-import { isRecord } from "../../infra/record.js";
-import { isQualifiedSkillId } from "../../infra/skill-id.js";
-import { ToolScopingSchema } from "../../infra/workflow-types.js";
+import { isRecord } from "../../infra/guards/record.js";
+import { isQualifiedSkillId } from "../../infra/definitions/learning/skill-id.js";
+import { ToolScopingSchema } from "../../infra/definitions/workflow/workflow-types.js";
 import { ArtifactContractsFrontmatterSchema } from "../schema/artifact-contracts.js";
 import { retiredHandoffContract, RETIRED_SPEC_HANDOFF, SHIPPED_PLAN_CONTRACT } from "../schema/retired-handoff-contracts.js";
 import type { SkillRegistryRevision } from "../skills/skill-schema.js";

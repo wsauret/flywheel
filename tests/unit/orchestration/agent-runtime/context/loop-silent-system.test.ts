@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { messageInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js";
+import { messageInput, type AgentLoopInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";

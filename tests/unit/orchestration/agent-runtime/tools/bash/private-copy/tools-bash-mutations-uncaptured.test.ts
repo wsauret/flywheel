@@ -10,7 +10,7 @@ import { temporaryDirectories } from "../../../../../../helpers/directories.js";
 import { bashExecution, mutationSpawnProbe, makeMockOps } from "../_bash-fixtures.js";
 import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext } from "../../_fixtures.js";
 import { bashMutationHarness } from "./_bash-mutations-harness.js";
-import { PersistenceWriteRefused } from "../../../../../../../src/infra/store/event-store-types.js";
+import { PersistenceWriteRefused } from "../../../../../../../src/infra/substrate/store/event-store-types.js";
 import { runAgentTurn } from "../../../../../../../src/orchestration/agent-runtime/runner/turn-host/agent-turn.js";
 import { createBackgroundWorkRegistry } from "../../../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 

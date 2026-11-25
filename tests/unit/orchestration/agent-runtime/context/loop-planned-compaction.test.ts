@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 
 import { Log } from "../../../../../src/infra/diagnostics/log.js";
 import { DebugLog } from "../../../../../src/infra/diagnostics/debug-log.js";
-import { compactInput, messageInput, type AgentLoopInput, type TurnParkedContext } from "../../../../../src/infra/agent-loop-events.js";
+import { compactInput, messageInput, type AgentLoopInput, type TurnParkedContext } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
 import type { ConversationMessage, ProviderStreamEvent, StreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { emptyConversationCheckpoint } from "../../../../../src/orchestration/session/conversation-records/conversation-checkpoint.js";

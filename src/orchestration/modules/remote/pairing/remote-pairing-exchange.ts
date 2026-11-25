@@ -2,7 +2,7 @@ import { hostname } from "node:os"
 import { Effect, Exit } from "effect"
 import { Socket } from "effect/socket"
 
-import type { ServeLane } from "../../../../infra/cli-subprocess.js"
+import type { ServeLane } from "../../../../infra/platform/cli-subprocess.js"
 import type { RelayChannelStreams } from "../../../../protocol/modules/remote/relay-channel.js"
 import { decodeJsonFrame, decodePairingRequest, keyDigest, pairingCodeUrl, toBase64Url, type PairingResult } from "../../../../protocol/modules/remote/relay-protocol.js"
 import { runSealedExchange, SealedChannelError, sealedSocket } from "../../../../protocol/modules/remote/sealed-socket.js"

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type StoredFact } from "../../../../src/infra/store/event-store-types.js"
-import { InvariantViolation } from "../../../../src/infra/invariant.js"
+import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { InvariantViolation } from "../../../../src/infra/guards/invariant.js"
 import { createWorkflowContextProjection, contextFromProjection } from "../../../../src/workflows/context-bundle/context-projection.js"
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
 import { createLiveWorkflowView } from "../../../../src/workflows/vm/recovery/workflow-view.js"

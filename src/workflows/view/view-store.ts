@@ -1,13 +1,13 @@
-import { CorruptEventRowError, type AsyncEventStateReadSurface, type AsyncEventWriter, type StoredFact } from "../../infra/store/event-store-types.js"
-import { errorMessage } from "../../infra/error-message.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type AsyncEventWriter, type StoredFact } from "../../infra/substrate/store/event-store-types.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 import { QUEUE_STATUS_FACT_TYPES } from "./view-projection.js"
 import type { WorkflowView } from "./types.js"
 import { selectWorkflowFactSource } from "../control-facts/session-fact-source.js"
-import { createEventProjection, parseProjectionFact } from "../../infra/projection/event-projection.js"
-import { heldProjection } from "../../infra/projection/projection-registry.js"
+import { createEventProjection, parseProjectionFact } from "../../infra/substrate/projection/event-projection.js"
+import { heldProjection } from "../../infra/substrate/projection/projection-registry.js"
 import { WORKFLOW_ROOT_FACT_TYPES, workflowFamilyBoundary } from "../control-facts/workflow-root.js"
 import { WORKFLOW_RUN_FACT_TYPES } from "../run/run-facts.js"
-import { InvariantViolation } from "../../infra/invariant.js"
+import { InvariantViolation } from "../../infra/guards/invariant.js"
 import { parseWorkflowQueueFact } from "./view-facts.js"
 
 interface WorkflowStateResult {

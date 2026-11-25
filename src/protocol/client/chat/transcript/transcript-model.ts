@@ -1,4 +1,4 @@
-import { isAgentInFlight, TOOL_PREVIEW_LINE_LIMIT, type SystemWatch } from "../../../../infra/output-blocks.js"
+import { isAgentInFlight, TOOL_PREVIEW_LINE_LIMIT, type SystemWatch } from "../../../../infra/substrate/events/output-blocks.js"
 import type { FrontendMessageSender, FrontendOutputBlock, FrontendToolEntry } from "../../../runtime/app-service-types.js"
 import { blockIdentity } from "../../../transcript/block-identity.js"
 import type { StatusView } from "../../../session/status-protocol-types.js"

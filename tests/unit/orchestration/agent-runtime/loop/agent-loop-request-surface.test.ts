@@ -13,7 +13,7 @@ import { FUNCTION_TOOL_PRESENTATION, type AdmittedModelRequest, type Conversatio
 import type { ProviderRequestAuditWriter } from "../../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js"
 import type { RuntimeTool, ToolAttributionIdentity } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { asModelClient, ownHistoryTarget } from "../_model-client.js"
-import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js"
+import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/definitions/modules/module-runtime.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
 import { RequestToolMap, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js"
 import type { GitAiAttributionService } from "../../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
@@ -22,7 +22,7 @@ import { normalizeProviderAttemptFailure } from "../../../../../src/orchestratio
 import { StreamIdleTimeoutError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/request/prompt/continuation-messages.js"
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
-import { messageInput } from "../../../../../src/infra/agent-loop-events.js"
+import { messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js"
 
 describe("logical tool authorization", () => {
   it.each([

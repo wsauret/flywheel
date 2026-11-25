@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { join } from "node:path"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { HANDOFF_REVISION_MIGRATIONS, migrateHandoffRevisions } from "../../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity-handoff-revisions.js"
 import { definitionIdentityMismatches } from "../../../../../src/workflows/control-facts/definition-identity.js"
 import { replayWorkflowControl } from "../../../../../src/workflows/vm/recovery/fact-fold.js"

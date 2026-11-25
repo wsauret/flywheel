@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type FactQuery } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type FactQuery } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { loadSessionPendingFileMutations, reconcileWorkspacePendingFileMutations } from "../../../../src/orchestration/session/file-mutations/file-mutation-recovery.js"
 import { mutationFacts, prepare, prepareLegacy, withStore } from "./file-mutation-recovery-fixture.js"
 

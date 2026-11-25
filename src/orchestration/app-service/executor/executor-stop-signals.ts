@@ -1,8 +1,8 @@
 import { constants } from "node:os"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import type { Log } from "../../../infra/diagnostics/log.js"
 import type { ReattachableProcessEndpoint } from "../../../infra/process/channels/reattachable-process-endpoint.js"
-import { shutdownSignals, type ShutdownSignal } from "../../../infra/shutdown-signals.js"
+import { shutdownSignals, type ShutdownSignal } from "../../../infra/process/shutdown-signals.js"
 
 /** The part of the process API the listener uses. */
 interface SignalledProcess {

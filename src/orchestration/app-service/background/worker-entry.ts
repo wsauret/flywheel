@@ -1,5 +1,5 @@
 import type { WorkerSelf } from "../project-state/worker/bun-worker-rpc.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 
 /** One Worker entry for source and compiled distributions. The first control
  *  frame selects the owning role; subsequent frames belong to that role's own

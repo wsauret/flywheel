@@ -1,5 +1,5 @@
 import { Log } from "../../../infra/diagnostics/log.js"
-import { createSqliteEventStore } from "../../../infra/store/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../infra/substrate/store/sqlite-event-store.js"
 import { PROJECT_NOTIFICATION_AGGREGATE_ID, projectProjectNotifications } from "./projection.js"
 
 const log = Log.create({ service: "project-notification-recovery" })

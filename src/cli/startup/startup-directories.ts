@@ -1,6 +1,6 @@
 import { join } from "node:path"
 
-import { AccountHomeRefusal, canonicalAccountHome, environmentAccountHome, FLYWHEEL_DIR_NAME, selectInteractiveStartupDirectories, selectStartupDirectories, type AccountDirectories, type StartupDirectories, type StartupDirectoryFallback, type StartupDirectoryFallbackCandidate } from "../../infra/directory-authorities.js"
+import { AccountHomeRefusal, canonicalAccountHome, environmentAccountHome, FLYWHEEL_DIR_NAME, selectInteractiveStartupDirectories, selectStartupDirectories, type AccountDirectories, type StartupDirectories, type StartupDirectoryFallback, type StartupDirectoryFallbackCandidate } from "../../infra/platform/files/directory-authorities.js"
 import type { RootCliAction } from "../root-args.js"
 
 type RunCliAction = Extract<RootCliAction, { kind: "run" }>

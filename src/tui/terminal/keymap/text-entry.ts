@@ -1,6 +1,6 @@
 import { defaultTextareaKeyBindings, type InputKeyBinding } from "@opentui/core"
 import { createSignal } from "solid-js"
-import { isPrintableText, stripControlCharacters } from "../../../infra/control-characters.js"
+import { isPrintableText, stripControlCharacters } from "../../../infra/substrate/output/control-characters.js"
 import {
   displayWidth,
   graphemeBoundaryAtOrBefore,

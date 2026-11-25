@@ -1,13 +1,13 @@
 import { Deferred, Effect, Redacted, Schema } from "effect";
-import { mergeAbortSignals } from "../../infra/abort.js";
-import type { StoredTokens, TokenResponse } from "../../infra/auth/openai/openai-auth-types.js";
-import { CHATGPT_SCOPES, CLIENT_ID, ISSUER, OAUTH_PORT, TokenResponseSchema } from "../../infra/auth/openai/openai-auth-types.js";
-import { extractAccountId, extractDisplayIdentityFromJwt } from "../../infra/auth/openai/openai-jwt.js";
-import { generatePKCE, generateState } from "../../infra/auth/openai/openai-pkce.js";
-import { readBoundedJson } from "../../infra/auth/bounded-json.js";
-import { oauthExpiryFromLifetimeSeconds } from "../../infra/auth/oauth-expiry.js";
+import { mergeAbortSignals } from "../../infra/timing/abort.js";
+import type { StoredTokens, TokenResponse } from "../../infra/providers/auth/openai/openai-auth-types.js";
+import { CHATGPT_SCOPES, CLIENT_ID, ISSUER, OAUTH_PORT, TokenResponseSchema } from "../../infra/providers/auth/openai/openai-auth-types.js";
+import { extractAccountId, extractDisplayIdentityFromJwt } from "../../infra/providers/auth/openai/openai-jwt.js";
+import { generatePKCE, generateState } from "../../infra/providers/auth/openai/openai-pkce.js";
+import { readBoundedJson } from "../../infra/providers/auth/bounded-json.js";
+import { oauthExpiryFromLifetimeSeconds } from "../../infra/providers/auth/oauth-expiry.js";
 import { Log } from "../../infra/diagnostics/log.js";
-import type { BrowserLoginPorts } from "../../infra/llm/access/access-provider.js";
+import type { BrowserLoginPorts } from "../../infra/providers/llm/access/access-provider.js";
 
 /** ChatGPT OAuth: the browser login that yields an account's tokens, and
  *  the refresh the runtime's token accessor runs on every ChatGPT-backed

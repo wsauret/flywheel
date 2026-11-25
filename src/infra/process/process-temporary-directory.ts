@@ -3,8 +3,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { Log } from "../diagnostics/log.js"
-import { isProcessAlive } from "../process-liveness.js"
-import { privateTemporaryRoot, type PrivateTemporaryRootStem } from "../private-temporary-root.js"
+import { isProcessAlive } from "../platform/process-liveness.js"
+import { privateTemporaryRoot, type PrivateTemporaryRootStem } from "../platform/files/private-temporary-root.js"
 
 /** Temporary directories that live as long as the process that made them.
  *

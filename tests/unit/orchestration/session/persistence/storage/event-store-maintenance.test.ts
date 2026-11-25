@@ -4,11 +4,11 @@ import { Database } from "bun:sqlite"
 import { mkdtempSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { createSqliteEventStore } from "../../../../../../src/infra/store/sqlite-event-store"
-import type { LocalSqliteEventStore } from "../../../../../../src/infra/store/event-store-types"
-import type { ToolContentRow } from "../../../../../../src/infra/runtime-facts/tool-content"
-import { resolveEventStoreDbFile } from "../../../../../../src/infra/paths"
-import { buildSessionContent, type SessionContentNodeRow } from "../../../../../../src/infra/session-content"
+import { createSqliteEventStore } from "../../../../../../src/infra/substrate/store/sqlite-event-store"
+import type { LocalSqliteEventStore } from "../../../../../../src/infra/substrate/store/event-store-types"
+import type { ToolContentRow } from "../../../../../../src/infra/substrate/runtime-facts/tool-content"
+import { resolveEventStoreDbFile } from "../../../../../../src/infra/platform/files/paths"
+import { buildSessionContent, type SessionContentNodeRow } from "../../../../../../src/infra/substrate/session-content"
 import {
   INCREMENTAL_VACUUM_STEP_PAGES,
   RETIRED_FACT_TYPES,

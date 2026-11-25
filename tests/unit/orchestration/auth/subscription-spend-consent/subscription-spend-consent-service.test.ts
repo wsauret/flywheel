@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription/subscription-account-identity.js";
-import type { SubscriptionUsageReader } from "../../../../../src/infra/llm/usage/subscription-usage.js";
-import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription/subscription-spend-consent.js";
-import { SubscriptionSpendConsentStaleError, type SubscriptionSpendConsentStore } from "../../../../../src/infra/auth/subscription/subscription-spend-consent-store.js";
+import { createSubscriptionAccountIdentity } from "../../../../../src/infra/providers/auth/subscription/subscription-account-identity.js";
+import type { SubscriptionUsageReader } from "../../../../../src/infra/providers/llm/usage/subscription-usage.js";
+import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/providers/auth/subscription/subscription-spend-consent.js";
+import { SubscriptionSpendConsentStaleError, type SubscriptionSpendConsentStore } from "../../../../../src/infra/providers/auth/subscription/subscription-spend-consent-store.js";
 import { createSubscriptionSpendConsentService as createService } from "../../../../../src/orchestration/auth/subscription-spend-consent/subscription-spend-consent-service.js";
 import { createSubscriptionUsageService, type SubscriptionUsagePublishedSnapshot } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { paidModeAwaitsAnswer, subscriptionSpendConsentNeedsReview } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js";

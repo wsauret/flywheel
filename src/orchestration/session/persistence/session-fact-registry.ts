@@ -1,4 +1,4 @@
-import { collectFactSchemas, createFactParser } from "../../../infra/event-registry.js"
+import { collectFactSchemas, createFactParser } from "../../../infra/substrate/facts/event-registry.js"
 import { installedModules } from "../../module-catalog.js"
 import { FileMutationFactSchemas } from "../file-mutations/file-mutation-facts.js"
 import { SessionForkFactSchemas } from "../metadata/session-fork-facts.js"

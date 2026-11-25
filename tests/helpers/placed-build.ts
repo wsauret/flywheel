@@ -1,7 +1,7 @@
 import { chmodSync, cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { openExistingContainedDirectory } from "../../src/infra/descriptor-directory.js";
-import { versionsDir } from "../../src/infra/paths.js";
+import { openExistingContainedDirectory } from "../../src/infra/platform/files/descriptor-directory.js";
+import { versionsDir } from "../../src/infra/platform/files/paths.js";
 import { openActiveBuild, publishActivation } from "../../src/infra/update/active-build.js";
 import { assertInstallLocation, buildInstallDir, BUILD_METADATA_FILE, buildExecutable, type BuildRef, buildIdentityBeside, decodeBuildMetadata, versionLine } from "../../src/infra/update/build-identity.js";
 

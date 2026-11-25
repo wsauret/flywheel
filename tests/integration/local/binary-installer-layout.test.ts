@@ -13,7 +13,7 @@ import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, rea
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { EXECUTABLE_ROLES } from "../../../src/infra/executable-roles.js";
+import { EXECUTABLE_ROLES } from "../../../src/infra/platform/executable-roles.js";
 import { computeBuildId } from "../../../src/infra/update/build-identity.js";
 import { installBuild } from "../../../src/orchestration/update/install-engine.js";
 import { activatePlacedBuild, placeBuild, placedBuildVersionAnswer } from "../../helpers/placed-build.js";

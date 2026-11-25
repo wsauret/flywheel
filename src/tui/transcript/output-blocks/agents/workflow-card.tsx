@@ -3,7 +3,7 @@
 import { StyledText, bg as stBg, fg as stFg, type MouseEvent, type RGBA, type TextChunk } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { createMemo, Index } from "solid-js"
-import type { AgentGroupBlock, WorkflowAgentState, WorkflowCard } from "../../../../infra/output-blocks.js"
+import type { AgentGroupBlock, WorkflowAgentState, WorkflowCard } from "../../../../infra/substrate/events/output-blocks.js"
 import { CHIT_SLOTS } from "../../../../protocol/client/work/workflow/workflow-chits.js"
 import { workflowAgentOperations, workflowCardLines, workflowCardTime, type WorkflowCardBarPart, type WorkflowCardChoices, type WorkflowCardLine } from "../../../../protocol/client/work/workflow/workflow-card.js"
 import type { WorkflowOutline } from "../../../../protocol/client/work/workflow/workflow-outline.js"

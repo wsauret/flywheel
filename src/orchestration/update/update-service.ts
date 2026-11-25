@@ -33,7 +33,7 @@
  *  synchronously and aborts the run in flight, including its collection, and
  *  `settled()` is the single settlement its owner's shutdown joins. */
 
-import { errorMessage } from "../../infra/error-message.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
 import type { BuildRef } from "../../infra/update/build-identity.js";
 import { Log } from "../../infra/diagnostics/log.js";
 import type { UpdateAutoInstall, UpdateStatus, UpdateStatusView } from "../../protocol/runtime/update-protocol-types.js";

@@ -9,7 +9,7 @@ import * as pairingStore from "../../../../../src/orchestration/modules/remote/r
 import { mutateRemotePairingStore, readRemotePairingStore } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
 import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
 import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account/account-project-registry.js"
-import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js"
+import type { NotificationEpisodeInput } from "../../../../../src/infra/substrate/events/notification-episode.js"
 import { createRemoteAccess, placementId, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import { attachDeviceChannel, RELAY_HEARTBEAT } from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import {

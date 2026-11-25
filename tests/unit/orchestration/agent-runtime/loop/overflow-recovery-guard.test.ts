@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { messageInput } from "../../../../../src/infra/agent-loop-events.js";
+import { messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { consumeAgentLoopMessageInput } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-input.js";
 import { agentLoopTransition, initialAgentLoopState } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop-state.js";
 

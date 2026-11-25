@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import { DurableFollowUpInputSchema } from "../../../../src/infra/chat-input-schema.js";
+import { DurableFollowUpInputSchema } from "../../../../src/infra/substrate/events/chat-input-schema.js";
 import { buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact } from "../../../../src/workflows/control-facts/family.js";
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";

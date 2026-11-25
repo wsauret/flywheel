@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test"
 import { createStore, produce } from "solid-js/store"
-import type { ToolEntry } from "../../../../../src/infra/output-blocks.js"
+import type { ToolEntry } from "../../../../../src/infra/substrate/events/output-blocks.js"
 import type { FrontendMutation } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
 import { createSessionProcessControls } from "../../../../../src/tui/hooks/sessions/create-session-process-controls.js"

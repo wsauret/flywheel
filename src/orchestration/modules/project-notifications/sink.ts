@@ -1,5 +1,5 @@
 import { Log } from "../../../infra/diagnostics/log.js"
-import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
+import type { NotificationEpisodeInput } from "../../../infra/substrate/events/notification-episode.js"
 import type { ProjectNotificationJournal } from "./journal.js"
 
 const log = Log.create({ service: "project-notification-sink" })

@@ -1,9 +1,9 @@
-import { probe, probeToolRenderPhase } from "../../infra/render-probe.js"
-import { RuntimeEventProjector } from "../../infra/output/runtime-event-projector.js"
-import { OutputProjector } from "../../infra/output/projector/output-projector.js"
-import type { AnyBlock, MessageSender, QuestionEntry, SystemMessageOptions, UserMessageBlock, UserMessageImage } from "../../infra/output-blocks.js"
-import type { RuntimeEvent } from "../../infra/runtime-facts/runtime-event-types.js"
-import type { OutputProjectionEvent } from "../../infra/output/output-projection-events.js"
+import { probe, probeToolRenderPhase } from "../../infra/substrate/output/render-probe.js"
+import { RuntimeEventProjector } from "../../infra/substrate/output/projector/runtime-event-projector.js"
+import { OutputProjector } from "../../infra/substrate/output/projector/output-projector.js"
+import type { AnyBlock, MessageSender, QuestionEntry, SystemMessageOptions, UserMessageBlock, UserMessageImage } from "../../infra/substrate/events/output-blocks.js"
+import type { RuntimeEvent } from "../../infra/substrate/runtime-facts/runtime-event-types.js"
+import type { OutputProjectionEvent } from "../../infra/substrate/output/output-projection-events.js"
 import type { SessionEntryBasePatch } from "./types.js"
 interface QuestionAnswers {
   readonly [question: string]: string
@@ -50,7 +50,9 @@ export interface OutputSession {
    *  names them. */
   withdrawQueued(dispatchIds: readonly string[]): (() => void) | null
   pushSystemMessage(message: string, timestamp: number, options?: SystemMessageOptions): void
-  pushDivider(label: string, timestamp: number): void
+  /** `id` names the divider as the stored transcript names it, such as
+   *  `<entry id>:boundary`; without it the divider gets a fresh id. */
+  pushDivider(label: string, timestamp: number, id?: string): void
   pushQuestion(toolUseId: string, questions: QuestionEntry[], timestamp: number): void
   answerQuestion(toolUseId: string, answers: QuestionAnswers): void
   cancelQuestion(toolUseId: string): void
@@ -210,7 +212,7 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     drainQueued: (identity) => projector.drainQueued(identity),
     withdrawQueued: (dispatchIds) => projector.withdrawQueued(dispatchIds),
     pushSystemMessage: (message: string, timestamp: number, messageOptions?: SystemMessageOptions) => projector.apply({ type: "push-system-message", message, timestamp, ...messageOptions }),
-    pushDivider: (label: string, timestamp: number) => projector.apply({ type: "push-divider", label, timestamp }),
+    pushDivider: (label: string, timestamp: number, id?: string) => projector.apply({ type: "push-divider", label, timestamp, ...(id === undefined ? {} : { id }) }),
     pushQuestion: (toolUseId: string, questions: QuestionEntry[], timestamp: number) => projector.apply({ type: "push-question", toolUseId, questions, timestamp }),
     answerQuestion: (toolUseId: string, answers: QuestionAnswers) => projector.apply({ type: "answer-question", toolUseId, answers }),
     cancelQuestion: (toolUseId: string) => projector.apply({ type: "cancel-question", toolUseId }),

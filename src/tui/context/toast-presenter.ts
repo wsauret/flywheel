@@ -1,6 +1,6 @@
-import type { PresentationChannel, PresentationIdOn } from "../../infra/error-presentation.js"
-import type { PresentationResult } from "../../infra/desktop-notify.js"
-import { errorMessage } from "../../infra/error-message.js"
+import type { PresentationChannel, PresentationIdOn } from "../../infra/substrate/events/error-presentation.js"
+import type { PresentationResult } from "../../infra/substrate/output/notify/desktop-notify.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
 
 interface ToastDisplay {
   message: string

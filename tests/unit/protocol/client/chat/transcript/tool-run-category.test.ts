@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { getToolDisplay } from "../../../../../../src/infra/tools/tool-display-registry.js"
+import { getToolDisplay } from "../../../../../../src/infra/substrate/output/tools/tool-display-registry.js"
 import { mergeableRead, readRowPath, toolRunCategoryFor } from "../../../../../../src/protocol/client/chat/transcript/tool-run-category.js"
 
 describe("toolRunCategoryFor", () => {

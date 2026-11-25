@@ -1,4 +1,4 @@
-import { generateSessionId } from "../../../infra/session-id.js"
+import { generateSessionId } from "../../../infra/substrate/session-id.js"
 import type { AttachedRuntimeClient, FrontendMutation, MutationResult } from "../../runtime/app-service-types.js"
 import { lostWithLane } from "../runtime/connection-failures.js"
 

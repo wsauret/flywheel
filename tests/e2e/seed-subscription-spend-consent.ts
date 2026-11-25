@@ -1,12 +1,12 @@
 import { dirname } from "node:path"
-import { AuthProfileStore } from "../../src/infra/auth/store/auth-profile-store.js"
-import { createSubscriptionSpendConsentStore } from "../../src/infra/auth/subscription/subscription-spend-consent-store.js"
-import { createSubscriptionSpendEnvelope, type SubscriptionSpendMode } from "../../src/infra/auth/subscription/subscription-spend-consent.js"
-import { appendCredentialInstanceWithReceipt } from "../../src/infra/auth/store/auth-store-mutations.js"
-import { createUsageAuthority } from "../../src/infra/llm/usage/usage-authority.js"
-import type { SubscriptionUsageReport, SubscriptionUsageSpendSource } from "../../src/infra/llm/usage/subscription-usage.js"
-import { createSubscriptionAccountIdentity } from "../../src/infra/auth/subscription/subscription-account-identity.js"
-import { authDir } from "../../src/infra/paths.js"
+import { AuthProfileStore } from "../../src/infra/providers/auth/store/auth-profile-store.js"
+import { createSubscriptionSpendConsentStore } from "../../src/infra/providers/auth/subscription/subscription-spend-consent-store.js"
+import { createSubscriptionSpendEnvelope, type SubscriptionSpendMode } from "../../src/infra/providers/auth/subscription/subscription-spend-consent.js"
+import { appendCredentialInstanceWithReceipt } from "../../src/infra/providers/auth/store/auth-store-mutations.js"
+import { createUsageAuthority } from "../../src/infra/providers/llm/usage/usage-authority.js"
+import type { SubscriptionUsageReport, SubscriptionUsageSpendSource } from "../../src/infra/providers/llm/usage/subscription-usage.js"
+import { createSubscriptionAccountIdentity } from "../../src/infra/providers/auth/subscription/subscription-account-identity.js"
+import { authDir } from "../../src/infra/platform/files/paths.js"
 
 const userDataRoot = process.argv[2]
 if (!userDataRoot) throw new Error("usage: seed-subscription-spend-consent.ts <user-data-root> [--consent=unreviewed|accepted|declined] [--single] [--append-sibling] [--prepaid-only] [--accepted-unavailable] [--scenario-control=<path>]")

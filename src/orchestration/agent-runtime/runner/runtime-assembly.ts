@@ -7,9 +7,9 @@
  * audit, event mapping, and lifecycle hooks.
  */
 
-import { accountAuthDir } from "../../../infra/paths.js";
-import { canonicalPathWithMissingTail } from "../../../infra/canonical-path.js";
-import { mergeAbortSignals } from "../../../infra/abort.js";
+import { accountAuthDir } from "../../../infra/platform/files/paths.js";
+import { canonicalPathWithMissingTail } from "../../../infra/platform/files/canonical-path.js";
+import { mergeAbortSignals } from "../../../infra/timing/abort.js";
 import type { AgentLoopOptions } from "../agent-loop-types.js";
 import type { ContentBlock as LLMContentBlock } from "../llm/types.js";
 import { createExecutionNotesHook } from "../loop/nudges/execution-notes.js";

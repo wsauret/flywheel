@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { readGitMetadata } from "../../../../../infra/git-metadata.js";
+import { readGitMetadata } from "../../../../../infra/platform/git-metadata.js";
 
 /** Read the current Git registry, without starting Git. A linked worktree
  * shares its common directory with the main tree and sibling registrations.

@@ -1,6 +1,6 @@
-import type { UsageEntry } from "../../../../infra/llm/usage/usage-entry.js";
-import { createRuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-factory.js";
-import type { RuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-types.js";
+import type { UsageEntry } from "../../../../infra/providers/llm/usage/usage-entry.js";
+import { createRuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-factory.js";
+import type { RuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-types.js";
 
 interface ProviderUsageReading {
   readonly inputTokens: number;

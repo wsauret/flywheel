@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import { TOOL_PREVIEW_LINE_LIMIT } from "@infra/output-blocks"
+import { TOOL_PREVIEW_LINE_LIMIT } from "@infra/substrate/events/output-blocks"
 import type { BoxRenderable } from "@opentui/core"
 import type { JSX } from "solid-js"
 

@@ -1,5 +1,5 @@
-import { errorMessage } from "../../../../../infra/error-message.js"
-import type { CredentialProviderId } from "../../../../../infra/auth/store/auth-store-types.js"
+import { errorMessage } from "../../../../../infra/diagnostics/error-message.js"
+import type { CredentialProviderId } from "../../../../../infra/providers/auth/store/auth-store-types.js"
 import type { AuthModalDeps } from "./auth-modal-types.js"
 import type { SettingsEditSpec, SettingsEditResult } from "../../../../modals/settings/settings-modal-types.js"
 

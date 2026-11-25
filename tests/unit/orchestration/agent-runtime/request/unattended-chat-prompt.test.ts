@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { plannedCapabilities, planPromptRequest, promptParts, type PromptAssembly } from "../../../../../scripts/prompt-assembly.js";
-import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../src/infra/agent-assets/system-prompt.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../../src/infra/definitions/agent-assets/system-prompt.js";
 import { captureRuntimeConfigRequest } from "../../../../../src/orchestration/agent-runtime/request/request-config.js";
 import type { AgentPurpose } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { loadConfig } from "../../../../../src/orchestration/config/loader.js";
@@ -16,7 +16,7 @@ import { installedPersonaToolEntries } from "../../../../../src/orchestration/ag
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../../../../src/workflows/definitions/definition-registry.js";
 import { publishSkillRevision, type SkillDefinition } from "../../../../../src/workflows/skills/skill-schema.js";
 import { unusedSessionMessaging } from "../../../../helpers/child-session-control.js";
-import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../../src/infra/definitions/capability-text.js";
 import { interceptBashCommand } from "../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-command-policy.js";
 import { makeContext } from "../tools/_fixtures.js";
 

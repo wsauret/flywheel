@@ -18,13 +18,13 @@
  * breadcrumb written before the runner that created it exited.
  */
 
-import { displayRelativePath } from "../../../../infra/tools/detail-helpers.js";
+import { displayRelativePath } from "../../../../infra/substrate/output/tools/detail-helpers.js";
 import type { LlmToolOutputPart } from "../../llm/messages.js";
 import type { ContentBlock } from "../../llm/types.js";
-import { truncateHeadTail } from "../../../../infra/output/truncate-output.js";
+import { truncateHeadTail } from "../../../../infra/substrate/output/text/truncate-output.js";
 import { saveFullOutput } from "./output-breadcrumb.js";
 import type { RetainedFullContent } from "../types.js";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 
 /** The per-result cap of tool output text in UTF-8 bytes. This boundary owns it; dispatch hands each call what
  *  remains of it after its own notices, so a tool that pages its own output fits within it (ARCH-TOOLS-057). */

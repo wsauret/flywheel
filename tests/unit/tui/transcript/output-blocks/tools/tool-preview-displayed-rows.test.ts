@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test"
-import type { ToolEntry } from "../../../../../../src/infra/output-blocks.js"
-import { resolveToolRowPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js"
+import type { ToolEntry } from "../../../../../../src/infra/substrate/events/output-blocks.js"
+import { resolveToolRowPresentation } from "../../../../../../src/infra/substrate/output/tools/tool-display-registry.js"
 import { renderToolEntry } from "./_tool-entry-render.js"
 import { writeEntry } from "./_write-entry-fixture.js"
 import { mutationEvidenceFixture } from "../../../../../fixtures/mutation-evidence-fixture.js"

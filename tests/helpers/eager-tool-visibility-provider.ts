@@ -1,10 +1,10 @@
 import OpenAI from "openai";
 
-import { asAsyncEventWriter } from "../../src/infra/store/event-store-types.js";
-import { createRuntimeEvent } from "../../src/infra/runtime-facts/runtime-event-factory.js";
-import { createSqliteEventStore } from "../../src/infra/store/sqlite-event-store.js";
-import { providerModelInfo } from "../../src/infra/llm/catalog/provider-model-info.js";
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../src/infra/runtime-facts/runtime-fact-mapper.js";
+import { asAsyncEventWriter } from "../../src/infra/substrate/store/event-store-types.js";
+import { createRuntimeEvent } from "../../src/infra/substrate/runtime-facts/runtime-event-factory.js";
+import { createSqliteEventStore } from "../../src/infra/substrate/store/sqlite-event-store.js";
+import { providerModelInfo } from "../../src/infra/providers/llm/catalog/provider-model-info.js";
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../src/infra/substrate/runtime-facts/runtime-fact-mapper.js";
 import { createChatCompletionsAdapter } from "../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions.js";
 import type { LLMClient } from "../../src/orchestration/agent-runtime/llm/types.js";
 import { checkpointFinalizedToolResult } from "../../src/orchestration/session/history/finalized-tool-result-checkpoint.js";

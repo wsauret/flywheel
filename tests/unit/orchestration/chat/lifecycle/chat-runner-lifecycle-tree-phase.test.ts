@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { EventBus } from "../../../../../src/infra/event-bus"
+import { EventBus } from "../../../../../src/infra/substrate/events/event-bus"
 import { createChatRunnerLifecycle } from "../../../../../src/orchestration/chat/lifecycle/runner-lifecycle"
 import { ChatSessionState } from "../../../../../src/orchestration/chat/types"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types"

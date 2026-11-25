@@ -1,13 +1,15 @@
-import type { TurnParkState } from "../../infra/agent-loop-events.js"
-import type { SessionRelation } from "../../infra/chat-input-schema.js"
+import type { TurnParkState } from "../../infra/substrate/events/agent-loop-events.js"
+import type { SessionRelation } from "../../infra/substrate/events/chat-input-schema.js"
 
 /** The state of a live recipient at the moment its control takes a message.
- *  A control with no runner attached is at rest. A session of any kind whose
+ *  A control with no runner attached is at rest. A chat whose last exchange
+ *  holds a question that waits for the person is `awaiting_answer`: the
+ *  message waits behind the question. A session of any kind whose
  *  loop answered its turn and parks while its background work runs is
  *  `waiting_on_work`: a message reaches its turn without a wake, but like an
  *  idle session it has no model request in flight that would bound a chain
  *  of messages. */
-export type LiveRecipientState = "running" | TurnParkState | "between_steps" | "at_rest" | "handing_off"
+export type LiveRecipientState = "running" | TurnParkState | "between_steps" | "at_rest" | "handing_off" | "awaiting_answer"
 
 /** What one message delivery did. `held` keeps the message for a later
  *  turn; a live session that holds a message takes it into its history and
@@ -16,7 +18,7 @@ export type LiveRecipientState = "running" | TurnParkState | "between_steps" | "
  *  transcript. */
 export type DeliveryOutcome =
   | { readonly status: "delivered"; readonly startsTurn: boolean; readonly confirmedSubmissionIds?: readonly string[]; readonly inTranscript?: boolean }
-  | { readonly status: "held"; readonly reason: "interrupted" | "no_reader" | "wake_limit"; readonly confirmedSubmissionIds?: readonly string[] }
+  | { readonly status: "held"; readonly reason: "interrupted" | "no_reader" | "wake_limit" | "awaiting_answer"; readonly confirmedSubmissionIds?: readonly string[] }
   | { readonly status: "refused"; readonly reason: "settled" | "deleted" | "not_found" | "self" | "handing_off" }
 
 /** The state of a recipient as delivery reads it. */
@@ -34,7 +36,8 @@ export function listState(state: RecipientState): SessionListState | undefined {
     case "between_steps":
     case "planned_cut": return "running"
     case "handing_off": return "handing_off"
-    case "idle": return "idle"
+    case "idle":
+    case "awaiting_answer": return "idle"
     case "interrupted": return "interrupted"
     case "at_rest": return "closed"
     case "settled": return "settled"
@@ -70,6 +73,7 @@ export function messageDisposition(input: {
         ? { status: "held", reason: "wake_limit" }
         : { status: "delivered", startsTurn: state === "idle" }
     case "interrupted": return { status: "held", reason: "interrupted" }
+    case "awaiting_answer": return { status: "held", reason: "awaiting_answer" }
     case "at_rest": return { status: "held", reason: "no_reader" }
   }
 }

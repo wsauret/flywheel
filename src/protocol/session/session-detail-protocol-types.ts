@@ -1,7 +1,7 @@
 import type { SessionRow } from "../runtime/app-service-types.js"
 import type { BudgetView } from "./budget-protocol-types.js"
 import type { StatusView } from "./status-protocol-types.js"
-import type { ToolStreamingText } from "../../infra/output-blocks.js"
+import type { ToolStreamingText } from "../../infra/substrate/events/output-blocks.js"
 import { sessionDomainCursor, type RuntimeSessionViewsResult } from "../runtime/runtime-ui-protocol-types.js"
 
 export type RuntimeSessionDetailSnapshotResult = RuntimeSessionViewsResult<RuntimeSessionDetailView>

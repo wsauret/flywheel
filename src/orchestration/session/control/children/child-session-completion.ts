@@ -1,7 +1,7 @@
-import { contentEvidence } from "../../../../infra/runtime-facts/content-evidence.js"
-import { createRuntimeEvent } from "../../../../infra/runtime-facts/runtime-event-factory.js"
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../infra/runtime-facts/runtime-fact-mapper.js"
-import type { ToolOutcome } from "../../../../infra/runtime-facts/tool-outcome.js"
+import { contentEvidence } from "../../../../infra/substrate/runtime-facts/content-evidence.js"
+import { createRuntimeEvent } from "../../../../infra/substrate/runtime-facts/runtime-event-factory.js"
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../infra/substrate/runtime-facts/runtime-fact-mapper.js"
+import type { ToolOutcome } from "../../../../infra/substrate/runtime-facts/tool-outcome.js"
 import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js"
 import type { tryOpenConversationTree } from "../../conversation/tree/conversation-tree-handle.js"
 

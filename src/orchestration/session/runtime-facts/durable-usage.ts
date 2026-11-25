@@ -1,9 +1,9 @@
-import { parseProjectionFact } from "../../../infra/projection/event-projection.js";
-import type { StoredFact } from "../../../infra/store/event-store-types.js";
-import type { UsageEntry } from "../../../infra/llm/usage/usage-entry.js";
+import { parseProjectionFact } from "../../../infra/substrate/projection/event-projection.js";
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js";
+import type { UsageEntry } from "../../../infra/providers/llm/usage/usage-entry.js";
 import { Log } from "../../../infra/diagnostics/log.js";
-import { parseSessionRuntimeFact } from "../../../infra/runtime-facts/runtime-fact-parser.js";
-import { currentUsageMeasurement, SESSION_RUNTIME_FACT_DEFINITIONS, type UsageMeasurement } from "../../../infra/runtime-facts/runtime-fact-types.js";
+import { parseSessionRuntimeFact } from "../../../infra/substrate/runtime-facts/runtime-fact-parser.js";
+import { currentUsageMeasurement, SESSION_RUNTIME_FACT_DEFINITIONS, type UsageMeasurement } from "../../../infra/substrate/runtime-facts/runtime-fact-types.js";
 
 const log = Log.create({ service: "durable-usage" });
 

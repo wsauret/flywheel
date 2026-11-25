@@ -2,15 +2,16 @@
  * Unified read tool for numbered text lines and base64-encoded images, with
  * text/image/multi-range/symbol implementations and the factory/wiring layer.
  * Display metadata (verbs, detail formatting) lives in
- * `infra/tools/displays/read.ts`.
+ * `infra/substrate/output/tools/displays/read.ts`.
  */
 
 import { createReadStream, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
-import { errnoCode, errorMessage } from "../../../../infra/error-message.js";
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
+import { errnoCode } from "../../../../infra/platform/files/system-error.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js";
 import type { LineRange as LedgerLineRange } from "../files/file-read-ledger.js";
 import { executePathBatch, hasKind, missingPathHint, prepareReadOnlyPathInput, resolveToolPath } from "../files/tool-paths.js";
 import { listDefinition } from "../search/list.js";
@@ -18,7 +19,7 @@ import { searchDefinition } from "../search/search.js";
 import { prepareSearchPathInput } from "../search/search-paths.js";
 import { resizeImage } from "./image-resize.js";
 import { checkNumericRange } from "../input/numeric-input.js";
-import { truncateUtf8Prefix } from "../../../../infra/output/truncate-output.js";
+import { truncateUtf8Prefix } from "../../../../infra/substrate/output/text/truncate-output.js";
 import { TOOL_RESULT_MAX_BYTES } from "../results/truncation.js";
 import { isRawSelector, type LineRange, parseSel, splitPathAndSel } from "./read-selectors.js";
 import { decodeTextSnapshot, readTextWindows } from "./read-text-windows.js";
@@ -26,7 +27,7 @@ import { formatFileMap, generateFileMap, lookupSymbol } from "./structural-map.j
 import { renderStructuralSummary, summarizeStructure } from "./structural-summary.js";
 import { detectTreeSitterLanguage } from "./tree-sitter-code.js";
 import type { DispatchedToolContext, RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../types.js";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
 
 const log = Log.create({ service: "agent-read" });
 

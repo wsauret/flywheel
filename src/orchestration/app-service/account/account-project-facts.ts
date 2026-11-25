@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 
-import { defineFact } from "../../../infra/event-registry.js"
+import { defineFact } from "../../../infra/substrate/facts/event-registry.js"
 
 const KnownAccountProjectPayload = Schema.Struct({
   status: Schema.Literal("known"),

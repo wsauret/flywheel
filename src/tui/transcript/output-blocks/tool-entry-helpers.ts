@@ -1,4 +1,4 @@
-import { TOOL_PREVIEW_LINE_LIMIT } from "@infra/output-blocks"
+import { TOOL_PREVIEW_LINE_LIMIT } from "@infra/substrate/events/output-blocks"
 import type { FrontendToolEntry } from "../../../protocol/runtime/app-service-types.js"
 import { foldReadRuns, mergeableRead, readRowLabel, type ReadRun } from "../../../protocol/client/chat/transcript/tool-run-category.js"
 

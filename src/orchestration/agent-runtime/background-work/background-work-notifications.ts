@@ -1,7 +1,7 @@
 import { escapeXml, formatRuntimeNotification } from "./runtime-notifications.js"
 import type { BackgroundWorkMeta, BackgroundWorkResult } from "./background-work-types.js"
-import { WATCH_ENDED_TAG, WATCH_EVENT_TAG, watchLabel } from "../../../infra/watch-notices.js"
-import { PERSON_STOP_INSTRUCTION } from "../../../infra/runtime-facts/tool-outcome.js"
+import { WATCH_ENDED_TAG, WATCH_EVENT_TAG, watchLabel } from "../../../infra/substrate/events/watch-notices.js"
+import { PERSON_STOP_INSTRUCTION } from "../../../infra/substrate/runtime-facts/tool-outcome.js"
 
 interface NotificationReceipt {
   readonly promise: Promise<void>

@@ -1,5 +1,5 @@
-import { errorMessage } from "../../../infra/error-message.js"
-import { CANCELED_LABEL, PARENT_CANCELED_LABEL, PARTIAL_LABEL, STOPPED_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../../infra/output/run-labels.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { CANCELED_LABEL, PARENT_CANCELED_LABEL, PARTIAL_LABEL, STOPPED_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../../infra/substrate/output/run-labels.js"
 import type { AttachedRuntimeClient } from "../../runtime/app-service-types.js"
 import {
   backgroundCursor,

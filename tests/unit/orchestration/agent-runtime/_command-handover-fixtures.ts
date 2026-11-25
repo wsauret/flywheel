@@ -1,7 +1,7 @@
 import { join } from "node:path"
 
 import type { CommandHandover } from "../../../../src/infra/supervision/launch/command-handover"
-import { asAsyncEventReadSurface, type AsyncEventWriter, type EventStoreReadSurface } from "../../../../src/infra/store/event-store-types"
+import { asAsyncEventReadSurface, type AsyncEventWriter, type EventStoreReadSurface } from "../../../../src/infra/substrate/store/event-store-types"
 import type { OwnedProcess, OwnedProcessExit } from "../../../../src/infra/supervision/launch/owned-subprocess"
 import type { HandedOverCommand } from "../../../../src/infra/supervision/launch/owned-command-control"
 import type { LauncherScope } from "../../../../src/infra/process-supervisor"

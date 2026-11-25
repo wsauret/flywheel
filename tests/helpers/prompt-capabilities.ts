@@ -1,4 +1,4 @@
-import type { CapabilityCheck } from "../../src/infra/capability-text.js";
+import type { CapabilityCheck } from "../../src/infra/definitions/capability-text.js";
 import { toolIdentity } from "../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
 import type { BuildSystemPromptOptions } from "../../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 

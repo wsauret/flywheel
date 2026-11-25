@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { installCustomProviders } from "../../../helpers/custom-providers.js";
-import { captureProviderConnection, type AuthContext } from "../../../../src/infra/auth/auth-context.js";
+import { captureProviderConnection, type AuthContext } from "../../../../src/infra/providers/auth/auth-context.js";
 import { getAuthStatusWithDiagnostics } from "../../../../src/orchestration/auth/auth-actions.js";
 import { createAuthStatusProjection } from "../../../../src/orchestration/app-service/auth/auth-status-projection.js";
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js";

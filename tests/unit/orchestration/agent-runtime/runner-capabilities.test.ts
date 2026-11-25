@@ -10,7 +10,7 @@ import type { LLMClientFactory } from "../../../../src/orchestration/agent-runti
 import { asModelClient } from "./_model-client.js"
 import { composeRealmModuleSnapshot, type ModuleId } from "../../../../src/orchestration/modules.js"
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
-import { moduleRuntimeHandle } from "../../../../src/infra/module-runtime.js"
+import { moduleRuntimeHandle } from "../../../../src/infra/definitions/modules/module-runtime.js"
 
 const MEMORY_ENTRY = "the-durable-memory-probe-entry"
 

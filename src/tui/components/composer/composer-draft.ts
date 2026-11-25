@@ -1,4 +1,4 @@
-import type { ChatAttachment } from "../../../infra/chat-input.js"
+import type { ChatAttachment } from "../../../infra/substrate/events/chat-input.js"
 
 export interface ComposerDraftPaste {
   readonly start: number

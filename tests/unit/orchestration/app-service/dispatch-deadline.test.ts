@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Effect } from "effect"
-import { CONTROL_RPC_DEADLINE_MS, MODEL_CONFIG_RPC_DEADLINE_MS, OUTPUT_HISTORY_RPC_DEADLINE_MS } from "../../../../src/infra/with-deadline.js"
+import { CONTROL_RPC_DEADLINE_MS, MODEL_CONFIG_RPC_DEADLINE_MS, OUTPUT_HISTORY_RPC_DEADLINE_MS } from "../../../../src/infra/timing/with-deadline.js"
 import { applyRuntimeCallPolicy, RuntimeCallTimeout, runtimeCallPolicies } from "../../../../src/protocol/rpc/runtime-client-deadlines.js"
 
 describe("runtimeCallPolicies", () => {

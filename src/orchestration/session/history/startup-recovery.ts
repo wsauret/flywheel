@@ -1,6 +1,6 @@
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
-import { durationMs } from "../../../infra/operation-log.js"
+import { durationMs } from "../../../infra/diagnostics/operation-log.js"
 import type { SessionManager } from "../manager.js"
 
 /** Reconciles stale-active sessions to a stationary posture after startup. Workflows remain inactive until the user resumes them.

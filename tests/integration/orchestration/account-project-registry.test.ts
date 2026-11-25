@@ -1,7 +1,7 @@
 import { expect, it } from "bun:test"
 import { mkdirSync } from "node:fs"
 import { join } from "node:path"
-import { canonicalPathWithMissingTail } from "../../../src/infra/canonical-path"
+import { canonicalPathWithMissingTail } from "../../../src/infra/platform/files/canonical-path"
 import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account/account-project-registry"
 import { temporaryDirectories } from "../../helpers/directories"
 

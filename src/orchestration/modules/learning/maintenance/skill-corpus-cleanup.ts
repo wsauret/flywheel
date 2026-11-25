@@ -1,4 +1,4 @@
-import type { FactRecorder } from "../../../../infra/fact-recorder.js";
+import type { FactRecorder } from "../../../../infra/substrate/facts/fact-recorder.js";
 import { resolveSkillSpecializationCanonical } from "../skills/skill-semantic-audit.js";
 import type { SkillWrittenFact } from "../../../../workflows/skills/skill-facts.js";
 import type { BundledCorpusIdentity, SkillPackageIdentity, SkillRegistryRevision } from "../../../../workflows/skills/skill-schema.js";

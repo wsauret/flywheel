@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { describe, expect, it } from "bun:test"
 
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js"
-import { messageInput, requestContextInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js"
+import { messageInput, requestContextInput, type AgentLoopInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js"
 import { SILENT_REPLY_NUDGE } from "../../../../../src/orchestration/agent-runtime/loop/reply-nudge.js"
 import { fixedRequestToolSurface, RequestToolMap } from "../../../../helpers/request-tool-surface.js"
 import type { RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js"

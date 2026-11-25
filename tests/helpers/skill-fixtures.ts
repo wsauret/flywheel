@@ -1,4 +1,4 @@
-import { contentEvidence } from "../../src/infra/runtime-facts/content-evidence.js";
+import { contentEvidence } from "../../src/infra/substrate/runtime-facts/content-evidence.js";
 import { resolveSkillBody } from "../../src/workflows/skills/skill-references.js";
 import { compileOutput } from "../../src/workflows/output-contract/compile.js";
 import type { Field, OutputObject } from "../../src/workflows/output-contract/grammar.js";

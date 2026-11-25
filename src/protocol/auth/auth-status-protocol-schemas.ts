@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import type { RuntimeAuthStatusScope, RuntimeAuthStatusSnapshotResult } from "./auth-status-protocol-types.js"
 import type { RuntimeAuthProfileScope, RuntimeAuthProfileWriteScope } from "./auth-profile-selection-protocol-types.js"
-import { SubscriptionUsageSpendSourceSchema } from "../../infra/llm/usage/subscription-usage.js"
+import { SubscriptionUsageSpendSourceSchema } from "../../infra/providers/llm/usage/subscription-usage.js"
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "./subscription-spend-consent-protocol-types.js"
 
 const RuntimePositionSchema = Schema.Number

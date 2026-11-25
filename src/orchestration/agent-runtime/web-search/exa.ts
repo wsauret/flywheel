@@ -15,7 +15,7 @@
  */
 
 import { Redacted } from "effect";
-import { isRecord } from "../../../infra/record.js";
+import { isRecord } from "../../../infra/guards/record.js";
 import { postJson } from "./http.js";
 import { createRetrievalStore, MAX_DOCUMENT_CHARS, type RetrievalDocument, type RetrievalSession } from "./retrieval-session.js";
 import { WebSearchError, type ResponseLength, type WebSearchCommand, type WebSearchProvider, type WebSearchQuery, type WebSearchResponse, type WebSearchResult } from "./types.js";

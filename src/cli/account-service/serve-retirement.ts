@@ -3,8 +3,9 @@
 
 import * as fs from "node:fs"
 
-import type { ServeLane } from "../../infra/cli-subprocess.js"
-import { errnoCode, errorMessage } from "../../infra/error-message.js"
+import type { ServeLane } from "../../infra/platform/cli-subprocess.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import { errnoCode } from "../../infra/platform/files/system-error.js"
 import { Log } from "../../infra/diagnostics/log.js"
 import type { ReplacementTrigger } from "../../orchestration/app-service/account/replacement-owner.js"
 import type { InstalledBuild } from "../../orchestration/app-service/runtime-executable.js"

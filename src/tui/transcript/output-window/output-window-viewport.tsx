@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { ChildCardStatus } from "../../../protocol/client/work/session-controls.js"
-import type { ToolStreamingText } from "@infra/output-blocks"
+import type { ToolStreamingText } from "@infra/substrate/events/output-blocks"
 import type { BoxRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { Key } from "@solid-primitives/keyed"

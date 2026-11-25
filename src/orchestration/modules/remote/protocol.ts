@@ -1,4 +1,4 @@
-import { errorMessage } from "../../../infra/error-message.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { EMPTY_REMOTE_VIEW, remoteCursor, remoteProtocol, type RemoteMutationResult } from "../../../protocol/modules/remote.js"
 import type { ModuleProtocolRuntime, AccountModuleProtocolServices } from "../../app-service/module-protocol-host.js"
 import type { RemoteAccess } from "./remote-access.js"

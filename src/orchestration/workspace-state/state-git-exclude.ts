@@ -1,9 +1,9 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 
-import { FLYWHEEL_DIR_NAME } from "../../infra/directory-authorities.js"
+import { FLYWHEEL_DIR_NAME } from "../../infra/platform/files/directory-authorities.js"
 import { Log } from "../../infra/diagnostics/log.js"
-import { readGitMetadata } from "../../infra/git-metadata.js"
+import { readGitMetadata } from "../../infra/platform/git-metadata.js"
 
 /** Keeps Flywheel's state directory out of the version control of the project
  *  it records.

@@ -1,8 +1,8 @@
 import type { ModelInfo } from "@anthropic-ai/claude-agent-sdk";
-import type { AccessProviderAccessOutcome, AccessProviderAccessProbeInput, AccessProviderCatalogFetchInput, AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js";
-import type { CatalogDiscovery, CatalogSourceRow } from "../../../infra/llm/catalog/model-catalog-resolution.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
-import { classifyFetchFailure } from "../../../infra/llm/access/model-listing.js";
+import type { AccessProviderAccessOutcome, AccessProviderAccessProbeInput, AccessProviderCatalogFetchInput, AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import type { CatalogDiscovery, CatalogSourceRow } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
+import { classifyFetchFailure } from "../../../infra/providers/llm/access/model-listing.js";
 import { cliLaunch, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
 
 /** A CLI row names its model by the full wire id in `resolvedModel`; `value` is the CLI's own alias for it. */

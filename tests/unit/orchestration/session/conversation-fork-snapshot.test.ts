@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { runToCompletion } from "../../../../src/infra/task-scheduling.js"
+import { runToCompletion } from "../../../../src/infra/process/task-scheduling.js"
 import { buildCommittedForkMessagesWork } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context.js"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 

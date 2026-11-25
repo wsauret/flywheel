@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { AuthStoreMutationError } from "../../../../../../src/infra/auth/store/auth-store-mutations.js";
-import type { AccessProviderId } from "../../../../../../src/infra/llm/access/access-provider.js";
+import { AuthStoreMutationError } from "../../../../../../src/infra/providers/auth/store/auth-store-mutations.js";
+import type { AccessProviderId } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
 import { AllCandidatesExhaustedError, QuotaExhaustedError, RouteUnavailableError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure, ProviderAttemptFailure, ProviderAuthenticationError } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { observedLogins } from "../../../../../helpers/login-observations.js";

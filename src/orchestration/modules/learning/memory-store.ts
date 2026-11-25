@@ -28,22 +28,22 @@
 
 import { Schema } from "effect";
 import { basename, dirname, join, resolve } from "node:path";
-import { FLYWHEEL_DIR_NAME } from "../../../infra/directory-authorities.js";
-import { contentEvidence } from "../../../infra/runtime-facts/content-evidence.js";
-import { errorMessage } from "../../../infra/error-message.js";
-import type { LearningScope } from "../../../infra/learning-scope.js";
-import { buildMutationDiff, type MutationDiff, type MutationDiffTarget } from "../../../infra/mutation-diff.js";
-import { acquireLockIn, releaseLockIn } from "../../../infra/locks/ownership-file-lock.js";
+import { FLYWHEEL_DIR_NAME } from "../../../infra/platform/files/directory-authorities.js";
+import { contentEvidence } from "../../../infra/substrate/runtime-facts/content-evidence.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
+import type { LearningScope } from "../../../infra/definitions/learning/learning-scope.js";
+import { buildMutationDiff, type MutationDiff, type MutationDiffTarget } from "../../../infra/substrate/file-mutations/mutation-diff.js";
+import { acquireLockIn, releaseLockIn } from "../../../infra/process/locks/ownership-file-lock.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
-import { firstThreatMessage, scanForThreats } from "../../../infra/threat-patterns.js";
-import { withMutationQueueKey } from "../../../infra/locks/file-mutation-queue.js";
-import { ContainedPathError, type ContainedDirectory } from "../../../infra/descriptor-directory/descriptor-directory-contract.js";
-import { withContainedDirectory } from "../../../infra/descriptor-directory.js";
+import { firstThreatMessage, scanForThreats } from "./threat-patterns.js";
+import { withMutationQueueKey } from "../../../infra/process/locks/file-mutation-queue.js";
+import { ContainedPathError, type ContainedDirectory } from "../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { withContainedDirectory } from "../../../infra/platform/files/descriptor-directory.js";
 import {
   directoryComponents,
   readFileUnder,
   type ContainedFileLocation,
-} from "../../../infra/write-file-under.js";
+} from "../../../infra/platform/files/write-file-under.js";
 
 const MEMORY_STORE_VERSION = 1;
 

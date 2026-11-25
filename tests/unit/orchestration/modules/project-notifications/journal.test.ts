@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { asAsyncEventReadSurface, type AsyncEventAppender, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../../src/infra/store/event-store-types"
+import { asAsyncEventReadSurface, type AsyncEventAppender, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../../src/infra/substrate/store/event-store-types"
 import { createProjectNotificationJournal } from "../../../../../src/orchestration/modules/project-notifications/journal"
 
 const AGGREGATE_ID = "project:notifications"

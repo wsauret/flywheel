@@ -1,7 +1,7 @@
-import { resolveAuthContext } from "../../../infra/auth/auth-context.js";
+import { resolveAuthContext } from "../../../infra/providers/auth/auth-context.js";
 import { installedCredentialProviderIds } from "../../credential-provider-modules.js";
 import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js";
-import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
 import { resolveEnabledProviderModelCatalog } from "./model-assignment-providers.js";
 import type {
   EffortOptionRow,

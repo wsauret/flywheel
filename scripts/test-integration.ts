@@ -34,7 +34,7 @@
 
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { buildPlatformArch } from "../src/infra/native-assets.js";
+import { buildPlatformArch } from "../src/infra/platform/native-assets.js";
 import { prepareAntigravityEngine } from "./antigravity-engine-asset.js";
 import { createTestTempGuard, formatTempLeaks, type TempLeak } from "./test-temp-guard.js";
 import { enterValidationLane } from "./validation-lane.js";

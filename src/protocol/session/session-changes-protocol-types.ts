@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { MutationFileEvidenceSchema } from "../../infra/mutation-evidence-schema.js"
-import { SESSION_CONTENT_WINDOW_BYTES } from "../../infra/session-content-schema.js"
+import { MutationFileEvidenceSchema } from "../../infra/substrate/file-mutations/mutation-evidence-schema.js"
+import { SESSION_CONTENT_WINDOW_BYTES } from "../../infra/substrate/session-content-schema.js"
 import type { RuntimePosition, RuntimeSessionCursorIdentity } from "../runtime/runtime-ui-protocol-types.js"
 
 const Index = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(Number.MAX_SAFE_INTEGER))

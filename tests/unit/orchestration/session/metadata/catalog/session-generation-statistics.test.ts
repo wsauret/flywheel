@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from "bun:test"
 import { Log } from "../../../../../../src/infra/diagnostics/log.js"
-import type { EventStoreAppend, StoredFact } from "../../../../../../src/infra/store/event-store-types.js"
+import type { EventStoreAppend, StoredFact } from "../../../../../../src/infra/substrate/store/event-store-types.js"
 import { generationStatistics, initialGenerationEvidence, reduceGenerationEvidence } from "../../../../../../src/orchestration/session/metadata/catalog/session-generation-statistics.js"
 import type { GenerationMeasurement } from "../../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 

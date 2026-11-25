@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import type { ProvisionalDiffLine, ToolStreamingText } from "../../../../../../src/infra/output-blocks.js"
-import type { StreamingToolTextOp } from "../../../../../../src/infra/output/output-block-delta.js"
-import { diffStreamingEntry } from "../../../../../../src/infra/output/streaming/streaming-text-diff.js"
+import type { ProvisionalDiffLine, ToolStreamingText } from "../../../../../../src/infra/substrate/events/output-blocks.js"
+import type { StreamingToolTextOp } from "../../../../../../src/infra/substrate/output/output-block-delta.js"
+import { diffStreamingEntry } from "../../../../../../src/infra/substrate/output/streaming/streaming-text-diff.js"
 import { appendText, applyStreamingToolTextOps, type StreamingTextRejection } from "../../../../../../src/protocol/client/chat/transcript/streaming-text-edits.js"
 
 function line(index: number, text: string, partial = false): ProvisionalDiffLine {

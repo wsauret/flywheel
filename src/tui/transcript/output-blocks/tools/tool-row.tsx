@@ -1,8 +1,8 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { ToolStreamingText } from "@infra/output-blocks"
+import type { ToolStreamingText } from "@infra/substrate/events/output-blocks"
 import { blockIdentity } from "../../../../protocol/transcript/block-identity.js"
-import { getToolDisplay } from "@infra/tools/tool-display-registry.js"
+import { getToolDisplay } from "@infra/substrate/output/tools/tool-display-registry.js"
 import { StyledText, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { displayWidth } from "@tui/terminal/text.js"
 import { highlightExecuteInputs, highlightToolDetail, linkifyChunks } from "@tui/adapters/tool-detail-highlight.js"

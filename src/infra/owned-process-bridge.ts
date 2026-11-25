@@ -1,6 +1,6 @@
 import type { OwnedProcessBackend } from "./supervision/launch/owned-subprocess-backend.js"
 import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "./process/channels/internal-process-channel.js"
-import { errorMessage } from "./error-message.js"
+import { errorMessage } from "./diagnostics/error-message.js"
 import { Log } from "./diagnostics/log.js"
 import { lockCommandSupervisorEntry } from "./supervision/launch/command-supervisor-entry.js"
 import {
@@ -11,9 +11,9 @@ import {
   type GuardianLeaseOutcome,
 } from "./supervision/guardian/process-guardian-protocol.js"
 import { createLauncherScope, createProcessSupervisor, type GuardianControl, type GuardianGeneration, type GuardianLease, type LauncherScope, type OwnershipClosure } from "./process-supervisor.js"
-import { withDeadline } from "./with-deadline.js"
+import { withDeadline } from "./timing/with-deadline.js"
 
-import { isRecord } from "./record.js"
+import { isRecord } from "./guards/record.js"
 /** Extends one process's container ownership into a Worker thread.
  *
  *  The Worker launches its own containers because it needs their stdio: a

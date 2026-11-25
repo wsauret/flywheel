@@ -11,7 +11,7 @@
 
 import { describe, expect, test } from "bun:test";
 import type OpenAI from "openai";
-import type { ModelInfo } from "../../../../../../../src/infra/llm/models/models.js";
+import type { ModelInfo } from "../../../../../../../src/infra/providers/llm/models/models.js";
 import { createChatCompletionsAdapter } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions.js";
 import { openRouterReportedChargeUsd } from "../../../../../../../src/orchestration/modules/provider-openrouter/usage-charge.js";
 
@@ -25,7 +25,7 @@ import { LlmStreamError } from "../../../../../../../src/orchestration/agent-run
 interface UnknownRecord { [key: string]: unknown }
 import { wireClient } from "../../_wire-fixtures.js";
 import { Redacted } from "effect";
-import { providerModelInfo } from "../../../../../../../src/infra/llm/catalog/provider-model-info.js";
+import { providerModelInfo } from "../../../../../../../src/infra/providers/llm/catalog/provider-model-info.js";
 import type { AccessProviderBuild } from "../../../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { openrouterModule } from "../../../../../../../src/orchestration/modules/provider-openrouter/module.js";
 import { fakeAvailability } from "../../_provider-chain-harness.js";

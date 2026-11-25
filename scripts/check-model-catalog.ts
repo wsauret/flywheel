@@ -1,7 +1,7 @@
-import bundledModelsJson from "../src/infra/llm/models/models-bundled.txt";
-import { canonicalCatalogModelId, canonicalModelId } from "../src/infra/model-id.js";
-import { admitModelsDocument, type AdmittedModelsDocument } from "../src/infra/llm/models/models-document.js";
-import { modelMapIndex, providerNamespaceIndex, resolveLegacyRelationship, resolveModelMapRelationship } from "../src/infra/llm/models/model-relationships.js";
+import bundledModelsJson from "../src/infra/providers/llm/models/models-bundled.txt";
+import { canonicalCatalogModelId, canonicalModelId } from "../src/infra/providers/model-id.js";
+import { admitModelsDocument, type AdmittedModelsDocument } from "../src/infra/providers/llm/models/models-document.js";
+import { modelMapIndex, providerNamespaceIndex, resolveLegacyRelationship, resolveModelMapRelationship } from "../src/infra/providers/llm/models/model-relationships.js";
 
 export type ModelCatalogIssue =
   | { readonly kind: "invalid-exact-relationship"; readonly providerId: string; readonly wireModelId: string; readonly canonicalModelId: string }

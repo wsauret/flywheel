@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import * as path from "node:path"
 
 import { SERVE_EXIT } from "../../../src/cli/account-service/serve-contract.js"
-import { LOG_DIR } from "../../../src/infra/paths.js"
+import { LOG_DIR } from "../../../src/infra/platform/files/paths.js"
 import { joinIsolatedAccountService } from "./_account-service.js"
 import { createReplacementHarness, sessionStatus, startHeldChat, until } from "./_replacement-harness.js"
 import { COMMAND_DEADLINE_SECONDS, EDITED_CONTENT, EDITED_FILE } from "./_replacement-provider.js"

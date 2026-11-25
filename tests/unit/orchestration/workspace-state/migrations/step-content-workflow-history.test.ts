@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { join } from "node:path"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { isLegacyDefinitionIdentity } from "../../../../../src/workflows/control-facts/definition-identity.js"
 import { replayWorkflowControl } from "../../../../../src/workflows/vm/recovery/fact-fold.js"
 import { workflowAggregateId } from "../../../../../src/workflows/run/run-facts.js"

@@ -13,7 +13,7 @@ import type { LoadedWorkflowView, WorkflowTreeNode } from "../../../session/work
 import { workflowCurrentAgent, workflowOutline, workflowTreeIndex, type WorkflowPhaseAgent } from "./workflow-outline.js"
 import { workflowAgentDetail } from "./workflow-card.js"
 import type { WorkflowAgentModel } from "./workflow-agent.js"
-import type { WorkflowAgentState } from "../../../../infra/output-blocks.js"
+import type { WorkflowAgentState } from "../../../../infra/substrate/events/output-blocks.js"
 
 type View = Pick<LoadedWorkflowView, "attempts" | "tree">
 

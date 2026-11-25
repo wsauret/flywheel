@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { EventBus, createEmit } from "../../../../src/infra/event-bus.js"
-import { createRuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-factory.js"
-import type { RuntimeEvent } from "../../../../src/infra/runtime-facts/runtime-event-types.js"
-import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
+import { EventBus, createEmit } from "../../../../src/infra/substrate/events/event-bus.js"
+import { createRuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js"
+import type { RuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-types.js"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
 import type { ChatEntryPatch } from "../../../../src/orchestration/session-store/types.js"
 import { SessionEventAdapter } from "../../../../src/orchestration/session-store/event-adapter.js"
 import { createOutputSession, type OutputSession } from "../../../../src/orchestration/session-store/output-session.js"
@@ -230,7 +230,7 @@ describe("SessionEventAdapter", () => {
     adapter = chatAdapter(patches)
     adapter.connect(bus)
 
-    const { buildMutationDiffEvidence } = await import("../../../../src/infra/mutation-diff-evidence.js")
+    const { buildMutationDiffEvidence } = await import("../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js")
     const mutationEvidence = await buildMutationDiffEvidence({
       version: 1, files: ["provider-quirks", "new-package"].map(path => ({ path, change: "modified", unifiedDiff: "@@ -1 +1 @@\n-old\n+new" })), omissions: [],
     }, "review", async () => {})

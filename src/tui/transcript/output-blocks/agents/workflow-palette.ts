@@ -6,7 +6,7 @@
  */
 
 import { fg as stFg, type RGBA, type TextChunk } from "@opentui/core"
-import type { WorkflowAgentState } from "../../../../infra/output-blocks.js"
+import type { WorkflowAgentState } from "../../../../infra/substrate/events/output-blocks.js"
 import { workflowChitGlyph, workflowChits, type WorkflowChitTone, type WorkflowUnitCounts } from "../../../../protocol/client/work/workflow/workflow-chits.js"
 
 interface WorkflowPalette {

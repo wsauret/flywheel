@@ -14,8 +14,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { main } from "../../../bench/ab-persona/bench.js";
-import { captureProviderConnection, type AuthContext } from "../../../src/infra/auth/auth-context.js";
-import type { FailoverPlan } from "../../../src/infra/llm/access/access-provider.js";
+import { captureProviderConnection, type AuthContext } from "../../../src/infra/providers/auth/auth-context.js";
+import type { FailoverPlan } from "../../../src/infra/providers/llm/access/access-provider.js";
 import type { UsageAuthorityGeneration } from "../../../src/orchestration/agent-runtime/request/usage/usage-settlement.js";
 import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";

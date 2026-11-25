@@ -27,8 +27,8 @@ import {
   resumeInput,
   sameProducer,
   wakeInput,
-} from "../../infra/agent-loop-events.js";
-import { normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike } from "../../infra/chat-input.js";
+} from "../../infra/substrate/events/agent-loop-events.js";
+import { normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike } from "../../infra/substrate/events/chat-input.js";
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js";
 import type { HumanInputQueue, QueuedInputWithdrawal } from "../session/control/messaging/queued-input-recall.js";
 
@@ -44,6 +44,13 @@ function isPersonMessage(input: AgentLoopInput): input is AgentLoopMessageInput 
   return input.kind === "message" && input.origin === "human";
 }
 
+/** A message held behind a question in its durable cell, from the person
+ *  or another session, which carries the cell key as its one dispatch id. */
+export interface HeldMessage {
+  readonly key: string
+  readonly input: ChatInput
+}
+
 function toChatInput(input: AgentLoopMessageInput): ChatInput {
   const { kind: _kind, origin: _origin, backgroundNotificationIds: _backgroundNotificationIds, ...chatInput } = input;
   return chatInput;
@@ -52,6 +59,10 @@ function toChatInput(input: AgentLoopMessageInput): ChatInput {
 export class ChatTurnMailbox implements InputSource, HumanInputQueue {
   constructor(private readonly onInput?: () => void) {}
   private readonly nextTurn: AgentLoopInput[] = [];
+  // A voluntary checkpoint waits apart from the queue: any other admission
+  // withdraws it, so it is always the last input, and the withdrawal costs
+  // nothing however long the queue is.
+  private idleCompaction: AgentLoopInput | null = null;
   // Each item's admission order, so a withdrawn input returns to its place
   // and an observation can tell input admitted after it.
   private readonly ordinals = new WeakMap<AgentLoopInput, number>();
@@ -67,12 +78,12 @@ export class ChatTurnMailbox implements InputSource, HumanInputQueue {
    *  turn teardown: input that arrived after the loop stopped draining has no
    *  live consumer and must trigger a respawn. */
   get hasPending(): boolean {
-    return this.nextTurn.length > 0;
+    return this.nextTurn.length > 0 || this.idleCompaction !== null;
   }
 
   /** The next delivery, without consuming controls the loop must execute. */
   get pendingInput(): AgentLoopInput | undefined {
-    return this.nextTurn[0];
+    return this.nextTurn[0] ?? this.idleCompaction ?? undefined;
   }
 
   /** True when queued input includes an explicit user message. System-produced
@@ -99,8 +110,7 @@ export class ChatTurnMailbox implements InputSource, HumanInputQueue {
   /** Admit an accepted message: the person's, or another session's when its
    *  producer names one. Produced notifications use their own methods. */
   enqueueNextTurn(input: ChatInputLike): void {
-    const normalized = normalizeChatInput(input);
-    this.enqueue(messageInput(normalized, { origin: producerOrigin(normalized.producer) }));
+    this.enqueue(acceptedMessageInput(input));
   }
 
   /** Admits another session's message that the wake hop limit holds: the
@@ -135,15 +145,46 @@ export class ChatTurnMailbox implements InputSource, HumanInputQueue {
   }
 
   enqueueCompact(source?: "idle"): void {
-    this.enqueue(compactInput(source));
+    if (source !== "idle") {
+      this.enqueue(compactInput(source));
+      return;
+    }
+    this.onInput?.();
+    this.idleCompaction = compactInput(source);
+    this.wakeWaiter();
   }
 
   /** Withdraws a voluntary checkpoint that has not reached the loop yet. */
   cancelIdleCompaction(): void {
-    for (let index = this.nextTurn.length - 1; index >= 0; index--) {
-      const input = this.nextTurn[index];
-      if (input?.kind === "compact" && input.source === "idle") this.nextTurn.splice(index, 1);
-    }
+    this.idleCompaction = null;
+  }
+
+  /** Takes each held message this queue does not carry yet, in the order
+   *  given, so a recall can take it back. Answers the messages it took. */
+  adoptHeld(held: readonly HeldMessage[]): HeldMessage[] {
+    const joining = held.filter(({ key }) => !this.holdsDispatchId(key));
+    for (const { input } of joining) this.enqueue(acceptedMessageInput(input));
+    return joining;
+  }
+
+  /** Takes out every queued input that waits in a durable cell: a message
+   *  under its dispatch id, a notice under its notification id. The
+   *  conversation writer then commits the cells in the order they arrived
+   *  (ARCH-SESSIONS-050). Answers the keys taken, by kind. */
+  takeHeld() {
+    const dispatchIds: string[] = [];
+    const notificationKeys: string[] = [];
+    const retained = this.nextTurn.filter((input) => {
+      if (input.kind !== "message") return true;
+      const [dispatchId, ...moreDispatchIds] = input.dispatchIds ?? [];
+      const [notificationKey, ...moreNotificationKeys] = input.backgroundNotificationIds ?? [];
+      if (dispatchId !== undefined && moreDispatchIds.length === 0) dispatchIds.push(dispatchId);
+      else if (notificationKey !== undefined && moreNotificationKeys.length === 0) notificationKeys.push(notificationKey);
+      else return true;
+      return false;
+    });
+    this.nextTurn.splice(0, this.nextTurn.length, ...retained);
+    return { dispatchIds, notificationKeys };
   }
 
   enqueueWake(): void {
@@ -201,7 +242,7 @@ export class ChatTurnMailbox implements InputSource, HumanInputQueue {
   }
 
   private admit(input: AgentLoopInput, at: number): void {
-    if (input.kind !== "compact" || input.source !== "idle") this.cancelIdleCompaction();
+    this.cancelIdleCompaction();
     this.onInput?.();
     this.nextTurn.splice(at, 0, input);
     this.wakeWaiter();
@@ -216,7 +257,11 @@ export class ChatTurnMailbox implements InputSource, HumanInputQueue {
 
   /** Drain the next control item or contiguous next-turn text batch. */
   drainPending(): AgentLoopInput | null {
-    if (this.nextTurn.length === 0) return null;
+    if (this.nextTurn.length === 0) {
+      const compaction = this.idleCompaction;
+      this.idleCompaction = null;
+      return compaction;
+    }
     const first = this.nextTurn.shift();
     if (!first) return null;
     if (first.kind !== "message") return first;
@@ -274,7 +319,7 @@ export class ChatTurnMailbox implements InputSource, HumanInputQueue {
       throw new Error("ChatTurnMailbox: concurrent input wait reservations are not supported");
     }
     let cancelWake = (): void => {};
-    const wake: Promise<WaiterWake> = this.nextTurn.length > 0
+    const wake: Promise<WaiterWake> = this.hasPending
       ? Promise.resolve("input")
       : signal?.aborted
         ? Promise.resolve("cancelled")
@@ -308,4 +353,9 @@ export class ChatTurnMailbox implements InputSource, HumanInputQueue {
       },
     };
   }
+}
+
+function acceptedMessageInput(input: ChatInputLike): AgentLoopInput {
+  const normalized = normalizeChatInput(input);
+  return messageInput(normalized, { origin: producerOrigin(normalized.producer) });
 }

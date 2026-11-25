@@ -1,5 +1,5 @@
-import type { ToolEntry } from "../../../../../../src/infra/output-blocks.js"
-import { resolveToolRowPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js"
+import type { ToolEntry } from "../../../../../../src/infra/substrate/events/output-blocks.js"
+import { resolveToolRowPresentation } from "../../../../../../src/infra/substrate/output/tools/tool-display-registry.js"
 
 export function writeEntry(content: string, options: { path?: string; filetype?: string } = {}): ToolEntry {
   const path = options.path ?? "example.ts"

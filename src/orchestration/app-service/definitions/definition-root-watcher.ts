@@ -1,8 +1,8 @@
 import { mkdirSync, watch } from "node:fs";
 import { DebugLog } from "../../../infra/diagnostics/debug-log.js";
-import { errorMessage } from "../../../infra/error-message.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../infra/diagnostics/log.js";
-import { createBackgroundLane } from "../../../infra/ordered-lane.js";
+import { createBackgroundLane } from "../../../infra/diagnostics/operation-log.js";
 import type { DefinitionReload } from "../../../workflows/definitions/definition-registry.js";
 import type { SkillStoreRoot } from "../../../workflows/skills/skills.js";
 

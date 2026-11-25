@@ -1,10 +1,10 @@
 import * as os from "node:os";
 import { Redacted } from "effect";
 import OpenAI from "openai";
-import type { OAuthPersistencePolicy } from "../../../../../infra/auth/auth-context.js";
-import { CHATGPT_BACKEND_API_BASE, type OpenAIAuth } from "../../../../../infra/auth/openai/openai-auth-types.js";
-import { extractAccountIdFromJwt } from "../../../../../infra/auth/openai/openai-jwt.js";
-import type { AccessProviderCandidate } from "../../../../../infra/llm/access/access-provider.js";
+import type { OAuthPersistencePolicy } from "../../../../../infra/providers/auth/auth-context.js";
+import { CHATGPT_BACKEND_API_BASE, type OpenAIAuth } from "../../../../../infra/providers/auth/openai/openai-auth-types.js";
+import { extractAccountIdFromJwt } from "../../../../../infra/providers/auth/openai/openai-jwt.js";
+import type { AccessProviderCandidate } from "../../../../../infra/providers/llm/access/access-provider.js";
 import { Log } from "../../../../../infra/diagnostics/log.js";
 import { parseChatGptAdapterErrorResponse } from "../../chatgpt-adapter-error.js";
 import { createChatGPTTokenAccessor, dumpFailedChatGptRequest, logRejectedChatGptRequest, type ChatGPTTokenAccessor } from "./openai-chatgpt.js";

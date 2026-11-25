@@ -1,4 +1,4 @@
-import type { SystemBlock, ToolPresentation, UserMessageBlock } from "../../infra/output-blocks.js"
+import type { SystemBlock, ToolPresentation, UserMessageBlock } from "../../infra/substrate/events/output-blocks.js"
 import type { FrontendActivity } from "../runtime/app-service-types.js"
 
 /** One subagent seat a brief declares: the role it fills and the personas

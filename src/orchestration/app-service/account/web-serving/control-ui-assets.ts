@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 
-import { runningSourceSnapshot, runsThroughBun, sourceCheckout, sourceSnapshotHome } from "../../../../infra/cli-subprocess.js"
+import { runningSourceSnapshot, runsThroughBun, sourceCheckout, sourceSnapshotHome } from "../../../../infra/platform/cli-subprocess.js"
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js"
 import { isClientIdentity } from "../../../../protocol/runtime/account-attach.js"
 

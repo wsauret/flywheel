@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { AccessProviderId } from "../../../../../../src/infra/llm/access/access-provider.js";
+import type { AccessProviderId } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
 import { streamAssistantTurn } from "../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
 import type { ModelClient, ProviderStreamEvent } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ProviderRequestAuditWriter } from "../../../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js";

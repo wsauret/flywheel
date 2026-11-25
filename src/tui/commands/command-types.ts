@@ -1,4 +1,4 @@
-import type { AccountDirectories } from "../../infra/directory-authorities.js"
+import type { AccountDirectories } from "../../infra/platform/files/directory-authorities.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { Accessor } from "solid-js"
 import type { RuntimeClient, SessionInputMode } from "../../protocol/runtime/app-service-types.js"

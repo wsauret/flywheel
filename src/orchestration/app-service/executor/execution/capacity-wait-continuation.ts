@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import type { AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import { coalesceRepeats } from "../../../../infra/diagnostics/repeat-coalescer.js"
 import type { RuntimeClient } from "../../../../protocol/runtime/app-service-types.js"

@@ -19,7 +19,7 @@ import {
   workflowParked,
   workflowResumeTitle,
 } from "../../../../../src/protocol/client/work/session-controls.js"
-import { interruptedLabel, RESUMED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../../../src/infra/output/run-labels.js"
+import { interruptedLabel, RESUMED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../../../src/infra/substrate/output/run-labels.js"
 
 describe("session controls", () => {
   test("a workflow Resume carries its message targets, and a workflow parks only while something holds it", () => {

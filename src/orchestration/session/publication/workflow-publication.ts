@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend } from "../../../infra/store/event-store-types.js"
+import type { AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend } from "../../../infra/substrate/store/event-store-types.js"
 import { parseWorkflowSessionFact } from "../../../workflows/vm/facts/session-facts.js"
 import { workflowRunOwner } from "../../module-catalog.js"
 import { workflowMembershipReader, type WorkflowMember } from "../metadata/workflow-membership.js"

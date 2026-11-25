@@ -7,14 +7,14 @@ const { ThinkingBlock } = await import("../../../../../../src/tui/transcript/out
 const { ThemeProvider, useTheme } = await import("../../../../../../src/tui/context/theme.js")
 const { BlockDisclosureProvider, createBlockDisclosureChannel } = await import("../../../../../../src/tui/context/transcript/block-disclosure.js")
 const { TickPoolProvider } = await import("../../../../../../src/tui/context/tick-pool-context.js")
-const { OutputProjector } = await import("../../../../../../src/infra/output/projector/output-projector.js")
-const { RuntimeEventProjector } = await import("../../../../../../src/infra/output/runtime-event-projector.js")
+const { OutputProjector } = await import("../../../../../../src/infra/substrate/output/projector/output-projector.js")
+const { RuntimeEventProjector } = await import("../../../../../../src/infra/substrate/output/projector/runtime-event-projector.js")
 const { handleStreamEvent } = await import("../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js")
 const { emitAgentStreamEvent } = await import("../../../../../../src/orchestration/agent-runtime/runner/runner-stream-events.js")
 const { emitTurnAssistant } = await import("../../../../../../src/orchestration/agent-runtime/runner/emit.js")
 const { createTurnUsageTracker } = await import("../../../../../../src/orchestration/agent-runtime/request/usage/turn-usage-tracker.js")
 const { RequestToolMap } = await import("../../../../../helpers/request-tool-surface.js")
-import type { ThinkingBlock as ThinkingBlockType } from "../../../../../../src/infra/output-blocks.js"
+import type { ThinkingBlock as ThinkingBlockType } from "../../../../../../src/infra/substrate/events/output-blocks.js"
 import type { AssistantTurnResult } from "../../../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js"
 import type { ProviderStreamEvent } from "../../../../../../src/orchestration/agent-runtime/llm/types.js"
 

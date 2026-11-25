@@ -7,8 +7,8 @@
 
 import { expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/store/event-store-types.js"
-import { createSqliteEventStore } from "../../../../../src/infra/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { adoptWorkflowChildren, workflowChildrenNeedAdoption } from "../../../../../src/orchestration/modules/workflows/migrations/adopt-workflow-children.js"
 import { chatSessionActions, readChatTurnEnd } from "../../../../../src/orchestration/session/control/chat-session-run-evidence.js"
 import { readConversationSnapshotSync } from "../../../../../src/orchestration/session/conversation/conversation-projection.js"

@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { defineFact } from "../../../infra/event-registry.js";
+import { defineFact } from "../../../infra/substrate/facts/event-registry.js";
 
 export const CheckpointDecisionSchema = Schema.Struct({
   date: Schema.String.check(Schema.makeFilter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) || "Expected YYYY-MM-DD")),

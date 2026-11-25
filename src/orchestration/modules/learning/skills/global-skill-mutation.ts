@@ -1,11 +1,11 @@
 /** Staged global publication and recovery. Current operations are authorized by
  * their originating tool call. Historical operations retain their consent
  * requirement and can never acquire authority through a format conversion. */
-import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../../../../infra/store/event-store-types.js";
+import type { AsyncEventReadSurface, AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js";
 import { Log } from "../../../../infra/diagnostics/log.js";
-import type { ProjectDirectories } from "../../../../infra/directory-authorities.js";
+import type { ProjectDirectories } from "../../../../infra/platform/files/directory-authorities.js";
 import { projectSkillStoreDir, skillStoreRoots } from "../../../../workflows/skills/skills.js";
-import { canonicalMutationPath } from "../../../../infra/locks/file-mutation-queue.js";
+import { canonicalMutationPath } from "../../../../infra/process/locks/file-mutation-queue.js";
 import { reconcilePendingAudits, settlePendingAudit, type AuditWriter, type PendingAudit } from "./learning-journal.js";
 import { forgetOperation, forgetProposal, runOperation } from "./global-skill-mutation-protocol.js";
 import { loadAgentInputProjection, type AgentInputEntry } from "../../../session/agent-input/agent-input-projection.js";
@@ -15,7 +15,7 @@ import {
   quarantineManifest, readOperationManifest, readProposalRecordsQuarantiningUnusable,
   writeOperationManifest, type OperationManifest, type OperationOrigin,
 } from "./skill-operation-manifest.js";
-import { tryWithPackageLocksSync, withPackageLocks } from "../../../../infra/locks/package-directory-lock.js";
+import { tryWithPackageLocksSync, withPackageLocks } from "../../../../infra/process/locks/package-directory-lock.js";
 import { refuseBackgroundGlobalWrite, refuseUncontainedSkillStores, resultOfPlan } from "./skill-store.js";
 import type { SkillMutationPlan, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin } from "./skill-store-types.js";
 

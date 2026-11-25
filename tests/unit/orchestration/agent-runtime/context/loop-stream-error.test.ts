@@ -7,7 +7,7 @@ import { normalizeProviderAttemptFailure } from "../../../../../src/orchestratio
 import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
 import { assemblyPinned, RequestToolMap } from "../../../../helpers/request-tool-surface.js";
-import { compactInput } from "../../../../../src/infra/agent-loop-events.js";
+import { compactInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 
 

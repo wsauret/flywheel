@@ -1,8 +1,8 @@
-import { pageReadQuery, type FactQuery, type StoredFact } from "../../../infra/store/event-store-types.js"
-import { factRetention } from "../../../infra/store/fact-retention-registry.js"
+import { pageReadQuery, type FactQuery, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { factRetention } from "../../../infra/substrate/store/fact-retention-registry.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
-import type { ToolContentRow } from "../../../infra/runtime-facts/tool-content.js"
+import type { ToolContentRow } from "../../../infra/substrate/runtime-facts/tool-content.js"
 import { boundedProjectStateSlice, isDegradedStoredFact, PROJECT_STATE_MAX_BYTES, PROJECT_STATE_MAX_PAGE_ROWS } from "./project-state-protocol.js"
 
 /** The heap the held facts retain (user decision). */

@@ -1,4 +1,4 @@
-import { asRecord } from "../../../infra/record.js";
+import { asRecord } from "../../../infra/guards/record.js";
 
 function amount(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;

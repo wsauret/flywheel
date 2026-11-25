@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { asAsyncEventReadSurface } from "../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../src/infra/substrate/store/event-store-types.js"
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js"
 import { NO_CAPABILITY_ACCESS } from "../../../src/orchestration/agent-runtime/tools/types.js"
 import { installedWorkspaceMigrations, prepareDefinitionReconciliation, recoverSessionHistory, runModuleMaintenance, type FirstPartyModule } from "../../../src/orchestration/modules.js"

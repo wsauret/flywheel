@@ -1,6 +1,6 @@
-import type { EventStoreWriteItem, FactQuery, FoldEvidenceRequest } from "../../../infra/store/event-store-types.js"
-import type { SessionContentNodeRow, SessionContentReference } from "../../../infra/session-content.js"
-import type { ToolContentReference } from "../../../infra/runtime-facts/tool-content.js"
+import type { EventStoreWriteItem, FactQuery, FoldEvidenceRequest } from "../../../infra/substrate/store/event-store-types.js"
+import type { SessionContentNodeRow, SessionContentReference } from "../../../infra/substrate/session-content.js"
+import type { ToolContentReference } from "../../../infra/substrate/runtime-facts/tool-content.js"
 import type { ProjectStateSessionCommand } from "./project-state-sessions.js"
 
 /** The operations a project state client asks of the state Worker, in their

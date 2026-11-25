@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 
 import { containsSecret, redactDeep, redactSecretEntries, redactSecrets, redactSecretsPrefix, redactSecretsWork } from "../../../src/infra/redact-secrets.js"
 import { SLOW_UNIT_BUDGET_MS } from "../../../src/infra/diagnostics/event-loop-lag.js"
-import { runInTaskSlices } from "../../../src/infra/task-scheduling.js"
+import { runInTaskSlices } from "../../../src/infra/process/task-scheduling.js"
 
 /** Redacts text with the synchronous form, and with the cooperative form on a
  *  clock that ends the slice after every unit. Fails unless the two forms give

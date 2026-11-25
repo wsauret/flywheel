@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 
-import type { SourceSnapshotLocation } from "../../infra/cli-subprocess.js"
+import type { SourceSnapshotLocation } from "../../infra/platform/cli-subprocess.js"
 import { decodeHolderFields, type ProcessHolder } from "../../infra/process/process-holder.js"
 import type { RuntimeIdentity as DisplayedRuntimeIdentity } from "../../protocol/client/runtime/runtime-identity.js"
 

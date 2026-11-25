@@ -1,10 +1,10 @@
 import { Redacted } from "effect";
-import { apiKey } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access/access-provider.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
-import { fetchPaginatedCatalog } from "../../../infra/llm/access/model-listing.js";
-import { providerModelInfo } from "../../../infra/llm/catalog/provider-model-info.js";
-import { isRecord } from "../../../infra/record.js";
+import { apiKey } from "../../../infra/providers/auth/auth-context.js";
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
+import { fetchPaginatedCatalog } from "../../../infra/providers/llm/access/model-listing.js";
+import { providerModelInfo } from "../../../infra/providers/llm/catalog/provider-model-info.js";
+import { isRecord } from "../../../infra/guards/record.js";
 import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";

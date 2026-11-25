@@ -1,4 +1,4 @@
-import type { AsyncEventWriter } from "../../src/infra/store/event-store-types.js"
+import type { AsyncEventWriter } from "../../src/infra/substrate/store/event-store-types.js"
 import type { SessionFactWriter } from "../../src/orchestration/session/persistence/session-fact-writer.js"
 
 /** A complete event writer for a subject that must not write through it.

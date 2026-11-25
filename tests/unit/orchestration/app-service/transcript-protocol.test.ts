@@ -3,11 +3,11 @@ import { Schema } from "effect"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/store/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
-import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
-import { createSqliteEventStore } from "../../../../src/infra/store/sqlite-event-store.js"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
 import { HydratedOutputBlockBodySchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript/transcript-protocol-schemas.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
@@ -129,7 +129,7 @@ describe("bounded output history protocol", () => {
   })
 
   it("preserves mutation artifacts on hydrated group children", async () => {
-    const { buildMutationDiffEvidence } = await import("../../../../src/infra/mutation-diff-evidence.js")
+    const { buildMutationDiffEvidence } = await import("../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js")
     const mutationEvidence = await buildMutationDiffEvidence({
       version: 1, files: [{ path: ".flywheel/memory/project.md", change: "modified", unifiedDiff: "--- a\n+++ b\n@@ -1 +1 @@\n-old\n+new" }], omissions: [],
     }, "memory-1", async () => {})

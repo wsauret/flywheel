@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { sourceCheckout } from "../../infra/cli-subprocess.js";
+import { sourceCheckout } from "../../infra/platform/cli-subprocess.js";
 import type { OwnedCommandRunner } from "../../infra/owned-command.js";
 
 const FLYWHEEL_FONT_FAMILY = "Monaspace Argon";

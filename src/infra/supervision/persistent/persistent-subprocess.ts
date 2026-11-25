@@ -20,7 +20,7 @@ import {
   type SpoolHolders,
   type WritablePersistentSpool,
 } from "./persistent-spool.js"
-import { withDeadline } from "../../with-deadline.js"
+import { withDeadline } from "../../timing/with-deadline.js"
 import { drainSupervisorDiagnostics } from "../../process/kernel/process-diagnostic-reader.js"
 import { launchOutsideJobs, OutsideJobsLaunchError, type OutsideJobsLaunchRequest } from "../../process/container/windows-outside-jobs.js"
 import { launchBreakaway, type BreakawayLaunch } from "../../process/container/windows-breakaway-launch.js"

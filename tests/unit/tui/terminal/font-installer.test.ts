@@ -8,7 +8,7 @@ import {
   getFontStatus,
   installBundledFont,
 } from "../../../../src/tui/terminal/font-installer.js";
-import { type AccountDirectories, FLYWHEEL_DIR_NAME } from "../../../../src/infra/directory-authorities.js";
+import { type AccountDirectories, FLYWHEEL_DIR_NAME } from "../../../../src/infra/platform/files/directory-authorities.js";
 import { fakeOwnedCommandRunner } from "../../../helpers/owned-command-fake.js";
 
 const FONT_FILES = [

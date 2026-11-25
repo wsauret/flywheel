@@ -1,5 +1,5 @@
-import type { AgentLoopWakeInput } from "../../../../infra/agent-loop-events.js"
-import type { OutputProjectionEvent } from "../../../../infra/output/output-projection-events.js"
+import type { AgentLoopWakeInput } from "../../../../infra/substrate/events/agent-loop-events.js"
+import type { OutputProjectionEvent } from "../../../../infra/substrate/output/output-projection-events.js"
 import type { Agent, AgentOptions, AgentRunResult, OmitAgentOptions, RunnerToolSurfaces } from "../../types.js"
 import type { RetryState } from "../../llm/retry-budget.js"
 import type { ResilienceDeps } from "../agent-resilience.js"
@@ -56,7 +56,7 @@ export interface AgentHost<O = AgentHostContextOptions> extends AgentGeneration<
   interruptTurn(): void
   continueAfterTurn(lease: AgentHostTurnLease, continuation: () => void): void
 }
-import type { ChatInputLike } from "../../../../infra/chat-input.js"
+import type { ChatInputLike } from "../../../../infra/substrate/events/chat-input.js"
 /** What a chat runner and a workflow runner both are. Controls whose shape
  *  differs between them, such as interrupt and resume, belong to each kind
  *  (`ChatRunner`, `WorkflowRunner`). */

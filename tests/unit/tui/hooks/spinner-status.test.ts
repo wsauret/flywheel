@@ -1,8 +1,8 @@
 import { describe, it, expect, spyOn } from "bun:test"
 import { createEffect, createRoot, createSignal, on } from "solid-js"
 import { Log } from "../../../../src/infra/diagnostics/log"
-import type { ConnectionState, StreamPhase } from "../../../../src/infra/output-blocks"
-import type { SessionNotice } from "../../../../src/infra/session-notice"
+import type { ConnectionState, StreamPhase } from "../../../../src/infra/substrate/events/output-blocks"
+import type { SessionNotice } from "../../../../src/infra/substrate/events/session-notice"
 import type { ActiveBackgroundCommandView, StatusView } from "../../../../src/protocol/session/status-protocol-types"
 import { createSpinnerStatus, type SpinnerStatusSource } from "../../../../src/tui/components/activity/create-spinner-status"
 

@@ -1,8 +1,8 @@
 import type { MutationFilesEntry } from "../../../session/mutation-evidence-protocol-types.js"
-import type { SessionContentManifestReference, SessionContentReference } from "../../../../infra/session-content.js"
+import type { SessionContentManifestReference, SessionContentReference } from "../../../../infra/substrate/session-content.js"
 import type { RuntimeConnection } from "../../runtime/connection.js"
 import type { RuntimeQuery, RuntimeQueryResult } from "../../../runtime/app-service-types.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 
 // Callers pass references read from reactive client stores. The protocol encoder rejects store
 // proxies, so the reader keeps its own plain copy of every reference it owns.

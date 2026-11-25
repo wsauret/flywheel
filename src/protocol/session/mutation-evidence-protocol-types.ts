@@ -1,7 +1,7 @@
 import { Schema } from "effect"
-import { exactStruct } from "../../infra/exact-struct.js"
-import { MutationDisplayFileEvidenceSchema, MutationEvidenceEntrySchema, MutationFileEvidenceSchema } from "../../infra/mutation-evidence-schema.js"
-import { SESSION_CONTENT_WINDOW_BYTES, SessionContentManifestReferenceSchema, SessionContentReferenceSchema } from "../../infra/session-content-schema.js"
+import { exactStruct } from "../../infra/guards/exact-struct.js"
+import { MutationDisplayFileEvidenceSchema, MutationEvidenceEntrySchema, MutationFileEvidenceSchema } from "../../infra/substrate/file-mutations/mutation-evidence-schema.js"
+import { SESSION_CONTENT_WINDOW_BYTES, SessionContentManifestReferenceSchema, SessionContentReferenceSchema } from "../../infra/substrate/session-content-schema.js"
 
 const Offset = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(Number.MAX_SAFE_INTEGER))
 const WindowBytes = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(SESSION_CONTENT_WINDOW_BYTES))

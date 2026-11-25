@@ -4,7 +4,7 @@ import { BoxRenderable, TextRenderable, type ScrollBoxRenderable } from "@opentu
 import { testRender } from "@opentui/solid"
 import { describe, expect, it } from "bun:test"
 import { createSignal, Show } from "solid-js"
-import type { TextBlock } from "../../../../../src/infra/output-blocks.js"
+import type { TextBlock } from "../../../../../src/infra/substrate/events/output-blocks.js"
 import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
 import { createTranscriptSelectionDrag } from "../../../../../src/tui/hooks/transcript/create-transcript-selection-drag.js"
 import { OutputWindow } from "../../../../../src/tui/transcript/output-window/output-window.js"

@@ -7,11 +7,11 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { Schema } from "effect";
-import { readMutationEvidenceFiles, type MutationEvidence } from "../../../../../../../src/infra/mutation-evidence.js";
-import { MutationEvidenceSchema } from "../../../../../../../src/infra/mutation-evidence-schema.js";
-import { readSessionContentRange, type ReadSessionContentNode } from "../../../../../../../src/infra/session-content.js";
+import { readMutationEvidenceFiles, type MutationEvidence } from "../../../../../../../src/infra/substrate/file-mutations/mutation-evidence.js";
+import { MutationEvidenceSchema } from "../../../../../../../src/infra/substrate/file-mutations/mutation-evidence-schema.js";
+import { readSessionContentRange, type ReadSessionContentNode } from "../../../../../../../src/infra/substrate/session-content.js";
 import type { OwnedProcess } from "../../../../../../../src/infra/supervision/launch/owned-subprocess.js";
-import { asRecord } from "../../../../../../../src/infra/record.js";
+import { asRecord } from "../../../../../../../src/infra/guards/record.js";
 import { parseBashResultDetails } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/bash.js";
 import { loadBashParser } from "../../../../../../../src/orchestration/agent-runtime/tools/bash/policy/bash-parser.js";
 import type { ToolAttributionIdentity } from "../../../../../../../src/orchestration/agent-runtime/tools/types.js";
@@ -20,7 +20,7 @@ import { temporaryDirectories } from "../../../../../../helpers/directories.js";
 import { makeMockOwnedProcess, type MergeFileFake, type OwnedExit } from "../_bash-fixtures.js";
 import { bashMutationHarness, settled } from "./_bash-mutations-harness.js";
 import { conflictMarkersNotice, notAppliedNotice } from "../../../../../../../src/protocol/client/chat/transcript/file-change-body.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../../src/infra/store/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../../src/infra/substrate/store/event-store-types.js";
 import { undoSessionChanges } from "../../../../../../../src/orchestration/app-service/projections/changes/session-undo.js";
 import { RetainedFileEditAuthority } from "../../../../../../../src/orchestration/agent-runtime/tools/file-edits/retained-file-edit-host.js";
 import { getSessionChangeReview } from "../../../../../../../src/orchestration/session/metadata/catalog/session-change-review.js";
@@ -28,7 +28,7 @@ import { withStore } from "../../../../session/file-mutation-recovery-fixture.js
 import { Log } from "../../../../../../../src/infra/diagnostics/log.js";
 import { DebugLog } from "../../../../../../../src/infra/diagnostics/debug-log.js";
 import { emitToolExecutionOutputRecorded } from "../../../../../../../src/orchestration/agent-runtime/runner/emit.js";
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../../../src/infra/runtime-facts/runtime-fact-mapper.js";
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../../../src/infra/substrate/runtime-facts/runtime-fact-mapper.js";
 
 // Registered at file scope, so it removes the projects only after the harness's
 // hook has closed each case's shell runtime, which waits for the copies inside them to be removed.

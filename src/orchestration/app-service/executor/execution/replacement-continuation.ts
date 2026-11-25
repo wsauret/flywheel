@@ -1,5 +1,5 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/store/event-store-types.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
 import type { FrontendMutation, RuntimeClient } from "../../../../protocol/runtime/app-service-types.js"
 import { commandHandoversForAsync } from "../../../session/command-handover.js"

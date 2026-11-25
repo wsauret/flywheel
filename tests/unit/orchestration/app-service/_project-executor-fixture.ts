@@ -8,7 +8,7 @@ import { decodeProjectExecutorCommand, decodeProjectExecutorInitialization, enco
 import { createProjectStateClient } from "../../../../src/orchestration/app-service/project-state/project-state-client.js"
 import { createPersistentProcessManager } from "../../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import type { RuntimeChatDefault } from "../../../../src/protocol/runtime/app-service-types.js"
-import { createLoginShellPath, type LoginShellPath } from "../../../../src/infra/login-shell-path.js"
+import { createLoginShellPath, type LoginShellPath } from "../../../../src/infra/environment/login-shell-path.js"
 import type { ProcessDiagnosticRecord } from "../../../../src/infra/process/kernel/process-diagnostic-reader.js"
 
 const cleanup: (() => void)[] = []
