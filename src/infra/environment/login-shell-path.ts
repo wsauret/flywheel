@@ -8,15 +8,18 @@ import { errorMessage } from "../diagnostics/error-message.js"
 import { Log } from "../diagnostics/log.js"
 import type { OwnedCommandRunner } from "../owned-command.js"
 
-/** The PATH a person's login shell builds, as the base of every agent
- *  command's PATH.
+/** The PATH a person's interactive login shell builds, as the base of every
+ *  agent command's PATH.
  *
  *  A service that a manager starts (launchd, systemd) runs with the manager's
  *  minimal PATH, such as `/usr/bin:/bin:/usr/sbin:/sbin`, and a service that a
- *  terminal starts runs with that terminal's PATH. The login shell's PATH is
- *  the same whatever started the service, so an agent command resolves the
- *  same binaries on every lane. Only PATH is taken from the probe; every other
- *  variable stays the process's own. */
+ *  terminal starts runs with that terminal's PATH. The shell's PATH is the
+ *  same whatever started the service, so an agent command resolves the same
+ *  binaries on every lane. The interactive login shell is probed first,
+ *  because tool installers add their directories in interactive startup files
+ *  such as `~/.zshrc`, which a login-only shell does not read. When that probe
+ *  fails, the login-only shell is probed instead. Only PATH is taken from the
+ *  probe; every other variable stays the process's own. */
 
 const PROBE_TIMEOUT_MS = 15_000
 const PROBE_MAX_OUTPUT_BYTES = 2 * 1024 * 1024
@@ -80,9 +83,33 @@ type ProbeOutcome =
   | { readonly ok: true; readonly path: string; readonly timedOut: boolean }
   | { readonly ok: false; readonly reason: string }
 
-async function runProbe(run: OwnedCommandRunner, shell: string, env: ProbeEnvironment): Promise<ProbeOutcome> {
+/** The shell modes in probe order: the interactive login shell first, then
+ *  the login-only shell. Standard input is closed by the owned runner, so a
+ *  startup file that reads it sees end-of-file and cannot hold the probe. */
+const PROBE_MODES = [
+  { mode: "interactive-login", flags: ["-i", "-l"] },
+  { mode: "login", flags: ["-l"] },
+] as const
+
+type ProbeMode = (typeof PROBE_MODES)[number]["mode"]
+
+type ModeOutcome =
+  | { readonly ok: true; readonly mode: ProbeMode; readonly path: string; readonly timedOut: boolean }
+  | { readonly ok: false; readonly reasons: { readonly [mode in ProbeMode]?: string } }
+
+async function probeModes(run: OwnedCommandRunner, shell: string, env: ProbeEnvironment): Promise<ModeOutcome> {
+  const reasons: { [mode in ProbeMode]?: string } = {}
+  for (const { mode, flags } of PROBE_MODES) {
+    const outcome = await runProbe(run, [shell, ...flags], env)
+    if (outcome.ok) return { ...outcome, mode }
+    reasons[mode] = outcome.reason
+  }
+  return { ok: false, reasons }
+}
+
+async function runProbe(run: OwnedCommandRunner, shellCommand: readonly string[], env: ProbeEnvironment): Promise<ProbeOutcome> {
   try {
-    const result = await run([shell, "-l", "-c", LOGIN_SHELL_ENV_COMMAND], {
+    const result = await run([...shellCommand, "-c", LOGIN_SHELL_ENV_COMMAND], {
       env, timeoutMs: PROBE_TIMEOUT_MS, maxOutputBytes: PROBE_MAX_OUTPUT_BYTES,
     })
     if (result.timedOut) {
@@ -117,8 +144,9 @@ export interface LoginShellPath {
   pending(): boolean
   /** Probes the login shell unless the PATH is known. A call while a probe
    *  runs joins it. A failure is not kept, as in OpenClaw: the PATH stays
-   *  unknown and the next probe or request runs the shell again. A failure
-   *  records at WARN with the shell and the reason, never the environment,
+   *  unknown and the next probe or request runs the shell again. A failure of
+   *  both shell modes records at WARN with the shell and each mode's reason,
+   *  never the environment,
    *  and a repeat of the reason just recorded records at DEBUG. Never rejects. */
   probe(run: OwnedCommandRunner): Promise<void>
   /** Probes again with the first probe's runner while the PATH is unknown. A
@@ -156,17 +184,18 @@ export function createLoginShellPath(options: {
       const env = options.env?.() ?? process.env
       const shell = resolveLoginShell(env.SHELL, (options.registeredShells ?? readEtcShells)())
       const startedAt = performance.now()
-      const outcome = await runProbe(run, shell, probeEnvironment(env, (options.home ?? homedir)()))
+      const outcome = await probeModes(run, shell, probeEnvironment(env, (options.home ?? homedir)()))
       const log = options.log ?? Log.create({ service: "login-shell-path" })
       if (!outcome.ok) {
-        const failure = { shell, reason: outcome.reason }
-        if (outcome.reason === recordedFailure) log.debug("the login shell PATH probe failed again", failure)
+        const failure = { shell, interactiveReason: outcome.reasons["interactive-login"], loginReason: outcome.reasons.login }
+        const reason = JSON.stringify(outcome.reasons)
+        if (reason === recordedFailure) log.debug("the login shell PATH probe failed again", failure)
         else log.warn("agent commands use the service's own PATH because the login shell PATH probe failed", failure)
-        recordedFailure = outcome.reason
+        recordedFailure = reason
         return
       }
       log.info("agent commands use the login shell PATH", {
-        shell, durationMs: Math.round(performance.now() - startedAt),
+        shell, mode: outcome.mode, durationMs: Math.round(performance.now() - startedAt),
         ...(outcome.timedOut ? { timedOut: true, reason: `a process the startup files left running was ended at the ${PROBE_TIMEOUT_MS / 1_000} s bound` } : {}),
       })
       adopt(outcome.path)

@@ -14,13 +14,15 @@ function commandResult(overrides: Partial<OwnedCommandResult> & { readonly stdou
   return { exitCode: 0, stdoutBytes, stdout: overrides.stdoutText ?? "", stderr: "", timedOut: false, ...overrides }
 }
 
-/** A runner that records each launch and answers with one scripted result. */
-function scriptedRunner(result: OwnedCommandResult | Error) {
+/** A runner that records each launch and answers with the result scripted for
+ *  its shell mode: the interactive login shell or the login-only shell. */
+function scriptedRunner(result: OwnedCommandResult | Error, loginResult: OwnedCommandResult | Error = result) {
   const launches: { readonly command: readonly string[]; readonly options: OwnedCommandOptions | undefined }[] = []
   const run: OwnedCommandRunner = async (command, options) => {
     launches.push({ command, options })
-    if (result instanceof Error) throw result
-    return result
+    const answer = command.includes("-i") ? result : loginResult
+    if (answer instanceof Error) throw answer
+    return answer
   }
   return { run, launches }
 }
@@ -86,16 +88,18 @@ describe("login shell selection", () => {
 })
 
 describe("login shell PATH probe", () => {
-  test("runs the trusted login shell with the real home and no ZDOTDIR, and adopts its PATH", async () => {
-    const { run, launches } = scriptedRunner(commandResult({ stdoutText: `motd\0PATH=${PROBED_PATH}\0` }))
-    const path = holder()
+  test("runs the trusted interactive login shell with the real home and no ZDOTDIR, and adopts its PATH", async () => {
+    const records = recordingLog()
+    const { run, launches } = scriptedRunner(commandResult({ stdoutText: `motd\0PATH=${PROBED_PATH}\0` }), new Error("the login shell must not run"))
+    const path = holder({ log: records.log })
 
     expect(path.current()).toBeUndefined()
     await path.probe(run)
 
     expect(path.current()).toBe(PROBED_PATH)
     expect(launches).toHaveLength(1)
-    expect(launches[0]?.command).toEqual(["/bin/zsh", "-l", "-c", "printf '\\0'; env -0"])
+    expect(launches[0]?.command).toEqual(["/bin/zsh", "-i", "-l", "-c", "printf '\\0'; env -0"])
+    expect(records.infos[0]?.fields?.mode).toBe("interactive-login")
     expect(launches[0]?.options?.env?.HOME).toBe("/Users/person")
     expect(launches[0]?.options?.env && Object.hasOwn(launches[0].options.env, "ZDOTDIR")).toBe(false)
   })
@@ -109,11 +113,12 @@ describe("login shell PATH probe", () => {
     await path.probe(run)
 
     expect(path.current()).toBeUndefined()
-    expect(launches).toHaveLength(2)
+    expect(launches.map((launch) => launch.command.slice(1, -2))).toEqual([["-i", "-l"], ["-l"], ["-i", "-l"], ["-l"]])
     expect(records.warnings).toHaveLength(1)
     expect(records.debugs).toHaveLength(1)
     expect(records.warnings[0]?.fields?.shell).toBe("/bin/zsh")
-    expect(String(records.warnings[0]?.fields?.reason)).toContain("15")
+    expect(String(records.warnings[0]?.fields?.interactiveReason)).toContain("15")
+    expect(String(records.warnings[0]?.fields?.loginReason)).toContain("15")
     expect(JSON.stringify(records.warnings)).not.toContain(PROBED_PATH)
   })
 
@@ -133,7 +138,27 @@ describe("login shell PATH probe", () => {
     expect(JSON.stringify(records.infos)).not.toContain(PROBED_PATH)
   })
 
-  test("a login shell that fails or prints no PATH leaves the process PATH in use", async () => {
+  test("an interactive login shell that fails falls back to the login shell's PATH", async () => {
+    for (const interactive of [
+      commandResult({ exitCode: 1, stdoutText: `\0PATH=/interactive/bin\0` }),
+      commandResult({ exitCode: null, timedOut: true, stdoutText: "\0PATH=/cut" }),
+      commandResult({ stdoutText: "no frame here" }),
+      new Error("guardian unavailable"),
+    ]) {
+      const records = recordingLog()
+      const { run, launches } = scriptedRunner(interactive, commandResult({ stdoutText: `\0PATH=${PROBED_PATH}\0` }))
+      const path = holder({ log: records.log })
+
+      await path.probe(run)
+
+      expect(path.current()).toBe(PROBED_PATH)
+      expect(launches.map((launch) => launch.command.slice(1, -2))).toEqual([["-i", "-l"], ["-l"]])
+      expect(records.warnings).toHaveLength(0)
+      expect(records.infos[0]?.fields?.mode).toBe("login")
+    }
+  })
+
+  test("a login shell that fails or prints no PATH in both modes leaves the process PATH in use", async () => {
     for (const result of [
       commandResult({ exitCode: 1, stdoutText: `\0PATH=${PROBED_PATH}\0` }),
       commandResult({ stdoutText: "no frame here" }),
@@ -141,9 +166,14 @@ describe("login shell PATH probe", () => {
     ]) {
       const records = recordingLog()
       const path = holder({ log: records.log })
-      await path.probe(scriptedRunner(result).run)
+      const { run, launches } = scriptedRunner(result)
+      await path.probe(run)
       expect(path.current()).toBeUndefined()
+      expect(launches).toHaveLength(2)
       expect(records.warnings).toHaveLength(1)
+      expect(records.warnings[0]?.fields?.interactiveReason).toBeString()
+      expect(records.warnings[0]?.fields?.loginReason).toBeString()
+      expect(JSON.stringify(records.warnings)).not.toContain(PROBED_PATH)
     }
   })
 
@@ -167,7 +197,7 @@ describe("login shell PATH probe", () => {
     await path.probe(run)
 
     expect(heard).toEqual([PROBED_PATH])
-    expect(launches).toHaveLength(2)
+    expect(launches).toHaveLength(3)
   })
 
   test("Windows keeps its own PATH and runs no login shell", async () => {

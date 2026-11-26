@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
+import { processLoginShellPath } from "../../../src/infra/environment/login-shell-path.js";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { implementQualityJudgeInputIdentity } from "../../../src/orchestration/modules/development/benchmark/scoring/implement-scoring.js";
@@ -496,7 +497,11 @@ describe("implementation sandbox command environment", () => {
     }
   })
 
-  it("gives every sandbox command an explicit credential-free environment with a sandbox-local home", async () => {
+  it("gives every sandbox command an explicit credential-free environment with a sandbox-local home and the login-shell PATH", async () => {
+    // The process holder keeps an adopted PATH for the rest of this test
+    // process, so the adopted value resolves exactly what the process PATH does.
+    const loginShellPath = `${process.env.PATH ?? "/usr/bin:/bin"}${delimiter}/scratch/login-shell-bin`;
+    processLoginShellPath.adopt(loginShellPath);
     const tasksDir = await writeSyntheticTaskDir();
     commandEnvs.length = 0;
     const [task] = await loadImplementTasks(tasksDir);
@@ -519,6 +524,7 @@ describe("implementation sandbox command environment", () => {
           "TMPDIR",
         ]);
         expect(env.HOME).toBe(join(sandbox, ".bench-home"));
+        expect(env.PATH).toBe(loginShellPath);
         expect(env.PYTHONDONTWRITEBYTECODE).toBe("1");
         expect(env.HOME).not.toBe(process.env.HOME);
         for (const [name, value] of Object.entries(env)) {

@@ -1,5 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { processLoginShellPath } from "../../../../infra/environment/login-shell-path.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../infra/owned-command.js";
 
 
@@ -32,13 +33,17 @@ interface SandboxCommandEnvironment {
  *  provider API keys, OAuth tokens and the account home that holds more of
  *  both, and none of that is a benchmark fixture's to read: a fixture is
  *  untrusted work whose commands run as the operator. So only what git, tar and
- *  bun need is named here, and HOME points at a directory inside the sandbox. */
+ *  bun need is named here, and HOME points at a directory inside the sandbox.
+ *  PATH is the person's login-shell PATH when the service has learned it, as
+ *  for agent commands, because a service manager starts the service with a
+ *  minimal PATH that lacks tools such as bun; until then it is the process's
+ *  own PATH. */
 async function sandboxCommandEnv(sandboxDir: string): Promise<SandboxCommandEnvironment> {
   const home = join(sandboxDir, SANDBOX_HOME_DIR);
   const temp = join(home, "tmp");
   await mkdir(temp, { recursive: true });
   return {
-    PATH: process.env.PATH ?? "/usr/bin:/bin",
+    PATH: processLoginShellPath.current() ?? process.env.PATH ?? "/usr/bin:/bin",
     HOME: home,
     TMPDIR: temp,
     // Adapter imports must not mutate the fixture tree and change its resume identity.

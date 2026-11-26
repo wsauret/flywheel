@@ -244,9 +244,9 @@ Because: Maintenance contends for the store's write lock, so readiness comes fir
 
 ## ARCH-RUNTIME-045: The account service owns the login-shell PATH
 
-The account service learns the login shell's PATH once, after it listens and off the attach path, through the owned command authority at background priority within a bound, and reads only PATH from the probe. Each executor generation receives that PATH on its lifecycle channel and never probes itself. A failure is not kept, so a generation that opens while PATH is unknown asks the account to probe again, and a PATH once found is kept for the service's life.
+The account service learns the interactive login shell's PATH once, falling back to the login shell, after it listens and off the attach path, through the owned command authority at background priority within a bound. It reads only PATH from the probe. Each executor generation receives that PATH on its lifecycle channel and never probes itself. A failure is not kept, so a generation that opens while PATH is unknown asks the account to probe again, and a PATH once found is kept for the service's life.
 
-Because: A service started by a service manager has only that manager's minimal PATH, so only the login shell's PATH resolves the same binaries on every launch lane.
+Because: A service manager gives only a minimal PATH, and tools add their directories in interactive startup files, so only the interactive login shell's PATH resolves the same binaries on every lane.
 
 ## ARCH-RUNTIME-046: Shell load is admitted by processor use, not by container count
 
