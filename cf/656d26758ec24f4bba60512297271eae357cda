@@ -1,0 +1,22 @@
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 373-374,376-380
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 222-233
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 569,571,607,611-623
+docs/product-intent/local-access.md
+  h_4b47e9e4a8b456 19
+docs/product-intent/remote-access.md
+  h_4b47e9e4a8b456 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cf656d26758ec24f4bba60512297271eae357cda",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
