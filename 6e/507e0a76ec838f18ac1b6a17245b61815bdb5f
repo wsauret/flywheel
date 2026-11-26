@@ -1,0 +1,16 @@
+src/orchestration/modules/development/benchmark/execution/headless-execution.ts
+  h_4b47e9e4a8b456 45-46,49,51,195
+tests/unit/orchestration/modules/development/benchmark/execution/headless-execution.test.ts
+  h_4b47e9e4a8b456 262-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6e507e0a76ec838f18ac1b6a17245b61815bdb5f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
