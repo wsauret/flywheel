@@ -4,13 +4,12 @@ import { basename } from "node:path"
 import { Effect, Exit, Scope } from "effect"
 import { Socket } from "effect/socket"
 
-import { importLegacyRemotePlacements, mutateRemotePairingStore, mutateRemotePushStore, readRemotePairingStore, readRemotePushStore, onRemoteStoresWritten, watchRemotePushStore, type PairedDevice, type RemotePairingStore, type StoredKeyPair } from "./remote-pairing-store.js"
+import { defaultRelayUrl, importLegacyRemotePlacements, mutateRemotePairingStore, mutateRemotePushStore, readRemotePairingStore, readRemotePushStore, onRemoteStoresWritten, watchRemotePushStore, type PairedDevice, type RemotePairingStore, type StoredKeyPair } from "./remote-pairing-store.js"
 import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { Log } from "../../../infra/diagnostics/log.js"
 import type { HeartbeatTiming, RelayChannelSocket, RelayChannelStreams } from "../../../protocol/modules/remote/relay-channel.js"
 import { sealedSocket } from "../../../protocol/modules/remote/sealed-socket.js"
 import {
-  DEFAULT_RELAY_URL,
   DEFAULT_REMOTE_APP_ORIGIN,
   fromBase64Url,
   type OpenFrame,
@@ -175,10 +174,10 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
 
   function readRelayUrl(): string {
     try {
-      return readRemotePairingStore(options.userDataRoot, options.lane).relayUrl ?? DEFAULT_RELAY_URL
+      return readRemotePairingStore(options.userDataRoot, options.lane).relayUrl ?? defaultRelayUrl(options.lane)
     } catch (error) {
       lastError = errorMessage(error)
-      return DEFAULT_RELAY_URL
+      return defaultRelayUrl(options.lane)
     }
   }
 
@@ -344,7 +343,7 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
       const store = readRemotePairingStore(options.userDataRoot, options.lane)
       const before = devices.map((device) => device.id).join(",")
       projects = listed
-      relayUrl = options.relayUrl ?? store.relayUrl ?? DEFAULT_RELAY_URL
+      relayUrl = options.relayUrl ?? store.relayUrl ?? defaultRelayUrl(options.lane)
       noticePairings(store.devices)
       refreshPushState(store)
       if (before !== devices.map((device) => device.id).join(",")) channel.send({ type: "devices", devices: devices.map((device) => device.id) })

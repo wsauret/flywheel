@@ -21,5 +21,28 @@
   // The daily byte budget per runtime id; relay/README.md (Abuse limits).
   // RELAY_ADMISSION is set as a secret instead, so a deploy never resets it.
   "vars": { "RELAY_DAILY_GIB": "8" },
-  "observability": { "enabled": true }
+  // The production relay that installed builds dial keeps no Workers Logs.
+  "observability": { "enabled": false },
+  "env": {
+    // The dev relay `flywheel-relay-dev` that source runs dial keeps Workers
+    // Logs for debugging. An environment inherits no bindings or vars, so
+    // each is stated again, with rate limit namespaces of its own. It would
+    // inherit the routes and take relay.flywl.sh, so it states its own host.
+    // Migrations stay top-level, and both Workers apply them.
+    "dev": {
+      "routes": [{ "pattern": "relay-dev.flywl.sh", "custom_domain": true }],
+      "durable_objects": {
+        "bindings": [
+          { "name": "RELAY_RUNTIME", "class_name": "RelayRuntime" },
+          { "name": "REPORTS", "class_name": "ReportInbox" }
+        ]
+      },
+      "ratelimits": [
+        { "name": "REPORTS_RATE_LIMITER", "namespace_id": "1004", "simple": { "limit": 5, "period": 60 } },
+        { "name": "RELAY_SOCKET_RATE_LIMITER", "namespace_id": "1005", "simple": { "limit": 300, "period": 60 } }
+      ],
+      "vars": { "RELAY_DAILY_GIB": "8" },
+      "observability": { "enabled": true }
+    }
+  }
 }

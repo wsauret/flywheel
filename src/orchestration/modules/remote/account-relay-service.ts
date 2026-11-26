@@ -7,14 +7,14 @@ import type { AccountProjectClone, ClonedProject } from "../../app-service/accou
 import type { AccountProjectRegistry } from "../../app-service/account/account-project-registry.js"
 import type { AccountService } from "../../app-service/account/account-service.js"
 import type { RelayChannelSocket } from "../../../protocol/modules/remote/relay-channel.js"
-import { decodeJsonFrame, DEFAULT_RELAY_URL, DEFAULT_REMOTE_APP_ORIGIN, fromBase64Url, type OpenFrame, type Placement } from "../../../protocol/modules/remote/relay-protocol.js"
+import { decodeJsonFrame, DEFAULT_REMOTE_APP_ORIGIN, fromBase64Url, type OpenFrame, type Placement } from "../../../protocol/modules/remote/relay-protocol.js"
 import { decodeRemoteAccountRequest, type RemoteAccountAnswer, type RemoteAccountRequest } from "../../../protocol/modules/remote/account-requests.js"
 import type { AccountModuleRequestServer } from "../../app-service/account/projects/account-module-services.js"
 import { decodeMachineRequest, machinePlacementId, type MachineAnswer, type MachineRequest } from "../../../protocol/modules/remote/project-creation.js"
 import { sealedSocket } from "../../../protocol/modules/remote/sealed-socket.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../protocol/runtime-liveness.js"
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
-import { importLegacyRemotePlacements, mutateRemotePairingStore, onRemoteStoresWritten, readRemotePairingStore, type PairedDevice } from "./remote-pairing-store.js"
+import { defaultRelayUrl, importLegacyRemotePlacements, mutateRemotePairingStore, onRemoteStoresWritten, readRemotePairingStore, type PairedDevice } from "./remote-pairing-store.js"
 import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./pairing/remote-pairing-exchange.js"
 import { createRelayControlChannel, linkConnection, linkFailure, type RelayControlChannel, type RelayLink, type ServedClient } from "./relay-control-channel.js"
 import { dialRelayDataChannel } from "./relay-data-channel.js"
@@ -128,7 +128,7 @@ export function createAccountRelayService(options: {
     return opening
   }
   let devices: readonly string[] = []
-  let relayUrl = DEFAULT_RELAY_URL
+  let relayUrl = defaultRelayUrl(options.lane)
   let identity: RemoteIdentity | undefined
   let pairing: MachinePairing | undefined
   const windows = new Set<MachinePairing>()
@@ -478,7 +478,7 @@ export function createAccountRelayService(options: {
     if (disposed) return
     await importLegacyRemotePlacements(options.userDataRoot, options.lane, options.registry)
     const store = readRemotePairingStore(options.userDataRoot, options.lane)
-    relayUrl = store.relayUrl ?? DEFAULT_RELAY_URL
+    relayUrl = store.relayUrl ?? defaultRelayUrl(options.lane)
     const before = devices
     devices = store.devices.map((device) => device.id)
     // An attached channel told the relay its devices only at attach; a

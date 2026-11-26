@@ -16,7 +16,9 @@ import { attachDeviceChannel, RELAY_HEARTBEAT } from "../../../../../src/protoco
 import {
   asKeyPair,
   DEFAULT_RELAY_URL,
+  DEV_RELAY_URL,
   fromBase64Url,
+  parsePairingCodeUrl,
   statedSilenceDeadlineMs,
   toBase64Url,
 } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
@@ -330,6 +332,16 @@ describe("remote access against a relay", () => {
     const view = await viewWhere(remote, (current) => current.connection === "connected")
     expect(view.lastError).toBeNull()
     expect(stub.runtimes.has(runtimeId)).toBe(true)
+  })
+
+  test.each([["installed", DEFAULT_RELAY_URL], ["dev", DEV_RELAY_URL]] as const)("the %s lane, naming no relay, pairs through %s", async (lane, relay) => {
+    const dials: string[] = []
+    const remote = createRemote({ lane, relayUrl: undefined, connectWebSocket: (url) => { dials.push(url); return new PendingRelaySocket() } })
+    const window = await remote.openPairing()
+    expect(parsePairingCodeUrl(window.code).relay).toBe(relay)
+    await waitFor(() => dials.length > 0)
+    expect(dials.every((url) => url.startsWith(`${relay}/`))).toBe(true)
+    expect(remote.view().relayUrl).toBe(relay)
   })
 
   describe("a pairing that another placement writes while the store is read", () => {
