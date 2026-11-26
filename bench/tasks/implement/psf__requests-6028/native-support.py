@@ -169,14 +169,15 @@ def score(task, workspace):
     report = namespace["get_eval_tests_report"](statuses, groups)
     resolution = namespace["get_resolution_status"](report)
     expected = groups["FAIL_TO_PASS"] + groups["PASS_TO_PASS"]
-    passed = sum(len(report[key]["success"]) for key in groups)
     grade = {
         "original_report": report, "original_resolution": resolution,
         "resolved": found and resolution == namespace["ResolvedStatus"].FULL.value,
         "original_output_found": found, "expected": groups, "statuses": statuses,
         "missing": [key for key in expected if key not in statuses],
         "errors": [key for key in expected if statuses.get(key) == "ERROR"],
-        "passed": passed, "failed": len(expected) - passed, "total": len(expected),
+        # Each selected test is one check with the original outcome. Output the original scorer cannot read ran no check.
+        "checks": {test: outcome == "success" for key in groups for outcome in ("success", "failure")
+                   for test in report[key][outcome]} if found else {},
         "classification": "invalid-output" if not found else
                           "passed" if resolution == namespace["ResolvedStatus"].FULL.value else "semantic-failure",
         "restoration": json.loads((home / "restoration.json").read_text()),

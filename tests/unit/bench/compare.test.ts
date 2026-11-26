@@ -56,6 +56,7 @@ async function comparisonTasks(): Promise<{ tasks: readonly ImplementTask[]; pro
     await mkdir(join(directory, "project"), { recursive: true });
     await mkdir(join(directory, "acceptance"));
     await Bun.write(join(directory, "task.json"), JSON.stringify({ id, stratum: "small" }));
+    await Bun.write(join(directory, "checks.json"), JSON.stringify({ [`acceptance/value.test.ts > ${id}`]: "core" }));
     await Bun.write(join(directory, "plan.json"), JSON.stringify(MINIMAL_IMPLEMENTATION_PLAN));
     await Bun.write(join(directory, "manifest.json"), JSON.stringify({
       traps: [{ id: "trap", title: "Trap", catchCriteria: "Catch it" }], judgment: [],
@@ -113,9 +114,8 @@ async function writeSource(
         linesAdded: 1,
         linesRemoved: 0,
         filesTouched: 1,
-        acceptancePassed: 1,
-        acceptanceFailed: 0,
-        acceptanceTotal: 1,
+        // The second repeat broke one existing test and passed no edge check: core quality 1/2, edge 0/2.
+        grade: { essential: { passed: 1, total: 1 }, broken: repeat === 0 ? 0 : 1, edge: { passed: repeat === 0 ? 1 : 0, total: 2 } },
       };
       runs.push(run);
       scores.push({
@@ -426,7 +426,9 @@ describe("cross-run comparison store", () => {
     expect(evidence.scores).toHaveLength(expectedPairCount);
     const report = await Bun.file(join(comparison, "report.md")).text();
     expect(report).toContain("| Rank | Candidate | Variant |");
-    for (const source of config.sources) expect(report).toContain(`| ${source.label} | ${source.variant.id} |`);
+    expect(report).toContain("| Rank | Candidate | Variant | Core quality | Edge |");
+    // Each task's two repeats score core quality 100% and 50%, and their edge checks pass 1 of 4.
+    for (const source of config.sources) expect(report).toContain(`| ${source.label} | ${source.variant.id} | 75.0% | 25.0% |`);
     expect(report).toContain(`Judge attempts: ${expectedPairCount}; failed: 0;`);
   });
 

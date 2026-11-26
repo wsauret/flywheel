@@ -2,16 +2,16 @@ import { Result, Schema } from "effect";
 import { cp, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
-import type { ContainedDirectory } from "../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
-import { openExistingContainedDirectory } from "../../../../infra/platform/files/descriptor-directory.js";
-import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
-import { containsSecret } from "../../../../infra/redact-secrets.js";
-import { describeOutputIssues, schemaIssues } from "../../../../workflows/output-contract/accept.js";
-import { compileOutput } from "../../../../workflows/output-contract/compile.js";
-import { decodeOutputObject } from "../../../../workflows/output-contract/grammar.js";
-import planContract from "../../../../workflows/workflows/contracts/implementation-plan.json" with { type: "json" };
-import { bytesIdentity, directoryIdentity, structuredIdentity } from "./campaign/content-identity.js";
-import { containedPath, realDirectoryUnder, realFileUnder } from "./campaign/paths.js";
+import type { ContainedDirectory } from "../../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../../../../../infra/platform/files/descriptor-directory.js";
+import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
+import { containsSecret } from "../../../../../infra/redact-secrets.js";
+import { describeOutputIssues, schemaIssues } from "../../../../../workflows/output-contract/accept.js";
+import { compileOutput } from "../../../../../workflows/output-contract/compile.js";
+import { decodeOutputObject } from "../../../../../workflows/output-contract/grammar.js";
+import planContract from "../../../../../workflows/workflows/contracts/implementation-plan.json" with { type: "json" };
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "../campaign/content-identity.js";
+import { containedPath, realDirectoryUnder, realFileUnder } from "../campaign/paths.js";
 import {
   initSandboxRepository,
   requireCompleteSandboxOutput,
@@ -21,10 +21,12 @@ import {
   SANDBOX_HOME_DIR,
   type CellEvidence,
   type SandboxCommandOptions,
-} from "./sandbox-command.js";
-import { objectValue, parseImplementSandbox, parseManifestPoints, parseNativePath, stringValue, type ImplementManifest, type ImplementSandboxSpec, type ImplementTaskObject } from "./tasks/task-schema.js";
-import { retainImplementStore, retainNativeGradeFailure } from "./execution/implement-evidence.js";
-import { materializeCommitSnapshot } from "./execution/snapshot-workspace.js";
+} from "../sandbox-command.js";
+import { objectValue, parseImplementSandbox, parseManifestPoints, parseNativePath, stringValue, type ImplementManifest, type ImplementSandboxSpec, type ImplementTaskObject } from "../tasks/task-schema.js";
+import { retainImplementStore, retainNativeGradeFailure } from "../execution/implement-evidence.js";
+import { materializeCommitSnapshot } from "../execution/snapshot-workspace.js";
+import { gradeChecks, parseCheckTags, type CheckGrade, type CheckTag } from "./check-grade.js";
+import { parseJUnitReport } from "./junit-report.js";
 
 /** The direct persona harness names this gitignored plan file in its prompt. */
 export const PLAN_FILE = ".bench-plan.json";
@@ -45,13 +47,16 @@ interface ImplementTaskBase {
   /** The part of the task that a candidate's change answers: its prompt, starting source, and limits. A recorded
    *  cell stays comparable only while this matches. */
   candidateIdentity: string;
-  /** The part of the task that grades a change. A grader change regrades stored diffs instead of rerunning
-   *  candidates (regrade.ts). */
+  /** The part of the task that grades a change, its check tags included. A grader change regrades stored diffs
+   *  instead of rerunning candidates (regrade.ts). */
   graderIdentity: string;
 }
 
 interface PlanImplementTaskSpec extends ImplementTaskBase {
   kind?: "plan";
+  /** The tag of each hidden acceptance test, from the task's `checks.json` (ARCH-DIRECTORIES-024). Every implementer
+   *  task has one (catalog.ts); a chat coding task that shares this loader grades with its own acceptance baseline. */
+  checks?: ReadonlyMap<string, CheckTag>;
   plan: ImplementTaskObject;
   sandbox: ImplementSandboxSpec;
   acceptanceDir: string;
@@ -59,6 +64,8 @@ interface PlanImplementTaskSpec extends ImplementTaskBase {
 
 interface NativeImplementTaskSpec extends ImplementTaskBase {
   kind: "native";
+  /** The tag of each new hidden check, from the task's `checks.json` (ARCH-DIRECTORIES-024). */
+  checks: ReadonlyMap<string, CheckTag>;
   /** Exact UTF-8 text from the contained task.json.instruction file.
    * A .gz suffix means gunzip before strict decoding; BOM and line endings remain intact. */
   instruction: string;
@@ -82,16 +89,10 @@ interface DiffStats {
   filesTouched: number;
 }
 
-interface AcceptanceResult {
-  passed: number;
-  failed: number;
-  total: number;
-}
-
 export interface CapturedImplementation {
   diff: string;
   diffStats: DiffStats;
-  acceptance: AcceptanceResult;
+  grade: CheckGrade;
   /** Exact adapter result bytes, including the unchanged original grader evidence. */
   nativeGrade?: string;
 }
@@ -113,6 +114,22 @@ function requireImplementationPlan(plan: ImplementTaskObject, label: string): vo
 
 function planDocument(plan: ImplementTaskObject): string {
   return `${JSON.stringify(plan, null, 2)}\n`;
+}
+
+/** The task's check tags and the exact bytes they decode from, which grader identity covers. */
+async function loadCheckTags(taskDir: string, label: string): Promise<{ checks: ReadonlyMap<string, CheckTag>; bytes: Uint8Array }> {
+  const path = await realFileUnder(taskDir, join(taskDir, "checks.json"), `${label}/checks.json`);
+  const bytes = new Uint8Array(await Bun.file(path).arrayBuffer());
+  return { checks: parseCheckTags(JSON.parse(new TextDecoder().decode(bytes)), `${label}/checks.json`), bytes };
+}
+
+/** A plan task's check tags and grader identity. Without `checks.json` the grader is its acceptance tests alone, so a
+ *  chat coding task keeps the identity that its qualification records. */
+async function loadPlanGrader(taskDir: string, label: string, acceptanceDir: string): Promise<{ checks?: ReadonlyMap<string, CheckTag>; graderIdentity: string }> {
+  const acceptance = await directoryIdentity(acceptanceDir);
+  if (!await Bun.file(join(taskDir, "checks.json")).exists()) return { graderIdentity: acceptance };
+  const { checks, bytes } = await loadCheckTags(taskDir, label);
+  return { checks, graderIdentity: structuredIdentity({ acceptance, checks: bytesIdentity(bytes) }) };
 }
 
 async function loadImplementTask(taskDir: string, entryName: string, config: ImplementTaskObject): Promise<ImplementTaskSpec> {
@@ -166,7 +183,7 @@ async function loadImplementTask(taskDir: string, entryName: string, config: Imp
     plan: bytesIdentity(planDocument(plan)),
     manifest,
   };
-  const graderIdentity = await directoryIdentity(acceptanceDir);
+  const { checks, graderIdentity } = await loadPlanGrader(taskDir, entryName, acceptanceDir);
   const contentIdentity = structuredIdentity({ ...candidateContent, acceptance: graderIdentity });
   return {
     mode: "implement",
@@ -181,6 +198,7 @@ async function loadImplementTask(taskDir: string, entryName: string, config: Imp
     contentIdentity,
     candidateIdentity: structuredIdentity(candidateContent),
     graderIdentity,
+    ...(checks ? { checks } : {}),
   };
 }
 
@@ -211,6 +229,7 @@ async function loadNativeTask(taskDir: string, id: string, stratum: string, conf
   // instruction, environment, and limits; the grade applies a stored diff to freshly rebuilt source, so a source
   // change that the diff no longer fits fails the regrade instead of scoring it.
   const graderIdentity = await directoryIdentity(taskDir);
+  const { checks } = await loadCheckTags(taskDir, id);
   return {
     mode: "implement", kind: "native", id, stratum, family, split, instruction, taskDir,
     ...(environment === undefined ? {} : { environment }),
@@ -225,6 +244,7 @@ async function loadNativeTask(taskDir: string, id: string, stratum: string, conf
       ...(path === undefined ? {} : { path }),
     }),
     graderIdentity,
+    checks,
   };
 }
 
@@ -349,15 +369,6 @@ function parseNumstat(output: string): DiffStats {
   return { linesAdded, linesRemoved, filesTouched };
 }
 
-/** Reads only Bun's summary lines (` 2 pass`, ` 1 fail`), which hold nothing but the count and the word,
- * so a test title such as "HTTP status 504 fails" cannot change the counts. */
-function parseAcceptance(output: string, exitCode: number): AcceptanceResult {
-  const passed = Number(output.match(/^\s*(\d+) pass$/m)?.[1] ?? 0);
-  const reportedFailed = Number(output.match(/^\s*(\d+) fail$/m)?.[1] ?? 0);
-  const failed = reportedFailed || (exitCode === 0 ? 0 : 1);
-  return { passed, failed, total: passed + failed };
-}
-
 /** A candidate that runs Python tests leaves bytecode caches beside the imported
  * modules, and a task source without its own ignore rules does not hide them.
  * They are not part of the candidate's change, and git refuses to apply their
@@ -402,20 +413,38 @@ export async function captureImplementation(task: ImplementTaskSpec, sandboxDir:
   if (containsSecret(diff)) throw new Error("captured implementation diff contains recognized credential bytes");
   const diffStats = parseNumstat(await runCheckedSandboxCommand(run, ["git", "diff", "--cached", BASELINE_REF, "--numstat", ...pathspec], sandbox));
   if (task.kind === "native") return { diff, diffStats, ...await gradeNativeImplementation(task, diff, run, evidence) };
+  return { diff, diffStats, grade: await gradePlanAcceptance(task, sandboxDir, run, sandbox) };
+}
+
+/** Run a plan task's hidden acceptance tests in the candidate tree and grade each test by its full JUnit name.
+ *  A run that writes no report, or leaves a test out because its file did not load, fails those tests. Every hidden
+ *  test of a plan task is one of its tagged checks, so a reported test that the tags do not name is a task error. */
+async function gradePlanAcceptance(task: PlanImplementTaskSpec, sandboxDir: string, run: OwnedCommandRunner, sandbox: SandboxCommandOptions): Promise<CheckGrade> {
+  const { checks } = task;
+  if (!checks) throw new Error(`${task.id} has no checks.json, so its change cannot be graded`);
   const acceptanceDir = join(sandboxDir, "acceptance");
   await rm(acceptanceDir, { recursive: true, force: true });
   await cp(await realDirectoryUnder(task.taskDir, task.acceptanceDir, `${task.id}/acceptance`), acceptanceDir, { recursive: true });
-  const test = requireCompleteSandboxOutput(
-    "sandbox test",
-    await runSandboxCommand(run, ["bun", "test", "acceptance"], sandbox),
-  );
-  return { diff, diffStats, acceptance: parseAcceptance(`${test.stdout}\n${test.stderr}`, test.exitCode ?? 1) };
+  const artifacts = await mkdtemp(join(tmpdir(), "flywheel-bench-acceptance-"));
+  try {
+    const report = join(artifacts, "junit.xml");
+    // A bare `acceptance` is a path-substring filter, which also runs candidate test files such as src/acceptance-x.test.ts.
+    requireCompleteSandboxOutput("sandbox test", await runSandboxCommand(run, ["bun", "test", "--reporter=junit", `--reporter-outfile=${report}`, "./acceptance"], sandbox));
+    const xml = await Bun.file(report).exists() ? await Bun.file(await realFileUnder(artifacts, report, "acceptance report")).text() : "";
+    const results = new Map([...parseJUnitReport(xml)].map(([id, outcome]) => [id, outcome === "pass"]));
+    const untagged = [...results.keys()].filter((id) => !checks.has(id));
+    if (untagged.length > 0) throw new Error(`${task.id}/checks.json does not tag the acceptance tests ${untagged.join(", ")}`);
+    return gradeChecks(checks, results);
+  } finally {
+    await rm(artifacts, { recursive: true, force: true });
+  }
 }
 
+/** A native adapter's report: the outcome of each check it ran (true for a pass), keyed by the ids of the task's
+ *  `checks.json` for new checks and by the original grader's ids for existing tests, with its evidence. A check that
+ *  did not run, such as after a build failure, is left out and fails. */
 const NativeGradeSchema = Schema.Struct({
-  passed: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
-  failed: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
-  total: Schema.Int.check(Schema.isGreaterThan(0)),
+  checks: Schema.Record(Schema.String, Schema.Boolean),
   evidence: Schema.Json,
 });
 const decodeNativeGrade = Schema.decodeUnknownSync(NativeGradeSchema, { onExcessProperty: "error" });
@@ -433,7 +462,7 @@ async function runNativeAdapter(task: Pick<NativeImplementTaskSpec, "taskDir" | 
  * grade; command failures and invalid reports throw and never become scores.
  * The adapter reconstructs pinned source and original tests from taskDir, then
  * applies captured.patch. It receives: grade, taskDir, workspace, patch, report. */
-export async function gradeNativeImplementation(task: NativeImplementTaskSpec, diff: string, run: OwnedCommandRunner, evidence?: CellEvidence): Promise<Pick<CapturedImplementation, "acceptance" | "nativeGrade">> {
+export async function gradeNativeImplementation(task: NativeImplementTaskSpec, diff: string, run: OwnedCommandRunner, evidence?: CellEvidence): Promise<Pick<CapturedImplementation, "grade" | "nativeGrade">> {
   const workspace = await mkdtemp(join(tmpdir(), "flywheel-bench-grade-"));
   const artifacts = await mkdtemp(join(tmpdir(), "flywheel-bench-grade-artifacts-"));
   try {
@@ -454,8 +483,7 @@ export async function gradeNativeImplementation(task: NativeImplementTaskSpec, d
     } catch {
       throw new Error("Invalid native grade report");
     }
-    if (result.passed + result.failed !== result.total) throw new Error("Invalid native grade report counts");
-    return { acceptance: { passed: result.passed, failed: result.failed, total: result.total }, nativeGrade };
+    return { grade: gradeChecks(task.checks, new Map(Object.entries(result.checks))), nativeGrade };
   } finally {
     await rm(workspace, { recursive: true, force: true });
     await rm(artifacts, { recursive: true, force: true });

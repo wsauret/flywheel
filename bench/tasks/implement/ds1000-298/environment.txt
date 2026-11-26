@@ -1,2 +1,3 @@
 Write your completion to solution.py.
+solution.py must hold only the code that computes `b` from the supplied `a`. Do not import numpy and do not reassign `a`: the harness provides `np` and `a`.
 The local Python interpreter is .bench-home/python/bin/python (CPython 3.10.20 with NumPy 1.26.4).

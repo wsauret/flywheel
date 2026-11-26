@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import type { TestOutcome } from "../../src/orchestration/modules/development/benchmark/implement-task/junit-report.js";
 
 /** Acceptance scoring. Each task stores which of its frozen acceptance tests
  *  fail before the fix (fail-to-pass, F2P) and which already pass (the
@@ -6,8 +7,6 @@ import { Schema } from "effect";
  *  change makes pass, less one F2P test for each guard it breaks. A guard that
  *  passes at baseline gives no credit, so an empty diff scores 0 and the shipped
  *  fix scores 1. A test is identified by its file and its full describe path. */
-
-export type TestOutcome = "pass" | "fail";
 
 const TestOutcomeSchema = Schema.Literals(["pass", "fail"]);
 
@@ -36,69 +35,6 @@ export function parseAcceptanceBaseline(value: unknown, context: string): Accept
   return baseline;
 }
 
-const XML_ENTITIES = new Map([["&amp;", "&"], ["&lt;", "<"], ["&gt;", ">"], ["&quot;", "\""], ["&apos;", "'"]]);
-
-function unescapeXml(value: string): string {
-  return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity, name: string) => {
-    if (name.startsWith("#x") || name.startsWith("#X")) return String.fromCodePoint(Number.parseInt(name.slice(2), 16));
-    if (name.startsWith("#")) return String.fromCodePoint(Number(name.slice(1)));
-    return XML_ENTITIES.get(entity) ?? entity;
-  });
-}
-
-function attribute(tag: string, name: string): string | undefined {
-  const value = new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1];
-  return value === undefined ? undefined : unescapeXml(value);
-}
-
-/** The name Bun (1.4.0 through 1.4.4) gives the test it reports for a beforeAll or afterAll
- *  hook that throws. The test belongs to the hook's scope: its file or describe. */
-const HOOK_FAILURE = "(unnamed)";
-
-/** Reads Bun's JUnit report (`bun test --reporter=junit`). Bun writes one
- *  outer suite per file, named by the file's path, and one nested suite per
- *  describe; a test's `classname` holds only part of that path, so the id is
- *  built from the suite nesting. A failed, skipped, or todo test fails: the
- *  acceptance suite is fixed, so a skip can only come from the agent's change.
- *  A throwing beforeAll or afterAll hook fails every test of its scope. Bun
- *  leaves out the tests of a file that does not load and of a throwing
- *  beforeAll, and those fail as unreported tests (classifyAcceptance). */
-export function parseJUnitReport(xml: string): Map<string, TestOutcome> {
-  const outcomes = new Map<string, TestOutcome>();
-  const failedHookScopes: string[] = [];
-  const suites: string[] = [];
-  let open: string | undefined;
-  const settle = (id: string, outcome: TestOutcome) => {
-    if (id.endsWith(` > ${HOOK_FAILURE}`)) {
-      if (outcome === "fail") failedHookScopes.push(id.slice(0, -HOOK_FAILURE.length));
-      return;
-    }
-    if (outcomes.has(id)) throw new Error(`two acceptance tests share the id ${id}`);
-    outcomes.set(id, outcome);
-  };
-  for (const [tag, closing, element, selfClosing] of xml.matchAll(/<(\/?)(testsuite|testcase|failure|error|skipped)\b[^>]*?(\/?)>/g)) {
-    if (element === "testsuite") {
-      if (closing) suites.pop();
-      else if (!selfClosing) suites.push(attribute(tag, "name") ?? "");
-    } else if (element === "testcase") {
-      if (closing) {
-        if (open !== undefined) settle(open, "pass");
-        open = undefined;
-        continue;
-      }
-      const id = [...suites, attribute(tag, "name") ?? ""].join(" > ");
-      if (selfClosing) settle(id, "pass");
-      else open = id;
-    } else if (open !== undefined && !closing) {
-      settle(open, "fail");
-      open = undefined;
-    }
-  }
-  for (const id of outcomes.keys()) {
-    if (failedHookScopes.some((scope) => id.startsWith(scope))) outcomes.set(id, "fail");
-  }
-  return outcomes;
-}
 
 /** The baseline an unfixed run defines: its failing tests are F2P and its passing tests are P2P. */
 export function baselineOf(outcomes: ReadonlyMap<string, TestOutcome>): AcceptanceBaseline {

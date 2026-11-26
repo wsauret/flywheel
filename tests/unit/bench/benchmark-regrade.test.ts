@@ -14,6 +14,9 @@ const JUDGE = { model: "judge-a", effort: "xhigh" };
 const SOURCE_SECTION = "diff --git a/value.py b/value.py\n--- a/value.py\n+++ b/value.py\n@@ -1 +1 @@\n-value = 1\n+value = 2\n";
 const CACHE_SECTION = "diff --git a/pkg/__pycache__/value.cpython-312.pyc b/pkg/__pycache__/value.cpython-312.pyc\nnew file mode 100644\nBinary files /dev/null and b/pkg/__pycache__/value.cpython-312.pyc differ\n";
 
+/** A Bun JUnit report in which `fixes` passes and `keeps` fails. */
+const JUNIT = `<testsuites><testsuite name="acceptance/value.test.ts" file="acceptance/value.test.ts"><testcase name="fixes" classname="" file="acceptance/value.test.ts" /><testcase name="keeps" classname="" file="acceptance/value.test.ts"><failure type="AssertionError" /></testcase></testsuite></testsuites>`;
+
 /** A project with one native task and one plan task. */
 function project(): string {
   const root = directory("benchmark-regrade-");
@@ -22,6 +25,7 @@ function project(): string {
   mkdirSync(native, { recursive: true });
   writeFileSync(join(native, "instruction.txt"), "Fix the bug.");
   writeFileSync(join(native, "adapter.py"), "# task-owned adapter");
+  writeFileSync(join(native, "checks.json"), JSON.stringify({ "test_fix": "core", "test_edge": "edge" }));
   writeFileSync(join(native, "task.json"), JSON.stringify({
     kind: "native", id: "native-task", stratum: "small", family: "python", split: "development",
     instruction: "instruction.txt", native: { command: ["python3", "adapter.py"], timeoutMs: 60_000 },
@@ -34,6 +38,7 @@ function project(): string {
   writeFileSync(join(plan, "plan.json"), JSON.stringify(MINIMAL_IMPLEMENTATION_PLAN));
   writeFileSync(join(plan, "project", "value.py"), "value = 1\n");
   writeFileSync(join(plan, "acceptance", "value.test.ts"), "// hidden acceptance test\n");
+  writeFileSync(join(plan, "checks.json"), JSON.stringify({ "acceptance/value.test.ts > fixes": "core", "acceptance/value.test.ts > keeps": "serious" }));
   return root;
 }
 
@@ -53,12 +58,14 @@ describe("benchmark regrade", () => {
     const header: CampaignHeader = { kind: "campaign", version: 1, persona: "implementer", mode: "implement", stamp: "s1", judge: JUDGE, scoringVersion: "persona-v2", personaGuidanceIdentity: "g" };
     const trap: ScoreLine = { kind: "score", judge: JUDGE, scoringVersion: "persona-v2", scorer: "trap", score: { variant: "model-a@high", task: "native-task", repeat: 0, traps: [] } };
     const file = catalog.recordsFile("implementer", "s1");
-    // Cells under an earlier grader of each task, a cell whose prompt changed since, a cell of the current task, and a timed-out cell.
+    // Cells graded before the check tags under an earlier grader of each task, a cell whose prompt changed since, a cell of the current task, and a timed-out cell.
     await appendCampaignRecords(file, header, { cells: [
       cell(native!, "grader-before-the-fix"),
       cell(plan!, "grader-before-the-fix"),
       { ...cell(plan!, "grader-before-the-fix", "another-prompt"), repeat: 1 },
       { ...cell(native!, native!.contentIdentity), repeat: 1 },
+      // A candidate that changed nothing stored an empty diff, which grades the rebuilt base tree.
+      { ...cell(plan!, "grader-before-the-fix"), repeat: 3, output: { kind: "implementation", candidateIdentity: plan!.candidateIdentity, summary: "done", diff: "", linesAdded: 0, linesRemoved: 0, filesTouched: 0, acceptancePassed: 0, acceptanceFailed: 1, acceptanceTotal: 1 } },
       // A timed-out cell under an earlier grader has no change to grade, and is neither graded nor skipped.
       { ...cell(native!, "grader-before-the-fix"), repeat: 2, output: { kind: "timed-out", candidateIdentity: native!.candidateIdentity, timeoutMs: 1 } },
     ], scores: [trap] });
@@ -68,26 +75,29 @@ describe("benchmark regrade", () => {
       if (command[0] === "python3") {
         expect(command[2]).toBe("grade");
         graded.push(await Bun.file(command[5]!).text());
-        await Bun.write(command[6]!, '{"passed":3,"failed":0,"total":3,"evidence":{}}');
+        // The fix passes, its edge check fails, and an existing test still passes.
+        await Bun.write(command[6]!, '{"checks":{"test_fix":true,"test_edge":false,"test_existing":true},"evidence":{}}');
       }
       if (command.includes("apply")) applied.push(options?.stdin ?? "");
       const output = command.find((argument) => argument.startsWith("--output="));
       if (output) await Bun.write(output.slice("--output=".length), SOURCE_SECTION);
-      const stdout = command[0] === "bun" ? "2 pass\n1 fail\n" : "";
-      return { exitCode: command[0] === "bun" ? 1 : 0, timedOut: false, stdout, stderr: "", stdoutBytes: new Uint8Array() };
+      const report = command.find((argument) => argument.startsWith("--reporter-outfile="));
+      if (report) await Bun.write(report.slice("--reporter-outfile=".length), JUNIT);
+      return { exitCode: report ? 1 : 0, timedOut: false, stdout: "", stderr: "", stdoutBytes: new Uint8Array() };
     };
 
-    expect(await regradeRecords(catalog, run)).toEqual({ graded: 2, current: 1, skipped: 1 });
+    expect(await regradeRecords(catalog, run)).toEqual({ graded: 3, current: 1, skipped: 1 });
     expect(graded).toEqual([SOURCE_SECTION]);
     expect(applied).toEqual([SOURCE_SECTION]);
     const records = (await loadAllCampaignRecords(catalog.recordsRoot)).find((campaign) => campaign.file === file);
     expect(records?.scores).toEqual([trap]);
     expect(records?.grades).toEqual([
-      { kind: "grade", graderIdentity: native!.graderIdentity, variant: "model-a@high", task: "native-task", repeat: 0, passed: 3, failed: 0, total: 3 },
-      { kind: "grade", graderIdentity: plan!.graderIdentity, variant: "model-a@high", task: "plan-task", repeat: 0, passed: 2, failed: 1, total: 3 },
+      { kind: "grade", graderIdentity: native!.graderIdentity, variant: "model-a@high", task: "native-task", repeat: 0, grade: { essential: { passed: 1, total: 1 }, broken: 0, edge: { passed: 0, total: 1 } } },
+      { kind: "grade", graderIdentity: plan!.graderIdentity, variant: "model-a@high", task: "plan-task", repeat: 0, grade: { essential: { passed: 1, total: 2 }, broken: 0, edge: { passed: 0, total: 0 } } },
+      { kind: "grade", graderIdentity: plan!.graderIdentity, variant: "model-a@high", task: "plan-task", repeat: 3, grade: { essential: { passed: 1, total: 2 }, broken: 0, edge: { passed: 0, total: 0 } } },
     ]);
 
-    expect(await regradeRecords(catalog, run)).toEqual({ graded: 0, current: 3, skipped: 1 });
+    expect(await regradeRecords(catalog, run)).toEqual({ graded: 0, current: 4, skipped: 1 });
     expect(graded).toHaveLength(1);
   });
 });

@@ -7,6 +7,7 @@ import { BenchmarkAccountingSchema } from "../accounting/evidence.js";
 import { harnessLintFile, loadHarnessLint } from "./harness-names.js";
 import { createJsonLinesLedger } from "../campaign/json-lines.js";
 import { ImplementScoreSchema, ResearchScoreSchema, ReviewScoreSchema, type AgentRunRecord, type AttemptRecord, type AttemptTerminal, type ScoreRecord } from "../scoring/run-store.js";
+import { CheckGradeSchema, LegacyAcceptanceFields, type CheckGrade } from "../implement-task/check-grade.js";
 
 // Benchmark records are the public ledger of scored cells (ARCH-DIRECTORIES-020).
 // Each campaign publishes one append-only file, bench/ab-persona/records/<persona>/<stamp>.jsonl:
@@ -32,23 +33,27 @@ const CampaignHeaderSchema = Schema.Struct({
   personaGuidanceIdentity: Schema.String,
 });
 
+const implementationFields = {
+  kind: Schema.Literal("implementation"),
+  /** The candidate identity of the task this change answered (ImplementTaskBase.candidateIdentity): a regrade
+   *  under a changed grader keeps the cell only while it still matches. */
+  candidateIdentity: Schema.String,
+  summary: Schema.String,
+  diff: Schema.String,
+  linesAdded: Schema.Int,
+  linesRemoved: Schema.Int,
+  filesTouched: Schema.Int,
+};
+
 const CellOutputSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("review"), text: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("answer"), text: Schema.String }),
-  Schema.Struct({
-    kind: Schema.Literal("implementation"),
-    /** The candidate identity of the task this change answered (ImplementTaskBase.candidateIdentity): a regrade
-     *  under a changed grader keeps the cell only while it still matches. */
-    candidateIdentity: Schema.String,
-    summary: Schema.String,
-    diff: Schema.String,
-    linesAdded: Schema.Int,
-    linesRemoved: Schema.Int,
-    filesTouched: Schema.Int,
-    acceptancePassed: Schema.Int,
-    acceptanceFailed: Schema.Int,
-    acceptanceTotal: Schema.Int,
-  }),
+  /** The grade by the task's tagged checks when the cell ran (ARCH-DIRECTORIES-024). */
+  Schema.Struct({ ...implementationFields, grade: CheckGradeSchema }),
+  /** A cell graded before 2026-11-26 recorded only its pass and fail counts over every hidden test. That is
+   *  permanent public history: every task's grader changed with the check tags, so such a cell ranks only through a
+   *  regrade of its diff. */
+  Schema.Struct({ ...implementationFields, ...LegacyAcceptanceFields }),
   /** An implementer cell that hit its time limit: a failed attempt with no change to grade or judge. */
   Schema.Struct({ kind: Schema.Literal("timed-out"), candidateIdentity: Schema.String, timeoutMs: Schema.Int }),
 ]);
@@ -78,16 +83,19 @@ const ScoreLineSchema = Schema.Union([
 
 /** One implementer cell regraded from its stored diff by a task grader. `graderIdentity` is the grader identity of
  *  the task whose grader ran, so a ranking reads only the grade of the current grader (regrade.ts). */
-const GradeLineSchema = Schema.Struct({
+const gradeFields = {
   kind: Schema.Literal("grade"),
   graderIdentity: Schema.String,
   variant: Schema.String,
   task: Schema.String,
   repeat: RepeatSchema,
-  passed: Schema.Int,
-  failed: Schema.Int,
-  total: Schema.Int,
-});
+};
+const GradeLineSchema = Schema.Union([
+  Schema.Struct({ ...gradeFields, grade: CheckGradeSchema }),
+  /** A regrade before 2026-11-26 recorded pass and fail counts over every hidden test, under a grader identity that
+   *  no current task has. Permanent public history; no ranking reads it. */
+  Schema.Struct({ ...gradeFields, passed: Schema.Int, failed: Schema.Int, total: Schema.Int }),
+]);
 
 /** One attempt that settled with no result to rank: an infrastructure or grader failure, a stop, or a time limit
  *  outside the implementer. A later attempt of the same cell can still record its cell line. */
@@ -152,8 +160,9 @@ function gradeKey(line: GradeLine): string {
 }
 
 /** The grade of `cell` by the grader whose identity is `graderIdentity`, from a regrade. */
-export function currentGrade(campaign: CampaignRecords, cell: CellLine, graderIdentity: string): GradeLine | undefined {
-  return campaign.grades.find((grade) => grade.graderIdentity === graderIdentity && grade.variant === cell.variant && grade.task === cell.task && grade.repeat === cell.repeat);
+export function currentGrade(campaign: CampaignRecords, cell: CellLine, graderIdentity: string): CheckGrade | undefined {
+  const line = campaign.grades.find((grade) => grade.graderIdentity === graderIdentity && grade.variant === cell.variant && grade.task === cell.task && grade.repeat === cell.repeat);
+  return line && "grade" in line ? line.grade : undefined;
 }
 
 function ledger(file: string) {
@@ -359,22 +368,18 @@ function cellLine(run: AgentRunRecord, task: RecordedTask, redact: (text: string
   if (run.mode === "reviewer") return { ...seat, output: { kind: "review", text: redact(run.reviewText) } };
   if (run.mode === "research") return { ...seat, output: { kind: "answer", text: redact(run.summary) } };
   if (!("candidateIdentity" in task)) throw new Error(`Implementation run of ${run.task} names a task that is not an implementation task`);
-  // The full grader report stays in the local run store: records keep only the counts a ranking reads.
-  return {
-    ...seat,
-    output: {
-      kind: "implementation",
-      candidateIdentity: task.candidateIdentity,
-      summary: redact(run.summary),
-      diff: redact(run.diff),
-      linesAdded: run.linesAdded,
-      linesRemoved: run.linesRemoved,
-      filesTouched: run.filesTouched,
-      acceptancePassed: run.acceptancePassed,
-      acceptanceFailed: run.acceptanceFailed,
-      acceptanceTotal: run.acceptanceTotal,
-    },
+  // The full grader report stays in the local run store: records keep only the grade a ranking reads.
+  const change = {
+    kind: "implementation" as const,
+    candidateIdentity: task.candidateIdentity,
+    summary: redact(run.summary),
+    diff: redact(run.diff),
+    linesAdded: run.linesAdded,
+    linesRemoved: run.linesRemoved,
+    filesTouched: run.filesTouched,
   };
+  if ("grade" in run) return { ...seat, output: { ...change, grade: run.grade } };
+  return { ...seat, output: { ...change, acceptancePassed: run.acceptancePassed, acceptanceFailed: run.acceptanceFailed, acceptanceTotal: run.acceptanceTotal } };
 }
 
 /** The record line of one successful absolute score, or undefined for a pair verdict, which records omit. */

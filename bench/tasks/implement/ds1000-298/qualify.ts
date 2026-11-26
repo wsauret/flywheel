@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 /** Qualify original controls through the real native catalog and patch capture.
@@ -83,13 +83,15 @@ async function main(): Promise<void> {
         }
         const captured = await captureImplementation(task, workspace, run);
         const grade = JSON.parse(captured.nativeGrade!);
-        assert.deepEqual(captured.acceptance, { passed: Number(name === "reference"), failed: Number(name !== "reference"), total: 1 });
+        const passing = name === "reference";
+        assert.deepEqual(captured.grade, { essential: { passed: passing ? 3 : 0, total: 3 }, broken: 0, edge: { passed: 0, total: 0 } });
+        assert.deepEqual(grade.checks, { "case-1": passing, "case-2": passing, "case-3": passing });
         const official = grade.evidence.official;
-        assert.equal(official.official.passed, name === "reference");
+        for (const row of official.cases) assert.equal(row.official.passed, passing);
         assert.equal(official.factoryRestored, true);
         assert.equal(official.noActiveChildren, true);
         assert.equal(official.ownedTmpUnchanged, true);
-        assert.equal(official.managerLifecycle.length, 1);
+        assert.equal(official.managerLifecycle.length, 3);
         for (const manager of official.managerLifecycle) {
           assert.equal(manager.listenerClosed, true);
           assert.equal(manager.aliveAfterShutdown, false);
@@ -113,9 +115,8 @@ async function main(): Promise<void> {
         await Bun.write(join(output, evidenceFile), compressed);
         controls.push({
           name, preparedMs, captureAndGradeMs: Math.round(performance.now() - started) - preparedMs,
-          acceptance: captured.acceptance, originalResult: official.official,
-          graderSeconds: official.seconds, originalCaseIds: official.originalCaseIds,
-          caseObservation: official.caseObservation, managerLifecycle: official.managerLifecycle,
+          grade: captured.grade, cases: official.cases,
+          graderSeconds: official.seconds, caseObservation: official.caseObservation, managerLifecycle: official.managerLifecycle,
           factoryRestored: official.factoryRestored, noActiveChildren: official.noActiveChildren,
           ownedTmpUnchanged: official.ownedTmpUnchanged,
           acquired: grade.evidence.acquired, versions: JSON.parse(grade.evidence.commands.versions.stdout),
@@ -133,7 +134,7 @@ async function main(): Promise<void> {
       loaderInstructionBytes: Buffer.byteLength(task.instruction), taskIdentity: task.contentIdentity,
       modelCalls: 0, historicalModelAccounting: "calibration.json is separate from these control runs",
     }, null, 2) + "\n");
-    console.log(JSON.stringify({ controls: controls.map(row => ({ name: row.name, ...row.acceptance })), tmpClean: true }));
+    console.log(JSON.stringify({ controls: controls.map(row => ({ name: row.name, ...row.grade })), tmpClean: true }));
   } finally {
     try {
       const closure = await scope.close();

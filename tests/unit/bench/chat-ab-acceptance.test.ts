@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
-import { baselineDrift, baselineOf, classifyAcceptance, parseJUnitReport, scoreAcceptance, type AcceptanceBaseline } from "../../../bench/chat-ab/acceptance.js";
+import { baselineDrift, baselineOf, classifyAcceptance, scoreAcceptance, type AcceptanceBaseline } from "../../../bench/chat-ab/acceptance.js";
+import { parseJUnitReport } from "../../../src/orchestration/modules/development/benchmark/implement-task/junit-report.js";
 import { listBenchTasks, loadBenchTasks, provisionSandbox } from "../../../bench/chat-ab/tasks.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { mkdir, writeFile } from "node:fs/promises";

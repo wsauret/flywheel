@@ -119,7 +119,7 @@ A benchmark ranking pools every recorded cell whose task content matches the cur
 
 ## ARCH-DIRECTORIES-022: A ranking reads one suite per role and counts a timeout as a failure
 
-Each benchmarked persona ranks on one committed suite of tasks: its whole catalog corpus, unless the ranking names a narrower list. Coverage, pooling, and averaging read only the suite, and a cell of another task is reported as not pooled. The implementer's suite is hosted-thinking-row-wait, recall-punctuated-words, httpx-streaming-json-iteration, and scheme-metacircular. An implementer cell that timed out ranks as a failed attempt: no hidden test passes, its latency is the limit, and its cost is what it spent. Every other failed attempt stays out of the measures and is listed to retry.
+Each benchmarked persona ranks on one committed suite of tasks: its whole catalog corpus, unless the ranking names a narrower list. Coverage, pooling, and averaging read only the suite, and a cell of another task is reported as not pooled. The implementer ranks on its whole catalog corpus. An implementer cell that timed out ranks as a failed attempt: no hidden test passes, its latency is the limit, and its cost is what it spent. Every other failed attempt stays out of the measures and is listed to retry.
 
 Because: A failure that a ranking leaves out flatters the setting that failed.
 Not: Coverage against every catalog task, or a timed-out cell that is retried until it passes.
@@ -130,3 +130,10 @@ Each benchmarked role has one committed results page generated from the record f
 
 Because: Results that a reader must rebuild by hand from raw records are results nobody reads.
 Not: A hand-maintained results table, which drifts from the records.
+
+## ARCH-DIRECTORIES-024: An implementer cell scores the core checks of the change
+
+Each hidden check of an implementer task is committed as core, serious, or edge. A cell's quality is the share of the task's new core and serious checks that pass, where each existing test the patch breaks adds one failed check. A passing existing test earns nothing. Edge checks are reported apart and never enter quality or the filters.
+
+Because: A score that one missed edge case zeroes, or that unchanged tests inflate, ranks settings on test trivia instead of working code.
+Not: One pass-or-fail grade per task, or the plain share of every test the task runs.

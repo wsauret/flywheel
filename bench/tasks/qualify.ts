@@ -4,10 +4,10 @@ import { dirname, join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../src/infra/owned-command.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../src/infra/process-supervisor.js";
 import { bytesIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
-import { loadImplementTasks, provisionTaskSandbox, type ImplementTaskSpec } from "../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { loadImplementTasks, provisionTaskSandbox, type ImplementTaskSpec } from "../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { containedPath, realFileUnder } from "../../src/orchestration/modules/development/benchmark/campaign/paths.js";
 import { runSandboxCommand } from "../../src/orchestration/modules/development/benchmark/sandbox-command.js";
-import { parseJUnitReport } from "../chat-ab/acceptance.js";
+import { parseJUnitReport } from "../../src/orchestration/modules/development/benchmark/implement-task/junit-report.js";
 
 const ControlSchema = Schema.Struct({
   id: Schema.String,

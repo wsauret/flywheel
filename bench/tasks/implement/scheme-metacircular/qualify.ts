@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 /** Reproduce original controls through the shared loader, provisioner, and capturer.
@@ -72,7 +72,11 @@ async function main(): Promise<void> {
         assert.deepEqual(grade.evidence.replacements.map(({ file, original, occurrences }: typeof replacements[number]) =>
           ({ file, original, occurrences })), replacements.map(({ file, original, occurrences }) => ({ file, original, occurrences })));
         await Bun.write(join(output, `${name}-grade.json`), captured.nativeGrade!);
-        assert.deepEqual(captured.acceptance, { passed: Number(name === "reference"), failed: Number(name !== "reference"), total: 1 });
+        // Every program reaches a verdict in each control, so each control reports all 63 checks.
+        assert.equal(Object.keys(grade.checks).length, 63);
+        if (name === "reference") assert.deepEqual(captured.grade, { essential: { passed: 63, total: 63 }, broken: 0, edge: { passed: 0, total: 0 } });
+        else if (name === "base") assert.equal(captured.grade.essential.passed, 0);
+        else assert.ok(captured.grade.essential.passed < 63);
         assert.equal(grade.evidence.programs.length, 63);
         assert.equal(grade.evidence.observations.length, 131);
         assert.equal(grade.evidence.observations.filter((row: { timeout: number }) => row.timeout === 10).length, 63);
@@ -92,7 +96,7 @@ async function main(): Promise<void> {
           assert.equal(grade.evidence.removed.length, 2);
         }
         controls.push({ name, preparedMs, captureAndGradeMs: Math.round(performance.now() - started) - preparedMs,
-          acceptance: captured.acceptance, pytestExitCode: grade.evidence.pytestExitCode, reward: grade.evidence.reward,
+          grade: captured.grade, pytestExitCode: grade.evidence.pytestExitCode, reward: grade.evidence.reward,
           shellExitCode: grade.evidence.commands.verifier.exitCode,
           programs: grade.evidence.programs.map((row: { id: string; status: string }) => ({ id: row.id, status: row.status })),
           meta: meta.map((row: { input: string; returncode?: number; timed_out: boolean }) => ({

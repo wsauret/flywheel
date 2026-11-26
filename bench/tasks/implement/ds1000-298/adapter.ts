@@ -12,7 +12,8 @@ interface PublicInput {
 }
 
 /** Prepare visible context or grade a captured patch in a fresh owned workspace.
- * Invalid infrastructure throws; the original API Boolean alone owns the score. */
+ * Invalid infrastructure throws. Each original case is one check (case-1, case-2, case-3), scored by its own
+ * original check_correctness Boolean. */
 async function main(): Promise<void> {
   const [action, taskArg, workspaceArg, ...artifacts] = process.argv.slice(2);
   if (!taskArg || !workspaceArg || !(
@@ -117,11 +118,17 @@ async function main(): Promise<void> {
     const resultPath = join(grader, "result.json");
     const spec = join(grader, "spec.json");
     await Bun.write(spec, JSON.stringify({ workspace, resultPath }));
-    await execute("verifier", [python, "-I", join(grader, "grade.py"), spec], 150000);
+    // Three cases with the original 120-second timeout each, plus one second of join margin each.
+    await execute("verifier", [python, "-I", join(grader, "grade.py"), spec], 420000);
     const official = await Bun.file(resultPath).json();
-    if (typeof official.official?.passed !== "boolean" || official.official.completion_id !== 298) {
-      throw new Error("Invalid original API report");
+    const checks: Record<string, boolean> = {};
+    for (const [index, row] of (Array.isArray(official.cases) ? official.cases : []).entries()) {
+      if (row?.id !== `case-${index + 1}` || typeof row.official?.passed !== "boolean" || row.official.completion_id !== 298) {
+        throw new Error("Invalid original API report");
+      }
+      checks[row.id] = row.official.passed;
     }
+    if (Object.keys(checks).length !== 3) throw new Error("Invalid original API report");
     const ledger: Record<string, { decompressedSha256: string; sha256: string }> = await Bun.file(join(task, "copy-ledger.json")).json();
     for (const name of ["execution.py", "test_ds1000.py", "record.json", "code_context.py"]) {
       const key = `original/${name}${name === "record.json" || name === "code_context.py" ? ".gz" : ""}`;
@@ -130,11 +137,10 @@ async function main(): Promise<void> {
         throw new Error(`Grading authority changed: ${name}`);
       }
     }
-    const passed = Number(official.official.passed);
     await Bun.write(artifacts[1]!, JSON.stringify({
-      passed, failed: 1 - passed, total: 1,
-      evidence: { criterion: "execution.check_correctness(...).passed", official, acquired, commands,
-        limits: { modelMs: 1500000, originalSeconds: 120, graderOuterMs: 150000, adapterMs: 900000 },
+      checks,
+      evidence: { criterion: "execution.check_correctness(...).passed for each original case", official, acquired, commands,
+        limits: { modelMs: 1500000, originalSecondsPerCase: 120, graderOuterMs: 420000, adapterMs: 900000 },
         equivalence: "native macOS arm64 only; no OS confinement or leaderboard equivalence claim" },
     }, null, 2) + "\n");
   } finally {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdir, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { loadImplementTasks } from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { loadImplementTasks } from "../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();
@@ -17,6 +17,7 @@ describe("native implementation task loading", () => {
     await Bun.write(join(taskDir, "instruction.txt"), instruction);
     await Bun.write(join(taskDir, "adapter.py"), "# original grader\n");
     await Bun.write(join(taskDir, "original-source.txt"), "source bytes");
+    await Bun.write(join(taskDir, "checks.json"), JSON.stringify({ fix: "core" }));
     await Bun.write(join(taskDir, "task.json"), JSON.stringify({
       kind: "native", id: "native", stratum: "small", instruction: "instruction.txt",
       family: "original-python", split: "development",

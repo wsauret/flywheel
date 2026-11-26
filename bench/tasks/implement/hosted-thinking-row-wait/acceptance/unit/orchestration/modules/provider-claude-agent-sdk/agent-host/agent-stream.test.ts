@@ -117,13 +117,14 @@ describe("the adapter's stream deadline while the stream holds a response's late
     provider: "claude-agent-sdk", family: "anthropic", id: "claude-opus-4-8", name: "Claude Opus 4.8", reasoning: true, toolCall: true, attachment: false, temperature: true, openWeights: false,
     cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" }, modalities: { input: ["text"], output: ["text"] }, contextLimit: 200_000, outputLimit: 64_000,
   };
-  /** The reasoning deadline of these tests, far below the time that the response generates after its thinking. */
-  const REASONING_DEADLINE_MS = 30;
+  /** The reasoning deadline of these tests, far below the time that the response generates after its thinking. The
+   *  deadline runs on the real clock, so it leaves each gap between chunks a wide margin for scheduling delay. */
+  const REASONING_DEADLINE_MS = 600;
 
   /** Serves one response through the shared Anthropic adapter. The step hands on `later` after its thinking chunk, one
    *  every `gapMs`, and ends with its stop chunk only when `stalls` is false; a stalled step ends when the request is
    *  aborted, as the bridge's step does. */
-  async function served(later: readonly HostStepItem[], stalls: boolean, gapMs = 5): Promise<{ events: ProviderStreamEvent[]; error: unknown }> {
+  async function served(later: readonly HostStepItem[], stalls: boolean, gapMs = REASONING_DEADLINE_MS / 6): Promise<{ events: ProviderStreamEvent[]; error: unknown }> {
     const { rows, events } = deferredRows([THINKING], true);
     const previous = process.env.FLYWHEEL_STREAM_THINKING_STALL_TIMEOUT_MS;
     process.env.FLYWHEEL_STREAM_THINKING_STALL_TIMEOUT_MS = String(REASONING_DEADLINE_MS);

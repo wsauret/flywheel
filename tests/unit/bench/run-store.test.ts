@@ -168,8 +168,9 @@ describe("read-only persona benchmark evidence", () => {
       ...RUN, mode: "implement" as const, diff: "", linesAdded: 0, linesRemoved: 0, filesTouched: 0,
       acceptancePassed: 0, acceptanceFailed: 1, acceptanceTotal: 1,
     };
-    const nativeGrade = '{"passed":0,"failed":1,"total":1,"evidence":{"original.test_bug":"FAIL","grade":false}}\n';
-    const current = { ...old, repeat: 1, nativeGrade };
+    const nativeGrade = '{"checks":{"original.test_bug":false},"evidence":{"original.test_bug":"FAIL","grade":false}}\n';
+    const { acceptancePassed: _passed, acceptanceFailed: _failed, acceptanceTotal: _total, ...fields } = old;
+    const current = { ...fields, repeat: 1, nativeGrade, grade: { essential: { passed: 0, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } } };
     await writeSplitLedger(location.directory, { ...CONFIG, mode: "implement", repeats: 2 }, { runs: [old, current] });
     const rows = await (await openReadOnlyRunEvidence(location)).loadRuns();
     expect(rows).toEqual([old, current]);

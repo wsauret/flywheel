@@ -50,10 +50,10 @@
   },
   {
     "file": "original/test.patch",
-    "sha256": "c790ba338bd320c416771738a49f657b02c2bf4e16dcd0d575d1e55d61c4b150",
-    "bytes": 1044,
-    "origin": "princeton-nlp/SWE-bench_Verified@c104f840cc67f8b6eec6f759ebc8b2693d585d4a row 14, test_patch",
-    "transformation": "byte-identical copy"
+    "sha256": "645d0efe1753e35d1e6851dc71c00f1327e43a7db67351395e426d3dbf6bb0f6",
+    "bytes": 901,
+    "origin": "princeton-nlp/SWE-bench_Verified@c104f840cc67f8b6eec6f759ebc8b2693d585d4a row 14, test_patch (1044 bytes, sha256 c790ba338bd320c416771738a49f657b02c2bf4e16dcd0d575d1e55d61c4b150)",
+    "transformation": "Split test_long_string_value_with_quotes, which asserted c.value == testval for three values in sequence, into one pytest.mark.parametrize node per value with ids quote-pair (100 x + ''), quote-pair-text (100 x + ''xxx) and quote-pair-space-text (100 x + '' xxx), so that each value is its own fail-to-pass check (ARCH-DIRECTORIES-024). The three values, the Card construction, the fromstring round trip and the assertion are unchanged; the hunk header now counts 16 new lines instead of 22. All other bytes are unchanged."
   },
   {
     "file": "controls/reference.patch",

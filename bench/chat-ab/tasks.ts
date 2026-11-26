@@ -6,7 +6,8 @@ import type { OwnedCommandResult, OwnedCommandRunner } from "../../src/infra/own
 import { containsSecret } from "../../src/infra/redact-secrets.js";
 import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { objectValue, parseImplementSandbox, stringValue, type ImplementSandboxSpec } from "../../src/orchestration/modules/development/benchmark/tasks/task-schema.js";
-import { parseAcceptanceBaseline, parseJUnitReport, type AcceptanceBaseline, type TestOutcome } from "./acceptance.js";
+import { parseAcceptanceBaseline, type AcceptanceBaseline } from "./acceptance.js";
+import { parseJUnitReport, type TestOutcome } from "../../src/orchestration/modules/development/benchmark/implement-task/junit-report.js";
 
 /** The task contract (one directory per task under bench/chat-ab/tasks/<id>/):
  *  task.json (id, stratum, timeoutMinutes, sandbox: the shared sandbox spec of

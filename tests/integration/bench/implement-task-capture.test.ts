@@ -7,7 +7,7 @@ import {
   captureImplementation,
   loadImplementTasks,
   provisionTaskSandbox,
-} from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
+} from "../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { MINIMAL_IMPLEMENTATION_PLAN } from "../../helpers/implementation-plan.js";
 
 const run: OwnedCommandRunner = async (command, options = {}) => {
@@ -50,6 +50,7 @@ test("captures the final candidate tree after commits and rejects a missing base
   await Bun.write(join(taskDir, "project", "value.ts"), "export const value = 1;\n");
   await Bun.write(join(taskDir, "project", "removed.ts"), "export const removed = true;\n");
   await Bun.write(join(taskDir, "acceptance", "value.test.ts"), "test('acceptance', () => {});\n");
+  await Bun.write(join(taskDir, "checks.json"), JSON.stringify({ "acceptance/value.test.ts > acceptance": "core" }));
 
   const [task] = await loadImplementTasks(join(root, "tasks"));
   if (!task) throw new Error("expected committed task");
@@ -90,6 +91,8 @@ test("captures the final candidate tree after commits and rejects a missing base
     expect(captured.diff).not.toContain("__pycache__");
     expect(captured.diff).not.toContain("target");
     expect(captured.diffStats).toEqual({ linesAdded: 2, linesRemoved: 2, filesTouched: 3 });
+    // The real Bun JUnit report names the hidden test as the tags do.
+    expect(captured.grade).toEqual({ essential: { passed: 1, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } });
 
     await checked(["git", "update-ref", "-d", "refs/flywheel/benchmark-baseline"], sandbox);
     expect(await captureImplementation(task, sandbox, run).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("exit code 128"));

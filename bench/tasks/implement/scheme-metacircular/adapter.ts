@@ -15,8 +15,8 @@ interface PublicInput {
 }
 
 /** Prepare only the original candidate context, or reconstruct and grade captured code.
- * Infrastructure failures throw. The original pytest status and reward own acceptance;
- * program and subprocess observations do not impose extra admission criteria. */
+ * Infrastructure failures throw. Each program of the original test is one check, scored by the
+ * test's own verdict for it, which already folds in the program's self-interpretation run. */
 async function main(): Promise<void> {
   const [action, taskArg, workspaceArg, ...artifacts] = process.argv.slice(2);
   if (!taskArg || !workspaceArg || !(
@@ -187,7 +187,8 @@ async function main(): Promise<void> {
     shell = replace("test.sh", shell, "/tests/test_outputs.py", $.escape(join(tests, "test_outputs.py")));
     await Bun.write(join(tests, "native-test.sh"), shell);
     const instrumentation = (await readFile(join(task, "observe.py"), "utf8"))
-      .replace("__OBSERVATIONS__", JSON.stringify(join(logs, "subprocess-records.jsonl")));
+      .replace("__OBSERVATIONS__", JSON.stringify(join(logs, "subprocess-records.jsonl")))
+      .replace("__VERDICTS__", JSON.stringify(join(logs, "program-verdicts.jsonl")));
     await Bun.write(join(tests, "conftest.py"), instrumentation);
     const grader = await execute("verifier", ["/bin/bash", "-x", join(tests, "native-test.sh")], 2400000, false);
     const checks = [...grader.stderr.matchAll(/^\+ '\[' (\d+) -eq 0 '\]'$/gm)];
@@ -198,10 +199,14 @@ async function main(): Promise<void> {
       (reward !== "0" && reward !== "1") || reward !== (pytestExitCode === 0 ? "1" : "0")) {
       throw new Error("Scheme verifier did not settle with consistent original pytest status and reward");
     }
-    const programs = [];
-    for (const match of grader.stdout.matchAll(/Testing: ([^\n]+)\n-{40}\n(.*?)(?=\nTesting:|\n={50})/gs)) {
-      const status = [...match[2]!.matchAll(/^(PASSED|FAILED): /gm)].at(-1)?.[1] ?? "unobserved";
-      programs.push({ id: match[1]!.replace(tests, "/tests"), status, output: match[2] });
+    const verdicts = join(logs, "program-verdicts.jsonl");
+    const programs: { id: string; status: "PASSED" | "FAILED" }[] = await Bun.file(verdicts).exists()
+      ? (await Bun.file(verdicts).text()).trim().split("\n").filter(Boolean).map(line => JSON.parse(line))
+        .map(({ program, status }: { program: string; status: "PASSED" | "FAILED" }) => ({ id: program.replace(tests, "/tests"), status }))
+      : [];
+    if (new Set(programs.map(row => row.id)).size !== programs.length ||
+      (reward === "1" && !(programs.length > 0 && programs.every(row => row.status === "PASSED")))) {
+      throw new Error("Scheme program verdicts disagree with the original pytest status");
     }
     const observations = await Bun.file(join(logs, "subprocess-records.jsonl")).exists()
       ? (await Bun.file(join(logs, "subprocess-records.jsonl")).text()).trim().split("\n").filter(Boolean).map(line => JSON.parse(line))
@@ -229,10 +234,11 @@ async function main(): Promise<void> {
         restored[source] = Bun.CryptoHasher.hash("sha256", await Bun.file(path).arrayBuffer(), "hex");
       }
     }
-    const passed = Number(pytestExitCode === 0 && reward === "1");
+    // A program that the test never reached, because it crashed first, has no verdict and fails as a missing check.
+    const programChecks = Object.fromEntries(programs.map(row => [`program:${row.id.slice("/tests/".length)}`, row.status === "PASSED"]));
     await Bun.write(artifacts[1]!, JSON.stringify({
-      passed, failed: 1 - passed, total: 1,
-      evidence: { criterion: "original pytest status and reward.txt", pytestExitCode, reward,
+      checks: programChecks,
+      evidence: { criterion: "the original test's PASSED or FAILED verdict for each program", pytestExitCode, reward,
         programs, observations, ctrf, restored, removed, replacements, acquired, commands, metaAliasDirectory, privateTmp,
         limits: { directSeconds: 10, metacircularSeconds: 180, verifierMs: 2400000, adapterMs: 2700000 },
         equivalence: "native macOS arm64, not original container or cross-platform equivalence" },

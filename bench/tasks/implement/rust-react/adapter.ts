@@ -8,7 +8,8 @@ const CARGO_TIMEOUT_MS = 180000;
 const CARGO_OUTPUT_BYTES = 1_000_000;
 
 /** Prepare original candidate files, or grade a captured patch with restored tests.
- * Setup failures produce no report. Cargo exit zero without timeout is success.
+ * Setup failures produce no report. Each hidden test in tests/react.rs is one check; a test
+ * that did not report a status, as after a build failure, is absent and fails.
  * The owned command waits for descendants and drains both pipes before reporting. */
 async function main(): Promise<void> {
   const [action, taskArg, workspaceArg, ...artifacts] = process.argv.slice(2);
@@ -71,7 +72,9 @@ async function main(): Promise<void> {
     }
     await mkdir(join(workspace, "tests"), { recursive: true });
     await copyFile(join(task, "tests/react.rs"), join(workspace, "tests/react.rs"));
-    const command = ["cargo", "test", "--", "--include-ignored"];
+    // Only the restored hidden test target runs, so candidate unit tests and doctests can neither share a hidden
+    // test's name nor fail the build of the hidden tests.
+    const command = ["cargo", "test", "--test", "react", "--", "--include-ignored"];
     const started = performance.now();
     const result = await runSandboxCommand(
       (argv, opts) => run(argv, { ...opts, maxOutputBytes: CARGO_OUTPUT_BYTES }),
@@ -81,18 +84,19 @@ async function main(): Promise<void> {
     for (const relative of ["candidate/Cargo.toml", "candidate/src/lib.rs", "tests/react.rs"]) {
       originalSourceSha256[relative] = Bun.CryptoHasher.hash("sha256", await Bun.file(join(task, relative)).arrayBuffer(), "hex");
     }
+    const testObservations = [...result.stdout.matchAll(/^test (.+?) \.\.\. (ok|FAILED|ignored)$/gm)]
+      .map(match => ({ id: match[1]!, status: match[2]! }));
+    const roster = new Set(Object.keys(await Bun.file(join(task, "checks.json")).json()));
+    const checks = Object.fromEntries(testObservations.filter(row => roster.has(row.id)).map(row => [row.id, row.status === "ok"]));
     const evidence = {
       command, exitCode: result.exitCode, timedOut: result.timedOut,
       timeoutMs: CARGO_TIMEOUT_MS, durationMs: Math.round(performance.now() - started),
       stdout: result.stdout, stderr: result.stderr,
       stdoutTruncated: result.stdoutTruncated ?? false, stderrTruncated: result.stderrTruncated ?? false,
       outputLimitBytesPerPipe: CARGO_OUTPUT_BYTES,
-      testObservations: [...result.stdout.matchAll(/^test (.+?) \.\.\. (ok|FAILED|ignored)$/gm)]
-        .map(match => ({ id: match[1], status: match[2] })),
-      toolVersions, originalSourceSha256,
+      testObservations, toolVersions, originalSourceSha256,
     };
-    const passed = Number(result.exitCode === 0 && !result.timedOut);
-    await Bun.write(report, JSON.stringify({ passed, failed: 1 - passed, total: 1, evidence }) + "\n");
+    await Bun.write(report, JSON.stringify({ checks, evidence }) + "\n");
   } finally {
     try {
       const closure = await scope.close();

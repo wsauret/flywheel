@@ -21,6 +21,7 @@ import { readJsonFile } from "../../src/orchestration/modules/development/benchm
 import { realDirectoryUnder } from "../../src/orchestration/modules/development/benchmark/campaign/paths.js";
 import { createPersonaStore } from "../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import { runningSourceIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { describeGrade } from "../../src/orchestration/modules/development/benchmark/implement-task/check-grade.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -146,7 +147,7 @@ function render(event: BenchmarkEvent): void {
       console.error(`Running ${event.cell.variant}/${event.cell.task}/${event.cell.repeat}...`);
       return;
     case "cell.completed": {
-      const acceptance = event.acceptance ? `, acceptance ${event.acceptance.passed}/${event.acceptance.total}` : "";
+      const acceptance = event.grade ? `, ${describeGrade(event.grade)}` : "";
       const estimated = event.accounting.estimatedUsd.kind === "observed" ? `$${event.accounting.estimatedUsd.value.toFixed(4)}` : "estimated spend unavailable";
       const tokens = event.accounting.tokens.kind === "observed" ? `${event.accounting.tokens.value} tokens` : "tokens unavailable";
       console.error(`  ${event.cell.variant}/${event.cell.task}/${event.cell.repeat}: ${estimated}, ${tokens}, ${event.durationMs} ms${acceptance}`);

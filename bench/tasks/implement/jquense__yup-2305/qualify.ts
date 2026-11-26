@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 import { executeCommand } from "./adapter.js";
 
@@ -144,7 +144,9 @@ async function main(): Promise<void> {
         const grade = JSON.parse(captured.nativeGrade);
         const evidence = grade.evidence;
         const reward = name === "reference" ? 1 : 0;
-        assert.deepEqual(captured.acceptance, { passed: reward, failed: 1 - reward, total: 1 });
+        // The base fails both .when() option checks; the index fault breaks the array one.
+        const essentialPassed = name === "base" ? 1 : name === "reference" ? 3 : 2;
+        assert.deepEqual(captured.grade, { essential: { passed: essentialPassed, total: 3 }, broken: 0, edge: { passed: 0, total: 0 } });
         assert.equal(evidence.reward.exit, reward ? 0 : 1);
         assert.equal(evidence.reward.reward, reward);
         assert.equal(evidence.originalShellSha256, ledger["original/tests/test.sh"]!.sha256);
@@ -157,6 +159,7 @@ async function main(): Promise<void> {
         assert.deepEqual(rows.map(({ file, id }) => ({ file, id })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
           [...expected].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))));
         const passed = rows.filter(row => row.status === "passed").length;
+        assert.deepEqual(grade.checks, Object.fromEntries(rows.map(row => [`${row.file} > ${row.id}`, row.status === "passed"])));
         assert.equal(passed, name === "base" ? 42 : name === "reference" ? 44 : 43);
         assert.equal(evidence.identities["tsconfig.json"], ledger["original/tsconfig.json"]!.sha256);
         assert.equal(evidence.candidateIdentities["lib/index.js"], setup.identities["lib/index.js"]);
@@ -173,7 +176,7 @@ async function main(): Promise<void> {
         const file = `${name}-grade.json.gz`;
         await Bun.write(join(output, file), compressed);
         controls.push({ name, preparedMs, captureAndGradeMs: Math.round(performance.now() - started) - preparedMs,
-          acceptance: captured.acceptance, passed, tests: rows.length,
+          grade: captured.grade, passed, tests: rows.length,
           failedIds: rows.filter(row => row.status !== "passed"),
           evidence: { file, bytes: compressed.length, sha256: hash(compressed),
             decompressedBytes: bytes.length, decompressedSha256: hash(bytes) } });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { TestOutcome } from "../../../bench/chat-ab/acceptance.js";
+import type { TestOutcome } from "../../../src/orchestration/modules/development/benchmark/implement-task/junit-report.js";
 import { baselineInSlotA, DEFAULT_RULE, decide, pairOutcome, sideOf } from "../../../bench/chat-ab/verdict.js";
 
 function acceptance(fix: TestOutcome, guard: TestOutcome = "pass") {

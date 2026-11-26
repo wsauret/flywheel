@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "role": "development",
-  "contentIdentity": "6022e59b8687df0eef6738fbe35eae3b44a0d662cd76b1220a4105694980a4e8",
+  "contentIdentity": "f8baa704f7d16150df2d1d5136f81aab88ca60277c12e786536654dc9d82f797",
   "testIds": [
     "metrics.test.ts > store metrics pipeline > computes percentiles for sorted input",
     "metrics.test.ts > store metrics pipeline > collector handles samples that arrive out of timestamp order",
     "metrics.test.ts > store metrics pipeline > report reads retained rollups and normalizes seconds",
-    "acceptance/metrics-pipeline.test.ts > keyed store > retains every rollup for a metric in append order and keeps metric keys independent",
+    "acceptance/metrics-pipeline.test.ts > keyed store > retains every rollup for a metric and keeps metric keys independent",
     "acceptance/metrics-pipeline.test.ts > collector integration > drainWindow writes rollups to the store",
     "acceptance/metrics-pipeline.test.ts > collector integration > one drain groups the same metric with different units into independent rollups",
     "acceptance/metrics-pipeline.test.ts > collector integration > uses (windowStartMs, windowEndMs], retains future samples, and publishes each sample once",

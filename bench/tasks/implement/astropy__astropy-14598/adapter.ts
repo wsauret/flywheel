@@ -114,9 +114,9 @@ async function main(): Promise<void> {
     await execute("pytest", [python, join(home, "python/bin/pytest"), "-rA", "astropy/io/fits/tests/test_header.py"], 300000, [0, 1, 2, 3, 4, 5]);
     await execute("api", [python, join(task, "api-runner.py"), join(task, "api-probe.py"), join(home, "api.json")], 300000, [0, 1]);
     await execute("score", [python, helper, "score", task, workspace]);
-    const { passed, failed, total, ...originalEvidence } = await Bun.file(join(home, "grade.json")).json();
+    const { checks, ...originalEvidence } = await Bun.file(join(home, "grade.json")).json();
     await Bun.write(artifacts[1]!, JSON.stringify({
-      passed, failed, total,
+      checks,
       evidence: { ...originalEvidence, acquired, commands, outputLimitBytesPerPipe: 16_000_000,
         limits: { buildMs: 600000, pytestMs: 300000 }, equivalence: "native macOS arm64, not original Linux or leaderboard equivalence" },
     }, null, 2) + "\n");

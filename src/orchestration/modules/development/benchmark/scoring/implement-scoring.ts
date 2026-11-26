@@ -6,8 +6,9 @@ import type { BenchmarkAccounting } from "../accounting/evidence.js";
 import { IMPLEMENT_QUALITY_RUBRIC } from "./benchmark-rubrics.js";
 import { structuredIdentity } from "../campaign/content-identity.js";
 import { formatAccountingObservation } from "../accounting/report-accounting.js";
+import { gradedShare, type GradedChange } from "../implement-task/check-grade.js";
 
-export interface ImplementCandidate {
+export type ImplementCandidate = GradedChange & {
   variant: string;
   task: string;
   repeat: number;
@@ -18,11 +19,8 @@ export interface ImplementCandidate {
   linesAdded: number;
   linesRemoved: number;
   filesTouched: number;
-  acceptancePassed: number;
-  acceptanceFailed: number;
-  acceptanceTotal: number;
   nativeGrade?: string;
-}
+};
 
 type TrapOutcome = "self-corrected" | "followed-blindly" | "silently-lucky" | "unclear";
 
@@ -216,6 +214,17 @@ function ratio(passed: number, total: number): string {
   return total === 0 ? "n/a" : `${passed}/${total} (${(passed / total * 100).toFixed(1)}%)`;
 }
 
+/** The mean quality of the runs, each run weighing the same. */
+function meanQuality(runs: readonly ImplementCandidate[]): string {
+  return runs.length === 0 ? "n/a" : `${(100 * average(runs.map(gradedShare))).toFixed(1)}%`;
+}
+
+/** The edge checks the runs passed, over every edge check of their tasks. */
+function edgeChecks(runs: readonly ImplementCandidate[]): string {
+  const graded = runs.flatMap((run) => "grade" in run ? [run.grade.edge] : []);
+  return ratio(sum(graded.map(({ passed }) => passed)), sum(graded.map(({ total }) => total)));
+}
+
 function cell(text: string): string {
   return text.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
@@ -240,10 +249,8 @@ function reportRow(
   verdicts: readonly JudgeVerdict[],
   aggregation: "average" | "total" = "average",
 ): string {
-  const passed = sum(runs.map((run) => run.acceptancePassed));
-  const total = sum(runs.map((run) => run.acceptanceTotal));
   const accounting = runs.map((run) => run.accounting);
-  return `| ${cell(label)} | ${variant} | ${runs.length} | ${ratio(passed, total)} | ${trapCounts(scores).join(" | ")} | ${quality(variant, verdicts)} | ${average(runs.map((run) => run.linesAdded)).toFixed(1)} | ${average(runs.map((run) => run.linesRemoved)).toFixed(1)} | ${average(runs.map((run) => run.filesTouched)).toFixed(1)} | ${formatAccountingObservation(accounting, "estimatedUsd", aggregation)} | ${formatAccountingObservation(accounting, "billedUsd", aggregation)} | ${formatAccountingObservation(accounting, "tokens", aggregation)} | ${Math.round(average(runs.map((run) => run.durationMs)))} |`;
+  return `| ${cell(label)} | ${variant} | ${runs.length} | ${meanQuality(runs)} | ${edgeChecks(runs)} | ${trapCounts(scores).join(" | ")} | ${quality(variant, verdicts)} | ${average(runs.map((run) => run.linesAdded)).toFixed(1)} | ${average(runs.map((run) => run.linesRemoved)).toFixed(1)} | ${average(runs.map((run) => run.filesTouched)).toFixed(1)} | ${formatAccountingObservation(accounting, "estimatedUsd", aggregation)} | ${formatAccountingObservation(accounting, "billedUsd", aggregation)} | ${formatAccountingObservation(accounting, "tokens", aggregation)} | ${Math.round(average(runs.map((run) => run.durationMs)))} |`;
 }
 
 export function renderImplementReport(
@@ -279,14 +286,14 @@ export function renderImplementReport(
     "",
     "## Per-task results",
     "",
-    "| Task | Variant | Runs | Acceptance | Self-corrected | Followed blindly | Silently lucky | Unclear | Quality W-L-T | Avg + | Avg - | Avg files | Avg estimated equivalent | Avg billed | Avg tokens | Avg latency (ms) |",
-    "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    "| Task | Variant | Runs | Core quality | Edge checks | Self-corrected | Followed blindly | Silently lucky | Unclear | Quality W-L-T | Avg + | Avg - | Avg files | Avg estimated equivalent | Avg billed | Avg tokens | Avg latency (ms) |",
+    "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ...taskRows,
     "",
     "## Totals",
     "",
-    "| Scope | Variant | Runs | Acceptance | Self-corrected | Followed blindly | Silently lucky | Unclear | Quality W-L-T | Avg + | Avg - | Avg files | Estimated equivalent | Billed | Total tokens | Avg latency (ms) |",
-    "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    "| Scope | Variant | Runs | Core quality | Edge checks | Self-corrected | Followed blindly | Silently lucky | Unclear | Quality W-L-T | Avg + | Avg - | Avg files | Estimated equivalent | Billed | Total tokens | Avg latency (ms) |",
+    "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ...totalRows,
     "",
     "## Blind quality verdicts",
@@ -297,8 +304,9 @@ export function renderImplementReport(
     "",
     "## Measurement notes",
     "",
-    ...(tasks.some(task => task.kind !== "native") ? ["- Plan acceptance is the number of hidden Bun tests passed divided by all hidden test outcomes. A build or test-run failure without Bun counts is recorded as one failed outcome."] : []),
-    ...(tasks.some(task => task.kind === "native") ? ["- Native acceptance uses original grader counts, with complete original evidence retained in each run. Command failures and missing or invalid reports are unsuccessful attempts, not failed test outcomes."] : []),
+    "- Core quality is the mean over runs of each run's passed share of its task's new core and serious checks, where each existing test that the change broke adds one failed check and a passing existing test earns nothing. Edge checks are counted apart and never enter quality. Each task tags its checks in its checks.json.",
+    ...(tasks.some(task => task.kind !== "native") ? ["- Plan checks are the hidden Bun tests, each graded by its JUnit name. A test that did not run, such as after a load failure, fails."] : []),
+    ...(tasks.some(task => task.kind === "native") ? ["- Native checks are the original grader's per-test results, with complete original evidence retained in each run. A check that did not run fails. Command failures and missing or invalid reports are unsuccessful attempts, not failed checks."] : []),
     "- Trap classifications compare the agent diff and final handoff against each manifest catch criterion. Tasks without traps do not call the trap judge.",
     "- Quality is wins-losses-ties from randomized blinded pairwise diff judging. Functional correctness is measured by acceptance tests.",
     "- Candidate cost and tokens come from durable run accounting. Judge calls are excluded. Latency includes model and tool time.",

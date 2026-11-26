@@ -45,11 +45,12 @@ Implement and hand off.
     const environment = "The source root is src/.\r\n";
     await Bun.write(join(taskDir, "environment.txt"), environment);
     await Bun.write(join(taskDir, "adapter.py"), "# original native adapter");
+    await Bun.write(join(taskDir, "checks.json"), JSON.stringify({ fix: "core" }));
     await Bun.write(join(taskDir, "task.json"), JSON.stringify({
       kind: "native", id: "native", stratum: "small", family: "python", split: "development",
       instruction: "instruction.txt", environment: "environment.txt", native: { command: ["python3", "adapter.py"], timeoutMs: 3_600_000, path: [".bench-home/python/bin"] },
     }));
-    const nativeGrade = '{"passed":0,"failed":1,"total":1,"evidence":{"original.test_bug":"FAIL"}}\n';
+    const nativeGrade = '{"checks":{"fix":false},"evidence":{"original.test_bug":"FAIL"}}\n';
     let candidateCalls = 0;
     const commands: string[][] = [];
     const runOwnedCommand: OwnedCommandRunner = async command => {
@@ -118,7 +119,7 @@ Implement and hand off.
     const judgePrompts: string[] = [];
     const candidate = {
       task: task.id, repeat: 0, durationMs: 1, summary: "", linesAdded: 1, linesRemoved: 0,
-      filesTouched: 1, acceptancePassed: 0, acceptanceFailed: 1, acceptanceTotal: 1,
+      filesTouched: 1, grade: { essential: { passed: 0, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } },
       accounting: unavailableJudgeAccounting("synthetic candidate"),
     };
     await judgeImplementPairs([
@@ -135,7 +136,7 @@ Implement and hand off.
     expect(implementQualityJudgeInputIdentity([{ ...task, environment: "changed mapping", prompt: `${task.instruction}\n\n## Native environment context\nchanged mapping` }]))
       .not.toBe(implementQualityJudgeInputIdentity(tasks));
     const store = await createRunStore({ resultsRoot: catalog.resultsRoot, directory: plan.resultsDir });
-    expect((await store.loadRuns())[0]).toMatchObject({ mode: "implement", acceptanceFailed: 1, nativeGrade });
+    expect((await store.loadRuns())[0]).toMatchObject({ mode: "implement", grade: { essential: { passed: 0, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } }, nativeGrade });
     expect(await store.loadAttempts()).toEqual([]);
     expect(await store.loadJudgeAttempts()).toEqual([]);
     expect(commands.filter(command => command[2] === "prepare")).toHaveLength(1);
@@ -173,6 +174,7 @@ Implement and hand off.
     await mkdir(taskDir, { recursive: true });
     await Bun.write(join(taskDir, "instruction.txt"), "Bug report.");
     await Bun.write(join(taskDir, "adapter.py"), "# adapter");
+    await Bun.write(join(taskDir, "checks.json"), JSON.stringify({ fix: "core" }));
     await Bun.write(join(taskDir, "task.json"), JSON.stringify({
       kind: "native", id: "native", stratum: "small", family: "python", split: "development",
       instruction: "instruction.txt", native: { command: ["python3", "adapter.py"], timeoutMs: 3_600_000 },

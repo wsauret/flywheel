@@ -3,6 +3,7 @@ import type { RankedModelTier } from "../../../../config/models/model-tiers.js";
 import { currentGrade, judgeLabel, recordScorer, type CampaignRecords, type CellLine, type RecordJudge, type ScoreLine } from "./benchmark-records.js";
 import type { BenchmarkMode, ImplementTask, ResearchTask, ReviewTask } from "../catalog.js";
 import { combineBenchmarkAccounting } from "../accounting/report-accounting.js";
+import { checkQuality, type CheckGrade } from "../implement-task/check-grade.js";
 
 // The benchmark ranking (ARCH-DIRECTORIES-021, ARCH-DIRECTORIES-022). It pools every recorded cell
 // whose task content matches the current corpus and that one judge scored
@@ -12,8 +13,7 @@ import { combineBenchmarkAccounting } from "../accounting/report-accounting.js";
 //   score = quality - weight * false - 3 log2(cost / cheapest) - 3 log2(latency / fastest)
 // over the passing settings. Pairwise preference never enters it. It reads
 // only record files and the catalog, so every clone reproduces it. Each
-// persona ranks on its suite: RANKING_SUITES names it where it is not the
-// whole catalog corpus.
+// persona ranks on its whole catalog corpus.
 
 /** One current task of a persona's corpus. */
 export interface RankingTask {
@@ -30,34 +30,22 @@ export interface RankingTask {
 export interface RankingCorpus {
   readonly persona: string;
   readonly mode: BenchmarkMode;
-  /** The persona's ranking suite: coverage, pooling, and averaging read these tasks only. */
+  /** The persona's whole catalog corpus: coverage, pooling, and averaging read these tasks. */
   readonly tasks: readonly RankingTask[];
-  /** Current catalog tasks outside the suite, whose cells stay out of the ranking. */
-  readonly outsideSuite: readonly RankingTask[];
 }
 
-/** The tasks a persona ranks on, for a persona that does not rank on its whole catalog corpus. The catalog keeps
- *  every task a campaign can run; this list is the one place that narrows what ranks, and the ranking and the
- *  rejudge both read it through `rankingCorpus`. The implementer ranks on the tasks hard enough to separate
- *  settings (the maintainer's choice, 2026-11-13). */
-const RANKING_SUITES: ReadonlyMap<string, readonly string[]> = new Map([
-  ["implementer", ["hosted-thinking-row-wait", "recall-punctuated-words", "httpx-streaming-json-iteration", "scheme-metacircular"]],
-]);
-
-/** A persona's current ranking suite, from its catalog tasks, as a ranking and a rejudge read it. A suite that names
- *  a task the catalog does not hold is an error. */
+/** A persona's current corpus, from its catalog tasks, as a ranking and a rejudge read it. */
 export function rankingCorpus(persona: string, mode: BenchmarkMode, tasks: readonly (ResearchTask | ReviewTask | ImplementTask)[]): RankingCorpus {
-  const suite = RANKING_SUITES.get(persona);
-  const missing = suite?.filter((id) => !tasks.some((task) => task.id === id)) ?? [];
-  if (missing.length > 0) throw new Error(`The ranking suite of ${persona} names tasks the catalog does not hold: ${missing.join(", ")}`);
-  const inSuite = (id: string) => suite === undefined || suite.includes(id);
-  const rankingTasks: RankingTask[] = tasks.map((task) => ({
-    id: task.id,
-    contentIdentity: task.contentIdentity,
-    opportunities: "snapshot" in task ? task.answerKey?.facts.length : "fixtureDir" in task ? task.manifest.defects.length : 0,
-    ...("candidateIdentity" in task ? { implementation: { candidateIdentity: task.candidateIdentity, graderIdentity: task.graderIdentity } } : {}),
-  }));
-  return { persona, mode, outsideSuite: rankingTasks.filter(({ id }) => !inSuite(id)), tasks: rankingTasks.filter(({ id }) => inSuite(id)) };
+  return {
+    persona,
+    mode,
+    tasks: tasks.map((task) => ({
+      id: task.id,
+      contentIdentity: task.contentIdentity,
+      opportunities: "snapshot" in task ? task.answerKey?.facts.length : "fixtureDir" in task ? task.manifest.defects.length : 0,
+      ...("candidateIdentity" in task ? { implementation: { candidateIdentity: task.candidateIdentity, graderIdentity: task.graderIdentity } } : {}),
+    })),
+  };
 }
 
 export type RankingFamily = "openai" | "anthropic";
@@ -122,7 +110,7 @@ export interface RoleRanking {
   readonly mode: BenchmarkMode;
   readonly judge: RecordJudge;
   readonly otherJudges: readonly { judge: string; cells: number }[];
-  readonly corpora: readonly { persona: string; tasks: number; outsideSuite: number }[];
+  readonly corpora: readonly { persona: string; tasks: number }[];
   readonly guidance: readonly { persona: string; identity: string; cells: number }[];
   readonly settings: readonly RankedSetting[];
   readonly thresholds: { readonly quality: number; readonly false: number };
@@ -140,7 +128,7 @@ export interface RoleRanking {
 export const RULE = {
   reviewer: { weight: 5, slack: 0.6, quality: "recall %", false: "false P1/P2 per review" },
   research: { weight: 1, slack: 10, quality: "fact recall %", false: "trap rate %" },
-  implement: { weight: 1, slack: 10, quality: "hidden-test pass %", false: "followed false claims %" },
+  implement: { weight: 1, slack: 10, quality: "core quality %", false: "followed false claims %" },
 } satisfies { [Mode in BenchmarkMode]: { weight: number; slack: number; quality: string; false: string } };
 const FAMILIES: readonly RankingFamily[] = ["openai", "anthropic"];
 const TIER_OF_RANK: readonly RankedModelTier[] = ["cheap", "mid", "powerful"];
@@ -160,14 +148,16 @@ interface StaleCell {
   readonly unscored?: true;
 }
 
-/** Where a current cell pools: its corpus, its scorable task, its pinned setting, and its score under the contract.
- *  A timed-out implementer cell pools with no score: it made no change for a judge to read. */
+/** Where a current cell pools: its corpus, its scorable task, its pinned setting, its score under the contract, and
+ *  an implementation cell's grade by the current grader. A timed-out implementer cell pools with no score and no
+ *  grade: it made no change for a judge to read or a grader to run. */
 interface CellPlace {
   readonly corpus: RankingCorpus;
   readonly task: ScorableTask;
   readonly model: string;
   readonly effort: string;
   readonly score: ScoreLine | undefined;
+  readonly grade?: CheckGrade;
 }
 
 interface PooledCell extends CellPlace {
@@ -194,26 +184,27 @@ function mean(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
-/** The grade of an implementation cell by the current grader, when the task changed only in grading since the cell
- *  ran and a regrade graded it. */
-function regradedGrade(campaign: CampaignRecords, cell: CellLine, task: RankingTask) {
-  if (cell.taskIdentity === task.contentIdentity || !task.implementation) return undefined;
-  return currentGrade(campaign, cell, task.implementation.graderIdentity);
+/** The grade of an implementation cell by the task's current grader: the grade it recorded while its task is
+ *  unchanged, otherwise the grade of a regrade by the current grader. Undefined when neither exists. */
+export function currentCellGrade(campaign: CampaignRecords, cell: CellLine, task: RankingTask): CheckGrade | undefined {
+  if (cell.output.kind !== "implementation") return undefined;
+  if (task.contentIdentity === cell.taskIdentity) return "grade" in cell.output ? cell.output.grade : undefined;
+  return task.implementation ? currentGrade(campaign, cell, task.implementation.graderIdentity) : undefined;
 }
 
 /** Why the task of a cell no longer matches the cell, or undefined while it does. */
 function taskChange(campaign: CampaignRecords, cell: CellLine, task: RankingTask): string | undefined {
-  if (task.contentIdentity === cell.taskIdentity) return undefined;
-  if (!task.implementation || cell.output.kind === "review" || cell.output.kind === "answer" || cell.output.candidateIdentity !== task.implementation.candidateIdentity) return "task content changed";
+  if (cell.output.kind === "review" || cell.output.kind === "answer") return task.contentIdentity === cell.taskIdentity ? undefined : "task content changed";
+  if (task.contentIdentity !== cell.taskIdentity && cell.output.candidateIdentity !== task.implementation?.candidateIdentity) return "task content changed";
   // A timed-out cell is a failed attempt under every grader.
   if (cell.output.kind === "timed-out") return undefined;
-  return regradedGrade(campaign, cell, task) ? undefined : "task grader changed (--regrade grades it with the current grader)";
+  return currentCellGrade(campaign, cell, task) ? undefined : "task grader changed (--regrade grades it with the current grader)";
 }
 
-/** Why a cell no longer answers its corpus task, in or outside the suite: the task left the corpus, or it changed
- *  in a way that no current grade covers. Undefined while the cell is current. */
+/** Why a cell no longer answers its corpus task: the task left the corpus, or it changed in a way that no current
+ *  grade covers. Undefined while the cell is current. */
 export function staleTask(cell: CellLine, campaign: CampaignRecords, corpus: RankingCorpus | undefined): string | undefined {
-  const task = corpus?.tasks.find(({ id }) => id === cell.task) ?? corpus?.outsideSuite.find(({ id }) => id === cell.task);
+  const task = corpus?.tasks.find(({ id }) => id === cell.task);
   return task ? taskChange(campaign, cell, task) : "task removed from corpus";
 }
 
@@ -222,7 +213,6 @@ export function cellStanding(cell: CellLine, campaign: CampaignRecords, corpus: 
   const { model, effort } = cell;
   if (model === undefined || effort === undefined) return { reason: "no pinned model" };
   const task = corpus?.tasks.find(({ id }) => id === cell.task);
-  if (corpus?.outsideSuite.some(({ id }) => id === cell.task)) return { reason: "task outside the ranking suite" };
   if (!corpus || !task) return { reason: "task removed from corpus" };
   const changed = taskChange(campaign, cell, task);
   if (changed) return { reason: changed };
@@ -230,7 +220,8 @@ export function cellStanding(cell: CellLine, campaign: CampaignRecords, corpus: 
   if (cell.output.kind === "timed-out") return { corpus, task, model, effort, score: undefined };
   const scores = campaign.scores.filter((line) => sameJudge(line.judge, judge) && line.scorer === recordScorer(campaign.header.mode) && line.score.variant === cell.variant && line.score.task === cell.task && line.score.repeat === cell.repeat);
   const score = scores.find((line) => line.scoringVersion === version);
-  if (score) return { corpus, task, model, effort, score };
+  const grade = currentCellGrade(campaign, cell, task);
+  if (score) return { corpus, task, model, effort, score, ...(grade === undefined ? {} : { grade }) };
   const old = scores[0];
   return { reason: old ? `scored under ${old.scoringVersion}` : `not scored by ${judgeLabel(judge)}`, unscored: true };
 }
@@ -288,22 +279,20 @@ function corpusMeasures(mode: BenchmarkMode, cells: readonly PooledCell[]): Pick
     }
     return { quality: 100 * caught / facts, false: 100 * trapped / cells.length };
   }
-  // Each cell's pass rate weighs the same within its task, and each task the same, whatever its hidden-test count:
-  // a timed-out or unbuilt cell has no test count to weigh by.
+  // Each cell's core quality weighs the same within its task, and each task the same, whatever its check count:
+  // a timed-out cell has no grade to weigh by (ARCH-DIRECTORIES-024).
   const rates = new Map<string, number[]>();
   let followed = 0;
   let verdicts = 0;
-  for (const { campaign, cell, score, task } of cells) {
+  for (const { cell, score, task, grade } of cells) {
     const taskRates = rates.get(task.id) ?? [];
     rates.set(task.id, taskRates);
     if (cell.output.kind === "timed-out") {
       taskRates.push(0);
       continue;
     }
-    if (score?.scorer !== "trap" || cell.output.kind !== "implementation") throw new Error("An implement corpus holds a non-implementation cell or score");
-    // A regrade by the current grader replaces the grade that the cell recorded under an earlier grader.
-    const grade = regradedGrade(campaign, cell, task) ?? { passed: cell.output.acceptancePassed, total: cell.output.acceptanceTotal };
-    taskRates.push(grade.passed / grade.total);
+    if (score?.scorer !== "trap" || !grade) throw new Error("An implement corpus holds a non-implementation cell or score");
+    taskRates.push(checkQuality(grade));
     followed += score.score.traps.filter((trap) => trap.outcome === "followed-blindly").length;
     verdicts += score.score.traps.length;
   }
@@ -465,7 +454,7 @@ function rankRole(role: string, campaigns: readonly CampaignRecords[], input: Ra
   return {
     role, entry: input.entryOf(role), mode, judge,
     otherJudges: [...otherJudges].map(([label, cells]) => ({ judge: label, cells })).sort((a, b) => a.judge.localeCompare(b.judge)),
-    corpora: corpora.map((corpus) => ({ persona: corpus.persona, tasks: corpus.tasks.filter(scorable).length, outsideSuite: corpus.outsideSuite.length })),
+    corpora: corpora.map((corpus) => ({ persona: corpus.persona, tasks: corpus.tasks.filter(scorable).length })),
     guidance: [...guidance.values()],
     settings, thresholds, incomplete, retry, notRanked,
     notPooled: [...notPooledCounts.values()],
@@ -508,7 +497,7 @@ export function renderRoleRanking(ranking: RoleRanking | UnpooledRole): string[]
   const cost = (setting: RankedSetting) => `${setting.costLowerBound ? ">= " : ""}$${fixed(setting.cost, 3)}${setting.costLowerBound ? ` (${setting.partlyUnpricedCells} of ${setting.cells} cells partly unpriced)` : ""}`;
   return [
     `Judge: ${judgeLabel(ranking.judge)}${ranking.otherJudges.length > 0 ? ` (other judges in these records: ${ranking.otherJudges.map(({ judge, cells }) => `${judge} ${cells} scores`).join(", ")})` : ""}`,
-    `Corpora: ${ranking.corpora.map(({ persona, tasks, outsideSuite }) => `${persona} (${tasks} tasks${outsideSuite > 0 ? ` of ${tasks + outsideSuite}: its ranking suite` : ""})`).join(", ")}${ranking.corpora.length > 1 ? ", averaged with equal weight" : ""}`,
+    `Corpora: ${ranking.corpora.map(({ persona, tasks }) => `${persona} (${tasks} tasks)`).join(", ")}${ranking.corpora.length > 1 ? ", averaged with equal weight" : ""}`,
     `Persona guidance: ${ranking.guidance.map(({ persona, identity, cells }) => `${persona} ${identity.slice(0, 8)} (${cells} cells)`).join(", ")}`,
     `Filters: ${rule.quality} >= ${fixed(ranking.thresholds.quality, 1)}, ${rule.false} <= ${fixed(ranking.thresholds.false, 2)}. Score = quality - ${rule.weight} x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.`,
     "",

@@ -22,7 +22,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
 import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
-import { loadImplementTasks } from "../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { loadImplementTasks } from "../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import type { ImplementSandboxSpec } from "../../src/orchestration/modules/development/benchmark/tasks/task-schema.js";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
 import { parseQualification } from "../tasks/qualify.js";

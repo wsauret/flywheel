@@ -5,6 +5,7 @@ import type { CampaignRecords, CellLine, GradeLine, RecordJudge, ScoreLine } fro
 import type { BenchmarkMode } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { rankBenchmarkRecords, renderRanking, type RankingCorpus, type RankingInput, type RoleRanking } from "../../../src/orchestration/modules/development/benchmark/records/ranking.js";
 import { renderResultsPages, staleResultsPages, writeResultsPages } from "../../../src/orchestration/modules/development/benchmark/persona/results-pages.js";
+import type { CheckGrade } from "../../../src/orchestration/modules/development/benchmark/implement-task/check-grade.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const directory = temporaryDirectories();
@@ -31,8 +32,10 @@ interface CellSpec {
   severe?: number;
   traps?: number;
   followed?: number;
-  passed?: number;
-  total?: number;
+  /** An implementation cell's grade; all of one essential check passed by default. */
+  grade?: CheckGrade;
+  /** An implementation cell graded before the check tags: [passed, total] over every hidden test. */
+  legacy?: readonly [number, number];
   taskIdentity?: string;
   /** The candidate identity an implementation cell answered; `<task>@candidate` by default. */
   candidateIdentity?: string;
@@ -56,7 +59,8 @@ function campaign(persona: string, mode: BenchmarkMode, specs: readonly CellSpec
       output: spec.timedOutMs !== undefined
         ? { kind: "timed-out", candidateIdentity: spec.candidateIdentity ?? `${spec.task}@candidate`, timeoutMs: spec.timedOutMs }
         : mode === "implement"
-        ? { kind: "implementation", candidateIdentity: spec.candidateIdentity ?? `${spec.task}@candidate`, summary: "", diff: "", linesAdded: 1, linesRemoved: 0, filesTouched: 1, acceptancePassed: spec.passed ?? 1, acceptanceFailed: (spec.total ?? 1) - (spec.passed ?? 1), acceptanceTotal: spec.total ?? 1 }
+        ? { kind: "implementation", candidateIdentity: spec.candidateIdentity ?? `${spec.task}@candidate`, summary: "", diff: "", linesAdded: 1, linesRemoved: 0, filesTouched: 1,
+          ...spec.legacy ? { acceptancePassed: spec.legacy[0], acceptanceFailed: spec.legacy[1] - spec.legacy[0], acceptanceTotal: spec.legacy[1] } : { grade: spec.grade ?? checks(1, 1) } }
         : { kind: mode === "reviewer" ? "review" : "answer", text: "" },
     });
     for (const judge of spec.timedOutMs === undefined ? spec.judges ?? [SOL] : []) {
@@ -76,9 +80,14 @@ function campaign(persona: string, mode: BenchmarkMode, specs: readonly CellSpec
   };
 }
 
+/** A check grade: `passed` of `total` essential checks, with broken existing tests and edge checks. */
+function checks(passed: number, total: number, { broken = 0, edge = [0, 0] as const }: { broken?: number; edge?: readonly [number, number] } = {}): CheckGrade {
+  return { essential: { passed, total }, broken, edge: { passed: edge[0], total: edge[1] } };
+}
+
 /** A corpus of tasks given as [id, seeded defects or key facts], each at content `<id>@1`. */
 function corpus(persona: string, mode: BenchmarkMode, tasks: readonly (readonly [string, number | undefined])[]): RankingCorpus {
-  return { persona, mode, outsideSuite: [], tasks: tasks.map(([id, opportunities]) => ({ id, contentIdentity: `${id}@1`, opportunities })) };
+  return { persona, mode, tasks: tasks.map(([id, opportunities]) => ({ id, contentIdentity: `${id}@1`, opportunities })) };
 }
 
 function input(campaigns: readonly CampaignRecords[], corpora: readonly RankingCorpus[], overrides: Partial<RankingInput> = {}): RankingInput {
@@ -180,26 +189,30 @@ describe("benchmark ranking", () => {
     expect(ranking.incomplete).toEqual([{ setting: "claude-mid@medium", missing: ["reviewer-plan-elegance: 0 of 1 tasks"] }]);
   });
 
-  it("ranks the implementer on its suite by hidden-test pass rate minus followed false claims, with no pairwise input", () => {
-    const tasks: RankingCorpus = { ...corpus("implementer", "implement", [["x", 0], ["y", 0]]), outsideSuite: [{ id: "easy", contentIdentity: "easy@1", opportunities: 0 }] };
+  it("ranks the implementer on its whole corpus by core quality minus followed false claims, with no pairwise input", () => {
+    const tasks = corpus("implementer", "implement", [["x", 0], ["y", 0], ["z", 0]]);
     const [role] = rankBenchmarkRecords(input([campaign("implementer", "implement", [
-      { setting: "gpt-mid@high", task: "x", passed: 9, total: 10, traps: 2, followed: 1 },
-      { setting: "gpt-mid@high", task: "y", passed: 10, total: 10 },
-      { setting: "claude-mid@high", task: "x", passed: 10, total: 10, traps: 2 },
-      { setting: "claude-mid@high", task: "y", passed: 10, total: 10 },
-      // A task outside the suite neither counts toward coverage nor pools.
-      { setting: "claude-mid@high", task: "easy" },
-      { setting: "gpt-cheap@high", task: "easy" },
+      // Every essential check passes, but one broken existing test adds a failed check: 9 of 10.
+      { setting: "gpt-mid@high", task: "x", grade: checks(9, 9, { broken: 1, edge: [2, 2] }), traps: 2, followed: 1 },
+      { setting: "gpt-mid@high", task: "y", grade: checks(10, 10) },
+      { setting: "gpt-mid@high", task: "z", grade: checks(4, 4, { edge: [3, 3] }) },
+      // Failed edge checks never lower quality.
+      { setting: "claude-mid@high", task: "x", grade: checks(9, 9, { edge: [0, 2] }), traps: 2 },
+      { setting: "claude-mid@high", task: "y", grade: checks(10, 10) },
+      { setting: "claude-mid@high", task: "z", grade: checks(4, 4, { edge: [0, 3] }) },
+      // A setting missing a task of the corpus is incomplete.
+      { setting: "gpt-cheap@high", task: "x" },
     ])], [tasks]));
     const ranking = ranked(role);
-    expect(ranking.settings.map((setting) => [setting.setting, setting.quality, setting.false, setting.score])).toEqual([
-      ["claude-mid@high", 100, 0, 100],
-      ["gpt-mid@high", 95, 50, 45],
+    // Each task weighs the same: x 90, y 100, z 100.
+    expect(ranking.settings.map((setting) => [setting.setting, setting.quality.toFixed(3), setting.false, setting.score.toFixed(3)])).toEqual([
+      ["claude-mid@high", "100.000", 0, "100.000"],
+      ["gpt-mid@high", "96.667", 50, "46.667"],
     ]);
     expect(ranking.thresholds).toEqual({ quality: 90, false: 10 });
-    expect(ranking.incomplete).toEqual([]);
-    expect(ranking.notPooled.map(({ reason, cells }) => ({ reason, cells }))).toEqual([{ reason: "task outside the ranking suite", cells: 2 }]);
-    expect(renderRanking([role!])).toContain("Corpora: implementer (2 tasks of 3: its ranking suite)");
+    expect(ranking.incomplete).toEqual([{ setting: "gpt-cheap@high", missing: ["implementer: 1 of 3 tasks"] }]);
+    expect(ranking.notPooled).toEqual([]);
+    expect(renderRanking([role!])).toContain("Corpora: implementer (3 tasks)");
   });
 
   it("ranks a timed-out implementer cell as a failed attempt at the limit, and lists other failed attempts to retry", () => {
@@ -207,10 +220,10 @@ describe("benchmark ranking", () => {
     const failure = (attemptId: string, task: string, repeat: number): FailureLine => ({ kind: "failure", attemptId, variant: "gpt-mid@high", task, repeat, reason: "Native grade failed: exit code 1" });
     const [role] = rankBenchmarkRecords(input([campaign("implementer", "implement", [
       // Each task weighs the same whatever its test count, and each cell the same within its task.
-      { setting: "gpt-mid@high", task: "x", passed: 1, total: 1, ms: 1000 },
-      { setting: "gpt-mid@high", task: "y", passed: 20, total: 20, ms: 1000 },
+      { setting: "gpt-mid@high", task: "x", grade: checks(1, 1), ms: 1000 },
+      { setting: "gpt-mid@high", task: "y", grade: checks(20, 20), ms: 1000 },
       { setting: "gpt-mid@high", task: "y", repeat: 1, timedOutMs: 5000, cost: 3 },
-      { setting: "gpt-mid@high", task: "x", repeat: 2, passed: 0, total: 1, ms: 1000 },
+      { setting: "gpt-mid@high", task: "x", repeat: 2, grade: checks(0, 1), ms: 1000 },
     ], { failures: [failure("a1", "y", 2), failure("a2", "x", 2)] })], [tasks]));
     const ranking = ranked(role);
     // x averages 1 and 0, y averages 1 and the timed-out 0; the limit is the slowest cell's latency.
@@ -223,10 +236,11 @@ describe("benchmark ranking", () => {
   });
 
   it("pools an implementer cell under a changed grader only once the current grader regraded it and its prompt still matches", () => {
-    const tasks: RankingCorpus = { persona: "implementer", mode: "implement", outsideSuite: [], tasks: [{ id: "x", contentIdentity: "x@2", opportunities: 0, implementation: { candidateIdentity: "x@candidate", graderIdentity: "grader-2" } }] };
-    const grade = (variant: string, graderIdentity: string): GradeLine => ({ kind: "grade", graderIdentity, variant, task: "x", repeat: 0, passed: 8, failed: 2, total: 10 });
+    const tasks: RankingCorpus = { persona: "implementer", mode: "implement", tasks: [{ id: "x", contentIdentity: "x@2", opportunities: 0, implementation: { candidateIdentity: "x@candidate", graderIdentity: "grader-2" } }] };
+    const grade = (variant: string, graderIdentity: string): GradeLine => ({ kind: "grade", graderIdentity, variant, task: "x", repeat: 0, grade: checks(4, 5, { broken: 0, edge: [0, 4] }) });
     const records = campaign("implementer", "implement", [
-      { setting: "gpt-mid@high", task: "x", passed: 1, total: 10 },
+      // Graded before the check tags: its counts decode, but only a regrade pools it.
+      { setting: "gpt-mid@high", task: "x", legacy: [10, 10] },
       // A timed-out cell is a failed attempt under every grader, so it needs no regrade.
       { setting: "gpt-mid@high", task: "x", repeat: 1, timedOutMs: 1000 },
       { setting: "gpt-cheap@high", task: "x" },
@@ -234,7 +248,7 @@ describe("benchmark ranking", () => {
       { setting: "claude-big@high", task: "x" },
     ], { grades: [grade("gpt-mid@high", "grader-2"), grade("claude-mid@high", "grader-2"), grade("claude-big@high", "grader-1")] });
     const ranking = ranked(rankBenchmarkRecords(input([records], [tasks]))[0]);
-    // The regrade replaces the 1 of 10 that the cell recorded under the earlier grader; the timed-out cell scores 0.
+    // The regrade's 4 of 5 replaces the 10 of 10 that the cell recorded under the earlier grader; the timed-out cell scores 0.
     expect(ranking.settings.map((setting) => [setting.setting, setting.quality])).toEqual([["gpt-mid@high", 40]]);
     expect(ranking.notPooled.map(({ reason, cells }) => ({ reason, cells }))).toEqual([
       { reason: "task grader changed (--regrade grades it with the current grader)", cells: 2 },
@@ -301,32 +315,37 @@ describe("benchmark ranking", () => {
 describe("benchmark results pages", () => {
   const implementer: RankingCorpus = {
     persona: "implementer", mode: "implement",
-    tasks: [{ id: "x", contentIdentity: "x@2", opportunities: 0, implementation: { candidateIdentity: "x@candidate", graderIdentity: "grader-2" } }],
-    outsideSuite: [{ id: "easy", contentIdentity: "easy@1", opportunities: 0 }],
+    tasks: [
+      { id: "easy", contentIdentity: "easy@1", opportunities: 0 },
+      { id: "x", contentIdentity: "x@2", opportunities: 0, implementation: { candidateIdentity: "x@candidate", graderIdentity: "grader-2" } },
+    ],
   };
-  const grade = (variant: string, repeat: number, graderIdentity: string, passed: number): GradeLine => ({ kind: "grade", graderIdentity, variant, task: "x", repeat, passed, failed: 3 - passed, total: 3 });
   const records = campaign("implementer", "implement", [
-    { setting: "gpt-mid@high", task: "x", passed: 3, total: 3, taskIdentity: "x@2" },
-    { setting: "gpt-mid@high", task: "x", repeat: 1, passed: 1, total: 3, taskIdentity: "x@2" },
+    { setting: "gpt-mid@high", task: "x", grade: checks(3, 3, { edge: [1, 2] }), taskIdentity: "x@2" },
+    { setting: "gpt-mid@high", task: "x", repeat: 1, grade: checks(1, 2, { broken: 1 }), taskIdentity: "x@2" },
     { setting: "gpt-mid@high", task: "x", repeat: 2, timedOutMs: 5000, taskIdentity: "x@2" },
     { setting: "gpt-mid@high", task: "easy", cost: { atLeast: 2 } },
-    { setting: "claude-mid@high", task: "x", passed: 0, total: 3 },
-    { setting: "claude-mid@high", task: "x", repeat: 1, passed: 0, total: 3 },
+    { setting: "claude-mid@high", task: "x", legacy: [0, 3] },
+    { setting: "claude-mid@high", task: "x", repeat: 1, legacy: [0, 3] },
     { setting: "gpt-cheap@high", task: "easy" },
   ], {
-    // Only the current grader's grade pools; an earlier grader's grade still shows, marked.
-    grades: [grade("claude-mid@high", 0, "grader-1", 2), grade("claude-mid@high", 1, "grader-2", 3)],
+    // Only the current grader's grade pools; an earlier grader's grade before the check tags still shows, marked.
+    grades: [
+      { kind: "grade", graderIdentity: "grader-1", variant: "claude-mid@high", task: "x", repeat: 0, passed: 2, failed: 1, total: 3 },
+      { kind: "grade", graderIdentity: "grader-2", variant: "claude-mid@high", task: "x", repeat: 1, grade: checks(3, 3) },
+    ],
     failures: [{ kind: "failure", attemptId: "a1", variant: "gpt-mid@high", task: "easy", repeat: 1, reason: "RESOURCE_EXHAUSTED (code 429):\n  quota" }],
   });
 
-  it("shows every implementer cell by task and setting, with its current grade, timeouts, totals, gaps, and cells to retry", () => {
+  it("shows every implementer cell by task and setting, with its core quality, edge checks, timeouts, totals, gaps, and cells to retry", () => {
     const page = renderResultsPages(input([records], [implementer])).get("implementer")!;
-    expect(page).toContain("| Task | claude-mid@high | gpt-cheap@high | gpt-mid@high |");
-    expect(page).toContain("| easy | - | P | P |");
-    expect(page).toContain("| x (suite) | F(2/3)* P | - | P F(1/3) T |");
-    // Cells, full passes, timed out, failed attempts, a lower-bound cost, tokens, median latency, providers.
-    expect(page).toContain("| gpt-mid@high | 4 | 2 | 1 | 1 | >= $5.000 (1 cell partly unpriced) | 4 | 10s | p |");
-    expect(page).toContain("| claude-mid@high | 2 | 1 | 0 | 0 | $2.000 | 2 | 10s | p |");
+    expect(page).toContain("| Task | claude-mid@high | claude-mid@high edge | gpt-cheap@high | gpt-cheap@high edge | gpt-mid@high | gpt-mid@high edge |");
+    expect(page).toContain("| easy | - | - | 1/1 | n/a | 1/1 | n/a |");
+    // A broken existing test adds a failed check to quality: 1 of 2 essential checks with one broken shows 1/3.
+    expect(page).toContain("| x | (2/3)* 3/3 | ?* n/a | - | - | 3/3 1/3 T | 1/2 n/a T |");
+    // Cells, core quality %, edge %, timed out, failed attempts, a lower-bound cost, tokens, median latency, providers.
+    expect(page).toContain("| gpt-mid@high | 4 | 58.3 | 50.0 | 1 | 1 | >= $5.000 (1 cell partly unpriced) | 4 | 10s | p |");
+    expect(page).toContain("| claude-mid@high | 2 | 100.0 | n/a | 0 | 0 | $2.000 | 2 | 10s | p |");
     expect(page).toContain("- gpt-cheap@high: x");
     expect(page).toContain("- gpt-mid@high easy #1 (s1), 1 failed attempt: RESOURCE_EXHAUSTED (code 429): quota");
     expect(page).toContain("### Judged by judge-a:xhigh");

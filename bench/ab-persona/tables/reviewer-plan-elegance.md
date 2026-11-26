@@ -125,9 +125,9 @@ Totals cover every recorded cell, current or not. Estimated USD is the sum over 
 
 ## Coverage
 
-Suite tasks that a setting has no current cell of:
+Corpus tasks that a setting has no current cell of:
 
-- None: every setting has a current cell of every suite task.
+- None: every setting has a current cell of every corpus task.
 
 Cells to retry (every attempt failed with no result; a resume runs them again):
 

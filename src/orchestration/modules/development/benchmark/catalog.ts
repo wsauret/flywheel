@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { bytesIdentity, directoryIdentity, structuredIdentity } from "./campaign/content-identity.js";
-import { loadImplementTasks, PLAN_FILE, type ImplementTaskSpec } from "./implement-task.js";
+import { loadImplementTasks, PLAN_FILE, type ImplementTaskSpec } from "./implement-task/implement-task.js";
 import { immutableGitObjectSelector, objectValue, type CommitSnapshot } from "./tasks/task-schema.js";
 import { containedPath, isPresent, realDirectoryUnder, realFileUnder } from "./campaign/paths.js";
 import { loadResearchTasks, type ResearchAnswerKey } from "./tasks/research-task.js";
@@ -395,6 +395,8 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
     reviewTasks: async (persona) => fixturesFor(await loadReviewFixtures(reviewFixturesDir), persona),
     async implementTasks() {
       const specs = await loadImplementTasks(implementTasksDir);
+      const untagged = specs.filter((spec) => !spec.checks);
+      if (untagged.length > 0) throw new Error(`Every implementer task needs a checks.json; ${untagged.map(({ id }) => id).join(", ")} has none`);
       return specs.map((spec) => ({
         ...spec,
         prompt: spec.kind === "native"

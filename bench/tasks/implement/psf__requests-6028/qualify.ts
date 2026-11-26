@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 /** Qualify the catalog, public preparation and fresh native capture boundary.
@@ -93,7 +93,8 @@ async function main(): Promise<void> {
         assert.deepEqual(evidence.commands.pytest.command.slice(-2), ["-rA", "tests/test_utils.py"]);
         assert.equal(evidence.limits.evaluationMs, 1800000);
         if (name === "compile-failure") {
-          assert.deepEqual(captured.acceptance, { passed: 0, failed: 187, total: 187 });
+          assert.deepEqual(captured.grade, { essential: { passed: 0, total: 2 }, broken: 0, edge: { passed: 0, total: 0 } });
+          assert.deepEqual(grade.checks, {});
           assert.equal(evidence.original_output_found, false);
           assert.equal(evidence.missing.length, 187);
           assert.match(evidence.commands.pytest.stdout + evidence.commands.pytest.stderr, /SyntaxError/);
@@ -109,7 +110,8 @@ async function main(): Promise<void> {
           assert.deepEqual(evidence.errors, []);
           assert.deepEqual(evidence.original_report.PASS_TO_PASS.success.toSorted(), groups.PASS_TO_PASS.toSorted());
           assert.deepEqual(evidence.original_report.FAIL_TO_PASS[name === "reference" ? "success" : "failure"].toSorted(), groups.FAIL_TO_PASS.toSorted());
-          assert.deepEqual(captured.acceptance, { passed: name === "reference" ? 187 : 185, failed: name === "reference" ? 0 : 2, total: 187 });
+          assert.deepEqual(captured.grade, { essential: { passed: name === "reference" ? 2 : 0, total: 2 }, broken: 0, edge: { passed: 0, total: 0 } });
+          assert.deepEqual(Object.keys(grade.checks).toSorted(), selected.toSorted());
           assert.match(evidence.commands.pytest.stdout, name === "reference" ? /203 passed, 11 skipped/ : /2 failed, 201 passed, 11 skipped/);
           if (name !== "reference") assert.match(evidence.commands.pytest.stdout, /http:\/\/example.com\/path\?query/);
         }
@@ -130,7 +132,7 @@ async function main(): Promise<void> {
         const file = `${name}-grade.json.gz`;
         await Bun.write(join(output, file), compressed);
         controls.push({ name, preparedMs, captureAndGradeMs: Math.round(performance.now() - started) - preparedMs,
-          acceptance: captured.acceptance, resolution: evidence.original_resolution, classification: evidence.classification,
+          grade: captured.grade, resolution: evidence.original_resolution, classification: evidence.classification,
           collected: evidence.candidateImports.collected, parsedKeys: Object.keys(evidence.statuses).length,
           missing: evidence.missing, pytestMs: evidence.commands.pytest.durationMs,
           evidence: { file, bytes: compressed.length, sha256: hash(compressed), decompressedBytes: full.length, decompressedSha256: hash(full) } });
@@ -144,7 +146,7 @@ async function main(): Promise<void> {
       semanticFault: "The original base loses URL credentials. No artificial mutant or extra network task.",
       historicalModelAccounting: "calibration.json contains historical runs only",
     }, null, 2) + "\n");
-    console.log(JSON.stringify({ controls: controls.map(row => ({ name: row.name, ...row.acceptance })), tmpClean: true }));
+    console.log(JSON.stringify({ controls: controls.map(row => ({ name: row.name, ...row.grade })), tmpClean: true }));
   } finally {
     try {
       const closure = await scope.close();

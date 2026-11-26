@@ -1,0 +1,22 @@
+{
+  "adder_with_boolean_values": "core",
+  "an_input_cells_value_can_be_set": "core",
+  "callbacks_can_be_added_and_removed": "core",
+  "callbacks_can_be_called_from_multiple_cells": "core",
+  "callbacks_can_be_called_multiple_times": "core",
+  "callbacks_only_fire_on_change": "core",
+  "callbacks_should_not_be_called_if_dependencies_change_but_output_value_doesnt_change": "serious",
+  "callbacks_should_only_be_called_once_even_if_multiple_dependencies_change": "serious",
+  "compute_cells_calculate_initial_value": "core",
+  "compute_cells_can_depend_on_other_compute_cells": "core",
+  "compute_cells_fire_callbacks": "core",
+  "compute_cells_take_inputs_in_the_right_order": "serious",
+  "compute_cells_update_value_when_dependencies_are_changed": "core",
+  "do_not_break_cell_if_creating_compute_cell_with_valid_and_invalid_input": "core",
+  "error_adding_callback_to_nonexistent_cell": "edge",
+  "error_creating_compute_cell_if_input_doesnt_exist": "edge",
+  "error_removing_callback_from_nonexisting_cell": "edge",
+  "error_setting_a_nonexistent_input_cell": "edge",
+  "input_cells_have_a_value": "core",
+  "removing_a_callback_multiple_times_doesnt_interfere_with_other_callbacks": "edge"
+}

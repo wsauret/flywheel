@@ -124,9 +124,9 @@ async function main(): Promise<void> {
     await execute("pytest", [python, "-I", helper, "pytest", task, workspace, "-n0", "-rA",
       "tests/test_dynamodb/test_dynamodb_update_expressions.py"], 300000, [0, 1, 2, 3, 4, 5]);
     await execute("score", [runtime, "-I", helper, "score", task, workspace]);
-    const { passed, failed, total, ...evidence } = await Bun.file(join(home, "grade.json")).json();
+    const { checks, ...evidence } = await Bun.file(join(home, "grade.json")).json();
     await Bun.write(artifacts[1]!, JSON.stringify({
-      passed, failed, total,
+      checks,
       evidence: { ...evidence, acquired, commands, limits: { pytestMs: 300000, outputBytesPerPipe: 16_000_000 },
         equivalence: "native macOS arm64 only; no original container, leaderboard, or OS network confinement claim" },
     }, null, 2) + "\n");

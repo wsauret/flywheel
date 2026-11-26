@@ -8,7 +8,7 @@ import {
   loadImplementTasks,
   PLAN_FILE,
   provisionTaskSandbox,
-} from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
+} from "../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { withSnapshotWorkspace } from "../../../src/orchestration/modules/development/benchmark/execution/snapshot-workspace.js";
 import { syntheticCommands, writeSyntheticTaskDir } from "./_implement-task-fixtures.js";
 

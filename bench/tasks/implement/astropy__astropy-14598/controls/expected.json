@@ -1,7 +1,9 @@
 {
   "base": {
     "statuses": {
-      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes": "FAILED",
+      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair]": "FAILED",
+      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair-text]": "FAILED",
+      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair-space-text]": "FAILED",
       "astropy/io/fits/tests/test_header.py::test_shallow_copy": "PASSED",
       "astropy/io/fits/tests/test_header.py::test_init_with_header": "PASSED",
       "astropy/io/fits/tests/test_header.py::test_init_with_dict": "PASSED",
@@ -484,7 +486,9 @@
   },
   "reference": {
     "statuses": {
-      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes": "PASSED",
+      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair]": "PASSED",
+      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair-text]": "PASSED",
+      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair-space-text]": "PASSED",
       "astropy/io/fits/tests/test_header.py::test_shallow_copy": "PASSED",
       "astropy/io/fits/tests/test_header.py::test_init_with_header": "PASSED",
       "astropy/io/fits/tests/test_header.py::test_init_with_dict": "PASSED",
@@ -944,7 +948,9 @@
   },
   "fault": {
     "statuses": {
-      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes": "FAILED",
+      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair]": "PASSED",
+      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair-text]": "PASSED",
+      "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair-space-text]": "FAILED",
       "astropy/io/fits/tests/test_header.py::test_shallow_copy": "PASSED",
       "astropy/io/fits/tests/test_header.py::test_init_with_header": "PASSED",
       "astropy/io/fits/tests/test_header.py::test_init_with_dict": "PASSED",

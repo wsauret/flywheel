@@ -6,7 +6,7 @@ import { gunzipSync } from "node:zlib";
 import type { ResearchAnswerKey } from "../../../src/orchestration/modules/development/benchmark/tasks/research-task.js";
 import { createBenchmarkCatalog, resolveReviewFixture } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
-import { PLAN_FILE } from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { PLAN_FILE } from "../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 
 const catalog = createBenchmarkCatalog(process.cwd());
 
@@ -65,6 +65,7 @@ describe("benchmark catalog", () => {
     await Bun.write(join(taskDir, "instruction.txt"), instruction);
     await Bun.write(join(taskDir, "adapter.py"), "# synthetic adapter");
     await Bun.write(join(taskDir, "environment.txt"), environment);
+    await Bun.write(join(taskDir, "checks.json"), JSON.stringify({ fix: "core" }));
     await Bun.write(join(taskDir, "task.json"), JSON.stringify(config));
     const [original] = await nativeCatalog.implementTasks();
     expect(original?.prompt).toBe(instruction);

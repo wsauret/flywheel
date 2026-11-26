@@ -25,16 +25,27 @@ postprocess_node = next(node for node in tree.body if isinstance(node, ast.Funct
 postprocess_bytes = "".join(authority.splitlines(keepends=True)[postprocess_node.lineno - 1:postprocess_node.end_lineno])
 namespace = {"List": List}
 exec(postprocess_bytes, namespace)
-assembly_node = next(node for node in ast.walk(tree) if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "test_program" for target in node.targets))
-assembly_bytes = "".join(authority.splitlines(keepends=True)[assembly_node.lineno - 1:assembly_node.end_lineno])
 solution = Path(spec["workspace"]) / "solution.py"
 raw = solution.read_text() if solution.exists() else ""
 code = namespace["postprocess"](raw)
-scope = {"p": record, "answers": {298: code}, "id": 298}
-exec(textwrap.dedent(assembly_bytes), scope)
-program = scope["test_program"]
 assert (root / "code_context.py").read_bytes() == record["code_context"].encode()
-(root / "official-program.py").write_text(program)
+case_ids = [1, 2, 3]
+
+
+def case_program(case_id):
+    """The original code context with the body of one iteration of its test_execution loop.
+    Each case runs alone, so a failing case does not hide later ones. test_string is not run:
+    a loop in the completion is not a grading failure here."""
+    return record["code_context"] + textwrap.dedent(f"""
+        code = {code!r}
+        test_input, expected_result = generate_test_case({case_id})
+        test_env = {{"test_input": test_input}}
+        exec(exec_context.replace("[insert]", code), test_env)
+        assert exec_test(test_env["result"], expected_result)
+        """)
+
+
+programs = {case_id: case_program(case_id) for case_id in case_ids}
 
 # The upstream nested worker needs fork on Darwin. TCP avoids AF_UNIX path limits
 # and retains authenticated proxies after the worker changes its directory.
@@ -51,10 +62,27 @@ def manager_factory():
     return manager
 
 
+def valid(result):
+    return (type(result) is dict and set(result) == {"passed", "result", "completion_id"}
+            and type(result["passed"]) is bool and type(result["result"]) is str
+            and type(result["completion_id"]) is int and result["completion_id"] == 298
+            and result["passed"] == (result["result"] == "passed")
+            and (result["result"] == "passed" or result["result"] == "timed out"
+                 or result["result"].startswith("failed: ")))
+
+
 mp.Manager = manager_factory
 started = time.monotonic()
+cases = []
 try:
-    result = execution.check_correctness(program, timeout=120, completion_id=298)
+    for case_id, program in programs.items():
+        case_started = time.monotonic()
+        result = execution.check_correctness(program, timeout=120, completion_id=298)
+        if not valid(result):
+            raise RuntimeError("invalid original check_correctness result")
+        cases.append({"id": f"case-{case_id}", "originalCaseId": case_id, "official": result,
+                      "seconds": time.monotonic() - case_started,
+                      "programSha256": hashlib.sha256(program.encode()).hexdigest()})
 finally:
     mp.Manager = original_factory
     for manager, process, address in managers:
@@ -69,29 +97,18 @@ for manager, process, address in managers:
         "listenerClosed": closed, "aliveAfterShutdown": process.is_alive(),
         "inheritedAuthkey": manager._authkey == mp.current_process().authkey,
     })
-if (type(result) is not dict or set(result) != {"passed", "result", "completion_id"}
-        or type(result["passed"]) is not bool or type(result["result"]) is not str
-        or type(result["completion_id"]) is not int or result["completion_id"] != 298
-        or result["passed"] != (result["result"] == "passed")
-        or not (result["result"] == "passed" or result["result"] == "timed out"
-                or result["result"].startswith("failed: "))):
-    raise RuntimeError("invalid original check_correctness result")
 output = {
-    "official": result, "seconds": time.monotonic() - started,
+    "cases": cases, "seconds": time.monotonic() - started,
     "managerLifecycle": lifecycles, "factoryRestored": mp.Manager is original_factory,
     "noActiveChildren": not mp.active_children(),
     "ownedTmpUnchanged": before == sorted(Path(os.environ["TMPDIR"]).iterdir()),
-    "startMethod": mp.get_start_method(), "timeoutSeconds": 120,
-    "originalCaseIds": [1, 2, 3],
-    "caseObservation": "IDs identify original cases, not individually observed execution. Failure can stop before later cases or test_string.",
-    "originalEntrypoints": ["test_execution", "test_string"],
+    "startMethod": mp.get_start_method(), "timeoutSecondsPerCase": 120,
+    "caseObservation": "Each original case runs in its own check_correctness call, so every case is observed. The original test_string loop-token check is not run.",
     "rawCompletionSha256": hashlib.sha256(raw.encode()).hexdigest(),
     "postprocessedCompletionSha256": hashlib.sha256(code.encode()).hexdigest(),
     "authority": {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
                   for name in ["execution.py", "test_ds1000.py", "record.json", "code_context.py"]},
-    "assemblyOriginalBytesSha256": hashlib.sha256(assembly_bytes.encode()).hexdigest(),
     "postprocessOriginalBytesSha256": hashlib.sha256(postprocess_bytes.encode()).hexdigest(),
-    "programSha256": hashlib.sha256(program.encode()).hexdigest(),
 }
 Path(spec["resultPath"]).write_text(json.dumps(output, indent=2) + "\n")
-print(json.dumps({"completion_id": 298, "passed": result["passed"]}), flush=True)
+print(json.dumps({case["id"]: case["official"]["passed"] for case in cases}), flush=True)

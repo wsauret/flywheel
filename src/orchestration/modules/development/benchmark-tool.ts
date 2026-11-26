@@ -33,6 +33,7 @@ import {
 import { formatOverheadAccounting } from "./benchmark/accounting/report-accounting.js";
 import { publishResultsPages } from "./benchmark/persona/results-pages.js";
 import { variantSeat, type VariantSpec } from "./benchmark/variant.js";
+import { describeGrade } from "./benchmark/implement-task/check-grade.js";
 import type { BackgroundWorkResult } from "../../session/control/background-work/background-work-types.js";
 import { toolCallIdentity, type RuntimeTool, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js";
 
@@ -311,7 +312,7 @@ function progressLine(event: BenchmarkEvent): string {
     case "benchmark.started": return `matrix started: ${event.pendingCells} pending cell(s), results in ${event.resultsDir}`;
     case "cell.started": return `cell started: ${cellLabel(event.cell)}`;
     case "cell.completed": {
-      const acceptance = event.acceptance ? `, acceptance ${event.acceptance.passed}/${event.acceptance.total}` : "";
+      const acceptance = event.grade ? `, ${describeGrade(event.grade)}` : "";
       const estimated = event.accounting.estimatedUsd.kind === "observed" ? `$${event.accounting.estimatedUsd.value.toFixed(4)}` : "estimated spend unavailable";
       const tokens = event.accounting.tokens.kind === "observed" ? `${event.accounting.tokens.value} tokens` : "tokens unavailable";
       return `cell completed: ${cellLabel(event.cell)} in ${Math.round(event.durationMs / 1000)}s, ${estimated}, ${tokens}${acceptance}`;

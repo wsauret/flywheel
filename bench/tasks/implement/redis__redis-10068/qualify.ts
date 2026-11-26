@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 import { executeRedisCommand } from "./adapter.js";
 
@@ -159,7 +159,8 @@ async function main(): Promise<void> {
         assert.ok(captureProof);
         const grade = JSON.parse(captured.nativeGrade);
         const reward = Number(name === "reference");
-        assert.deepEqual(captured.acceptance, { passed: reward, failed: 1 - reward, total: 1 });
+        assert.deepEqual(captured.grade, { essential: { passed: reward, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } });
+        assert.deepEqual(grade.checks, Object.fromEntries([[row.FAIL_TO_PASS[0], reward === 1], ...row.PASS_TO_PASS.map((id: string) => [id, true])]));
         const evidence = grade.evidence;
         assert.equal(evidence.originalEvalSha256, copies["original/eval.sh"]!.sha256);
         assert.equal(evidence.sourceFiles, 1357);
@@ -187,7 +188,7 @@ async function main(): Promise<void> {
         const compressed = Bun.gzipSync(bytes);
         const file = `${name}-grade.json.gz`;
         await Bun.write(join(output, file), compressed);
-        controls.push({ name, acceptance: captured.acceptance, selectedStatuses: evidence.parsed.selected_statuses,
+        controls.push({ name, grade: captured.grade, selectedStatuses: evidence.parsed.selected_statuses,
           resolution: evidence.parsed.resolution, productionCapture: captureProof, cleanup: { pids, ports, surviving: [], listeners: [] },
           evidence: { file, bytes: compressed.length, sha256: hash(compressed), decompressedBytes: bytes.length, decompressedSha256: hash(bytes) } });
       } finally { await rm(workspace, { recursive: true, force: true }); }

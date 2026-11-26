@@ -4,7 +4,7 @@ import type { AgentDefinition } from "../../../../../infra/definitions/agent-def
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import { loadStandalonePersonaRegistry } from "../../../../../workflows/agents/registry.js";
 import { benchmarkMode, RESEARCH_TASKS_CHANGED, type BenchmarkCatalog, type BenchmarkMode, type ImplementTask, type ResearchTask, type ReviewTask } from "../catalog.js";
-import { captureImplementation, provisionTaskSandbox } from "../implement-task.js";
+import { captureImplementation, provisionTaskSandbox } from "../implement-task/implement-task.js";
 import { materializeCommitSnapshot, withSnapshotWorkspace, withTrialWorkspace } from "../execution/snapshot-workspace.js";
 import { materializeReviewSandbox } from "./review-sandbox.js";
 import { buildImplementRawResults, judgeImplementPairs, renderImplementReport, scoreImplementTraps, type ImplementCandidate } from "../scoring/implement-scoring.js";
@@ -27,6 +27,7 @@ import {
   type RunStore,
 } from "../scoring/run-store.js";
 import { failedJudgeCallCount } from "../scoring/judge-attempt-reconciliation.js";
+import type { CheckGrade } from "../implement-task/check-grade.js";
 import { parseVariant, sameVariants, type VariantSpec } from "../variant.js";
 import { personaToolEntries, toolRegistryFromComposition } from "../../../../agent-runtime/tools/dispatch/tool-registry.js";
 import { runGroups } from "../campaign/matrix-runner.js";
@@ -80,7 +81,7 @@ interface BenchmarkCellId {
 export type BenchmarkEvent =
   | { kind: "benchmark.started"; resultsDir: string; pendingCells: number }
   | { kind: "cell.started"; cell: BenchmarkCellId }
-  | { kind: "cell.completed"; cell: BenchmarkCellId; accounting: BenchmarkAccounting; durationMs: number; acceptance?: { passed: number; total: number } }
+  | { kind: "cell.completed"; cell: BenchmarkCellId; accounting: BenchmarkAccounting; durationMs: number; grade?: CheckGrade }
   | { kind: "cell.failed"; cell: BenchmarkCellId; message: string }
   | { kind: "scoring.started"; phase: "traps" | "pairs" | "reviews" | "answer-keys" }
   | { kind: "scoring.skipped"; phase: "pairs"; reason: string }
@@ -397,7 +398,7 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
           cell: cellId(cell),
           accounting: result.accounting,
           durationMs: result.durationMs,
-          ...(isImplementCandidate(result) ? { acceptance: { passed: result.acceptancePassed, total: result.acceptanceTotal } } : {}),
+          ...(isImplementCandidate(result) && "grade" in result ? { grade: result.grade } : {}),
         });
       },
       async (cell, error) => {
@@ -549,15 +550,13 @@ async function runImplementCell(cell: BenchmarkCell, task: ImplementTask, contex
         message,
       );
     }
-    const { diff, diffStats, acceptance } = capture;
+    const { diff, diffStats, grade } = capture;
     await Bun.write(join(context.cellDirectory, "diff.patch"), diff);
     return {
       ...result,
       diff,
       ...diffStats,
-      acceptancePassed: acceptance.passed,
-      acceptanceFailed: acceptance.failed,
-      acceptanceTotal: acceptance.total,
+      grade,
       ...(capture.nativeGrade === undefined ? {} : { nativeGrade: capture.nativeGrade }),
     };
   } finally {

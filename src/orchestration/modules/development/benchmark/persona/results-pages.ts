@@ -4,12 +4,13 @@ import { selectStartupDirectories } from "../../../../../infra/platform/files/di
 import { getPersonaMetadataIndex } from "../../../../../workflows/agents/agent-roles.js";
 import { modelPriceTier } from "../../../../config/models/model-tiers.js";
 import { ROLE_MODEL_DEFAULTS, roleModelDefault } from "../../../../config/models/role-model-defaults.js";
-import { currentGrade, judgeLabel, loadAllCampaignRecords, type CampaignRecords, type CellLine, type RecordJudge, type ScoreLine } from "../records/benchmark-records.js";
+import { judgeLabel, loadAllCampaignRecords, type CampaignRecords, type CellLine, type RecordJudge, type ScoreLine } from "../records/benchmark-records.js";
 import { benchmarkMode, type BenchmarkCatalog, type BenchmarkMode } from "../catalog.js";
 import type { BenchmarkAccounting } from "../accounting/evidence.js";
 import { planTasks, scoringVersion } from "./persona-benchmark.js";
-import { byCodeUnit, cellStanding, median, rankBenchmarkRecords, rankingCorpus, renderRoleRanking, RULE, staleTask, type RankingCorpus, type RankingFamily, type RankingInput, type RankingTask } from "../records/ranking.js";
+import { byCodeUnit, cellStanding, currentCellGrade, median, rankBenchmarkRecords, rankingCorpus, renderRoleRanking, RULE, staleTask, type RankingCorpus, type RankingFamily, type RankingInput, type RankingTask } from "../records/ranking.js";
 import { combineBenchmarkAccounting } from "../accounting/report-accounting.js";
+import { checkQuality, type CheckGrade } from "../implement-task/check-grade.js";
 
 // The results page of each benchmarked persona (ARCH-DIRECTORIES-023): its role's ranking under every judge that
 // scored a current cell of it, every recorded cell by task and setting, per-setting totals, coverage gaps, cells to
@@ -120,31 +121,40 @@ function personaJudges(campaigns: readonly CampaignRecords[], corpus: RankingCor
   return [...counts.values()].sort((a, b) => b.cells - a.cells || byCodeUnit(judgeLabel(a.judge), judgeLabel(b.judge))).map(({ judge }) => judge);
 }
 
-/** The hidden-test grade a cell shows: its recorded grade while its task is current, otherwise the current grader's
- *  grade, then the latest regrade, then the recorded grade. Only the first two are grades that a ranking pools. */
-function implementationGrade(entry: Entry, task: RankingTask | undefined): { passed: number; total: number } | undefined {
+/** A grade a page shows: a check grade, or the pass count over every hidden test of a grader before the check tags. */
+type ShownGrade = { readonly grade: CheckGrade } | { readonly passed: number; readonly total: number };
+
+/** The grade a cell shows: the current grader's grade, otherwise the latest regrade, then the recorded grade. Only
+ *  the first is a grade that a ranking pools. */
+function implementationGrade(entry: Entry, task: RankingTask | undefined): ShownGrade | undefined {
   const { campaign, cell } = entry;
   if (cell.output.kind !== "implementation") return undefined;
-  const recorded = { passed: cell.output.acceptancePassed, total: cell.output.acceptanceTotal };
-  if (task?.contentIdentity === cell.taskIdentity) return recorded;
-  const current = task?.implementation ? currentGrade(campaign, cell, task.implementation.graderIdentity) : undefined;
-  return current ?? campaign.grades.filter((grade) => sameSeat(grade, cell)).at(-1) ?? recorded;
+  const current = task ? currentCellGrade(campaign, cell, task) : undefined;
+  if (current) return { grade: current };
+  const latest = campaign.grades.filter((grade) => sameSeat(grade, cell)).at(-1);
+  if (latest) return "grade" in latest ? { grade: latest.grade } : { passed: latest.passed, total: latest.total };
+  return "grade" in cell.output ? { grade: cell.output.grade } : { passed: cell.output.acceptancePassed, total: cell.output.acceptanceTotal };
 }
 
 function scoreOf(entry: Entry, judge: RecordJudge, version: string): ScoreLine | undefined {
   return entry.campaign.scores.find((line) => line.scoringVersion === version && sameJudge(line.judge, judge) && sameSeat(line.score, entry.cell));
 }
 
-/** One cell in the matrix. The implementer shows its grade; a reviewer or the explorer shows `judge`'s measure. */
-function cellToken(entry: Entry, task: RankingTask | undefined, corpus: RankingCorpus, mode: BenchmarkMode, judge: RecordJudge | undefined, version: string): string {
+/** One implementer cell in the matrix: its core quality checks, or its edge checks. */
+function implementationToken(entry: Entry, task: RankingTask | undefined, corpus: RankingCorpus, part: "quality" | "edge"): string {
   const stale = staleTask(entry.cell, entry.campaign, corpus) === undefined ? "" : "*";
-  if (mode === "implement") {
-    const grade = implementationGrade(entry, task);
-    if (!grade) return `T${stale}`;
-    return `${grade.passed === grade.total ? "P" : `F(${grade.passed}/${grade.total})`}${stale}`;
-  }
-  // SAFETY: a reviewer and a research page render one matrix per judge, so `judge` is set here.
-  const score = scoreOf(entry, judge!, version);
+  const shown = implementationGrade(entry, task);
+  if (!shown) return `T${stale}`;
+  if (!("grade" in shown)) return `${part === "quality" ? `(${shown.passed}/${shown.total})` : "?"}${stale}`;
+  const { essential, broken, edge } = shown.grade;
+  if (part === "edge") return `${edge.total === 0 ? "n/a" : `${edge.passed}/${edge.total}`}${stale}`;
+  return `${essential.passed}/${essential.total + broken}${stale}`;
+}
+
+/** One reviewer or explorer cell in the matrix: `judge`'s measure. */
+function cellToken(entry: Entry, task: RankingTask | undefined, corpus: RankingCorpus, judge: RecordJudge, version: string): string {
+  const stale = staleTask(entry.cell, entry.campaign, corpus) === undefined ? "" : "*";
+  const score = scoreOf(entry, judge, version);
   if (!score || score.scorer === "trap") return `?${stale}`;
   const opportunities = task?.opportunities ?? "?";
   if (score.scorer === "review") {
@@ -152,6 +162,27 @@ function cellToken(entry: Entry, task: RankingTask | undefined, corpus: RankingC
     return `${score.score.caught.length}/${opportunities}${severe > 0 ? `+${severe}` : ""}${stale}`;
   }
   return `${score.score.caught.length}/${opportunities}${score.score.trapsAsserted.length > 0 ? "t" : ""}${stale}`;
+}
+
+/** A setting's core quality and edge shares over its cells, as percentages. */
+function implementationTotals(entries: readonly Entry[], tasks: ReadonlyMap<string, RankingTask>): [string, string] {
+  const qualities: number[] = [];
+  const edge = { passed: 0, total: 0 };
+  for (const entry of entries) {
+    if (entry.cell.output.kind === "timed-out") {
+      qualities.push(0);
+      continue;
+    }
+    const shown = implementationGrade(entry, tasks.get(entry.cell.task));
+    if (!shown || !("grade" in shown)) continue;
+    qualities.push(checkQuality(shown.grade));
+    edge.passed += shown.grade.edge.passed;
+    edge.total += shown.grade.edge.total;
+  }
+  return [
+    qualities.length === 0 ? "n/a" : (100 * qualities.reduce((total, value) => total + value, 0) / qualities.length).toFixed(1),
+    edge.total === 0 ? "n/a" : (100 * edge.passed / edge.total).toFixed(1),
+  ];
 }
 
 function amount(value: BenchmarkAccounting["estimatedUsd"], format: (value: number) => string): string {
@@ -206,8 +237,7 @@ function renderResultsPage(persona: string, input: RankingInput): string {
   const corpus = input.corpora.get(persona)!;
   const role = input.roleOf(persona);
   const version = input.scoringVersion(mode);
-  const narrowSuite = corpus.outsideSuite.length > 0;
-  const catalogTasks = new Map([...corpus.tasks, ...corpus.outsideSuite].map((task) => [task.id, task]));
+  const catalogTasks = new Map(corpus.tasks.map((task) => [task.id, task]));
   const entries: Entry[] = campaigns.flatMap((campaign) => [...campaign.cells].sort((a, b) => a.repeat - b.repeat).map((cell) => ({ campaign, cell })));
   const failures = campaigns.flatMap((campaign) => campaign.failures.map((failure) => ({ campaign, failure })));
   const settings = [...new Set([...entries.map(({ cell }) => cell.variant), ...failures.map(({ failure }) => failure.variant)])].sort(byCodeUnit);
@@ -220,7 +250,7 @@ function renderResultsPage(persona: string, input: RankingInput): string {
     "",
     `This page is generated from the record files in \`bench/ab-persona/records/${persona}/\` and the benchmark catalog (ARCH-DIRECTORIES-023). Do not edit it. Regenerate it with \`${REGENERATE}\`. Findings documents interpret these results and link this page.`,
     "",
-    `Role: ${role ?? "none"}. Mode: ${mode}. Corpus: ${catalogTasks.size} tasks${narrowSuite ? `, of which ${corpus.tasks.length} are the ranking suite` : ""}. Records: ${count(campaigns.length, "campaign")}, ${count(entries.length, "cell")}, ${count(failures.length, "failed attempt")}.`,
+    `Role: ${role ?? "none"}. Mode: ${mode}. Corpus: ${catalogTasks.size} tasks. Records: ${count(campaigns.length, "campaign")}, ${count(entries.length, "cell")}, ${count(failures.length, "failed attempt")}.`,
     "",
     "## Ranking",
     "",
@@ -233,35 +263,36 @@ function renderResultsPage(persona: string, input: RankingInput): string {
   for (const ranking of rankings) out.push(`### ${ranking.judge ? `Judged by ${judgeLabel(ranking.judge)}` : "No judge"}`, "", ...renderRoleRanking(ranking));
 
   const legend = mode === "implement"
-    ? "P: every hidden test passed. F(p/t): p of t hidden tests passed. T: the cell hit its time limit, a failed attempt."
+    ? "Each setting has a core quality column and an edge column (ARCH-DIRECTORIES-024). Core quality p/t: p of the task's new core and serious checks passed, where t adds one failed check for each existing test that the change broke. Edge p/t: p of the task's t new edge checks passed; n/a: the task has no edge checks. (p/t): a grade before the check tags, p of all t hidden tests passed, with ? for its edge checks. T: the cell hit its time limit, a failed attempt."
     : mode === "reviewer"
     ? "c/d: the review caught c of d seeded defects. +n: n unsupported P1/P2 findings. ?: no score by this judge under the current scoring version."
     : "c/f: the answer stated c of f key facts. t: the answer asserted a trap. ?: no score by this judge under the current scoring version.";
   out.push(
     "## Cells by task and setting",
     "",
-    `Each cell lists every recorded repeat, oldest campaign first. ${legend} -: no recorded cell. A trailing * marks a cell whose task changed since it ran, so the ranking does not pool it${mode === "implement" ? "; it shows the latest grade that the records hold" : ""}.${narrowSuite ? " (suite) marks a task of the ranking suite." : ""}`,
+    `Each cell lists every recorded repeat, oldest campaign first. ${legend} -: no recorded cell. A trailing * marks a cell whose task changed since it ran, so the ranking does not pool it${mode === "implement" ? "; it shows the latest grade that the records hold" : ""}.`,
     "",
   );
-  const matrixJudges: readonly (RecordJudge | undefined)[] = mode === "implement" ? [undefined] : judges;
-  if (matrixJudges.length === 0) out.push("No judge has scored a current cell of this persona.", "");
-  for (const judge of matrixJudges) {
-    if (judge) out.push(`### Scored by ${judgeLabel(judge)}`, "");
-    const rows = taskIds.map((id) => {
-      const task = catalogTasks.get(id);
-      const label = `${id}${task === undefined ? " (not in the catalog)" : narrowSuite && corpus.tasks.includes(task) ? " (suite)" : ""}`;
-      return [label, ...settings.map((setting) => entries.filter(({ cell }) => cell.task === id && cell.variant === setting).map((entry) => cellToken(entry, task, corpus, mode, judge, version)).join(" ") || "-")];
-    });
-    out.push(...table(["Task", ...settings], ["---", ...settings.map(() => "---")], rows), "");
+  const seatTokens = (id: string, setting: string, token: (entry: Entry) => string) =>
+    entries.filter(({ cell }) => cell.task === id && cell.variant === setting).map(token).join(" ") || "-";
+  const taskLabel = (id: string) => `${id}${catalogTasks.has(id) ? "" : " (not in the catalog)"}`;
+  if (mode === "implement") {
+    const columns = settings.flatMap((setting) => [setting, `${setting} edge`]);
+    const rows = taskIds.map((id) => [taskLabel(id), ...settings.flatMap((setting) => (["quality", "edge"] as const).map((part) => seatTokens(id, setting, (entry) => implementationToken(entry, catalogTasks.get(id), corpus, part))))]);
+    out.push(...table(["Task", ...columns], ["---", ...columns.map(() => "---")], rows), "");
+  } else if (judges.length === 0) out.push("No judge has scored a current cell of this persona.", "");
+  else for (const judge of judges) {
+    const rows = taskIds.map((id) => [taskLabel(id), ...settings.map((setting) => seatTokens(id, setting, (entry) => cellToken(entry, catalogTasks.get(id), corpus, judge, version)))]);
+    out.push(`### Scored by ${judgeLabel(judge)}`, "", ...table(["Task", ...settings], ["---", ...settings.map(() => "---")], rows), "");
   }
 
-  const measureHeaders = mode === "implement" ? ["Full passes", "Timed out"] : judges.flatMap((judge) => [`${rule.quality} (${judgeLabel(judge)})`, `${rule.false} (${judgeLabel(judge)})`]);
+  const measureHeaders = mode === "implement" ? ["Core quality %", "Edge %", "Timed out"] : judges.flatMap((judge) => [`${rule.quality} (${judgeLabel(judge)})`, `${rule.false} (${judgeLabel(judge)})`]);
   const totals = settings.map((setting) => {
     const own = entries.filter(({ cell }) => cell.variant === setting);
     const combined = combineBenchmarkAccounting(own.map(({ cell }) => cell.accounting));
     const partlyUnpriced = own.filter(({ cell }) => cell.accounting.estimatedUsd.kind === "unavailable").length;
     const measures = mode === "implement"
-      ? [String(own.filter((entry) => { const grade = implementationGrade(entry, catalogTasks.get(entry.cell.task)); return grade !== undefined && grade.passed === grade.total; }).length), String(own.filter(({ cell }) => cell.output.kind === "timed-out").length)]
+      ? [...implementationTotals(own, catalogTasks), String(own.filter(({ cell }) => cell.output.kind === "timed-out").length)]
       : judges.flatMap((judge) => { const measured = judgeMeasures(own, catalogTasks, mode, judge, version); return [measured.quality, measured.false]; });
     return [
       setting,
@@ -277,15 +308,15 @@ function renderResultsPage(persona: string, input: RankingInput): string {
   out.push(
     "## Totals by setting",
     "",
-    `Totals cover every recorded cell, current or not. Estimated USD is the sum over the setting's cells; ">=" marks a lower bound, because some cell has no complete price or usage. Failed attempts settled with no result.${mode === "implement" ? " A full pass reads the grade that the matrix shows." : ` The ${rule.quality} share counts every scored cell; the ranking instead weighs each corpus the same.`}`,
+    `Totals cover every recorded cell, current or not. Estimated USD is the sum over the setting's cells; ">=" marks a lower bound, because some cell has no complete price or usage. Failed attempts settled with no result.${mode === "implement" ? " Core quality is the mean over the cells that show a check grade or timed out (0), and Edge is the share of edge checks passed over the cells that show a check grade; both read the grade that the matrix shows, and the ranking instead weighs each task the same." : ` The ${rule.quality} share counts every scored cell; the ranking instead weighs each corpus the same.`}`,
     "",
     ...table(["Setting", "Cells", ...measureHeaders, "Failed attempts", "Estimated USD", "Tokens", "Median latency", "Providers"], ["---", "---:", ...measureHeaders.map(() => "---:"), "---:", "---:", "---:", "---:", "---"], totals),
     "",
   );
 
-  const scorableSuite = corpus.tasks.filter(({ opportunities }) => opportunities !== undefined);
+  const scorableTasks = corpus.tasks.filter(({ opportunities }) => opportunities !== undefined);
   const gaps = settings.flatMap((setting) => {
-    const missing = scorableSuite.filter((task) => !entries.some(({ campaign, cell }) => cell.variant === setting && cell.task === task.id && staleTask(cell, campaign, corpus) === undefined));
+    const missing = scorableTasks.filter((task) => !entries.some(({ campaign, cell }) => cell.variant === setting && cell.task === task.id && staleTask(cell, campaign, corpus) === undefined));
     return missing.length === 0 ? [] : [`- ${setting}: ${missing.map(({ id }) => id).join(", ")}`];
   });
   const retry = new Map<string, { label: string; attempts: number; reasons: Set<string> }>();
@@ -300,9 +331,9 @@ function renderResultsPage(persona: string, input: RankingInput): string {
   out.push(
     "## Coverage",
     "",
-    "Suite tasks that a setting has no current cell of:",
+    "Corpus tasks that a setting has no current cell of:",
     "",
-    ...gaps.length > 0 ? gaps : ["- None: every setting has a current cell of every suite task."],
+    ...gaps.length > 0 ? gaps : ["- None: every setting has a current cell of every corpus task."],
     "",
     "Cells to retry (every attempt failed with no result; a resume runs them again):",
     "",

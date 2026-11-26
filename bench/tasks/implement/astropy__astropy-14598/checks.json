@@ -1,0 +1,5 @@
+{
+  "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair]": "core",
+  "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair-text]": "core",
+  "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes[quote-pair-space-text]": "serious"
+}

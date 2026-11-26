@@ -24,6 +24,7 @@ import {
 import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { codedRolePreference } from "../../src/orchestration/config/models/role-model-defaults.js";
 import { formatAccountingObservation } from "../../src/orchestration/modules/development/benchmark/accounting/report-accounting.js";
+import { gradedShare } from "../../src/orchestration/modules/development/benchmark/implement-task/check-grade.js";
 
 /** The judge runs on the benchmark judge's coded OpenAI preference, whatever the role's order. */
 const JUDGE_SEAT = codedRolePreference("benchmark-judge", "openai");
@@ -255,6 +256,19 @@ function average(values: readonly number[]): string {
   return (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1);
 }
 
+/** The share of edge checks passed over a candidate's check-graded runs; n/a when none has an edge check, such as
+ *  when every run was graded before the check tags. Edge checks never enter core quality (ARCH-DIRECTORIES-024). */
+function edgeShare(runs: readonly ImplementCandidate[]): string {
+  let passed = 0;
+  let total = 0;
+  for (const run of runs) {
+    if (!("grade" in run)) continue;
+    passed += run.grade.edge.passed;
+    total += run.grade.edge.total;
+  }
+  return total === 0 ? "n/a" : `${(100 * passed / total).toFixed(1)}%`;
+}
+
 function report(sources: readonly CandidateSource[], verdicts: readonly JudgeVerdict[], attempts: readonly CrossComparisonV2JudgeAttemptRecord[]): string {
   const standings = sources.map((source) => {
     const relevant = verdicts.filter((verdict) => verdict.slotA === source.label || verdict.slotB === source.label);
@@ -266,20 +280,18 @@ function report(sources: readonly CandidateSource[], verdicts: readonly JudgeVer
     };
   }).sort((a, b) => b.wins - a.wins || a.losses - b.losses || b.ties - a.ties || a.source.label.localeCompare(b.source.label));
   const rows = standings.map(({ source, wins, losses, ties }, index) => {
-    const acceptancePassed = source.runs.reduce((sum, run) => sum + run.acceptancePassed, 0);
-    const acceptanceTotal = source.runs.reduce((sum, run) => sum + run.acceptanceTotal, 0);
     const traps = ["self-corrected", "followed-blindly", "silently-lucky", "unclear"].map((outcome) =>
       source.trapScores.reduce((sum, score) => sum + score.traps.filter((trap) => trap.outcome === outcome).length, 0));
     const accounting = source.runs.map((run) => run.accounting);
-    return `| ${index + 1} | ${source.label.replaceAll("|", "\\|")} | ${source.variant.id.replaceAll("|", "\\|")} | ${acceptancePassed}/${acceptanceTotal} | ${traps.join(" | ")} | ${wins}-${losses}-${ties} | ${formatAccountingObservation(accounting, "estimatedUsd", "total")} | ${formatAccountingObservation(accounting, "billedUsd", "total")} | ${formatAccountingObservation(accounting, "tokens", "total")} | ${average(source.runs.map((run) => run.durationMs))} | ${average(source.runs.map((run) => run.linesAdded))} | ${average(source.runs.map((run) => run.linesRemoved))} | ${average(source.runs.map((run) => run.filesTouched))} |`;
+    return `| ${index + 1} | ${source.label.replaceAll("|", "\\|")} | ${source.variant.id.replaceAll("|", "\\|")} | ${average(source.runs.map((run) => 100 * gradedShare(run)))}% | ${edgeShare(source.runs)} | ${traps.join(" | ")} | ${wins}-${losses}-${ties} | ${formatAccountingObservation(accounting, "estimatedUsd", "total")} | ${formatAccountingObservation(accounting, "billedUsd", "total")} | ${formatAccountingObservation(accounting, "tokens", "total")} | ${average(source.runs.map((run) => run.durationMs))} | ${average(source.runs.map((run) => run.linesAdded))} | ${average(source.runs.map((run) => run.linesRemoved))} | ${average(source.runs.map((run) => run.filesTouched))} |`;
   });
   const judgeAccounting = attempts.map((attempt) => attempt.accounting);
   const failed = attempts.length - verdicts.length;
   return [
     "# Implementer candidate comparison",
     "",
-    "| Rank | Candidate | Variant | Acceptance | Self-corrected | Followed blindly | Silently lucky | Unclear | W-L-T | Estimated | Billed | Tokens | Latency ms | Lines + | Lines - | Files |",
-    "|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    "| Rank | Candidate | Variant | Core quality | Edge | Self-corrected | Followed blindly | Silently lucky | Unclear | W-L-T | Estimated | Billed | Tokens | Latency ms | Lines + | Lines - | Files |",
+    "|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ...rows,
     "",
     `Judge attempts: ${attempts.length}; failed: ${failed}; estimated equivalent: ${formatAccountingObservation(judgeAccounting, "estimatedUsd", "total")}; billed: ${formatAccountingObservation(judgeAccounting, "billedUsd", "total")}; tokens: ${formatAccountingObservation(judgeAccounting, "tokens", "total")}.`,

@@ -14,6 +14,17 @@ function renderError(template: string): TemplateError {
   throw new Error("Expected render to throw");
 }
 
+// HTML defines the uppercase forms too, except for apos.
+const NAMED_ENTITIES: Readonly<Record<string, string>> = { amp: "&", AMP: "&", lt: "<", LT: "<", gt: ">", GT: ">", quot: "\"", QUOT: "\"", apos: "'" };
+
+/** The character that one HTML entity, such as `&lt;`, `&#60;`, or `&#x3c;`, stands for. */
+function decodeEntity(entity: string): string | undefined {
+  const body = entity.slice(1, -1);
+  if (/^#x/i.test(body)) return String.fromCodePoint(Number.parseInt(body.slice(2), 16));
+  if (body.startsWith("#")) return String.fromCodePoint(Number.parseInt(body.slice(1), 10));
+  return NAMED_ENTITIES[body];
+}
+
 describe("public error contract", () => {
   test("preserves the exact message, name, and source position", () => {
     const error = new TemplateError("Unexpected closing tag: if", 4);
@@ -72,7 +83,11 @@ describe("variables", () => {
   });
 
   test("escapes all supported HTML characters", () => {
-    expect(render("{{value}}", { value: `&<>"'` })).toBe("&amp;&lt;&gt;&quot;&#39;");
+    // Any correct entity spelling counts: named, decimal, or hexadecimal.
+    const escaped = render("{{value}}", { value: `&<>"'` });
+    const entities = escaped.match(/&(?:#[0-9]+|#x[0-9a-f]+|[a-z]+);/gi) ?? [];
+    expect(entities.join("")).toBe(escaped);
+    expect(entities.map(decodeEntity)).toEqual(["&", "<", ">", "\"", "'"]);
   });
 
   test("triple braces render raw text", () => {

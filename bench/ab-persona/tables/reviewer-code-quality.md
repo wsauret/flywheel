@@ -195,7 +195,7 @@ Totals cover every recorded cell, current or not. Estimated USD is the sum over 
 
 ## Coverage
 
-Suite tasks that a setting has no current cell of:
+Corpus tasks that a setting has no current cell of:
 
 - deepseek-v4.1-flash-1017@high: review-d063757f80a8, review-d3b56fe648a6, review-d9cfc3be3403, review-e900aa45096b, review-ff32ee67d96a, sync-scheduler
 - deepseek-v4.1-flash-1017@max: review-8d7e8ba24bc2, review-9224c8d4b7f1, review-959e50f39502, review-aee2f3110fcb, review-b7003657d8b2, review-c6edb985e72a, review-ca61ba986717, review-d063757f80a8, review-d3b56fe648a6, review-d9cfc3be3403, review-e900aa45096b, review-ff32ee67d96a, sync-scheduler

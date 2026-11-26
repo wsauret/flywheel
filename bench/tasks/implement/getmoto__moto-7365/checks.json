@@ -1,0 +1,3 @@
+{
+  "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float": "core"
+}

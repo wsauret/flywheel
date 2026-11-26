@@ -143,7 +143,7 @@ def score(task, workspace):
                      flags=__future__.annotations.compiler_flag), namespace)
     row = json.loads((task / "grading-config.json").read_text())
     selected = {key: json.loads(row[key]) for key in ("FAIL_TO_PASS", "PASS_TO_PASS")}
-    assert [len(selected[key]) for key in selected] == [1, 175]
+    assert [len(selected[key]) for key in selected] == [3, 175]
     spec = SimpleNamespace(repo=row["repo"], version=row["version"])
     assert namespace["MAP_REPO_TO_PARSER_PY"][row["repo"]] is namespace["parse_log_pytest_v2"]
     runtime = workspace / ".bench-home"
@@ -162,17 +162,15 @@ def score(task, workspace):
     }
     grading_identities = json.loads((runtime / "grading-identities.json").read_text())
     assert grading_identities == {name: digest(workspace / name) for name in grading_identities}
-    f2p = len(report["FAIL_TO_PASS"]["success"])
-    p2p = len(report["PASS_TO_PASS"]["success"])
     grade = {
         "original_parser_statuses": statuses, "selected_ids": selected, "grade": report,
         "f2p": namespace["compute_fail_to_pass"](report),
         "p2p": namespace["compute_pass_to_pass"](report),
         "resolution": namespace["get_resolution_status"](report),
-        "passed": f2p + p2p,
-        "failed": len(report["FAIL_TO_PASS"]["failure"]) + len(report["PASS_TO_PASS"]["failure"]),
-        "total": sum(len(report[key][outcome]) for key in ("FAIL_TO_PASS", "PASS_TO_PASS")
-                     for outcome in ("success", "failure")),
+        # Each selected test is one check with the original outcome. A run that reported no selected test, such as
+        # after a failed candidate build, ran no check.
+        "checks": {test: outcome == "success" for key in selected for outcome in ("success", "failure")
+                   for test in report[key][outcome]} if len(missing) < len(identities) else {},
         "missing": missing, "api": observations, "restoration": restoration,
         "gradingOwnerIdentities": grading_identities,
         "snapshot": (

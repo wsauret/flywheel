@@ -124,9 +124,9 @@ async function main(): Promise<void> {
     await execute("grading-identities", [runtime, "-I", helper, "grading-snapshot", task, workspace], evaluationDeadline, [0]);
     await execute("pytest", [python, "-I", helper, "pytest", task, workspace, "-rA", "tests/test_utils.py"], evaluationDeadline);
     await execute("score", [runtime, "-I", helper, "score", task, workspace], performance.now() + 120000, [0]);
-    const { passed, failed, total, ...evidence } = await Bun.file(join(home, "grade.json")).json();
+    const { checks, ...evidence } = await Bun.file(join(home, "grade.json")).json();
     await Bun.write(artifacts[1]!, JSON.stringify({
-      passed, failed, total,
+      checks,
       evidence: { ...evidence, acquired, commands,
         limits: { evaluationMs: 1800000, setupMs: 600000, scoringMs: 120000, adapterMs: 2520000, outputBytesPerPipe: 16_000_000 },
         equivalence: "native macOS arm64 criterion only; no original installation, container, historical deadline, Python 3.8, Linux, TLS, paid-proxy or OS network confinement equivalence" },

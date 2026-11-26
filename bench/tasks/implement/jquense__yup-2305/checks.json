@@ -1,0 +1,5 @@
+{
+  "test/array.ts > Array types casting should pass array options to descendants when casting": "core",
+  "test/array.ts > Array types should pass deeply resolved path to descendants": "serious",
+  "test/tuple.ts > Array types casting should pass array options to descendants when casting": "core"
+}

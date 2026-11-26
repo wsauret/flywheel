@@ -11,12 +11,12 @@ import {
   loadImplementTasks,
   PLAN_FILE,
   provisionTaskSandbox,
-} from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
+} from "../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 import { retainImplementStore } from "../../../src/orchestration/modules/development/benchmark/execution/implement-evidence.js";
 import { MINIMAL_IMPLEMENTATION_PLAN } from "../../helpers/implementation-plan.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
-import { syntheticCommands, writeSyntheticTaskDir } from "./_implement-task-fixtures.js";
+import { junitReport, SYNTHETIC_CHECK, syntheticCommands, writeSyntheticTaskDir } from "./_implement-task-fixtures.js";
 
 const catalog = createBenchmarkCatalog(process.cwd());
 const temporaryDirectory = temporaryDirectories();
@@ -51,6 +51,7 @@ describe("shared implementation task loading", () => {
     await Bun.write(join(taskDir, "plan.json"), JSON.stringify(PLAN));
     await Bun.write(join(taskDir, "manifest.json"), JSON.stringify({ traps: [], judgment: [] }));
     await Bun.write(join(taskDir, "pre-fix.patch"), "diff --git a/src/value.ts b/src/value.ts\n");
+    await Bun.write(join(taskDir, "checks.json"), JSON.stringify({ "acceptance/value.test.ts > works": "core" }));
     const [task] = await loadImplementTasks(join(taskDir, ".."));
     if (task?.kind === "native" || !task) throw new Error("expected plan task");
     expect(task.timeoutMs).toBe(45 * 60_000);
@@ -121,6 +122,7 @@ describe("shared implementation task loading", () => {
       ["plan.json", JSON.stringify(Object.fromEntries(Object.entries(PLAN).toReversed()))],
       ["manifest.json", JSON.stringify({ traps: [{ id: "trap", title: "Trap", catchCriteria: "Catch it" }], judgment: [] })],
       ["task.json", JSON.stringify({ id: "synthetic", stratum: "changed" })],
+      ["checks.json", JSON.stringify({ [SYNTHETIC_CHECK]: "serious" })],
     ] as const;
 
     try {
@@ -130,8 +132,8 @@ describe("shared implementation task loading", () => {
         await Bun.write(path, changed);
         const current = await identity();
         expect(current.content).not.toBe(original.content);
-        // Only the hidden acceptance tests grade; every other input is what the candidate answers.
-        const grading = relativePath.startsWith("acceptance/");
+        // Only the hidden acceptance tests and their tags grade; every other input is what the candidate answers.
+        const grading = relativePath.startsWith("acceptance/") || relativePath === "checks.json";
         expect([current.candidate === original.candidate, current.grader === original.grader], relativePath).toEqual([grading, !grading]);
         await Bun.write(path, before);
       }
@@ -228,10 +230,11 @@ describe("implementation sandbox", () => {
       kind: "native", id: "synthetic", stratum: "small", family: "python", split: "development",
       instruction: "instruction.txt", native: { command: ["python3", "adapter.py"], timeoutMs: 3_600_000 },
     }));
+    await Bun.write(join(taskDir, "checks.json"), JSON.stringify({ "original.test_bug": "core", "original.test_rare": "edge" }));
     const [task] = await loadImplementTasks(tasksDir);
     if (task?.kind !== "native") throw new Error("expected native task");
     let candidateWorkspace = "";
-    let report = '{"passed":0,"failed":1,"total":1,"evidence":{"original.test_bug":"FAIL","grade":false}}\n';
+    let report = '{"checks":{"original.test_bug":false,"original.test_rare":true,"original.test_old":false,"original.test_kept":true},"evidence":{"original.test_bug":"FAIL","grade":false}}\n';
     let exitCode = 0;
     let timedOut = false;
     let prepareFails = false;
@@ -281,19 +284,20 @@ describe("implementation sandbox", () => {
       expect(grade.diff).toBe(patch);
       expect(grade.diffStats).toEqual({ linesAdded: 1, linesRemoved: 1, filesTouched: 1 });
       expect(await Bun.file(capturedPatchPath).exists()).toBe(false);
-      expect(grade.acceptance).toEqual({ passed: 0, failed: 1, total: 1 });
+      // The tagged fix failed, its edge check passed, and one existing test broke; a passing existing test earns nothing.
+      expect(grade.grade).toEqual({ essential: { passed: 0, total: 1 }, broken: 1, edge: { passed: 1, total: 1 } });
       expect(grade.nativeGrade).toBe(report);
       expect(recorded.find(command => command[1] === "diff")?.includes(":(exclude,glob)acceptance")).toBe(false);
       for (const invalid of [
-        "", "not JSON", '{"passed":1,"failed":0,"total":2,"evidence":false}',
-        '{"passed":0,"failed":0,"total":0,"evidence":null}',
-        '{"passed":1,"failed":0,"total":1}',
-        '{"passed":1,"failed":0,"total":1,"evidence":true,"extra":1}',
+        "", "not JSON", '{"passed":1,"failed":0,"total":1,"evidence":true}',
+        '{"checks":{"original.test_bug":"pass"},"evidence":null}',
+        '{"checks":{"original.test_bug":true}}',
+        '{"checks":{"original.test_bug":true},"evidence":true,"extra":1}',
       ]) {
         report = invalid;
         await expect(captureImplementation(task, sandbox, runner)).rejects.toThrow();
       }
-      report = '{"passed":1,"failed":0,"total":1,"evidence":true}';
+      report = '{"checks":{"original.test_bug":true},"evidence":true}';
       const evidence = { directory: join(tasksDir, "results", "evidence", "model", "synthetic", "0", "stamp"), resultsDir: join(tasksDir, "results") };
       exitCode = 1;
       const failureFile = join("evidence", "model", "synthetic", "0", "stamp", "failure-native-grade.txt");
@@ -385,28 +389,26 @@ describe("implementation sandbox", () => {
     }
   });
 
-  it("reads acceptance counts from the bun summary lines, not from test titles", async () => {
+  it("grades each hidden acceptance test by its JUnit name against the task's tags, and refuses an untagged test", async () => {
     const tasksDir = await writeSyntheticTaskDir();
+    await Bun.write(join(tasksDir, "synthetic", "checks.json"), JSON.stringify({ [SYNTHETIC_CHECK]: "core", "acceptance/value.test.ts > keeps zero": "serious", "acceptance/value.test.ts > rare input": "edge" }));
     const [task] = await loadImplementTasks(tasksDir);
     if (!task) throw new Error("expected one synthetic task");
     const sandbox = await provisionTaskSandbox(process.cwd(), task, fakeCommandRunner);
-    const stderr = [
-      "acceptance/value.test.ts:",
-      "(pass) value is two",
-      "(pass) 3 passes are recorded",
-      "(fail) HTTP status 504 fails",
-      "",
-      " 2 pass",
-      " 1 fail",
-      " 3 expect() calls",
-      "Ran 3 tests across 1 file. [12.00ms]",
-      "",
-    ].join("\n");
-    const runner: OwnedCommandRunner = async (command, options) => command[0] === "bun"
-      ? { exitCode: 1, timedOut: false, stdoutBytes: new Uint8Array(), stdout: "", stderr }
-      : fakeCommandRunner(command, options);
+    let report: string | undefined = junitReport([["value is two", true], ["keeps zero", false], ["rare input", true]]);
+    const runner: OwnedCommandRunner = async (command, options) => {
+      const outfile = command.find((argument) => argument.startsWith("--reporter-outfile="));
+      if (!outfile) return fakeCommandRunner(command, options);
+      if (report !== undefined) await Bun.write(outfile.slice("--reporter-outfile=".length), report);
+      return { exitCode: 1, timedOut: false, stdoutBytes: new Uint8Array(), stdout: "", stderr: "" };
+    };
     try {
-      expect((await captureImplementation(task, sandbox, runner)).acceptance).toEqual({ passed: 2, failed: 1, total: 3 });
+      expect((await captureImplementation(task, sandbox, runner)).grade).toEqual({ essential: { passed: 1, total: 2 }, broken: 0, edge: { passed: 1, total: 1 } });
+      // A run that wrote no report, such as one whose files did not load, fails every check.
+      report = undefined;
+      expect((await captureImplementation(task, sandbox, runner)).grade).toEqual({ essential: { passed: 0, total: 2 }, broken: 0, edge: { passed: 0, total: 1 } });
+      report = junitReport([["value is two", true], ["an untagged test", true]]);
+      await expect(captureImplementation(task, sandbox, runner)).rejects.toThrow("synthetic/checks.json does not tag the acceptance tests acceptance/value.test.ts > an untagged test");
     } finally {
       await rm(sandbox, { recursive: true, force: true });
       await rm(tasksDir, { recursive: true, force: true });
@@ -460,7 +462,7 @@ describe("implementation sandbox", () => {
       ]);
       expect(captured.diff).not.toContain(PLAN_FILE);
       expect(captured.diffStats).toEqual({ linesAdded: 1, linesRemoved: 1, filesTouched: 1 });
-      expect(captured.acceptance).toEqual({ passed: 1, failed: 0, total: 1 });
+      expect(captured.grade).toEqual({ essential: { passed: 1, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } });
       expect(await Bun.file(join(sandbox, "acceptance", "candidate.test.ts")).exists()).toBe(false);
       expect(await Bun.file(join(sandbox, "acceptance", "value.test.ts")).exists()).toBe(true);
       expect(await stat(join(sandbox, ".flywheel")).then(() => true, () => false)).toBe(true);

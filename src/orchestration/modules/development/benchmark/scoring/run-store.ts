@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { Schema } from "effect";
 import { BENCHMARK_MODES } from "../catalog.js";
 import type { ImplementCandidate } from "./implement-scoring.js";
+import { CheckGradeSchema, LegacyAcceptanceFields } from "../implement-task/check-grade.js";
 import { createJsonLinesLedger, readJsonFile } from "../campaign/json-lines.js";
 import { realDirectoryUnder } from "../campaign/paths.js";
 import { BenchmarkAccountingSchema, BenchmarkCampaignIdentitySchema } from "../accounting/evidence.js";
@@ -71,18 +72,20 @@ const ReviewRunRecordSchema = Schema.Struct({
   mode: Schema.Literal("reviewer"),
   reviewText: Schema.String,
 });
-const ImplementRunRecordSchema = Schema.Struct({
+const implementRunFields = {
   ...agentRunBaseFields,
   mode: Schema.Literal("implement"),
   diff: Schema.String,
   linesAdded: Schema.Int,
   linesRemoved: Schema.Int,
   filesTouched: Schema.Int,
-  acceptancePassed: Schema.Int,
-  acceptanceFailed: Schema.Int,
-  acceptanceTotal: Schema.Int,
   nativeGrade: Schema.optionalKey(Schema.String),
-});
+};
+const ImplementRunRecordSchema = Schema.Union([
+  Schema.Struct({ ...implementRunFields, grade: CheckGradeSchema }),
+  // A run graded before 2026-11-26 holds pass and fail counts instead (LegacyAcceptanceFields): permanent history.
+  Schema.Struct({ ...implementRunFields, ...LegacyAcceptanceFields }),
+]);
 const AgentRunRecordSchema = Schema.Union([ResearchRunRecordSchema, ReviewRunRecordSchema, ImplementRunRecordSchema]);
 
 /** Why a cell settled without a run record. */

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "role": "development",
-  "contentIdentity": "23ecfbd697f02ac03c98ac1ea1aebb28ff9f9b7b067449abee32c95dfeeb24fa",
+  "contentIdentity": "7ce49642d37530e35eb6834b9fbe2b9ed9bc8b1385926929c15585e1059b33c5",
   "testIds": [
     "render.test.ts > literal templates > renders plain text unchanged",
     "render.test.ts > literal templates > renders an empty template",

@@ -152,9 +152,11 @@ def score(task, workspace):
         "original_report": report, "original_resolution": resolution,
         "expected": {key: row[key] for key in ("FAIL_TO_PASS", "PASS_TO_PASS")},
         "statuses": statuses, "missing": missing, "errors": errors,
-        "passed": sum(statuses.get(key) in ["PASSED", "XFAIL"] for key in expected),
-        "failed": sum(statuses.get(key) not in ["PASSED", "XFAIL"] for key in expected),
-        "total": len(expected), "resolved": resolution == namespace["ResolvedStatus"].FULL.value,
+        # Each selected test is one check with the original outcome. A run that reported no selected test, such as one
+        # that timed out, ran no check.
+        "checks": {test: outcome == "success" for key in ("FAIL_TO_PASS", "PASS_TO_PASS") for outcome in ("success", "failure")
+                   for test in report[key][outcome]} if len(missing) < len(expected) else {},
+        "resolved": resolution == namespace["ResolvedStatus"].FULL.value,
         "classification": "tests-timeout" if command["timedOut"] else
                           "missing-or-runtime-error" if missing or errors else
                           "passed" if resolution == namespace["ResolvedStatus"].FULL.value else "semantic-failure",

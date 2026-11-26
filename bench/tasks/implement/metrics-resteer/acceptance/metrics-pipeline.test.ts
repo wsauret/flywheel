@@ -24,7 +24,7 @@ function sample(metric: string, timestampMs: number, value: number): Sample {
 }
 
 describe("keyed store", () => {
-  test("retains every rollup for a metric in append order and keeps metric keys independent", () => {
+  test("retains every rollup for a metric and keeps metric keys independent", () => {
     const store = new MetricsStore();
     const first = rollup("latency", 100, 11);
     const second = rollup("latency", 200, 22);
@@ -33,7 +33,9 @@ describe("keyed store", () => {
     store.append(second);
     store.append(requests);
 
-    expect(store.read("latency")).toEqual([first, second]);
+    // The plan states no order for one key's rollups, so membership alone is checked.
+    expect(store.read("latency")).toHaveLength(2);
+    expect(store.read("latency")).toEqual(expect.arrayContaining([first, second]));
     expect(store.read("requests")).toEqual([requests]);
     expect(store.read("missing")).toEqual([]);
   });
@@ -57,10 +59,12 @@ describe("collector integration", () => {
     collector.add(sample("latency", 50, 12));
     collector.add({ metric: "latency", timestampMs: 60, value: 2, unit: "count" });
     collector.drainWindow(100);
-    expect(store.read("latency")).toEqual([
+    // The plan states no order for the unit groups of one drain, so membership alone is checked.
+    expect(store.read("latency")).toHaveLength(2);
+    expect(store.read("latency")).toEqual(expect.arrayContaining([
       rollup("latency", 100, 12),
       { ...rollup("latency", 100, 2, "count"), windowStartMs: 0 },
-    ]);
+    ]));
   });
 
   test("uses (windowStartMs, windowEndMs], retains future samples, and publishes each sample once", () => {

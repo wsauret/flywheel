@@ -178,7 +178,15 @@ async function main(): Promise<void> {
     const parsedPath = join(home, "parsed.json");
     await execute("score", [python, join(task, "grade.py"), task, scorerLogPath, resolve(artifacts[0]!), parsedPath], performance.now() + 60000);
     const parsed = await Bun.file(parsedPath).json();
-    const reward = Number(parsed.report["redis__redis-10068"].resolved);
+    // Each selected test is one check with the original scorer's outcome. An evaluation the original scorer found no
+    // results in ran no test, so it reports no check.
+    const checks: Record<string, boolean> = {};
+    if (parsed.found) {
+      for (const group of [parsed.tests.FAIL_TO_PASS, parsed.tests.PASS_TO_PASS] as { success: string[]; failure: string[] }[]) {
+        for (const id of group.success) checks[id] = true;
+        for (const id of group.failure) checks[id] = false;
+      }
+    }
     const logBytes = await Bun.file(logPath).bytes();
     const completeEvaluationLog = { bytes: logBytes.length, sha256: hash(logBytes) };
     const completeLog = new TextDecoder().decode(logBytes);
@@ -197,7 +205,7 @@ async function main(): Promise<void> {
       }
     } catch (error) { binaryDiagnosticError = error instanceof Error ? error.name : "diagnostic unavailable"; }
     await Bun.write(artifacts[1]!, JSON.stringify({
-      passed: reward, failed: 1 - reward, total: 1,
+      checks,
       evidence: { acquired, commands, parsed, evaluationExit: evaluation.exitCode, sourceFiles: manifest.files.length,
         originalEvalSha256: hash(new TextEncoder().encode(original)), adaptedEvalSha256: hash(new TextEncoder().encode(adapted)),
         replacements: applied, mappedBase: base, binaryVersion, binaryDiagnosticError,

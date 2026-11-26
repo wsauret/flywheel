@@ -15,7 +15,9 @@ interface PublicInput {
 }
 
 /** Prepare the original candidate context or grade a captured patch in a fresh workspace.
- * Infrastructure failures throw; original pytest status and reward jointly own acceptance. */
+ * Infrastructure failures throw. The original pytest run is kept as evidence; grade_positions.py, loaded into that
+ * same run as its conftest.py, owns the checks: one core check per distinct original position and the edge
+ * size-limit check. */
 async function main(): Promise<void> {
   const [action, taskArg, workspaceArg, ...artifacts] = process.argv.slice(2);
   if (!taskArg || !workspaceArg || !(
@@ -139,6 +141,12 @@ async function main(): Promise<void> {
     const test = replace("test_outputs.py", await readFile(join(task, "original/tests/test_outputs.py"), "utf8"),
       '"/app/re.json"', JSON.stringify(join(workspace, "re.json")));
     await Bun.write(join(tests, "test_outputs.py"), test);
+    // The original tests stop each game at its first failed position, so each position is graded again on its own.
+    // The grader runs as a plugin of the one original pytest run, under its whole budget, and memoizes the move
+    // generator, so no position is computed twice.
+    const positionResult = join(logs, "positions.json");
+    await cp(join(task, "grade_positions.py"), join(tests, "conftest.py"));
+    await Bun.write(join(tests, "positions-config.json"), JSON.stringify({ solution: join(workspace, "re.json"), result: positionResult }));
     const originalShell = await readFile(join(task, "original/tests/test.sh"), "utf8");
     const marker = "uvx \\\n  -p 3.13 \\\n  -w pytest==8.4.1 \\\n  -w chess==1.11.2 \\\n  -w pytest-json-ctrf==0.3.5 \\\n  pytest";
     const prefixEnd = originalShell.indexOf(marker);
@@ -151,8 +159,8 @@ async function main(): Promise<void> {
     shell = replace("test.sh", shell, "/tests/test_outputs.py", $.escape(join(tests, "test_outputs.py")));
     await Bun.write(join(tests, "native-test.sh"), shell);
     const grader = await execute("verifier", ["/bin/bash", "-x", join(tests, "native-test.sh")], 3600000, false);
-    const checks = [...grader.stderr.matchAll(/^\+ '\[' (\d+) -eq 0 '\]'$/gm)];
-    const pytestExitCode = checks.length === 1 ? Number(checks[0]![1]) : null;
+    const exitTests = [...grader.stderr.matchAll(/^\+ '\[' (\d+) -eq 0 '\]'$/gm)];
+    const pytestExitCode = exitTests.length === 1 ? Number(exitTests[0]![1]) : null;
     const reward = await Bun.file(join(logs, "reward.txt")).exists()
       ? (await Bun.file(join(logs, "reward.txt")).text()).trim() : null;
     if (grader.timedOut || grader.exitCode !== 0 || pytestExitCode === null ||
@@ -173,11 +181,17 @@ async function main(): Promise<void> {
       "check.py": Bun.CryptoHasher.hash("sha256", await Bun.file(join(workspace, "check.py")).arrayBuffer(), "hex"),
       "test_outputs.py": Bun.CryptoHasher.hash("sha256", await Bun.file(join(tests, "test_outputs.py")).arrayBuffer(), "hex"),
       "native-test.sh": Bun.CryptoHasher.hash("sha256", await Bun.file(join(tests, "native-test.sh")).arrayBuffer(), "hex"),
+      "conftest.py": Bun.CryptoHasher.hash("sha256", await Bun.file(join(tests, "conftest.py")).arrayBuffer(), "hex"),
     };
-    const passed = Number(pytestExitCode === 0 && reward === "1");
+    if (!await Bun.file(positionResult).exists()) throw new Error("Chess position grader produced no report");
+    const { checks, ...independent }: { checks: Record<string, boolean> } = await Bun.file(positionResult).json();
+    if (!checks || typeof checks !== "object" || !Object.values(checks).every(value => typeof value === "boolean")) {
+      throw new Error("Chess position grader produced an invalid report");
+    }
     await Bun.write(artifacts[1]!, JSON.stringify({
-      passed, failed: 1 - passed, total: 1,
-      evidence: { criterion: "original pytest status and reward.txt", pytestExitCode, reward,
+      checks,
+      evidence: { criterion: "each distinct original position, and the original size limit, graded on its own",
+        independent, pytestExitCode, reward,
         statuses, positions, groups, ctrf, restored, removed, replacements, acquired, commands,
         limits: { verifierMs: 3600000, adapterMs: 3900000 },
         equivalence: "native macOS arm64 only; no original environment or cross-platform equivalence claim" },

@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 /** Exercise public provision, original grading, capture and authority restoration.
@@ -98,7 +98,8 @@ async function main(): Promise<void> {
           assert.equal(evidence.original_resolution, "RESOLVED_NO");
           assert.equal(evidence.classification, "missing-or-runtime-error");
           assert.equal(evidence.missing.length, 2);
-          assert.deepEqual(captured.acceptance, { passed: 0, failed: 2, total: 2 });
+          assert.deepEqual(captured.grade, { essential: { passed: 0, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } });
+          assert.deepEqual(grade.checks, {});
           assert.match(evidence.commands.pytest.stdout + evidence.commands.pytest.stderr, /SyntaxError/);
         } else {
           assert.equal(evidence.candidateImports.moto, resolve(evidence.snapshot.prefix, "../../moto/__init__.py"));
@@ -110,7 +111,8 @@ async function main(): Promise<void> {
           assert.equal(evidence.statuses[row.PASS_TO_PASS[0]], "PASSED");
           assert.equal(evidence.statuses[row.FAIL_TO_PASS[0]], name === "reference" ? "PASSED" : "FAILED");
           assert.equal(evidence.original_resolution, name === "reference" ? "RESOLVED_FULL" : "RESOLVED_NO");
-          assert.deepEqual(captured.acceptance, { passed: name === "reference" ? 2 : 1, failed: name === "reference" ? 0 : 1, total: 2 });
+          assert.deepEqual(captured.grade, { essential: { passed: name === "reference" ? 1 : 0, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } });
+          assert.deepEqual(grade.checks, { [row.FAIL_TO_PASS[0]]: name === "reference", [row.PASS_TO_PASS[0]]: true });
           if (name !== "reference") {
             assert.match(evidence.commands.pytest.stdout, /11\.700000000000003/);
             assert.equal(evidence.classification, "semantic-failure");
@@ -133,7 +135,7 @@ async function main(): Promise<void> {
         await Bun.write(join(output, file), compressed);
         controls.push({
           name, preparedMs, captureAndGradeMs: Math.round(performance.now() - started) - preparedMs,
-          acceptance: captured.acceptance, resolution: evidence.original_resolution,
+          grade: captured.grade, resolution: evidence.original_resolution,
           classification: evidence.classification, statuses: evidence.statuses, missing: evidence.missing, errors: evidence.errors,
           pytestMs: evidence.commands.pytest.durationMs, sourceIdentity: evidence.sourceIdentity,
           acquired: evidence.acquired, snapshot: evidence.snapshot,
@@ -150,7 +152,7 @@ async function main(): Promise<void> {
       modelCalls: 0, semanticFault: "The original base is the decimal-conversion fault; no invented mutant.",
       historicalModelAccounting: "calibration.json contains historical runs only",
     }, null, 2) + "\n");
-    console.log(JSON.stringify({ controls: controls.map(row => ({ name: row.name, ...row.acceptance })), tmpClean: true }));
+    console.log(JSON.stringify({ controls: controls.map(row => ({ name: row.name, ...row.grade })), tmpClean: true }));
   } finally {
     try {
       const closure = await scope.close();

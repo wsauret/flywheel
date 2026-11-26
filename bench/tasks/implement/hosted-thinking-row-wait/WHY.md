@@ -8,9 +8,11 @@ Hidden tests are the fix's own `agent-stream.test.ts`, rewritten to import from 
 
 | Case | Visible checks | Hidden acceptance |
 |---|---|---|
-| Base (parent tree) | pass (host-gate, engine-text) | 1/7 |
+| Base (parent tree) | pass (host-gate, engine-text) | 0/7 |
 | Reference (`qualification/reference.patch`, the fix's `src` diff) | pass | 7/7 |
 | Trap (`qualification/trap.patch`, the plan followed literally) | pass | 0/7 |
+
+The adapter deadline tests use a 600 ms reasoning deadline, so each gap between chunks has a margin of at least 200 ms on the real clock. With the earlier 30 ms deadline, the base passed the thinking-stall test only because the 30 ms stall happened before its own row wait failed.
 
 ## Pilot (2026-11-13, Personal profile, subscription routes, $0 billed)
 

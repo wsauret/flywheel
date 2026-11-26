@@ -61,6 +61,7 @@ describe("canonical report accounting", () => {
       acceptanceDir: "/acceptance",
       manifest: { traps: [], judgment: [] },
       contentIdentity: "task-identity", candidateIdentity: "task-candidate", graderIdentity: "task-grader",
+      checks: new Map([["fix", "core"]]),
     };
     const candidate = (repeat: number, estimatedUsd: number): ImplementCandidate => ({
       variant: "model@low",
@@ -73,9 +74,7 @@ describe("canonical report accounting", () => {
       linesAdded: 1,
       linesRemoved: 0,
       filesTouched: 1,
-      acceptancePassed: 1,
-      acceptanceFailed: 0,
-      acceptanceTotal: 1,
+      grade: { essential: { passed: 1, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } },
     });
     const report = renderPersonaImplementReport(
       { persona: "implementer", variants: [{ id: "model@low", model: "model", effort: "low" }] },
@@ -84,6 +83,7 @@ describe("canonical report accounting", () => {
         taskDir: "/native", instruction: "Original bug", family: "python", split: "development",
         native: { command: ["python3", "/native/adapter.py"], timeoutMs: 1000 },
         manifest: { traps: [], judgment: [] }, contentIdentity: "native-identity", candidateIdentity: "native-candidate", graderIdentity: "native-grader",
+        checks: new Map([["fix", "core"]]),
       }],
       [candidate(0, 1), candidate(1, 3)],
       [],
@@ -98,9 +98,8 @@ describe("canonical report accounting", () => {
     );
     expect(report.split("\n").find((line) => line.startsWith("| task (small)"))).toContain("$2.0000");
     expect(report.split("\n").find((line) => line.startsWith("| All tasks"))).toContain("$4.0000");
-    expect(report).toContain("Plan acceptance");
-    expect(report).toContain("Native acceptance");
-    expect(report).toContain("original grader counts");
-    expect(report).toContain("unsuccessful attempts, not failed test outcomes");
+    expect(report).toContain("Plan checks are the hidden Bun tests");
+    expect(report).toContain("Native checks are the original grader's per-test results");
+    expect(report).toContain("unsuccessful attempts, not failed checks");
   });
 });

@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
+import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 /** Exercise original controls through the actual catalog, provisioner, and patch capturer.
@@ -73,7 +73,19 @@ async function main(): Promise<void> {
         assert.deepEqual(grade.evidence.replacements.map(({ file, original, occurrences }: typeof replacements[number]) =>
           ({ file, original, occurrences })), replacements.map(({ file, original, occurrences }) => ({ file, original, occurrences })));
         await Bun.write(join(output, `${name}-grade.json`), captured.nativeGrade!);
-        assert.deepEqual(captured.acceptance, { passed: Number(name === "reference"), failed: Number(name !== "reference"), total: 1 });
+        const tags: Record<string, string> = await Bun.file(join(task.taskDir, "checks.json")).json();
+        const positionCount = Object.values(tags).filter(tag => tag === "core").length;
+        if (name === "reference") {
+          assert.deepEqual(captured.grade, { essential: { passed: positionCount, total: positionCount }, broken: 0, edge: { passed: 1, total: 1 } });
+          assert.deepEqual(Object.keys(grade.checks).sort(), Object.keys(tags).sort());
+        } else if (name === "base") {
+          assert.deepEqual(captured.grade, { essential: { passed: 0, total: positionCount }, broken: 0, edge: { passed: 0, total: 1 } });
+          assert.deepEqual(grade.checks, {});
+        } else {
+          assert.ok(captured.grade.essential.passed < positionCount);
+          assert.equal(captured.grade.broken, 0);
+          assert.equal(grade.checks["size-limit"], true);
+        }
         assert.deepEqual(Object.fromEntries(grade.evidence.statuses.map((row: { id: string; status: string }) => [row.id, row.status])), {
           test_immortal_game: name === "reference" ? "PASSED" : "FAILED",
           test_game_of_century: name === "reference" ? "PASSED" : "FAILED",
@@ -91,7 +103,7 @@ async function main(): Promise<void> {
           assert.equal(grade.evidence.removed.length, 2);
         }
         controls.push({ name, preparedMs, captureAndGradeMs: Math.round(performance.now() - started) - preparedMs,
-          acceptance: captured.acceptance, pytestExitCode: grade.evidence.pytestExitCode, reward: grade.evidence.reward,
+          grade: captured.grade, pytestExitCode: grade.evidence.pytestExitCode, reward: grade.evidence.reward,
           shellExitCode: grade.evidence.commands.verifier.exitCode, statuses: grade.evidence.statuses,
           positions: grade.evidence.positions, groups: grade.evidence.groups,
           versions: JSON.parse(grade.evidence.commands.versions.stdout),

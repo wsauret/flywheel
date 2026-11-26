@@ -6,6 +6,7 @@ import { runSandboxCommand } from "../../../../src/orchestration/modules/develop
 
 interface PublicInput { file: string; url: string; bytes: number; sha256: string }
 interface Identity { bytes: number; sha256: string }
+interface Inventory { testResults: { name: string; assertionResults: { fullName: string; status: string }[] }[] }
 const hash = (bytes: Uint8Array) => Bun.CryptoHasher.hash("sha256", bytes, "hex");
 
 /** Run through the repository's process owner. Verifier expiry produces no
@@ -211,8 +212,16 @@ async function main(): Promise<void> {
     let reportError: string | null = null;
     try { reports = await Bun.file(join(verifierDir, "inventory.json")).json(); }
     catch (error) { reportError = error instanceof Error ? error.message : "inventory unavailable"; }
+    // Each Jest test is one check, keyed by its file and full name, because both files share their describe names.
+    // Every test of the committed roster starts failed: a suite that does not load, such as one whose describe-time
+    // array() tables throw, reports no tests, and its existing tests count as broken instead of disappearing.
+    const roster: { file: string; id: string }[] = await Bun.file(join(task, "qualification/expected-tests.json")).json();
+    const checks: Record<string, boolean> = Object.fromEntries(roster.map(({ file, id }) => [`${file} > ${id}`, false]));
+    for (const file of (reports as Inventory | null)?.testResults ?? []) {
+      for (const row of file.assertionResults) checks[`test/${file.name.split("/").at(-1)} > ${row.fullName}`] = row.status === "passed";
+    }
     await Bun.write(artifacts[1]!, JSON.stringify({
-      passed: reward, failed: 1 - reward, total: 1,
+      checks,
       evidence: { acquired, commands, identities, fixedBuildSha256, candidateIdentities, candidateIdentityErrors, isolatedTypesFrom, launcherAdaptation,
         reward: { reward, text: rewardText, exit: verifier.exitCode },
         originalShellSha256: hash(new TextEncoder().encode(originalShell)),

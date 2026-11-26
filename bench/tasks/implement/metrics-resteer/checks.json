@@ -1,0 +1,12 @@
+{
+  "acceptance/metrics-pipeline.test.ts > collector integration > computePercentiles accepts unsorted values directly": "serious",
+  "acceptance/metrics-pipeline.test.ts > collector integration > drainWindow writes rollups to the store": "core",
+  "acceptance/metrics-pipeline.test.ts > collector integration > one drain groups the same metric with different units into independent rollups": "serious",
+  "acceptance/metrics-pipeline.test.ts > collector integration > out-of-order samples still produce numeric percentiles": "serious",
+  "acceptance/metrics-pipeline.test.ts > collector integration > uses (windowStartMs, windowEndMs], retains future samples, and publishes each sample once": "serious",
+  "acceptance/metrics-pipeline.test.ts > keyed store > retains every rollup for a metric and keeps metric keys independent": "core",
+  "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for count values": "core",
+  "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for ms values": "core",
+  "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for s values": "core",
+  "acceptance/metrics-pipeline.test.ts > reports > uses an inclusive 60,000 ms cutoff and selects newest in either insertion order": "core"
+}
