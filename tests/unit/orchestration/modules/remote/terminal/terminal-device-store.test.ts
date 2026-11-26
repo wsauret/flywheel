@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { openTerminalDeviceStore, terminalPairedMachineCount } from "../../../../../../src/orchestration/modules/remote/terminal/terminal-device-store.js"
+import { moveRemoteProjectState, openTerminalDeviceStore, terminalPairedMachineCount } from "../../../../../../src/orchestration/modules/remote/terminal/terminal-device-store.js"
+import { remoteProjectStateRoot } from "../../../../../../src/infra/platform/files/paths.js"
 import { deviceIdentity } from "../../../../../../src/protocol/modules/remote/relay-device.js"
 import { keyDigest, ownedBytes } from "../../../../../../src/protocol/modules/remote/relay-protocol.js"
 import { temporaryDirectories } from "../../../../../helpers/directories.js"
@@ -75,5 +76,19 @@ describe("terminal device store", () => {
     await expect(openTerminalDeviceStore(root, "laptop")).rejects.toThrow("not in a shape this Flywheel reads")
     expect(() => terminalPairedMachineCount(root)).toThrow("not in a shape this Flywheel reads")
     expect(readFileSync(file, "utf8")).toBe(future)
+  })
+
+  test("moves a project's state from the id an earlier release gave it to its current id, and never over state kept there", async () => {
+    const root = dirs()
+    const earlier = { runtimeId: machine.runtimeId, placementId: "e".repeat(43) }
+    const current = { runtimeId: machine.runtimeId, placementId: "c".repeat(43) }
+    mkdirSync(remoteProjectStateRoot(root, earlier.runtimeId, earlier.placementId), { recursive: true })
+    writeFileSync(join(remoteProjectStateRoot(root, earlier.runtimeId, earlier.placementId), "history"), "earlier")
+    await moveRemoteProjectState(root, earlier, current)
+    expect(readFileSync(join(remoteProjectStateRoot(root, current.runtimeId, current.placementId), "history"), "utf8")).toBe("earlier")
+    expect(existsSync(remoteProjectStateRoot(root, earlier.runtimeId, earlier.placementId))).toBe(false)
+    mkdirSync(remoteProjectStateRoot(root, earlier.runtimeId, earlier.placementId), { recursive: true })
+    await moveRemoteProjectState(root, earlier, current)
+    expect(readFileSync(join(remoteProjectStateRoot(root, current.runtimeId, current.placementId), "history"), "utf8")).toBe("earlier")
   })
 })

@@ -5,7 +5,7 @@ import { reconnectBackoffMs } from "../../runtime/reconnect-backoff.js"
 import { attachDeviceChannel, RelayRefusal, watchPresence, type PresenceWatch } from "./relay-channel.js"
 import type { MachinePicker, MachinePickerSnapshot, RemoteCreation, RemotePairing, RemoteRuntimeSummary, RemoteStart } from "./machine-picker.js"
 import { parseRepository } from "../../git/repository-reference.js"
-import { isMachinePlacement, LEGACY_MACHINE_PLACEMENT_LABEL, requestProjectCreation } from "./project-creation.js"
+import { isMachinePlacement, LEGACY_MACHINE_PLACEMENT_LABEL, requestProjectCreation, resolveLegacyPlacement } from "./project-creation.js"
 import { deviceIdentity, type DeviceStore, type PairedRuntime, type RemoteSelection } from "./relay-device.js"
 import { pairDevice } from "./relay-pairing.js"
 import { fromBase64Url, RELAY_PROJECT_START_TIMEOUT_MS, type Placement } from "./relay-protocol.js"
@@ -21,9 +21,10 @@ import { sealedSocket } from "./sealed-socket.js"
  *  pairs from a code by running the sealed pairing exchange, asks a machine
  *  to create a project from a repository (`project-creation.ts`), and hands the
  *  client a socket layer whose every acquisition attaches to whichever
- *  placement is selected at that moment, waking it when it is asleep, and
- *  seals the channel to the machine's recorded key. The client sees a
- *  `Socket`; the relay sees ciphertext.
+ *  placement is selected at that moment once presence lists it, waking it
+ *  when it is asleep, and seals the channel to the machine's recorded key.
+ *  The client sees a `Socket`; the relay sees ciphertext and the ids the
+ *  machine announced, never an id a device kept from before.
  *
  *  It holds no device storage. The host supplies the device key, the paired
  *  machines, and the last selection through `DeviceStore` (`relay-device.ts`)
@@ -51,6 +52,22 @@ export interface RelayClient extends MachinePicker {
   close(): void
 }
 
+export interface RelayClientOptions {
+  /** Moves what the host keeps under a project's selection, such as a draft
+   *  kept across a page reload, from the id a release before 2026-11-25 gave
+   *  the project to its current id. The client calls it once per conversion,
+   *  before it stores the new selection; the old state can be absent. A
+   *  failure leaves that state behind, and the conversion goes on. Remove
+   *  after 2027-05-25, with `resolveLegacyPlacement`. */
+  readonly moveSelectionState?: (from: RemoteSelection, to: RemoteSelection) => Promise<void>
+}
+
+/** One question to a machine about an earlier placement id, and its retry. */
+interface EarlierIdQuestion {
+  readonly selection: RemoteSelection
+  retry: ReturnType<typeof setTimeout> | undefined
+}
+
 interface RuntimeState {
   paired: PairedRuntime
   placements: readonly Placement[]
@@ -60,7 +77,7 @@ interface RuntimeState {
   retry: ReturnType<typeof setTimeout> | undefined
 }
 
-export async function createRelayClient(store: DeviceStore): Promise<RelayClient> {
+export async function createRelayClient(store: DeviceStore, { moveSelectionState }: RelayClientOptions = {}): Promise<RelayClient> {
   const identity = deviceIdentity(store.device)
   const runtimes = new Map<string, RuntimeState>()
   let selected: RemoteSelection | undefined = await store.selection()
@@ -77,6 +94,9 @@ export async function createRelayClient(store: DeviceStore): Promise<RelayClient
   // failing would put the client's connection into backoff, and the person
   // choosing a project a minute later would wait out that backoff for nothing.
   let awaitingSelection: ((selection: RemoteSelection) => void)[] = []
+  // Attach attempts parked until presence lists the selected placement, so
+  // that no attach names an id the machine does not announce.
+  const awaitingListed = new Set<() => void>()
   const selectionSettled = (): Promise<RemoteSelection> => selected ? Promise.resolve(selected) : new Promise((resolve) => { awaitingSelection.push(resolve) })
   const listeners = new Set<(snapshot: MachinePickerSnapshot) => void>()
   const selectionListeners = new Set<(placementChanged: boolean) => void>()
@@ -147,6 +167,8 @@ export async function createRelayClient(store: DeviceStore): Promise<RelayClient
         if (waiter.selection.runtimeId === state.paired.runtimeId && placements.some((placement) => placement.id === waiter.selection.placementId && placement.state === "live")) waiter.resolve()
       }
       if (start !== undefined && placementOf(start.selection)?.state === "live") start = undefined
+      for (const waiter of awaitingListed) waiter()
+      convertSelection()
       // The machine placement carries the machine's current name. The store
       // keeps it for while the machine sleeps; a write that fails only means
       // the next launch shows the earlier name until the machine wakes.
@@ -170,6 +192,82 @@ export async function createRelayClient(store: DeviceStore): Promise<RelayClient
       state.retry = setTimeout(() => watch(state), reconnectBackoffMs(state.attempt))
       state.attempt = Math.min(state.attempt + 1, PRESENCE_MAX_ATTEMPT)
     })
+  }
+
+  /** Resolves once presence lists `selection`, asleep or open. */
+  function whenListed(selection: RemoteSelection, signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted()
+    if (placementOf(selection) !== undefined) return Promise.resolve()
+    return new Promise((resolve, reject) => {
+      const settle = (outcome: () => void) => { signal.removeEventListener("abort", abort); awaitingListed.delete(waiter); outcome() }
+      const waiter = () => { if (placementOf(selection) !== undefined) settle(resolve) }
+      const abort = () => settle(() => reject(new Error("the selected project changed")))
+      awaitingListed.add(waiter)
+      signal.addEventListener("abort", abort, { once: true })
+    })
+  }
+
+  // Remove after 2027-05-25, with `resolveLegacyPlacement`: what each
+  // machine answered for an earlier id, and the question asked now.
+  const earlierIds = new Map<string, string | undefined>()
+  let asking: EarlierIdQuestion | undefined
+
+  function stopAsking(): void {
+    if (asking?.retry !== undefined) clearTimeout(asking.retry)
+    asking = undefined
+  }
+
+  /** A selection saved before 2026-11-25, or one an earlier notification
+   *  names, names its project by an id the machine no longer announces.
+   *  While the machine's own placement is online and presence does not list
+   *  the selection, this asks the machine, sealed, which project the id
+   *  named, and selects that project's current id in place. The relay never
+   *  sees the earlier id: the attach waits for presence to list the
+   *  selection. A machine that cannot answer is asked again on the client's
+   *  backoff; an id it does not know stays selected and unlisted. */
+  function convertSelection(attempt = 0): void {
+    const current = selected
+    if (current === undefined || closed || asking?.selection === current) return
+    const state = runtimes.get(current.runtimeId)
+    if (!state || placementOf(current) !== undefined || start?.selection === current) return
+    if (!state.placements.some((placement) => isMachinePlacement(current.runtimeId, placement))) return
+    const key = `${current.runtimeId}.${current.placementId}`
+    if (earlierIds.has(key)) {
+      const placementId = earlierIds.get(key)
+      if (placementId !== undefined) void replaceSelection(current, placementId)
+      return
+    }
+    stopAsking()
+    const question: EarlierIdQuestion = { selection: current, retry: undefined }
+    asking = question
+    resolveLegacyPlacement({ relay: state.paired.relay, runtimeId: current.runtimeId, runtimePublicKey: state.paired.publicKey, device: identity }, current.placementId).then((placementId) => {
+      earlierIds.set(key, placementId)
+      if (asking !== question) return
+      asking = undefined
+      if (placementId !== undefined) void replaceSelection(current, placementId)
+    }, () => {
+      if (asking !== question || closed) return
+      question.retry = setTimeout(() => {
+        if (asking !== question) return
+        asking = undefined
+        convertSelection(Math.min(attempt + 1, PRESENCE_MAX_ATTEMPT))
+      }, reconnectBackoffMs(attempt))
+    })
+  }
+
+  /** Selects `placementId`, the current id of the project `from` named: the
+   *  same project, so the host stays on it and only makes sure it is
+   *  connected. */
+  async function replaceSelection(from: RemoteSelection, placementId: string): Promise<void> {
+    const to = { runtimeId: from.runtimeId, placementId }
+    await moveSelectionState?.(from, to).catch(() => {})
+    if (closed || selected !== from) return
+    selectionLifetime.abort()
+    selectionLifetime = new AbortController()
+    selected = to
+    store.setSelection(to).catch(() => {})
+    publish()
+    for (const listener of selectionListeners) listener(false)
   }
 
   function adopt(paired: PairedRuntime): void {
@@ -204,6 +302,7 @@ export async function createRelayClient(store: DeviceStore): Promise<RelayClient
       const placementChanged = previous.runtimeId !== selection.runtimeId || previous.placementId !== selection.placementId
       for (const listener of selectionListeners) listener(placementChanged)
     }
+    convertSelection()
   }
 
   /** Attaches to a placement. A dormant one answers `runtime_starting` while
@@ -212,11 +311,13 @@ export async function createRelayClient(store: DeviceStore): Promise<RelayClient
    *  once. `runtime_unavailable` is the machine saying it could not start one.
    *  A placement this device already knows is starting, such as a project its
    *  machine just created and opened, is waited for before the attach, since
-   *  presence may not list it yet. */
+   *  presence may not list it yet. Any other placement is waited for until
+   *  presence lists it. */
   async function attach(state: RuntimeState, current: RemoteSelection) {
     const signal = selectionLifetime.signal
     if (closed || selected !== current) throw new Error("the selected project changed")
     if (start?.status === "starting" && start.selection === current) await whenLive(current, signal)
+    else await whenListed(current, signal)
     try {
       const channel = await attachDeviceChannel(state.paired.relay, current.runtimeId, current.placementId, identity, (wakeSignal) => {
         signal.throwIfAborted()
@@ -376,6 +477,7 @@ export async function createRelayClient(store: DeviceStore): Promise<RelayClient
     socket,
     close() {
       closed = true
+      stopAsking()
       selectionLifetime.abort()
       creation = undefined
       for (const state of runtimes.values()) {

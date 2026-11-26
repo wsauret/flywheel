@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
+import { createHash } from "node:crypto"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { hostname, tmpdir } from "node:os"
 import { basename, join } from "node:path"
@@ -7,10 +8,10 @@ import { Socket } from "effect/socket"
 
 import * as pairingStore from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
 import { mutateRemotePairingStore, readRemotePairingStore } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
-import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
+import { ensureRemoteIdentity, remoteIdentityFrom } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
 import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account/account-project-registry.js"
 import type { NotificationEpisodeInput } from "../../../../../src/infra/substrate/events/notification-episode.js"
-import { createRemoteAccess, placementId, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
+import { createRemoteAccess, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import { attachDeviceChannel, RELAY_HEARTBEAT } from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import {
   asKeyPair,
@@ -57,6 +58,7 @@ describe("remote access against a relay", () => {
     remotes.push(remote)
     return remote
   }
+  const placementId = async (root: string) => (await remoteIdentityFrom(readRemotePairingStore(userDataRoot, "installed"))).placementId(root)
 
   beforeEach(() => {
     stub = startRelayStub()
@@ -205,6 +207,10 @@ describe("remote access against a relay", () => {
     const remote = createRemote()
     const { device, runtimeId } = await pairDevice(stub.url, remote)
     await viewWhere(remote, (view) => view.devices.length === 1)
+    // The relay sees a digest keyed by this runtime's identity, never one that a guessed path confirms.
+    const announced = stub.placements(runtimeId).map((placement) => placement.id)
+    expect(announced).toEqual([await placementId(projectRoot)])
+    expect(announced).not.toContain(createHash("sha256").update(projectRoot).digest("base64url"))
     const echoed = Deferred.makeUnsafe<string>()
     remote.acceptChannels(async (socket: Socket.Socket, paired: PairedDevice) => {
       expect(paired.id).toBe(device.id)
@@ -214,7 +220,7 @@ describe("remote access against a relay", () => {
       })).pipe(Effect.exit))
     })
     const runtimePublicKey = fromBase64Url(readRemotePairingStore(userDataRoot, "installed").identity!.publicKey)
-    const ws = await attachDeviceChannel(stub.url, runtimeId, placementId(projectRoot), { ...device, deviceId: device.id })
+    const ws = await attachDeviceChannel(stub.url, runtimeId, await placementId(projectRoot), { ...device, deviceId: device.id })
     const channel = await sealDevice(ws, device, { kind: "paired", publicKey: runtimePublicKey })
     await Effect.runPromise(channel.write(text("the secret message")))
     await waitFor(() => channel.received.length === 1)
@@ -254,7 +260,7 @@ describe("remote access against a relay", () => {
       await Effect.runPromise(Stream.runDrain(Socket.toStream(socket)).pipe(Effect.exit))
     })
     const runtimePublicKey = fromBase64Url(readRemotePairingStore(userDataRoot, "installed").identity!.publicKey)
-    const ws = await attachDeviceChannel(stub.url, runtimeId, placementId(projectRoot), { ...device, deviceId: device.id })
+    const ws = await attachDeviceChannel(stub.url, runtimeId, await placementId(projectRoot), { ...device, deviceId: device.id })
     const channel = await sealDevice(ws, device, { kind: "paired", publicKey: runtimePublicKey })
     await Effect.runPromise(channel.established)
     await viewWhere(remote, (view) => view.attachedClients === 1)
@@ -277,7 +283,7 @@ describe("remote access against a relay", () => {
       await Effect.runPromise(Stream.runDrain(Socket.toStream(socket)).pipe(Effect.exit))
     })
     const runtimePublicKey = fromBase64Url(readRemotePairingStore(userDataRoot, "installed").identity!.publicKey)
-    const ws = await attachDeviceChannel(stub.url, runtimeId, placementId(projectRoot), { ...device, deviceId: device.id })
+    const ws = await attachDeviceChannel(stub.url, runtimeId, await placementId(projectRoot), { ...device, deviceId: device.id })
     const channel = await sealDevice(ws, device, { kind: "paired", publicKey: runtimePublicKey })
     await Effect.runPromise(channel.established)
     await viewWhere(remote, (view) => view.attachedClients === 1)
@@ -431,7 +437,7 @@ describe("remote access against a relay", () => {
       await viewWhere(second, (view) => view.connection === "connected" && view.devices.length === 1)
       second.acceptChannels((socket) => Effect.runPromise(Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)))
       const runtimePublicKey = fromBase64Url(readRemotePairingStore(userDataRoot, "installed").identity!.publicKey)
-      const ws = await attachDeviceChannel(stub.url, runtimeId, placementId(otherProject), { ...device, deviceId: device.id })
+      const ws = await attachDeviceChannel(stub.url, runtimeId, await placementId(otherProject), { ...device, deviceId: device.id })
       const channel = await sealDevice(ws, device, { kind: "paired", publicKey: runtimePublicKey })
       await viewWhere(second, (view) => view.attachedClients === 1)
       expect(await first.revokeDevice(device.id)).toBe(true)
@@ -525,6 +531,17 @@ describe("remote access against a relay", () => {
     const registry = createAccountProjectRegistry({ userDataRoot })
     expect(await registry.list()).toEqual([])
     await registry.dispose()
+  })
+
+  test("a lane that never paired lists the projects the account recorded and forgets one, with no identity made for it", async () => {
+    const registry = createAccountProjectRegistry({ userDataRoot })
+    registries.push(registry)
+    await registry.record({ projectRoot, label: "project" })
+    const remote = createRemote({ projectRegistry: registry })
+    const view = await viewWhere(remote, (current) => current.projects.length === 1)
+    expect(await remote.forgetProject(view.projects[0]!.placementId)).toBe(true)
+    expect(remote.view().projects).toEqual([])
+    expect(readRemotePairingStore(userDataRoot, "installed").identity).toBeUndefined()
   })
 
   test("shows a project the account forgets at once", async () => {

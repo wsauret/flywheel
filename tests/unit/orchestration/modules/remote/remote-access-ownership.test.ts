@@ -40,7 +40,7 @@ class RemoteSocket extends EventTarget {
 }
 
 const turn = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
-const identity: identities.RemoteIdentity = { runtimeId: "runtime", publicKey: new Uint8Array(32), sign: async () => new Uint8Array(64) }
+const identity: identities.RemoteIdentity = { runtimeId: "runtime", publicKey: new Uint8Array(32), sign: async () => new Uint8Array(64), placementId: (projectRoot) => projectRoot }
 const deviceId = "d".repeat(43)
 const frame: OpenFrame = { type: "open", kind: "device", channelId: "channel", ticket: "ticket", deviceId }
 const restores: (() => void)[] = []

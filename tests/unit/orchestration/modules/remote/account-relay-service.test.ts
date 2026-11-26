@@ -1,6 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { Effect } from "effect"
 import * as fs from "node:fs"
+import { createHash } from "node:crypto"
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -9,14 +10,14 @@ import { createAccountProjectRegistry } from "../../../../../src/orchestration/a
 import { createAccountRelayService } from "../../../../../src/orchestration/modules/remote/account-relay-service.js"
 import { createKeepAwake, NO_KEEP_AWAKE } from "../../../../../src/orchestration/modules/remote/keep-awake.js"
 import { createAccountService } from "../../../../../src/orchestration/app-service/account/account-service.js"
-import { createRemoteAccess, placementId, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
+import { createRemoteAccess, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import * as control from "../../../../../src/orchestration/modules/remote/relay-control-channel.js"
 import * as pairing from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
 import { canonicalPathWithMissingTail } from "../../../../../src/infra/platform/files/canonical-path.js"
 import type { OwnedProcessExit } from "../../../../../src/infra/supervision/launch/owned-subprocess.js"
 import { createAccountProjectClone } from "../../../../../src/orchestration/app-service/account/account-project-clone.js"
 import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
-import { requestProjectCreation, type CreatedProject } from "../../../../../src/protocol/modules/remote/project-creation.js"
+import { requestProjectCreation, resolveLegacyPlacement, type CreatedProject } from "../../../../../src/protocol/modules/remote/project-creation.js"
 import { asKeyPair, fromBase64Url, keyDigest, ownedBytes, parsePairingCodeUrl, toBase64Url, type OpenFrame, type RuntimeControlFrame } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 import { openPairingChannel, type DeviceIdentity } from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
@@ -26,6 +27,7 @@ import { decodeRemoteAccountAnswer, type RemoteAccountAnswer, type RemoteAccount
 import { pairDevice } from "../../../../../src/protocol/modules/remote/relay-pairing.js"
 import { machineName } from "../../../../../src/orchestration/modules/remote/pairing/remote-pairing-exchange.js"
 import { deviceIdentity, sealDevice, text } from "./_remote-device-fixtures.js"
+import { announced, fakeControlChannels } from "./_relay-control-fixtures.js"
 
 const temporary = temporaryDirectories()
 /** No device ever asks these services to create a project. */
@@ -66,10 +68,10 @@ describe("account relay service", () => {
     const registry = createAccountProjectRegistry({ userDataRoot: root })
     const channels = new Map<string, { options: control.RelayControlChannelOptions; held: boolean }>()
     const terminal: RuntimeControlFrame[] = []
-    const controls = spyOn(control, "createRelayControlChannel").mockImplementation((options) => {
-      const label = (() => { try { return options.placement().projectLabel } catch { return "machine" } })()
+    const controls = fakeControlChannels((options) => {
+      let label: string | undefined
       const channel = { options, held: false }
-      channels.set(label, channel)
+      void announced(options).then((placement) => { label = placement.label; channels.set(label, channel) })
       return {
         send(frame) {
           if (!channel.held) return false
@@ -179,11 +181,11 @@ describe("account relay service", () => {
     const registry = createAccountProjectRegistry({ userDataRoot: root })
     const active = new Map<string, number>()
     let maximum = 0
-    const controls = spyOn(control, "createRelayControlChannel").mockImplementation((options) => {
+    const controls = fakeControlChannels((options) => {
       let held = false
-      // The machine placement reads the identity it waits for; only projects count here.
-      const id = (() => { try { return options.placement().id } catch { return "machine" } })()
-      const release = () => {
+      // A live project and its dormant announcement share an id; the machine placement reads as `machine`.
+      const placement = announced(options)
+      const release = (id: string) => {
         if (!held) return
         held = false
         active.set(id, (active.get(id) ?? 0) - 1)
@@ -191,13 +193,15 @@ describe("account relay service", () => {
       return {
         send: () => held, channelOpened: () => () => {}, connected: () => held,
         reconcile() {
-          if (!options.wanted()) { release(); return }
-          if (held) return
-          held = true
-          active.set(id, (active.get(id) ?? 0) + 1)
-          maximum = Math.max(maximum, active.get(id)!)
+          void placement.then(({ id }) => {
+            if (!options.wanted()) { release(id); return }
+            if (held) return
+            held = true
+            active.set(id, (active.get(id) ?? 0) + 1)
+            maximum = Math.max(maximum, active.get(id)!)
+          })
         },
-        async dispose() { release() },
+        async dispose() { release((await placement).id) },
       }
     })
     const store = spyOn(pairing, "readRemotePairingStore").mockImplementation(() => ({
@@ -250,9 +254,9 @@ describe("account relay service", () => {
     mkdirSync(continued)
     const registry = createAccountProjectRegistry({ userDataRoot: root })
     const opens = new Map<string, control.RelayControlChannelOptions["onOpen"]>()
-    const controls = spyOn(control, "createRelayControlChannel").mockImplementation((options) => {
-      // The machine placement reads the identity it waits for; only projects count here.
-      try { opens.set(options.placement().projectLabel, options.onOpen) } catch { /* the machine placement */ }
+    const controls = fakeControlChannels((options) => {
+      // Only projects count here.
+      void announced(options).then(({ label }) => { if (label !== "machine") opens.set(label, options.onOpen) })
       return { send: () => false, channelOpened: () => () => {}, connected: () => false, reconcile() {}, async dispose() {} }
     })
     const store = spyOn(pairing, "readRemotePairingStore").mockImplementation(() => ({
@@ -364,11 +368,12 @@ describe("account relay service", () => {
     const registry = createAccountProjectRegistry({ userDataRoot: root })
     const sent = new Map<string, RuntimeControlFrame[]>()
     const opens = new Map<string, control.RelayControlChannelOptions["onOpen"]>()
-    const controls = spyOn(control, "createRelayControlChannel").mockImplementation((options) => {
-      const label = (() => { try { return options.placement().projectLabel } catch { return "machine" } })()
+    const controls = fakeControlChannels((options) => {
       const frames: RuntimeControlFrame[] = []
-      sent.set(label, frames)
-      opens.set(label, options.onOpen)
+      void announced(options).then(({ label }) => {
+        sent.set(label, frames)
+        opens.set(label, options.onOpen)
+      })
       let held = false
       return {
         send(frame) { if (held) frames.push(frame); return held },
@@ -454,7 +459,7 @@ describe("account relay service", () => {
         onOpening: (project) => { opening.push(project) },
       })
       const projectRoot = join(projectsRoot, "tool")
-      expect(created).toEqual({ placementId: placementId(projectRoot), projectLabel: "tool" })
+      expect(created).toEqual({ placementId: identity.placementId(projectRoot), projectLabel: "tool" })
       expect(opening).toEqual([created])
       expect(git.calls.map((call) => call.command.slice(-2))).toEqual([["https://github.com/owner/tool.git", projectRoot]])
       expect(opened).toEqual([projectRoot])
@@ -462,6 +467,13 @@ describe("account relay service", () => {
       // Nothing the device and the machine said crossed the relay in the clear.
       const pumped = new TextDecoder().decode(Buffer.concat(stub.pumped))
       expect(pumped).not.toContain("owner/tool")
+
+      // A device that saved the unkeyed id of an earlier release learns the project's current id, sealed.
+      const machine = { relay: stub.url, runtimeId: identity.runtimeId, runtimePublicKey: toBase64Url(identity.publicKey), device }
+      const legacy = createHash("sha256").update(projectRoot).digest("base64url")
+      expect(await resolveLegacyPlacement(machine, legacy)).toBe(identity.placementId(projectRoot))
+      expect(await resolveLegacyPlacement(machine, createHash("sha256").update("/elsewhere").digest("base64url"))).toBeUndefined()
+      expect(new TextDecoder().decode(Buffer.concat(stub.pumped))).not.toContain(legacy)
 
       // A repository the machine refuses comes back as the machine's reason.
       expect(String(await requestProjectCreation({

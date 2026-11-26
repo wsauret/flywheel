@@ -36,6 +36,12 @@ export interface RemoteSelection {
   readonly placementId: string
 }
 
+/** Where a phone keeps when the person last dismissed the offer to turn
+ *  notifications on for one project (PI-REMOTE-031). */
+export function pushGuideDismissalKey(selection: RemoteSelection): string {
+  return `flywheel.push-guide.dismissed:${JSON.stringify([selection.runtimeId, selection.placementId])}`
+}
+
 /** The device's key, the name it pairs under, the machines it has paired
  *  with, and which project it last opened. Every write resolves only after
  *  the value is committed, so a reader that starts after the write reads the

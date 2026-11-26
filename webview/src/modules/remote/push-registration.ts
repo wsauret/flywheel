@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
 import type { ClientContextValue } from "../../app/client-context.js"
 import { enablePush } from "./push-actions.js"
+import { pushGuideDismissalKey, type RemoteSelection } from "../../../../src/protocol/modules/remote/relay-device.js"
 
 const registrations = new WeakMap<ClientContextValue, ReturnType<typeof createPushRegistration>>()
 
@@ -14,6 +15,10 @@ function readDismissed(key: string | undefined): number | undefined {
   } catch {
     return undefined
   }
+}
+
+function dismissalKeyOf(selected: RemoteSelection | undefined): string | undefined {
+  return selected ? pushGuideDismissalKey(selected) : undefined
 }
 
 function writeDismissed(key: string | undefined, timestamp: number | undefined): void {
@@ -43,17 +48,16 @@ export function createPushRegistration(client: ClientContextValue) {
   const operation = new AbortController()
   onCleanup(() => operation.abort())
   if (remoteHost) onCleanup(remoteHost.onChange(setSnapshot))
-  // Selection publishes before the old placement unmounts. Its saved state
-  // must stay with this mount, including when the first choice arrives late.
-  const dismissalKey = createMemo<string | undefined>((bound) => {
-    if (bound !== undefined) return bound
-    const selected = snapshot()?.selected
-    return selected ? `flywheel.push-guide.dismissed:${JSON.stringify([selected.runtimeId, selected.placementId])}` : undefined
-  })
+  // Selection publishes before the old placement unmounts. What this mount
+  // shows must stay with it, including when the first choice arrives late.
+  const dismissalKey = createMemo<string | undefined>((bound) => bound ?? dismissalKeyOf(snapshot()?.selected))
   const [dismissedAt, setDismissedAt] = createSignal(readDismissed(dismissalKey()))
+  // A write comes from a person or a question on this mount, which is the
+  // selected project's by then. It names the project by its current id, which
+  // differs from the bound one after an earlier id is replaced in place.
   const remember = (timestamp: number | undefined) => {
     setDismissedAt(timestamp)
-    writeDismissed(dismissalKey(), timestamp)
+    writeDismissed(dismissalKeyOf(snapshot()?.selected) ?? dismissalKey(), timestamp)
   }
   createEffect(on(dismissalKey, (key) => setDismissedAt(readDismissed(key))))
   let version = 0

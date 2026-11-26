@@ -1,8 +1,11 @@
+import { existsSync } from "node:fs"
+import { rename } from "node:fs/promises"
 import { hostname } from "node:os"
 import { Redacted, Schema } from "effect"
 
 import { mutateLockedJsonStore, readLockedJsonStore, type LockedJsonStoreOptions } from "../../../../infra/providers/auth/store/locked-json-store.js"
-import { accountAuthDir, accountSecretFile, TERMINAL_DEVICE_STORE_FILE, terminalDeviceStoreFile } from "../../../../infra/platform/files/paths.js"
+import { accountAuthDir, accountSecretFile, remoteProjectStateRoot, TERMINAL_DEVICE_STORE_FILE, terminalDeviceStoreFile } from "../../../../infra/platform/files/paths.js"
+import { createRelayClient, type RelayClient } from "../../../../protocol/modules/remote/relay-client.js"
 import type { DeviceStore, PairedRuntime, RemoteSelection } from "../../../../protocol/modules/remote/relay-device.js"
 import { asKeyPair, fromBase64Url, keyDigest, ownedBytes, toBase64Url } from "../../../../protocol/modules/remote/relay-protocol.js"
 
@@ -134,4 +137,20 @@ export async function openTerminalDeviceStore(userDataRoot: string, hostLabel: s
     selection: async () => current().selection,
     setSelection: (selection) => mutate(userDataRoot, (state) => { state.selection = selection }),
   }
+}
+
+/** The shared relay client over this terminal's device store. */
+export async function openTerminalRelayClient(userDataRoot: string): Promise<RelayClient> {
+  return await createRelayClient(await openTerminalDeviceStore(userDataRoot), { moveSelectionState: (from, to) => moveRemoteProjectState(userDataRoot, from, to) })
+}
+
+/** Moves the terminal's state for a project, its log and prompt history,
+ *  from the id a release before 2026-11-25 gave the project to its current
+ *  id, unless state under the current id exists already. Remove after
+ *  2027-05-25, with `resolveLegacyPlacement`. */
+export async function moveRemoteProjectState(userDataRoot: string, from: RemoteSelection, to: RemoteSelection): Promise<void> {
+  const source = remoteProjectStateRoot(userDataRoot, from.runtimeId, from.placementId)
+  const target = remoteProjectStateRoot(userDataRoot, to.runtimeId, to.placementId)
+  if (!existsSync(source) || existsSync(target)) return
+  await rename(source, target)
 }

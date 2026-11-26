@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import { createAccountProjectRegistry } from "../../../../../../src/orchestration/app-service/account/account-project-registry.js"
@@ -12,6 +13,7 @@ import * as creating from "../../../../../../src/protocol/modules/remote/project
 import { machinePlacementId } from "../../../../../../src/protocol/modules/remote/project-creation.js"
 import type { Placement } from "../../../../../../src/protocol/modules/remote/relay-protocol.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../../../src/protocol/runtime-liveness.js"
+import { remoteProjectStateRoot } from "../../../../../../src/infra/platform/files/paths.js"
 import { temporaryDirectories } from "../../../../../helpers/directories.js"
 import { startRelayStub, type RelayStub } from "../relay-stub.js"
 
@@ -312,6 +314,19 @@ describe("creating a project on a paired machine from the terminal", () => {
     expect(request).not.toHaveBeenCalled()
     expect(printed).toContain("Repository to clone on box (owner/repo or a git URL), or press Enter to go back: ")
     expect(printed.filter((line) => line === "Projects on paired machines:")).toHaveLength(2)
+  })
+
+  test("a project handed on under the id an earlier release gave it opens under its current id, with the terminal's state for it", async () => {
+    const resolve = spyOn(creating, "resolveLegacyPlacement").mockResolvedValue(project.id)
+    restores.push(() => resolve.mockRestore())
+    const earlier = remoteProjectStateRoot(laptop, runtimeId, "earlier")
+    mkdirSync(earlier, { recursive: true })
+    writeFileSync(join(earlier, "history"), "kept")
+    const choice = await terminalRemote.choose({ userDataRoot: laptop, terminal: terminalRelease, handed: `${runtimeId}.earlier`, prompt: async () => "", print: () => {} })
+    if (choice.kind !== "attach") throw new Error(`expected an attach, got ${choice.kind}`)
+    choice.attach.close()
+    expect(choice.attach.placementId).toBe(project.id)
+    expect(readFileSync(join(remoteProjectStateRoot(laptop, runtimeId, project.id), "history"), "utf8")).toBe("kept")
   })
 })
 

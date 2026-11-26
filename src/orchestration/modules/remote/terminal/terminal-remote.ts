@@ -1,10 +1,10 @@
 import type { FrontendEvent, RuntimeStartupStatus } from "../../../../protocol/runtime/app-service-types.js"
 import { createRuntimeConnection } from "../../../../protocol/client/runtime/connection.js"
 import { canCreateProject, creationDetail, creationOn, machineStatus, projectPlacements, projectStatus, type MachinePickerSnapshot, type RemoteCreation } from "../../../../protocol/modules/remote/machine-picker.js"
-import { createRelayClient, type RelayClient } from "../../../../protocol/modules/remote/relay-client.js"
+import type { RelayClient } from "../../../../protocol/modules/remote/relay-client.js"
 import type { RemoteSelection } from "../../../../protocol/modules/remote/relay-device.js"
 import { releaseFit, type RemoteAttach, type TerminalRemote, type TerminalRemoteChoice, type TerminalRemoteRequest } from "../../../module-contract/terminal-remote.js"
-import { openTerminalDeviceStore, terminalPairedMachineCount } from "./terminal-device-store.js"
+import { openTerminalRelayClient, terminalPairedMachineCount } from "./terminal-device-store.js"
 
 /** The terminal as a paired device of a remote machine (PI-REMOTE-016): the
  *  remote module's `terminalRemote` contribution.
@@ -31,7 +31,7 @@ const PAIRED_ONLINE_MS = 15_000
 export const terminalRemote: TerminalRemote = {
   pairedMachines: terminalPairedMachineCount,
   async choose(request) {
-    const client = await createRelayClient(await openTerminalDeviceStore(request.userDataRoot))
+    const client = await openTerminalRelayClient(request.userDataRoot)
     try {
       const choice = await chooseWith(client, request)
       if (choice.kind !== "attach") client.close()
@@ -45,8 +45,8 @@ export const terminalRemote: TerminalRemote = {
 
 async function chooseWith(client: RelayClient, request: TerminalRemoteRequest): Promise<TerminalRemoteChoice> {
   const handed = handedSelection(request.handed, client.snapshot())
-  const selection = handed === undefined ? await ask(client, request) : chosen(client, handed)
-  if (selection === undefined) return { kind: "cancelled" }
+  const choice = handed === undefined ? await ask(client, request) : chosen(client, handed)
+  if (choice === undefined) return { kind: "cancelled" }
   let said: string | undefined
   const say = (line: string): void => {
     if (line === said) return
@@ -55,6 +55,9 @@ async function chooseWith(client: RelayClient, request: TerminalRemoteRequest): 
   }
   for (;;) {
     const snapshot = client.snapshot()
+    // The client replaces a choice that names the project by an id an
+    // earlier release gave it with the project's current id.
+    const selection = snapshot.selected ?? choice
     const runtime = snapshot.runtimes.find((candidate) => candidate.runtimeId === selection.runtimeId)
     if (runtime === undefined) throw new Error("The chosen machine is no longer paired with this terminal.")
     const placement = projectPlacements(runtime).find((candidate) => candidate.id === selection.placementId)

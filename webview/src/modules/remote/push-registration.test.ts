@@ -162,6 +162,26 @@ test("the move button stays live through either first-snapshot order and the fir
   }
 })
 
+test("Later given on a mount whose project's earlier id was replaced in place is kept under the current id", async () => {
+  const key = (placementId: string) => `flywheel.push-guide.dismissed:${JSON.stringify(["ours", placementId])}`
+  const guide = mount("denied", { waiting: ["chat"], openedAt: 900 })
+  try {
+    await settle()
+    clock.mockReturnValue(2000)
+    guide.dismiss()
+    // The phone host moved the dismissal as it replaced the id.
+    localStorage.setItem(key("keyed"), localStorage.getItem(key("project"))!)
+    localStorage.removeItem(key("project"))
+    guide.choose("keyed")
+    await settle()
+    expect(guide.dismissed()).toBe(true)
+    clock.mockReturnValue(3000)
+    guide.dismiss()
+    expect(localStorage.getItem(key("keyed"))).toBe("3000")
+    expect(localStorage.getItem(key("project"))).toBeNull()
+  } finally { guide.dispose() }
+})
+
 test("Later survives remounts and a selection published before the placement remount", async () => {
   const key = (placementId: string) => `flywheel.push-guide.dismissed:${JSON.stringify(["ours", placementId])}`
   const first = mount("denied", { waiting: ["chat"], openedAt: 900 })

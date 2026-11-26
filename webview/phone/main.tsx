@@ -7,6 +7,7 @@ import { createRelayHost } from "./relay-host.js"
 import { restoreSessionAddress, takeSessionAddress } from "./session-address.js"
 import type { PhoneBootstrap } from "../../src/protocol/modules/remote/phone-bootstrap.js"
 import { decodeCurrentClient } from "../../src/protocol/modules/remote/relay-protocol.js"
+import { inputScopeOf, movePhoneSelectionState } from "./selection-state.js"
 import "../local/theme.css"
 import "./host-theme.css"
 
@@ -180,7 +181,10 @@ async function main(): Promise<void> {
   document.documentElement.classList.toggle("ios-installed", isIosInstalledApp("standalone" in navigator ? navigator : {}))
   installStatusEdge()
   const store = bootstrapStore()
-  const relay = await createRelayHost(store, navigator.mediaDevices ? { scan: scanPairingCode } : {})
+  const relay = await createRelayHost(store, {
+    ...(navigator.mediaDevices ? { scan: scanPairingCode } : {}),
+    moveSelectionState: movePhoneSelectionState,
+  })
   const push = createPushCapability()
   const initialAddress = takeSessionAddress(window)
   if (initialAddress?.selection) relay.capability.select(initialAddress.selection)
@@ -188,7 +192,7 @@ async function main(): Promise<void> {
     let pendingAddress = initialSessionId === undefined ? undefined : { sessionId: initialSessionId, attention: initialAttention === true, selection: relay.capability.snapshot().selected }
     return mountClient(root, {
       surface: "phone",
-      inputScope: () => JSON.stringify(relay.capability.snapshot().selected ?? { unselected: true }),
+      inputScope: () => inputScopeOf(relay.capability.snapshot().selected),
       socket: relay.socket,
       ...(initialSessionId === undefined ? {} : { initialSessionId }),
       ...(initialAttention ? { initialAttention: true } : {}),

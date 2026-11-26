@@ -1,4 +1,5 @@
 import type { ServeLane } from "../../../../infra/platform/cli-subprocess.js"
+import { createHmac, hkdfSync } from "node:crypto"
 import { Redacted } from "effect"
 
 import { importLegacyRemotePushSubscriptions, mutateRemotePairingStore, readRemotePairingStore, type RemotePairingStore, type StoredKeyPair } from "../remote-pairing-store.js"
@@ -11,7 +12,14 @@ export interface RemoteIdentity {
   readonly runtimeId: string
   readonly publicKey: Uint8Array
   readonly sign: (bytes: Uint8Array) => Promise<Uint8Array>
+  /** The id the relay and every device know the project at `projectRoot` by:
+   *  an HMAC-SHA256 of the root under a key derived from the private identity
+   *  key, so no one without that key can confirm a guessed path. Stable for as
+   *  long as the identity is. */
+  readonly placementId: (projectRoot: string) => string
 }
+
+const PLACEMENT_KEY_INFO = "flywheel remote placement id"
 
 async function generateKeyPair(algorithm: "Ed25519" | { name: "ECDSA"; namedCurve: "P-256" }, usages: KeyUsage[]): Promise<StoredKeyPair> {
   const pair = asKeyPair(await crypto.subtle.generateKey(algorithm, true, usages))
@@ -47,10 +55,17 @@ export async function remoteIdentityFrom(store: RemotePairingStore): Promise<Rem
   const stored = store.identity
   if (stored === undefined) throw new Error("The remote pairing store holds no identity key")
   const publicKey = fromBase64Url(stored.publicKey)
-  const privateKey = await crypto.subtle.importKey("pkcs8", ownedBytes(fromBase64Url(Redacted.value(stored.privateKey))), { name: "Ed25519" }, false, ["sign"])
+  const privateBytes = fromBase64Url(Redacted.value(stored.privateKey))
+  const privateKey = await crypto.subtle.importKey("pkcs8", ownedBytes(privateBytes), { name: "Ed25519" }, false, ["sign"])
+  // A key of its own for the digest, derived rather than stored: it lives and
+  // dies with the identity, as the runtime id and every pairing do, and the
+  // store keeps no new field, which the version-2 schema of every installed
+  // release would refuse as an excess property.
+  const placementKey = Redacted.make(new Uint8Array(hkdfSync("sha256", privateBytes, new Uint8Array(0), PLACEMENT_KEY_INFO, 32)))
   return {
     runtimeId: await keyDigest(publicKey),
     publicKey,
     sign: async (bytes) => new Uint8Array(await crypto.subtle.sign("Ed25519", privateKey, ownedBytes(bytes))),
+    placementId: (projectRoot) => createHmac("sha256", Redacted.value(placementKey)).update(projectRoot).digest("base64url"),
   }
 }

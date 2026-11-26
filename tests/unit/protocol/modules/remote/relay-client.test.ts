@@ -27,6 +27,7 @@ interface StoredDevice {
   selection: RemoteSelection | undefined
 }
 let stored: StoredDevice
+let resolveLegacy: ReturnType<typeof spyOn<typeof creating, "resolveLegacyPlacement">>
 
 async function deviceStore(): Promise<DeviceStore> {
   const keyPair = await crypto.subtle.generateKey("Ed25519", false, ["sign", "verify"])
@@ -111,7 +112,9 @@ beforeEach(async () => {
     return { close() {} }
   })
   const reconnect = spyOn(backoff, "reconnectBackoffMs").mockReturnValue(0)
-  restores.push(() => watch.mockRestore(), () => reconnect.mockRestore())
+  // A machine that records no project under an earlier id, unless a test says otherwise.
+  resolveLegacy = spyOn(creating, "resolveLegacyPlacement").mockResolvedValue(undefined)
+  restores.push(() => watch.mockRestore(), () => reconnect.mockRestore(), () => resolveLegacy.mockRestore())
   client = await createRelayClient(await deviceStore())
 })
 
@@ -172,6 +175,81 @@ describe("relay client selection", () => {
     } finally {
       unsubscribe()
     }
+  })
+})
+
+describe("relay client earlier placement ids", () => {
+  test("a selection saved under an earlier release's id asks the machine once and selects the same project's current id without leaving it", async () => {
+    // `selected` is the stored selection: an id the machine no longer announces.
+    resolveLegacy.mockResolvedValue("keyed")
+    const selectionChanges = mock((_placementChanged: boolean) => {})
+    const unsubscribe = client.onSelectionChange(selectionChanges)
+    try {
+      const report = [{ ...live, id: "machine", projectLabel: "desk" }, { ...live, id: "keyed" }]
+      const resolved = nextChange(client, (snapshot) => snapshot.selected?.placementId === "keyed")
+      watches[0]![3](report)
+      await resolved
+      expect(resolveLegacy.mock.calls.map(([address, placementId]) => [address.runtimeId, placementId])).toEqual([["machine", "project"]])
+      expect(stored.selection).toEqual({ runtimeId: "machine", placementId: "keyed" })
+      expect(selectionChanges.mock.calls).toEqual([[false]])
+      watches[0]![3](report)
+      expect(resolveLegacy).toHaveBeenCalledTimes(1)
+    } finally {
+      unsubscribe()
+    }
+  })
+
+  test("attaches only once presence lists the selection, so no attach names an earlier id, also while the machine is offline", async () => {
+    resolveLegacy.mockResolvedValue("keyed")
+    const attach = spyOn(channel, "attachDeviceChannel").mockResolvedValue(endedChannel())
+    restores.push(() => attach.mockRestore())
+    const parked = runSocket(client)
+    watches[0]![3]([])
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0) })
+    expect(attach).not.toHaveBeenCalled()
+    const resolved = nextChange(client, (snapshot) => snapshot.selected?.placementId === "keyed")
+    watches[0]![3]([{ ...live, id: "machine" }, { ...live, id: "keyed" }])
+    await resolved
+    // The parked attach ends with the earlier selection, and the client's next one attaches to the current id.
+    expect(Exit.isFailure(await parked)).toBe(true)
+    await runSocket(client)
+    expect(attach.mock.calls.map((call) => call[2])).toEqual(["keyed"])
+  })
+
+  test("asks again on the client's backoff after a machine could not answer, and moves the host's state before it stores the new selection", async () => {
+    resolveLegacy.mockRejectedValueOnce(new Error("channel_limit")).mockResolvedValue("keyed")
+    await client.forget("machine")
+    stored = { runtimes: [paired], selection: selected }
+    const moved: unknown[] = []
+    client = await createRelayClient(await deviceStore(), { moveSelectionState: async (from, to) => { moved.push([from, to, stored.selection]) } })
+    const resolved = nextChange(client, (snapshot) => snapshot.selected?.placementId === "keyed")
+    watches.at(-1)![3]([{ ...live, id: "machine" }, { ...live, id: "keyed" }])
+    await resolved
+    expect(resolveLegacy).toHaveBeenCalledTimes(2)
+    expect(moved).toEqual([[selected, { runtimeId: "machine", placementId: "keyed" }, selected]])
+    expect(stored.selection).toEqual({ runtimeId: "machine", placementId: "keyed" })
+  })
+
+  test("an earlier id chosen again, as an earlier notification names it, selects the current id without asking again", async () => {
+    resolveLegacy.mockResolvedValue("keyed")
+    const resolved = nextChange(client, (snapshot) => snapshot.selected?.placementId === "keyed")
+    watches[0]![3]([{ ...live, id: "machine" }, { ...live, id: "keyed" }])
+    await resolved
+    const again = nextChange(client, (snapshot) => snapshot.selected?.placementId === "keyed")
+    client.select(selected)
+    await again
+    expect(resolveLegacy).toHaveBeenCalledTimes(1)
+  })
+
+  test("asks nothing while the machine still announces the selected id or offers no machine placement, and keeps an id the machine does not know", async () => {
+    watches[0]![3]([live, { ...live, id: "machine" }])
+    watches[0]![3]([{ ...live, id: "other" }])
+    expect(resolveLegacy).not.toHaveBeenCalled()
+    watches[0]![3]([{ ...live, id: "machine" }])
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0) })
+    expect(resolveLegacy).toHaveBeenCalledTimes(1)
+    expect(client.snapshot().selected).toEqual(selected)
+    expect(stored.selection).toEqual(selected)
   })
 })
 
@@ -428,6 +506,7 @@ describe("relay client wake", () => {
     await new Promise<void>((resolve) => { setTimeout(resolve, 0) })
     expect(attach).not.toHaveBeenCalled()
     client.select(selected)
+    watches.at(-1)![3]([live])
     await run
     expect(attach.mock.calls[0]?.slice(0, 3)).toEqual(["wss://relay.example", "machine", "project"])
   })

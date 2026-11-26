@@ -1,4 +1,7 @@
-import { createRelayControlChannel, linkConnection, linkFailure, type RelayControlChannelOptions, type RelayLink } from "../../../../../src/orchestration/modules/remote/relay-control-channel.js"
+import * as control from "../../../../../src/orchestration/modules/remote/relay-control-channel.js"
+import { createRelayControlChannel, linkConnection, linkFailure, type RelayControlChannel, type RelayControlChannelOptions, type RelayLink } from "../../../../../src/orchestration/modules/remote/relay-control-channel.js"
+import { spyOn } from "bun:test"
+import * as identities from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
 import type { RemoteIdentity } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
 import { RELAY_PING } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 
@@ -34,7 +37,23 @@ export class ControlSocket extends EventTarget {
   }
 }
 
-export const identity: RemoteIdentity = { runtimeId: "runtime", publicKey: new Uint8Array(32), sign: async () => new Uint8Array(64) }
+export const identity: RemoteIdentity = { runtimeId: "runtime", publicKey: new Uint8Array(32), sign: async () => new Uint8Array(64), placementId: (projectRoot) => projectRoot }
+/** Replaces every relay control channel with `channel`, and hands every
+ *  identity read the fake `identity`, whose placement id for a project is its
+ *  root. The caller restores both through the result. */
+export function fakeControlChannels(channel: (options: RelayControlChannelOptions) => RelayControlChannel) {
+  const spies = [spyOn(identities, "remoteIdentityFrom").mockResolvedValue(identity), spyOn(control, "createRelayControlChannel").mockImplementation(channel)]
+  return { mockRestore: () => { for (const spy of spies) spy.mockRestore() } }
+}
+
+/** What a fake control channel announces, read as the real channel reads it:
+ *  once its identity resolves. The machine placement reads as `machine`. */
+export async function announced(options: RelayControlChannelOptions): Promise<{ readonly id: string; readonly label: string }> {
+  const resolved = await options.identity()
+  const placement = options.placement()
+  return placement.id === resolved.runtimeId ? { id: "machine", label: "machine" } : { id: placement.id, label: placement.projectLabel }
+}
+
 export const turn = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
 
 export function fixture(overrides: Partial<RelayControlChannelOptions> = {}) {
