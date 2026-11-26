@@ -1,0 +1,26 @@
+src/orchestration/agent-runtime/llm/adapters/google/google.ts
+  h_4b47e9e4a8b456 137,147,156,320-322,338,388,390-395,398-399,418,452-455,522,528
+src/orchestration/agent-runtime/llm/conversions/google-generative-ai.ts
+  h_4b47e9e4a8b456 15,37-56,225
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 203-206
+src/orchestration/agent-runtime/loop/turn/assistant-turn-result.ts
+  h_4b47e9e4a8b456 162,192-203
+tests/unit/orchestration/agent-runtime/llm/adapters/google/google-failure-signals.test.ts
+  h_4b47e9e4a8b456 157-192,299-314
+tests/unit/orchestration/agent-runtime/llm/llm-converters.test.ts
+  h_4b47e9e4a8b456 406-439
+tests/unit/orchestration/agent-runtime/loop/turn/assistant-turn-result.test.ts
+  h_4b47e9e4a8b456 32-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "876627ddb3d972f9536d57aed6045d170555a2ab",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
