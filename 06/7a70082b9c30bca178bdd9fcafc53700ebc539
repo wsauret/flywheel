@@ -1,0 +1,14 @@
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "067a70082b9c30bca178bdd9fcafc53700ebc539",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
