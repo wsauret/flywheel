@@ -1,0 +1,76 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 649,651,655
+relay/worker/src/reports.test.ts
+  h_4b47e9e4a8b456 129-132,138-139,141
+relay/worker/src/reports.ts
+  h_4b47e9e4a8b456 145,203-204,208-209
+src/infra/environment/do-not-track.ts
+  h_4b47e9e4a8b456 1-7
+src/infra/environment/login-shell-path.ts
+  h_4b47e9e4a8b456 8,22-26,87,101,125-127,131-133,146-152,184-185,214,216,218,223-230
+src/orchestration/app-service/account/account-service-runtime.ts
+  h_4b47e9e4a8b456 530
+src/orchestration/app-service/account/projects/account-module-services.ts
+  h_4b47e9e4a8b456 9,21-22,72-73
+src/orchestration/app-service/account/projects/project-control-runtime.ts
+  h_4b47e9e4a8b456 381
+src/orchestration/app-service/executor/runtime-fault-reporting.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/bug-reports/config.ts
+  h_4b47e9e4a8b456 1-56
+src/orchestration/modules/bug-reports/diagnostics.ts
+  h_4b47e9e4a8b456 5,16
+src/orchestration/modules/bug-reports/module.ts
+  h_4b47e9e4a8b456 1-3,6,9-12,15-21,32-35,43-50,52,54-55
+src/orchestration/modules/bug-reports/service.ts
+  h_4b47e9e4a8b456 7-10,18-19,39-57,60-62,67-76,89,97-98,107-119,144-149,154-158
+src/protocol/modules/bug-reports.ts
+  h_4b47e9e4a8b456 19-66,73-79,83-97,99-128,132-135,138,143-153,155,158,161-167,178-180,182-191,194,238-244
+src/protocol/rpc/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 83-84
+src/protocol/runtime/app-service-types.ts
+  h_4b47e9e4a8b456 776-780,785-786
+src/tui/components/error-boundary.tsx
+  h_4b47e9e4a8b456 57-66
+src/tui/modules/bug-reports/report.ts
+  h_4b47e9e4a8b456 2-7,11-17,20-21,24,28-31,33-51,55,60,62-67,102,126,145-154
+src/tui/tui-module.ts
+  h_4b47e9e4a8b456 122-126
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 114-128
+tests/unit/infra/environment/login-shell-path.test.ts
+  h_4b47e9e4a8b456 91,93,97-98,102,175,216
+tests/unit/orchestration/config/config-application-modes.test.ts
+  h_4b47e9e4a8b456 40
+tests/unit/orchestration/modules/bug-reports/service.test.ts
+  h_4b47e9e4a8b456 11,14-15,19-21,64,75-79,98,100,108,115,119,122-134,143,174,211,231-310
+tests/unit/orchestration/modules/module-service.test.ts
+  h_4b47e9e4a8b456 76
+tests/unit/orchestration/modules/remote/service.test.ts
+  h_4b47e9e4a8b456 78
+tests/unit/tui/components/error-boundary.test.tsx
+  h_4b47e9e4a8b456 2,6,15-20,25-26,33-42,89,128-209
+tests/unit/tui/components/notices/runtime-notice.test.tsx
+  h_4b47e9e4a8b456 73,84-90
+webview/src/modules/bug-reports/report.ts
+  h_4b47e9e4a8b456 2,31-35,38-39,67-89,91
+webview/src/modules/bug-reports/surfaces-fixture.ts
+  h_4b47e9e4a8b456 3,16-17,21-24,39,45-48,67
+webview/src/modules/bug-reports/surfaces.css
+  h_4b47e9e4a8b456 5-6
+webview/src/modules/bug-reports/surfaces.test.ts
+  h_4b47e9e4a8b456 4,7,37,125,136-139,162-238
+webview/src/modules/bug-reports/surfaces.tsx
+  h_4b47e9e4a8b456 5,10-14,16-19,21-22,24-26,28,30-38,42,47-53,81-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e011864f8f626222a2893f5b5043ab7b3137ad1d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
