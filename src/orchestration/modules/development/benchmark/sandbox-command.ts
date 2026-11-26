@@ -1,4 +1,5 @@
 import { mkdir } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, join, relative } from "node:path";
 import { processLoginShellPath } from "../../../../infra/environment/login-shell-path.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../infra/owned-command.js";
@@ -71,6 +72,11 @@ async function sandboxCommandEnv(sandboxDir: string): Promise<SandboxCommandEnvi
     GIT_CONFIG_GLOBAL: join(home, "gitconfig"),
     GIT_CONFIG_SYSTEM: join(home, "gitconfig-system"),
     GIT_TERMINAL_PROMPT: "0",
+    // The `cargo` and `rustc` on PATH are usually rustup proxies, which find
+    // their installed toolchains and the default one under RUSTUP_HOME, by
+    // default `~/.rustup`. The sandbox HOME would hide them, so the person's
+    // toolchain directory is named. It holds compilers, not credentials.
+    RUSTUP_HOME: process.env.RUSTUP_HOME ?? join(homedir(), ".rustup"),
   };
 }
 

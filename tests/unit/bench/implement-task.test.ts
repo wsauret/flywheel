@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, readdir, rm, stat } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { processLoginShellPath } from "../../../src/infra/environment/login-shell-path.js";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
@@ -520,8 +520,10 @@ describe("implementation sandbox command environment", () => {
           "LC_ALL",
           "PATH",
           "PYTHONDONTWRITEBYTECODE",
+          "RUSTUP_HOME",
           "TMPDIR",
         ]);
+        expect(env.RUSTUP_HOME).toBe(process.env.RUSTUP_HOME ?? join(homedir(), ".rustup"));
         expect(env.HOME).toBe(join(sandbox, ".bench-home"));
         expect(env.PATH).toBe(loginShellPath);
         expect(env.PYTHONDONTWRITEBYTECODE).toBe("1");
