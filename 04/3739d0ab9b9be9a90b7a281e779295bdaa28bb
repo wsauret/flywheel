@@ -1,0 +1,24 @@
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 245-248
+src/orchestration/agent-runtime/request/prompt/model-chat-body.ts
+  h_4b47e9e4a8b456 144,150
+src/orchestration/agent-runtime/tools/sessions/ask-user.ts
+  h_4b47e9e4a8b456 117-118
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 639,1220
+tests/unit/orchestration/agent-runtime/request/prompt/model-chat-body.test.ts
+  h_4b47e9e4a8b456 235,388
+tests/unit/orchestration/agent-runtime/tools/sessions/ask-user.test.ts
+  h_4b47e9e4a8b456 48,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "043739d0ab9b9be9a90b7a281e779295bdaa28bb",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
