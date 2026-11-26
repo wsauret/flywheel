@@ -128,7 +128,7 @@ describe("ModelListingClient", () => {
 
       expect(requested?.url).toBe("https://generativelanguage.googleapis.com/v1beta/models");
       expect(requested?.key).toBe("google-test-key");
-      expect(requested?.userAgent).toMatch(/^flywheel\/\d+\.\d+\.\d+ \(.+ .+; .+\)$/);
+      expect(requested?.userAgent).toMatch(/^flywheel\/\d+\.\d+\.\d+ \([^ ;]+; [^ ;]+\)$/);
       expect(requested?.redirect).toBe("error");
       expect(models?.has("gemini-2.5-pro")).toBe(true);
       expect(models?.has("gemini-2.5-flash")).toBe(true);

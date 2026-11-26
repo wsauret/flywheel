@@ -48,7 +48,7 @@ export function createChatGPTClient(options: {
   const staticHeaders: StringFields = {
     "OpenAI-Beta": "responses=experimental",
     originator: "flywheel",
-    "User-Agent": `flywheel (${os.platform()} ${os.release()}; ${os.arch()})`,
+    "User-Agent": `flywheel (${os.platform()}; ${os.arch()})`,
   };
 
   return new OpenAI({

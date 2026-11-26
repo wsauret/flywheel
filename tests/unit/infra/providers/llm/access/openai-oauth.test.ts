@@ -137,7 +137,7 @@ describe("refreshAccessToken", () => {
         },
       },
     )).toEqual({ kind: "rows", rows: [{ slug: "gpt-test" }] });
-    expect(capturedHeaders.get("user-agent")).toMatch(/^flywheel\/\d+\.\d+\.\d+ \(.+ .+; .+\)$/);
+    expect(capturedHeaders.get("user-agent")).toMatch(/^flywheel\/\d+\.\d+\.\d+ \([^ ;]+; [^ ;]+\)$/);
     expect(capturedHeaders.get("authorization")).toBe("Bearer access");
     expect(capturedHeaders.get("chatgpt-account-id")).toBe("account");
   });

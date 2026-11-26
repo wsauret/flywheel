@@ -118,7 +118,7 @@ describe("OpenCode Go client factory endpoint dispatch", () => {
 
 /** The request carries Flywheel's user agent and every OpenCode Go identity header for its provider session. */
 async function expectOpenCodeGoIdentity(headers: Headers | undefined): Promise<void> {
-  expect(headers?.get("user-agent")).toMatch(/^flywheel\/\d+\.\d+\.\d+ \(.+ .+; .+\)$/);
+  expect(headers?.get("user-agent")).toMatch(/^flywheel\/\d+\.\d+\.\d+ \([^ ;]+; [^ ;]+\)$/);
   for (const [name, value] of Object.entries(await openCodeGoRequestHeaders("provider-session-stable"))) expect(headers?.get(name)).toBe(value);
 }
 import { stableSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

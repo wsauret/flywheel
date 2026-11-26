@@ -8,12 +8,12 @@ import {
 } from "../../../../../src/infra/providers/llm/provider-request-identity.js";
 
 describe("provider request identity", () => {
-  test("Every provider request carries the Flywheel user agent with the build version", async () => {
+  test("Every provider request carries the Flywheel user agent with the build version and no OS release", async () => {
     const platform = spyOn(os, "platform").mockReturnValue("linux");
     const release = spyOn(os, "release").mockReturnValue("6.8.0");
     const arch = spyOn(os, "arch").mockReturnValue("x64");
     try {
-      expect((await providerRequestHeaders())["User-Agent"]).toBe(`flywheel/${await readAppVersion()} (linux 6.8.0; x64)`);
+      expect((await providerRequestHeaders())["User-Agent"]).toBe(`flywheel/${await readAppVersion()} (linux; x64)`);
     } finally {
       platform.mockRestore();
       release.mockRestore();

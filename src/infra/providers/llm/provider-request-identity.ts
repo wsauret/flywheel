@@ -28,7 +28,7 @@ interface OpenCodeGoRequestHeaders extends ProviderRequestHeaders {
 
 /** Returns headers shared by inference and model-catalog requests, with Flywheel's canonical identity as the user agent. */
 export async function providerRequestHeaders(): Promise<ProviderRequestHeaders> {
-  return { "User-Agent": `flywheel/${await readAppVersion()} (${os.platform()} ${os.release()}; ${os.arch()})` };
+  return { "User-Agent": `flywheel/${await readAppVersion()} (${os.platform()}; ${os.arch()})` };
 }
 
 export async function openRouterRequestHeaders(): Promise<OpenRouterRequestHeaders> {
