@@ -1,0 +1,16 @@
+src/orchestration/modules/development/benchmark/sandbox-command.ts
+  h_4b47e9e4a8b456 2,75-79
+tests/unit/bench/implement-task.test.ts
+  h_4b47e9e4a8b456 3,523,526
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ab5837cf6c51a2c04ca4c832e9d6b35543ce542f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
