@@ -1,0 +1,26 @@
+bench/ab-persona/records/implementer/2026-11-26T06-06-30-601Z.jsonl
+  h_4b47e9e4a8b456 1-163
+bench/ab-persona/records/implementer/2026-11-26T06-08-53-448Z.jsonl
+  h_4b47e9e4a8b456 1-56
+bench/ab-persona/records/implementer/2026-11-26T06-24-57-058Z.jsonl
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/records/implementer/2026-11-26T08-48-39-529Z.jsonl
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/records/implementer/2026-11-26T08-56-29-270Z.jsonl
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/records/implementer/2026-11-26T09-25-40-966Z.jsonl
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/tables/implementer.md
+  h_4b47e9e4a8b456 5,11,13,15-16,20-28,31-33,44,46,54-59,65-68,71,73,75-76,82-89,104,108,110-118,124-125,132-147,156,161-162,165,167-168,200-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c1f84ecd1f596e21d31fd88ee2d5fdf985f874f7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
