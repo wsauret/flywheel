@@ -1,6 +1,6 @@
 import { decodeHTMLAttribute, decodeHTMLStrict } from "entities/decode"
 import hljs from "highlight.js/lib/common"
-import { Marked } from "marked"
+import { Marked, type Token } from "marked"
 
 /** Renders model output.
  *
@@ -9,7 +9,11 @@ import { Marked } from "marked"
  *  renderer that emits raw HTML would still allow markup that lies about the
  *  interface, so HTML in the source is escaped rather than passed through.
  *  Links allow HTTP(S), mail, telephone, and relative destinations. Other
- *  schemes and invalid URLs render only their formatted labels.
+ *  schemes and invalid URLs render only their formatted labels. An image on
+ *  another host renders as a link to it: an inline image would make the
+ *  client fetch from any host the text names, which tells that host the
+ *  reader's address and when they read. An image the client holds (`data:`,
+ *  `blob:`) or a relative path to its own origin stays inline.
  *
  *  Streaming makes the second problem: half a fence, an unterminated bold, an
  *  incomplete link. The live block is reparsed on every token so a partially
@@ -32,24 +36,61 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;")
 }
 
+// The base classifies relative destinations only; it never enters the output.
+const RELATIVE_BASE = new URL("https://flywheel.invalid/")
+
+/** A destination as Marked's token holds it, decoded once and parsed. Marked
+ *  keeps character references in href tokens, so the decoded value is what
+ *  both the URL parser and the escaped attribute use. */
+function destinationOf(href: string) {
+  const decoded = decodeHTMLAttribute(href)
+  try {
+    return { decoded, url: new URL(decoded, RELATIVE_BASE) }
+  } catch {
+    return { decoded, url: undefined }
+  }
+}
+
+function titleAttribute(title: string | null | undefined): string {
+  // Marked preserves complete title entities, but escapes incomplete ones.
+  return title ? ` title="${escapeHtml(decodeHTMLStrict(title))}"` : ""
+}
+
+/** A link to `href` around `label`, which is already markup, or `label`
+ *  alone when the destination is not one the policy above allows. */
+function linkHtml(href: string, title: string | null | undefined, label: string): string {
+  const { decoded, url } = destinationOf(href)
+  if (url === undefined || !["http:", "https:", "mailto:", "tel:"].includes(url.protocol)) return label
+  return `<a href="${escapeHtml(decoded)}"${titleAttribute(title)}>${label}</a>`
+}
+
+/** The tokens of a link label or an image description, with every image
+ *  replaced by its description and every link by its label at any depth, so
+ *  the markup they render holds no link that would nest inside another. */
+function labelTokens(tokens: readonly Token[]): Token[] {
+  return tokens.flatMap((token): Token[] => {
+    if (token.type === "image" || token.type === "link") return labelTokens(token.tokens ?? [])
+    return "tokens" in token && token.tokens ? [{ ...token, tokens: labelTokens(token.tokens) }] : [token]
+  })
+}
+
 marked.use({
   renderer: {
     link({ href, title, tokens }) {
-      const label = this.parser.parseInline(tokens)
-      // Marked keeps character references in href tokens. Decode once before
-      // URL parsing, then escape that same value for the browser's attribute.
-      const destination = decodeHTMLAttribute(href)
-      // The base classifies relative links only; it never enters the output.
-      let url: URL
-      try {
-        url = new URL(destination, "https://flywheel.invalid/")
-      } catch {
-        return label
-      }
-      if (!["http:", "https:", "mailto:", "tel:"].includes(url.protocol)) return label
-      // Marked preserves complete title entities, but escapes incomplete ones.
-      const titleAttribute = title ? ` title="${escapeHtml(decodeHTMLStrict(title))}"` : ""
-      return `<a href="${escapeHtml(destination)}"${titleAttribute}>${label}</a>`
+      const label = labelTokens(tokens)
+      // A label with no visible text shows the address, so the link can be seen.
+      const visible = this.parser.parseInline(label, this.parser.textRenderer).trim().length > 0
+      return linkHtml(href, title, visible ? this.parser.parseInline(label) : escapeHtml(decodeHTMLAttribute(href)))
+    },
+    image({ href, title, tokens }) {
+      const description = labelTokens(tokens)
+      const text = this.parser.parseInline(description, this.parser.textRenderer).trim()
+      const { decoded, url } = destinationOf(href)
+      const inline = url !== undefined && (url.protocol === "data:" || url.protocol === "blob:" || url.origin === RELATIVE_BASE.origin)
+      if (inline) return `<img src="${escapeHtml(decoded)}" alt="${escapeHtml(text)}"${titleAttribute(title)}>`
+      const remote = url !== undefined && (url.protocol === "http:" || url.protocol === "https:")
+      const label = text.length > 0 ? this.parser.parseInline(description) : remote ? escapeHtml(decoded) : "image"
+      return remote ? linkHtml(href, title, label) : label
     },
     html(token) {
       // Raw HTML in model output renders as the text it is.

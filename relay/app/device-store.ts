@@ -7,6 +7,9 @@ import type { CarriedDevice } from "./install-carry.js"
  *  has paired with, and which project it last opened. The page hands the
  *  opened store to the phone shell it loads (`phone-bootstrap.ts`).
  *
+ *  A phone that never pairs keeps nothing: its first pairing makes the key
+ *  and records the name, unless the person named the phone before.
+ *
  *  IndexedDB rather than localStorage because it holds `CryptoKey` objects.
  *  The browser's key is extractable so that the page can carry it into the
  *  app the person adds to the Home Screen (`install-carry.ts`); the installed
@@ -67,11 +70,26 @@ function defaultLabel(): string {
 type RuntimePutListener = (runtime: PairedRuntime, previous: PairedRuntime | undefined) => void
 
 /** The store as the page holds it. The page tells of every write a shell
- *  makes, also a shell from an older build, because the shell receives this
- *  same object; the notification is the page's own and not part of the
+ *  makes, also a shell from an older build, because the shell's store writes
+ *  through this one; the notification is the page's own and not part of the
  *  `DeviceStore` contract. */
-export interface PageDeviceStore extends DeviceStore {
+export interface PageDeviceStore extends Omit<DeviceStore, "device"> {
+  /** The device's key, undefined until this phone first pairs. */
+  readonly device: DeviceRecord | undefined
+  /** The device's key as it is stored now, also one that another tab of
+   *  this phone stored after this store opened; undefined when the phone has
+   *  never paired. It never makes a key. */
+  committedDevice(): Promise<DeviceRecord | undefined>
+  /** The device's key, made and stored first when the phone has none. A
+   *  pairing calls it. A key that another tab stored first wins, so two tabs
+   *  never give the phone two keys. */
+  ensureDevice(): Promise<DeviceRecord>
   onRuntimePut(listener: RuntimePutListener): void
+}
+
+async function deviceRecord(keyPair: CryptoKeyPair): Promise<DeviceRecord> {
+  const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey))
+  return { keyPair, deviceId: await keyDigest(publicKey), publicKey }
 }
 
 /** Opens the store. `carried` is the identity an installed app's start URL
@@ -96,25 +114,50 @@ export async function openDeviceStore(carried?: CarriedDevice): Promise<PageDevi
     await write("device-label", carried.label)
     await write("device-key", carried.keyPair)
     keyPair = carried.keyPair
-  } else if (keyPair === undefined) {
-    // Extractable, so that the page can carry it into the installed app
-    // (PI-REMOTE-032). A key stored before keys were extractable stays as it
-    // is, because a new key would unpair the phone; that browser carries
-    // nothing, and its installed app pairs once, in the app.
-    const generated = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"])
-    if (!("privateKey" in generated)) throw new Error("expected an asymmetric key pair")
-    keyPair = generated
-    await write("device-key", keyPair)
   }
-  const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey))
-  const storedLabel = await read("device-label")
-  let label = storedLabel ?? defaultLabel()
-  if (storedLabel === undefined) await write("device-label", label)
-  const device: DeviceRecord = { keyPair, deviceId: await keyDigest(publicKey), publicKey }
+  let device = keyPair === undefined ? undefined : await deviceRecord(keyPair)
+  let label = (await read("device-label")) ?? defaultLabel()
   const runtimeListeners = new Set<RuntimePutListener>()
 
   return {
-    device,
+    get device() { return device },
+    async committedDevice() {
+      if (device !== undefined) return device
+      const stored = await read("device-key")
+      if (stored !== undefined) device = await deviceRecord(stored)
+      return device
+    },
+    async ensureDevice() {
+      if (device !== undefined) return device
+      // Extractable, so that the page can carry it into the installed app
+      // (PI-REMOTE-032). A key stored before keys were extractable stays as
+      // it is, because a new key would unpair the phone; that browser carries
+      // nothing, and its installed app pairs once, in the app. Made before
+      // the transaction, which an await on anything but its own requests
+      // would commit.
+      const generated = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"])
+      if (!("privateKey" in generated)) throw new Error("expected an asymmetric key pair")
+      // One transaction reads and writes, so a key or a name that another tab
+      // stored first is kept. The machine lists the phone under the name it
+      // paired with, so that name stays when the browser later describes
+      // itself differently.
+      const transaction = db.transaction(STORE, "readwrite")
+      const state = transaction.objectStore(STORE)
+      let kept: CryptoKeyPair = generated
+      const storedKey = state.get("device-key")
+      storedKey.addEventListener("success", () => {
+        if (storedKey.result === undefined) state.put(generated, "device-key")
+        else kept = storedKey.result
+      }, { once: true })
+      const storedLabel = state.get("device-label")
+      storedLabel.addEventListener("success", () => {
+        if (storedLabel.result === undefined) state.put(label, "device-label")
+        else label = storedLabel.result
+      }, { once: true })
+      await committed(transaction)
+      device = await deviceRecord(kept)
+      return device
+    },
     label: () => label,
     async setLabel(next) {
       const trimmed = next.trim()

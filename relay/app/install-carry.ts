@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 
-import type { DeviceStore, PairedRuntime } from "../../src/protocol/modules/remote/relay-device.js"
+import type { DeviceRecord, DeviceStore, PairedRuntime } from "../../src/protocol/modules/remote/relay-device.js"
 import { fromBase64Url, ownedBytes, toBase64Url } from "../../src/protocol/modules/remote/relay-protocol.js"
 
 /** How a phone that paired in the browser stays paired when the person adds
@@ -48,16 +48,20 @@ export interface CarriedDevice {
   readonly runtimes: readonly PairedRuntime[]
 }
 
-async function startUrl(origin: string, store: DeviceStore): Promise<string> {
+/** What the manifest carries from: a store, whose key is undefined until the
+ *  phone first pairs. */
+type CarrySource = Pick<DeviceStore, "label" | "runtimes"> & { readonly device: DeviceRecord | undefined }
+
+async function startUrl(origin: string, store: CarrySource): Promise<string> {
   const runtimes = await store.runtimes()
-  const { privateKey } = store.device.keyPair
+  const device = store.device
   // A key made before the carry existed is non-extractable and stays: a new
   // key would unpair the phone. Its installed app pairs once, in the app.
-  if (!privateKey.extractable || runtimes.length === 0) return `${origin}/`
+  if (device === undefined || !device.keyPair.privateKey.extractable || runtimes.length === 0) return `${origin}/`
   const carry: typeof CarrySchema.Type = {
     v: 1,
-    key: toBase64Url(new Uint8Array(await crypto.subtle.exportKey("pkcs8", privateKey))),
-    publicKey: toBase64Url(store.device.publicKey),
+    key: toBase64Url(new Uint8Array(await crypto.subtle.exportKey("pkcs8", device.keyPair.privateKey))),
+    publicKey: toBase64Url(device.publicKey),
     label: store.label(),
     runtimes,
   }
@@ -69,7 +73,7 @@ async function startUrl(origin: string, store: DeviceStore): Promise<string> {
  *  machines when the store has an exportable key and at least one machine,
  *  else it is the origin's root. Every URL in it is absolute, because a
  *  `data:` manifest has no base to resolve a relative one against. */
-export async function installManifestHref(origin: string, store: DeviceStore): Promise<string> {
+export async function installManifestHref(origin: string, store: CarrySource): Promise<string> {
   const manifest = {
     // The id a manifest without one defaults to, which the apps installed
     // before the page stated one already have.

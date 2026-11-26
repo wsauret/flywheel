@@ -1,5 +1,6 @@
-import type { PairedRuntime } from "../../src/protocol/modules/remote/relay-device.js"
+import type { DeviceRecord, PairedRuntime } from "../../src/protocol/modules/remote/relay-device.js"
 import type { NotificationAddress } from "../../src/protocol/modules/remote/notification-address.js"
+import { parsePairingCodeUrl } from "../../src/protocol/modules/remote/relay-protocol.js"
 import { chooseClient, readLastClient, writeLastClient, type ClientSource, type KnownRuntime } from "./client-choice.js"
 import type { PageDeviceStore } from "./device-store.js"
 
@@ -46,7 +47,8 @@ export interface PageStartEffects {
   /** Which client each paired machine's relay names, waiting up to `waitMs`
    *  for the relay to name one for the preferred machine. */
   currentClients(paired: readonly PairedRuntime[], preferred: string | undefined, waitMs: number): Promise<KnownRuntime[]>
-  pairDevice(code: string): Promise<PairedRuntime>
+  /** Pairs `device` with the machine `code` names. */
+  pairDevice(code: string, device: DeviceRecord): Promise<PairedRuntime>
   /** Resolves once the client's phone shell ran, and rejects when the relay
    *  could not serve it. */
   loadShell(source: ClientSource): Promise<void>
@@ -124,7 +126,10 @@ export function createPageStart(effects: PageStartEffects) {
   }
 
   async function pair(code: string, paired: (label: string) => void): Promise<void> {
-    const runtime = await effects.pairDevice(code)
+    // The key is made here, at the first pairing, so that a phone that only
+    // opens the page keeps nothing; text that is no pairing code makes none.
+    parsePairingCodeUrl(code)
+    const runtime = await effects.pairDevice(code, await store.ensureDevice())
     await store.putRuntime(runtime)
     paired(runtime.label)
   }

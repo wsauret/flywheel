@@ -75,6 +75,41 @@ describe("markdown links", () => {
     assert.equal(step.settledHtml + step.tailHtml, "<p><strong>Reference</strong></p>\n<p>javascript:alert(1)</p>\n")
   })
 
+  test("renders an image as a link to its source, so the client loads nothing from the host it names", () => {
+    const step = createMarkdownStream().advance(
+      '![A *chart*](https://tracker.example/chart.png "Weekly") ![](https://tracker.example/b.png) ![Unsafe](javascript:alert(1))',
+    )
+    assert.equal(
+      step.tailHtml,
+      '<p><a href="https://tracker.example/chart.png" title="Weekly">A <em>chart</em></a> <a href="https://tracker.example/b.png">https://tracker.example/b.png</a> Unsafe</p>\n',
+    )
+  })
+
+  test("renders an image inside a link as its description, so the link does not nest another link", () => {
+    const step = createMarkdownStream().advance("[![build passing](https://badges.example/ci.svg)](https://ci.example/run)")
+    assert.equal(step.tailHtml, '<p><a href="https://ci.example/run">build passing</a></p>\n')
+  })
+
+  test("keeps an image the client holds or its own origin serves inline, and never prints a rejected address", () => {
+    const step = createMarkdownStream().advance(
+      "![Dot](data:image/gif;base64,R0lGOD) ![](/icon.png \"Icon\") ![](javascript:alert(1)) ![ ](https://tracker.example/c.png)",
+    )
+    assert.equal(
+      step.tailHtml,
+      '<p><img src="data:image/gif;base64,R0lGOD" alt="Dot"> <img src="/icon.png" alt="" title="Icon"> image <a href="https://tracker.example/c.png">https://tracker.example/c.png</a></p>\n',
+    )
+  })
+
+  for (const [source, html] of [
+    ["[**![b](https://i.example/a.png)**](https://u.example/)", '<a href="https://u.example/"><strong>b</strong></a>'],
+    ["[![](https://i.example/a.png)](https://u.example/)", '<a href="https://u.example/">https://u.example/</a>'],
+    ["![**b** ![in](https://i.example/i.png) [x](https://y.example/)](https://o.example/)", '<a href="https://o.example/"><strong>b</strong> in x</a>'],
+  ] as const) {
+    test(`renders ${JSON.stringify(source)} as one link with visible text`, () => {
+      assert.equal(createMarkdownStream().advance(source).tailHtml, `<p>${html}</p>\n`)
+    })
+  }
+
   test("preserves complete and incomplete title entity display without double decoding", () => {
     const step = createMarkdownStream().advance('[Label](https://example.com/ "A &copy; &copy &amp;colon; &unknown;")')
     assert.equal(

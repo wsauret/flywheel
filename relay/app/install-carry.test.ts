@@ -50,7 +50,7 @@ test("the manifest the page builds keeps every install-time field unchanged acro
 
 test("the page's home-screen head tags stay unchanged across releases, and the manifest link is the page's own", async () => {
   const head = (await Bun.file(join(import.meta.dir, "index.html")).text()).split("</head>")[0] ?? ""
-  const tags = [...head.matchAll(/<(?:meta|link)\b[^>]*>/g)].map((match) => match[0]).filter((tag) => !tag.includes("stylesheet"))
+  const tags = [...head.matchAll(/<(?:meta|link)\b[^>]*>/g)].map((match) => match[0]).filter((tag) => !tag.includes("stylesheet") && !tag.includes("http-equiv"))
   expect(tags, `A home-screen head tag changed. ${STRANDS}. The manifest link is inserted by the bootstrap, which builds its start URL.`).toEqual([
     `<meta charset="utf-8">`,
     `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">`,
