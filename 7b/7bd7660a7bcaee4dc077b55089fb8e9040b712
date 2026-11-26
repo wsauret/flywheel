@@ -1,0 +1,40 @@
+README.md
+  h_4b47e9e4a8b456 83,141,172
+SECURITY.md
+  h_4b47e9e4a8b456 15
+docs/privacy.md
+  h_4b47e9e4a8b456 3-5,11-18,20,22,24,26,29,31-32,34,36,38-42,51-57,59-61,65,69-92
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 651,655
+docs/product-intent/remote-access.md
+  h_4b47e9e4a8b456 15
+src/orchestration/modules/bug-reports/config.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/modules/bug-reports/module.ts
+  h_4b47e9e4a8b456 54-55
+src/protocol/modules/bug-reports.ts
+  h_4b47e9e4a8b456 153
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 122
+vscode/README.md
+  h_4b47e9e4a8b456 130,136
+vscode/docs/about-flywheel.md
+  h_4b47e9e4a8b456 74,76
+website/src/pages/index.astro
+  h_4b47e9e4a8b456 110,246
+webview/src/modules/bug-reports/surfaces.test.ts
+  h_4b47e9e4a8b456 168,214,223
+webview/src/modules/bug-reports/surfaces.tsx
+  h_4b47e9e4a8b456 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7b7bd7660a7bcaee4dc077b55089fb8e9040b712",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
