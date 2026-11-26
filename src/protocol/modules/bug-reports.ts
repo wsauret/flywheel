@@ -1,6 +1,7 @@
 import { Schema } from "effect"
 import { defineProtocolModule, defineProtocolMutation, defineProtocolQuery } from "../protocol-module.js"
 import { redactSecrets } from "../../infra/redact-secrets.js"
+import type { ModuleConfigSectionBooleanControl } from "../runtime/module-protocol-types.js"
 
 const text = (max: number) => Schema.String.check(Schema.isMaxLength(max))
 const BugReportKindSchema = Schema.Literals(["crash", "manual"])
@@ -142,6 +143,12 @@ export type BugReportResult = typeof BugReportResultSchema.Type
 export const NOT_RELEASE_REPORT_STATUS = "No bug report was sent because this build is not an official Flywheel release."
 /** The Settings row that holds the person's answer to the crash screen's question. */
 export const AUTOMATIC_REPORTS_SETTING = "Automatic crash reports"
+/** The row of that answer, `[bug_reports] automatic` in the account's configuration file. An absent key reads as
+ *  off in the row and as not answered on the crash screen. */
+export const AUTOMATIC_REPORTS_CONTROL = {
+  control: "config-boolean", section: "bug_reports", key: "automatic", defaultValue: false, group: "Interface",
+  label: AUTOMATIC_REPORTS_SETTING, description: "Send crash reports without asking? DO_NOT_TRACK=1 also stops them",
+} as const satisfies ModuleConfigSectionBooleanControl
 /** What every surface says when an automatic report stays local because the person said no or has not answered. */
 export const AUTOMATIC_REPORTS_OFF_STATUS = `No bug report was sent because automatic crash reports are off. To send them, turn on ${AUTOMATIC_REPORTS_SETTING} in Settings.`
 /** What every surface says when an automatic report stays local because DO_NOT_TRACK is set. */

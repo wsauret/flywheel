@@ -12,7 +12,7 @@ import type { ListModalKeyEvent } from "../../components/modal/select/modal-list
 import { createModalScrollController } from "../../components/modal/scroll/modal-scroll-controller.js"
 import type { ModalContext, ModalHandle } from "../../components/modal-stack.js"
 import type { ToastInput } from "../../context/toast.js"
-import type { TuiComponentSurface, TuiControllerHost, TuiModule, TuiNavigation, TuiSurface, TuiSurfaceHost } from "../../tui-module.js"
+import type { TuiComponentSurface, TuiControllerHost, TuiModule, TuiNavigation, TuiPresenceProps, TuiSurface, TuiSurfaceHost } from "../../tui-module.js"
 import { createDomainReader, type ModuleDomainIntakes } from "../state/domains/create-module-domain-intakes.js"
 import { createLazyController } from "./lazy-controller.js"
 import type { SurfaceRequest } from "../../commands/command-surfaces.js"
@@ -36,6 +36,7 @@ interface ModuleSlotDeps {
   readonly navigate: TuiNavigation
   readonly clipboard: TuiControllerHost["clipboard"]
   readonly appVersion: string
+  readonly settings: TuiPresenceProps["settings"]
 }
 
 export interface ModuleSlots {
@@ -92,7 +93,7 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
 
   for (const module of deps.modules) {
     try {
-      module.present?.({ read: foreground, showToast: deps.showToast })
+      module.present?.({ read: foreground, showToast: deps.showToast, enabled: () => deps.enabled()?.includes(module.id), settings: deps.settings })
     } catch (error) {
       contain(module, "presence", error)
     }
