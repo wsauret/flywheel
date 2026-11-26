@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { mkdir, mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { processLoginShellPath } from "../../../src/infra/environment/login-shell-path.js";
@@ -296,15 +296,14 @@ describe("implementation sandbox", () => {
       report = '{"passed":1,"failed":0,"total":1,"evidence":true}';
       const evidence = { directory: join(tasksDir, "results", "evidence", "model", "synthetic", "0", "stamp"), resultsDir: join(tasksDir, "results") };
       exitCode = 1;
-      const evidenceLocation = join("evidence", "model", "synthetic", "0", "stamp");
-      await expect(captureImplementation(task, sandbox, runner, evidence)).rejects.toThrow(`exit code 1; evidence: ${evidenceLocation}`);
-      expect(await Bun.file(join(evidence.directory, "grade-stdout.txt")).text()).toBe("999 pass");
-      expect(await Bun.file(join(evidence.directory, "grade-stderr.txt")).text()).toBe("adapter diagnostic");
+      const failureFile = join("evidence", "model", "synthetic", "0", "stamp", "failure-native-grade.txt");
+      await expect(captureImplementation(task, sandbox, runner, evidence)).rejects.toThrow(`Native grade failed: exit code 1; evidence: ${failureFile}`);
+      expect(await Bun.file(join(tasksDir, "results", failureFile)).text())
+        .toBe("step: Native grade\nprogram: python3\nresult: exit code 1\nstderr (complete):\nadapter diagnostic");
       expect(await Bun.file(join(evidence.directory, "captured.patch")).text()).toBe(patch);
-      expect(await Bun.file(join(evidence.directory, "grade-output-truncated.txt")).text()).toBe("Retained grade output is truncated: stdout.\n");
       exitCode = 0;
       timedOut = true;
-      await expect(captureImplementation(task, sandbox, runner, evidence)).rejects.toThrow(`timed out; evidence: ${evidenceLocation}`);
+      await expect(captureImplementation(task, sandbox, runner, evidence)).rejects.toThrow(`Native grade failed: timed out; evidence: ${failureFile}`);
       prepareFails = true;
       await expect(provisionTaskSandbox(process.cwd(), task, runner, { evidence })).rejects.toThrow("Native prepare failed");
       expect(await Bun.file(join(evidence.directory, ".flywheel", "flywheel.sqlite")).text()).toBe("failed preparation state");
@@ -538,23 +537,29 @@ describe("implementation sandbox command environment", () => {
     }
   }, 30_000);
 
-  it("reports a failed sandbox command by its exit metadata and never stores its output", async () => {
+  it("keeps a failed sandbox command's bounded output only in the cell's evidence file and removes the workspace", async () => {
     const tasksDir = await writeSyntheticTaskDir();
+    const workspaceRoot = temporaryDirectory("implement-workspaces-");
     const secret = "sk-live-must-not-be-persisted";
+    // The secret falls outside the kept tail; the tail starts inside a multibyte character.
+    const stderr = `${secret}\n${"x".repeat(70_000)}é${"y".repeat(65_514)}\nerror: bun not found`;
     const failingRunner: OwnedCommandRunner = async (command) => command[1] === "init"
-      ? { exitCode: 1, timedOut: false, stdoutBytes: new Uint8Array(), stdout: secret, stderr: `fatal: ${secret}` }
+      ? { exitCode: 127, timedOut: false, stdoutBytes: new Uint8Array(), stdout: secret, stderr }
       : { exitCode: 0, timedOut: false, stdoutBytes: new Uint8Array(), stdout: "", stderr: "" };
     const [task] = await loadImplementTasks(tasksDir);
     if (!task) throw new Error("expected one synthetic task");
+    const resultsDir = join(tasksDir, "results");
+    const evidence = { directory: join(resultsDir, "cells", "model", "synthetic", "0", "attempt", "evidence"), resultsDir };
     try {
-      const failure = await provisionTaskSandbox(process.cwd(), task, failingRunner).then(
-        () => undefined,
-        (error) => error,
-      );
-      expect(failure).toBeInstanceOf(Error);
-      const message = failure instanceof Error ? failure.message : "";
-      expect(message).toContain("exit code 1");
-      expect(message).not.toContain(secret);
+      const withoutEvidence = await provisionTaskSandbox(process.cwd(), task, failingRunner, { workspaceRoot }).then(() => undefined, (error) => error);
+      expect(withoutEvidence).toEqual(new Error("Sandbox repository failed: exit code 127"));
+
+      const failure = await provisionTaskSandbox(process.cwd(), task, failingRunner, { evidence, workspaceRoot }).then(() => undefined, (error) => error);
+      const file = join("cells", "model", "synthetic", "0", "attempt", "evidence", "failure-sandbox-repository.txt");
+      expect(failure).toEqual(new Error(`Sandbox repository failed: exit code 127; evidence: ${file}`));
+      expect(await Bun.file(join(resultsDir, file)).text())
+        .toBe(`step: Sandbox repository\nprogram: git\nresult: exit code 127\nstderr (last 64 KB):\n�${"y".repeat(65_514)}\nerror: bun not found`);
+      expect(await readdir(workspaceRoot)).toEqual([]);
     } finally {
       await rm(tasksDir, { recursive: true, force: true });
     }

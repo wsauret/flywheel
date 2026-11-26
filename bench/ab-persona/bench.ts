@@ -237,11 +237,14 @@ export async function main(
     return;
   }
   const controller = new AbortController();
-  // An interrupt cancels the run instead of killing it mid-cell: the service
-  // aborts every cell, judge call and command it owns and settles them before
-  // it returns, so the results directory stays readable.
+  // An interrupt or a stop cancels the run instead of killing it mid-cell: the
+  // service aborts every cell, judge call and command it owns and settles them
+  // before it returns, so the results directory stays readable and every
+  // temporary workspace is removed. A background stop sends SIGTERM, whose
+  // default action exits at once and skips that cleanup.
   const onInterrupt = (): void => controller.abort();
   process.once("SIGINT", onInterrupt);
+  process.once("SIGTERM", onInterrupt);
   try {
     const outcome = await runPersonaBenchmark(plan, {
       runtime: admission.runtime,
@@ -258,6 +261,7 @@ export async function main(
     } else process.exitCode = 1;
   } finally {
     process.off("SIGINT", onInterrupt);
+    process.off("SIGTERM", onInterrupt);
   }
 }
 
@@ -306,6 +310,7 @@ async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeo
   const controller = new AbortController();
   const onInterrupt = (): void => controller.abort();
   process.once("SIGINT", onInterrupt);
+  process.once("SIGTERM", onInterrupt);
   try {
     const outcome = await rejudgeRecords({ catalog, persona, judge: requested, openJudge, signal: controller.signal });
     console.log(`Rejudged ${persona} with ${requested.model}:${requested.effort}: ${outcome.scored} scored, ${outcome.failed} failed of ${outcome.pending} pending. Judge evidence: ${outcome.evidenceDirectory}`);
@@ -313,6 +318,7 @@ async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeo
     if (outcome.failed > 0 || controller.signal.aborted) process.exitCode = 1;
   } finally {
     process.off("SIGINT", onInterrupt);
+    process.off("SIGTERM", onInterrupt);
   }
 }
 

@@ -2,7 +2,7 @@ import { cp } from "node:fs/promises";
 import { join } from "node:path";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import { resolveReviewFixture, type BenchmarkCatalog, type ReviewTask } from "../catalog.js";
-import { runCheckedSandboxCommand, SANDBOX_HOME_DIR } from "../sandbox-command.js";
+import { initSandboxRepository, runCheckedSandboxCommand, SANDBOX_HOME_DIR, type CellEvidence } from "../sandbox-command.js";
 import { materializeCommitSnapshot } from "../execution/snapshot-workspace.js";
 
 /** Fill a review sandbox with what the recorded reviewer saw. A project source
@@ -10,19 +10,20 @@ import { materializeCommitSnapshot } from "../execution/snapshot-workspace.js";
  *  repository whose one commit is the base tree, with the fixture's base patch
  *  applied when it has one, and whose working tree holds the reviewed diff
  *  uncommitted, because recorded review prompts read the change through git
- *  diff. No manifest, provenance, or fix enters either. */
-export async function materializeReviewSandbox(catalog: BenchmarkCatalog, task: ReviewTask, sandbox: string, run: OwnedCommandRunner): Promise<void> {
+ *  diff. No manifest, provenance, or fix enters either. A failed command keeps
+ *  its output in `evidence`. */
+export async function materializeReviewSandbox(catalog: BenchmarkCatalog, task: ReviewTask, sandbox: string, run: OwnedCommandRunner, evidence?: CellEvidence): Promise<void> {
   const fixture = await resolveReviewFixture(catalog.reviewFixturesDir, task);
   if (fixture.kind === "project") {
     await cp(fixture.projectDir, sandbox, { recursive: true });
     await cp(fixture.artifactPath, join(sandbox, task.artifact));
     return;
   }
-  const options = { cwd: sandbox, sandboxDir: sandbox };
-  await materializeCommitSnapshot(catalog.projectRoot, { commit: fixture.commit, paths: [] }, sandbox, run);
+  const options = { cwd: sandbox, sandboxDir: sandbox, step: "Review sandbox", evidence };
+  await materializeCommitSnapshot(catalog.projectRoot, { commit: fixture.commit, paths: [] }, sandbox, run, evidence);
   // The sandbox is its own repository before any patch applies, so git apply
   // resolves every path from the sandbox root and never from an enclosing one.
-  await runCheckedSandboxCommand(run, ["git", "init", "-q"], options);
+  await initSandboxRepository(run, options);
   if (fixture.basePatchPath !== undefined) await runCheckedSandboxCommand(run, ["git", "apply", "--whitespace=nowarn", fixture.basePatchPath], options);
   // The archive holds tracked files only, so every one is staged, including a
   // tracked file that a .gitignore pattern matches. The sandbox commands' home

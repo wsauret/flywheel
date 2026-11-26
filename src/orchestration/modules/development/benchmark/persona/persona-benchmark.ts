@@ -5,7 +5,7 @@ import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
 import { loadStandalonePersonaRegistry } from "../../../../../workflows/agents/registry.js";
 import { benchmarkMode, RESEARCH_TASKS_CHANGED, type BenchmarkCatalog, type BenchmarkMode, type ImplementTask, type ResearchTask, type ReviewTask } from "../catalog.js";
 import { captureImplementation, provisionTaskSandbox } from "../implement-task.js";
-import { withSnapshotWorkspace, withTrialWorkspace } from "../execution/snapshot-workspace.js";
+import { materializeCommitSnapshot, withSnapshotWorkspace, withTrialWorkspace } from "../execution/snapshot-workspace.js";
 import { materializeReviewSandbox } from "./review-sandbox.js";
 import { buildImplementRawResults, judgeImplementPairs, renderImplementReport, scoreImplementTraps, type ImplementCandidate } from "../scoring/implement-scoring.js";
 import type { JudgeAttemptReport, JudgeModel, JudgeVerdict } from "../scoring/judge.js";
@@ -35,6 +35,7 @@ import type { BenchmarkAccounting } from "../accounting/evidence.js";
 import { validateAttempts, validateJudgeAttempts, validateRuns, validateScores } from "./persona-evidence-validation.js";
 import { createNativePersonaInvocation } from "./native-persona-invocation.js";
 import { IMPLEMENT_TRANSCRIPT_FILE, retainImplementStore } from "../execution/implement-evidence.js";
+import type { CellEvidence } from "../sandbox-command.js";
 import { createPersonaStore } from "./persona-store.js";
 import { exportCampaignRecords, isScoredAttempt } from "../records/benchmark-records.js";
 import { campaignJudges, type BenchmarkOperation, type BenchmarkPlan, type JudgeSelection, type PlannedTask } from "./benchmark-plan.js";
@@ -474,13 +475,22 @@ interface CellContext {
   scope: CommandScope;
 }
 
+/** The cell's local diagnostics folder, which keeps the output of a failed sandbox command. */
+function cellEvidence(context: CellContext): CellEvidence {
+  return { directory: join(context.cellDirectory, "evidence"), resultsDir: context.resultsDir };
+}
+
 async function runCell(cell: BenchmarkCell, context: CellContext): Promise<CellRunResult | ImplementCandidate> {
   const startedAt = performance.now();
   try {
     if (isImplementTask(cell.task)) return await runImplementCell(cell, cell.task, context);
     if (isReviewTask(cell.task)) return await runReviewCell(cell, cell.task, context);
     await Bun.write(join(context.cellDirectory, "diff.patch"), "");
-    return await withSnapshotWorkspace(context.deps.catalog.projectRoot, cell.task.snapshot, context.scope.run, (workspace) => runOne(cell, context, workspace, undefined, join(context.cellDirectory, "transcript.jsonl")));
+    const snapshot = cell.task.snapshot;
+    return await withTrialWorkspace(
+      (workspace) => materializeCommitSnapshot(context.deps.catalog.projectRoot, snapshot, workspace, context.scope.run, cellEvidence(context)),
+      (workspace) => runOne(cell, context, workspace, undefined, join(context.cellDirectory, "transcript.jsonl")),
+    );
   } catch (error) {
     throw asPersonaTaskFailure(error, startedAt, context.deps.signal);
   }
@@ -522,10 +532,7 @@ async function runOne(cell: BenchmarkCell, context: CellContext, workspace: stri
  *  and no parent verification gates. The hidden acceptance tests arrive only
  *  after the diff is captured. */
 async function runImplementCell(cell: BenchmarkCell, task: ImplementTask, context: CellContext): Promise<ImplementCandidate> {
-  const evidence = {
-    directory: join(context.cellDirectory, "evidence"),
-    resultsDir: context.resultsDir,
-  };
+  const evidence = cellEvidence(context);
   const projectRoot = context.deps.catalog.projectRoot;
   const sandbox = await provisionTaskSandbox(projectRoot, task, context.scope.run, { evidence });
   try {
@@ -554,19 +561,23 @@ async function runImplementCell(cell: BenchmarkCell, task: ImplementTask, contex
       ...(capture.nativeGrade === undefined ? {} : { nativeGrade: capture.nativeGrade }),
     };
   } finally {
-    await retainImplementStore(sandbox, evidence.directory);
-    const transcript = join(sandbox, ".flywheel", IMPLEMENT_TRANSCRIPT_FILE);
-    if (await Bun.file(transcript).exists()) await cp(transcript, join(context.cellDirectory, "transcript.jsonl"));
-    const roles = join(sandbox, ".flywheel", "roles.json");
-    if (await Bun.file(roles).exists()) await cp(roles, join(context.cellDirectory, "roles.json"));
-    await rm(sandbox, { recursive: true, force: true });
+    try {
+      await retainImplementStore(sandbox, evidence.directory);
+      const transcript = join(sandbox, ".flywheel", IMPLEMENT_TRANSCRIPT_FILE);
+      if (await Bun.file(transcript).exists()) await cp(transcript, join(context.cellDirectory, "transcript.jsonl"));
+      const roles = join(sandbox, ".flywheel", "roles.json");
+      if (await Bun.file(roles).exists()) await cp(roles, join(context.cellDirectory, "roles.json"));
+    } finally {
+      // A copy into a full results volume fails; the workspace is still removed.
+      await rm(sandbox, { recursive: true, force: true });
+    }
   }
 }
 
 async function runReviewCell(cell: BenchmarkCell, task: ReviewTask, context: CellContext): Promise<CellRunResult> {
   await Bun.write(join(context.cellDirectory, "diff.patch"), "");
   return await withTrialWorkspace(
-    (sandbox) => materializeReviewSandbox(context.deps.catalog, task, sandbox, context.scope.run),
+    (sandbox) => materializeReviewSandbox(context.deps.catalog, task, sandbox, context.scope.run, cellEvidence(context)),
     (sandbox) => runOne(cell, context, sandbox, undefined, join(context.cellDirectory, "transcript.jsonl")),
   );
 }

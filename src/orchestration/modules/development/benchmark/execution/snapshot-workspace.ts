@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { ContainedDirectory } from "../../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
 import { openExistingContainedDirectory } from "../../../../../infra/platform/files/descriptor-directory.js";
 import type { OwnedCommandRunner } from "../../../../../infra/owned-command.js";
-import { runCheckedSandboxCommand, SANDBOX_HOME_DIR } from "../sandbox-command.js";
+import { runCheckedSandboxCommand, SANDBOX_HOME_DIR, type CellEvidence } from "../sandbox-command.js";
 import type { CommitSnapshot } from "../tasks/task-schema.js";
 
 /** Extract `snapshot` from the benchmarked project's Git history into `dir`.
@@ -13,12 +13,12 @@ import type { CommitSnapshot } from "../tasks/task-schema.js";
  *  sandboxes, and research workspaces all read the project through it, so a
  *  trial sees the pinned commit and never the live checkout. It throws when
  *  the commit or a path is unknown, and when the archive holds a symlink or
- *  any entry that is not a regular file or directory. */
-export async function materializeCommitSnapshot(projectRoot: string, snapshot: CommitSnapshot, dir: string, run: OwnedCommandRunner): Promise<void> {
+ *  any entry that is not a regular file or directory. A failed command keeps its output in `evidence`. */
+export async function materializeCommitSnapshot(projectRoot: string, snapshot: CommitSnapshot, dir: string, run: OwnedCommandRunner, evidence?: CellEvidence): Promise<void> {
   const archivePath = join(dir, ".bench-snapshot.tar");
   try {
-    await runCheckedSandboxCommand(run, ["git", "-C", projectRoot, "archive", "--format=tar", `--output=${archivePath}`, snapshot.commit, "--", ...snapshot.paths], { cwd: projectRoot, sandboxDir: dir });
-    await runCheckedSandboxCommand(run, ["tar", "-xf", archivePath, "-C", dir], { cwd: dir, sandboxDir: dir });
+    await runCheckedSandboxCommand(run, ["git", "-C", projectRoot, "archive", "--format=tar", `--output=${archivePath}`, snapshot.commit, "--", ...snapshot.paths], { cwd: projectRoot, sandboxDir: dir, step: "Snapshot archive", evidence });
+    await runCheckedSandboxCommand(run, ["tar", "-xf", archivePath, "-C", dir], { cwd: dir, sandboxDir: dir, step: "Snapshot extraction", evidence });
   } finally {
     await rm(archivePath, { force: true });
   }
