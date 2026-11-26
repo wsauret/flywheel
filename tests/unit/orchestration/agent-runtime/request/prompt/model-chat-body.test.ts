@@ -232,6 +232,7 @@ const BASE_MARKERS = [
   "When you compare options, finish with the one that you recommend",
   "report the refused action, what refused it, and its reason",
   "Ask for permission only where a capable colleague would ask",
+  "Make an approval or a question the last step. It stops your turn until the user answers, so first finish all the work that is already authorized and does not depend on the answer.",
   "A permission covers that kind of step for the rest of the task",
   "Name the real risks and limits that remain",
   "It replaces that goal only when the user cancels it or asks for work that cannot go with it",
@@ -384,7 +385,7 @@ describe("chat body", () => {
   });
 
   it("states each consolidated rule once in every assembled request, tool descriptions included", async () => {
-    const consolidated = [...BASE_MARKERS, ...FOLDED_MARKERS, ...BASE_SECTIONS, "An assumption is the last resort", "Before you ask, start all work that does not depend on the answer", "in one area"];
+    const consolidated = [...BASE_MARKERS, ...FOLDED_MARKERS, ...BASE_SECTIONS, "An assumption is the last resort", "This call blocks: your turn stops until the user answers", "in one area"];
     // Every table model, a model of a tuned family with no entry, and a model of a line that no entry covers.
     const chatModels = [...MODEL_GUIDANCE.map(([model]) => model), "claude-opus-5.5", "claude-sonnet-4", "gpt-7-luna"];
     for (const model of chatModels) {

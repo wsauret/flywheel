@@ -242,6 +242,10 @@ Only a chat that no other session started asks the person. A subagent or workflo
 
 When nobody can answer an ambiguous requirement, the agent takes the reading that the request states. A choice that the request does not address stays open. The agent then follows how the codebase, tool, or library in use does the same job, then the established standard of the domain. It supports both readings when that is cheap, and states its choice in its result.
 
+## PI-AGENT-137: A question to the person comes last
+
+A chat agent asks the person a blocking question only when it cannot continue without the answer. Before it asks, it finishes all work that the person already approved and that no answer can change, or starts that work in the background. It decides a small or reversible choice itself, continues, and states the choice in its final message.
+
 ## PI-AGENT-082: A child never stops as blocked
 
 A child never stops as blocked. A child run ends only as completed, as partial at its turn budget, as stopped or canceled, or as failed. It fails only on a fault that only a person can clear or a fault that repeats on fresh attempts with no progress between them. Interrupted work has not ended and can resume.

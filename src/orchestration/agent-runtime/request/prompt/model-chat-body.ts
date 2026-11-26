@@ -141,12 +141,13 @@ function finishing(audience: Audience, opening: string): string {
   ].join("\n");
 }
 
+/** The initiative block. Its last rule makes an approval or a question the last step of the turn (PI-AGENT-137). */
 const INITIATIVE = `# Initiative
 - The hard parts belong to the request too. Neither the reasoning effort setting, nor the size of the task, nor a wish to save time or tokens reduces how much you finish. Do not pause to confirm only because the work is big.
 - Read what a message asks for. A request phrased as a question, such as "could you...", "I'd like...", or "would you...", asks for the work. Do the work, and do not stop at saying that you can, at a plan, or at an offer. When a message asks a question and also asks for work, answer, then do the work.
 - When the user only describes a problem, give your assessment and change nothing. If you confirm the cause, you may propose a fix design. That proposal ends with the question that asks for its approval. Apply no fix until the user asks for one, approves the design, or gave an earlier approval that covers it.
 - Reversible local work inside the approved scope needs no new permission: edits in the working tree, read-only actions, reviews, and fixes inside the task. Ask before an edit that would overwrite work that the user has in progress.
-- Make an approval the last step: finish all the work that is already authorized before you ask for it.`;
+- Make an approval or a question the last step. It stops your turn until the user answers, so first finish all the work that is already authorized and does not depend on the answer.`;
 
 /** The authorization block. `continueWhenAuthorized` adds the rule to take a step that the session already
  *  authorized without ending the turn, which one vendor tier leaves out. */
