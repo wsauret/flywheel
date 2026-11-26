@@ -13,20 +13,6 @@ import * as path from "node:path";
 export const SRC_MAX_LINES = 600;
 export const TEST_MAX_LINES = 600;
 
-// Exact donor files stay intact for future upstream diffs. New vendored files use the normal limit by default.
-const VENDORED_FILE_SIZE_EXEMPTIONS = new Set([
-  "src/infra/code-mode/interpreter/runtime.ts",
-  "src/infra/code-mode/interpreter/methods.ts",
-  "tests/unit/infra/code-mode/promise-test262.test.ts",
-  "tests/unit/infra/code-mode/promise.test.ts",
-  "tests/unit/infra/code-mode/generator-test262.test.ts",
-  "tests/unit/infra/code-mode/codemode.test.ts",
-  "tests/unit/infra/code-mode/stdlib.test.ts",
-  "tests/unit/infra/code-mode/parity.test.ts",
-  "tests/unit/infra/code-mode/string-search-test262.test.ts",
-  "tests/unit/infra/code-mode/string-regexp-test262.test.ts",
-]);
-
 interface Violation {
   file: string;
   lines: number;
@@ -67,10 +53,7 @@ export function findOversizedFiles(rootDir: string, max: number): Violation[] {
   const files: string[] = [];
   listCodeFiles(rootDir, files);
   const out: Violation[] = [];
-  const repoRoot = path.resolve(import.meta.dir, "..");
   for (const file of files) {
-    const relative = path.relative(repoRoot, file).split(path.sep).join("/");
-    if (VENDORED_FILE_SIZE_EXEMPTIONS.has(relative)) continue;
     const lines = lineCount(file);
     if (lines > max) out.push({ file, lines, max });
   }

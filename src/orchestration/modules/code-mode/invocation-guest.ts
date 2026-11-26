@@ -1,12 +1,11 @@
 import { Effect, Schema } from "effect"
-import { CodeMode } from "../../../infra/code-mode/index.js"
-import { toolError, type ToolError } from "../../../infra/code-mode/tool-error.js"
-import { unknownTool, type ToolRuntimeError } from "../../../infra/code-mode/tool-runtime.js"
+import type { HostFailure } from "psychoscript/effect"
 import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { redactDeep, redactSecrets } from "../../../infra/redact-secrets.js"
-import { CodeToolResultSchema, toolTrie, type CodeToolResult } from "./descriptors.js"
+import { CodeToolResultSchema, type CodeToolResult } from "./descriptors.js"
 import { HostMessageSchema, type CallReply, type GuestMessage, type HostMessage } from "./invocation-protocol.js"
-import { formatCodeModeResult } from "./result-format.js"
+import { formatCodeModeResult, type CodeModeResult } from "./result-format.js"
+import { makeScriptRuntime, toolFailure, unknownTool, type ConsoleLogView, type ScriptRuntime } from "./script/runtime.js"
 
 /** The guest's side of its Worker's channel: the Worker global scope, or a
  *  message port when a test hosts the guest on its own thread. */
@@ -32,8 +31,8 @@ function parseJsonDocument(content: string): string | JsonDocument {
   }
 }
 
-function replyEffect(name: string, reply: CallReply): Effect.Effect<CodeToolResult, ToolError | ToolRuntimeError> {
-  if (reply.kind === "refused") return Effect.fail(toolError(reply.message))
+function replyEffect(name: string, reply: CallReply): Effect.Effect<CodeToolResult, HostFailure> {
+  if (reply.kind === "refused") return Effect.fail(toolFailure(reply.message))
   if (reply.kind === "unresolved") return Effect.fail(unknownTool(name))
   // Parse before redacting: JSON escapes can hide a credential from the text
   // redactor and re-materialize it after JSON.parse.
@@ -45,7 +44,7 @@ function replyEffect(name: string, reply: CallReply): Effect.Effect<CodeToolResu
  *  records always lands after the console lines that preceded its call. The
  *  drop marker is read once per flush, never once per dropped line. */
 function createLogStream(port: GuestPort) {
-  let view: CodeMode.ConsoleLogView | undefined
+  let view: ConsoleLogView | undefined
   let sentLines = 0
   let lines: string[] = []
   let droppedSinceFlush = false
@@ -60,7 +59,7 @@ function createLogStream(port: GuestPort) {
   }
   return {
     flush,
-    onLog: (line: string, latest: CodeMode.ConsoleLogView) => Effect.sync(() => {
+    onLog: (line: string, latest: ConsoleLogView): void => {
       view = latest
       if (latest.retainedLineCount > sentLines) {
         sentLines = latest.retainedLineCount
@@ -71,18 +70,17 @@ function createLogStream(port: GuestPort) {
       if (scheduled) return
       scheduled = true
       queueMicrotask(flush)
-    }),
+    },
   }
 }
 
-function heapLimitResult(maxHeapDeltaBytes: number, bash: boolean): CodeMode.Result {
+function heapLimitResult(maxHeapDeltaBytes: number, bash: boolean): CodeModeResult {
   return {
     ok: false,
     error: {
       kind: "ExecutionFailure",
       message: `Execution exceeded the ${maxHeapDeltaBytes}-byte heap growth budget. ${bash ? "Keep heavy computation in Bash scratch scripts." : "Move heavy computation outside Code Mode."}`,
     },
-    toolCalls: [],
   }
 }
 
@@ -100,7 +98,7 @@ interface Invocation {
 
 /** Serves the invocations its host starts on `port`, one at a time, and
  *  posts one result for each. Every program runs in a new interpreter (the
- *  `execute` of a prepared `CodeMode` runtime), which owns the program's
+ *  `execute` of a prepared script runtime), which owns the program's
  *  globals, promises, and console, so none of them outlives that execution.
  *  The guest holds the runtime of the last revision it prepared across
  *  invocations: it holds only the `tools` trie and the search index, whose
@@ -119,7 +117,7 @@ export function runGuest(port: GuestPort): () => void {
   let nextCallId = 0
   let baselineHeapBytes = process.memoryUsage().heapUsed
   let invocation: Invocation | undefined
-  let held: { readonly revision: string; readonly runtime: CodeMode.Runtime } | undefined
+  let held: { readonly revision: string; readonly runtime: ScriptRuntime } | undefined
 
   // Only a running program calls a tool or logs, and its invocation exists
   // from its start until the reset after its result.
@@ -128,7 +126,7 @@ export function runGuest(port: GuestPort): () => void {
     return invocation
   }
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
-  const call = (name: string, input: unknown) => Effect.callback<CodeToolResult, ToolError | ToolRuntimeError>((resume) => {
+  const call = (name: string, input: unknown) => Effect.callback<CodeToolResult, HostFailure>((resume) => {
     const current = running()
     const id = nextCallId++
     current.pending.set(id, (reply) => resume(replyEffect(name, reply)))
@@ -138,20 +136,17 @@ export function runGuest(port: GuestPort): () => void {
     // the dispatched work and closes it.
     return Effect.sync(() => { current.pending.delete(id) })
   })
-  const onLog = (line: string, view: CodeMode.ConsoleLogView) => running().logs.onLog(line, view)
+  const onLog = (line: string, view: ConsoleLogView): void => running().logs.onLog(line, view)
 
   // A Worker serves one pool, whose limits do not change, so a held runtime
   // keeps the limits of the start that prepared it.
-  const prepare = (start: Extract<HostMessage, { type: "start" }>): CodeMode.Runtime => {
+  const prepare = (start: Extract<HostMessage, { type: "start" }>): ScriptRuntime => {
     if (start.descriptors === undefined) {
       if (held === undefined || held.revision !== start.revision) throw new Error(`Code runtime does not hold the prepared tools of revision '${start.revision}'.`)
       return held.runtime
     }
     const { maxToolCalls, maxLogBytes } = start.limits
-    const runtime = CodeMode.make({
-      tools: toolTrie(start.descriptors, (descriptor, input) => call(descriptor.name, input)),
-      limits: { maxToolCalls, maxLogBytes }, onLog, onUnknownTool: call,
-    })
+    const runtime = makeScriptRuntime({ descriptors: start.descriptors, call, maxToolCalls, maxLogBytes, onLog })
     if (start.revision !== undefined) held = { revision: start.revision, runtime }
     return runtime
   }

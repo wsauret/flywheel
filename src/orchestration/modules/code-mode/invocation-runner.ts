@@ -1,5 +1,4 @@
 import { Cause, Effect, Exit, Schema } from "effect"
-import type { Result } from "../../../infra/code-mode/codemode.js"
 import { errorMessage } from "../../../infra/diagnostics/error-message.js"
 import { probeLoopUnit } from "../../../infra/diagnostics/event-loop-lag.js"
 import type { LlmToolOutputPart } from "../../../infra/providers/llm/tool-output-part-schema.js"
@@ -9,7 +8,7 @@ import { boundedStringCodeModeOutput, type CreateNestedToolDispatchBatch, type T
 import type { CodeModeToolSet } from "./descriptors.js"
 import { GuestMessageSchema, type CallReply, type GuestMessage, type HostMessage } from "./invocation-protocol.js"
 import type { CodeModeLimits } from "./limits.js"
-import { formatCodeModeResult } from "./result-format.js"
+import { formatCodeModeResult, type CodeModeResult } from "./result-format.js"
 import type { InvocationWorker, InvocationWorkerPool, RetireReason } from "./worker-pool.js"
 
 /** One admitted call of the `code` tool, pinned to its request. */
@@ -64,7 +63,7 @@ function createLogMirror(context: ToolContext, limits: CodeModeLimits) {
   let closed = false
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  const snapshot = (): Pick<Result, "logs" | "truncated"> => dropped !== undefined
+  const snapshot = (): Pick<CodeModeResult, "logs" | "truncated"> => dropped !== undefined
     ? { logs: [...consoleLines, dropped], truncated: true }
     : consoleLines.length > 0 ? { logs: [...consoleLines] } : {}
   const flush = (): void => {
@@ -200,7 +199,7 @@ function attachBridge(worker: InvocationWorker, signal: AbortSignal | undefined,
 }
 
 function failure(kind: "ExecutionFailure" | "TimeoutExceeded", message: string, logs: LogMirror): string {
-  return formatCodeModeResult({ ok: false, error: { kind, message }, ...logs.snapshot(), toolCalls: [] })
+  return formatCodeModeResult({ ok: false, error: { kind, message }, ...logs.snapshot() })
 }
 
 /** Runs one admitted invocation on a leased pool Worker. The scope acquires

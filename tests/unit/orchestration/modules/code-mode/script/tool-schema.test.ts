@@ -1,12 +1,10 @@
 import { describe, expect, test } from "bun:test"
-import { Effect, Schema } from "effect"
-import { CodeMode, Tool } from "../../../../src/infra/code-mode/index.js"
-import { inputTypeScript, jsonSchemaToTypeScript, outputTypeScript } from "../../../../src/infra/code-mode/tool-schema.js"
+import { Schema } from "effect"
+import { inputTypeScript, jsonSchemaToTypeScript, outputTypeScript, type JsonSchema, type ToolSignature } from "../../../../../../src/orchestration/modules/code-mode/script/tool-schema.js"
 
-// A raw JSON Schema tool in the shape an MCP adapter produces: render-only input schema
+// A raw JSON Schema signature in the shape an MCP adapter produces: render-only input schema
 // whose property descriptions and constraints must surface as JSDoc in pretty signatures.
-const listIssues = Tool.make({
-  description: "List issues in a repository",
+const listIssues: ToolSignature = {
   input: {
     type: "object",
     properties: {
@@ -19,12 +17,10 @@ const listIssues = Tool.make({
     required: ["owner"],
   },
   output: {},
-  execute: () => Effect.succeed("[]"),
-})
+}
 
-// An Effect Schema tool whose field annotations must flow through the emitted JSON Schema.
-const lookupOrder = Tool.make({
-  description: "Look up an order",
+// An Effect Schema signature whose field annotations must flow through the emitted JSON Schema.
+const lookupOrder: ToolSignature = {
   input: Schema.Struct({
     id: Schema.String.annotate({ description: "Order identifier" }),
     verbose: Schema.optionalKey(Schema.Boolean),
@@ -32,8 +28,7 @@ const lookupOrder = Tool.make({
   output: Schema.Struct({
     status: Schema.String.annotate({ description: "Current order status" }),
   }),
-  execute: () => Effect.succeed({ status: "open" }),
-})
+}
 
 describe("pretty signature rendering", () => {
   test("described fields get JSDoc comments; undescribed and untagged fields get none", () => {
@@ -169,7 +164,7 @@ describe("pretty signature rendering", () => {
     expect(jsonSchemaToTypeScript(cyclic)).toBe("{ child?: unknown; name?: string }")
     expect(jsonSchemaToTypeScript(cyclic, true)).toContain("child?: unknown")
 
-    let deep: Record<string, unknown> = { type: "string" }
+    let deep: JsonSchema = { type: "string" }
     for (let level = 0; level < 12; level += 1) deep = { type: "object", properties: { next: deep } }
     for (const pretty of [false, true]) {
       const rendered = jsonSchemaToTypeScript(deep, pretty)
@@ -254,11 +249,9 @@ describe("non-identifier property names render as quoted keys", () => {
   })
 
   test("Effect Schema structs with non-identifier field names quote too", () => {
-    const tool = Tool.make({
-      description: "Schema tool with awkward field names",
+    const tool: ToolSignature = {
       input: Schema.Struct({ "foo-bar": Schema.String, plain: Schema.optionalKey(Schema.Number) }),
-      execute: () => Effect.succeed(null),
-    })
+    }
     expect(inputTypeScript(tool)).toBe('{ "foo-bar": string; plain?: number }')
     expect(inputTypeScript(tool, true)).toBe(["{", '  "foo-bar": string,', "  plain?: number,", "}"].join("\n"))
   })
@@ -274,8 +267,7 @@ describe("union schemas render every alternative", () => {
   })
 
   test("tool input and output signatures preserve numeric unions", () => {
-    const tool = Tool.make({
-      description: "Tool with numeric unions",
+    const tool: ToolSignature = {
       input: {
         type: "object",
         properties: {
@@ -283,8 +275,7 @@ describe("union schemas render every alternative", () => {
         },
       } as const,
       output: { anyOf: [{ type: "number" }, { type: "boolean" }] } as const,
-      execute: () => Effect.succeed(1),
-    })
+    }
     expect(inputTypeScript(tool)).toBe("{ value?: string | number }")
     expect(outputTypeScript(tool)).toBe("number | boolean")
   })
@@ -312,106 +303,5 @@ describe("union schemas render every alternative", () => {
         $defs: { Constraint: { description: "TypeScript-neutral constraint" } },
       }),
     ).toBe("string")
-  })
-})
-
-describe("JSDoc signatures in catalogs and search results", () => {
-  const runtime = CodeMode.make({ tools: { github: { list_issues: listIssues }, orders: { lookup: lookupOrder } } })
-
-  const searchCatalog = async (query: string) => {
-    const result = await Effect.runPromise(runtime.execute(`return searchCatalog({ query: ${JSON.stringify(query)} })`))
-    expect(result.ok).toBe(true)
-    if (!result.ok) throw new Error("search failed")
-    return result.value as { items: Array<{ path: string; signature: string }>; remaining: number }
-  }
-
-  test("a raw JSON Schema (MCP-style) tool's result signature carries field JSDoc and tags", async () => {
-    const { items } = await searchCatalog("list issues repository")
-    const item = items.find(({ path }) => path === "tools.github.list_issues")!
-    expect(item.signature).toBe(
-      [
-        "tools.github.list_issues(input: {",
-        "  /** Repository owner */",
-        "  owner: string,",
-        "  /** Cursor from the previous response's pageInfo */",
-        "  after?: string,",
-        "  /**",
-        "   * Results per page",
-        "   * @default 30",
-        "   */",
-        "  perPage?: number,",
-        "  /**",
-        "   * Filter by labels",
-        "   * @minItems 1",
-        "   * @maxItems 10",
-        "   */",
-        "  labels?: Array<string>,",
-        '  state?: "open" | "closed",',
-        "}): Promise<unknown>",
-      ].join("\n"),
-    )
-  })
-
-  test("an annotated Effect Schema tool's result signature carries field JSDoc (exact-path lookup too)", async () => {
-    for (const query of ["look up order", "tools.orders.lookup"]) {
-      const { items } = await searchCatalog(query)
-      const item = items.find(({ path }) => path === "tools.orders.lookup")!
-      expect(item.signature).toBe(
-        [
-          "tools.orders.lookup(input: {",
-          "  /** Order identifier */",
-          "  id: string,",
-          "  verbose?: boolean,",
-          "}): Promise<{",
-          "  /** Current order status */",
-          "  status: string,",
-          "}>",
-        ].join("\n"),
-      )
-    }
-  })
-
-  test("the catalog uses the same JSDoc signatures as search", async () => {
-    const catalog = runtime.catalog()
-    const github = (await searchCatalog("list issues repository")).items.find(
-      ({ path }) => path === "tools.github.list_issues",
-    )!
-    const orders = (await searchCatalog("look up order")).items.find(({ path }) => path === "tools.orders.lookup")!
-    expect(catalog.map(({ signature }) => signature)).toContain(github.signature)
-    expect(catalog.map(({ signature }) => signature)).toContain(orders.signature)
-    expect(github.signature).toContain("/** Repository owner */")
-  })
-})
-
-describe("non-identifier tool paths", () => {
-  const resolveLibrary = Tool.make({
-    description: "Resolve a Context7 library ID",
-    input: {
-      type: "object",
-      properties: {
-        query: { type: "string" },
-        libraryName: { type: "string" },
-      },
-      required: ["query", "libraryName"],
-    } as const,
-    output: {},
-    execute: () => Effect.succeed("/reactjs/react.dev"),
-  })
-  const runtime = CodeMode.make({ tools: { context7: { "resolve-library-id": resolveLibrary } } })
-
-  test("catalog signatures use bracket notation for dashed tool names", () => {
-    expect(runtime.catalog()[0]?.signature).toBe(
-      'tools.context7["resolve-library-id"](input: {\n  query: string,\n  libraryName: string,\n}): Promise<unknown>',
-    )
-  })
-
-  test("search results return callable bracket-notation paths and signatures", async () => {
-    const result = await Effect.runPromise(runtime.execute(`return searchCatalog({ query: "resolve library" })`))
-    expect(result.ok).toBe(true)
-    if (!result.ok) throw new Error("search failed")
-
-    const value = result.value as { items: Array<{ path: string; signature: string }> }
-    expect(value.items[0]?.path).toBe('tools.context7["resolve-library-id"]')
-    expect(value.items[0]?.signature).toContain('tools.context7["resolve-library-id"](input: {')
   })
 })

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
+import { Effect } from "effect";
 import { boundedStringCodeModeOutput, type RuntimeTool, type RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createCatalogRenderer } from "../../../../../src/orchestration/modules/code-mode/catalog.js";
-import { catalogOnlyCall, describeCodeModeTools, toolTrie } from "../../../../../src/orchestration/modules/code-mode/descriptors.js";
+import { describeCodeModeTools } from "../../../../../src/orchestration/modules/code-mode/descriptors.js";
+import { makeScriptRuntime } from "../../../../../src/orchestration/modules/code-mode/script/runtime.js";
 
 const tool = (name: string, schema: RuntimeToolInput = { type: "object" }): RuntimeTool => ({
   name,
@@ -33,7 +35,6 @@ describe("describeCodeModeTools", () => {
     for (const order of [[tool("github"), tool("github.issue_get")], [tool("github.issue_get"), tool("github")]]) {
       const described = describeTools(...order);
       expect({ names: [...described.callable.keys()], omissions: described.omissions }).toEqual(expected);
-      expect(() => toolTrie(described.descriptors, catalogOnlyCall)).not.toThrow();
     }
   });
 
@@ -48,10 +49,12 @@ describe("describeCodeModeTools", () => {
     expect(described.callable.size).toBe(0);
   });
 
-  it("allows an MCP namespace named searchCatalog because the discovery global is a separate binding", () => {
+  it("allows an MCP namespace named searchCatalog because the discovery global is a separate binding", async () => {
     const described = describeTools(tool("searchCatalog.remote"));
-    expect(Object.keys(toolTrie(described.descriptors, catalogOnlyCall))).toEqual(["searchCatalog"]);
     expect(described.omissions).toEqual([]);
+    const runtime = makeScriptRuntime({ descriptors: described.descriptors, call: (name) => Effect.succeed(name), maxToolCalls: 5, maxLogBytes: 1024 });
+    const result = await Effect.runPromise(runtime.execute("return [Object.keys(tools), await tools.searchCatalog.remote({}), searchCatalog({}).items.map((item) => item.path)]"));
+    expect(result).toEqual({ ok: true, value: [["searchCatalog"], "searchCatalog.remote", ["tools.searchCatalog.remote"]] });
   });
 
   it("renders the documented content signature for described tools", () => {

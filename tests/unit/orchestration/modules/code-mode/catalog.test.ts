@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ToolRuntime } from "../../../../../src/infra/code-mode/tool-runtime.js";
+import { searchSignature } from "../../../../../src/orchestration/modules/code-mode/script/tool-catalog.js";
 import { boundedStringCodeModeOutput, type RuntimeTool, type RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createCatalogRenderer } from "../../../../../src/orchestration/modules/code-mode/catalog.js";
 import { describeCodeModeTools } from "../../../../../src/orchestration/modules/code-mode/descriptors.js";
@@ -84,7 +84,7 @@ describe("createCatalogRenderer", () => {
       tool("alpha.create-issue", "Create issue"),
     ));
     expect(text).toStartWith("The Code Mode index below lists available namespaces, not their individual tools.");
-    expect(text).toContain(`- ${ToolRuntime.searchSignature}\n\n## Top-level tools\n\ntools.read(input: {\n  path?: string,\n}): Promise<{`);
+    expect(text).toContain(`- ${searchSignature}\n\n## Top-level tools\n\ntools.read(input: {\n  path?: string,\n}): Promise<{`);
     expect(text).toEndWith("}> // Read a file\n\n## Namespaces\n\n- alpha\n- zeta");
   });
 

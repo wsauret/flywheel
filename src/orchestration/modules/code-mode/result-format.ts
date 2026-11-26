@@ -1,11 +1,28 @@
 // Adapted from opencode `packages/core/src/codemode/tool.ts` (MIT); credited in THIRD-PARTY-NOTICES.md.
-import type { Result } from "../../../infra/code-mode/codemode.js"
+import type { Diagnostic } from "psychoscript/effect"
 import { redactSecrets } from "../../../infra/redact-secrets.js"
+
+/** The end of one Code Mode program: its value or the diagnostic it failed
+ *  with, and the console lines that the retention budget kept. */
+export type CodeModeResult =
+  | {
+    readonly ok: true
+    readonly value: unknown
+    readonly warnings?: ReadonlyArray<Diagnostic>
+    readonly logs?: ReadonlyArray<string>
+    readonly truncated?: boolean
+  }
+  | {
+    readonly ok: false
+    readonly error: Diagnostic
+    readonly logs?: ReadonlyArray<string>
+    readonly truncated?: boolean
+  }
 
 /** The one model text for every Code Mode result: the guest's interpreter
  *  results and the host's synthesized timeout and runtime failures. The type
  *  import keeps the interpreter out of the host's module graph. */
-export function formatCodeModeResult(result: Result): string {
+export function formatCodeModeResult(result: CodeModeResult): string {
   const output = result.ok
     ? typeof result.value === "string"
       ? result.value

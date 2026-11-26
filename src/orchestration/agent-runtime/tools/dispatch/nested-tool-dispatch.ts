@@ -1,6 +1,6 @@
 import { Cause, Effect, Exit, Fiber, Scope } from "effect";
 import { PersistenceWriteRefused } from "../../../../infra/substrate/store/event-store-types.js";
-import { toolExpression } from "../../../../infra/code-mode/tool-runtime.js";
+import { toolExpression } from "./tool-expression.js";
 import { awaitWithAbortSignal, mergeAbortSignals } from "../../../../infra/timing/abort.js";
 import { errorMessage } from "../../../../infra/diagnostics/error-message.js";
 import { Log } from "../../../../infra/diagnostics/log.js";

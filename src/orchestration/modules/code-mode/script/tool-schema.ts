@@ -1,19 +1,65 @@
 import { JsonPointer, Schema } from "effect"
-import type { Tool, JsonSchema, SchemaType } from "./tool.js"
+import { identifierSegment } from "../../../agent-runtime/tools/dispatch/tool-expression.js"
 
-const isEffectSchema = (schema: SchemaType): schema is Schema.Decoder<unknown> & Schema.Top => Schema.isSchema(schema)
+/** The JSON Schema subset that a Code Mode signature renders. Nothing
+ *  validates a value against it: the nested dispatch decodes each input. */
+export type JsonSchema = {
+  readonly type?: string | ReadonlyArray<string>
+  readonly enum?: ReadonlyArray<unknown>
+  readonly const?: unknown
+  readonly anyOf?: ReadonlyArray<JsonSchema>
+  readonly oneOf?: ReadonlyArray<JsonSchema>
+  readonly allOf?: ReadonlyArray<JsonSchema>
+  readonly properties?: { readonly [key: string]: JsonSchema }
+  readonly required?: ReadonlyArray<string>
+  readonly items?: JsonSchema
+  readonly additionalProperties?: boolean | JsonSchema
+  readonly description?: string
+  readonly default?: unknown
+  readonly format?: string
+  readonly deprecated?: boolean
+  readonly minItems?: number
+  readonly maxItems?: number
+  readonly $ref?: string
+  readonly $defs?: { readonly [key: string]: JsonSchema }
+  readonly definitions?: { readonly [key: string]: JsonSchema }
+}
+
+/** Either an Effect Schema or a render-only JSON Schema document. */
+type SchemaType = Schema.Top | JsonSchema
+
+/** The two schemas that one callable's signature renders. */
+export interface ToolSignature {
+  readonly input: SchemaType
+  /** Absent renders `void`. */
+  readonly output?: SchemaType | undefined
+}
+
+type Definitions = { readonly [key: string]: JsonSchema }
+
+type JsonSchemaDocument = {
+  readonly schema: JsonSchema
+  readonly definitions?: Definitions
+}
+
+// SAFETY: Effect writes a JSON Schema document, which this renderer reads through the subset above.
+// oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: Effect types its JSON Schema document as an open object, and the renderer treats every key outside the subset as absent
+const jsonSchemaDocument = (schema: Schema.Top): JsonSchemaDocument => Schema.toJsonSchemaDocument(schema) as JsonSchemaDocument
 
 const renderLiteral = (value: unknown): string => JSON.stringify(value) ?? "unknown"
 
-export const identifierSegment = /^[A-Za-z_$][A-Za-z0-9_$]*$/
-
 const renderKey = (name: string): string => (identifierSegment.test(name) ? name : JSON.stringify(name))
+
+const definitionName = (ref: string): string | undefined => {
+  const segment = /^#\/(?:\$defs|definitions)\/([^/]+)$/.exec(ref)?.[1]
+  return segment === undefined ? undefined : JsonPointer.unescapeToken(segment)
+}
 
 const numberSentinels: ReadonlySet<unknown> = new Set(["NaN", "Infinity", "-Infinity"])
 
 /** The string enum beside `number` in Effect's JSON Schema of `Schema.Number`,
  *  which states the non-finite values its JSON encoding writes as strings. */
-const effectNumberSentinel = (schema: JsonSchema) =>
+const effectNumberSentinel = (schema: JsonSchema): boolean =>
   schema.type === "string" &&
   Array.isArray(schema.enum) &&
   schema.enum.length > 0 &&
@@ -21,32 +67,30 @@ const effectNumberSentinel = (schema: JsonSchema) =>
 
 const intersection = (members: ReadonlyArray<string>): string => {
   const concrete = members.filter((member) => member !== "unknown")
-  if (concrete.length === 0) return "unknown"
-  // @ts-expect-error -- Vendored donor relies on the preceding length guard; its compiler disables noUncheckedIndexedAccess.
-  if (concrete.length === 1) return concrete[0]
+  if (concrete.length <= 1) return concrete[0] ?? "unknown"
   return concrete.map((member) => (member.includes(" | ") ? `(${member})` : member)).join(" & ")
 }
 
 const MAX_RENDER_DEPTH = 8
 
 type RenderContext = {
-  readonly definitions: Readonly<Record<string, JsonSchema>>
+  readonly definitions: Definitions
   readonly pretty: boolean
 }
 
 const hasUnresolvedRef = (
   schema: JsonSchema,
-  definitions: Readonly<Record<string, JsonSchema>>,
+  definitions: Definitions,
   seen: ReadonlySet<string> = new Set(),
   visited: ReadonlySet<JsonSchema> = new Set(),
 ): boolean => {
   if (visited.has(schema)) return false
   const nextVisited = new Set([...visited, schema])
   if (schema.$ref !== undefined) {
-    const segment = schema.$ref.match(/^#\/(?:\$defs|definitions)\/([^/]+)$/)?.[1]
-    const name = segment === undefined ? undefined : JsonPointer.unescapeToken(segment)
-    if (name === undefined || definitions[name] === undefined || seen.has(name)) return true
-    if (hasUnresolvedRef(definitions[name], definitions, new Set([...seen, name]), nextVisited)) return true
+    const name = definitionName(schema.$ref)
+    const target = name === undefined ? undefined : definitions[name]
+    if (name === undefined || target === undefined || seen.has(name)) return true
+    if (hasUnresolvedRef(target, definitions, new Set([...seen, name]), nextVisited)) return true
   }
   return [
     ...(schema.anyOf ?? []),
@@ -65,7 +109,9 @@ const docTags = (schema: JsonSchema): Array<string> => {
     try {
       const rendered = JSON.stringify(schema.default)
       if (rendered !== undefined) tags.push(`@default ${rendered}`)
-    } catch {}
+    } catch {
+      // A default that JSON cannot write, such as a BigInt or a cycle, gets no tag.
+    }
   }
   if (typeof schema.format === "string") tags.push(`@format ${schema.format}`)
   if (typeof schema.minItems === "number") tags.push(`@minItems ${schema.minItems}`)
@@ -78,8 +124,8 @@ const jsdoc = (description: string | undefined, tags: ReadonlyArray<string>, pad
   const lines = [...(description === undefined ? [] : description.split("\n")), ...tags].map((line) =>
     line.replaceAll("*/", "* /").replace(/\s+$/, ""),
   )
-  while (lines.length > 0 && lines[0]!.trim() === "") lines.shift()
-  while (lines.length > 0 && lines[lines.length - 1]!.trim() === "") lines.pop()
+  while (lines[0]?.trim() === "") lines.shift()
+  while (lines.at(-1)?.trim() === "") lines.pop()
   if (lines.length === 0) return ""
   if (lines.length === 1) return `${pad}/** ${lines[0]} */\n`
   const body = lines.map((line) => `${pad} *${line === "" ? "" : ` ${line}`}`).join("\n")
@@ -96,13 +142,13 @@ const renderSchema = (
   const nested =
     schema.definitions === undefined && schema.$defs === undefined
       ? ctx
-      : { ...ctx, definitions: { ...ctx.definitions, ...(schema.definitions ?? {}), ...(schema.$defs ?? {}) } }
-  if (schema.$ref) {
-    const segment = schema.$ref.match(/^#\/(?:\$defs|definitions)\/([^/]+)$/)?.[1]
-    const name = segment === undefined ? undefined : JsonPointer.unescapeToken(segment)
-    if (!name || !nested.definitions[name] || seen.has(name)) return "unknown"
+      : { ...ctx, definitions: { ...ctx.definitions, ...schema.definitions, ...schema.$defs } }
+  if (schema.$ref !== undefined && schema.$ref !== "") {
+    const name = definitionName(schema.$ref)
+    const target = name === undefined ? undefined : nested.definitions[name]
+    if (name === undefined || target === undefined || seen.has(name)) return "unknown"
     return intersection([
-      renderSchema(nested.definitions[name], nested, depth, new Set([...seen, name])),
+      renderSchema(target, nested, depth, new Set([...seen, name])),
       renderSchema({ ...schema, $ref: undefined }, nested, depth + 1, seen),
     ])
   }
@@ -115,17 +161,18 @@ const renderSchema = (
       alternatives.every((item) => item.type === "number" || effectNumberSentinel(item))
     )
       return "number"
+    const [first, second] = alternatives
     if (
       alternatives.length === 2 &&
-      alternatives[0]?.type === "object" &&
-      alternatives[0].properties === undefined &&
-      alternatives[1]?.type === "array" &&
-      alternatives[1].items === undefined
+      first?.type === "object" &&
+      first.properties === undefined &&
+      second?.type === "array" &&
+      second.items === undefined
     ) {
       return "{}"
     }
     const members = alternatives.map((item) => renderSchema(item, nested, depth + 1, seen))
-    if (members.some((member) => member === "unknown")) return "unknown"
+    if (members.includes("unknown")) return "unknown"
     return intersection([
       members.join(" | "),
       renderSchema({ ...schema, anyOf: undefined, oneOf: undefined }, nested, depth + 1, seen),
@@ -145,7 +192,7 @@ const renderSchema = (
   if (schema.type === "null") return "null"
   if (schema.type === "array") return `Array<${renderSchema(schema.items ?? {}, nested, depth + 1, seen)}>`
   if (schema.type === "object" || schema.properties) {
-    const required = new Set(schema.required ?? [])
+    const required = new Set(schema.required)
     const properties = Object.entries(schema.properties ?? {})
     const additional = schema.additionalProperties
     const indexType =
@@ -170,22 +217,20 @@ const renderSchema = (
   return "unknown"
 }
 
-export const toTypeScript = (schema: Schema.Top, decoded = false, pretty = false): string => {
+const effectSchemaToTypeScript = (schema: Schema.Top, decoded: boolean, pretty: boolean): string => {
   try {
-    const visible = decoded ? Schema.toType(schema) : schema
-    const document = Schema.toJsonSchemaDocument(visible) as {
-      readonly schema: JsonSchema
-      readonly definitions?: Readonly<Record<string, JsonSchema>>
-    }
+    const document = jsonSchemaDocument(decoded ? Schema.toType(schema) : schema)
     return renderSchema(document.schema, { definitions: document.definitions ?? {}, pretty })
   } catch {
     return "unknown"
   }
 }
 
+/** Renders a JSON Schema as a TypeScript type; `pretty` writes one field per
+ *  line with its description and constraints as JSDoc. Never throws. */
 export const jsonSchemaToTypeScript = (schema: JsonSchema, pretty = false): string => {
   try {
-    return renderSchema(schema, { definitions: { ...(schema.definitions ?? {}), ...(schema.$defs ?? {}) }, pretty })
+    return renderSchema(schema, { definitions: { ...schema.definitions, ...schema.$defs }, pretty })
   } catch {
     return "unknown"
   }
@@ -194,56 +239,40 @@ export const jsonSchemaToTypeScript = (schema: JsonSchema, pretty = false): stri
 export type InputProperty = {
   readonly name: string
   readonly description: string | undefined
-  readonly required: boolean
 }
 
-export const inputProperties = <R>(tool: Tool<R>): Array<InputProperty> => {
+/** The top-level input fields of a signature, which search matches against. */
+export const inputProperties = (signature: ToolSignature): Array<InputProperty> => {
   try {
-    const document = isEffectSchema(tool.input)
-      ? (Schema.toJsonSchemaDocument(tool.input) as {
-          readonly schema: JsonSchema
-          readonly definitions?: Readonly<Record<string, JsonSchema>>
-        })
-      : {
-          schema: tool.input,
-          definitions: { ...(tool.input.definitions ?? {}), ...(tool.input.$defs ?? {}) },
-        }
+    const { input } = signature
+    const document: JsonSchemaDocument = Schema.isSchema(input)
+      ? jsonSchemaDocument(input)
+      : { schema: input, definitions: { ...input.definitions, ...input.$defs } }
     const definitions = document.definitions ?? {}
     let schema = document.schema
     if (schema.$ref !== undefined) {
-      const segment = schema.$ref.match(/^#\/(?:\$defs|definitions)\/([^/]+)$/)?.[1]
-      const name = segment === undefined ? undefined : JsonPointer.unescapeToken(segment)
+      const name = definitionName(schema.$ref)
       const resolved = name === undefined ? undefined : definitions[name]
       if (resolved === undefined) return []
       schema = resolved
     }
-    const required = new Set(schema.required ?? [])
     return Object.entries(schema.properties ?? {}).map(([name, value]) => ({
       name,
       description: typeof value.description === "string" ? value.description : undefined,
-      required: required.has(name),
     }))
   } catch {
     return []
   }
 }
 
-export const inputTypeScript = <R>(tool: Tool<R>, pretty = false): string =>
-  isEffectSchema(tool.input) ? toTypeScript(tool.input, false, pretty) : jsonSchemaToTypeScript(tool.input, pretty)
+export const inputTypeScript = (signature: ToolSignature, pretty = false): string =>
+  Schema.isSchema(signature.input)
+    ? effectSchemaToTypeScript(signature.input, false, pretty)
+    : jsonSchemaToTypeScript(signature.input, pretty)
 
-export const outputTypeScript = <R>(tool: Tool<R>, pretty = false): string =>
-  tool.output === undefined
+export const outputTypeScript = (signature: ToolSignature, pretty = false): string =>
+  signature.output === undefined
     ? "void"
-    : isEffectSchema(tool.output)
-      ? toTypeScript(tool.output, true, pretty)
-      : jsonSchemaToTypeScript(tool.output, pretty)
-
-export const decodeInput = <R>(tool: Tool<R>, value: unknown): unknown =>
-  isEffectSchema(tool.input) ? Schema.decodeUnknownSync(tool.input)(value) : value
-
-export const decodeOutput = <R>(tool: Tool<R>, value: unknown): unknown =>
-  tool.output === undefined
-    ? undefined
-    : isEffectSchema(tool.output)
-      ? Schema.decodeUnknownSync(tool.output)(value)
-      : value
+    : Schema.isSchema(signature.output)
+      ? effectSchemaToTypeScript(signature.output, true, pretty)
+      : jsonSchemaToTypeScript(signature.output, pretty)
