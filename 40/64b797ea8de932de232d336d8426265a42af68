@@ -1,0 +1,66 @@
+bench/README.md
+  h_4b47e9e4a8b456 133-139,141,387-388,407
+bench/ab-persona/bench.ts
+  h_4b47e9e4a8b456 210,255-258,264-270,312
+bench/ab-persona/rank.ts
+  h_4b47e9e4a8b456 12-14,47-49,52
+bench/ab-persona/records/implementer/2026-11-24T07-13-03-614Z.jsonl
+  h_4b47e9e4a8b456 1-3
+bench/ab-persona/records/implementer/2026-11-24T07-24-16-693Z.jsonl
+  h_4b47e9e4a8b456 1-85
+bench/ab-persona/records/implementer/2026-11-24T14-59-24-385Z.jsonl
+  h_4b47e9e4a8b456 1-3
+bench/ab-persona/records/implementer/2026-11-24T15-07-31-792Z.jsonl
+  h_4b47e9e4a8b456 1-3
+bench/ab-persona/records/implementer/2026-11-24T15-17-18-831Z.jsonl
+  h_4b47e9e4a8b456 1-85
+bench/ab-persona/records/implementer/2026-11-24T23-57-38-543Z.jsonl
+  h_4b47e9e4a8b456 1-58
+bench/ab-persona/tables.ts
+  h_4b47e9e4a8b456 1-41
+bench/ab-persona/tables/explorer.md
+  h_4b47e9e4a8b456 1-97
+bench/ab-persona/tables/implementer.md
+  h_4b47e9e4a8b456 1-178
+bench/ab-persona/tables/reviewer-code-elegance.md
+  h_4b47e9e4a8b456 1-150
+bench/ab-persona/tables/reviewer-code-quality.md
+  h_4b47e9e4a8b456 1-218
+bench/ab-persona/tables/reviewer-mechanism.md
+  h_4b47e9e4a8b456 1-135
+bench/ab-persona/tables/reviewer-plan-elegance.md
+  h_4b47e9e4a8b456 1-143
+bench/ab-persona/tables/reviewer-plan-quality.md
+  h_4b47e9e4a8b456 1-100
+docs/architecture-intent/directories.md
+  h_4b47e9e4a8b456 126-132
+package.json
+  h_4b47e9e4a8b456 114,118-119
+scripts/aggregate-read-allowlist.ts
+  h_4b47e9e4a8b456 37-38
+scripts/lint-parallel.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/config/models/model-tiers.ts
+  h_4b47e9e4a8b456 133-135,138
+src/orchestration/modules/development/benchmark-tool.ts
+  h_4b47e9e4a8b456 34,251-264,267,280,425-431
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 362-363,411
+src/orchestration/modules/development/benchmark/persona/results-pages.ts
+  h_4b47e9e4a8b456 1-330
+src/orchestration/modules/development/benchmark/records/ranking.ts
+  h_4b47e9e4a8b456 19,36,54-60,140,179,187,213-219,225,468,501-505,507-533
+tests/unit/bench/benchmark-ranking.test.ts
+  h_4b47e9e4a8b456 2-3,7-10,81,184,226,300-360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4064b797ea8de932de232d336d8426265a42af68",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
