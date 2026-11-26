@@ -1,0 +1,28 @@
+bench/README.md
+  h_4b47e9e4a8b456 43
+bench/ab-persona/tables/implementer.md
+  h_4b47e9e4a8b456 115
+bench/tasks/implement/astropy__astropy-14598/adapter.ts
+  h_4b47e9e4a8b456 14,24-26,31,69,74,77,80,97-98,103,105
+bench/tasks/implement/astropy__astropy-14598/copy-ledger.json
+  h_4b47e9e4a8b456 100-106
+bench/tasks/implement/astropy__astropy-14598/native-support.py
+  h_4b47e9e4a8b456 194-195
+bench/tasks/implement/astropy__astropy-14598/provenance.json
+  h_4b47e9e4a8b456 71-72
+bench/tasks/implement/astropy__astropy-14598/qualification-record.json
+  h_4b47e9e4a8b456 332-383
+bench/tasks/implement/astropy__astropy-14598/runtime.json
+  h_4b47e9e4a8b456 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9ebbb596e5c109b5ac7f0488c49ec7d12509ac59",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
