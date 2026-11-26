@@ -73,6 +73,7 @@ export function createShellOverlays(deps: ShellOverlaysDeps) {
     projectRoot: signals.projectRoot,
     clipboard: deps.clipboard,
     appVersion: deps.appVersion,
+    settings: services.settings,
     navigate: { openSettings: openSettings.call, openSurface: openModuleSurface.call, navigateSession: places.focusSession },
   })
   // A module opens only module surfaces, and a surface of a disabled module is

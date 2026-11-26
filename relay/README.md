@@ -51,13 +51,17 @@ To exercise the machine-local browser host, run the installed `flywheel web` com
 bun run --cwd relay deploy:worker
 bun run --cwd relay probe:worker
 bun run --cwd relay deploy:app
+bun run --cwd relay deploy:worker:dev
+bun run --cwd relay probe:worker:dev
 ```
+
+The one Worker source deploys as two Workers. The production relay `flywheel-relay` at `relay.flywl.sh` is the one that installed builds dial, and it keeps no Workers Logs. The dev relay `flywheel-relay-dev` at `relay-dev.flywl.sh` is the `dev` environment in `worker/wrangler.jsonc`, and it keeps Workers Logs for debugging. A source run pairs through the dev relay unless the person names another relay, so its pairing code names that relay. A source run whose store already names `relay.flywl.sh` keeps it, because its phones hold that relay. The two Workers share no state: each has its own Durable Objects, rate limit namespaces, and secrets, so a secret such as `RELAY_ADMISSION` is set on the dev relay with `--env dev`. `deploy:worker:dev` and `probe:worker:dev` do for the dev relay what `deploy:worker` and `probe:worker` do for the production relay.
 
 Deploys of the hosted instances run locally from the maintainer's machine with its wrangler login; no GitHub workflow deploys the relay or the hosted page. `deploy:worker` deploys the Worker and `probe:worker` checks it afterward; `deploy:app` builds the hosted page and deploys it. Do not call `wrangler deploy` directly for the hosted Worker: `deploy:worker` first reads the live relay's protocol version and stops when it is newer than the tree's, so a deploy from an older tree or ref never turns away the runtimes that already speak the newer version. The hosted page deploys almost never: it holds no client, so a client change reaches phones with the runtime that serves it.
 
 The relay speaks one relay protocol version, `RELAY_PROTOCOL_VERSION` in `src/protocol/modules/remote/relay-protocol.ts`, and refuses a runtime on any other version with `protocol_version`. Relay protocol 5 adds one frame that a runtime sends on its control channel, `channel.ended`, which a relay of an earlier version refuses as malformed. It changes nothing that a device sends or reads. A protocol change rolls out in this order:
 
-1. Deploy the Worker from a worktree at the commit that changes the version, before that commit reaches `main`. Machines in this repository install Flywheel from `main` as well as from releases, so the relay must speak the new version before any build does. Then run `bun run --cwd relay probe:worker`, which must report the new version.
+1. Deploy both Workers from a worktree at the commit that changes the version, before that commit reaches `main`. Machines in this repository install Flywheel from `main` as well as from releases, and source runs dial the dev relay, so both relays must speak the new version before any build does. Then run `bun run --cwd relay probe:worker` and `bun run --cwd relay probe:worker:dev`, which must report the new version.
 2. Publish the commit. From step 1 on, the relay refuses every runtime on an earlier version, and each one shows one alert until its machine updates Flywheel. `bun run release` probes the hosted relay before it builds and stops when the relay speaks another version.
 3. Deploy the hosted page from the same commit, so that the bootstrap is built from the same contract.
 
@@ -68,11 +72,11 @@ A runtime that the relay refuses hears `protocol_version`, raises one alert that
 A user with a Cloudflare account deploys the relay with one command and pairs against it:
 
 ```bash
-bunx wrangler deploy --config relay/worker/wrangler.jsonc
+bunx wrangler deploy --config relay/worker/wrangler.jsonc --env=""
 flywheel remote pair --relay wss://<your-worker-hostname>
 ```
 
-This calls wrangler directly because `deploy:worker` and `probe:worker` probe the hosted relay at `relay.flywl.sh`, not a self-hosted one. The custom-domain route in `worker/wrangler.jsonc` belongs to the hosted deployment; a self-hoster removes it or points it at a hostname on their own zone. The hosted phone app works against a self-hosted relay unchanged.
+This calls wrangler directly because `deploy:worker` and `probe:worker` probe the hosted relay at `relay.flywl.sh`, not a self-hosted one. The custom-domain routes in `worker/wrangler.jsonc` belong to the hosted deployments; a self-hoster removes them or points them at a hostname on their own zone, and `--env=""` deploys the top-level Worker, not the `dev` environment. The hosted phone app works against a self-hosted relay unchanged.
 
 ## Zone configuration
 

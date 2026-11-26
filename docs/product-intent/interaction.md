@@ -648,7 +648,7 @@ When a client cannot read data for a surface in the background, the surface keep
 
 ## PI-INTERACTION-064: Crash reports send only after the person agrees
 
-An official release sends no automatic bug report until the person agrees. The first terminal or phone crash screen asks once whether to send this and later reports automatically. Yes sends it; No sends nothing. A runtime fault never asks. Automatic crash reports in Settings changes the answer. DO_NOT_TRACK set to 1 or true in the sending process stops them. A sent report shows a short id. An unsent report says why and offers Copy. A build without a report endpoint sends none. While Bug reports is on in Settings, the report command sends a report with an optional note.
+An official release sends no automatic report until the person agrees. The first terminal or phone crash screen asks once whether to send reports automatically. Yes sends the crash report; No sends nothing. A runtime fault never asks. Automatic crash reports in Settings changes the answer. DO_NOT_TRACK=1 or true in the sending process stops them; a terminal started with it saves No and says so. A sent report shows its id; an unsent one says why and offers Copy. A build without an endpoint sends none. While Bug reports is on, the report command sends a report with a note.
 
 ## PI-INTERACTION-107: A bug report carries no conversation content
 

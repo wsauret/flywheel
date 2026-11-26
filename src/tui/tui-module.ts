@@ -10,6 +10,7 @@ import type { ModalScrollController } from "./components/modal/scroll/modal-scro
 import type { ToastInput } from "./context/toast.js"
 import type { OpenSettingsDestination } from "./modals/settings/settings-destination.js"
 import type { Clipboard } from "./terminal/clipboard.js"
+import type { SettingsStore } from "./hooks/state/create-settings-store.js"
 
 /** The terminal client's module contract. A module contributes its presence
  *  through the slot map (ARCH-PROTOCOL-034): declarative rows come from its protocol
@@ -76,11 +77,15 @@ export interface TuiComponentSurface {
 }
 
 /** What a module's shell-lifetime presence reads: the foreground session's
- *  views and the toast sink. It runs once under the shell's owner, so an
- *  effect it creates lives as long as the shell. */
+ *  views, the toast sink, the module's admission, and the settings the
+ *  Settings modal reads and writes. It runs once under the shell's owner, so
+ *  an effect it creates lives as long as the shell. */
 export interface TuiPresenceProps {
   readonly read: DomainReader
   readonly showToast: (toast: ToastInput) => void
+  /** Whether the module is enabled, or undefined until the runtime publishes the module selection. */
+  readonly enabled: Accessor<boolean | undefined>
+  readonly settings: Pick<SettingsStore, "configBoolean" | "updateConfigBoolean">
 }
 
 export interface TuiControllerHost {

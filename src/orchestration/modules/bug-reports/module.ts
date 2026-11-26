@@ -1,6 +1,6 @@
 import { doNotTrack } from "../../../infra/environment/do-not-track.js"
 import { processLoginShellPath } from "../../../infra/environment/login-shell-path.js"
-import { AUTOMATIC_REPORTS_SETTING, BUG_REPORT_COMMAND, BUG_REPORT_COMMAND_NAME, BUG_REPORT_SURFACE, bugReportsProtocol } from "../../../protocol/modules/bug-reports.js"
+import { AUTOMATIC_REPORTS_CONTROL, BUG_REPORT_COMMAND, BUG_REPORT_COMMAND_NAME, BUG_REPORT_SURFACE, bugReportsProtocol } from "../../../protocol/modules/bug-reports.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
 import type { FirstPartyModule } from "../../module-contract/module-catalog.js"
 import { automaticReportsAnswer, automaticReportsObserver, bugReportsConfigSection } from "./config.js"
@@ -52,6 +52,6 @@ export const bugReportsModule = {
     { domain: "config", id: bugReportsConfigSection.key, value: bugReportsConfigSection },
     { domain: "commands", id: BUG_REPORT_COMMAND, value: { id: BUG_REPORT_COMMAND, title: BUG_REPORT_COMMAND_NAME, description: "Send a bug report with an optional note", aliases: [], opens: BUG_REPORT_SURFACE } },
     { domain: "settings", id: "bug-reports", value: { control: "binary", group: "Interface", label: "Bug reports", description: "Allow /report and crash reports" } },
-    { domain: "settings", id: "bug-reports-automatic", value: { control: "config-boolean", section: bugReportsConfigSection.key, key: "automatic", defaultValue: false, group: "Interface", label: AUTOMATIC_REPORTS_SETTING, description: "Send crash reports without asking? DO_NOT_TRACK=1 can also stop them" } },
+    { domain: "settings", id: "bug-reports-automatic", value: AUTOMATIC_REPORTS_CONTROL },
   ],
 } as const satisfies FirstPartyModule

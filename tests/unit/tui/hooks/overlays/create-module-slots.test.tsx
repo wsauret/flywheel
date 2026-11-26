@@ -44,7 +44,7 @@ function fakeAppService() {
 const NAVIGATE: TuiNavigation = { openSettings: async () => {}, openSurface: () => {}, navigateSession: () => {} }
 const CLIPBOARD = { copy: async (_text: string) => {} }
 /** The controller host values no surface under test reads. */
-const HOST = { auth: () => undefined, projectRoot: () => "/scratch/project", appVersion: "0.0.0-test" }
+const HOST = { auth: () => undefined, projectRoot: () => "/scratch/project", appVersion: "0.0.0-test", settings: { configBoolean: () => undefined, updateConfigBoolean: async () => ({ ok: true } as const) } }
 const CLIENT: Pick<RuntimeClient, "dispatch" | "query"> = { query: async () => { throw new Error("no query in this test") }, dispatch: async () => { throw new Error("no mutation is dispatched in this test") } }
 
 const SURFACE: TuiComponentSurface = {

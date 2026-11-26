@@ -5,6 +5,7 @@ import { accountAuthDir, accountSecretFile } from "../../../infra/platform/files
 import { readLockedJsonStore, mutateLockedJsonStore, type LockedJsonStoreOptions } from "../../../infra/providers/auth/store/locked-json-store.js";
 import type { AccountProjectRegistry } from "../../app-service/account/account-project-registry.js";
 import type { RemotePushSubscription } from "../../../protocol/modules/remote.js";
+import { DEFAULT_RELAY_URL, DEV_RELAY_URL } from "../../../protocol/modules/remote/relay-protocol.js";
 
 /** The account's remote-access facts: which relay it pairs against, the one
  *  identity key every placement of this account presents to that relay, the
@@ -26,6 +27,11 @@ import type { RemotePushSubscription } from "../../../protocol/modules/remote.js
  *  The machine-wide push store owns subscriptions independently of pairings. */
 const storeFile = (lane: ServeLane): string => lane === "installed" ? "remote.json" : "remote-dev.json";
 const pushStoreFile = "remote-push.json";
+
+/** The relay a lane pairs through while its store names none: source runs
+ *  use the dev relay, which keeps Workers Logs, and installed builds use the
+ *  hosted relay, which keeps none. */
+export const defaultRelayUrl = (lane: ServeLane): string => lane === "installed" ? DEFAULT_RELAY_URL : DEV_RELAY_URL;
 
 const Base64Url = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]+$/));
 

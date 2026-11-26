@@ -10,8 +10,10 @@
     "test:reports": "bun test worker/src/reports.test.ts",
     "build:app": "bun run app/build.ts",
     "dev:worker": "bunx wrangler dev --config worker/wrangler.jsonc",
-    "deploy:worker": "bun run probe.ts --before-deploy && bunx wrangler deploy --config worker/wrangler.jsonc",
+    "deploy:worker": "bun run probe.ts --before-deploy && bunx wrangler deploy --config worker/wrangler.jsonc --env=\"\"",
+    "deploy:worker:dev": "bun run probe.ts --before-deploy --dev && bunx wrangler deploy --config worker/wrangler.jsonc --env dev",
     "probe:worker": "bun run probe.ts",
+    "probe:worker:dev": "bun run probe.ts --dev",
     "usage:worker": "bun run usage.ts",
     "deploy:app": "bun run app/build.ts && bunx wrangler deploy --config app/wrangler.jsonc"
   },

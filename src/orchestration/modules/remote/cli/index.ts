@@ -1,9 +1,8 @@
 import { serveLaneFor } from "../../../../infra/platform/cli-subprocess.js"
 import type { StartupDirectories } from "../../../../infra/platform/files/directory-authorities.js"
-import { importLegacyRemotePlacements, readRemotePairingStore } from "../remote-pairing-store.js"
+import { defaultRelayUrl, importLegacyRemotePlacements, readRemotePairingStore } from "../remote-pairing-store.js"
 import type { LauncherContext } from "../../../../infra/process-supervisor.js"
 import { REMOTE_USAGE } from "./usage.js"
-import { DEFAULT_RELAY_URL } from "../../../../protocol/modules/remote/relay-protocol.js"
 import { PAIR_FROM_INSTALLED_APP } from "../../../../protocol/modules/remote.js"
 import { decodeRemoteAccountAnswer, type RemoteAccountAnswer, type RemoteAccountRequest } from "../../../../protocol/modules/remote/account-requests.js"
 import type { CliCommandContext } from "../../../module-contract/cli-contribution.js"
@@ -43,7 +42,7 @@ export async function runStatus(directories: StartupDirectories, launcher: Launc
   const store = readRemotePairingStore(directories.userDataRoot, LANE)
   const registry = createAccountProjectRegistry({ userDataRoot: directories.userDataRoot })
   await importLegacyRemotePlacements(directories.userDataRoot, LANE, registry)
-  io.log(`Relay:     ${store.relayUrl ?? DEFAULT_RELAY_URL}`)
+  io.log(`Relay:     ${store.relayUrl ?? defaultRelayUrl(LANE)}`)
   io.log(`Identity:  ${store.identity === undefined ? "not created (created on first pairing)" : store.identity.publicKey}`)
   io.log(`Devices:   ${store.devices.length}`)
   io.log(`Projects:  ${(await registry.list()).length}`)
