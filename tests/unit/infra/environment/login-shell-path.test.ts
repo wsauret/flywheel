@@ -88,15 +88,18 @@ describe("login shell selection", () => {
 })
 
 describe("login shell PATH probe", () => {
-  test("runs the trusted interactive login shell with the real home and no ZDOTDIR, and adopts its PATH", async () => {
+  test("runs the trusted interactive login shell with the real home and no ZDOTDIR, and adopts its PATH and DO_NOT_TRACK", async () => {
     const records = recordingLog()
-    const { run, launches } = scriptedRunner(commandResult({ stdoutText: `motd\0PATH=${PROBED_PATH}\0` }), new Error("the login shell must not run"))
+    const { run, launches } = scriptedRunner(commandResult({ stdoutText: `motd\0PATH=${PROBED_PATH}\0DO_NOT_TRACK=true\0` }), new Error("the login shell must not run"))
     const path = holder({ log: records.log })
 
     expect(path.current()).toBeUndefined()
+    // A read before the probe starts waits for it instead of reading "not set".
+    const doNotTrack = path.doNotTrack()
     await path.probe(run)
 
     expect(path.current()).toBe(PROBED_PATH)
+    expect(await doNotTrack).toBe(true)
     expect(launches).toHaveLength(1)
     expect(launches[0]?.command).toEqual(["/bin/zsh", "-i", "-l", "-c", "printf '\\0'; env -0"])
     expect(records.infos[0]?.fields?.mode).toBe("interactive-login")
@@ -169,6 +172,7 @@ describe("login shell PATH probe", () => {
       const { run, launches } = scriptedRunner(result)
       await path.probe(run)
       expect(path.current()).toBeUndefined()
+      expect(await path.doNotTrack()).toBeUndefined()
       expect(launches).toHaveLength(2)
       expect(records.warnings).toHaveLength(1)
       expect(records.warnings[0]?.fields?.interactiveReason).toBeString()
@@ -209,6 +213,7 @@ describe("login shell PATH probe", () => {
 
     expect(launches).toHaveLength(0)
     expect(path.current()).toBeUndefined()
+    expect(await path.doNotTrack()).toBe(false)
     expect(records.warnings).toHaveLength(0)
   })
 

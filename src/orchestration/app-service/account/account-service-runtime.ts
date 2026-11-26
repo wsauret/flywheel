@@ -527,6 +527,7 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
       projects,
       projectClone,
       launcher: options.launcher,
+      configOwner: accountConfigOwner,
       onStartFailure: (module, error) => log.warn("account module configuration could not be applied", { module, error: errorMessage(error) }),
     })
     const startAccountModules = async (): Promise<void> => {

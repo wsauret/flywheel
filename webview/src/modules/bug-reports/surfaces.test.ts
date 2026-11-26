@@ -1,9 +1,10 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import type { BugReportResult } from "../../../../src/protocol/modules/bug-reports.js"
+import { AUTOMATIC_REPORTS_OFF_STATUS, type BugReportResult } from "../../../../src/protocol/modules/bug-reports.js"
 import { importBuiltModule } from "../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../test-support/solid-transform.js"
+import { nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 
 const build = await Bun.build({
   entrypoints: [fileURLToPath(new URL("surfaces-fixture.ts", import.meta.url))],
@@ -33,7 +34,7 @@ test("the stage fallback sends once, names its surface, and shows its receipt af
     mounted.setSessionId("session-two")
     response.resolve({ ok: true, reportId: "FW-receipt" })
     await mounted.settle()
-    assert.match(mounted.text(), /Report sent automatically \(FW-receipt\)\. To stop automatic reports, turn off Bug reports in Settings\./)
+    assert.match(mounted.text(), /Report sent automatically \(FW-receipt\)\. To stop automatic reports, turn off Automatic crash reports in Settings\./)
     assert.equal(mounted.mutations.length, 1)
   } finally { mounted.dispose() }
 })
@@ -121,7 +122,7 @@ test("runtime receipts update the same fault notice without a duplicate report a
     const initial = mounted.text()
     assert.match(initial, /service keeps stopping/)
     mounted.setHealth({ kind: "crash_loop", cause: "service stopped", report: { kind: "sent", reportId: "FW-runtime" } })
-    assert.match(mounted.text(), /Report sent automatically \(FW-runtime\)\. To stop automatic reports, turn off Bug reports in Settings\./)
+    assert.match(mounted.text(), /Report sent automatically \(FW-runtime\)\. To stop automatic reports, turn off Automatic crash reports in Settings\./)
     assert.deepEqual(mounted.mutations, [])
     mounted.setHealth({ kind: "recovery_failed", cause: "recovery failed", report: { kind: "failed" } })
     assert.match(mounted.text(), /Could not send report/)
@@ -132,6 +133,10 @@ test("runtime receipts update the same fault notice without a duplicate report a
     await mounted.settle()
     assert.equal(mounted.copied[0], "retained runtime report with account diagnostics")
     assert.deepEqual(mounted.queries, [{ type: "bugReport.failed", source: "executor" }])
+    mounted.setHealth({ kind: "crash_loop", cause: "service stopped", report: { kind: "not-allowed" } })
+    assert.match(mounted.text(), /No bug report was sent because automatic crash reports are off\./)
+    mounted.setHealth({ kind: "crash_loop", cause: "service stopped", report: { kind: "do-not-track" } })
+    assert.match(mounted.text(), /No bug report was sent because DO_NOT_TRACK is set\./)
     mounted.setHealth({ kind: "crash_loop", cause: "service stopped", report: { kind: "not-release" } })
     assert.match(mounted.text(), /No bug report was sent because this build is not an official Flywheel release\./)
     assert.doesNotMatch(mounted.text(), /Could not send report/)
@@ -153,4 +158,81 @@ test("a disposed crash view ignores a late report receipt", async () => {
   await mounted.settle()
   assert.equal(mounted.text(), before)
   assert.deepEqual(mounted.notices, [])
+})
+
+test("the first crash view asks once, and a yes saves the answer and sends this report", async () => {
+  const error = new TypeError("stage broke")
+  const mounted = mountReports({ kind: "crash", error, surface: "phone", response: Promise.resolve({ ok: false, kind: "consent-needed", error: AUTOMATIC_REPORTS_OFF_STATUS, reportText: "account-assembled report" }), afterConsent: { ok: true, reportId: "FW-yes" } })
+  try {
+    await mounted.settle()
+    assert.match(mounted.text(), /Send this crash report to Flywheel/)
+    assert.doesNotMatch(mounted.text(), /automatic crash reports are off/)
+    mounted.click("Send reports")
+    await mounted.settle()
+    assert.deepEqual(mounted.mutations.map(mutation => mutation.type), ["bugReport.submit", "bugReport.consent", "bugReport.submit"])
+    assert.deepEqual(mounted.mutations[1], { type: "bugReport.consent", allow: true })
+    assert.match(mounted.text(), /Report sent automatically \(FW-yes\)/)
+    assert.doesNotMatch(mounted.text(), /Send this crash report/)
+  } finally { mounted.dispose() }
+})
+
+test("a no on the crash view saves the answer, sends nothing, says why, and keeps Copy", async () => {
+  const mounted = mountReports({ kind: "crash", response: Promise.resolve({ ok: false, kind: "consent-needed", error: AUTOMATIC_REPORTS_OFF_STATUS, reportText: "account-assembled report" }) })
+  try {
+    await mounted.settle()
+    mounted.click("Don't send")
+    await mounted.settle()
+    assert.deepEqual(mounted.mutations.map(mutation => mutation.type), ["bugReport.submit", "bugReport.consent"])
+    assert.deepEqual(mounted.mutations[1], { type: "bugReport.consent", allow: false })
+    assert.match(mounted.text(), /No bug report was sent because automatic crash reports are off\./)
+    assert.doesNotMatch(mounted.text(), /Could not send|Send this crash report/)
+    mounted.click("Copy report")
+    await mounted.settle()
+    assert.deepEqual(mounted.copied, ["account-assembled report"])
+  } finally { mounted.dispose() }
+})
+
+test("a crash view with no project connection, such as the phone's machine picker, offers Copy at once and sends nothing", async () => {
+  const mounted = mountReports({ kind: "crash", surface: "phone", connected: false })
+  try {
+    await mounted.settle()
+    assert.deepEqual(mounted.mutations, [])
+    assert.match(mounted.text(), /Could not send report: This page is not connected to a project\./)
+    assert.doesNotMatch(mounted.text(), /Send this crash report/)
+    mounted.click("Copy report")
+    await mounted.settle()
+    assert.match(mounted.copied[0] ?? "", /stage broke/)
+  } finally { mounted.dispose() }
+})
+
+test("the question is the live status, a save in progress says so, and a failed save keeps the question open", async () => {
+  const saving = Promise.withResolvers<{ ok: false; error: string }>()
+  const mounted = mountReports({ kind: "crash", response: Promise.resolve({ ok: false, kind: "consent-needed", error: AUTOMATIC_REPORTS_OFF_STATUS, reportText: "account-assembled report" }), consent: () => saving.promise })
+  try {
+    await mounted.settle()
+    const status = () => textContent(nodes(mounted.root).find(node => node.properties.role === "status")!)
+    assert.match(status(), /^Send this crash report to Flywheel/)
+    mounted.click("Don't send")
+    await mounted.settle()
+    assert.equal(status(), "Saving your answer…")
+    assert.deepEqual(nodes(mounted.root).find(node => node.properties.role === "status")!.properties.classList, { "bug-report-question": true })
+    assert.equal(mounted.button("Send reports").properties.disabled, true)
+    saving.resolve({ ok: false, error: "the file is locked" })
+    await mounted.settle()
+    assert.equal(status(), "Could not save your answer: the file is locked")
+    assert.match(mounted.text(), /Send this crash report to Flywheel/)
+    assert.equal(mounted.button("Send reports").properties.disabled, false)
+    assert.deepEqual(mounted.mutations.map(mutation => mutation.type), ["bugReport.submit", "bugReport.consent"])
+  } finally { mounted.dispose() }
+})
+
+test("a stale question follows the answer another surface saved first", async () => {
+  const mounted = mountReports({ kind: "crash", response: Promise.resolve({ ok: false, kind: "consent-needed", error: AUTOMATIC_REPORTS_OFF_STATUS, reportText: "account-assembled report" }), consent: () => ({ ok: true, automatic: false }) })
+  try {
+    await mounted.settle()
+    mounted.click("Send reports")
+    await mounted.settle()
+    assert.deepEqual(mounted.mutations.map(mutation => mutation.type), ["bugReport.submit", "bugReport.consent"])
+    assert.match(mounted.text(), /No bug report was sent because automatic crash reports are off\./)
+  } finally { mounted.dispose() }
 })

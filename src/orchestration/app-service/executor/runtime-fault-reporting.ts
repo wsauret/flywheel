@@ -3,7 +3,7 @@ import type { RuntimeFaultReportOutcome } from "../../../protocol/runtime/app-se
 /** A report that was not sent keeps its assembled text for an explicit Copy. */
 type RuntimeFaultReport =
   | Extract<RuntimeFaultReportOutcome, { readonly kind: "sent" }>
-  | { readonly kind: "failed" | "not-release"; readonly reportText?: string }
+  | { readonly kind: Exclude<RuntimeFaultReportOutcome["kind"], "sent">; readonly reportText?: string }
 export type RuntimeFaultReporter = (error: Error, projectRoot?: string) => Promise<RuntimeFaultReport | undefined>
 
 /** Publish fault state immediately, then attach one report result per episode.

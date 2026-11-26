@@ -378,7 +378,7 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       return (await generations.current.owner.blockers()) ?? [projectBlocker("call")]
     }
     const services = scope.own("modules", composeAccountProjectModuleServices(installedModules(), enabled, {
-      storage,
+      storage, config,
       directories, launcher: options.launcher.scope, projectRegistry: options.registry,
       readFaultReport: (source) => source === "service" ? options.readServiceFaultReport?.() : generations.failedReport(),
       ...(options.webClient === undefined ? {} : { webClient: options.webClient }),

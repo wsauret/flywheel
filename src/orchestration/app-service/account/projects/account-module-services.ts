@@ -6,6 +6,7 @@ import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import type { AccountModuleRequest } from "../../../../protocol/runtime/account-attach.js"
 import type { FirstPartyModule, FirstPartyModuleComposition } from "../../../module-contract/module-catalog.js"
 import { composeServiceInstances, type ComposedModuleServices, type ModuleProcessServices } from "../../executor/execution/module-service-host.js"
+import type { RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import type { RuntimeFaultReporter } from "../../executor/runtime-fault-reporting.js"
 import type { AccountProjectClone } from "../account-project-clone.js"
 import type { AccountProjectRegistry } from "../account-project-registry.js"
@@ -17,6 +18,8 @@ import type { SettledControlUiAssetState } from "../web-serving/control-ui-asset
 export type AccountProjectModuleServices = Pick<ModuleProcessServices,
   "transports" | "onFrontendEvent" | "onSelectionChanged" | "notify" |
   "directories" | "publish" | "snapshotPosition" | "launcher" | "modules" | "enabled" | "eventWriter" | "onStored" | "projectionReader"> & {
+    /** The account's configuration authority, with the use-time read that a decision made as it acts needs. */
+    readonly config: Pick<RuntimeConfigOwner, "snapshot" | "subscribe" | "mutateSection" | "useTimeObserver">
     readonly eventStore: AsyncEventStateReadSurface
     /** The project's store usage and its Reclaim storage command (ARCH-RUNTIME-083). */
     readonly storage: ProjectStorage
@@ -66,6 +69,8 @@ export interface AccountModuleServiceOptions<Runtime extends { dispose(): Promis
   readonly projectClone: Pick<AccountProjectClone, "clone">
   readonly launcher: LauncherContext
   readonly config: { readonly [key: string]: unknown }
+  /** The account's configuration authority, for a decision that must read the file as it is at use time. */
+  readonly configOwner: Pick<RuntimeConfigOwner, "useTimeObserver">
 }
 
 /** The account-lifetime module services one start brought up, and each

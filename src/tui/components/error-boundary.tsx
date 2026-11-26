@@ -54,7 +54,16 @@ export function ErrorComponent(props: ErrorComponentProps) {
         <text fg={theme.error} attributes={BOLD} flexShrink={0}>Fatal Error</text>
         <Button label={copied() ? "Copied!" : "Copy Report"} onPress={() => { void copyError() }} />
       </box>
-      <For each={reports}>{(report) => <Show when={report.status()}>{(status) => <text fg={report.failed() ? theme.error : theme.textMuted} flexShrink={0}>{status()}</text>}</Show>}</For>
+      <For each={reports}>{(report) => <>
+        <Show when={report.status()}>{(status) => <text fg={report.failed() ? theme.error : theme.textMuted} flexShrink={0}>{status()}</text>}</Show>
+        <Show when={report.question()}>{(question) => <box flexDirection="column" flexShrink={0} gap={1}>
+          <text fg={theme.text} flexShrink={0}>{question()}</text>
+          <box flexDirection="row" flexShrink={0} gap={2}>
+            <Button label="Send reports" disabled={report.busy()} onPress={() => { report.answer(true) }} />
+            <Button label="Don't send" disabled={report.busy()} onPress={() => { report.answer(false) }} />
+          </box>
+        </box>}</Show>
+      </>}</For>
       <box flexDirection="row" flexShrink={0} gap={2}>
         <text fg={theme.textMuted} flexShrink={0}>Use Exit Now to close this crashed TUI</text>
         <Button label="Exit Now" onPress={handleExit} />

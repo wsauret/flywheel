@@ -8,13 +8,17 @@ import { composeModuleServices } from "../../../../../src/infra/definitions/modu
 import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js"
 import { bugReportsModule } from "../../../../../src/orchestration/modules/bug-reports/module.js"
 import { bugReportsService, createBugReportsService } from "../../../../../src/orchestration/modules/bug-reports/service.js"
-import { BugReportSchema, type BugReportInput } from "../../../../../src/protocol/modules/bug-reports.js"
+import { AUTOMATIC_REPORTS_OFF_STATUS, BugReportSchema, DO_NOT_TRACK_REPORT_STATUS, DO_NOT_TRACK_UNKNOWN_STATUS, type BugReportInput } from "../../../../../src/protocol/modules/bug-reports.js"
 import { composeAccountModuleProtocolRuntimes } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
 import { createRuntimeFaultReporting } from "../../../../../src/orchestration/app-service/executor/runtime-fault-reporting.js"
+import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js"
+import { automaticReportsAnswer } from "../../../../../src/orchestration/modules/bug-reports/config.js"
 import type { RuntimeExecutorState } from "../../../../../src/protocol/runtime/app-service-types.js"
 
 const temporary = temporaryDirectories()
-const input: BugReportInput = { kind: "crash", error: { name: "TypeError", message: "undefined is not an object", stack: "TypeError\n at render" }, surface: "tui", sessionId: "s1", note: "It stopped while scrolling." }
+/** The person said yes to automatic crash reports, and DO_NOT_TRACK is unset. */
+const consented = { automaticReports: async () => true, doNotTrack: async () => false }
+const input: BugReportInput = { kind: "crash", error: { name: "TypeError", message: "undefined is not an object", stack: "TypeError: undefined is not an object\n    at render (/app/view.ts:3:9)" }, surface: "tui", sessionId: "s1", note: "It stopped while scrolling." }
 const fakeFetch = (run: (request: Request) => Promise<Response>): typeof fetch => Object.assign(
   async (url: string | URL | Request, init?: RequestInit) => run(new Request(url, init)),
   { preconnect() {} },
@@ -57,7 +61,7 @@ describe("account bug reports", () => {
     await writeFile(join(accountLog, "03.jsonl"), `${makeRecord("account", "log.error", 5)}\n`)
     const requests: Request[] = []
     const logs = await captureServiceRecords()
-    const service = createBugReportsService({ projectRoot, userDataRoot, enabled: () => true, fetch: fakeFetch(async (request) => { requests.push(request); return Response.json({ reportId: "42" }) }) })
+    const service = createBugReportsService({ projectRoot, userDataRoot, enabled: () => true, ...consented, fetch: fakeFetch(async (request) => { requests.push(request); return Response.json({ reportId: "42" }) }) })
     const protocol = composeAccountModuleProtocolRuntimes([bugReportsModule], {
       modules: composeModuleServices([[bugReportsService.moduleId, service]]),
       publish: () => undefined, snapshotPosition: () => 0,
@@ -68,8 +72,11 @@ describe("account bug reports", () => {
       expect(requests[0]?.url).toBe(ENDPOINT)
       const report = Schema.decodeUnknownSync(BugReportSchema)(await requests[0]!.json())
       expect(report.kind).toBe(kind)
-      expect(report.error).toEqual(input.error)
-      expect(report.note).toBe(input.note)
+      if (report.kind === "manual") expect(report).toMatchObject({ error: input.error, note: input.note })
+      else {
+        expect(report.error).toEqual({ name: "TypeError", message: "", stack: "    at render (view.ts:3:9)" })
+        expect(report).not.toHaveProperty("note")
+      }
       expect(report.diagnostics.tui).toEqual([{ ts: 1, type: "log.error", sessionId: "s1", payload: { service: "tui-renderer", count: 4 } }])
       expect(report.diagnostics.executor.map((record) => record.ts)).toEqual([3, 4])
       expect(report.diagnostics.account).toHaveLength(1)
@@ -88,9 +95,9 @@ describe("account bug reports", () => {
       payload: { service: `Bearer ${"E".repeat(250)}`, generation: `Bearer ${"F".repeat(250)}`, count: ts },
     })).join("\n")}\n`)
     let body = ""
-    const service = createBugReportsService({ userDataRoot, enabled: () => true, fetch: fakeFetch(async (request) => { body = await request.text(); return Response.json({ reportId: "43" }) }) })
+    const service = createBugReportsService({ userDataRoot, enabled: () => true, ...consented, fetch: fakeFetch(async (request) => { body = await request.text(); return Response.json({ reportId: "43" }) }) })
     try {
-      const result = await service.submit({ ...input, error: { name: "Error", message: `Bearer ${"A".repeat(50)}`, stack: "\0".repeat(100_000) } })
+      const result = await service.submit({ ...input, kind: "manual", error: { name: "Error", message: `Bearer ${"A".repeat(50)}`, stack: "\0".repeat(100_000) } })
       expect(result).toEqual({ ok: true, reportId: "43" })
       expect(Buffer.byteLength(body)).toBeLessThanOrEqual(48_000)
       expect(body).not.toContain("A".repeat(50))
@@ -98,20 +105,33 @@ describe("account bug reports", () => {
       expect(report.diagnostics.account.length).toBeLessThanOrEqual(40)
       const syntheticKey = `-----BEGIN PRIVATE KEY-----\n${"synthetic-not-key-material\n".repeat(600)}-----END PRIVATE KEY-----`
       expect(await service.submit({
-        ...input, note: syntheticKey.slice(0, 2000),
+        ...input, kind: "manual", note: syntheticKey.slice(0, 2000),
         error: { name: `Bearer ${"B".repeat(220)}`, message: `Bearer ${"C".repeat(4100)}`, stack: syntheticKey.slice(0, 12000) },
       })).toEqual({ ok: true, reportId: "43" })
       const clipped = Schema.decodeUnknownSync(BugReportSchema)(JSON.parse(body))
       expect(clipped.diagnostics.account[0]).toMatchObject({
         sessionId: "[redacted secret]", payload: { service: "[redacted secret]", generation: "[redacted secret]" },
       })
-      expect(clipped.note).toBe("[redacted secret]")
+      expect(clipped).toMatchObject({ note: "[redacted secret]" })
       expect(clipped.error).toEqual({ name: "[redacted secret]", message: "[redacted secret]", stack: "[redacted secret]" })
       expect(body).not.toContain("synthetic-not-key-material")
       const homePath = join(homedir(), "work", "client-project", "notes.md")
-      expect(await service.submit({ ...input, note: `Opened ${homePath}`, error: { name: "Error", message: `ENOENT: ${homePath}`, stack: `at read (${homePath}:1:1)` } })).toEqual({ ok: true, reportId: "43" })
+      expect(await service.submit({ ...input, kind: "manual", note: `Opened ${homePath}`, error: { name: "Error", message: `ENOENT: ${homePath}`, stack: `at read (${homePath}:1:1)` } })).toEqual({ ok: true, reportId: "43" })
       expect(body).not.toContain(homedir())
       expect(Schema.decodeUnknownSync(BugReportSchema)(JSON.parse(body)).error.message).toBe(`ENOENT: ${join("~", "work", "client-project", "notes.md")}`)
+      // An automatic report keeps the frames with file names only, and none of the message: not the lines of a
+      // message header that look like frames, a directory with spaces, or a query.
+      const message = `ENOENT: ${homePath}\n    at private (secret-name.ts:1:1)`
+      expect(await service.submit({ ...input, error: { name: "Error", message, stack: `Error: ${message}\n    at read (${homePath}:1:1)\n    at Object.<anonymous> (/srv/a private dir/main.ts:4:5)\nread@http://127.0.0.1:4000/assets/index-a1.js?token=private:2:3\n    at a private remark` } })).toEqual({ ok: true, reportId: "43" })
+      expect(JSON.parse(body).error).toEqual({ name: "Error", message: "", stack: "    at read (notes.md:1:1)\n    at Object.<anonymous> (main.ts:4:5)\n    at read (index-a1.js:2:3)" })
+      // A message or an error name longer than its cap still has its whole header removed.
+      const long = `${"x".repeat(4100)}\n    at private (secret-name.ts:1:1)`
+      expect(await service.submit({ ...input, error: { name: "Error", message: long, stack: `Error: ${long}\n    at read (view.ts:1:1)` } })).toEqual({ ok: true, reportId: "43" })
+      expect(JSON.parse(body).error.stack).toBe("    at read (view.ts:1:1)")
+      const longName = "E".repeat(250)
+      const shortMessage = "x\n    at private (secret-name.ts:1:1)"
+      expect(await service.submit({ ...input, error: { name: longName, message: shortMessage, stack: `${longName}: ${shortMessage}\n    at read (view.ts:1:1)` } })).toEqual({ ok: true, reportId: "43" })
+      expect(JSON.parse(body).error.stack).toBe("    at read (view.ts:1:1)")
     } finally { await service.dispose() }
   })
 
@@ -120,7 +140,7 @@ describe("account bug reports", () => {
     let enabled = false
     let calls = 0
     const logs = await captureServiceRecords()
-    const service = createBugReportsService({ userDataRoot, enabled: () => enabled, fetch: fakeFetch(async () => {
+    const service = createBugReportsService({ userDataRoot, enabled: () => enabled, ...consented, fetch: fakeFetch(async () => {
       calls += 1
       if (calls === 1) return new Response(null, { status: 429 })
       throw new Error("offline")
@@ -151,7 +171,7 @@ describe("account bug reports", () => {
     const userDataRoot = temporary("bug-reports-release-")
     let calls = 0
     const logs = await captureServiceRecords()
-    const service = createBugReportsService({ userDataRoot, enabled: () => true, fetch: fakeFetch(async () => { calls += 1; return Response.json({ reportId: "44" }) }) })
+    const service = createBugReportsService({ userDataRoot, enabled: () => true, ...consented, fetch: fakeFetch(async () => { calls += 1; return Response.json({ reportId: "44" }) }) })
     const expectWithheld = async (kind: BugReportInput["kind"]) => {
       const withheld = await service.submit({ ...input, kind })
       expect(withheld).toMatchObject({ ok: false, kind: "not-release", error: "No bug report was sent because this build is not an official Flywheel release." })
@@ -188,7 +208,7 @@ describe("account bug reports", () => {
       publish: (state) => { if ("report" in state && state.report?.kind === "failed") failed.resolve() },
     })
     const service = createBugReportsService({
-      userDataRoot, enabled: () => true, readFaultReport: () => owner.failedReport(),
+      userDataRoot, enabled: () => true, ...consented, readFaultReport: () => owner.failedReport(),
       fetch: fakeFetch(async () => new Response(null, { status: 503 })),
     })
     const protocol = composeAccountModuleProtocolRuntimes([bugReportsModule], {
@@ -207,5 +227,85 @@ describe("account bug reports", () => {
       owner.update({ kind: "serving" })
       expect(await protocol.serve({ type: "bugReport.failed", source: "executor" })).toBeNull()
     } finally { protocol.dispose(); await owner.dispose(); await service.dispose() }
+  })
+
+  test("crash and fault reports stay local until the person says yes or while DO_NOT_TRACK is set, and manual reports still send", async () => {
+    const userDataRoot = temporary("bug-reports-consent-")
+    let answer: boolean | undefined
+    let tracking: boolean | undefined = false
+    const answers: boolean[] = []
+    let calls = 0
+    const logs = await captureServiceRecords()
+    const service = createBugReportsService({
+      userDataRoot, enabled: () => true, automaticReports: async () => answer, doNotTrack: async () => tracking,
+      answerAutomaticReports: async (allow) => { answers.push(allow); answer = allow; return allow },
+      fetch: fakeFetch(async () => { calls += 1; return Response.json({ reportId: "45" }) }),
+    })
+    const protocol = composeAccountModuleProtocolRuntimes([bugReportsModule], {
+      modules: composeModuleServices([[bugReportsService.moduleId, service]]), publish: () => undefined, snapshotPosition: () => 0,
+    }, () => ["bug-reports"])
+    const expectHeld = async (kind: "consent-needed" | "not-allowed" | "do-not-track", fault: "not-allowed" | "do-not-track" | "failed", error = AUTOMATIC_REPORTS_OFF_STATUS) => {
+      const held = await service.submit(input)
+      expect(held).toMatchObject({ ok: false, kind, error })
+      if (held.ok) throw new Error("Expected a held report")
+      expect(JSON.parse(held.reportText!).error).toEqual(input.error)
+      expect(await service.reportFault(new Error("executor stopped"))).toEqual({ kind: fault, reportText: expect.any(String) })
+      expect(await service.submit({ ...input, kind: "manual" })).toEqual({ ok: true, reportId: "45" })
+    }
+    try {
+      await expectHeld("consent-needed", "not-allowed")
+      expect(await protocol.mutate({ type: "bugReport.consent", allow: false })).toEqual({ ok: true, automatic: false })
+      await expectHeld("not-allowed", "not-allowed")
+      expect(await protocol.mutate({ type: "bugReport.consent", allow: true })).toEqual({ ok: true, automatic: true })
+      expect(answers).toEqual([false, true])
+      expect(calls).toBe(2)
+      expect(await service.submit(input)).toEqual({ ok: true, reportId: "45" })
+      tracking = true
+      await expectHeld("do-not-track", "do-not-track", DO_NOT_TRACK_REPORT_STATUS)
+      // A DO_NOT_TRACK that the login shell probe could not read keeps the report local too, and a fault notice
+      // makes no claim that it is set.
+      tracking = undefined
+      await expectHeld("do-not-track", "failed", DO_NOT_TRACK_UNKNOWN_STATUS)
+      expect(calls).toBe(5)
+      expect(logs.filter((record) => JSON.stringify(record).includes("bug report not sent")).map((record) => record.payload)).toMatchObject([
+        { reason: "consent-needed" }, { reason: "consent-needed" }, { reason: "not-allowed" }, { reason: "not-allowed" }, { reason: "do-not-track" }, { reason: "do-not-track" },
+        { reason: "do-not-track-unknown" }, { reason: "do-not-track-unknown" },
+      ])
+    } finally { protocol.dispose(); await service.dispose(); await DebugLog.close() }
+  })
+
+  test("the answer persists in the account configuration, which starts unanswered, and a later question never overwrites it", async () => {
+    const root = temporary("bug-reports-answer-")
+    await mkdir(join(root, ".flywheel"))
+    const configPath = join(root, ".flywheel", "flywheel.toml")
+    await writeFile(configPath, "show_thinking = true\n")
+    const owner = await createRuntimeConfigOwner({ configPath, watch: false })
+    try {
+      const answer = automaticReportsAnswer(owner)
+      expect(await answer.automaticReports()).toBeUndefined()
+      expect(await answer.answerAutomaticReports(false)).toBe(false)
+      expect(await answer.automaticReports()).toBe(false)
+      // A question still open on a second surface keeps the answer the first surface saved.
+      expect(await answer.answerAutomaticReports(true)).toBe(false)
+      expect(await Bun.file(configPath).text()).toBe("show_thinking = true\nbug_reports.automatic = false\n")
+      // Settings, or an edit by another process, applies to the next read at once, with no watch event.
+      await writeFile(configPath, "show_thinking = true\nbug_reports.automatic = true\n")
+      expect(await answer.automaticReports()).toBe(true)
+    } finally { await owner.dispose() }
+  })
+
+  test("the relay envelope refuses an automatic report that carries free text, whichever sender built it", () => {
+    const envelope = { version: "1.0.0", build: null, os: "darwin", arch: "arm64", surface: "runtime", sessionId: null, diagnostics: { tui: [], executor: [], account: [] } }
+    const decode = Schema.decodeUnknownSync(BugReportSchema, { onExcessProperty: "error" })
+    expect(decode({ ...envelope, kind: "crash", error: { name: "TypeError", message: "", stack: "    at render (view.tsx:1:2)\n    at index.js:3:4" } })).toMatchObject({ kind: "crash" })
+    for (const stack of ["render@index.js:3:4", "    at render (src/view.tsx:1:2)", "    at render (view.tsx?private=1:1:2)", "    at a private remark", "    at private words (view.tsx:1:2)"]) {
+      expect(() => decode({ ...envelope, kind: "crash", error: { name: "TypeError", message: "", stack } })).toThrow()
+    }
+    expect(() => decode({ ...envelope, kind: "crash", error: { name: "TypeError", message: "private", stack: "" } })).toThrow()
+    expect(() => decode({ ...envelope, kind: "crash", error: { name: "TypeError", message: "", stack: "TypeError: private\n    at render (view.tsx:1:2)" } })).toThrow()
+    expect(() => decode({ ...envelope, kind: "crash", error: { name: "a private name", message: "", stack: "" } })).toThrow()
+    expect(() => decode({ ...envelope, kind: "crash", note: "private", error: { name: "TypeError", message: "", stack: "" } })).toThrow()
+    expect(() => decode({ ...envelope, kind: "crash", error: { name: "TypeError", message: "", stack: "" }, diagnostics: { ...envelope.diagnostics, account: [{ ts: 1, type: "log.warn", payload: { kind: "private words" } }] } })).toThrow()
+    expect(decode({ ...envelope, kind: "manual", note: "kept", error: { name: "TypeError", message: "kept", stack: "TypeError: kept" } })).toMatchObject({ note: "kept" })
   })
 })

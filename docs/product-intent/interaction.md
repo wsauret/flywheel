@@ -646,13 +646,13 @@ When content above the reader changes size or older history loads, the row the r
 
 When a client cannot read data for a surface in the background, the surface keeps what it shows and the client tries again by itself. Flywheel does not show a notice for each failed read. While such reads keep failing, one notice says in plain words that some views could not load and that Flywheel keeps trying, and it disappears once they load. A failed action that the person took still says why.
 
-## PI-INTERACTION-064: Crashes report themselves
+## PI-INTERACTION-064: Crash reports send only after the person agrees
 
-When a client of an official Flywheel release crashes or its runtime reports a fault, Flywheel sends a bug report to the maintainers automatically. The crash screen or fault notice says so, shows a short report id to quote, and says that turning off Bug reports in Settings stops automatic reports. Bug reports are on by default. While they are on, the person can also send a report with an optional note at any time through the report command. Unofficial builds send no report. When no report is sent, the screen says why and offers to copy the report.
+An official Flywheel release sends no automatic bug report until the person agrees. The first crash screen asks once whether to send this report and later ones automatically. Yes sends it, and No sends nothing. A runtime fault never asks. Automatic crash reports in Settings changes the answer. DO_NOT_TRACK set to 1 or true stops automatic reports. A sent report shows a short id. An unsent report says why and offers Copy. Unofficial builds send no report. While Bug reports is on in Settings, the report command sends a report with an optional note.
 
 ## PI-INTERACTION-107: A bug report carries no conversation content
 
-A bug report holds the error name, message, and stack, the app version and build, the operating system and architecture, the surface, and the session id. It also holds the recent warning and failure records of the client, the account service, and the project executor, which carry only ids, counts, and timings. Secrets and the home directory path are redacted, and the report holds no conversation, prompt, tool output, or file content.
+An automatic report holds the error name and stack frames with file names only, never the error message or other free text. A report that the person sends keeps its full text and note. Every report holds the app version and build, the operating system and architecture, the surface, and the session id. It also holds recent warning and failure records, which carry only ids, counts, and timings. Secrets and the home directory path are redacted. No report holds conversation, prompt, tool output, or file content.
 
 ## PI-INTERACTION-065: Unused chats can delete themselves
 

@@ -5,6 +5,7 @@ import { homedir } from "node:os"
 import path from "node:path"
 
 import { errorMessage } from "../diagnostics/error-message.js"
+import { doNotTrack } from "./do-not-track.js"
 import { Log } from "../diagnostics/log.js"
 import type { OwnedCommandRunner } from "../owned-command.js"
 
@@ -18,8 +19,11 @@ import type { OwnedCommandRunner } from "../owned-command.js"
  *  binaries on every lane. The interactive login shell is probed first,
  *  because tool installers add their directories in interactive startup files
  *  such as `~/.zshrc`, which a login-only shell does not read. When that probe
- *  fails, the login-only shell is probed instead. Only PATH is taken from the
- *  probe; every other variable stays the process's own. */
+ *  fails, the login-only shell is probed instead. Only PATH and whether
+ *  DO_NOT_TRACK opts out are taken from the probe; every other variable stays
+ *  the process's own. A service manager does not pass the shell's
+ *  DO_NOT_TRACK to the service, so the probe is how the service honors a
+ *  value that the person's startup files export. */
 
 const PROBE_TIMEOUT_MS = 15_000
 const PROBE_MAX_OUTPUT_BYTES = 2 * 1024 * 1024
@@ -80,7 +84,7 @@ function probeEnvironment(env: ProbeEnvironment, home: string): ProbeEnvironment
 }
 
 type ProbeOutcome =
-  | { readonly ok: true; readonly path: string; readonly timedOut: boolean }
+  | { readonly ok: true; readonly path: string; readonly doNotTrack: boolean; readonly timedOut: boolean }
   | { readonly ok: false; readonly reason: string }
 
 /** The shell modes in probe order: the interactive login shell first, then
@@ -94,7 +98,7 @@ const PROBE_MODES = [
 type ProbeMode = (typeof PROBE_MODES)[number]["mode"]
 
 type ModeOutcome =
-  | { readonly ok: true; readonly mode: ProbeMode; readonly path: string; readonly timedOut: boolean }
+  | { readonly ok: true; readonly mode: ProbeMode; readonly path: string; readonly doNotTrack: boolean; readonly timedOut: boolean }
   | { readonly ok: false; readonly reasons: { readonly [mode in ProbeMode]?: string } }
 
 async function probeModes(run: OwnedCommandRunner, shell: string, env: ProbeEnvironment): Promise<ModeOutcome> {
@@ -118,14 +122,15 @@ async function runProbe(run: OwnedCommandRunner, shellCommand: readonly string[]
       // the shell has printed its environment, and the bound ends that job.
       // `env -0` ends every entry with a NUL, so a PATH entry followed by one
       // is complete and stays usable; a cut entry is discarded.
-      const complete = result.stdoutBytes.subarray(0, result.stdoutBytes.lastIndexOf(0) + 1)
-      const probed = parseLoginShellEnv(complete).get("PATH")?.trim()
-      return probed ? { ok: true, path: probed, timedOut: true } : { ok: false, reason: `the login shell did not finish within ${PROBE_TIMEOUT_MS / 1_000} s` }
+      const complete = parseLoginShellEnv(result.stdoutBytes.subarray(0, result.stdoutBytes.lastIndexOf(0) + 1))
+      const probed = complete.get("PATH")?.trim()
+      return probed ? { ok: true, path: probed, doNotTrack: doNotTrack(complete.get("DO_NOT_TRACK")), timedOut: true } : { ok: false, reason: `the login shell did not finish within ${PROBE_TIMEOUT_MS / 1_000} s` }
     }
     if (result.exitCode !== 0) return { ok: false, reason: result.exitCode === null ? "the login shell was stopped by a signal" : `the login shell exited with code ${result.exitCode}` }
     if (result.stdoutTruncated) return { ok: false, reason: `the login shell printed more than ${PROBE_MAX_OUTPUT_BYTES} bytes` }
-    const probed = parseLoginShellEnv(result.stdoutBytes).get("PATH")?.trim()
-    return probed ? { ok: true, path: probed, timedOut: false } : { ok: false, reason: "the login shell printed no PATH" }
+    const shellEnv = parseLoginShellEnv(result.stdoutBytes)
+    const probed = shellEnv.get("PATH")?.trim()
+    return probed ? { ok: true, path: probed, doNotTrack: doNotTrack(shellEnv.get("DO_NOT_TRACK")), timedOut: false } : { ok: false, reason: "the login shell printed no PATH" }
   } catch (error) {
     return { ok: false, reason: `the login shell could not start: ${errorMessage(error)}` }
   }
@@ -138,6 +143,13 @@ export interface LoginShellPath {
    *  the probe has not finished, failed, or never runs, as on Windows, and
    *  the caller uses the process's own PATH. */
   current(): string | undefined
+  /** Whether the login shell's environment sets DO_NOT_TRACK to `1` or
+   *  `true`, once this process's probe has settled: false on Windows, where no
+   *  probe runs, and undefined while it is unknown because no probe of this
+   *  process succeeded. It waits for a probe that runs, and for the first probe
+   *  to start and settle within the bound of both shell modes. A PATH that the
+   *  process adopts carries no DO_NOT_TRACK. Never rejects. */
+  doNotTrack(): Promise<boolean | undefined>
   /** Whether the PATH is unknown and a probe or an adopted PATH can still make
    *  it known: on every platform but Windows, until it is known. A failed probe
    *  leaves it pending, because the next probe or request runs the shell again. */
@@ -169,6 +181,8 @@ export function createLoginShellPath(options: {
 } = {}): LoginShellPath {
   const platform = options.platform ?? process.platform
   let known: string | undefined
+  let knownDoNotTrack: boolean | undefined
+  const firstProbe = Promise.withResolvers<void>()
   let probing: Promise<void> | undefined
   let runner: OwnedCommandRunner | undefined
   let recordedFailure: string | undefined
@@ -197,13 +211,23 @@ export function createLoginShellPath(options: {
       log.info("agent commands use the login shell PATH", {
         shell, mode: outcome.mode, durationMs: Math.round(performance.now() - startedAt),
         ...(outcome.timedOut ? { timedOut: true, reason: `a process the startup files left running was ended at the ${PROBE_TIMEOUT_MS / 1_000} s bound` } : {}),
+        ...(outcome.doNotTrack ? { doNotTrack: true } : {}),
       })
+      knownDoNotTrack = outcome.doNotTrack
       adopt(outcome.path)
-    })().finally(() => { probing = undefined })
+    })().finally(() => { probing = undefined; firstProbe.resolve() })
     return probing
   }
   return {
     current: () => known,
+    async doNotTrack() {
+      if (platform === "win32") return false
+      let bound: ReturnType<typeof setTimeout> | undefined
+      await Promise.race([firstProbe.promise, new Promise<void>((resolve) => { bound = setTimeout(resolve, PROBE_TIMEOUT_MS * PROBE_MODES.length) })])
+      clearTimeout(bound)
+      if (probing !== undefined) await probing
+      return knownDoNotTrack
+    },
     pending: () => known === undefined && platform !== "win32",
     adopt,
     watch(listener) {

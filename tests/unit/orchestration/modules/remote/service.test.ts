@@ -75,6 +75,7 @@ function fixture(transports?: ModuleTransports, onSelectionChanged?: AccountProj
     eventWriter: refusingEventWriter({ pruneSupersededEvents: async () => 0 }),
     onStored: () => () => {},
     accountModuleFaults,
+    config: { snapshot: () => { throw new Error("the remote service reads no config here") }, subscribe: () => async () => {}, mutateSection: async () => { throw new Error("the remote service writes no config") }, useTimeObserver: () => async () => { throw new Error("the remote service reads no config at use time") } },
     snapshotPosition: () => 0,
     publish: (input) => ({ ...input, position: 1, prevPosition: 0 }), notify: async () => {}, onFrontendEvent: (listener) => { frontendListeners.add(listener); return () => { frontendListeners.delete(listener) } },
     onSelectionChanged: onSelectionChanged ?? ((listener: () => void | Promise<void>) => { listeners.add(listener); return () => { listeners.delete(listener) } }),

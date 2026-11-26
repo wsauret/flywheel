@@ -2,32 +2,55 @@ import { createSignal, onMount, Show } from "solid-js"
 import type { RuntimeFaultReportOutcome, RuntimeHealth } from "../../../../src/protocol/runtime/app-service-types.js"
 import { useClient } from "../../app/client-context.js"
 import { Sheet } from "../../app/sheets/sheet.js"
-import { NOT_RELEASE_REPORT_STATUS, reportSentStatus, type BugReportInput, BUG_REPORT_COMMAND_NAME } from "../../../../src/protocol/modules/bug-reports.js"
+import { AUTOMATIC_REPORTS_OFF_STATUS, AUTOMATIC_REPORTS_QUESTION, DO_NOT_TRACK_REPORT_STATUS, NOT_RELEASE_REPORT_STATUS, reportSentStatus, type BugReportInput, BUG_REPORT_COMMAND_NAME } from "../../../../src/protocol/modules/bug-reports.js"
 import { copyReport, createReportSubmission, reportInput } from "./report.js"
 import "./surfaces.css"
 import { describeFailure } from "../../client/format/failure-message.js"
 
-/** A crash report is automatic, so its receipt also says where to turn automatic reports off. */
+/** The results that kept a report local on purpose, which the status states as they are. */
+const WITHHELD = new Set<string>(["not-release", "not-allowed", "do-not-track"])
+
+/** A crash report is automatic, so its receipt also says where to turn automatic reports off. While the person
+ *  has not answered whether crash reports send automatically, the status asks instead. */
 function ReportStatus(props: { readonly submission: ReturnType<typeof createReportSubmission>; readonly kind: BugReportInput["kind"] }) {
+  const result = () => props.submission.result()
+  const asking = () => { const current = result(); return current?.ok === false && current.kind === "consent-needed" }
+  // The question is the live status while it waits for an answer; while the answer saves, or after a save
+  // failed, the status says so and the question stays in view below it.
   const message = () => {
-    const result = props.submission.result()
+    const current = result()
+    if (asking()) return props.submission.answering() ? "Saving your answer…" : props.submission.answerFailure() ?? AUTOMATIC_REPORTS_QUESTION
     if (props.submission.pending()) return "Sending report…"
-    if (!result) return ""
-    if (result.ok) return reportSentStatus(result.reportId, props.kind === "crash")
-    return result.kind === "not-release" ? result.error : `Could not send report: ${result.error}`
+    if (!current) return ""
+    if (current.ok) return reportSentStatus(current.reportId, props.kind === "crash")
+    return WITHHELD.has(current.kind) ? current.error : `Could not send report: ${current.error}`
   }
+  const busy = () => props.submission.pending() || props.submission.answering()
   return <div class="bug-report-status">
-    <p role="status" aria-live="polite" aria-busy={props.submission.pending() || undefined}>{message()}</p>
-    <Show when={props.submission.result()?.ok === false}><button class="ghost-text" onClick={props.submission.copy}>Copy report</button></Show>
+    <p role="status" aria-live="polite" aria-busy={busy() || undefined} classList={{ "bug-report-question": asking() && props.submission.answerFailure() === undefined }}>{message()}</p>
+    <Show when={asking()}>
+      <Show when={props.submission.answering() || props.submission.answerFailure() !== undefined}><p class="bug-report-question">{AUTOMATIC_REPORTS_QUESTION}</p></Show>
+      <div class="bug-report-answers">
+        <button class="primary" disabled={props.submission.answering()} onClick={() => { void props.submission.answer(true) }}>Send reports</button>
+        <button class="ghost-text" disabled={props.submission.answering()} onClick={() => { void props.submission.answer(false) }}>Don't send</button>
+      </div>
+    </Show>
+    <Show when={result()?.ok === false}><button class="ghost-text" onClick={props.submission.copy}>Copy report</button></Show>
   </div>
 }
 
-/** The error boundary owns this mount, so one appearance sends one report. */
+/** The error boundary owns this mount, so one appearance sends one report, or asks the one question first. */
 export function ViewErrorReport(props: { readonly error: unknown }) {
   const client = useClient()
   const submission = createReportSubmission(client)
   const input = reportInput(client, { kind: "crash", error: props.error })
-  onMount(() => { void submission.send(input) })
+  // A phone shows this view in place of its machine picker, where no project connection is open, and a
+  // submit there would wait for a connection that never opens. Copy is offered at once instead.
+  const connected = client.state().projectRoot !== undefined && client.state().health.kind !== "faulted"
+  onMount(() => {
+    if (connected) void submission.send(input)
+    else submission.keepLocal(input, "This page is not connected to a project.")
+  })
   return <div class="sheet-problem">
     <p>This view is unavailable.</p>
     <ReportStatus submission={submission} kind="crash" />
@@ -55,8 +78,13 @@ export function BugReportSheet() {
 }
 
 function reportOutcomeStatus(outcome: RuntimeFaultReportOutcome): string {
-  if (outcome.kind === "sent") return reportSentStatus(outcome.reportId, true)
-  return outcome.kind === "failed" ? "Could not send report." : NOT_RELEASE_REPORT_STATUS
+  switch (outcome.kind) {
+    case "sent": return reportSentStatus(outcome.reportId, true)
+    case "failed": return "Could not send report."
+    case "not-release": return NOT_RELEASE_REPORT_STATUS
+    case "not-allowed": return AUTOMATIC_REPORTS_OFF_STATUS
+    case "do-not-track": return DO_NOT_TRACK_REPORT_STATUS
+  }
 }
 
 /** Runtime reporting belongs to the account service; this surface never sends a second report. */

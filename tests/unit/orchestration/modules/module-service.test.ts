@@ -73,6 +73,7 @@ const refusingAccountPorts: Omit<Parameters<typeof createAccountModuleServiceOwn
   projectClone: { clone: refuse("projectClone.clone") },
   launcher: { scope: refusingLauncher, guardian: { openGeneration: refuse("guardian.openGeneration"), pid: refuse("guardian.pid") }, startGuardian: refuse("launcher.startGuardian") },
   webClient: refuse("webClient"),
+  configOwner: { useTimeObserver: refuse("configOwner.useTimeObserver") },
 }
 const episode: NotificationEpisodeInput = { type: "raise", occurrence: { sourceId: "probe:condition", title: "Probe", message: "A condition", severity: "warning", action: { kind: "open-settings" } } }
 

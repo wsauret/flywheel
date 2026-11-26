@@ -142,7 +142,7 @@ export class ReportReceiver {
         const created = await call("/issues", "POST", {
           title: inert(report.kind === "manual"
             ? `Report: ${report.note?.split(/\r\n|\r|\n/, 1)[0]?.slice(0, 80) || "no note"}`
-            : `${report.error.name}: ${report.error.message}`.replace(/\s+/g, " ").slice(0, 200)),
+            : (report.error.message === "" ? report.error.name : `${report.error.name}: ${report.error.message}`).replace(/\s+/g, " ").slice(0, 200)),
           body,
           labels: [label],
         })
@@ -200,9 +200,13 @@ async function crashSignature(error: BugReport["error"]): Promise<string> {
     .replace(/\b0x[0-9a-f]+\b/gi, "<address>")
     .replace(/\b\d+(?:\.\d+)*\b/g, "<number>")
     .replace(/\s+/g, " ").trim()
+  // An automatic report carries no message, so a frame without a function name counts by its file and line,
+  // the location that the client left in it, and crashes that differ only there keep separate signatures.
   const functions = error.stack.split("\n").flatMap((line) => {
     const v8 = /^\s*at\s+(.*?)\s+\(/.exec(line)
     if (v8) return [v8[1]!]
+    const location = /^\s*at\s+([^\s()]+?):(\d+):\d+$/.exec(line)
+    if (location) return [`${location[1]!.split(/[\\/]/).pop()}:${location[2]}`]
     const webkit = /^\s*([^@\s]+)@/.exec(line)
     return webkit ? [webkit[1]!] : []
   }).slice(0, 5)

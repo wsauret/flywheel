@@ -80,6 +80,8 @@ const RuntimeFaultReportOutcomeSchema: Schema.Codec<RuntimeFaultReportOutcome> =
   Schema.Struct({ kind: Schema.Literal("sent"), reportId: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("failed") }),
   Schema.Struct({ kind: Schema.Literal("not-release") }),
+  Schema.Struct({ kind: Schema.Literal("not-allowed") }),
+  Schema.Struct({ kind: Schema.Literal("do-not-track") }),
 ])
 const RuntimeExecutorStateSchema: Schema.Codec<RuntimeExecutorState> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("serving") }),

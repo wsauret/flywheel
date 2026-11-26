@@ -773,11 +773,17 @@ export type RuntimeExecutorState =
  *  - `failed`: the send failed; the report text stays available for Copy.
  *  - `not-release`: the build is not an official release, so it carries no
  *    report endpoint and nothing was sent; the report text stays available
- *    for Copy. */
+ *    for Copy.
+ *  - `not-allowed`: the person has not said yes to automatic crash reports,
+ *    so nothing was sent; the report text stays available for Copy.
+ *  - `do-not-track`: DO_NOT_TRACK is set where the account service runs, so
+ *    nothing was sent; the report text stays available for Copy. */
 export type RuntimeFaultReportOutcome =
   | { readonly kind: "sent"; readonly reportId: string }
   | { readonly kind: "failed" }
   | { readonly kind: "not-release" }
+  | { readonly kind: "not-allowed" }
+  | { readonly kind: "do-not-track" }
 
 /** What a person should know about the account service that serves the
  *  project, as that service reports it on the `service` workspace domain.

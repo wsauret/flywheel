@@ -70,7 +70,7 @@ describe("RuntimeNotice", () => {
 
   it.each(["crash_loop", "restarting", "recovery_failed"] as const)("shows the account receipt for %s", async (kind) => {
     const { frame } = await renderNotice({ kind, cause: "failed", since: 1, report: { kind: "sent", reportId: "FW-1234" } })
-    expect(frame).toContain("Report sent automatically (FW-1234). To stop automatic reports, turn off Bug reports in Settings.")
+    expect(frame).toContain("Report sent automatically (FW-1234). To stop automatic reports, turn off Automatic crash reports in Settings.")
   })
 
   it.each(["crash_loop", "recovery_failed"] as const)("offers Copy of the account report after a %s report fails", async (kind) => {
@@ -81,9 +81,13 @@ describe("RuntimeNotice", () => {
     expect(queries).toEqual([{ type: "bugReport.failed", source: kind === "crash_loop" ? "service" : "executor" }])
   })
 
-  it("says a build that is not an official release sent no report and still offers Copy", async () => {
-    const { frame, copied } = await renderNotice({ kind: "crash_loop", cause: "failed", report: { kind: "not-release" } }, true)
-    expect(frame).toContain("No bug report was sent because this build is not an official Flywheel release.")
+  it.each([
+    ["not-release", "No bug report was sent because this build is not an official Flywheel release."],
+    ["not-allowed", "No bug report was sent because automatic crash reports are off. To send them, turn on Automatic crash reports in Settings."],
+    ["do-not-track", "No bug report was sent because DO_NOT_TRACK is set."],
+  ] as const)("says why a %s fault sent no report and still offers Copy", async (kind, status) => {
+    const { frame, copied } = await renderNotice({ kind: "crash_loop", cause: "failed", report: { kind } }, true)
+    expect(frame).toContain(status)
     expect(frame).not.toContain("Could not send")
     expect(copied).toEqual(["account-assembled report"])
   })

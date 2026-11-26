@@ -119,6 +119,11 @@ export interface TuiErrorReportProps {
 export interface TuiErrorReport {
   readonly status: Accessor<string | undefined>
   readonly failed: Accessor<boolean>
+  /** A yes-or-no question the crash screen asks the person, while one is open. */
+  readonly question: Accessor<string | undefined>
+  readonly answer: (yes: boolean) => void
+  /** Whether the answer is being saved, while the question's buttons take no press. */
+  readonly busy: Accessor<boolean>
   readonly copyText: () => string
 }
 
