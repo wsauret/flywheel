@@ -219,3 +219,15 @@ Not: Fire-and-forget disposal of the conversation, which loses data.
 While the last exchange of a chat's conversation holds an ask whose question is pending, the conversation accepts only results of that exchange. Every other input stays in its durable hold and starts no turn. Settlement appends the ask's result, then the held input in arrival order, and continues the turn through the session's continuation lane. The chat's conversation writer owns this rule and answers it from live session state, for a running loop and for a chat at rest alike.
 Because: An entry after the ask separates the call from its result, so the answer has no place in the model's history.
 Not: Reordering entries when a request is built, or settling the question when other input arrives.
+
+## ARCH-SESSIONS-051: A chat records its stop for the person and its next start
+
+A root chat's runner records one fact when its turn ends with nothing running and nothing awaited, and one when a turn starts. The stop names the final message or the failure. The loop's own park decision produces it. Recovery records the stop for a chat whose owner died after the final message and before the fact.
+Because: The conversation's tail reads the same while work that the chat started still runs.
+Not: A stop inferred from the conversation's tail, or a turn state on session metadata.
+
+## ARCH-SESSIONS-052: A read receipt is a fact that presence produces
+
+Each chat has one durable read position in the project store. A client reports which chat the person is at, as live connection state. The account service records the read position when that presence ends, when the chat stops while it holds, and on an explicit mark. Rendering, attachment, and transcript reads record nothing.
+Because: Every client and device must agree, and a write for each message would grow with output.
+Not: Read state in a client, on a device, or on the session row.

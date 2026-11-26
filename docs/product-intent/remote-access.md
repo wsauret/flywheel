@@ -108,7 +108,7 @@ The phone shows the client of the runtime serving the chosen project, loaded fro
 
 ## PI-REMOTE-015: A phone is told when a chat needs it
 
-While notifications are on, a chat that starts waiting on a question shows a notification on each paired phone, on the lock screen too, whatever any phone has open. That is the only moment a phone is notified: a turn that ends, a workflow that pauses, and a run that fails send nothing. A question answered before the notification goes out sends none, and each new question alerts again, also in the same chat. A phone receives notifications from one machine at a time, and the installed Flywheel and a source run on that machine count as one.
+While notifications are on, each paired phone shows a notification, also on the lock screen, when a chat starts waiting on a question or stops unread. A question notifies whatever any phone has open, and a stop sends none while the person is at that chat. A pausing workflow and a turn that ends while work still runs send nothing. One answered or read before its notification goes out sends none; each new one alerts again. A phone receives notifications from one machine at a time, and the installed Flywheel and a source run on that machine count as one.
 
 ## PI-REMOTE-031: The phone app guides a person to turn notifications on
 
