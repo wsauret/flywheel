@@ -1,0 +1,240 @@
+bench/README.md
+  h_4b47e9e4a8b456 108,133,147,151
+bench/ab-persona/bench.ts
+  h_4b47e9e4a8b456 24,150
+bench/ab-persona/compare.ts
+  h_4b47e9e4a8b456 27,259-271,286,293-294
+bench/ab-persona/records/implementer/2026-11-13T21-16-42-634Z.jsonl
+  h_4b47e9e4a8b456 98-132
+bench/ab-persona/records/implementer/2026-11-13T21-16-44-771Z.jsonl
+  h_4b47e9e4a8b456 132-177
+bench/ab-persona/records/implementer/2026-11-24T07-13-03-614Z.jsonl
+  h_4b47e9e4a8b456 4
+bench/ab-persona/records/implementer/2026-11-24T07-24-16-693Z.jsonl
+  h_4b47e9e4a8b456 86-127
+bench/ab-persona/records/implementer/2026-11-24T14-59-24-385Z.jsonl
+  h_4b47e9e4a8b456 4
+bench/ab-persona/records/implementer/2026-11-24T15-07-31-792Z.jsonl
+  h_4b47e9e4a8b456 4
+bench/ab-persona/records/implementer/2026-11-24T15-17-18-831Z.jsonl
+  h_4b47e9e4a8b456 86-126
+bench/ab-persona/records/implementer/2026-11-24T23-57-38-543Z.jsonl
+  h_4b47e9e4a8b456 59-85
+bench/ab-persona/records/implementer/2026-11-26T06-06-30-601Z.jsonl
+  h_4b47e9e4a8b456 164-235
+bench/ab-persona/records/implementer/2026-11-26T06-08-53-448Z.jsonl
+  h_4b47e9e4a8b456 57-80
+bench/ab-persona/records/implementer/2026-11-26T06-24-57-058Z.jsonl
+  h_4b47e9e4a8b456 18-33
+bench/ab-persona/records/implementer/2026-11-26T08-48-39-529Z.jsonl
+  h_4b47e9e4a8b456 14-19
+bench/ab-persona/records/implementer/2026-11-26T08-56-29-270Z.jsonl
+  h_4b47e9e4a8b456 10-15
+bench/ab-persona/records/implementer/2026-11-26T09-25-40-966Z.jsonl
+  h_4b47e9e4a8b456 6-9
+bench/ab-persona/records/implementer/2026-11-26T14-27-47-990Z.jsonl
+  h_4b47e9e4a8b456 57-83
+bench/ab-persona/records/implementer/2026-11-26T14-27-49-276Z.jsonl
+  h_4b47e9e4a8b456 12-15
+bench/ab-persona/records/implementer/2026-11-26T20-31-14-559Z.jsonl
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/tables/explorer.md
+  h_4b47e9e4a8b456 82,84
+bench/ab-persona/tables/implementer.md
+  h_4b47e9e4a8b456 5,14-16,18,20-27,32-35,46-54,61-63,68-71,73,77-85,96-116,128-145,149-167,171,173-179,191-207
+bench/ab-persona/tables/reviewer-code-elegance.md
+  h_4b47e9e4a8b456 135,137
+bench/ab-persona/tables/reviewer-code-quality.md
+  h_4b47e9e4a8b456 198
+bench/ab-persona/tables/reviewer-mechanism.md
+  h_4b47e9e4a8b456 121,123
+bench/ab-persona/tables/reviewer-plan-elegance.md
+  h_4b47e9e4a8b456 128,130
+bench/ab-persona/tables/reviewer-plan-quality.md
+  h_4b47e9e4a8b456 86,88
+bench/chat-ab/acceptance.ts
+  h_4b47e9e4a8b456 2
+bench/chat-ab/coding-task.ts
+  h_4b47e9e4a8b456 25
+bench/chat-ab/tasks.ts
+  h_4b47e9e4a8b456 9-10
+bench/tasks/README.md
+  h_4b47e9e4a8b456 27,29,42
+bench/tasks/implement/astropy__astropy-14598/adapter.ts
+  h_4b47e9e4a8b456 117,119
+bench/tasks/implement/astropy__astropy-14598/checks.json
+  h_4b47e9e4a8b456 1-5
+bench/tasks/implement/astropy__astropy-14598/controls/expected.json
+  h_4b47e9e4a8b456 4-6,489-491,951-953
+bench/tasks/implement/astropy__astropy-14598/copy-ledger.json
+  h_4b47e9e4a8b456 53-56
+bench/tasks/implement/astropy__astropy-14598/grading-config.json
+  h_4b47e9e4a8b456 4
+bench/tasks/implement/astropy__astropy-14598/native-support.py
+  h_4b47e9e4a8b456 146,170-173
+bench/tasks/implement/astropy__astropy-14598/original/test.patch
+  h_4b47e9e4a8b456 4,8-13
+bench/tasks/implement/ds1000-298/adapter.ts
+  h_4b47e9e4a8b456 15-16,121-122,124-129,131,141-143
+bench/tasks/implement/ds1000-298/checks.json
+  h_4b47e9e4a8b456 1-5
+bench/tasks/implement/ds1000-298/environment.txt
+  h_4b47e9e4a8b456 2
+bench/tasks/implement/ds1000-298/grade.py
+  h_4b47e9e4a8b456 32-48,65-73,76,78-85,101,105-106,114
+bench/tasks/implement/ds1000-298/provenance.json
+  h_4b47e9e4a8b456 24,36-37,41,44,47-48
+bench/tasks/implement/ds1000-298/qualify.ts
+  h_4b47e9e4a8b456 7,86-88,90,94,118-119,137
+bench/tasks/implement/getmoto__moto-7365/adapter.ts
+  h_4b47e9e4a8b456 127,129
+bench/tasks/implement/getmoto__moto-7365/checks.json
+  h_4b47e9e4a8b456 1-3
+bench/tasks/implement/getmoto__moto-7365/native-support.py
+  h_4b47e9e4a8b456 155-159
+bench/tasks/implement/getmoto__moto-7365/qualify.ts
+  h_4b47e9e4a8b456 7,101-102,114-115,138,155
+bench/tasks/implement/hosted-thinking-row-wait/WHY.md
+  h_4b47e9e4a8b456 11,15-16
+bench/tasks/implement/hosted-thinking-row-wait/acceptance/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.test.ts
+  h_4b47e9e4a8b456 120-122,127
+bench/tasks/implement/hosted-thinking-row-wait/checks.json
+  h_4b47e9e4a8b456 1-9
+bench/tasks/implement/httpx-streaming-json-iteration/adapter.ts
+  h_4b47e9e4a8b456 15,36-37,139-143,145
+bench/tasks/implement/httpx-streaming-json-iteration/checks.json
+  h_4b47e9e4a8b456 1-110
+bench/tasks/implement/httpx-streaming-json-iteration/copy-ledger.json
+  h_4b47e9e4a8b456 23-24
+bench/tasks/implement/httpx-streaming-json-iteration/original/tests/test.patch
+  h_4b47e9e4a8b456 145,204,215,225,270,281,368,388,413,444,570,643
+bench/tasks/implement/httpx-streaming-json-iteration/qualify.ts
+  h_4b47e9e4a8b456 7,152-160,208
+bench/tasks/implement/httpx-streaming-json-iteration/replacement-ledger.json
+  h_4b47e9e4a8b456 41,47,49-54
+bench/tasks/implement/jquense__yup-2305/adapter.ts
+  h_4b47e9e4a8b456 9,215-222,224
+bench/tasks/implement/jquense__yup-2305/checks.json
+  h_4b47e9e4a8b456 1-5
+bench/tasks/implement/jquense__yup-2305/qualify.ts
+  h_4b47e9e4a8b456 8,147-149,162,179
+bench/tasks/implement/metrics-resteer/acceptance/metrics-pipeline.test.ts
+  h_4b47e9e4a8b456 27,36-38,62-64,67
+bench/tasks/implement/metrics-resteer/checks.json
+  h_4b47e9e4a8b456 1-12
+bench/tasks/implement/metrics-resteer/qualification.json
+  h_4b47e9e4a8b456 4,9
+bench/tasks/implement/psf__requests-6028/adapter.ts
+  h_4b47e9e4a8b456 127,129
+bench/tasks/implement/psf__requests-6028/checks.json
+  h_4b47e9e4a8b456 1-4
+bench/tasks/implement/psf__requests-6028/native-support.py
+  h_4b47e9e4a8b456 178-180
+bench/tasks/implement/psf__requests-6028/qualify.ts
+  h_4b47e9e4a8b456 7,96-97,113-114,135,149
+bench/tasks/implement/recall-punctuated-words/checks.json
+  h_4b47e9e4a8b456 1-25
+bench/tasks/implement/redis__redis-10068/adapter.ts
+  h_4b47e9e4a8b456 181-189,208
+bench/tasks/implement/redis__redis-10068/checks.json
+  h_4b47e9e4a8b456 1-3
+bench/tasks/implement/redis__redis-10068/qualify.ts
+  h_4b47e9e4a8b456 8,162-163,191
+bench/tasks/implement/regex-chess/adapter.ts
+  h_4b47e9e4a8b456 18-20,144-149,162-163,184,186-190,192-194
+bench/tasks/implement/regex-chess/checks.json
+  h_4b47e9e4a8b456 1-106
+bench/tasks/implement/regex-chess/grade_positions.py
+  h_4b47e9e4a8b456 1-139
+bench/tasks/implement/regex-chess/provenance.json
+  h_4b47e9e4a8b456 33-34,37
+bench/tasks/implement/regex-chess/qualify.ts
+  h_4b47e9e4a8b456 7,76-88,106
+bench/tasks/implement/rust-react/adapter.ts
+  h_4b47e9e4a8b456 11-12,75-77,87-90,97,99
+bench/tasks/implement/rust-react/checks.json
+  h_4b47e9e4a8b456 1-22
+bench/tasks/implement/scheme-metacircular/adapter.ts
+  h_4b47e9e4a8b456 18-19,190-191,202-209,237-238,240-241
+bench/tasks/implement/scheme-metacircular/checks.json
+  h_4b47e9e4a8b456 1-65
+bench/tasks/implement/scheme-metacircular/observe.py
+  h_4b47e9e4a8b456 26-48
+bench/tasks/implement/scheme-metacircular/qualify.ts
+  h_4b47e9e4a8b456 7,75-79,99
+bench/tasks/implement/template-multiphase/acceptance/template-engine.test.ts
+  h_4b47e9e4a8b456 17-27,86-90
+bench/tasks/implement/template-multiphase/checks.json
+  h_4b47e9e4a8b456 1-32
+bench/tasks/implement/template-multiphase/qualification.json
+  h_4b47e9e4a8b456 4
+bench/tasks/qualify.ts
+  h_4b47e9e4a8b456 7,10
+docs/architecture-intent/directories.md
+  h_4b47e9e4a8b456 122,133-139
+src/orchestration/modules/development/benchmark-tool.ts
+  h_4b47e9e4a8b456 36,315
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 4,398-399
+src/orchestration/modules/development/benchmark/implement-task/check-grade.ts
+  h_4b47e9e4a8b456 1-88
+src/orchestration/modules/development/benchmark/implement-task/implement-task.ts
+  h_4b47e9e4a8b456 5-14,24-29,50-51,57-59,67-68,95,119-134,186,201,232,247,416-424,428-440,443-445,447,465,486
+src/orchestration/modules/development/benchmark/implement-task/junit-report.ts
+  h_4b47e9e4a8b456 1-66
+src/orchestration/modules/development/benchmark/persona/persona-benchmark.ts
+  h_4b47e9e4a8b456 7,30,84,401,553,559
+src/orchestration/modules/development/benchmark/persona/results-pages.ts
+  h_4b47e9e4a8b456 7,11,13,124-129,132-136,143-144,146-157,167-187,240,253,266,273,276-286,289,295,311,317,319,334,336
+src/orchestration/modules/development/benchmark/records/benchmark-records.ts
+  h_4b47e9e4a8b456 10,36-47,51-56,86,92-98,163-165,371-379,381-382
+src/orchestration/modules/development/benchmark/records/ranking.ts
+  h_4b47e9e4a8b456 6,16,33,37,39-48,113,131,151-153,160,187-192,197-198,201,204-205,207,223-224,282-283,287,294-295,457,500
+src/orchestration/modules/development/benchmark/records/regrade.ts
+  h_4b47e9e4a8b456 4,6,18-19,22-24,53-55
+src/orchestration/modules/development/benchmark/scoring/implement-scoring.ts
+  h_4b47e9e4a8b456 9,11,23,217-227,253,289-290,295-296,307-309
+src/orchestration/modules/development/benchmark/scoring/run-store.ts
+  h_4b47e9e4a8b456 5,75,83-88
+tests/integration/bench/implement-task-capture.test.ts
+  h_4b47e9e4a8b456 10,53,94-95
+tests/unit/bench/_implement-task-fixtures.ts
+  h_4b47e9e4a8b456 7-15,20-22,25-26,40
+tests/unit/bench/benchmark-ranking.test.ts
+  h_4b47e9e4a8b456 8,35-38,62-63,83-87,90,192-193,195-204,207-210,213-215,223-224,226,239-240,242-243,251,318-321,324-325,328-329,332-336,340,342-348
+tests/unit/bench/benchmark-regrade.test.ts
+  h_4b47e9e4a8b456 17-19,28,41,61,67-68,78-79,84-86,89,95-97,100
+tests/unit/bench/catalog.test.ts
+  h_4b47e9e4a8b456 9,68
+tests/unit/bench/chat-ab-acceptance.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/bench/chat-ab-verdict.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/bench/check-grade.test.ts
+  h_4b47e9e4a8b456 1-31
+tests/unit/bench/compare.test.ts
+  h_4b47e9e4a8b456 59,117-118,429-431
+tests/unit/bench/implement-fixture-containment.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/bench/implement-native-task.test.ts
+  h_4b47e9e4a8b456 5,20
+tests/unit/bench/implement-task.test.ts
+  h_4b47e9e4a8b456 14,19,54,125,135-136,233,237,287-288,292-295,300,392,394,398-404,406-411,465
+tests/unit/bench/persona-native-benchmark.test.ts
+  h_4b47e9e4a8b456 48,53,122,139,177
+tests/unit/bench/report-accounting.test.ts
+  h_4b47e9e4a8b456 64,77,86,101-103
+tests/unit/bench/run-store.test.ts
+  h_4b47e9e4a8b456 171-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a9cea9628b7e1e2559b65f5ba595671b984483f1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
