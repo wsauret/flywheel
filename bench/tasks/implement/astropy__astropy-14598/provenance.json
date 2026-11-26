@@ -68,8 +68,8 @@
   },
   "copyLedger": "copy-ledger.json",
   "nativeAdaptations": {
-    "platform": "macOS arm64; installed CPython 3.9 and clang; no system installs or interpreter copies",
-    "runtime": "stdlib venv --symlinks; pip 23.2.1; public hash-owned wheel downloads inside .bench-home",
+    "platform": "macOS arm64; installed clang; CPython 3.9.25 from python-build-standalone 20251031, downloaded and hash-verified into .bench-home/runtime; no system installs",
+    "runtime": "pinned runtime.json interpreter, isolated with -I for the stdlib venv --symlinks and the source helpers; pip 23.2.1; public hash-owned wheel downloads inside .bench-home",
     "source": "All 1876 archive files, hashes and modes retained; no compatibility source changes",
     "build": "python -m pip install -e .[test] --verbose; original isolation retained; offline owned wheels and build constraints; original source produces 17 extensions",
     "grading": "Reconstruct separate source tree from captured patch. Restore all 684 original grading owners, including root tox.ini, and remove added discovery overrides on selected-test ancestors before build. Apply complete original test patch afterward. Original AST functions and registry assignments run unchanged.",

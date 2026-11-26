@@ -329,5 +329,57 @@
     "executionSupportSha256": "9b1dcc54ffcb6416d3045b05cf20b4d3f4e5867b65f346c3fe1e7c52aff8aa02",
     "stdoutTruncated": false,
     "stderrTruncated": false
+  },
+  "pinnedRuntimeControls": {
+    "date": "2026-11-25",
+    "reason": "The interactive login PATH resolves python3 to Homebrew CPython 3.15, so the task now downloads its own interpreter instead of using python3 on PATH.",
+    "runtime": {
+      "input": "runtime.json",
+      "release": "python-build-standalone 20251031",
+      "python": "3.9.25 (main, Oct 31 2025, 23:01:59) [Clang 21.1.4 ]",
+      "sha256": "87275619c2706affa4d1090d2ca3dad354b6d69f8b85dbfafe38785870751b9a",
+      "bytes": 18471356
+    },
+    "hostPath": "/opt/homebrew/bin:/usr/bin:/bin plus the Bun directory; python3 on PATH was 3.15.2",
+    "executionAdapterSha256": "423de12e475ea04822bf3cc6b47ff9676918655988d13cca72c633886b25b39b",
+    "executionSupportSha256": "cfe90d6c3803c12ab9836d8999a76bd027be63ca830b5d78859ba9d66df84ad0",
+    "runner": "createBenchmarkCatalog -> provisionTaskSandbox -> captureImplementation; real owned commands",
+    "modelCalls": 0,
+    "acquisitionPerGrade": "38 public inputs, all HTTP 200, SHA-256 and byte sizes verified",
+    "controls": [
+      {
+        "control": "base",
+        "passed": 175,
+        "failed": 1,
+        "total": 176,
+        "resolution": "RESOLVED_NO",
+        "durationMs": 123913,
+        "originalSelectedMap": "controls/expected.json#base",
+        "matched": true
+      },
+      {
+        "control": "reference",
+        "passed": 176,
+        "failed": 0,
+        "total": 176,
+        "resolution": "RESOLVED_FULL",
+        "durationMs": 164518,
+        "originalSelectedMap": "controls/expected.json#reference",
+        "matched": true
+      },
+      {
+        "control": "fault",
+        "passed": 175,
+        "failed": 1,
+        "total": 176,
+        "resolution": "RESOLVED_NO",
+        "durationMs": 114442,
+        "originalSelectedMap": "controls/expected.json#fault",
+        "matched": true
+      }
+    ],
+    "restoredOwners": 684,
+    "nativeExtensionCount": 17,
+    "buildExitCode": 0
   }
 }

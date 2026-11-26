@@ -112,7 +112,7 @@ Each cell lists every recorded repeat, oldest campaign first. P: every hidden te
 
 | Task | claude-fable-5.2@low | claude-opus-5-5@high | claude-opus-5.5@high | claude-opus-5.5@medium | gemini-3.8-flash@low | gemini-4-hydrogen@high | gemini-4-neon@high | gpt-6-astra@low | gpt-6.1-sol@high | gpt-6.1-sol@medium | gpt-6.1-sol@xhigh |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| astropy__astropy-14598 | - | F(175/176) F(175/176) | - | - | - | P P P | P P P | - | - | - | - |
+| astropy__astropy-14598 | - | F(175/176)* F(175/176)* | - | - | - | P* P* P* | P* P* P* | - | - | - | - |
 | ds1000-298 | - | F(0/1) F(0/1) | - | - | - | P P P | P P P | - | - | - | - |
 | getmoto__moto-7365 | - | P P | - | - | - | P P P | P P P | - | - | - | - |
 | hosted-thinking-row-wait (suite) | F(6/7) F(6/7) F(6/7) | F(6/7) P | P F(6/7) P | F(6/7) P F(6/7) | - | P F(1/7) | P P P | P F(6/7) P | P P P | P P F(6/7) | P P P |
