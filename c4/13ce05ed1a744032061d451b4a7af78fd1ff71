@@ -1,0 +1,24 @@
+src/infra/providers/llm/provider-request-identity.ts
+  h_4b47e9e4a8b456 31
+src/orchestration/agent-runtime/llm/adapters/openai/chatgpt-client.ts
+  h_4b47e9e4a8b456 51
+tests/unit/infra/providers/llm/access/openai-oauth.test.ts
+  h_4b47e9e4a8b456 140
+tests/unit/infra/providers/llm/provider-request-identity.test.ts
+  h_4b47e9e4a8b456 11,16
+tests/unit/orchestration/agent-runtime/llm/routing/client-factory-opencode-go.test.ts
+  h_4b47e9e4a8b456 121
+tests/unit/orchestration/config/model-listing-client.test.ts
+  h_4b47e9e4a8b456 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c413ce05ed1a744032061d451b4a7af78fd1ff71",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
