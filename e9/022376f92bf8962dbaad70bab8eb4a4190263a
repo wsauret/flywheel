@@ -1,0 +1,38 @@
+src/infra/substrate/store/fact-retention-registry.ts
+  h_4b47e9e4a8b456 69-72
+src/orchestration/app-service/project-state/worker/project-state-recovery.ts
+  h_4b47e9e4a8b456 40,236,260-262,288-294,308,314-326
+src/orchestration/chat/lifecycle/runner-lifecycle.ts
+  h_4b47e9e4a8b456 44,105-106,194,205,239-241,262-265,298-301,309-312,327-330,386,422-423,478-479,513-519,678-680
+src/orchestration/session/control/chat-turn-stops.ts
+  h_4b47e9e4a8b456 1-211
+src/orchestration/session/persistence/chat-turn-stop-facts.ts
+  h_4b47e9e4a8b456 1-45
+src/orchestration/session/persistence/session-fact-registry.ts
+  h_4b47e9e4a8b456 9,20
+src/orchestration/session/persistence/session-fact-writer.ts
+  h_4b47e9e4a8b456 10,19
+src/protocol/session/chat-settlement-protocol-types.ts
+  h_4b47e9e4a8b456 24
+tests/unit/orchestration/app-service/chat-turn-stop.test.ts
+  h_4b47e9e4a8b456 1-252
+tests/unit/orchestration/app-service/project-state/worker/project-state-recovery.test.ts
+  h_4b47e9e4a8b456 27-28,671-721
+tests/unit/orchestration/chat/lifecycle/chat-runner-lifecycle-capacity.test.ts
+  h_4b47e9e4a8b456 52,54-60,82,87
+tests/unit/orchestration/chat/lifecycle/chat-runner-lifecycle-turn-stops.test.ts
+  h_4b47e9e4a8b456 1-192
+tests/unit/orchestration/session/control/chat-turn-stops.test.ts
+  h_4b47e9e4a8b456 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e9022376f92bf8962dbaad70bab8eb4a4190263a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
