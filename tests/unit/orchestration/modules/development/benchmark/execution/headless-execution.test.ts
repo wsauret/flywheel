@@ -259,7 +259,8 @@ test.each(["on", "ask", "off"] as const)("checks Workflows %s before submitting 
 });
 
 test("accepts a completed execution only after verified settings and the turn's final message", async () => {
-  const fixture = subject({ updates: [text("draft"), { sessionUpdate: "tool_call", toolCallId: "t", title: "Read", kind: "read", status: "completed" }, text("do"),
+  const fixture = subject({ updates: [text("draft"), { sessionUpdate: "tool_call", toolCallId: "t", title: "Read", kind: "read", status: "completed" },
+    { sessionUpdate: "tool_call_update", toolCallId: "t", status: "completed", content: [{ type: "content", content: { type: "text", text: "read output" } }] }, text("do"),
     { sessionUpdate: "usage_update", used: 1, size: 10 }, text("ne")] });
   const result = await executeHeadlessBenchmark({ ...fixture.input, message: "task" });
   expect(result.outcome).toBe("complete");

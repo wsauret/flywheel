@@ -42,13 +42,13 @@ const InboundSchema = Schema.Struct({
   result: Schema.optionalKey(Schema.Unknown),
   error: Schema.optionalKey(Schema.Unknown),
 });
+/** The subject's session updates. Only a message chunk's text matters here, so the content of every other update,
+ *  such as a tool call's array of results, passes undecoded. */
 const SessionUpdateSchema = Schema.Struct({
   sessionId: Schema.String,
-  update: Schema.Struct({
-    sessionUpdate: Schema.String,
-    content: Schema.optionalKey(Schema.Struct({ type: Schema.String, text: Schema.optionalKey(Schema.String) })),
-  }),
+  update: Schema.Struct({ sessionUpdate: Schema.String, content: Schema.optionalKey(Schema.Unknown) }),
 });
+const MessageChunkContentSchema = Schema.Struct({ type: Schema.String, text: Schema.optionalKey(Schema.String) });
 
 interface HeadlessBenchmarkOptions {
   readonly launcher: LauncherScope;
@@ -192,7 +192,7 @@ export async function executeHeadlessBenchmark(input: HeadlessBenchmarkInput): P
     } else if (inbound.method === "session/update" && inbound.id === undefined) {
       const { sessionId: updated, update } = Schema.decodeUnknownSync(SessionUpdateSchema)(inbound.params);
       if (updated !== sessionId || !prompting) return;
-      if (update.sessionUpdate === "agent_message_chunk") message += update.content?.text ?? "";
+      if (update.sessionUpdate === "agent_message_chunk") message += Schema.decodeUnknownSync(MessageChunkContentSchema)(update.content).text ?? "";
       else if (update.sessionUpdate !== "usage_update" && update.sessionUpdate !== "config_option_update") message = "";
     } else {
       throw new Error("unexpected subject request");
