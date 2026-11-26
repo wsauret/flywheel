@@ -1,0 +1,22 @@
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 247,249
+src/infra/environment/login-shell-path.ts
+  h_4b47e9e4a8b456 11-12,16-22,86-110,112,147-149,187,190-192,194,198
+src/orchestration/modules/development/benchmark/sandbox-command.ts
+  h_4b47e9e4a8b456 3,36-40,46
+tests/unit/bench/implement-task.test.ts
+  h_4b47e9e4a8b456 4-5,500-504,527
+tests/unit/infra/environment/login-shell-path.test.ts
+  h_4b47e9e4a8b456 17-19,23-25,91-94,101-102,116,120-121,141-161,169-170,172,174-176,200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0daccd1496bd57666762001e11d6e3c0396f1a7f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
