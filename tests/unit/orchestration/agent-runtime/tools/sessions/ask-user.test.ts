@@ -45,7 +45,7 @@ function makeContext(toolUseId = "tool_question"): DispatchedToolContext {
 }
 
 describe("ask_user tool", () => {
-  it("tells agents to discuss in prose and use the decision UI only once the discussion settles", () => {
+  it("tells agents to discuss in prose, to use the decision UI only once the discussion settles, and that the call blocks", () => {
     const controller: AskUserController = {
       ask: async () => { throw new Error("unused in this test"); },
       answerQuestion: () => {},
@@ -56,7 +56,7 @@ describe("ask_user tool", () => {
 
     expect(tool.description).toContain("While the user is asking questions or discussing, reply in prose");
     expect(tool.description).not.toContain("the next step is ambiguous");
-    expect(tool.description).toContain("Before you ask, start all work that does not depend on the answer");
+    expect(tool.description).toContain("This call blocks: your turn stops until the user answers, and the user can be away for a long time. Only work that already runs in the background continues. So ask only when you cannot continue without the answer, and ask last: first finish all other work that does not depend on the answer, or start it in the background when it runs long. Do not ask about a small or reversible choice: decide it, continue, and report the choice in your final message.");
   });
   it("normalizes a single question with options into a question entry", () => {
     const normalized = normalizeAskUserInput({

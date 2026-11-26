@@ -16,7 +16,7 @@ A page whose browser never opened the project's link, or whose link no longer op
 
 ## PI-LOCAL-003: The browser tab names the session and shows its state
 
-In the browser, the tab's title names the selected session. The title says up front when that session is working or when the page has lost the runtime. The tab's icon is Flywheel's tile, marked while the session works and dimmed while the runtime is lost. The page can be installed from the browser as an app with that name and icon.
+In the browser, the tab's title names the selected session. The title leads with the number of chats that need the person, and says when that session is working or when the page has lost the runtime. The tab's icon is Flywheel's tile, marked while the session works and dimmed while the runtime is lost. The page can be installed from the browser as an app with that name and icon.
 
 ## PI-LOCAL-004: The page's address names the session
 

@@ -114,7 +114,8 @@ const ASK_USER_BASE: Pick<RuntimeTool, "name" | "action" | "description" | "unbo
     "Ask the user multiple-choice questions.",
     ASK_USER_DISCUSSION_RULE,
     "When you need the answer to continue, call this tool in the same turn as your explanation. Do not end that turn with a prose request for the user to reply.",
-    "Before you ask, start all work that does not depend on the answer.",
+    // The call stops the turn, so a question comes last and a small choice gets no question (PI-AGENT-137).
+    "This call blocks: your turn stops until the user answers, and the user can be away for a long time. Only work that already runs in the background continues. So ask only when you cannot continue without the answer, and ask last: first finish all other work that does not depend on the answer, or start it in the background when it runs long. Do not ask about a small or reversible choice: decide it, continue, and report the choice in your final message.",
     "The UI adds an \"Other\" option, so do not add one.",
   ].join(" "),
   // Legitimately blocks on a human, which can take far longer than any

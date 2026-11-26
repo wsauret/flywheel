@@ -72,8 +72,10 @@ LEGAL_FILES = ("LICENSE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES.txt")
 # runtime; the build checks that the wheel's engine is the commit's engine. The
 # payload's build.json, fonts, and web client are not kept either: a trial runs
 # the executable directly in ACP mode, and build.json would state the identity
-# of the whole payload tree.
-OMITTED_NATIVE_FILES = frozenset({"claude"})
+# of the whole payload tree. The Antigravity CLI (`agy`, about 80 MB) is left
+# out too: it would also push the package past the limit, and no benchmark arm
+# enables the Antigravity provider module that runs it.
+OMITTED_NATIVE_FILES = frozenset({"claude", "agy"})
 # The Agent SDK manifest of the commit's bun.lock names the engine that the
 # commit runs, by version and by SHA-256 for each platform.
 ENGINE_MANIFEST_PATH = "node_modules/@anthropic-ai/claude-agent-sdk/manifest.json"
