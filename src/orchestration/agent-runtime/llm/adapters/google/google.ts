@@ -134,7 +134,7 @@ export async function createGoogleAdapter(
         };
         yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
           const runId = crypto.randomUUID();
-          const effort = clampEffort(requestedReasoning);
+          const effort = clampEffort(requestedReasoning, info.reasoningEfforts?.includes("xhigh") === true);
           const config: GenerateContentConfig = { ...baseConfig, abortSignal: attempt.signal };
           if (info.reasoning) {
             const thinkingConfig = getThinkingConfig(modelId, effort, googleOpts?.thinking_budgets);
@@ -144,7 +144,7 @@ export async function createGoogleAdapter(
 
           const streamLiveness = attempt.armLiveness({ label: "llm-google", provider: "Google", telemetry: options.telemetry });
           // `final` marks usage read from the chunk that ended the response; earlier usage is a lower bound.
-          let usage: { input: number; output: number; cacheRead: number; reasoning: number; final: boolean } | undefined;
+          let usage: { input: number; output: number; cacheRead: number; reasoning: number; contextInput: number | undefined; final: boolean } | undefined;
           const usageEvent = () => usage ? ({
             kind: "usage",
             final: usage.final,
@@ -153,6 +153,7 @@ export async function createGoogleAdapter(
             cacheReadTokens: usage.cacheRead,
             cacheCreateTokens: 0,
             reasoningTokens: usage.reasoning,
+            ...(usage.contextInput === undefined ? {} : { contextInputTokens: usage.contextInput }),
           } as const) : undefined;
 
           {
@@ -316,6 +317,9 @@ export async function createGoogleAdapter(
                 const cached = chunk.usageMetadata.cachedContentTokenCount ?? 0;
                 const candidates = chunk.usageMetadata.candidatesTokenCount ?? 0;
                 const thoughts = chunk.usageMetadata.thoughtsTokenCount ?? 0;
+                // The SDK sums promptTokenCount over the continuation hops of a long decode, which bills each hop's
+                // prompt; the request's context is the prompt of its first hop.
+                const initialPrompt = chunk.usageMetadata.initialPromptTokenCount;
                 // Emitting context_update on the first chunk with a non-zero
                 // promptTokenCount gives the agent loop the server-counted prompt
                 // size mid-stream, matching Anthropic's `message_start` signal.
@@ -331,6 +335,7 @@ export async function createGoogleAdapter(
                   output: candidates + thoughts,
                   cacheRead: cached,
                   reasoning: thoughts,
+                  contextInput: initialPrompt !== undefined && initialPrompt !== promptTotal ? initialPrompt : undefined,
                   final: rawFinishReason !== undefined || promptBlock !== undefined,
                 };
               }
@@ -380,12 +385,18 @@ export async function createGoogleAdapter(
 // Provider-shape mapping (formerly google-helpers.ts; single consumer, merged
 // back - same cohesive-adapter shape as anthropic.ts).
 
-type ClampedEffort = "off" | "low" | "medium" | "high";
+type ClampedEffort = "off" | "low" | "medium" | "high" | "xhigh";
 
-function clampEffort(effort: ReasoningEffort | undefined): ClampedEffort {
+// SAFETY: the SDK sends thinkingLevel as the string it holds, so the wire carries "XHIGH" unchanged.
+// oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: Gemini 4 takes the XHIGH thinking level (Gemini 4 Neon developer guide), which the SDK's ThinkingLevel enum does not name
+const THINKING_LEVEL_XHIGH = "XHIGH" as ThinkingLevel;
+
+/** Efforts above high clamp to the highest level the model's catalog declares. */
+function clampEffort(effort: ReasoningEffort | undefined, declaresXhigh: boolean): ClampedEffort {
   if (!effort || effort === "off") return "off";
   if (effort === "low") return "low";
-  if (effort === "high" || effort === "xhigh" || effort === "max" || effort === "ultra") return "high";
+  if (effort === "high") return "high";
+  if (effort === "xhigh" || effort === "max" || effort === "ultra") return declaresXhigh ? "xhigh" : "high";
   return "medium";
 }
 
@@ -404,7 +415,7 @@ function getThinkingConfig(
   if (thinkingConfigMode === "level") {
     return { includeThoughts: true, thinkingLevel: thinkingLevelForModel(model, effort) };
   }
-  return { includeThoughts: true, thinkingBudget: thinkingBudgetForModel(model, effort, budgetOverrides) };
+  return { includeThoughts: true, thinkingBudget: thinkingBudgetForModel(model, effort === "xhigh" ? "high" : effort, budgetOverrides) };
 }
 
 interface GoogleTerminalState {
@@ -438,6 +449,10 @@ function resolveGoogleStopReason({ finishReason, promptBlock, sawToolCall }: Goo
     case FinishReason.STOP: return sawToolCall ? "tool_use" : "end_turn";
     case FinishReason.MAX_TOKENS:
       throw normalizeProviderAttemptFailure(new OutputLengthExceededError(`Response truncated: ${finishReason}`));
+    // The SDK resumes a CONTINUATION that carries a token and clears its finish reason. One that reaches here
+    // stopped at the output cap with no way to resume, and the same request would stop there again.
+    case FinishReason.CONTINUATION:
+      throw normalizeProviderAttemptFailure(new OutputLengthExceededError("Response truncated: Google stopped at a continuation point without a continuation token"));
     case FinishReason.BLOCKLIST:
     case FinishReason.PROHIBITED_CONTENT:
     case FinishReason.SPII:
@@ -504,12 +519,13 @@ function thinkingLevelForModel(model: string, effort: Exclude<ClampedEffort, "of
   }
   return effort === "low" ? ThinkingLevel.LOW
     : effort === "medium" ? ThinkingLevel.MEDIUM
+    : effort === "xhigh" ? THINKING_LEVEL_XHIGH
     : ThinkingLevel.HIGH;
 }
 
 function thinkingBudgetForModel(
   model: string,
-  effort: Exclude<ClampedEffort, "off">,
+  effort: Exclude<ClampedEffort, "off" | "xhigh">,
   overrides?: ThinkingBudgetOverrides,
 ): number {
   const override = overrides?.[effort];

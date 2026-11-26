@@ -12,6 +12,7 @@ import type { AccessProviderId } from "../../../../infra/providers/llm/access/ac
 import { healConversation } from "../../../session/conversation/tree/heal-messages.js";
 import { lowerProviderHistory, type ProviderHistoryTarget } from "../history/provider-history.js";
 import { isSameProviderReplay } from "../../../../infra/providers/llm/conversation/messages.js"
+import { geminiThinkingConfigMode } from "../../../../infra/providers/llm/models/model-compat.js";
 import type { ModelFamily } from "../../../../infra/providers/llm/models/model-family.js";
 import type { ContentBlock, ConversationMessage } from "../../../../infra/providers/llm/conversation/conversation-message.js";
 import { sanitizeSurrogates } from "../history/sanitize-unicode.js";
@@ -31,6 +32,26 @@ function isValidThoughtSignature(signature: string | undefined): boolean {
   if (!signature) return false;
   if (signature.length % 4 !== 0) return false;
   return base64SignaturePattern.test(signature);
+}
+
+// Google's documented value for a functionCall whose signature the request cannot replay (thought-signatures guide).
+const SKIP_THOUGHT_SIGNATURE = "skip_thought_signature_validator";
+
+/** Gemini 3 and later validate the signature of the first functionCall of each step of the current turn. */
+function validatesThoughtSignatures(modelId: string): boolean {
+  return /gemini/i.test(modelId) && geminiThinkingConfigMode(modelId) === "level"; // provider-model-literal-allow: payload -- Google thought-signature wire compatibility
+}
+
+/** A failover between access providers, or a model switch, inside a tool loop drops the current turn's foreign
+ *  signatures, and Google rejects an unsigned first functionCall of a current-turn step with HTTP 400. The current
+ *  turn starts after the last user content with text; a functionResponse turn does not start one. */
+function signCurrentTurnCalls(contents: Content[]): void {
+  const turnStart = contents.findLastIndex((content) => content.role === "user" && content.parts?.some((part) => part.text !== undefined));
+  for (const content of contents.slice(turnStart + 1)) {
+    if (content.role !== "model") continue;
+    const firstCall = content.parts?.find((part) => part.functionCall);
+    if (firstCall && !firstCall.thoughtSignature) firstCall.thoughtSignature = SKIP_THOUGHT_SIGNATURE;
+  }
 }
 
 function requiresToolCallId(modelId: string): boolean {
@@ -201,5 +222,6 @@ export function toGoogleGenerativeAiRequest(
     }
     index += 1;
   }
+  if (validatesThoughtSignatures(options.model)) signCurrentTurnCalls(contents);
   return contents;
 }

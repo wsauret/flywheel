@@ -29,6 +29,21 @@ describe("assistant turn terminal reconciliation", () => {
     expect(turn.usageAnchor).toEqual({ inputTokens: 100, cacheReadTokens: 30, cacheWriteTokens: 40, reasoningTokens: 7 });
   });
 
+  // A Google long decode bills each continuation hop's prompt again; the request's context holds the prompt once.
+  test("anchors the context on the reported context prompt, not on the billed prompt total", () => {
+    const turn = result();
+    handleStreamEvent({
+      kind: "usage", final: true,
+      inputTokens: 66_400,
+      outputTokens: 65_500,
+      cacheReadTokens: 600,
+      cacheCreateTokens: 0,
+      reasoningTokens: 0,
+      contextInputTokens: 1_000,
+    }, turn);
+    expect(turn.usageAnchor).toEqual({ inputTokens: 400, cacheReadTokens: 600, cacheWriteTokens: 0, reasoningTokens: 0 });
+  });
+
   test("authoritative terminal text replaces an interleaved provisional block", () => {
     const turn = result();
     handleStreamEvent({ kind: "text_delta", text: "draft", blockKey: "message:1" }, turn);

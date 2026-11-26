@@ -200,8 +200,10 @@ export type ProviderStreamEvent =
   // convention (ARCH-PROVIDERS-076). `reportedChargeUsd` is the amount the
   // provider's response states as charged for the request, absent when it
   // states none; settlement records it in place of a rate-card estimate
-  // (ARCH-PROVIDERS-077).
-  | { kind: "usage"; final: boolean; inputTokens: number; outputTokens: number; cacheReadTokens: number | null; cacheCreateTokens: number; cacheCreate1hTokens?: number; cacheRetentionMs?: number | null; reasoningTokens: number; reportedChargeUsd?: number; accessProvider?: AccessProviderId; accessProviderCandidate?: AccessProviderCandidate }
+  // (ARCH-PROVIDERS-077). `contextInputTokens` is the request's prompt total, cache
+  // included, when it differs from the billed one: a Google long decode bills the
+  // prompt again on each continuation hop, but its context holds it once.
+  | { kind: "usage"; final: boolean; inputTokens: number; outputTokens: number; cacheReadTokens: number | null; cacheCreateTokens: number; cacheCreate1hTokens?: number; cacheRetentionMs?: number | null; reasoningTokens: number; contextInputTokens?: number; reportedChargeUsd?: number; accessProvider?: AccessProviderId; accessProviderCandidate?: AccessProviderCandidate }
   // Provider-reported context size, emitted by adapters when they see the
   // request's prompt token total (Anthropic/Google emit on message_start).
   // The agent loop also synthesizes this between turns from its own token

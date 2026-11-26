@@ -154,6 +154,42 @@ it("sends each Gemini generation the thinking setting that it accepts", async ()
   expect(await thinking("gemini-2.5-flash", "medium")).toEqual({ includeThoughts: true, thinkingBudget: 8192 });
 });
 
+// Gemini 4 takes the XHIGH level, which the SDK's ThinkingLevel enum does not name (Gemini 4 Neon developer guide).
+it("sends XHIGH only to a model whose catalog declares it, and clamps the efforts above it", async () => {
+  streamChunks = [{ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "ok" }] } }], usageMetadata: USAGE }];
+  const thinkingLevel = async (reasoningEfforts: ModelInfo["reasoningEfforts"], reasoningEffort: "high" | "xhigh" | "max" | "ultra") => {
+    const client = await createGoogleAdapter(Redacted.make("test-key"), "gemini-4-neon", { ...MODEL_INFO, id: "gemini-4-neon", reasoningEfforts }, { client: fakeGoogleClient });
+    for await (const _event of client.streamWithTools({ reasoningEffort, messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("sys") })) {}
+    const config: unknown = lastRequest?.config;
+    return typeof config === "object" && config !== null && "thinkingConfig" in config ? config.thinkingConfig : undefined;
+  };
+  const declared = ["low", "medium", "high", "xhigh"] as const;
+
+  expect(await thinkingLevel(declared, "xhigh")).toEqual({ includeThoughts: true, thinkingLevel: "XHIGH" });
+  expect(await thinkingLevel(declared, "max")).toEqual({ includeThoughts: true, thinkingLevel: "XHIGH" });
+  expect(await thinkingLevel(declared, "ultra")).toEqual({ includeThoughts: true, thinkingLevel: "XHIGH" });
+  expect(await thinkingLevel(declared, "high")).toEqual({ includeThoughts: true, thinkingLevel: "HIGH" });
+  expect(await thinkingLevel(["low", "medium", "high"], "xhigh")).toEqual({ includeThoughts: true, thinkingLevel: "HIGH" });
+  expect(await thinkingLevel(["low", "medium", "high"], "max")).toEqual({ includeThoughts: true, thinkingLevel: "HIGH" });
+});
+
+// The SDK sums promptTokenCount over the continuation hops of a long decode; the request's context is the first hop's.
+it("bills the summed prompt of a long decode and reports the first hop's prompt as its context", async () => {
+  streamChunks = [{
+    candidates: [{ finishReason: "STOP", content: { parts: [{ text: "ok" }] } }],
+    usageMetadata: { promptTokenCount: 67_000, initialPromptTokenCount: 1_000, cachedContentTokenCount: 600, candidatesTokenCount: 65_500, thoughtsTokenCount: 0 },
+  }];
+  const client = await createTestGoogleAdapter();
+
+  const { events } = await collectWithError(client);
+
+  expect(events.filter((event) => event.kind === "usage")).toEqual([expect.objectContaining({
+    inputTokens: 66_400,
+    cacheReadTokens: 600,
+    contextInputTokens: 1_000,
+  })]);
+});
+
 describe("Google failure signals", () => {
   beforeEach(() => {
     streamChunks = [];
@@ -257,6 +293,22 @@ describe("Google failure signals", () => {
     const { events, error } = await collectWithError(client);
 
     expect(error?.message).toContain("MALFORMED_FUNCTION_CALL");
+    expect(events.some((event) => event.kind === "done")).toBe(false);
+  });
+
+  // The SDK resumes a CONTINUATION that carries a token; without one the response stopped at its output cap and
+  // cannot resume, so a retry of the same request would stop there again.
+  it("reports a CONTINUATION without a continuation token as an output overflow, not a retryable tear", async () => {
+    streamChunks = [{
+      candidates: [{ content: { parts: [{ text: "partial" }] }, finishReason: "CONTINUATION" }],
+      usageMetadata: USAGE,
+    }];
+    const client = await createTestGoogleAdapter();
+
+    const { events, error } = await collectWithError(client);
+
+    expect(error).toMatchObject({ failure: { _tag: "OutputOverflowFailure" } });
+    expect(error?.message).toContain("without a continuation token");
     expect(events.some((event) => event.kind === "done")).toBe(false);
   });
 

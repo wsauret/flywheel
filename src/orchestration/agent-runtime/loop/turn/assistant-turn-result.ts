@@ -159,10 +159,7 @@ export function handleStreamEvent(event: ProviderStreamEvent, result: AssistantT
     }
     case "usage":
       result.usageAnchor = {
-        inputTokens: event.inputTokens,
-        // Adapters leave unreported cache reads inside inputTokens, so the prompt total stays exact.
-        cacheReadTokens: event.cacheReadTokens ?? 0,
-        cacheWriteTokens: event.cacheCreateTokens,
+        ...contextInputClasses(event),
         reasoningTokens: event.reasoningTokens,
         ...(event.cacheRetentionMs === undefined ? {} : { cacheRetentionMs: event.cacheRetentionMs }),
       };
@@ -190,6 +187,18 @@ export function handleStreamEvent(event: ProviderStreamEvent, result: AssistantT
     default:
       assertNever(event);
   }
+}
+
+/** The request's prompt split by cache class, totalling the context prompt when the provider reports one apart
+ *  from the billed prompt; the cache classes then fit inside it. */
+function contextInputClasses(event: Extract<ProviderStreamEvent, { kind: "usage" }>) {
+  // Adapters leave unreported cache reads inside inputTokens, so the prompt total stays exact.
+  const cacheReadTokens = event.cacheReadTokens ?? 0;
+  const context = event.contextInputTokens;
+  if (context === undefined) return { inputTokens: event.inputTokens, cacheReadTokens, cacheWriteTokens: event.cacheCreateTokens };
+  const read = Math.min(cacheReadTokens, context);
+  const write = Math.min(event.cacheCreateTokens, context - read);
+  return { inputTokens: context - read - write, cacheReadTokens: read, cacheWriteTokens: write };
 }
 
 function publication(
