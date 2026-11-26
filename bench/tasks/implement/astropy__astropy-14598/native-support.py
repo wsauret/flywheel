@@ -4,7 +4,6 @@ import hashlib
 import importlib.metadata
 import json
 from pathlib import Path
-import platform
 import re
 import shutil
 import sys
@@ -192,12 +191,5 @@ def score(task, workspace):
 if __name__ == "__main__":
     action, task_arg, workspace_arg = sys.argv[1:]
     task, workspace = Path(task_arg).resolve(), Path(workspace_arg).resolve()
-    if action == "preflight":
-        assert sys.version_info[:2] == (3, 9), "FITS requires CPython 3.9 on PATH"
-        assert platform.system() == "Darwin" and platform.machine() == "arm64", (
-            "The pinned wheel set is qualified only on macOS arm64"
-        )
-        print(json.dumps({"python": sys.version, "platform": platform.platform()}))
-    else:
-        {"extract": extract, "restore": restore, "snapshot": snapshot,
-         "grading-snapshot": grading_snapshot, "score": score}[action](task, workspace)
+    {"extract": extract, "restore": restore, "snapshot": snapshot,
+     "grading-snapshot": grading_snapshot, "score": score}[action](task, workspace)

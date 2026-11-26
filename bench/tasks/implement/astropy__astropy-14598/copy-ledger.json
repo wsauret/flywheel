@@ -98,6 +98,13 @@
     "transformation": "byte-identical copy"
   },
   {
+    "file": "runtime.json",
+    "sha256": "e1ff5e2337296a40d300c307916dabc1b6cd44d319f9c54b52cd2904affdc9fb",
+    "bytes": 294,
+    "origin": "Public python-build-standalone 20251031 CPython 3.9.25 aarch64-apple-darwin install_only archive URL and verified SHA-256 identity, matching the release asset digest",
+    "transformation": "byte-identical copy"
+  },
+  {
     "file": "original/parser-provenance.json",
     "sha256": "5522fc21bba5eb664797252b8d09c1ca192f6c512ba66062216c68e2b3b93e25",
     "bytes": 6623,

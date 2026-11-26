@@ -11,7 +11,7 @@ interface PublicInput {
   bytes: number;
 }
 
-/** Prepare pinned source and a cell-owned CPython runtime, or grade a captured patch.
+/** Prepare pinned source and a downloaded, hash-verified CPython 3.9, or grade a captured patch.
  * The original source build stays isolated. Original grading owners are restored
  * before the build. Candidate build and test failures reach the original grader,
  * whose missing-ID semantics decide the result; preparation remains strict. */
@@ -21,10 +21,14 @@ async function main(): Promise<void> {
     (action === "prepare" && artifacts.length === 0) ||
     (action === "grade" && artifacts.length === 2)
   )) throw new Error("expected prepare task workspace, or grade task workspace patch report");
+  if (process.platform !== "darwin" || process.arch !== "arm64") {
+    throw new Error("The pinned CPython runtime and wheel set are qualified only on macOS arm64");
+  }
   const task = resolve(taskArg);
   const workspace = resolve(workspaceArg);
   const home = join(workspace, ".bench-home");
   await mkdir(join(home, "wheels"), { recursive: true });
+  await mkdir(join(home, "runtime"), { recursive: true });
   const env = {
     PYTHONNOUSERSITE: "1", PIP_NO_INDEX: "1", PIP_DISABLE_PIP_VERSION_CHECK: "1",
     PIP_FIND_LINKS: join(home, "wheels"), PIP_CONSTRAINT: join(task, "build-constraints.txt"),
@@ -62,17 +66,18 @@ async function main(): Promise<void> {
     }
   }
   const helper = join(task, "native-support.py");
+  const runtime = join(home, "runtime/python/bin/python3.9");
   const python = join(home, "python/bin/python");
   try {
-    await execute("preflight", ["python3", helper, "preflight", task, workspace]);
     await execute("compiler", ["clang", "--version"]);
     const source: PublicInput = await Bun.file(join(task, "source.json")).json();
+    const interpreter: PublicInput = await Bun.file(join(task, "runtime.json")).json();
     const wheels: PublicInput[] = await Bun.file(join(task, "wheel-index.json")).json();
     const acquired = [];
-    for (const input of [source, ...wheels]) {
+    for (const input of [source, interpreter, ...wheels]) {
       const response = await fetch(input.url);
       if (!response.ok || !response.body) throw new Error(`Public input acquisition failed: HTTP ${response.status}`);
-      const path = join(home, input === source ? input.filename : join("wheels", input.filename));
+      const path = join(home, wheels.includes(input) ? join("wheels", input.filename) : input.filename);
       const writer = Bun.file(path).writer();
       const hasher = new Bun.CryptoHasher("sha256");
       let bytes = 0;
@@ -89,14 +94,15 @@ async function main(): Promise<void> {
       if (bytes !== input.bytes || sha256 !== input.sha256) throw new Error(`Public input identity mismatch: ${input.filename}`);
       acquired.push({ ...input, status: response.status, bytes, sha256 });
     }
-    await execute("extract", ["python3", helper, "extract", task, workspace]);
+    await execute("runtime-extract", ["/usr/bin/tar", "-xzf", join(home, interpreter.filename), "-C", join(home, "runtime")]);
+    await execute("extract", [runtime, "-I", helper, "extract", task, workspace]);
     if (action === "grade") {
       await execute("git-init", ["git", "init", "-q"]);
       const patch = artifacts[0]!;
       if ((await stat(patch)).size) await execute("candidate-patch", ["git", "apply", "--verbose", resolve(patch)]);
-      await execute("restore", ["python3", helper, "restore", task, workspace]);
+      await execute("restore", [runtime, "-I", helper, "restore", task, workspace]);
     }
-    await execute("venv", ["python3", "-m", "venv", "--symlinks", join(home, "python")]);
+    await execute("venv", [runtime, "-I", "-m", "venv", "--symlinks", join(home, "python")]);
     await execute("packages", [python, "-m", "pip", "install", "--no-index", "--find-links", join(home, "wheels"),
       "-r", join(task, "environment-pins.txt"), "pip==23.2.1"]);
     await execute("build", [python, "-m", "pip", "install", "-e", ".[test]", "--verbose"], 600000, action === "prepare" ? [0] : [0, 1]);
