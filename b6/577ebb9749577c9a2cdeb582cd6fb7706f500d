@@ -1,0 +1,18 @@
+bench/ab-persona/records/implementer/2026-11-26T14-27-47-990Z.jsonl
+  h_4b47e9e4a8b456 1-56
+bench/ab-persona/records/implementer/2026-11-26T14-27-49-276Z.jsonl
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/tables/implementer.md
+  h_4b47e9e4a8b456 5,15,25,61-62,69,71,76,78,86,123-125,132,139-154,163-164,169,214-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b6577ebb9749577c9a2cdeb582cd6fb7706f500d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
