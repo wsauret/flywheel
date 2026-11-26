@@ -51,7 +51,7 @@ export const bugReportsModule = {
     },
     { domain: "config", id: bugReportsConfigSection.key, value: bugReportsConfigSection },
     { domain: "commands", id: BUG_REPORT_COMMAND, value: { id: BUG_REPORT_COMMAND, title: BUG_REPORT_COMMAND_NAME, description: "Send a bug report with an optional note", aliases: [], opens: BUG_REPORT_SURFACE } },
-    { domain: "settings", id: "bug-reports", value: { control: "binary", group: "Interface", label: "Bug reports", description: "Allow /report and crash reports to Flywheel" } },
-    { domain: "settings", id: "bug-reports-automatic", value: { control: "config-boolean", section: bugReportsConfigSection.key, key: "automatic", defaultValue: false, group: "Interface", label: AUTOMATIC_REPORTS_SETTING, description: "Send crash reports without asking? DO_NOT_TRACK=1 stops them" } },
+    { domain: "settings", id: "bug-reports", value: { control: "binary", group: "Interface", label: "Bug reports", description: "Allow /report and crash reports" } },
+    { domain: "settings", id: "bug-reports-automatic", value: { control: "config-boolean", section: bugReportsConfigSection.key, key: "automatic", defaultValue: false, group: "Interface", label: AUTOMATIC_REPORTS_SETTING, description: "Send crash reports without asking? DO_NOT_TRACK=1 can also stop them" } },
   ],
 } as const satisfies FirstPartyModule

@@ -12,7 +12,7 @@ Remote access adds no remotely reachable listener or tunnel to the machine. Flyw
 
 ## PI-REMOTE-003: The relay cannot read a conversation
 
-Every frame between a phone and a runtime is sealed end to end. The relay, hosted or self-hosted, learns only that a machine is online, that a paired device is attached, and the names under which a device lists the machine and its projects. A device that was never paired, or whose pairing was revoked, cannot attach even with the relay's cooperation.
+Every channel frame between a paired device and a runtime is sealed end to end, so the relay, hosted or self-hosted, cannot read a conversation. The relay sees connection setup and routing metadata, such as the ids, names, and versions under which a device lists the machine and its projects, and how many bytes the channels carry each day. It also serves the web client files to the phone. The privacy guide lists this metadata. A device that was never paired, or whose pairing was revoked, cannot attach even with the relay's cooperation.
 
 ## PI-REMOTE-004: Remote reachability is always visible
 

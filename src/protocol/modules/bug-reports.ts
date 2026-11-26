@@ -150,7 +150,7 @@ export const DO_NOT_TRACK_REPORT_STATUS = "No bug report was sent because DO_NOT
  *  DO_NOT_TRACK from the person's login shell. */
 export const DO_NOT_TRACK_UNKNOWN_STATUS = "No bug report was sent because Flywheel could not read whether DO_NOT_TRACK is set in your login shell."
 /** The crash screen's one question, asked while the person has not answered it. */
-export const AUTOMATIC_REPORTS_QUESTION = "Send this crash report to Flywheel, and send later crash reports automatically? A crash report holds the error name, its stack frames, and diagnostic ids and timings, never the error message, conversation, or file content."
+export const AUTOMATIC_REPORTS_QUESTION = "Send this crash report, and send later crash reports automatically? A crash report holds the error name, its stack frames, and diagnostic ids and timings, never the error message, conversation, or file content."
 /** What every surface says when the report service accepted a report. An automatic report, which the person did
  *  not ask for each time, also says where the person turns automatic reports off. */
 export function reportSentStatus(reportId: string, automatic: boolean): string {

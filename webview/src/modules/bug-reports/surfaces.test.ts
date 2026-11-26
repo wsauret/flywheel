@@ -165,7 +165,7 @@ test("the first crash view asks once, and a yes saves the answer and sends this 
   const mounted = mountReports({ kind: "crash", error, surface: "phone", response: Promise.resolve({ ok: false, kind: "consent-needed", error: AUTOMATIC_REPORTS_OFF_STATUS, reportText: "account-assembled report" }), afterConsent: { ok: true, reportId: "FW-yes" } })
   try {
     await mounted.settle()
-    assert.match(mounted.text(), /Send this crash report to Flywheel/)
+    assert.match(mounted.text(), /Send this crash report, and send later/)
     assert.doesNotMatch(mounted.text(), /automatic crash reports are off/)
     mounted.click("Send reports")
     await mounted.settle()
@@ -211,7 +211,7 @@ test("the question is the live status, a save in progress says so, and a failed 
   try {
     await mounted.settle()
     const status = () => textContent(nodes(mounted.root).find(node => node.properties.role === "status")!)
-    assert.match(status(), /^Send this crash report to Flywheel/)
+    assert.match(status(), /^Send this crash report, and send later/)
     mounted.click("Don't send")
     await mounted.settle()
     assert.equal(status(), "Saving your answer…")
@@ -220,7 +220,7 @@ test("the question is the live status, a save in progress says so, and a failed 
     saving.resolve({ ok: false, error: "the file is locked" })
     await mounted.settle()
     assert.equal(status(), "Could not save your answer: the file is locked")
-    assert.match(mounted.text(), /Send this crash report to Flywheel/)
+    assert.match(mounted.text(), /Send this crash report, and send later/)
     assert.equal(mounted.button("Send reports").properties.disabled, false)
     assert.deepEqual(mounted.mutations.map(mutation => mutation.type), ["bugReport.submit", "bugReport.consent"])
   } finally { mounted.dispose() }

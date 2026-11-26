@@ -648,11 +648,11 @@ When a client cannot read data for a surface in the background, the surface keep
 
 ## PI-INTERACTION-064: Crash reports send only after the person agrees
 
-An official Flywheel release sends no automatic bug report until the person agrees. The first crash screen asks once whether to send this report and later ones automatically. Yes sends it, and No sends nothing. A runtime fault never asks. Automatic crash reports in Settings changes the answer. DO_NOT_TRACK set to 1 or true stops automatic reports. A sent report shows a short id. An unsent report says why and offers Copy. Unofficial builds send no report. While Bug reports is on in Settings, the report command sends a report with an optional note.
+An official release sends no automatic bug report until the person agrees. The first terminal or phone crash screen asks once whether to send this and later reports automatically. Yes sends it; No sends nothing. A runtime fault never asks. Automatic crash reports in Settings changes the answer. DO_NOT_TRACK set to 1 or true in the sending process stops them. A sent report shows a short id. An unsent report says why and offers Copy. A build without a report endpoint sends none. While Bug reports is on in Settings, the report command sends a report with an optional note.
 
 ## PI-INTERACTION-107: A bug report carries no conversation content
 
-An automatic report holds the error name and stack frames with file names only, never the error message or other free text. A report that the person sends keeps its full text and note. Every report holds the app version and build, the operating system and architecture, the surface, and the session id. It also holds recent warning and failure records, which carry only ids, counts, and timings. Secrets and the home directory path are redacted. No report holds conversation, prompt, tool output, or file content.
+An automatic report holds the error name and stack frames with file names only, never the error message or other free text. A report that the person sends keeps its full text and note. Every report holds the app version and build, the operating system and architecture, the surface, and the session id. It also holds recent warning, failure, and slow-operation records, which carry only metadata such as ids, codes, counts, sizes, and timings. Recognized credential formats and the home directory path are masked; other note text is sent. No report holds conversation, prompt, tool output, or file content.
 
 ## PI-INTERACTION-065: Unused chats can delete themselves
 

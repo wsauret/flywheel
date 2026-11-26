@@ -9,7 +9,7 @@ import type { ModuleConfigSection } from "../../config/schema/config-section.js"
  *  report and lets the next crash screen ask. Installs from before the
  *  question have no key and so start unanswered; no conversion is needed. */
 const BugReportsConfigSchema = Schema.Struct({
-  automatic: Schema.optionalKey(Schema.Boolean.pipe(Schema.annotate({ description: "Send crash reports to Flywheel automatically? Absent until the first crash screen asks." }))),
+  automatic: Schema.optionalKey(Schema.Boolean.pipe(Schema.annotate({ description: "Send crash reports automatically? Absent until a crash screen asks." }))),
 }).pipe(Schema.withDecodingDefaultType(Effect.succeed({})))
 
 export const bugReportsConfigSection = {

@@ -69,7 +69,7 @@ export function BugReportSheet() {
     <button class="primary" disabled={submission.pending()} aria-busy={submission.pending() || undefined} onClick={send}>Send report</button>
   }>
     <div class="bug-report-form">
-      <p>The report includes diagnostic records, not conversation or file content. Your note is sent as written.</p>
+      <p>The report includes diagnostic records, not conversation or file content. Flywheel sends your note as you write it, with recognized credentials masked and your home directory written as ~. Do not put other secrets in it.</p>
       <label for="bug-report-note">Note (optional)</label>
       <textarea id="bug-report-note" class="dialog-input" rows={4} maxLength={2000} value={note()} onInput={event => setNote(event.currentTarget.value)} />
       <ReportStatus submission={submission} kind="manual" />

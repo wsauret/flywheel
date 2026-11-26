@@ -119,7 +119,7 @@ max_wall_clock_minutes = 0
 - Default: unset
 - Application: `live`. Applies to the running interface immediately.
 
-Send crash reports to Flywheel automatically? Absent until the first crash screen asks.
+Send crash reports automatically? Absent until a crash screen asks.
 
 ```toml
 [bug_reports]
