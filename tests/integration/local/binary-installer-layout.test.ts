@@ -9,12 +9,14 @@
  *  is. */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { EXECUTABLE_ROLES } from "../../../src/infra/platform/executable-roles.js";
 import { computeBuildId } from "../../../src/infra/update/build-identity.js";
 import { installBuild } from "../../../src/orchestration/update/install-engine.js";
-import { placedBuildVersionAnswer } from "../../helpers/placed-build.js";
+import { activatePlacedBuild, placeBuild, placedBuildVersionAnswer } from "../../helpers/placed-build.js";
 
 /** This installation is Unix's: one `current` symlink activation atomically
  *  replaces, and a shell wrapper that reaches the build through that link.
@@ -53,12 +55,12 @@ const runCommand = async (command: readonly string[]): Promise<{ exitCode: numbe
   return { exitCode: 0, stdoutBytes: new TextEncoder().encode(stdout), stdout, stderr: "", timedOut: false };
 };
 
-async function makePayload(name: string, options: { readonly version: string; readonly mark?: string }): Promise<{ readonly dir: string; readonly buildId: string }> {
+async function makePayload(name: string, options: { readonly version: string; readonly mark?: string; readonly prelude?: string }): Promise<{ readonly dir: string; readonly buildId: string }> {
   const dir = join(payloads, name);
   mkdirSync(join(dir, "native", PLATFORM_ARCH), { recursive: true });
   mkdirSync(join(dir, "fonts"), { recursive: true });
   mkdirSync(join(dir, "webview"), { recursive: true });
-  writeFileSync(join(dir, "flywheel-bin"), `#!/bin/sh\nif [ "$1" = "--version" ]; then echo "flywheel ${options.version}"; fi\necho "native:$FLYWHEEL_NATIVE_DIR"\n`);
+  writeFileSync(join(dir, "flywheel-bin"), `#!/bin/sh\n${options.prelude ?? ""}if [ "$1" = "--version" ]; then echo "flywheel ${options.version}"; fi\necho "native:$FLYWHEEL_NATIVE_DIR"\n`);
   chmodSync(join(dir, "flywheel-bin"), 0o755);
   writeFileSync(join(dir, "native", PLATFORM_ARCH, "libopentui.txt"), options.mark ?? "native");
   writeFileSync(join(dir, "fonts", "monaspace.txt"), "font");
@@ -150,6 +152,40 @@ unixInstallation("installing one build", () => {
     expect(stderr).toContain("flywheel install:");
     expect(stderr).not.toContain('"type":"log.');
     expect(stderr).not.toContain("launcher scope closing");
+  });
+
+  test("the install role collects the builds the account no longer needs, because a local or archive install runs no update", async () => {
+    placeBuild(userDataRoot, { version: "1.0.0", buildId: "a".repeat(64) });
+    activatePlacedBuild(userDataRoot, { version: "1.0.0", buildId: "a".repeat(64) });
+    for (const [age, marker] of ["b", "c", "d", "e"].entries()) {
+      const executable = placeBuild(userDataRoot, { version: "0.1.0", buildId: marker.repeat(64) });
+      const stamp = new Date(Date.now() - (age + 10) * 3_600_000);
+      utimesSync(join(dirname(executable), "build.json"), stamp, stamp);
+    }
+    // The role installs the build it runs, so the child names the payload as
+    // its own executable, and the payload starts the guardian that role opens
+    // through the source.
+    const sourceCli = fileURLToPath(new URL("../../../scripts/source-cli.ts", import.meta.url));
+    const payload = await makePayload("collecting", {
+      version: "1.2.3",
+      prelude: `if [ "$1" = "${EXECUTABLE_ROLES.guardian}" ]; then exec "${process.execPath}" --conditions=browser "${sourceCli}" "$@"; fi\n`,
+    });
+    const entry = new URL("../../../src/cli/binary-install.ts", import.meta.url).href;
+    const script = `process.execPath = ${JSON.stringify(join(payload.dir, "flywheel-bin"))}; const { runBinaryInstall } = await import(${JSON.stringify(entry)}); process.exitCode = await runBinaryInstall()`;
+    const child = Bun.spawn([process.execPath, "--conditions=browser", "-e", script], {
+      cwd: home,
+      env: { ...process.env, HOME: home, FLYWHEEL_INSTALL_DIR: wrapperDir },
+      stdout: "pipe",
+      stderr: "pipe",
+      windowsHide: true,
+    });
+    const [stderr, exitCode] = await Promise.all([new Response(child.stderr).text(), child.exited]);
+
+    expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
+    expect(realpathSync(join(userDataRoot, "current"))).toBe(realpathSync(join(userDataRoot, "versions", "1.2.3", payload.buildId)));
+    // The previous active build and the newest spare form the retention band.
+    expect(readdirSync(join(userDataRoot, "versions", "1.0.0"))).toEqual(["a".repeat(64)]);
+    expect(readdirSync(join(userDataRoot, "versions", "0.1.0")).filter((name) => !name.startsWith("."))).toEqual(["b".repeat(64)]);
   });
 
   test("places an immutable build tree, links it, and runs it through the wrapper", async () => {

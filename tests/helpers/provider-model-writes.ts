@@ -1,4 +1,4 @@
-import type { ProviderModelPreferenceServiceDeps } from "../../src/orchestration/app-service/provider-model-preference-service.js"
+import type { ProviderModelPreferenceServiceDeps } from "../../src/orchestration/app-service/auth/models/provider-model-preference-service.js"
 
 /** The preference writes and the recheck of a provider-model preference
  *  service that a test never reaches: each one rejects, naming itself. A test

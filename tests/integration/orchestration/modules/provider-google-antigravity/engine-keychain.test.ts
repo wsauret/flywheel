@@ -13,10 +13,10 @@ import { randomBytes } from "node:crypto"
 import { mkdirSync, readFileSync, realpathSync } from "node:fs"
 import { userInfo } from "node:os"
 import { basename, dirname, join } from "node:path"
-import { antigravityEnginePath, separatedAntigravityEnvironment } from "../../../../../src/infra/antigravity-engine.js"
+import { antigravityEnginePath, separatedAntigravityEnvironment } from "../../../../../src/infra/providers/antigravity-engine.js"
 import { ownedCommandRunner } from "../../../../../src/infra/owned-command.js"
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js"
-import { keychainReachedFailure, prepareTokenStore, tokenStoreObservation } from "../../../../../src/orchestration/modules/provider-google-antigravity/token-store.js"
+import { keychainReachedFailure, prepareTokenStore, tokenStoreObservation } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/token-store.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 
 /** The two requests the test sends the engine: the handshake, then a session that a fresh login refuses. */

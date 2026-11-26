@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import type { SubscriptionUsageAlert } from "../../../infra/llm/subscription-usage-store.js";
-import type { SubscriptionUsageAccountRef, UsageAuthority } from "../../../infra/llm/usage-authority.js";
-import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js";
-import { createBackgroundLane } from "../../../infra/ordered-lane.js";
-import type { OperationLogger } from "../../../infra/operation-log.js";
+import type { SubscriptionUsageAlert } from "../../../infra/providers/llm/usage/subscription-usage-store-codec.js";
+import type { SubscriptionUsageAccountRef, UsageAuthority } from "../../../infra/providers/llm/usage/usage-authority.js";
+import type { NotificationEpisodeInput } from "../../../infra/substrate/events/notification-episode.js";
+import { createBackgroundLane } from "../../../infra/diagnostics/operation-log.js";
+import type { OperationLogger } from "../../../infra/diagnostics/operation-log.js";
 
 const MATERIALIZATION_BATCH_SIZE = 32;
 const DAY_MS = 24 * 60 * 60_000;

@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { join } from "node:path"
 
-import type { AccountServiceInstallation } from "../../../../../src/orchestration/app-service/account-service-installation.js"
+import type { AccountServiceInstallation } from "../../../../../src/orchestration/app-service/account/installation/account-service-platform.js"
 import { runDevices, runPair, runProjects, runStatus } from "../../../../../src/orchestration/modules/remote/cli/index.js"
 import { mutateRemotePairingStore, readRemotePairingStore } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
-import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../../../../../src/protocol/account-attach.js"
+import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../../../../../src/protocol/runtime/account-attach.js"
 import type { RemoteAccountAnswer } from "../../../../../src/protocol/modules/remote/account-requests.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
-import { unusedLauncher } from "../../../cli/_serve-fixtures.js"
+import { unusedLauncher } from "../../../cli/account-service/_serve-fixtures.js"
 import { installationOf } from "../../app-service/_account-service-fixtures.js"
 
 const temporaryDirectory = temporaryDirectories()

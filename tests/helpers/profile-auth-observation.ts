@@ -1,7 +1,6 @@
-import { loadAuthStoreWithDiagnostics, type AuthStoreLoadResult } from "../../src/infra/auth/auth-store.js"
-import { credentialSlotClassifier } from "../../src/orchestration/auth/credential-slot-classifier.js"
-import { installedCredentialProviderIds } from "../../src/orchestration/credential-provider-modules.js"
-import type { FirstPartyModuleSnapshot } from "../../src/orchestration/modules.js"
+import { loadAuthStoreWithDiagnostics, type AuthStoreLoadResult } from "../../src/infra/providers/auth/store/auth-store.js"
+import { credentialSlotClassifier, type FirstPartyModuleSnapshot } from "../../src/orchestration/module-contract/module-catalog.js"
+import { installedCredentialProviderIds } from "../../src/orchestration/module-contract/module-composition.js"
 
 /** The auth observation an eligibility preparation reads: the profile's auth
  *  store as it is on disk, with no auth-condition owner to tell. A test that

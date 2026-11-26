@@ -1,14 +1,15 @@
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { createProjectStateScheduler, createProjectStateService } from "../../../../src/orchestration/app-service/project-state-worker.js"
-import { decodeProjectStateRequest, encodeProjectStateRequest, encodeProjectStateResponseFrame, operationUnits, type ProjectStateLane, type ProjectStateOperation, type ProjectStateResponseFrame, type ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
-import { createProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type FactQuery, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { createProjectStateScheduler, createProjectStateService } from "../../../../src/orchestration/app-service/project-state/worker/project-state-worker.js"
+import { decodeProjectStateRequest, encodeProjectStateRequest, encodeProjectStateResponseFrame, operationUnits, type ProjectStateLane, type ProjectStateResponseFrame, type ProjectStateResult } from "../../../../src/orchestration/app-service/project-state/project-state-protocol.js"
+import type { ProjectStateOperation } from "../../../../src/orchestration/app-service/project-state/project-state-operation.js"
+import { createProjectStateClient } from "../../../../src/orchestration/app-service/project-state/project-state-client.js"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
+import { createEventStoreWriterLane } from "../../../../src/infra/substrate/store/event-store-writer-lane.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type FactQuery, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
-import { deleteRetiredFamilyChunk, deleteSupersededStep, dropRetiredEventStoreIndexes, incrementalVacuumStep } from "../../../../src/orchestration/session/event-store-maintenance.js"
+import { deleteRetiredFamilyChunk, deleteSupersededStep, dropRetiredEventStoreIndexes, incrementalVacuumStep } from "../../../../src/orchestration/session/persistence/storage/event-store-maintenance.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { openProjectState, recoverOwedSessions } from "../../../helpers/project-recovery.js"
 
@@ -99,7 +100,7 @@ export async function fixture(
     incrementalVacuumStep: (pages) => incrementalVacuumStep(path, pages),
     retireFinalizedCheckpointPage: async (plan) => ({
       kind: "checkpoint-maintenance",
-      ...(await import("../../../../src/orchestration/migrations/finalized-tool-result-checkpoints")).retireRecordedFinalizedToolResultCheckpointPage(path, plan.afterRowid, plan),
+      ...(await import("../../../../src/orchestration/workspace-state/migrations/finalized-tool-result-checkpoints")).retireRecordedFinalizedToolResultCheckpointPage(path, plan.afterRowid, plan),
     }),
     sessions,
     notifySessionChange: (change) => { for (const listener of sessionListeners) listener(change) },

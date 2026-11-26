@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../../scripts/shipped-modules.js";
 import { join, resolve } from "node:path";
 import { Schema } from "effect";
-import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/evidence.js";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { campaignCellKey, campaignIdentity } from "./campaign-store.js";
 import { readCampaignArtifact } from "./campaign-artifacts.js";
 import { chatLedger, type ChatOutcome } from "./chat-store.js";

@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test"
-import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream.js"
-import type { AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/assistant-turn-attempt.js"
-import type { AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js"
+import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js"
+import type { AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-attempt.js"
+import type { AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-result.js"
 import { FUNCTION_TOOL_PRESENTATION, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js"
+import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js"
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js"
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js"
 import { chain, fakeAvailability, subscriptionCandidate } from "./llm/_provider-chain-harness.js"
 import { ownHistoryTarget } from "./_model-client.js";
 

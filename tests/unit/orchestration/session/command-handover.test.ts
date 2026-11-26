@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test"
 
-import type { DebugLogRecordInput } from "../../../../src/infra/debug-log"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
-import { Log } from "../../../../src/infra/log"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import type { DebugLogRecordInput } from "../../../../src/infra/diagnostics/debug-log"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types"
+import { Log } from "../../../../src/infra/diagnostics/log"
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store"
 import {
   allCommandHandoversAsync,
   COMMAND_HANDOVER_IN_FLIGHT_KIND,
@@ -76,6 +76,24 @@ describe("command handover row", () => {
     expect(value.map((stored) => stored.row)).toEqual([edits])
     expect(warnings).toHaveLength(1)
     expect(store.readInFlight("chat", COMMAND_HANDOVER_IN_FLIGHT_KIND)).toHaveLength(2)
+    store.close()
+  })
+
+  test("a watch's row decodes with the place and rate limit its successor reads on from, a row without one is an ordinary command, and a malformed place is unreadable", async () => {
+    const { store } = openStore()
+    const watch = { ...ROW_V1, processId: "bash-bg-9c0d1e2f", watch: { position: 4096, events: 7 } }
+    const limited = { ...ROW_V1, processId: "bash-bg-9c0d1e30", watch: { position: 512, events: 12, limiter: { tokens: 0, refilledAtMs: 1_000, pendingDropped: 3, overLimitSinceMs: 900, droppedSinceOverLimit: 4, lastDropAtMs: 1_100 } } }
+    store.putInFlight("chat", COMMAND_HANDOVER_IN_FLIGHT_KIND, ROW_V1.processId, ROW_V1)
+    store.putInFlight("chat", COMMAND_HANDOVER_IN_FLIGHT_KIND, watch.processId, watch)
+    store.putInFlight("chat", COMMAND_HANDOVER_IN_FLIGHT_KIND, limited.processId, limited)
+    store.putInFlight("chat", COMMAND_HANDOVER_IN_FLIGHT_KIND, "bash-bg-bad", { ...watch, processId: "bash-bg-bad", watch: { position: -1, events: 0 } })
+    store.putInFlight("chat", COMMAND_HANDOVER_IN_FLIGHT_KIND, "bash-bg-bad-limiter", { ...watch, processId: "bash-bg-bad-limiter", watch: { position: 1, events: 0, limiter: { tokens: -1, pendingDropped: 0, droppedSinceOverLimit: 0 } } })
+
+    const { value, warnings } = await capturedWarnings(() => commandHandoversOfAsync(asAsyncEventReadSurface(store), "chat", "chat-conversation"))
+
+    expect(value.map((stored) => stored.row).toSorted((a, b) => a.processId.localeCompare(b.processId))).toEqual([ROW_V1, watch, limited])
+    expect(value.find((stored) => stored.row.processId === ROW_V1.processId)?.row.watch).toBeUndefined()
+    expect(warnings).toHaveLength(1)
     store.close()
   })
 

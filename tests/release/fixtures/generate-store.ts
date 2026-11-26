@@ -19,23 +19,25 @@
  * A scenario that measures learning review adds a skill-load history with
  * appendSkillLoadHistory; the shared fixture does not carry it.
  */
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../../../scripts/shipped-modules.js"
 import { mkdirSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { Schema } from "effect"
-import { canonicalDirectory, FLYWHEEL_DIR_NAME, type ProjectDirectories } from "../../../src/infra/directory-authorities.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStoreAppend } from "../../../src/infra/event-store-types.js"
-import { resolveSessionSummaryDbFile } from "../../../src/infra/paths.js"
-import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
-import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js"
-import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js"
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-fact-mapper.js"
+import { canonicalDirectory, FLYWHEEL_DIR_NAME, type ProjectDirectories } from "../../../src/infra/platform/files/directory-authorities.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStoreAppend } from "../../../src/infra/substrate/store/event-store-types.js"
+import { resolveSessionSummaryDbFile } from "../../../src/infra/platform/files/paths.js"
+import { createSqliteEventStore } from "../../../src/infra/substrate/store/sqlite-event-store.js"
+import type { ConversationMessage } from "../../../src/infra/providers/llm/conversation/conversation-message.js"
+import { createRuntimeEvent } from "../../../src/infra/substrate/runtime-facts/runtime-event-factory.js"
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/substrate/runtime-facts/runtime-fact-mapper.js"
 import { parseConversationTreeFact } from "../../../src/orchestration/session/conversation/conversation-facts.js"
-import { createConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle.js"
-import { refreshSkillLoadStatsSnapshot } from "../../../src/orchestration/modules/learning/skill-load-stats.js"
-import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/session-summary-index.js"
-import { createSessionFactWriter, prepareSessionFactAppend, type SessionFact } from "../../../src/orchestration/session/session-fact-writer.js"
-import { SessionSchema } from "../../../src/orchestration/session/schemas.js"
-import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
+import { createConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
+import { refreshSkillLoadStatsSnapshot } from "../../../src/orchestration/modules/learning/skills/skill-load-stats.js"
+import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/metadata/catalog/session-summary-index.js"
+import { createSessionFactWriter, prepareSessionFactAppend, type SessionFact } from "../../../src/orchestration/session/persistence/session-fact-writer.js"
+import { SessionSchema } from "../../../src/orchestration/session/metadata/schemas.js"
+import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state/workspace-state.js"
 import { historicalWorkflowPublicationFacts } from "./historical-workflow-publication.js"
 
 /** How much history the fixture writes. Every boundary in the writers is a

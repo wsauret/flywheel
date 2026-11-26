@@ -1,5 +1,5 @@
 import { Result, Schema } from "effect";
-import { isRecord, type UnknownRecord } from "../../infra/record.js";
+import { isRecord, type UnknownRecord } from "../../infra/guards/record.js";
 import { schemaIssues } from "./accept.js";
 import { fieldSchema, type CompiledOutput } from "./compile.js";
 import type { Field } from "./grammar.js";

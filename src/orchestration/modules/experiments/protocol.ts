@@ -1,15 +1,15 @@
-import { asAsyncEventReadSurface, type AsyncEventReadSurface, type EventReader, type StoredFact } from "../../../infra/event-store-types.js"
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { asAsyncEventReadSurface, type AsyncEventReadSurface, type EventReader, type StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import { experimentsProtocol, type FrontendExperimentRun, type FrontendExperimentView } from "../../../protocol/modules/experiments.js"
-import { sessionDomainCursor, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
+import { sessionDomainCursor, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
 import type { ModuleBackgroundReaders, ModuleProtocolRuntime, ModuleProtocolServices } from "../../app-service/module-protocol-host.js"
-import { createSessionViewProjection, type SessionViewProjection, type ViewedSessionStore } from "../../app-service/session-view-projection.js"
+import { createSessionViewProjection, type SessionViewProjection } from "../../app-service/projections/catalog/session-view-projection.js"
 import { experimentsRuntime } from "./runtime.js"
 import type { ChatRunner } from "../../chat/runner-types.js"
 import type { ExperimentOperationState, ExperimentOperationView } from "./operation-owner.js"
-import { createExperimentProjection, EXPERIMENT_FACT_TYPES, type ExperimentProjection, type ExperimentSnapshot } from "./projection.js"
-import type { SessionEntry } from "../../session-store/types.js"
+import { createExperimentProjection, EXPERIMENT_FACT_TYPES, type ExperimentProjection, type ExperimentSnapshot } from "./state/projection.js"
+import type { SessionEntry, SessionStoreReader } from "../../session-store/types.js"
 
 const experimentViewCursor = (sessionId: string) => sessionDomainCursor("experiment_view", sessionId)
 
@@ -53,7 +53,7 @@ interface ExperimentViewProtocolProjection {
 }
 
 interface ExperimentViewProtocolProjectionDeps {
-  readonly sessionStore: ViewedSessionStore
+  readonly sessionStore: SessionStoreReader
   readonly reader: AsyncEventReadSurface
   /** The store's post-commit broadcast (RuntimeEventStore.onStored). */
   readonly onStored: (listener: (events: readonly StoredFact[]) => void) => () => void

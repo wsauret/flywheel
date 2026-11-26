@@ -1,8 +1,8 @@
 import { tmpdir } from "node:os"
 import { describe, expect, test } from "bun:test"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
-import type { RuntimeBackgroundLane } from "../../../../src/orchestration/app-service/runtime-background-lane.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
+import type { RuntimeBackgroundLane } from "../../../../src/orchestration/app-service/background/runtime-background-lane.js"
 import { fakeProjections, runtimeSupervisor } from "./app-service-doubles.js"
 
 function lane(overrides: Partial<RuntimeBackgroundLane> = {}): RuntimeBackgroundLane {

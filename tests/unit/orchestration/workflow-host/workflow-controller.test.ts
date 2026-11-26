@@ -1,12 +1,13 @@
 import { afterEach, describe, it, expect, mock } from "bun:test"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../../helpers/project-definitions"
-import { createWorkflowController } from "../../../../src/orchestration/workflow-host/controller"
+import { createWorkflowController } from "../../../../src/orchestration/workflow-host/lifecycle/controller"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures"
-import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog"
+import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { workflowParentBinding } from "../../../helpers/workflow-parent"
-import { parseWorkflowSessionFact, workflowRootControl } from "../../../../src/workflows/vm/session-facts"
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts"
+import { workflowRootControl } from "../../../../src/workflows/control-facts/family"
 import {
   cleanupProjectRoots,
   createDeps,
@@ -22,8 +23,8 @@ import {
 import { readWorkflowQueuedUserInputs } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
 import { readHeldAddressedMessages } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
 import { WorkflowPreflightError } from "../../../../src/orchestration/workflow-host/runner-types"
-import { registerLiveWorkflowControl } from "../../../../src/orchestration/session/live-session-control"
-import type { ChatInput } from "../../../../src/infra/chat-input"
+import { registerLiveWorkflowControl } from "../../../../src/orchestration/session/control/live-session-control"
+import type { ChatInput } from "../../../../src/infra/substrate/events/chat-input"
 import { Database } from "bun:sqlite"
 import { legacyWorkflowFixture } from "../../../helpers/workflow-agent-legacy-fixtures.js"
 import { convertWorkflowAgentSessions } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions.js"

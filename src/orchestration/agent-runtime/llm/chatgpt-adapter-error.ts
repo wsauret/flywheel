@@ -1,6 +1,7 @@
-// ChatGPT backend error parser.
-// It surfaces user-friendly messages for usage-limit, rate-limit, and
-// plan-restriction failures rather than raw JSON-payload error strings.
+// ChatGPT backend errors: the error frame that both backend transports raise,
+// and the parser of a rejected HTTP response. The parser surfaces user-friendly
+// messages for usage-limit, rate-limit, and plan-restriction failures rather
+// than raw JSON-payload error strings.
 // Adapted from pi `codex-sse.ts:141-166` (now `parseErrorResponse` in
 // `packages/ai/src/api/openai-codex-responses.ts`), MIT; credited in
 // THIRD-PARTY-NOTICES.md.
@@ -20,6 +21,20 @@ export interface ChatGptAdapterError {
 
 interface ErrorPayload {
   [key: string]: unknown;
+}
+
+/** An error frame of the ChatGPT backend stream, over SSE or WebSocket: the
+ *  provider's own word, which provider classification reads. */
+export class ChatGptAdapterApiError extends Error {
+  readonly code?: string;
+  readonly payload?: ErrorPayload;
+
+  constructor(message: string, options?: { code?: string; payload?: ErrorPayload }) {
+    super(message);
+    this.name = "ChatGptAdapterApiError";
+    this.code = options?.code;
+    this.payload = options?.payload;
+  }
 }
 
 export async function parseChatGptAdapterErrorResponse(response: Response): Promise<ChatGptAdapterError> {

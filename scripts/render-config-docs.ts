@@ -1,5 +1,5 @@
-import { configReference, type ConfigReference, type ConfigReferenceEntry } from "../src/orchestration/config/config-reference.js";
-import { settingDefinitions, type ApplicationMode } from "../src/orchestration/config/setting-definitions.js";
+import { configReference, type ConfigReference, type ConfigReferenceEntry } from "../src/orchestration/config/schema/config-reference.js";
+import { settingDefinitions, type ApplicationMode } from "../src/orchestration/config/schema/setting-definitions.js";
 
 const APPLICATION_NOTES = {
   live: "Applies to the running interface immediately.",

@@ -1,19 +1,20 @@
 import { describe, expect, test } from "bun:test";
 
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
+import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js";
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
-import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/run-lifecycle.js";
-import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/loop/turn/run-lifecycle.js";
+import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { makeCaptureClient, throwLoopError, waitUntil, withSessionNotes } from "./_loop-fixtures.js";
 import type { AgentLoopTerminal } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
-import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js";
-import { interruptedTurnMessage } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
+import { CONTINUATION_MESSAGES, interruptedTurnMessage } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
 import { asModelClient } from "../_model-client.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
+import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
 
 describe("agent loop interruption barrier", () => {
   test("only user input resumes after Escape while automatic input cannot resume", async () => {

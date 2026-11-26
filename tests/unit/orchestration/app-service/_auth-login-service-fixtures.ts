@@ -1,10 +1,10 @@
 import { Redacted } from "effect";
 
-import { createAuthLoginService } from "../../../../src/orchestration/app-service/auth-login-service.js";
+import { createAuthLoginService } from "../../../../src/orchestration/app-service/auth/login/auth-login-service.js";
 import type { ProviderOAuthLogin } from "../../../../src/orchestration/auth/auth-actions.js";
 import { defaultModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
-import type { ModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
-import type { AuthOperationNotice, AuthProviderStatus } from "../../../../src/protocol/auth-status-protocol-types.js";
+import type { ModulePolicy } from "../../../../src/orchestration/config/policy/module-policy.js";
+import type { AuthOperationNotice, AuthProviderStatus } from "../../../../src/protocol/auth/auth-status-protocol-types.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 
 export function provider(overrides: Partial<AuthProviderStatus> = {}): AuthProviderStatus {

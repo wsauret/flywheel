@@ -1,10 +1,10 @@
 import { createSignal } from "solid-js"
-import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
-import { DebugLog } from "../../infra/debug-log.js"
-import { errorMessage } from "../../infra/error-message.js"
-import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
-import { createChatSubmissions, type ChatSubmissionContext, type ChatSubmissionResult, type LocalChatSubmission, type LocalRecall, type UnsentChatSubmission } from "../../protocol/client/chat-submissions.js"
-import { lostWithLane } from "../../protocol/client/connection-failures.js"
+import type { ChatInput, ChatInputLike } from "../../infra/substrate/events/chat-input.js"
+import { DebugLog } from "../../infra/diagnostics/debug-log.js"
+import { errorMessage } from "../../infra/diagnostics/error-message.js"
+import type { AttachedRuntimeClient } from "../../protocol/runtime/app-service-types.js"
+import { createChatSubmissions, type ChatSubmissionContext, type ChatSubmissionResult, type LocalChatSubmission, type LocalRecall, type UnsentChatSubmission } from "../../protocol/client/chat/chat-submissions.js"
+import { lostWithLane } from "../../protocol/client/runtime/connection-failures.js"
 
 // A lost call's own text names the transport (`SocketCloseError: 1000`),
 // which a person cannot act on.

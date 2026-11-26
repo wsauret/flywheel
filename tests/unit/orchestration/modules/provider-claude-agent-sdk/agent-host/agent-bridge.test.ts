@@ -3,12 +3,13 @@ import { Effect, Exit, Schema, Scope } from "effect";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { providerModelInfo } from "../../../../../../src/infra/llm/provider-model-info.js";
-import { prepareAnthropicRequest, type AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type ConversationMessage, type ProviderDemand, type StreamOptions, type ToolPresentation } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { providerModelInfo } from "../../../../../../src/infra/providers/llm/catalog/provider-model-info.js";
+import { prepareAnthropicRequest, type AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js";
+import { FUNCTION_TOOL_PRESENTATION, type ProviderDemand, type StreamOptions, type ToolPresentation } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { trailingRuntimeNotices, type ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { TOOL_MCP_PREFIX } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { cliView } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
-import { createToolGate } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/tool-gate.js";
+import { createToolGate } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/tool-gate.js";
 import { openingEnvironmentReminder, originsOf } from "../_bridge-harness.js";
 import type { BridgeRequest } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
 import { createHostedAgent, type HostedAgentConfig } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.js";
@@ -16,13 +17,13 @@ import { agentFilePath } from "../../../../../../src/orchestration/modules/provi
 import { createHostedAgentEntries, DISPATCH_TEXT } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { conversationTierEntry, ENGINE_INSTRUCTIONS } from "../../../../../helpers/hosted-engine-text.js";
 import type { HostStepItem } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.js";
-import { releaseLiveBridges, resumeLiveBridges } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/live-bridges.js";
+import { releaseLiveBridges, resumeLiveBridges } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/live-bridges.js";
 import { hostKey, processAgentHosts, type HostRegistry } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import type { AgentHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
-import { holdSharedTree } from "../../../../../../src/orchestration/agent-runtime/shared-tree.js";
-import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
-import { silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
+import { holdSharedTree } from "../../../../../../src/orchestration/agent-runtime/request/shared-tree.js";
+import { composeFirstPartyModules } from "../../../../../../src/orchestration/module-contract/module-composition.js";
+import { silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/stderr-signals.js";
 
 const directory = temporaryDirectories();
 // A case that leases from the hosts of this process leaves no host there.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { clampReasoningEffort } from "../../../../../src/orchestration/agent-runtime/llm/model-compat.js";
-import { buildOpenAIParams } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
+import type { ModelInfo } from "../../../../../src/infra/providers/llm/models/models.js";
+import { clampReasoningEffort } from "../../../../../src/infra/providers/llm/models/model-compat.js";
+import { buildOpenAIParams } from "../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-helpers.js";
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 const baseInfo = {

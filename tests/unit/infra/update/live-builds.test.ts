@@ -10,7 +10,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { liveBuildsDir, versionsDir } from "../../../../src/infra/paths.js";
+import { liveBuildsDir, versionsDir } from "../../../../src/infra/platform/files/paths.js";
 import { liveBuildIds, ownBuildId, registerLiveBuild } from "../../../../src/infra/update/live-builds.js";
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-live-builds-"));

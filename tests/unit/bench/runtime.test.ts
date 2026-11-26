@@ -7,16 +7,17 @@ import {
   type BenchmarkRuntimeComposition,
   type PreparedBenchmarkRuntime,
 } from "../../../bench/shared/runtime.js";
-import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/session/control/background-work/background-work.js";
 import {
   createForegroundBashHoldController,
   type ForegroundBashHoldController,
-} from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import type { UsageAuthorityGeneration } from "../../../src/orchestration/agent-runtime/usage-settlement.js";
-import { createInstalledDefinitionRegistry } from "../../../src/orchestration/definition-catalog.js";
+} from "../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
+import type { UsageAuthorityGeneration } from "../../../src/orchestration/session/history/usage-settlement.js";
+import { createInstalledDefinitionRegistry } from "../../../src/orchestration/app-service/definitions/definition-catalog.js";
 import { refusingLauncher } from "../../helpers/launcher-fake.js";
-import { makeWorkflowDeps } from "../orchestration/headless/_headless-run-fixtures.js";
+import { makeWorkflowDeps } from "../orchestration/app-service/headless/_headless-run-fixtures.js";
+import type { ComposedModuleServices } from "../../../src/orchestration/app-service/executor/execution/module-service-host.js";
 
 const deps = makeWorkflowDeps();
 const launcher = refusingLauncher;
@@ -25,7 +26,20 @@ const shell = background.shell;
 const foregroundBashHold = createForegroundBashHoldController(() => {});
 const usageAuthority: UsageAuthorityGeneration = { profileId: "fixture", authorityIncarnation: "fixture-generation" };
 
-function preparedRuntime(dispose: () => Promise<void>): PreparedBenchmarkRuntime {
+/** Module services that record their start, settled startup, and disposal. */
+function moduleServices(order: string[]): ComposedModuleServices {
+  return {
+    services: { get: () => undefined },
+    instances: [],
+    reconcile: () => {},
+    start: () => { order.push("module-services-started"); },
+    settleStartup: async () => { order.push("module-services-settled"); return []; },
+    closeAdmission: () => {},
+    dispose: async () => { order.push("module-services-disposed"); },
+  };
+}
+
+function preparedRuntime(dispose: () => Promise<void>, order: string[] = []): PreparedBenchmarkRuntime {
   return {
     deps,
     profileId: usageAuthority.profileId,
@@ -34,6 +48,7 @@ function preparedRuntime(dispose: () => Promise<void>): PreparedBenchmarkRuntime
     foregroundBashHold,
     launcher,
     shell,
+    moduleServices: moduleServices(order),
     assertUsageAuthority: (expected) => {
       expect(expected).toEqual(usageAuthority);
     },
@@ -76,7 +91,7 @@ describe("benchmark process runtime", () => {
     }
   });
 
-  it("acquires provider availability before dependency preparation and releases it last", async () => {
+  it("acquires provider availability before dependency preparation, starts the module services before the first cell, and releases availability last", async () => {
     const order: string[] = [];
     const root = directory("benchmark-definitions-");
     const definitions = createInstalledDefinitionRegistry({
@@ -89,11 +104,11 @@ describe("benchmark process runtime", () => {
       async (_directories, { definitions: selectedDefinitions }) => {
         expect(selectedDefinitions).toBe(definitions);
         order.push("deps-prepared");
-        return preparedRuntime(async () => { order.push("generation-disposed"); });
+        return preparedRuntime(async () => { order.push("generation-disposed"); }, order);
       },
     ) });
 
-    expect(order).toEqual(["availability-acquired", "deps-prepared"]);
+    expect(order).toEqual(["availability-acquired", "deps-prepared", "module-services-started", "module-services-settled"]);
     expect(runtime.profileId).toBe("fixture");
     expect(runtime.foregroundBashHold).toBe(foregroundBashHold);
     runtime.assertUsageAuthority(runtime.usageAuthority);
@@ -102,6 +117,9 @@ describe("benchmark process runtime", () => {
     expect(order).toEqual([
       "availability-acquired",
       "deps-prepared",
+      "module-services-started",
+      "module-services-settled",
+      "module-services-disposed",
       "generation-disposed",
       "availability-disposed",
     ]);
@@ -132,7 +150,7 @@ describe("benchmark process runtime", () => {
 });
 
 describe("benchmark process runtime disposal", () => {
-  it("closes background execution before settling and disposing foreground Bash", async () => {
+  it("closes background execution, then foreground Bash, then the module services, before the generation", async () => {
     const order: string[] = [];
     const hold: ForegroundBashHoldController = {
       register: () => { throw new Error("not used"); },
@@ -143,7 +161,7 @@ describe("benchmark process runtime disposal", () => {
     };
     const runtime = await createBenchmarkRuntime(process.cwd(), { composition: composition(order,
       async () => ({
-        ...preparedRuntime(async () => { order.push("generation-disposed"); }),
+        ...preparedRuntime(async () => { order.push("generation-disposed"); }, order),
         background: {
           ...background,
           close: async () => { order.push("background-closed"); },
@@ -156,9 +174,12 @@ describe("benchmark process runtime disposal", () => {
 
     expect(order).toEqual([
       "availability-acquired",
+      "module-services-started",
+      "module-services-settled",
       "background-closed",
       "foreground-settled",
       "foreground-disposed",
+      "module-services-disposed",
       "generation-disposed",
       "availability-disposed",
     ]);

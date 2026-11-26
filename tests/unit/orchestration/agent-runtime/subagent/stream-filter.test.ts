@@ -1,11 +1,11 @@
 import { describe, it, expect } from "bun:test";
-import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
-import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
+import { createRuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js";
+import type { RuntimeEvent } from "../../../../../src/infra/substrate/runtime-facts/runtime-event-types.js";
 import {
   createFilteredSubagentStream,
   createSubagentStats,
   type SubagentTextState,
-} from "../../../../../src/orchestration/modules/subagents/execution/stream-filter.js";
+} from "../../../../../src/orchestration/modules/subagents/execution/result/stream-filter.js";
 
 interface UnknownRecord { [key: string]: unknown }
 

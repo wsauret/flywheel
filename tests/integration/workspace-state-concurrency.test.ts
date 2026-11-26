@@ -19,11 +19,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { ProjectDirectories } from "../../src/infra/directory-authorities.js";
-import { resolveEventStoreDbFile } from "../../src/infra/paths.js";
-import { openWorkspaceState, prepareWorkspaceState } from "../../src/orchestration/workspace-state.js";
-import { EVENT_STORE_MEMBER } from "../../src/orchestration/workspace-state-generation-members.js";
-import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state-retirement.js";
+import type { ProjectDirectories } from "../../src/infra/platform/files/directory-authorities.js";
+import { resolveEventStoreDbFile } from "../../src/infra/platform/files/paths.js";
+import { openWorkspaceState, prepareWorkspaceState } from "../../src/orchestration/workspace-state/workspace-state.js";
+import { EVENT_STORE_MEMBER } from "../../src/orchestration/workspace-state/workspace-state-generation-members.js";
+import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state/workspace-state-retirement.js";
 import type { RetirementCheckpoint } from "../helpers/retirement-checkpoints.js";
 import { interruptRetirementAt, requireRetiredWorkspace } from "../fixtures/create-retired-workspace.js";
 import { testDirectories } from "../helpers/directories.js";
@@ -38,7 +38,7 @@ const REFUSAL = "cannot be replaced while another owner holds this project's sta
  *  holds it, and keeps holding it until it is told to stop. */
 const HOLDER = `
 import { existsSync } from "node:fs";
-import { prepareWorkspaceState } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/workspace-state.js")).href)};
+import { prepareWorkspaceState } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/workspace-state/workspace-state.js")).href)};
 
 const prepared = prepareWorkspaceState(JSON.parse(process.argv[2]));
 await Bun.write(process.argv[3], "");
@@ -52,7 +52,7 @@ prepared.generation.release();
  *  the retirement sequence's own checkpoints: no start returns that. */
 const STARTER = `
 import { existsSync } from "node:fs";
-import { prepareWorkspaceState } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/workspace-state.js")).href)};
+import { prepareWorkspaceState } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/workspace-state/workspace-state.js")).href)};
 import { observeRetirementCheckpoints } from ${JSON.stringify(pathToFileURL(join(REPO, "tests/helpers/retirement-checkpoints.ts")).href)};
 
 let retired = false;

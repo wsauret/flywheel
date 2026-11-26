@@ -3,13 +3,13 @@
  *  `failover-client-failover.test.ts`, and the outage failover and
  *  sole-source last resort in `failover-client-outage.test.ts`. */
 
-import { candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+import { candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId } from "../../../../../src/infra/providers/llm/access/access-provider.js";
 import { expect } from "bun:test";
 import { AllCandidatesExhaustedError, LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { createFailoverClient, createRoutingDecisions, type ProviderChainDeps } from "../../../../../src/orchestration/agent-runtime/llm/failover-client.js";
-import type { ProviderAvailability, QuotaExhaustion, QuotaProbe, QuotaStanding } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
+import { createFailoverClient, createRoutingDecisions, type ProviderChainDeps } from "../../../../../src/orchestration/agent-runtime/llm/routing/failover-client.js";
+import type { ProviderAvailability, QuotaExhaustion, QuotaProbe, QuotaStanding } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js";
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ModelClient, type ProviderStreamEvent, type StreamOptions, type AdmittedModelRequestExecution, type PreparedServingRequest, type ServingAttempt, type StagedProviderClient } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { classifyProviderFailure, isFailoverFailure, normalizeProviderAttemptFailure, type FailoverFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { classifyProviderFailure, isFailoverFailure, normalizeProviderAttemptFailure, type FailoverFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { testProviderSelection } from "../../../../helpers/provider-authority.js";
 
 

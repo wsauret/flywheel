@@ -3,7 +3,7 @@ import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } f
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { Schema } from "effect";
-import { checkedExports } from "../src/infra/local-tokenizer.js";
+import { checkedExports } from "../src/infra/providers/local-tokenizer.js";
 
 export const TOKENIZER_TOOLCHAIN = "nightly-2026-07-28";
 export const TOKENIZER_TARGET = "wasm32-unknown-unknown";

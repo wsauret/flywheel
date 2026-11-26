@@ -1,5 +1,5 @@
-import type { StoredFact } from "../../../../infra/event-store-types.js"
-import type { ChildExecutionMetrics } from "../../../module-diagnostics.js"
+import type { StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
+import type { ChildExecutionMetrics } from "../../../module-contract/module-diagnostics.js"
 import { loadSubagentRunsFromEvents } from "./subagent-run-projection.js"
 
 /** Publish only the retained measurements needed for request attribution. */

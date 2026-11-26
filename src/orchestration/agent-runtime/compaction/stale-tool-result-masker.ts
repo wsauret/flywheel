@@ -26,10 +26,10 @@
  * provider-request-audit reconstruction (see maskToolResultsById).
  */
 
-import type { ContentBlock, ConversationMessage } from "../llm/types.js";
-import { DELIVERY_CONFIRMATION } from "../../../infra/delivery-confirmation.js";
-import { editInputEntries } from "../../../infra/file-edit/edit-input.js";
-import { isToolContractResult } from "../tools/short-form.js";
+import type { ContentBlock, ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js";
+import { DELIVERY_CONFIRMATION } from "../../../infra/substrate/output/notify/delivery-confirmation.js";
+import { editInputEntries } from "../../../infra/substrate/file-mutations/file-edit/edit-input.js";
+import { isToolContractResult } from "../tools/dispatch/short-form.js";
 
 interface ToolInput {
   [key: string]: unknown;

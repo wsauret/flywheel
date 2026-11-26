@@ -3,10 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { agentAssetMarkerFindings, knownCapabilityTerm } from "../../../scripts/check-bundled-skills.js";
-import { bundledAgentAsset, type AgentAssetName } from "../../../src/infra/agent-assets/system-prompt.js";
-import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
-import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js";
-import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
+import { bundledAgentAsset, type AgentAssetName } from "../../../src/infra/definitions/agent-assets/system-prompt.js";
+import { installedDefinitionBundles } from "../../../src/orchestration/module-contract/module-catalog.js";
+import { installedPersonaToolEntries } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-catalog.js";
+import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 
 const root = mkdtempSync(join(tmpdir(), "flywheel-bundled-skills-test-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));

@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { antigravityEngineFile, buildPlatformArch, checkoutAntigravityEngine } from "../src/infra/native-assets.js";
-import { isRecord, type UnknownRecord } from "../src/infra/record.js";
+import { antigravityEngineFile, buildPlatformArch, checkoutAntigravityEngine } from "../src/infra/platform/native-assets.js";
+import { isRecord, type UnknownRecord } from "../src/infra/guards/record.js";
+import { renameThroughSharing } from "../src/infra/platform/files/windows/windows-file-replacement.js";
 import { requireDigestMatch, requireExecutable, type EngineDigest } from "./engine-asset-verify.js";
 import { RELEASE_TARGETS, type ReleaseTargetName } from "./release-contract.js";
 
@@ -97,7 +98,8 @@ function pinnedTarget(pin: AntigravityPin, platformArch: string): PinnedTarget {
  *
  * Two preparations of one target can run at the same time, such as a build and the integration suite. Each one
  * writes its own temporary file and renames it onto the destination, so neither removes or truncates a copy that
- * the other placed.
+ * the other placed. Windows refuses a rename onto a file that another rename holds at that moment, so the rename
+ * retries that refusal for a short bound.
  */
 export async function prepareAntigravityEngine(root: string, platformArch: string): Promise<string> {
   const pin = await readAntigravityPin(root);
@@ -122,7 +124,7 @@ export async function prepareAntigravityEngine(root: string, platformArch: strin
   try {
     await writeFile(partial, bytes);
     await chmod(partial, 0o755);
-    await rename(partial, destination);
+    renameThroughSharing(partial, destination);
   } finally {
     await rm(partial, { force: true });
   }

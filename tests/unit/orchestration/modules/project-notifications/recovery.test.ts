@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { recoverProjectNotificationHistory } from "../../../../../src/orchestration/modules/project-notifications/recovery.js"
 
 const tempRoots: string[] = []

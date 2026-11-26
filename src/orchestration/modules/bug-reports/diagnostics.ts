@@ -2,7 +2,7 @@ import { open, readdir, stat } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 import { redactSecrets } from "../../../infra/redact-secrets.js"
-import type { BugReport, BugReportDiagnostic } from "../../../protocol/modules/bug-reports.js"
+import type { AssembledBugReport, BugReportDiagnostic } from "../../../protocol/modules/bug-reports.js"
 
 const LogRecord = z.object({ ts: z.number(), type: z.string(), sessionId: z.string().optional(), payload: z.record(z.string(), z.unknown()).optional() })
 const STRING_FIELDS = new Set(["kind", "code", "signal", "sessionId", "projectId", "generation", "reportId", "operationId", "toolUseId"])
@@ -13,7 +13,7 @@ interface DiagnosticMetadata { [key: string]: string | number | boolean | null }
 interface DiagnosticStreams { tui: BugReportDiagnostic[]; executor: BugReportDiagnostic[]; account: BugReportDiagnostic[] }
 
 /** Read bounded tails asynchronously. Rotation, missing logs, and partial JSONL writes omit only the unavailable records. */
-export async function collectReportDiagnostics(input: { readonly userDataRoot: string; readonly projectRoot?: string }): Promise<BugReport["diagnostics"]> {
+export async function collectReportDiagnostics(input: { readonly userDataRoot: string; readonly projectRoot?: string }): Promise<AssembledBugReport["diagnostics"]> {
   const diagnostics: DiagnosticStreams = { tui: [], executor: [], account: [] }
   const roots = [
     ...(input.projectRoot === undefined ? [] : [{ directory: join(input.projectRoot, ".flywheel", "log"), account: false }]),

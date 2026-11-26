@@ -1,13 +1,13 @@
 import type { Accessor, Component } from "solid-js"
 
-import type { ModuleId } from "../../src/protocol/module-ids.js"
-import type { RuntimeConnection } from "../../src/protocol/client/connection.js"
-import type { FaultReach } from "../../src/protocol/client/runtime-fault-copy.js"
-import type { RuntimeHealth } from "../../src/protocol/app-service-types.js"
+import type { ModuleId } from "../../src/protocol/runtime/module-ids.js"
+import type { RuntimeConnection } from "../../src/protocol/client/runtime/connection.js"
+import type { FaultReach } from "../../src/protocol/client/runtime/copy/runtime-fault-copy.js"
+import type { RuntimeHealth } from "../../src/protocol/runtime/app-service-types.js"
 import type { ModuleRow, DomainReader } from "../../src/protocol/protocol-module.js"
 import type { ClientHost } from "./host.js"
 import type { ClientContextValue } from "./app/client-context.js"
-import type { PlacementLabels } from "./app/screen-stack.js"
+import type { PlacementLabels } from "./app/screens/screen-stack.js"
 import type { WebModuleClient, WebModuleClientHost } from "./web-module-client.js"
 
 /** The web client's module contract. A module contributes its presence

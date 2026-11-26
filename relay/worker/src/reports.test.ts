@@ -126,15 +126,19 @@ describe("POST /reports", () => {
     expect(h.calls[3]?.body).toMatchObject({ title, labels: ["manual"] })
   })
 
-  test("keeps different function names, message shapes, and error names in separate signatures", async () => {
-    const h = harness(Array.from({ length: 4 }, () => [Response.json([{ number: 17 }]), Response.json({}, { status: 201 })]).flat())
+  test("keeps different function names, message shapes, error names, and unnamed frame locations in separate signatures", async () => {
+    const h = harness(Array.from({ length: 6 }, () => [Response.json([{ number: 17 }]), Response.json({}, { status: 201 })]).flat())
+    // An automatic report has no message, so its unnamed frames are all that tells two crashes apart.
+    const unnamed = { name: "TypeError", message: "", stack: "    at chunk-abc.js:12:4\n    at chunk-def.js:42:8" }
     for (const error of [
       report.error,
       { ...report.error, name: "RangeError" },
       { ...report.error, message: "Cannot read a session" },
       { ...report.error, stack: report.error.stack.replace("closesToolStretch", "differentFunction") },
+      unnamed,
+      { ...unnamed, stack: unnamed.stack.replace("chunk-abc.js:12", "chunk-abc.js:90") },
     ]) expect((await h.receive(request({ ...report, error }))).status).toBe(200)
-    expect(new Set(h.calls.filter((call) => call.method === "GET").map((call) => call.url.searchParams.get("labels"))).size).toBe(4)
+    expect(new Set(h.calls.filter((call) => call.method === "GET").map((call) => call.url.searchParams.get("labels"))).size).toBe(6)
   })
 
   test.each([

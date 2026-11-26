@@ -16,14 +16,14 @@
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { AccessProviderCandidate, AccessProviderDefinition } from "../../src/infra/llm/access-provider.js";
-import { AVAILABILITY_PROTOCOL_VERSION, createAvailabilityAuthority } from "../../src/infra/llm/availability-store.js";
-import { environmentAccountHome, FLYWHEEL_DIR_NAME } from "../../src/infra/directory-authorities.js";
-import { availabilityAuthorityDbFile } from "../../src/infra/paths.js";
-import { createProviderAvailability } from "../../src/orchestration/agent-runtime/llm/provider-availability.js";
+import type { AccessProviderCandidate, AccessProviderDefinition } from "../../src/infra/providers/llm/access/access-provider.js";
+import { AVAILABILITY_PROTOCOL_VERSION, createAvailabilityAuthority } from "../../src/infra/providers/llm/access/availability-store.js";
+import { environmentAccountHome, FLYWHEEL_DIR_NAME } from "../../src/infra/platform/files/directory-authorities.js";
+import { availabilityAuthorityDbFile } from "../../src/infra/platform/files/paths.js";
+import { createProviderAvailability } from "../../src/orchestration/agent-runtime/llm/routing/provider-availability.js";
 import { getAuthStatusWithDiagnostics } from "../../src/orchestration/auth/auth-actions.js";
 import { AuthProfileManager } from "../../src/orchestration/auth/auth-profile-manager.js";
-import { installedAccessProviderDefinitions, installedAccessProviderSelection } from "../../src/orchestration/credential-provider-modules.js";
+import { installedAccessProviderSelection, installedAccessProviderDefinitions } from "../../src/orchestration/module-contract/module-composition.js";
 
 /** What the stores state about one account of the arm. */
 export type AccountQuota = { readonly providerId: string; readonly account: string } & (

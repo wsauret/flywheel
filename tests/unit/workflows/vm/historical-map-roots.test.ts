@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
 import storedVersionTenRoots from "./golden/committed-v10-roots.json";
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery.js";
-import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
+import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery/recovery.js";
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
 
 // Immutable roots and expansions of the VM producer from the last build
 // before phases: each map fixture compiled as a version 10 root. The roots of

@@ -1,7 +1,7 @@
-import type { AsyncEventReadSurface, StoredFact } from "../../../infra/event-store-types.js"
-import { InvariantViolation } from "../../../infra/invariant.js"
-import { createEventProjection } from "../../../infra/event-projection.js"
-import { heldProjection } from "../../../infra/projection-registry.js"
+import type { AsyncEventReadSurface, StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { InvariantViolation } from "../../../infra/guards/invariant.js"
+import { createEventProjection } from "../../../infra/substrate/projection/event-projection.js"
+import { heldProjection } from "../../../infra/substrate/projection/projection-registry.js"
 import { parsePapercutFact, type PapercutCategory } from "./facts.js"
 
 interface LivePapercut {

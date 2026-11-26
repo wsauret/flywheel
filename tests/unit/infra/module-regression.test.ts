@@ -1,13 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { AccessProviderId } from "../../../src/infra/llm/access-provider.js";
-import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
-import { MODULE_IDS } from "../../../src/protocol/module-ids.js";
-import { createObserverChain } from "../../../src/orchestration/agent-runtime/batch-observers.js";
+import type { AccessProviderId } from "../../../src/infra/providers/llm/access/access-provider.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
+import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
+import { MODULE_IDS } from "../../../src/protocol/runtime/module-ids.js";
+import { createObserverChain } from "../../../src/orchestration/agent-runtime/loop/batch-observers.js";
 import { generateCapabilityModuleBaseline } from "./module-baseline-generator.js";
 
-import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../src/orchestration/config/models/access-provider-registry.js";
 const fixturePath = resolve(import.meta.dir, "../../fixtures/modules/baseline.json");
 const providerIds = accessProviderRegistry(composeFirstPartyModules()).selection.definitions.map((definition) => definition.id);
 

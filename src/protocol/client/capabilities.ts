@@ -1,4 +1,4 @@
-import type { ModuleProtocolRow, ModulePreset, RuntimeModulesView, WorkflowsMode } from "../module-protocol-types.js"
+import type { ModuleProtocolRow, ModulePreset, RuntimeModulesView, WorkflowsMode } from "../runtime/module-protocol-types.js"
 
 /** How every client reads and names the runtime's capability view, so the
  *  terminal and the web client show one vocabulary for one selection. */
@@ -33,11 +33,6 @@ export function stepWorkflowsMode(mode: WorkflowsMode, direction: -1 | 1): Workf
   return WORKFLOWS_MODES[((WORKFLOWS_MODES.indexOf(mode) + direction) % count + count) % count] ?? "off"
 }
 
-/** The modules a person can turn on or off here: installed, with a control. */
-export function switchableModules(view: Pick<RuntimeModulesView, "modules">): readonly ModuleProtocolRow[] {
-  return view.modules.filter((module) => module.installed && module.setting !== undefined)
-}
-
 /** Why `module` cannot be turned on now, or undefined when it can. A
  *  selection-wide error is not a reason of one module: a client shows it once
  *  for the whole view. */
@@ -49,10 +44,4 @@ export function moduleUnavailableReason(view: Pick<RuntimeModulesView, "moduleId
     return `Enable ${labels.join(", ")} first`
   }
   return module.dependencyError
-}
-
-/** Whether the selection has every model provider turned off. Then no
- *  provider can be connected, and the way back is the Capabilities control. */
-export function everyProviderOff(view: Pick<RuntimeModulesView, "modules">): boolean {
-  return !view.modules.some((module) => module.effective && module.setting?.group === "Model providers")
 }

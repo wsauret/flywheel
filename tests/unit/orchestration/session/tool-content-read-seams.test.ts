@@ -3,17 +3,17 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { contentEvidence } from "../../../../src/infra/content-evidence"
-import { asAsyncEventReadSurface, type AsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import type { ContentResolver, ToolContentRow } from "../../../../src/infra/tool-content"
-import { createToolResultDisplayMetaCursorReader, readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/tool-result-meta"
+import { contentEvidence } from "../../../../src/infra/substrate/runtime-facts/content-evidence"
+import { asAsyncEventReadSurface, type AsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store"
+import type { ContentResolver, ToolContentRow } from "../../../../src/infra/substrate/runtime-facts/tool-content"
+import { createToolResultDisplayMetaCursorReader, readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta"
 import {
   createToolExecutionProjection,
   loadToolExecutionTimelineFromEvents,
   TOOL_EXECUTION_FACT_TYPES,
   toolExecutionTimelineFromProjection,
-} from "../../../../src/orchestration/session/tool-execution-projection"
+} from "../../../../src/orchestration/session/runtime-facts/tool-execution-projection"
 
 const SESSION_ID = "session-1"
 const AGGREGATE = `session:${SESSION_ID}`

@@ -1,14 +1,14 @@
 import { homedir } from "node:os";
 import { isAbsolute } from "node:path";
-import type { RuntimeCredential } from "../../../infra/auth/auth-context.js";
-import { errorMessage } from "../../../infra/error-message.js";
-import { osAccount, type OsAccount } from "../../../infra/os-account.js";
+import type { RuntimeCredential } from "../../../infra/providers/auth/auth-context.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
+import { osAccount, type OsAccount } from "../../../infra/platform/os-account.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
-import { processEngineHost, type EngineHost } from "../../../infra/claude-engine.js";
-import { loginOwnerHome } from "./cli-environment.js";
-import type { InPlaceGate, SelfTestConfig } from "./in-place-check.js";
+import { processEngineHost, type EngineHost } from "../../../infra/providers/claude-engine.js";
+import { loginOwnerHome } from "./engine/cli-environment.js";
+import type { InPlaceGate, SelfTestConfig } from "./query/in-place-check.js";
 import { processLoginObservations, type LoginObservations } from "./login-observations.js";
-import type { CliLoginDescription, CliModelProbe, CliUsage, HostLaunch, LaunchedHost, LaunchedQuery, QueryLaunch, QueryLauncherConfig } from "./query-launcher.js";
+import type { CliLoginDescription, CliModelProbe, CliUsage, HostLaunch, LaunchedHost, LaunchedQuery, QueryLaunch, QueryLauncherConfig } from "./engine/query-launcher.js";
 import type { HostRegistry } from "./agent-host/host-registry.js";
 
 /** What a fake-host script or a test replaces. Production uses none of them. */

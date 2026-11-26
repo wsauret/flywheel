@@ -81,7 +81,7 @@ describe("surface-specific release evidence", () => {
     {
       hash: "shared",
       message: "fix(runtime): agents use Bash timeouts only for required deadlines\n\nThe model-visible Bash guidance now reserves deadlines for commands that must stop.",
-      files: ["src/orchestration/agent-runtime/tools/bash-guidance.ts"],
+      files: ["src/orchestration/agent-runtime/tools/bash/bash-guidance.ts"],
     },
   ] as const;
 
@@ -154,7 +154,7 @@ describe("surface-specific release evidence", () => {
     expect(evidence).toContain("Surface: shared");
     expect(evidence).toContain("Scope: runtime");
     expect(evidence).toContain("The model-visible Bash guidance now reserves deadlines");
-    expect(evidence).toContain("src/orchestration/agent-runtime/tools/bash-guidance.ts");
+    expect(evidence).toContain("src/orchestration/agent-runtime/tools/bash/bash-guidance.ts");
   });
 
   test("keeps Git attribution trailers out of model evidence", () => {

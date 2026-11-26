@@ -14,37 +14,36 @@
  */
 
 import { join } from "node:path";
-import type { AgentDefinition } from "../src/infra/agent-definition.js";
-import type { CapabilityCheck } from "../src/infra/capability-text.js";
-import { composeModuleRuntimes, type ModuleRuntimes } from "../src/infra/module-runtime.js";
-import { composeModuleServices } from "../src/infra/module-service.js";
-import { createBackgroundWorkRegistry } from "../src/orchestration/agent-runtime/background-work.js";
-import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/capability-checks.js";
-import { createChildSlotRegistry } from "../src/orchestration/agent-runtime/child-slot-registry.js";
-import { createForegroundBashHoldController } from "../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/model-interaction-profile.js";
-import type { RuntimeConfigRequestCapture } from "../src/orchestration/agent-runtime/request-config.js";
-import { requestKernel, sharesTreeHost } from "../src/orchestration/agent-runtime/request-kernel.js";
-import { requestSystemPromptOptions } from "../src/orchestration/agent-runtime/request-system-prompt.js";
-import { buildSystemPromptParts, type SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
+import type { AgentDefinition } from "../src/infra/definitions/agent-definition.js";
+import type { CapabilityCheck } from "../src/infra/definitions/capability-text.js";
+import { composeModuleRuntimes, type ModuleRuntimes } from "../src/infra/definitions/modules/module-runtime.js";
+import { composeModuleServices } from "../src/infra/definitions/modules/module-service.js";
+import { createBackgroundWorkRegistry } from "../src/orchestration/session/control/background-work/background-work.js";
+import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
+import { createChildSlotRegistry } from "../src/orchestration/agent-runtime/request/module-services/child-slot-registry.js";
+import { createForegroundBashHoldController } from "../src/orchestration/session/control/background-work/foreground-bash-hold.js";
+import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
+import type { RuntimeConfigRequestCapture } from "../src/orchestration/config/request-config.js";
+import { requestKernel, sharesTreeHost } from "../src/orchestration/agent-runtime/request/request-kernel.js";
+import { requestSystemPromptOptions } from "../src/orchestration/agent-runtime/request/prompt/request-system-prompt.js";
+import { buildSystemPromptParts, type SystemPromptPart } from "../src/orchestration/agent-runtime/request/prompt/system-prompt.js";
 import type { KernelToolDeps } from "../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
-import { createShellRuntime } from "../src/orchestration/agent-runtime/tools/shell-runtime.js";
-import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { createShellRuntime } from "../src/orchestration/agent-runtime/background-execution/shell-runtime.js";
+import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import type { CapabilityAccess, RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
-import type { FirstPartyModuleComposition } from "../src/orchestration/modules.js";
-import { disabledAgentTypes } from "../src/orchestration/module-catalog.js";
+import { type FirstPartyModuleComposition, disabledAgentTypes } from "../src/orchestration/module-contract/module-catalog.js";
 import { createCodeModeRuntime } from "../src/orchestration/modules/code-mode/runtime.js";
 import { createCodeModeService } from "../src/orchestration/modules/code-mode/service.js";
-import type { BenchmarkAdmissionDeps } from "../src/orchestration/modules/development/benchmark/admission.js";
+import type { BenchmarkAdmissionDeps } from "../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { createIosSimulatorTool } from "../src/orchestration/modules/development/ios-simulator-tool.js";
 import { createMcpRuntime } from "../src/orchestration/modules/mcp/runtime.js";
 import type { DefinitionOverrideOperations } from "../src/workflows/definitions/override-staleness.js";
-import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagents/execution/dispatch-deps.js";
-import type { WorkflowsMode } from "../src/protocol/module-protocol-types.js";
-import { workflowLaunchTargets } from "../src/orchestration/workflow-host/launch-origin.js";
-import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definition-registry.js";
-import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/session-messaging.js";
+import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
+import type { WorkflowsMode } from "../src/protocol/runtime/module-protocol-types.js";
+import { workflowLaunchTargets } from "../src/orchestration/workflow-host/lifecycle/launch-origin.js";
+import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definitions/definition-registry.js";
+import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/control/messaging/session-messaging.js";
 
 /** What every request of one assembly shares: its roots, its definitions, its configuration, and the module
  *  capture of its chat tree. `live` is the agent's own selection, which differs from `capture` only for an agent

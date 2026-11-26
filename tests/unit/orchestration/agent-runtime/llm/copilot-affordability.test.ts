@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { AccessProviderCandidateAttribution } from "../../../../../src/infra/llm/access-provider.js";
-import type { CatalogJsonValue } from "../../../../../src/infra/llm/model-catalog-resolution.js";
+import type { AccessProviderCandidateAttribution } from "../../../../../src/infra/providers/llm/access/access-provider.js";
+import type { CatalogJsonValue } from "../../../../../src/infra/providers/catalog-model-offering.js";
 import { copilotAffordability } from "../../../../../src/orchestration/modules/provider-github-copilot/affordability.js";
 import { buildCopilotDynamicHeaders, copilotRequestInitiator } from "../../../../../src/orchestration/modules/provider-github-copilot/headers.js";
-import type { ConversationMessage, PreparedServingRequest } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { PreparedServingRequest } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { fakeClient, textStream } from "./_provider-chain-harness.js";
 
 const candidate = { kind: "subscription", providerId: "github_copilot", instanceId: "personal", spendMode: "included" } as const;
@@ -100,4 +101,4 @@ describe("Copilot affordability", () => {
   });
 });
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import type { SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
+import type { SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js";

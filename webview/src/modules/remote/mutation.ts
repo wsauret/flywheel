@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 
-import type { FrontendMutation, MutationResult } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, MutationResult } from "../../../../src/protocol/runtime/app-service-types.js"
 import { actionKey } from "../../client/action-key.js"
 import type { ClientActions } from "../../client/actions.js"
 

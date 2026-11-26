@@ -1,15 +1,17 @@
 import { Redacted } from "effect";
-import { apiKey } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows, type CatalogJsonValue, type CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
-import { fetchPaginatedCatalog } from "../../../infra/llm/model-listing.js";
-import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
-import { isRecord } from "../../../infra/record.js";
-import { ApiError } from "../../agent-runtime/errors.js";
-import { createClaudeReminders } from "../../agent-runtime/llm/runtime-reminders.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { apiKey } from "../../../infra/providers/auth/auth-context.js";
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { canonicalizeIdCatalogRow, extractDataCatalogRows, type CatalogSourceRow } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
+import type { CatalogJsonValue } from "../../../infra/providers/catalog-model-offering.js";
+import { fetchPaginatedCatalog } from "../../../infra/providers/llm/access/model-listing.js";
+import { providerModelInfo } from "../../../infra/providers/llm/catalog/provider-model-info.js";
+import { isRecord } from "../../../infra/guards/record.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { createClaudeReminders } from "../../agent-runtime/llm/history/runtime-reminders.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 
 /** The listing pages by `after_id`, the way the Messages API's model list does. */
 function nextModelsPage(body: unknown, currentUrl: string): string | undefined {
@@ -100,7 +102,7 @@ const createClient: AccessProviderFactory = async (build) => {
   }, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Anthropic API key in the active auth profile. Run: flywheel auth login --anthropic", recovery: { kind: "none" } });
-    const { createAnthropicAdapter } = await import("../../agent-runtime/llm/anthropic.js");
+    const { createAnthropicAdapter } = await import("../../agent-runtime/llm/adapters/anthropic/anthropic.js");
     return createAnthropicAdapter(key, build.wireModelId, info, { candidate: build.candidate, availability: build.availability });
   }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };

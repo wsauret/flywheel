@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { connectProjectExecutionChannel, serveProjectExecutionChannel } from "../../../../src/orchestration/app-service/project-execution-channel.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import { connectProjectExecutionChannel, serveProjectExecutionChannel } from "../../../../src/orchestration/app-service/executor/project-execution-channel.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { deferred, endpointPair, markerEvent, responseFrame, runtimeHarness } from "./project-execution-channel-fixtures.js"
 

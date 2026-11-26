@@ -1,17 +1,15 @@
-import type { ServeLane } from "../../../infra/cli-subprocess.js"
-import { createHash } from "node:crypto"
-import { collapseHome } from "../../../infra/home-path.js"
+import type { ServeLane } from "../../../infra/platform/cli-subprocess.js"
+import { collapseHome } from "../../../infra/platform/files/home-path.js"
 import { basename } from "node:path"
 import { Effect, Exit, Scope } from "effect"
 import { Socket } from "effect/socket"
 
-import { importLegacyRemotePlacements, mutateRemotePairingStore, mutateRemotePushStore, readRemotePairingStore, readRemotePushStore, onRemoteStoresWritten, watchRemotePushStore, type PairedDevice, type RemotePairingStore, type StoredKeyPair } from "./remote-pairing-store.js"
-import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
+import { defaultRelayUrl, importLegacyRemotePlacements, mutateRemotePairingStore, mutateRemotePushStore, readRemotePairingStore, readRemotePushStore, onRemoteStoresWritten, watchRemotePushStore, type PairedDevice, type RemotePairingStore, type StoredKeyPair } from "./remote-pairing-store.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { Log } from "../../../infra/diagnostics/log.js"
 import type { HeartbeatTiming, RelayChannelSocket, RelayChannelStreams } from "../../../protocol/modules/remote/relay-channel.js"
 import { sealedSocket } from "../../../protocol/modules/remote/sealed-socket.js"
 import {
-  DEFAULT_RELAY_URL,
   DEFAULT_REMOTE_APP_ORIGIN,
   fromBase64Url,
   type OpenFrame,
@@ -19,17 +17,17 @@ import {
 } from "../../../protocol/modules/remote/relay-protocol.js"
 import { remoteCursor, remoteProtocol, type RemotePairingWindowView, type RemotePushSubscription, type RuntimeRemoteView } from "../../../protocol/modules/remote.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../protocol/runtime-liveness.js"
-import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
-import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
-import type { AccountProjectRegistry } from "../../app-service/account-project-registry.js"
-import { createMutationAdmission } from "../../app-service/mutation-admission.js"
+import type { RuntimeUiPatchInput } from "../../../protocol/runtime/runtime-ui-protocol-types.js"
+import type { NotificationEpisodeInput } from "../../../infra/substrate/events/notification-episode.js"
+import type { AccountProjectRegistry } from "../../app-service/account/account-project-registry.js"
+import { createMutationAdmission } from "../../app-service/mutations/mutation-admission.js"
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
 import { createRelayControlChannel, linkConnection, linkFailure, type ControlFailure, type RelayLink, type ServedClient } from "./relay-control-channel.js"
 import { dialRelayDataChannel } from "./relay-data-channel.js"
-import type { AccountServiceInstallation } from "../../app-service/account-service-installation.js"
-import type { AccountModuleFaults } from "../../app-service/module-service-host.js"
-import { ensureRemoteIdentity, type RemoteIdentity } from "./remote-identity.js"
-import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./remote-pairing-exchange.js"
+import type { AccountServiceInstallation } from "../../app-service/account/installation/account-service-platform.js"
+import type { AccountModuleFaults } from "../../app-service/account/projects/account-module-services.js"
+import { ensureRemoteIdentity, type RemoteIdentity } from "./pairing/remote-identity.js"
+import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./pairing/remote-pairing-exchange.js"
 
 const log = Log.create({ service: "remote-access" })
 
@@ -96,7 +94,9 @@ export interface RemoteAccess {
   revokeDevice(deviceId: string): Promise<boolean>
   /** Renames a paired device. False when no device has the id. */
   renameDevice(deviceId: string, label: string): Promise<boolean>
-  /** Forgets a project the account service would offer a phone. Returns whether one was recorded. */
+  /** Forgets a project the account service would offer a phone, named by the
+   *  id of its row in `view()`, which is its placement id once the lane has an
+   *  identity. Returns whether one was recorded. */
   forgetProject(placementId: string): Promise<boolean>
   setProcessInitiation(enabled: boolean): Promise<void>
   /** Records or clears a device's Web Push subscription. Returns whether the device is paired. */
@@ -130,23 +130,13 @@ interface LiveChannel {
   readonly deviceId: string
 }
 
-export function placementId(projectRoot: string): string {
-  return createHash("sha256").update(projectRoot).digest("base64url")
-}
-
 export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
   const now = options.now ?? Date.now
   const random = options.random ?? Math.random
   const connect = options.connectWebSocket ?? ((url: string) => new WebSocket(url))
   const appOrigin = options.appOrigin ?? DEFAULT_REMOTE_APP_ORIGIN
   const projectRegistry = options.projectRegistry
-  const placement: Placement = {
-    id: placementId(options.projectRoot),
-    projectLabel: basename(options.projectRoot) || options.projectRoot,
-    version: options.version,
-    protocolVersion: RUNTIME_PROTOCOL_VERSION,
-    state: "live",
-  }
+  const projectLabel = basename(options.projectRoot) || options.projectRoot
 
   // Declared before the relay URL, whose first read records a store it
   // cannot read here.
@@ -184,10 +174,10 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
 
   function readRelayUrl(): string {
     try {
-      return readRemotePairingStore(options.userDataRoot, options.lane).relayUrl ?? DEFAULT_RELAY_URL
+      return readRemotePairingStore(options.userDataRoot, options.lane).relayUrl ?? defaultRelayUrl(options.lane)
     } catch (error) {
       lastError = errorMessage(error)
-      return DEFAULT_RELAY_URL
+      return defaultRelayUrl(options.lane)
     }
   }
 
@@ -200,6 +190,13 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
     return [accountFault, lastError, linkFailure(link)?.error].filter((part) => part != null).join("; ") || null
   }
 
+  /** The id of a project's row in the view. A lane with no identity has
+   *  announced no project and paired no phone, so the row names the project
+   *  by its root, which the row already shows and the relay never sees. */
+  function rowId(projectRoot: string): string {
+    return identity?.placementId(projectRoot) ?? projectRoot
+  }
+
   function view(): RuntimeRemoteView {
     return {
       relayUrl,
@@ -209,7 +206,7 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
       pairing: pairing ? { windowId: pairing.windowId, code: pairing.code, expiresAt: pairing.expiresAt } : null,
       lastError: problem(),
       pushPublicKey: vapid?.publicKey ?? null,
-      projects: projects.map((project) => ({ placementId: placementId(project.projectRoot), projectRoot: project.projectRoot, projectLabel: project.label, lastAttachedAt: project.lastAttachedAt, displayPath: collapseHome(project.projectRoot, options.accountHome), state: project.projectRoot === options.projectRoot ? "open" : "asleep" })),
+      projects: projects.map((project) => ({ placementId: rowId(project.projectRoot), projectRoot: project.projectRoot, projectLabel: project.label, lastAttachedAt: project.lastAttachedAt, displayPath: collapseHome(project.projectRoot, options.accountHome), state: project.projectRoot === options.projectRoot ? "open" : "asleep" })),
       ...(processInitiation === undefined ? {} : { processInitiation }),
       ...(lingerOffFor === undefined ? {} : { lingerOffFor }),
     }
@@ -252,7 +249,11 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
   const channel = createRelayControlChannel({
     relayUrl: () => relayUrl,
     identity: requireIdentity,
-    placement: () => placement,
+    placement: (): Placement => {
+      // The channel resolves the identity before it reads the placement.
+      if (identity === undefined) throw new Error("the placement has no identity yet")
+      return { id: identity.placementId(options.projectRoot), projectLabel, version: options.version, protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" }
+    },
     ...(options.client === undefined ? {} : { client: options.client }),
     devices: () => devices.map((device) => device.id),
     wanted: wantsConnection,
@@ -280,7 +281,7 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
    *  a phone because a runtime for it has been reachable from one. */
   async function recordProject(): Promise<void> {
     try {
-      await projectRegistry.record({ projectRoot: options.projectRoot, label: placement.projectLabel })
+      await projectRegistry.record({ projectRoot: options.projectRoot, label: projectLabel })
       projects = await projectRegistry.list()
       publish()
     } catch (error) {
@@ -334,18 +335,19 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
   async function reloadStore(): Promise<void> {
     try {
       await importLegacyRemotePlacements(options.userDataRoot, options.lane, projectRegistry)
+      // The identity keys every project's placement id, so it loads before the list.
+      if (readRemotePairingStore(options.userDataRoot, options.lane).identity !== undefined) {
+        identity = await ensureRemoteIdentity(options.userDataRoot, options.lane)
+      }
       const listed = await projectRegistry.list()
       const store = readRemotePairingStore(options.userDataRoot, options.lane)
       const before = devices.map((device) => device.id).join(",")
       projects = listed
-      relayUrl = options.relayUrl ?? store.relayUrl ?? DEFAULT_RELAY_URL
+      relayUrl = options.relayUrl ?? store.relayUrl ?? defaultRelayUrl(options.lane)
       noticePairings(store.devices)
       refreshPushState(store)
       if (before !== devices.map((device) => device.id).join(",")) channel.send({ type: "devices", devices: devices.map((device) => device.id) })
       for (const live of channels) if (!devices.some((device) => device.id === live.deviceId)) live.ws.close(1008, "device revoked")
-      if (store.identity !== undefined) {
-        identity = await ensureRemoteIdentity(options.userDataRoot, options.lane)
-      }
     } catch (error) {
       lastError = errorMessage(error)
       log.warn("remote pairing store unreadable", { error: lastError })
@@ -592,7 +594,7 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
       assertActive()
       // Another placement can have recorded the project since this one read the list.
       projects = await projectRegistry.list()
-      const project = projects.find((candidate) => placementId(candidate.projectRoot) === id)
+      const project = projects.find((candidate) => rowId(candidate.projectRoot) === id)
       if (!project) return false
       const before = projects.length
       await projectRegistry.forget(project.projectRoot)
@@ -624,7 +626,7 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
     },
     async notificationAddress() {
       const current = await requireIdentity()
-      return { runtimeId: current.runtimeId, placementId: placement.id, machine: machineName(options.lane), project: placement.projectLabel }
+      return { runtimeId: current.runtimeId, placementId: current.placementId(options.projectRoot), machine: machineName(options.lane), project: projectLabel }
     },
     forgetPushSubscription: (deviceId, subscription) => run(async () => {
       await loadStore()

@@ -4,13 +4,13 @@ import { join } from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from "@modelcontextprotocol/sdk/types.js";
-import { enginePath } from "../../src/infra/claude-engine.js";
-import { osAccount } from "../../src/infra/os-account.js";
+import { enginePath } from "../../src/infra/providers/claude-engine.js";
+import { osAccount } from "../../src/infra/platform/os-account.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../src/infra/process-supervisor.js";
-import { processClaudeEngine } from "../../src/orchestration/modules/mcp/claude-engine.js";
-import { launchClaudeEngineSession } from "../../src/orchestration/modules/mcp/claude-engine-session.js";
+import { processClaudeEngine } from "../../src/orchestration/modules/mcp/claude-engine/claude-engine.js";
+import { launchClaudeEngineSession } from "../../src/orchestration/modules/mcp/claude-engine/claude-engine-session.js";
 import { McpOutcomeUnknownError } from "../../src/orchestration/modules/mcp/errors.js";
-import { createMcpManager } from "../../src/orchestration/modules/mcp/manager.js";
+import { createMcpManager } from "../../src/orchestration/modules/mcp/manager/manager.js";
 import { temporaryDirectories } from "../helpers/directories.js";
 
 // The bundled engine as Flywheel's MCP client, against MCP and OAuth servers on this machine. No credential, no

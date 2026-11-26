@@ -1,17 +1,17 @@
 import { expect, test } from "bun:test";
-import { candidateProviderId, type AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js";
-import { computeUsagePrice } from "../../../../src/infra/llm/llm-helpers.js";
+import { candidateProviderId, type AccessProviderCandidate } from "../../../../src/infra/providers/llm/access/access-provider.js";
+import { computeUsagePrice } from "../../../../src/infra/providers/llm/models/llm-helpers.js";
 import { ANTHROPIC_CACHE_RATES } from "../../../../src/orchestration/agent-runtime/llm/provider-description.js";
-import type { ModelCost } from "../../../../src/infra/llm/models.js";
-import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/llm/usage-entry.js";
-import { AssistantDraftProjector } from "../../../../src/infra/output/assistant-draft-projector.js";
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
-import { createAssistantAttempt, type AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/assistant-turn-attempt.js";
-import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream.js";
-import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import type { ModelCost } from "../../../../src/infra/providers/llm/models/models.js";
+import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/providers/llm/usage/usage-entry.js";
+import { AssistantDraftProjector } from "../../../../src/infra/substrate/output/projector/assistant-draft-projector.js";
+import { OutputProjector } from "../../../../src/infra/substrate/output/projector/output-projector.js";
+import { createAssistantAttempt, type AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-attempt.js";
+import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
+import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import type { ProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js";
 import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js";
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import { chain, fakeAvailability, fakeClient, preparedRequest, subscriptionCandidate } from "./llm/_provider-chain-harness.js";
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 

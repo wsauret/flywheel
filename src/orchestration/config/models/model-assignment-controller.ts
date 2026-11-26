@@ -1,0 +1,244 @@
+import { resolveAuthContext } from "../../../infra/providers/auth/auth-context.js";
+import { installedCredentialProviderIds } from "../../module-contract/module-composition.js";
+import { credentialSlotClassifier } from "../../module-contract/module-catalog.js";
+import type { ModelFamily } from "../../../infra/providers/llm/models/model-family.js";
+import { resolveEnabledProviderModelCatalog } from "./model-assignment-providers.js";
+import type {
+  EffortOptionRow,
+  ModelAssignmentExpected,
+  ModelAssignmentPatch,
+  ModelAssignmentRow,
+  ModelOptionRow,
+  ModelSelectionSlot,
+} from "../../../protocol/auth/model-assignment-protocol-types.js";
+import type { ModelConfigDeps, ModelPickerConfigDeps } from "./model-assignment-types.js";
+import type { FlywheelConfig } from "../schema/schema.js";
+import {
+  listEffortOptionsForSlot,
+  listModelAssignments,
+  listModelOptionsForSlot,
+  resetRoleAssignmentsToDetectedDefaults,
+  normalizeAssignmentPatch,
+  resolveModelAssignment,
+} from "./model-assignments.js";
+import { saveModelAssignment } from "./model-selection.js";
+import { isBriefSlot, roleSlot, slotLabel, type AgentPersonaRoles } from "./role-selection.js";
+import { parentRoleId } from "../roles.js";
+import type { RoleSettingEntry as RoleAssignmentEntry, RoleSettings, RoleAssignments, RoleAssignmentSnapshot } from "../../session/metadata/schemas.js";
+import { ensureSessionRoleSnapshot, captureRoleAssignments, withInheritedRoles } from "./session-role-resolver.js";
+import { briefRoleId, isProfileModelRole, parseBriefRoleId } from "../../../protocol/auth/brief-role-id.js";
+import { Schema } from "effect";
+
+/** Persistent brief seats are retained for compatibility, not editable defaults. */
+class PerBriefDefaultsRetiredError extends Schema.TaggedError<PerBriefDefaultsRetiredError>()(
+  "PerBriefDefaultsRetiredError",
+  { message: Schema.String },
+) {}
+
+/** The store travels inside the session variant so a session-scoped
+ *  controller cannot be constructed without it. */
+type AssignmentScope = { kind: "defaults" } | {
+  kind: "session"; sessionId: string; roleCaptureStore: RoleCaptureStore;
+} | {
+  kind: "workflow-agent"; sessionId: string; roleCaptureStore: RoleCaptureStore;
+  inheritedRoles: RoleAssignmentSnapshot;
+  /** The persona roles of each agent record of the run, which its record seats read. */
+  personas: AgentPersonaRoles;
+};
+
+export interface RoleCaptureStore {
+  read(id: string): Promise<{ readonly kind?: string; roleAssignments?: RoleAssignmentSnapshot } | null>;
+  updateRoleAssignment(id: string, roleId: string, assignment: RoleAssignmentEntry): Promise<boolean>;
+  removeRoleAssignment(id: string, roleId: string): Promise<boolean>;
+  replaceRoleSnapshot(id: string, roles: RoleSettings, overrides?: RoleSettings): Promise<boolean>;
+  captureRolesIfAbsent(id: string, roles: RoleSettings): Promise<boolean>;
+}
+
+export interface ModelAssignmentControllerDeps {
+  /** Account and config injection every assignment read and write derives
+   *  its paths from. */
+  configDeps: ModelPickerConfigDeps & { readonly authProfileId: () => string };
+  scope?: AssignmentScope;
+  afterGlobalConfigWrite?: () => Promise<FlywheelConfig>;
+}
+
+interface SaveEffortResult {
+  label: string;
+}
+
+interface ModelAssignmentController {
+  loadAssignments(slots: readonly ModelSelectionSlot[]): Promise<readonly ModelAssignmentRow[]>;
+  listModelOptions(slot: ModelSelectionSlot): Promise<readonly ModelOptionRow[]>;
+  listEffortOptions(slot: ModelSelectionSlot, model: string | null): Promise<readonly EffortOptionRow[]>;
+  /** A save that writes the profile config refuses an `expected` entry that the file no longer holds. */
+  saveEffort(slot: ModelSelectionSlot, model: string | null, effort: ModelAssignmentPatch["effort"], expected: ModelAssignmentExpected): Promise<SaveEffortResult>;
+  /** Resets roles to their detected defaults and answers for `slots`. A reset of the profile config clears only the
+   *  roles of `slots` that `resets` names, and refuses it when one of them no longer holds its `expected` entry (a
+   *  role that `expected` does not name is expected to hold none). A reset of a session snapshot clears every role
+   *  that `resets` names and compares nothing. A role that `resets` does not name keeps its saved value. */
+  resetDefaults(slots: readonly ModelSelectionSlot[], resets: (roleId: string) => boolean, expected: { readonly [roleId: string]: ModelAssignmentExpected }): Promise<readonly ModelAssignmentRow[]>;
+}
+
+export function createModelAssignmentController(
+  deps: ModelAssignmentControllerDeps,
+): ModelAssignmentController {
+  const scope = deps.scope ?? { kind: "defaults" };
+  if (scope.kind === "defaults") return createDefaultsController(deps);
+  return createSessionController(scope.sessionId, scope.roleCaptureStore, deps, scope.kind === "workflow-agent" ? scope : undefined);
+}
+
+export function loadGlobalDefaultRoles(configDeps: ModelConfigDeps): Promise<RoleAssignments> {
+  return materializeDefaultRoleSnapshot(configDeps);
+}
+
+function createDefaultsController(deps: ModelAssignmentControllerDeps): ModelAssignmentController {
+  const { configDeps } = deps;
+
+  // The defaults hold no run, so the record seat of an agent is its brief
+  // seat.
+  const seatOf = (slot: ModelSelectionSlot) => {
+    const selector = parseBriefRoleId(slot.roleId);
+    return selector?.definitionId === undefined ? slot : roleSlot(briefRoleId(selector.briefId));
+  };
+
+  async function loadAssignments(slots: readonly ModelSelectionSlot[]): Promise<readonly ModelAssignmentRow[]> {
+    const rows = await listModelAssignments({ ...configDeps, slots: slots.map(seatOf) });
+    return rows.map((row, index) => ({ ...row, slot: slots[index] ?? row.slot }));
+  }
+
+  return {
+    loadAssignments,
+    async listModelOptions(slot) {
+      return (await listModelOptionsForSlot(seatOf(slot), configDeps)).map((row) => ({ ...row, slot }));
+    },
+    async listEffortOptions(slot, model) {
+      return (await listEffortOptionsForSlot(seatOf(slot), model, configDeps)).map((row) => ({ ...row, slot }));
+    },
+    async saveEffort(requested, model, effort, expected) {
+      if (requested.roleId.startsWith("brief.")) {
+        throw new PerBriefDefaultsRetiredError({
+          message: "Per-brief defaults are retired. Set the Workflow Agent default, or set this agent's model in its workflow session.",
+        });
+      }
+      const slot = seatOf(requested);
+      await saveModelAssignment(slot, normalizeAssignmentPatch({ model, effort }), expected, configDeps);
+      await deps.afterGlobalConfigWrite?.();
+      return { label: slotLabel(slot) };
+    },
+    async resetDefaults(slots, resets, expected) {
+      await resetRoleAssignmentsToDetectedDefaults(configDeps, slots.filter((slot) => resets(slot.roleId)), expected);
+      const config = await deps.afterGlobalConfigWrite?.() ?? configDeps.config;
+      return listModelAssignments({ ...configDeps, config, slots });
+    },
+  };
+}
+
+function createSessionController(
+  sessionId: string,
+  roleCaptureStore: RoleCaptureStore,
+  deps: ModelAssignmentControllerDeps,
+  run?: Pick<Extract<AssignmentScope, { kind: "workflow-agent" }>, "inheritedRoles" | "personas">,
+): ModelAssignmentController {
+  const { configDeps } = deps;
+  const inheritedRoles = run?.inheritedRoles;
+  // One auth snapshot for this controller's life, resolved on first use: every
+  // list and save below answers from the same credentials, and a credential
+  // helper runs at most once for them.
+  const authDirectory = configDeps.authDirectory();
+  const auth = configDeps.auth
+    ? Promise.resolve(configDeps.auth)
+    : resolveAuthContext({ authDir: authDirectory, resolveKey: configDeps.resolveKey, credentialProviderIds: installedCredentialProviderIds(), credentialSlotClassifier: credentialSlotClassifier(configDeps.moduleSelection()) });
+  const readSnapshot = async (): Promise<RoleAssignmentSnapshot> => {
+    const transient = await ensureSessionRoleSnapshot({
+      manager: roleCaptureStore,
+      sessionId,
+    });
+    const snapshot = (await roleCaptureStore.read(sessionId))?.roleAssignments ?? { defaults: {}, overrides: transient };
+    return inheritedRoles ? withInheritedRoles(inheritedRoles, snapshot) : snapshot;
+  };
+
+  async function snapshotConfigDeps(
+    roleAssignments: RoleAssignmentSnapshot,
+    slots?: readonly ModelSelectionSlot[],
+  ): Promise<ModelPickerConfigDeps> {
+    return {
+      ...configDeps,
+      ...(slots ? { slots } : {}),
+      auth: await auth,
+      sessionRoleAssignments: roleAssignments,
+      ...(run === undefined ? {} : { agentPersonas: run.personas }),
+      persistConfig: false,
+    };
+  }
+
+  async function loadAssignments(slots: readonly ModelSelectionSlot[]): Promise<readonly ModelAssignmentRow[]> {
+    const snapshot = await readSnapshot();
+    return listModelAssignments(await snapshotConfigDeps(snapshot, slots));
+  }
+
+  return {
+    loadAssignments,
+    async listModelOptions(slot) {
+      return listModelOptionsForSlot(slot, await snapshotConfigDeps(await readSnapshot()));
+    },
+    async listEffortOptions(slot, model) {
+      return listEffortOptionsForSlot(slot, model, await snapshotConfigDeps(await readSnapshot()));
+    },
+    async saveEffort(requested, model, effort, expected) {
+      const snapshot = await readSnapshot();
+      if (isProfileModelRole(requested.roleId) && !inheritedRoles) {
+        await saveModelAssignment(requested, normalizeAssignmentPatch({ model, effort }), expected, configDeps);
+        await deps.afterGlobalConfigWrite?.();
+        return { label: slotLabel(requested) };
+      }
+      const slot = requested;
+      if (model === null) {
+        if (inheritedRoles || isBriefSlot(slot) || parentRoleId(slot.roleId)) {
+          await roleCaptureStore.removeRoleAssignment(sessionId, slot.roleId);
+          return { label: slotLabel(slot) };
+        }
+        throw new Error("This role cannot inherit a model assignment");
+      }
+      if (effort == null) throw new Error("Effort is required for session role assignment");
+      // Effort-only change (same model): keep the existing provider request
+      // options; the user configured them for this model, and an effort edit
+      // is not a request to drop them. A model change starts clean.
+      const saved = snapshot.overrides[slot.roleId] ?? snapshot.defaults[slot.roleId];
+      const existing = saved?.model === model ? saved : await resolveModelAssignment(slot, await snapshotConfigDeps(snapshot));
+      const carried = existing?.model === model && existing.providerOptions
+        ? { providerOptions: existing.providerOptions }
+        : {};
+      await roleCaptureStore.updateRoleAssignment(
+        sessionId,
+        slot.roleId,
+        { model, effort, ...carried },
+      );
+      return { label: slotLabel(slot) };
+    },
+    async resetDefaults(slots, resets) {
+      const snapshot = (await roleCaptureStore.read(sessionId))?.roleAssignments;
+      const kept = (roles: RoleSettings = {}): RoleSettings => Object.fromEntries(Object.entries(roles).filter(([roleId]) => !resets(roleId)));
+      await roleCaptureStore.replaceRoleSnapshot(sessionId, kept(snapshot?.defaults), kept(snapshot?.overrides));
+      return loadAssignments(slots);
+    },
+  };
+}
+
+/** A boundary with no published eligibility projection (a one-shot run) lists
+ *  the enabled catalog itself, which reads the profile's credentials; the
+ *  runtime supplies `availableModels` from the eligibility it already holds. */
+async function listEnabledModels(configDeps: ModelConfigDeps): Promise<ReadonlyMap<ModelFamily, ReadonlySet<string>>> {
+  const auth = configDeps.auth ?? await resolveAuthContext({ authDir: configDeps.authDirectory(), resolveKey: configDeps.resolveKey, credentialProviderIds: installedCredentialProviderIds(), credentialSlotClassifier: credentialSlotClassifier(configDeps.moduleSelection()) });
+  return (await resolveEnabledProviderModelCatalog({ ...configDeps, auth })).enabledModels;
+}
+
+async function materializeDefaultRoleSnapshot(configDeps: ModelConfigDeps): Promise<RoleAssignments> {
+  return captureRoleAssignments({
+    userDataRoot: configDeps.userDataRoot,
+    config: configDeps.config,
+    availableModels: configDeps.availableModels ?? await listEnabledModels(configDeps),
+    modelInfos: configDeps.modelInfos,
+    activeProfileId: configDeps.authProfileId?.(),
+    personaRoleIds: configDeps.configValidity?.roleIds,
+  });
+}

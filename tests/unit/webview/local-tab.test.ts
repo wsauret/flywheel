@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import type { ClientSummary } from "../../../src/protocol/client/host-contract.js"
+import type { ClientSummary } from "../../../src/protocol/client/host/host-contract.js"
 import { applyTabIdentity, reloadWhenRestoredFromCache } from "../../../webview/local/tab.js"
 
 const ICON_PREFIX = "data:image/svg+xml;utf8,"

@@ -1,4 +1,4 @@
-import { CHECKPOINT_LIMIT_BYTES } from "../../session/conversation-checkpoint.js";
+import { CHECKPOINT_LIMIT_BYTES } from "../../session/conversation-records/conversation-checkpoint.js";
 
 /** Proactive compaction fires at the configured token count or at this share
  *  of the model's context window, whichever comes first. */

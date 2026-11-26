@@ -1,7 +1,13 @@
 import { describe, expect, it } from "bun:test";
-import type { CampaignRecords, CellLine, GradeLine, RecordJudge, ScoreLine } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import type { CampaignRecords, CellLine, GradeLine, RecordJudge, ScoreLine } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
 import type { BenchmarkMode } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { rankBenchmarkRecords, renderRanking, type RankingCorpus, type RankingInput, type RoleRanking } from "../../../src/orchestration/modules/development/benchmark/ranking.js";
+import { rankBenchmarkRecords, renderRanking, type RankingCorpus, type RankingInput, type RoleRanking } from "../../../src/orchestration/modules/development/benchmark/records/ranking.js";
+import { renderResultsPages, staleResultsPages, writeResultsPages } from "../../../src/orchestration/modules/development/benchmark/persona/results-pages.js";
+import { temporaryDirectories } from "../../helpers/directories.js";
+
+const directory = temporaryDirectories();
 
 type FailureLine = CampaignRecords["failures"][number];
 
@@ -72,7 +78,7 @@ function campaign(persona: string, mode: BenchmarkMode, specs: readonly CellSpec
 
 /** A corpus of tasks given as [id, seeded defects or key facts], each at content `<id>@1`. */
 function corpus(persona: string, mode: BenchmarkMode, tasks: readonly (readonly [string, number | undefined])[]): RankingCorpus {
-  return { persona, mode, outsideSuite: new Set(), tasks: tasks.map(([id, opportunities]) => ({ id, contentIdentity: `${id}@1`, opportunities })) };
+  return { persona, mode, outsideSuite: [], tasks: tasks.map(([id, opportunities]) => ({ id, contentIdentity: `${id}@1`, opportunities })) };
 }
 
 function input(campaigns: readonly CampaignRecords[], corpora: readonly RankingCorpus[], overrides: Partial<RankingInput> = {}): RankingInput {
@@ -175,7 +181,7 @@ describe("benchmark ranking", () => {
   });
 
   it("ranks the implementer on its suite by hidden-test pass rate minus followed false claims, with no pairwise input", () => {
-    const tasks: RankingCorpus = { ...corpus("implementer", "implement", [["x", 0], ["y", 0]]), outsideSuite: new Set(["easy"]) };
+    const tasks: RankingCorpus = { ...corpus("implementer", "implement", [["x", 0], ["y", 0]]), outsideSuite: [{ id: "easy", contentIdentity: "easy@1", opportunities: 0 }] };
     const [role] = rankBenchmarkRecords(input([campaign("implementer", "implement", [
       { setting: "gpt-mid@high", task: "x", passed: 9, total: 10, traps: 2, followed: 1 },
       { setting: "gpt-mid@high", task: "y", passed: 10, total: 10 },
@@ -217,7 +223,7 @@ describe("benchmark ranking", () => {
   });
 
   it("pools an implementer cell under a changed grader only once the current grader regraded it and its prompt still matches", () => {
-    const tasks: RankingCorpus = { persona: "implementer", mode: "implement", outsideSuite: new Set(), tasks: [{ id: "x", contentIdentity: "x@2", opportunities: 0, implementation: { candidateIdentity: "x@candidate", graderIdentity: "grader-2" } }] };
+    const tasks: RankingCorpus = { persona: "implementer", mode: "implement", outsideSuite: [], tasks: [{ id: "x", contentIdentity: "x@2", opportunities: 0, implementation: { candidateIdentity: "x@candidate", graderIdentity: "grader-2" } }] };
     const grade = (variant: string, graderIdentity: string): GradeLine => ({ kind: "grade", graderIdentity, variant, task: "x", repeat: 0, passed: 8, failed: 2, total: 10 });
     const records = campaign("implementer", "implement", [
       { setting: "gpt-mid@high", task: "x", passed: 1, total: 10 },
@@ -289,5 +295,66 @@ describe("benchmark ranking", () => {
     const other = campaign("reviewer-code-quality", "reviewer", qualityCells("gpt-cheap@high", 2, 0, 1, 1000).map((spec) => ({ ...spec, judges: both })), { stamp: "s2", judge: SOL });
     expect(() => rankBenchmarkRecords(input([rejudged, other], [QUALITY]))).toThrow("name one with --judge");
     expect(ranked(rankBenchmarkRecords(input([rejudged, other], [QUALITY], { judge: SOL }))[0]).judge).toEqual(SOL);
+  });
+});
+
+describe("benchmark results pages", () => {
+  const implementer: RankingCorpus = {
+    persona: "implementer", mode: "implement",
+    tasks: [{ id: "x", contentIdentity: "x@2", opportunities: 0, implementation: { candidateIdentity: "x@candidate", graderIdentity: "grader-2" } }],
+    outsideSuite: [{ id: "easy", contentIdentity: "easy@1", opportunities: 0 }],
+  };
+  const grade = (variant: string, repeat: number, graderIdentity: string, passed: number): GradeLine => ({ kind: "grade", graderIdentity, variant, task: "x", repeat, passed, failed: 3 - passed, total: 3 });
+  const records = campaign("implementer", "implement", [
+    { setting: "gpt-mid@high", task: "x", passed: 3, total: 3, taskIdentity: "x@2" },
+    { setting: "gpt-mid@high", task: "x", repeat: 1, passed: 1, total: 3, taskIdentity: "x@2" },
+    { setting: "gpt-mid@high", task: "x", repeat: 2, timedOutMs: 5000, taskIdentity: "x@2" },
+    { setting: "gpt-mid@high", task: "easy", cost: { atLeast: 2 } },
+    { setting: "claude-mid@high", task: "x", passed: 0, total: 3 },
+    { setting: "claude-mid@high", task: "x", repeat: 1, passed: 0, total: 3 },
+    { setting: "gpt-cheap@high", task: "easy" },
+  ], {
+    // Only the current grader's grade pools; an earlier grader's grade still shows, marked.
+    grades: [grade("claude-mid@high", 0, "grader-1", 2), grade("claude-mid@high", 1, "grader-2", 3)],
+    failures: [{ kind: "failure", attemptId: "a1", variant: "gpt-mid@high", task: "easy", repeat: 1, reason: "RESOURCE_EXHAUSTED (code 429):\n  quota" }],
+  });
+
+  it("shows every implementer cell by task and setting, with its current grade, timeouts, totals, gaps, and cells to retry", () => {
+    const page = renderResultsPages(input([records], [implementer])).get("implementer")!;
+    expect(page).toContain("| Task | claude-mid@high | gpt-cheap@high | gpt-mid@high |");
+    expect(page).toContain("| easy | - | P | P |");
+    expect(page).toContain("| x (suite) | F(2/3)* P | - | P F(1/3) T |");
+    // Cells, full passes, timed out, failed attempts, a lower-bound cost, tokens, median latency, providers.
+    expect(page).toContain("| gpt-mid@high | 4 | 2 | 1 | 1 | >= $5.000 (1 cell partly unpriced) | 4 | 10s | p |");
+    expect(page).toContain("| claude-mid@high | 2 | 1 | 0 | 0 | $2.000 | 2 | 10s | p |");
+    expect(page).toContain("- gpt-cheap@high: x");
+    expect(page).toContain("- gpt-mid@high easy #1 (s1), 1 failed attempt: RESOURCE_EXHAUSTED (code 429): quota");
+    expect(page).toContain("### Judged by judge-a:xhigh");
+    expect(page).toContain("| s1 | claude-mid@high, gpt-cheap@high, gpt-mid@high | judge-a:xhigh | 7 | 6 | 2 | 1 | not recorded |");
+  });
+
+  it("shows a reviewer cell's measure under each judge that scored the persona, and ? where a judge has no score", () => {
+    const page = renderResultsPages(input([campaign("reviewer-code-quality", "reviewer", [
+      { setting: "gpt-mid@high", task: "a", caught: 1, judges: [SOL, OPUS] },
+      { setting: "gpt-mid@high", task: "control", severe: 2 },
+    ])], [QUALITY])).get("reviewer-code-quality")!;
+    const [, solMatrix, opusMatrix] = page.split(/### Scored by /);
+    expect(solMatrix).toStartWith("judge-a:xhigh");
+    expect(solMatrix).toContain("| a | 1/2 |");
+    expect(solMatrix).toContain("| control | 0/0+2 |");
+    expect(opusMatrix).toContain("| control | ? |");
+    expect(opusMatrix).toContain("| b | - |");
+  });
+
+  it("writes only missing or changed pages, and the check names each page that differs from its records", async () => {
+    const root = directory("benchmark-results-pages-");
+    const pages = renderResultsPages(input([records], [implementer]));
+    const file = join(root, "implementer.md");
+    expect(await staleResultsPages(root, pages)).toEqual([`${file} is missing`]);
+    expect(await writeResultsPages(root, pages)).toEqual([file]);
+    expect(await staleResultsPages(root, pages)).toEqual([]);
+    expect(await writeResultsPages(root, pages)).toEqual([]);
+    await writeFile(file, "hand-edited\n");
+    expect(await staleResultsPages(root, pages)).toEqual([`${file} is stale`]);
   });
 });

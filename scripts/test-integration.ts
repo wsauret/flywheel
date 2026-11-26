@@ -1,4 +1,4 @@
-/** The integration suite, run inside the validation lane in one of five modes:
+/** The integration suite, run inside the validation lane in one of six modes:
  *
  *  - `no-api`: every file under tests/integration except the providers
  *    directory. It needs no credentials and costs nothing, so it is the gate
@@ -14,6 +14,10 @@
  *    host's release login home, which holds no other credential.
  *  - `antigravity-engine`: the Antigravity CLI's fake-host tier alone, which
  *    `no-api` also runs. Readiness runs it in a Linux container on an agy bump.
+ *  - `antigravity`: the Antigravity CLI's live tier alone, which `api` also
+ *    runs: real requests on a Google Antigravity login of the same profile,
+ *    from included plan use only. Readiness runs it on an agy bump on each
+ *    host's release login home, which needs only that login.
  *  - `all`: `no-api` and `api`, in that order.
  *
  *  The suite is the directory, not a list of files, so a new integration file
@@ -22,15 +26,15 @@
  *  process tree it verifies and must not share a run with siblings that spawn
  *  their own. Every process gets a private TMPDIR and fails on leftovers.
  *
- *  Integration tests outside the providers directory run the real pinned
- *  Antigravity CLI against a fake host, from the checkout's verified copy. So
- *  the modes that run them first prepare that copy for this host. The lane
+ *  The Antigravity CLI's fake-host tier and its live tier run the real pinned
+ *  Antigravity CLI from the checkout's verified copy. So the modes that run
+ *  either first prepare that copy for this host. The lane
  *  admits the run first, because preparation hashes the executable and a
  *  first preparation downloads it. */
 
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { buildPlatformArch } from "../src/infra/native-assets.js";
+import { buildPlatformArch } from "../src/infra/platform/native-assets.js";
 import { prepareAntigravityEngine } from "./antigravity-engine-asset.js";
 import { createTestTempGuard, formatTempLeaks, type TempLeak } from "./test-temp-guard.js";
 import { enterValidationLane } from "./validation-lane.js";
@@ -40,18 +44,20 @@ const coverageDir = process.env.FLYWHEEL_COVERAGE_DIR;
 const API_SUITE = "tests/integration/providers";
 const GUARDIAN = "tests/integration/local/owned-subprocess-guardian.test.ts";
 const ANTIGRAVITY_SUITE = "tests/integration/orchestration/modules/provider-google-antigravity";
+const ANTIGRAVITY_LIVE = `${API_SUITE}/antigravity-subscription-real.test.ts`;
 type Run = readonly [label: string, args: readonly string[]];
 const NO_API_RUNS: readonly Run[] = [
   ["suite", ["tests/integration", `--path-ignore-patterns=${API_SUITE}/**`, `--path-ignore-patterns=${GUARDIAN}`]],
   ["guardian", [GUARDIAN]],
 ];
 const API_RUNS: readonly Run[] = [["api", [API_SUITE]]];
-const ANTIGRAVITY_MODES: ReadonlySet<string> = new Set(["no-api", "antigravity-engine", "all"]);
+const ANTIGRAVITY_MODES: ReadonlySet<string> = new Set(["no-api", "api", "antigravity-engine", "antigravity", "all"]);
 const MODES: ReadonlyMap<string, readonly Run[]> = new Map([
   ["no-api", NO_API_RUNS],
   ["api", API_RUNS],
   ["claude-engine", [["claude-engine", [`${API_SUITE}/claude-sdk-subscription-real.test.ts`]]]],
   ["antigravity-engine", [["antigravity-engine", [ANTIGRAVITY_SUITE]]]],
+  ["antigravity", [["antigravity", [ANTIGRAVITY_LIVE]]]],
   ["all", [...NO_API_RUNS, ...API_RUNS]],
 ]);
 

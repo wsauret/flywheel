@@ -1,6 +1,6 @@
 # Web Client Render Continuity Rules
 
-Each rule gives an incorrect and a correct example and names the tests that guard it. Unqualified test file names are under `webview/src/app/`.
+Each rule gives an incorrect and a correct example and names the tests that guard it. Test file paths without a root are relative to `webview/src/app/`.
 
 ## 1. One element per row, and its tag never changes with state
 
@@ -29,9 +29,9 @@ button:is(.workflow-card-phase, .workflow-card-agent)[aria-disabled="true"] { cu
 button:is(.workflow-card-phase, .workflow-card-agent):not([aria-disabled="true"]):hover { background: var(--fw-list-hover); }
 ```
 
-The same rule applies to a row whose kind is fixed by its key. In `webview/src/app/transcript.tsx` each keyed row computes `run()`, `block()`, and `turn()`, and only one of them is ever defined for that key, so the branch that mounts never flips.
+The same rule applies to a row whose kind is fixed by its key. In `webview/src/app/transcript/transcript.tsx` each keyed row computes `run()`, `block()`, and `turn()`, and only one of them is ever defined for that key, so the branch that mounts never flips.
 
-Guards: "a queued workflow phase retains its row and cells when its agent starts" in `render-continuity.test.ts`, and "the full-size card's phases and agents keep DOM identity across equal replacements" in `stability.test.ts`.
+Guards: "a queued workflow phase retains its row and cells when its agent starts" in `transcript/render-continuity.test.ts`, and "the full-size card's phases and agents keep DOM identity across equal replacements" in `webview/src/test-support/stability.test.ts`.
 
 ## 2. Key lists by stable identity
 
@@ -57,7 +57,7 @@ Correct, after `webview/src/modules/workflows/activity.tsx`:
 </Index>
 ```
 
-Correct, from `webview/src/app/transcript.tsx`. The rows are keyed by `rowIdentity`, not by reference:
+Correct, from `webview/src/app/transcript/transcript.tsx`. The rows are keyed by `rowIdentity`, not by reference:
 
 ```tsx
 <Key each={rows()} by={rowIdentity}>
@@ -65,9 +65,9 @@ Correct, from `webview/src/app/transcript.tsx`. The rows are keyed by `rowIdenti
 </Key>
 ```
 
-A key must also survive paging and recovery. A tool group renders under the key of the block that opened its stretch. `createWebTranscript` in `webview/src/client/tool-runs.ts` keeps that key when older calls arrive or recovery changes coordinates. Its owner lives in the resident `SessionMemory` (`webview/src/client/session-residents.ts`), alongside `createTurnFolds`. Returning to a resident session resumes that presentation. A coordinate revision never starts a new presentation lifetime.
+A key must also survive paging and recovery. A tool group renders under the key of the block that opened its stretch. `createWebTranscript` in `webview/src/client/session/residents/tool-runs.ts` keeps that key when older calls arrive or recovery changes coordinates. Its owner lives in the resident `SessionMemory` (`webview/src/client/session/residents/session-residents.ts`), alongside `createTurnFolds`. Returning to a resident session resumes that presentation. A coordinate revision never starts a new presentation lifetime.
 
-Guards: "workflow summary publications keep their live subscription and label nodes" in `render-continuity.test.ts`, "a growing tool stretch retains its wrapper and preview nodes through completed-call gaps" in `tool-stretch-ownership.test.ts`, "session notices keep DOM identity across equal frame replacements" in `stability.test.ts`, and "a group keeps the key it rendered under as older calls of its stretch arrive" in `webview/src/client/tool-runs.test.ts`.
+Guards: "workflow summary publications keep their live subscription and label nodes" in `transcript/render-continuity.test.ts`, "a growing tool stretch retains its wrapper and preview nodes through completed-call gaps" in `transcript/blocks/tools/tool-stretch-ownership.test.ts`, "session notices keep DOM identity across equal frame replacements" in `webview/src/test-support/stability.test.ts`, and "a group keeps the key it rendered under as older calls of its stretch arrive" in `webview/src/client/session/residents/tool-runs.test.ts`.
 
 ## 3. Know which `Show` patterns remount
 
@@ -120,7 +120,7 @@ createEffect(on(workflowId, id => {
 }))
 ```
 
-The same rule applies to a frame that the client publishes many times a second. `Transcript` in `webview/src/app/transcript.tsx` does not let rows read the frame. It writes each slice into its own signal inside one `batch`, and gives a composite slice an `equals` function. A signal written with an equal value notifies nobody, so a publication reaches only the rows whose input changed:
+The same rule applies to a frame that the client publishes many times a second. `Transcript` in `webview/src/app/transcript/transcript.tsx` does not let rows read the frame. It writes each slice into its own signal inside one `batch`, and gives a composite slice an `equals` function. A signal written with an equal value notifies nobody, so a publication reaches only the rows whose input changed:
 
 ```tsx
 const [shown, setShown] = createSignal<PresentedWindow>({ blocks: [], start: null, hasBefore: false }, {
@@ -133,11 +133,11 @@ const presentFrame = (frame: ClientViewState, window: PresentedWindow) => batch(
 })
 ```
 
-Guard: "workflow summary publications keep their live subscription and label nodes" in `render-continuity.test.ts`. It counts subscriptions and releases across token updates.
+Guard: "workflow summary publications keep their live subscription and label nodes" in `transcript/render-continuity.test.ts`. It counts subscriptions and releases across token updates.
 
 ## 5. Patch rendered Markdown and HTML in place
 
-Streaming Markdown grows on each token. Do not remove the live tail and insert new HTML. Parse the new HTML into a detached `<template>`, then patch the resident nodes with `patchMarkdownChildren` from `webview/src/app/markdown-dom.ts`. The patcher keeps an equal node, sets `nodeValue` on a text node, updates the attributes of an element with the same tag and patches its children, and replaces a node only when its node type or tag changed.
+Streaming Markdown grows on each token. Do not remove the live tail and insert new HTML. Parse the new HTML into a detached `<template>`, then patch the resident nodes with `patchMarkdownChildren` from `webview/src/app/transcript/blocks/text/markdown-dom.ts`. The patcher keeps an equal node, sets `nodeValue` on a text node, updates the attributes of an element with the same tag and patches its children, and replaces a node only when its node type or tag changed.
 
 Incorrect. Each token removes the tail paragraph and inserts a new one:
 
@@ -146,7 +146,7 @@ while (element.childNodes.length > settledNodes) element.lastChild?.remove()
 element.insertAdjacentHTML("beforeend", step.tailHtml)
 ```
 
-Correct, from `webview/src/app/markdown-view.tsx`:
+Correct, from `webview/src/app/transcript/blocks/text/markdown-view.tsx`:
 
 ```ts
 settled.innerHTML = step.settledHtml
@@ -156,7 +156,7 @@ patchMarkdownChildren(element, [...settled.content.childNodes, ...tail.content.c
 settledNodes += settledCount
 ```
 
-Guards: "Markdown retains its parsed nodes across equal publications and live text growth" and "Markdown retains nested elements and text while patching hand-built DOM trees" in `render-continuity.test.ts`.
+Guards: "Markdown retains its parsed nodes across equal publications and live text growth" and "Markdown retains nested elements and text while patching hand-built DOM trees" in `transcript/render-continuity.test.ts`.
 
 ## 6. Reserve layout for content that comes and goes
 
@@ -184,13 +184,13 @@ Correct:
 .row-meta.inline-time { visibility: hidden; font-variant-numeric: tabular-nums; }
 ```
 
-A notice that can repeat keeps one stable row. Session notices are keyed by their runtime scope in `webview/src/app/session-notices.tsx`, so a "Chat startup failed" notice that the runtime publishes again keeps its row instead of being removed and added.
+A notice that can repeat keeps one stable row. Session notices are keyed by their runtime scope in `webview/src/app/sessions/session-notices.tsx`, so a "Chat startup failed" notice that the runtime publishes again keeps its row instead of being removed and added.
 
 ## 7. Keep the reader's row in place when older history is prepended
 
 When the reader scrolls near the top, the transcript asks for an older page. The page inserts rows above the reader. Without a correction, the browser keeps `scrollTop`, and the content under the reader moves down by the height of the page.
 
-`createOlderPageScroll` in `webview/src/app/transcript-scroll.ts` owns this correction:
+`createOlderPageScroll` in `webview/src/app/transcript/transcript-scroll.ts` owns this correction:
 
 1. `load()` records the first row that reaches into the viewport, its top, the row ids, and `scrollTop`, then requests the page.
 2. While the page is pending, `onScroll` replaces the recorded anchor with the row that the reader is on now. A reader who scrolls during the load keeps the new position, not the old one.
@@ -203,7 +203,7 @@ Rules for any scroll owner:
 - Page back only on a reader gesture. A scroll event that the pin to the tail causes must not page history in.
 - A restore of a saved reading place asks for the next older page only after the previous page has rendered (`createReadingRestore`).
 
-Guards: "moves a prepended page above the reader instead of leaving the load trigger active", "holds one paging operation through tail output and restores after a regrouped prepend", and "reads a restore's older pages back only as each page renders" in `reader-expansion-scroll.test.ts`.
+Guards: "moves a prepended page above the reader instead of leaving the load trigger active", "holds one paging operation through tail output and restores after a regrouped prepend", and "reads a restore's older pages back only as each page renders" in `transcript/reader-expansion-scroll.test.ts`.
 
 ## 8. On iOS, hold a prepended page until the scroll is still
 
@@ -227,16 +227,16 @@ const landWhenStill = () => {
 
 Do not use a timer for this wait. A timer guesses how long the scroll lasts; the animation frame check observes it.
 
-Guards: "holds its rows for a still animation frame past the bounce, a finger, and scrolling, while the rows on screen stay live" and "a restore reads the rows on screen, not a page that waits for a still frame" in `transcript-window-ownership.test.ts`.
+Guards: "holds its rows for a still animation frame past the bounce, a finger, and scrolling, while the rows on screen stay live" and "a restore reads the rows on screen, not a page that waits for a still frame" in `transcript/transcript-window-ownership.test.ts`.
 
 ## 9. Remember disclosure state by stable identity
 
-An open fold, tool group, or file must stay open through paging, a replaced window, and a reload. Store the choice of the person by a stable key, and make it absolute: `createBlockDisclosure` in `webview/src/app/block-disclosure.ts` stores `{ open, chosen }`, so a close is a choice too and holds against how a row arrives.
+An open fold, tool group, or file must stay open through paging, a replaced window, and a reload. Store the choice of the person by a stable key, and make it absolute: `createBlockDisclosure` in `webview/src/app/transcript/blocks/block-disclosure.ts` stores `{ open, chosen }`, so a close is a choice too and holds against how a row arrives.
 
 - A cold load or reload can render a tool group under a different key. Recovery of a resident session keeps its existing key. `ToolGroupBlock` finds the saved choice under any key the group answers to, with `disclosure.chosenKey(sessionId, toolGroupKeys(group))`.
-- A one-call stretch keeps its wrapper and header when it settles into the call's ordinary presentation. `createToolPresentation` supplies the same labels, actions, notices, and body as an ordinary tool. The stretch's choice key owns disclosure and file facets before and after settlement. The first call's keyed content owner stays mounted when a second call arrives. Running one-call commands retain Stop or Detach beside the stretch header. An explicitly opened body stays mounted; only the untouched preview disappears. `tool-stretch-ownership.test.ts` checks open, close, growth, command controls, file, and read capabilities.
-- A turn that the reader was already inside when an older page brings its person message arrives as an open fold, so rows the reader has seen do not fold away (`createTurnFolds` in `webview/src/client/turn-folds.ts`).
-- Local choices belong to the session and the stable identity of the thing shown, not to a window read or a component mount. `createQuestionInteractions` in `webview/src/app/question-panel.tsx` keeps question disclosure, picks, and drafts by session and `toolUseId`, so a session switch and return restores them.
+- A one-call stretch keeps its wrapper and header when it settles into the call's ordinary presentation. `createToolPresentation` supplies the same labels, actions, notices, and body as an ordinary tool. The stretch's choice key owns disclosure and file facets before and after settlement. The first call's keyed content owner stays mounted when a second call arrives. Running one-call commands retain Stop or Detach beside the stretch header. An explicitly opened body stays mounted; only the untouched preview disappears. `transcript/blocks/tools/tool-stretch-ownership.test.ts` checks open, close, growth, command controls, file, and read capabilities.
+- A turn that the reader was already inside when an older page brings its person message arrives as an open fold, so rows the reader has seen do not fold away (`createTurnFolds` in `webview/src/client/session/residents/turn-folds.ts`).
+- Local choices belong to the session and the stable identity of the thing shown, not to a window read or a component mount. `createQuestionInteractions` in `webview/src/app/composer/questions/question-panel.tsx` keeps question disclosure, picks, and drafts by session and `toolUseId`, so a session switch and return restores them.
 
 Incorrect. The choice is stored under a key that changes when the window keys the stretch again, and only open choices are kept:
 
@@ -244,25 +244,25 @@ Incorrect. The choice is stored under a key that changes when the window keys th
 const open = () => props.disclosure.state(props.sessionId, props.group.id)().open
 ```
 
-Correct, from `webview/src/app/tool-group.tsx`:
+Correct, from `webview/src/app/transcript/blocks/tools/tool-group.tsx`:
 
 ```ts
 const choiceKey = createMemo(() => props.disclosure.chosenKey(props.sessionId, toolGroupKeys(props.group)) ?? props.group.id)
 const open = () => props.disclosure.state(props.sessionId, choiceKey())().open
 ```
 
-Guards: the tests under "a window that opened inside a turn" and "an opened tool stretch" in `transcript-window-ownership.test.ts`, and "the choices of a session are the rows and files the reader opened or closed there, and restore as they were" in `block-disclosure.test.ts`.
+Guards: the tests under "a window that opened inside a turn" and "an opened tool stretch" in `transcript/transcript-window-ownership.test.ts`, and "the choices of a session are the rows and files the reader opened or closed there, and restore as they were" in `transcript/blocks/block-disclosure.test.ts`.
 
 ## 10. Connection state never decides whether a surface exists
 
 A surface mounts from the identity of the thing it shows, never from connection health or whether a window is current. A reconnect, recovery, or re-read patches the resident surface in place. While the client cannot trust its data, disable the actions that need current data on their existing nodes. Remove the surface only when current data proves that the thing it shows no longer exists.
 
-The question dock in `webview/src/app/composer.tsx` mounts by session and the newest unanswered question's `toolUseId`. A non-current window holds its Answer and Skip actions, not its form. A slash command hides the dock without disposing it. Question rows use the question text, which also keys their answers, and choice rows use their stable option ids. Attention expands the dock only on a new request, with `on(..., { defer: true })`, never from the request already present at mount.
+The question dock in `webview/src/app/composer/composer.tsx` mounts by session and the newest unanswered question's `toolUseId`. A non-current window holds its Answer and Skip actions, not its form. A slash command hides the dock without disposing it. Question rows use the question text, which also keys their answers, and choice rows use their stable option ids. Attention expands the dock only on a new request, with `on(..., { defer: true })`, never from the request already present at mount.
 
-Guard: "the mounted question dock keeps its nodes and local choices through recovery" in `render-continuity.test.ts`, including attention present at mount. It checks the dock and choice-row identity, minimized state, picks, drafts, held actions, slash entry, and return to the session.
+Guard: "the mounted question dock keeps its nodes and local choices through recovery" in `transcript/render-continuity.test.ts`, including attention present at mount. It checks the dock and choice-row identity, minimized state, picks, drafts, held actions, slash entry, and return to the session.
 
 App mounts the rail, its resizer, the phone session screen, and a selected docked workspace from the held project identity and the person's layout choices. Provider expiry and offline or dormant placement reports do not remove those owners. Before the first project snapshot, runtime and loading stages fill the pane, except for waiting messages: a reload or a reopened tab that took over messages its predecessor had not delivered opens their chat at once, and the chat shows them queued instead of the loading screen. Once the project is known, the same stages are advisory content inside the pane. They do not make the resident conversation inert or move its focus. The machine list of a known project shows only with the connection's fault notice, so a presence report alone, such as during a short freeze of the machine, changes nothing on screen. Send admission still checks provider and runtime readiness.
 
 The Composer holds submission on its resident Send button while those stages need a runtime or provider. Click and Enter keep the unsent draft until admission returns. Remote placement labels retain the selected machine and project through missing presence reports, but never cross an explicit selection change. Client-wide notices such as the Home Screen install guide stay visible for a known project through availability changes, so the session list keeps its geometry and reading position.
 
-Guards: `app-readiness.test.ts` checks the real App through provider loss and restoration, phone placement changes with and without a connection fault, cold loading, and a cold load that shows restored waiting messages. `sheets/status-sheet-runtime.test.tsx` keeps one focused Runtime button through every health state. Its callback stays present, while `aria-disabled` and activation use current eligibility.
+Guards: `app-readiness.test.ts` checks the real App through provider loss and restoration, phone placement changes with and without a connection fault, cold loading, and a cold load that shows restored waiting messages. `sheets/workspace/status-sheet-runtime.test.tsx` keeps one focused Runtime button through every health state. Its callback stays present, while `aria-disabled` and activation use current eligibility.

@@ -125,6 +125,42 @@ const patches: Patch[] = [{
   replace: `    await removeDir(this.#tmpPath).catch(() => {
     });`,
   expectedOccurrences: 1,
+}, {
+  // psychoscript keeps every console line of a run in one array and returns it
+  // only with the result, under the output budget it shares with that result.
+  // Code Mode streams each line to the host while the program runs, so the
+  // lines it prints come before the nested calls that follow them, and keeps
+  // its own whole-line retention budget. These three patches add a runtime
+  // option `onLog` that receives each formatted line. The interpreter only
+  // pushes to its log array, and the result reads the array only when its
+  // length is not zero, so a sink of length zero keeps every line out of the
+  // engine's memory and result. The console formatting stays psychoscript's.
+  name: "psychoscript: keep the onLog runtime option",
+  glob: "node_modules/psychoscript/dist/runtime/options.js",
+  find: `    globals: options.globals,
+    modules: options.modules,`,
+  replace: `    globals: options.globals,
+    onLog: options.onLog,
+    modules: options.modules,`,
+  expectedOccurrences: 1,
+}, {
+  name: "psychoscript: send each console line of a run to onLog",
+  glob: "node_modules/psychoscript/dist/runtime/execute.js",
+  find: `        builtins: createBuiltins(),
+        logs: [],`,
+  replace: `        builtins: createBuiltins(),
+        logs: setup.onLog === undefined ? [] : { length: 0, push: setup.onLog },`,
+  expectedOccurrences: 1,
+}, {
+  name: "psychoscript: declare the onLog runtime option",
+  glob: "node_modules/psychoscript/dist/runtime/options.d.ts",
+  find: `    readonly modules?: Readonly<Record<string, string>> | undefined;
+    /** Budgets every run gets; none by default. */`,
+  replace: `    readonly modules?: Readonly<Record<string, string>> | undefined;
+    /** Added by Flywheel's scripts/patch-deps.ts: receives each console line of a run as the program writes it. The run's result then holds no logs. */
+    readonly onLog?: ((line: string) => void) | undefined;
+    /** Budgets every run gets; none by default. */`,
+  expectedOccurrences: 1,
 }];
 
 let exitCode = 0;

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { InvariantViolation } from "../../../../src/infra/invariant";
+import { InvariantViolation } from "../../../../src/infra/guards/invariant";
 import { classifyError, type ErrorType, WorkerFailedError } from "../../../../src/workflows/context-bundle/error-classifier";
 import { HandoffInvalidError, HandoffNotProducedError } from "../../../../src/workflows/context-bundle/handoff-errors";
-import { PersistenceWriteRefused } from "../../../../src/infra/event-store-types.js";
+import { PersistenceWriteRefused } from "../../../../src/infra/substrate/store/event-store-types.js";
 
 describe("classifyError", () => {
   const cases: Array<[string, unknown, ErrorType]> = [

@@ -1,4 +1,4 @@
-import type { UsagePriceResult } from "../../src/infra/llm/llm-helpers.js";
+import type { UsagePriceResult } from "../../src/infra/providers/llm/models/llm-helpers.js";
 
 const provenance = Object.freeze({
   source: "models.dev" as const,

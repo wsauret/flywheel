@@ -11,15 +11,17 @@
 //
 //   bun --conditions=browser bench/chat-ab/score.ts --campaign <dir> [--campaign <dir> ...]
 //     [--auth-profile <id>] [--report-only]
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../../scripts/shipped-modules.js";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { Schema } from "effect";
 import { sum } from "../shared/sum.js";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/evidence.js";
-import { completeJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/judge.js";
-import { createJsonFile, createJsonLinesLedger, readJsonFile, type JsonLinesLedger } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import { completeJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
+import { createJsonFile, createJsonLinesLedger, readJsonFile, type JsonLinesLedger } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { scoreAcceptance } from "./acceptance.js";
 import { mean, tQuantile95 } from "./statistics.js";
 import { TASKS_DIR } from "./harness-paths.js";

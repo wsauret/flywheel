@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   settingDefinitions,
   type ApplicationMode,
-} from "../../../../src/orchestration/config/setting-definitions.js";
+} from "../../../../src/orchestration/config/schema/setting-definitions.js";
 
 const CANONICAL_MODES = new Set<ApplicationMode>([
   "live",
@@ -37,7 +37,7 @@ describe("config application modes", () => {
       .map(({ id }) => id);
 
     expect(omitted).toEqual(["auth", "custom_providers", "mcp"]);
-    expect(settingDefinitions().filter(({ protocolExposure }) => protocolExposure === "ui-safe")).toHaveLength(30);
+    expect(settingDefinitions().filter(({ protocolExposure }) => protocolExposure === "ui-safe")).toHaveLength(31);
     expect(settingDefinitions().find(({ id }) => id === "writeSyntaxTheme")).toMatchObject({
       applications: [{ mode: "live", path: [] }],
       protocolExposure: "ui-safe",

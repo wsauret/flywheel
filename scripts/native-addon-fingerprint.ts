@@ -4,7 +4,7 @@ import { readFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 
 import { sha256File } from "../src/infra/update/file-digest.js";
-import { isRecord } from "../src/infra/record.js";
+import { isRecord } from "../src/infra/guards/record.js";
 
 const FINGERPRINT_VERSION = 1;
 const SHA256 = /^[a-f0-9]{64}$/u;

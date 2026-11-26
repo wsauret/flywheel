@@ -18,7 +18,7 @@ export type TerminalBackgroundWriter = Pick<NativeSession, "write" | "idle">
  *
  * Under compatible rendering (Terminal.app, or the setting forced on) base
  * surfaces render without an explicit background so box glyphs native-draw
- * connected (see utils/terminal-capabilities.ts), and OSC 11 makes the
+ * connected (see context/theme/terminal-capabilities.ts, baseSurfacesUseDefaultBackground), and OSC 11 makes the
  * terminal's default background the theme background: the frame keeps theme
  * colors and follows theme switches while borders stay connected. In
  * explicit mode the theme background is painted per cell and the terminal's

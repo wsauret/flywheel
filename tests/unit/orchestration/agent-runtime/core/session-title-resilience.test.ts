@@ -6,15 +6,12 @@
  */
 
 import { describe, it, expect } from "bun:test"
-import type { DebugLogRecordInput } from "../../../../../src/infra/debug-log.js"
-import { Log } from "../../../../../src/infra/log.js"
+import type { DebugLogRecordInput } from "../../../../../src/infra/diagnostics/debug-log.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
 import type { AgentRunResult, Agent, AgentFactory, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { newTestRunner } from "../../../../helpers/agent-runner.js"
-import {
-  generateSessionTitle,
-  SESSION_TITLE_PURPOSE,
-  type SessionTitles,
-} from "../../../../../src/orchestration/session/session-title.js"
+import type { SessionTitles } from "../../../../../src/orchestration/session/metadata/session-title.js"
+import { generateSessionTitle, SESSION_TITLE_PURPOSE } from "../../../../../src/orchestration/agent-runtime/session-title-generation.js"
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { makeCaptureClient } from "../context/_loop-fixtures.js"
 import { testAuth as auth, titleRoots } from "../../../../fixtures/session-title-fixtures.js"

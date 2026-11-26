@@ -1,6 +1,6 @@
 import { createContext, useContext } from "solid-js"
-import type { RuntimeClient } from "../../protocol/app-service-types.js"
-import type { SessionDetailCache } from "../hooks/create-session-surface.js"
+import type { RuntimeClient } from "../../protocol/runtime/app-service-types.js"
+import type { SessionDetailCache } from "../adapters/session-detail-cache.js"
 
 /** Cards share the viewer's held session details and the shell's dispatch. */
 export interface SubagentControls {

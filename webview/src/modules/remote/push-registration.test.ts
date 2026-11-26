@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, expect, spyOn, test } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import { fakeClient, fakeClientHost, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
-import type { SessionSummary } from "../../client/view-state.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
+import type { SessionSummary } from "../../client/session/view-state.js"
 import type { HostCapabilities, RemoteHostSnapshot } from "../../host.js"
-import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent } from "../../../../src/protocol/runtime/app-service-types.js"
 import { EMPTY_REMOTE_VIEW } from "../../../../src/protocol/modules/remote.js"
 import { createPushRegistration } from "./push-registration.js"
 import { mountPerPlacement } from "../../../phone/placement-client.js"
@@ -160,6 +160,26 @@ test("the move button stays live through either first-snapshot order and the fir
       expect(h.state().kind).toBe("on")
     } finally { h.dispose() }
   }
+})
+
+test("Later given on a mount whose project's earlier id was replaced in place is kept under the current id", async () => {
+  const key = (placementId: string) => `flywheel.push-guide.dismissed:${JSON.stringify(["ours", placementId])}`
+  const guide = mount("denied", { waiting: ["chat"], openedAt: 900 })
+  try {
+    await settle()
+    clock.mockReturnValue(2000)
+    guide.dismiss()
+    // The phone host moved the dismissal as it replaced the id.
+    localStorage.setItem(key("keyed"), localStorage.getItem(key("project"))!)
+    localStorage.removeItem(key("project"))
+    guide.choose("keyed")
+    await settle()
+    expect(guide.dismissed()).toBe(true)
+    clock.mockReturnValue(3000)
+    guide.dismiss()
+    expect(localStorage.getItem(key("keyed"))).toBe("3000")
+    expect(localStorage.getItem(key("project"))).toBeNull()
+  } finally { guide.dispose() }
 })
 
 test("Later survives remounts and a selection published before the placement remount", async () => {

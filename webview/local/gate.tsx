@@ -1,6 +1,6 @@
 import { render } from "solid-js/web"
 
-import { BrandTile } from "../src/app/icons.js"
+import { BrandTile } from "../src/app/controls/icons.js"
 
 /** Why this page cannot reach the project: it holds no token, or the one it
  *  holds no longer opens the runtime at this origin. */

@@ -1,6 +1,5 @@
-import type { ToolDescription } from "../../../infra/code-mode/tool-runtime.js";
-import { ToolRuntime } from "../../../infra/code-mode/tool-runtime.js";
-import { catalogOnlyCall, toolTrie, type CodeModeToolSet } from "./descriptors.js";
+import type { CodeModeToolSet } from "./descriptors.js";
+import { prepareToolCatalog, searchSignature, type ToolDescription } from "./script/tool-catalog.js";
 
 const DESCRIPTION_LIMIT = 120;
 
@@ -22,10 +21,10 @@ Search with specific keywords. To browse a namespace, omit \`query\`; use \`next
 
 \`searchCatalog\` is a global function. Never call it through \`tools\`.
 
-- ${ToolRuntime.searchSignature}`;
+- ${searchSignature}`;
 
 function renderCatalog({ descriptors }: CodeModeToolSet, declared: Iterable<string>): string {
-  const { catalog } = ToolRuntime.prepare(toolTrie(descriptors, catalogOnlyCall));
+  const catalog = prepareToolCatalog(descriptors).tools;
   const namespaces = [...new Set([
     ...declared,
     ...catalog.flatMap((item) => item.path.includes(".") ? [item.path.slice(0, item.path.indexOf("."))] : []),

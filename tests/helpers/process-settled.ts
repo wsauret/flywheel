@@ -1,4 +1,4 @@
-import type { BackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkRegistry } from "../../src/orchestration/session/control/background-work/background-work.js";
 
 /** Resolves once the registry records how session process `id` ended: true
  *  for a settled record, false when the registry holds no record of the

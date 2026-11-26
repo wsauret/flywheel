@@ -1,19 +1,18 @@
 /** @jsxImportSource @opentui/solid */
 import { createMemo, onCleanup, Show, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import type { MutationDiff } from "../../infra/mutation-diff.js"
-import type { DiffColorMode } from "../../orchestration/config/schema.js"
-import type { SessionChangeFile } from "../../protocol/session-changes-protocol-types.js"
-import type { SessionChangesView } from "../hooks/create-session-changes.js"
-import type { SessionChangesModalHook } from "../hooks/use-session-changes-modal.js"
-import { useModalDimensions } from "../hooks/use-modal-dimensions.js"
+import type { MutationDiff } from "../../infra/substrate/file-mutations/mutation-diff.js"
+import type { DiffColorMode } from "../../orchestration/config/schema/schema.js"
+import type { SessionChangeFile } from "../../protocol/session/session-changes-protocol-types.js"
+import type { SessionChangesModalControls, SessionChangesView } from "./session-changes-modal-types.js"
+import { useModalDimensions } from "../components/modal/use-modal-dimensions.js"
 import { useTheme } from "../context/theme.js"
-import { Button } from "../components/button.js"
-import { ModalFrame } from "../components/modal-frame.js"
-import { DiffPreview, parseDiffs } from "../output-blocks/diff-preview.js"
-import { BOLD } from "../utils/text-attributes.js"
-import { sessionChangeDiffStatusLine, sessionChangeFolderLabel, sessionChangePathLabel, sessionChangesLabel, sessionChangeWritersLabel, undoResultLine, type SessionChangesRow } from "../../protocol/client/session-changes-copy.js"
-import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
+import { Button } from "../components/controls/button.js"
+import { ModalFrame } from "../components/modal/modal-frame.js"
+import { DiffPreview, parseDiffs } from "../transcript/output-blocks/tools/diff-preview.js"
+import { BOLD } from "../terminal/text-attributes.js"
+import { sessionChangeFileView, sessionChangeFolderLabel, sessionChangesLabel, type SessionChangesRow } from "../../protocol/client/session/changes/session-changes-copy.js"
+import { KERNEL_COMMAND_NAMES } from "../../protocol/commands/command-names.js"
 
 const DIFF_ACTION = { added: "add", modified: "update", removed: "delete" } as const
 
@@ -30,7 +29,7 @@ function NetDiff(props: { diff: MutationDiff; complete: boolean; expanded: boole
 
 export function SessionChangesModal(props: {
   view: SessionChangesView | undefined
-  controls: SessionChangesModalHook
+  controls: SessionChangesModalControls
   projectRoot: string
   diffColors: Accessor<DiffColorMode>
 }) {
@@ -58,24 +57,16 @@ export function SessionChangesModal(props: {
     </box>
   }
 
-  const FileSection = (file: Accessor<SessionChangeFile>, index: Accessor<number>) => {
+  const FileSection = (view: Accessor<SessionChangesView>, file: Accessor<SessionChangeFile>, index: Accessor<number>) => {
     const fileId = () => file().fileId
-    const currentFile = () => listData()?.files.find(candidate => candidate.fileId === fileId()) ?? file()
-    const label = () => sessionChangePathLabel(currentFile().path, props.projectRoot)
+    const review = createMemo(() => sessionChangeFileView(view().controller, view().snapshot(), file(), props.projectRoot))
+    const currentFile = () => review().file
+    const label = () => review().label
     const selected = () => controls().cursor() === index()
-    const diff = () => state()?.diffs.get(fileId())
-    const readyDiff = () => { const current = diff(); return current?.status === "ready" ? current.diff : undefined }
-    const complete = () => { const current = diff(); return current?.status === "ready" && current.complete }
-    const undo = () => { const current = state()?.undo; return current?.fileId === fileId() ? current : undefined }
-    const undoResult = () => { const current = undo(); return current?.status === "result" ? current.result : undefined }
-    const canUndo = () => props.view?.controller.canUndo(fileId()) ?? false
-    const canConfirmUndo = () => { state(); return props.view?.controller.canConfirmUndo() ?? false }
-    const undoUnavailableReason = () => { state(); return props.view?.controller.undoUnavailableReason(fileId()) }
-    const viewedMutation = () => { const current = state()?.viewed; return current?.fileId === fileId() ? current : undefined }
-    const viewedMessage = () => {
-      const current = viewedMutation()
-      if (current?.status === "refused") return `Viewed refused: ${current.error}`
-      if (current?.status === "unknown") return "Viewed outcome unknown; refreshing"
+    const undo = () => review().undo
+    const undoTone = () => {
+      const current = undo()
+      return current?.status === "submitting" ? theme.textMuted : current?.status === "result" && current.result.status === "completed" ? theme.success : theme.warning
     }
     const viewed = () => currentFile().review.status === "viewed"
     return <box ref={element => onCleanup(controls().registerSection(fileId(), element))} flexDirection="column" marginTop={index() > 0 ? 1 : 0} paddingLeft={currentFile().folder ? 2 : 0}>
@@ -83,29 +74,27 @@ export function SessionChangesModal(props: {
         backgroundColor={theme.backgroundRaised} onMouseDown={() => controls().setCursor(index())}>
         <text fg={selected() ? theme.primary : theme.text} attributes={BOLD}>{`${selected() ? "> " : "  "}${label()}`}</text>
         <text fg={badgeColor(currentFile().change)}>{currentFile().change}</text>
-        <Show when={sessionChangeWritersLabel(currentFile())}>{writers => <text fg={theme.agentName} flexShrink={1} wrapMode="none" overflow="hidden">{writers()}</text>}</Show>
+        <Show when={review().writers}>{writers => <text fg={theme.agentName} flexShrink={1} wrapMode="none" overflow="hidden">{writers()}</text>}</Show>
         <box flexGrow={1} />
-        <Button label={currentFile().review.status === "unknown" ? "[-] Review unknown" : `${viewed() ? "[x]" : "[ ]"} Viewed`} hotkey="v" disabled={!props.view?.controller.canSetViewed(fileId())} onPress={() => controls().toggleViewed(currentFile())} />
-        <Button label="Undo" hotkey="u" disabled={!canUndo()} onPress={() => controls().requestUndo(fileId())} />
-        <Show when={!canUndo() && undoUnavailableReason()}>{reason => <text fg={theme.textMuted}>{reason()}</text>}</Show>
+        <Button label={currentFile().review.status === "unknown" ? "[-] Review unknown" : `${viewed() ? "[x]" : "[ ]"} Viewed`} hotkey="v" disabled={!review().canSetViewed} onPress={() => controls().toggleViewed(currentFile())} />
+        <Button label="Undo" hotkey="u" disabled={!review().canUndo} onPress={() => controls().requestUndo(fileId())} />
+        <Show when={!review().canUndo && review().undoUnavailableReason}>{reason => <text fg={theme.textMuted}>{reason()}</text>}</Show>
       </box>
-      <Show when={viewedMessage()}>{message => <text fg={theme.warning}>{`  ${message()}`}</text>}</Show>
+      <Show when={review().viewedMessage}>{message => <text fg={theme.warning}>{`  ${message()}`}</text>}</Show>
       <Show when={undo()}>{current => <box flexDirection="column" paddingLeft={2}>
         <Show when={current().status === "confirming"}>
           <text fg={theme.warning} attributes={BOLD}>{`Undo all changes to ${label()}?`}</text>
           <box flexDirection="row" gap={1}>
-            <Button label="Confirm" hotkey="y" disabled={!canConfirmUndo()} onPress={() => controls().confirmUndo()} />
+            <Button label="Confirm" hotkey="y" disabled={!review().canConfirmUndo} onPress={() => controls().confirmUndo()} />
             <Button label="Cancel" hotkey="Esc" muted onPress={() => controls().cancelUndo()} />
           </box>
-          <Show when={!canConfirmUndo()}><text fg={theme.textMuted}>{undoUnavailableReason()}</text></Show>
+          <Show when={!review().canConfirmUndo}><text fg={theme.textMuted}>{review().undoUnavailableReason}</text></Show>
         </Show>
-        <Show when={current().status === "submitting"}><text fg={theme.textMuted}>Undoing...</text></Show>
-        <Show when={undoResult()}>{result => <text fg={result().status === "completed" ? theme.success : theme.warning}>{undoResultLine(result())}</text>}</Show>
-        <Show when={current().status === "unknown"}><text fg={theme.warning}>Undo outcome unknown; refreshing</text></Show>
+        <Show when={review().undoLine}>{line => <text fg={undoTone()}>{line()}</text>}</Show>
       </box>}</Show>
       <Show when={!viewed()}>
-      <Show when={readyDiff()} fallback={<text fg={theme.textMuted}>{`  ${sessionChangeDiffStatusLine(diff())}`}</text>}>
-        {ready => <NetDiff diff={ready()} complete={complete()} expanded={controls().isExpanded(fileId())} onToggle={() => controls().toggleExpanded(fileId())} diffColors={props.diffColors} />}
+      <Show when={review().diff} fallback={<text fg={theme.textMuted}>{`  ${review().statusLine}`}</text>}>
+        {ready => <NetDiff diff={ready().diff} complete={ready().complete} expanded={controls().isExpanded(fileId())} onToggle={() => controls().toggleExpanded(fileId())} diffColors={props.diffColors} />}
       </Show>
       </Show>
     </box>
@@ -118,11 +107,11 @@ export function SessionChangesModal(props: {
     <scrollbox ref={target => controls().attachScroll(target)} height={listMaxHeight()} width="100%">
       <Show when={list()?.status === "loading" && !listData() && summaryError() === undefined}><text fg={theme.textMuted}>Loading...</text></Show>
       <Show when={listData()?.files.length === 0}><text fg={theme.textMuted}>No files changed in this session.</text></Show>
-      <Key each={controls().rows()} by={row => row.key}>{(row, index) => {
+      <Show when={props.view}>{view => <Key each={controls().rows()} by={row => row.key}>{(row, index) => {
         const current = row()
         // A row's key fixes its kind, so each accessor keeps the latest row of the kind it mounted.
-        return current.kind === "folder" ? FolderSection(() => { const latest = row(); return latest.kind === "folder" ? latest : current }, index) : FileSection(() => { const latest = row(); return latest.kind === "file" ? latest.file : current.file }, index)
-      }}</Key>
+        return current.kind === "folder" ? FolderSection(() => { const latest = row(); return latest.kind === "folder" ? latest : current }, index) : FileSection(view, () => { const latest = row(); return latest.kind === "file" ? latest.file : current.file }, index)
+      }}</Key>}</Show>
     </scrollbox>
     <text fg={theme.textMuted}>Up/Down file | Enter expand | v Viewed | u Undo | PgUp/PgDn scroll | Esc close</text>
   </ModalFrame>

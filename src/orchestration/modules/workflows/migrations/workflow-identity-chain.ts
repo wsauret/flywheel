@@ -2,13 +2,13 @@
 
 import { Database } from "bun:sqlite"
 import { Schema } from "effect"
-import { DebugLog } from "../../../../infra/debug-log.js"
-import { isRecord } from "../../../../infra/record.js"
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js"
+import { isRecord } from "../../../../infra/guards/record.js"
 import {
   DefinitionIdentitySchema,
   type DefinitionIdentity,
   type DefinitionIdentityMigrationId,
-} from "../../../../workflows/vm/definition-identity.js"
+} from "../../../../workflows/control-facts/definition-identity.js"
 
 interface UnknownRecord {
   [key: string]: unknown

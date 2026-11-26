@@ -1,11 +1,11 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
-import type { FrontendMutation, RuntimeHealth, RuntimeQuery } from "../../../../src/protocol/app-service-types.js"
-import type { BugReportResult } from "../../../../src/protocol/modules/bug-reports.js"
+import type { FrontendMutation, RuntimeHealth, RuntimeQuery } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { BugReportConsentResult, BugReportResult } from "../../../../src/protocol/modules/bug-reports.js"
 import { ClientContext } from "../../app/client-context.js"
 import { fakeClient, fakeClientHost, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"
-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
-import { RuntimeFaultNotice } from "../../app/composer-status.js"
-import { createElement, insert, nodes, textContent } from "../../app/render-ownership-host-fixture.js"
+import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
+import { RuntimeFaultNotice } from "../../app/toolbar/composer-status.js"
+import { createElement, insert, nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 import { bugReportsWeb } from "./index.js"
 import { BugReportSheet, ViewErrorReport } from "./surfaces.js"
 
@@ -13,9 +13,15 @@ import { BugReportSheet, ViewErrorReport } from "./surfaces.js"
 export function mountReports(options: {
   readonly kind: "crash" | "manual" | "runtime"
   readonly response?: Promise<BugReportResult>
+  /** The answer to a submit after the person answered the crash screen's question. */
+  readonly afterConsent?: BugReportResult
   readonly error?: Error
   readonly surface?: "web" | "phone" | "editor"
   readonly faultReport?: string
+  /** The answer to the crash screen's question; the person's own answer by default. */
+  readonly consent?: () => Promise<BugReportConsentResult> | BugReportConsentResult
+  /** Whether the page has a project connection; a phone's machine picker has none. */
+  readonly connected?: boolean
 }) {
   return createRoot(dispose => {
     const root = createElement("root")
@@ -30,13 +36,16 @@ export function mountReports(options: {
     const idle = fakeViewState()
     const client = fakeClient({
       signal: lifetime.signal,
-      state: () => ({ ...idle, health: health(), sessionId: sessionId(), runtimeVersion: "1.2.3", runtimeBuildId: "runtime-build", settings: fakePanelSettings({ moduleIds: enabled() ? ["bug-reports"] : [] }) }),
+      state: () => ({ ...idle, ...(options.connected === false ? {} : { projectRoot: "/project" }), health: health(), sessionId: sessionId(), runtimeVersion: "1.2.3", runtimeBuildId: "runtime-build", settings: fakePanelSettings({ moduleIds: enabled() ? ["bug-reports"] : [] }) }),
       host: fakeClientHost({ surface: options.surface ?? "web", clientIdentity: "client-build", capabilities: { writeClipboardText: async (text) => { copied.push(text) } } }),
       connection: fakeRuntimeConnection({
         onQuery: (query) => { queries.push(query) },
         onDispatch: (mutation) => { mutations.push(mutation) },
         queries: { "bugReport.failed": () => options.faultReport ?? null },
-        mutations: { "bugReport.submit": () => options.response ?? { ok: true, reportId: "FW-example" } },
+        mutations: {
+          "bugReport.submit": () => mutations.some(mutation => mutation.type === "bugReport.consent") && options.afterConsent !== undefined ? options.afterConsent : options.response ?? { ok: true, reportId: "FW-example" },
+          "bugReport.consent": (mutation) => options.consent?.() ?? { ok: true, automatic: mutation.allow },
+        },
       }),
       report: (_severity, text) => { notices.push(text) },
     })
@@ -55,7 +64,7 @@ export function mountReports(options: {
       return node
     }
     return {
-      mutations, queries, copied, notices, setHealth, setSessionId,
+      mutations, queries, copied, notices, setHealth, setSessionId, root,
       text: () => textContent(root),
       button,
       click(label: string) {

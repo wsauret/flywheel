@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { describeProvider, requireModelMetadata } from "../../../../../src/orchestration/agent-runtime/llm/provider-description.js";
 import { modelInfo } from "../../../../helpers/model-tier-fixtures.js";
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
+import { providerModelInfo } from "../../../../../src/infra/providers/llm/catalog/provider-model-info.js";
 
 describe("provider description", () => {
   it("uses selected offering metadata without a generic model lookup", async () => {

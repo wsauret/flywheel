@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { composeModuleServices } from "../../../../../src/infra/module-service.js"
+import { composeModuleServices } from "../../../../../src/infra/definitions/modules/module-service.js"
 import { composeAccountModuleProtocolRuntimes, type AccountModuleProtocolServices } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
 import { remoteModule } from "../../../../../src/orchestration/modules/remote/module.js"
 import type { RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"

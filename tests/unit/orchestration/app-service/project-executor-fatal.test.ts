@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, jest, spyOn, test } from "bun:test"
 
-import * as crashPolicy from "../../../../src/infra/crash-policy.js"
-import * as internalProcessChannel from "../../../../src/infra/internal-process-channel.js"
-import { Log } from "../../../../src/infra/log.js"
-import * as processMemory from "../../../../src/infra/process-memory.js"
-import * as processPriority from "../../../../src/infra/process-priority.js"
-import * as processWatchdog from "../../../../src/infra/process-watchdog.js"
-import * as executorStopSignals from "../../../../src/orchestration/app-service/executor-stop-signals.js"
-import * as executionComposition from "../../../../src/orchestration/app-service/project-execution-composition.js"
-import type { RuntimeComposition } from "../../../../src/orchestration/app-service/project-execution-runtime.js"
-import type { ProjectExecutorCommand } from "../../../../src/orchestration/app-service/project-executor-protocol.js"
-import { runProjectExecutorMain } from "../../../../src/orchestration/app-service/project-executor-main.js"
+import * as crashPolicy from "../../../../src/infra/process/crash-policy.js"
+import * as internalProcessChannel from "../../../../src/infra/process/channels/internal-process-channel.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
+import * as processMemory from "../../../../src/infra/process/kernel/process-memory.js"
+import * as processPriority from "../../../../src/infra/process/container/process-priority.js"
+import * as processWatchdog from "../../../../src/infra/supervision/process-watchdog.js"
+import * as executorStopSignals from "../../../../src/orchestration/app-service/executor/executor-stop-signals.js"
+import * as executionComposition from "../../../../src/orchestration/app-service/executor/execution/project-execution-composition.js"
+import type { RuntimeComposition } from "../../../../src/orchestration/app-service/executor/execution/project-execution-runtime.js"
+import type { ProjectExecutorCommand } from "../../../../src/orchestration/app-service/executor/project-executor-protocol.js"
+import { runProjectExecutorMain } from "../../../../src/orchestration/app-service/executor/execution/project-executor-main.js"
 
 const ENDPOINT_KINDS = ["control", "state", "output", "lifecycle"] as const
 const CREDENTIAL = Buffer.alloc(32, 7).toString("base64url")

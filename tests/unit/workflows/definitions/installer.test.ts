@@ -4,11 +4,11 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, spyOn, test } from "bun:test"
 
-import { Log } from "../../../../src/infra/log.js"
+import { Log } from "../../../../src/infra/diagnostics/log.js"
 import type { BundledDefaultCatalog } from "../../../../src/workflows/definitions/bundled-defaults.js"
 import { installBundledDefaults } from "../../../../src/workflows/definitions/installer.js"
-import { configurationReferenceFile } from "../../../../src/infra/paths.js"
-import { workflowAssets } from "../../../../src/workflows/agents/manifest.js"
+import { configurationReferenceFile } from "../../../../src/infra/platform/files/paths.js"
+import { workflowAssets } from "../../../../src/workflows/provenance/asset-manifest.js"
 import { existsSync } from "node:fs"
 
 const hash = (content: string): string => createHash("sha256").update(content).digest("hex")

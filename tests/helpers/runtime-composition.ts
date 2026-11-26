@@ -1,5 +1,5 @@
-import { createRuntimeChatKernel } from "../../src/orchestration/app-service/runtime-chat-kernel.js"
-import { assembleProjectRuntime, type RuntimeCompositionOptions } from "../../src/orchestration/app-service/project-execution-runtime.js"
+import { createRuntimeChatKernel } from "../../src/orchestration/app-service/supervisor/runtime-chat-kernel.js"
+import { assembleProjectRuntime, type RuntimeCompositionOptions } from "../../src/orchestration/app-service/executor/execution/project-execution-runtime.js"
 
 /** Builds the in-process runtime used by integration tests: the production
  * composition over an in-process kernel instead of the state Worker. */

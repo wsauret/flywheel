@@ -8,19 +8,19 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
-import { installModuleCatalog } from "../../src/orchestration/module-catalog.js";
-import type { UsageAuthorityGeneration } from "../../src/orchestration/agent-runtime/usage-settlement.js";
+import { installModuleCatalog } from "../../src/orchestration/module-contract/module-catalog.js";
+import type { UsageAuthorityGeneration } from "../../src/orchestration/session/history/usage-settlement.js";
 import { createBenchmarkCatalog } from "../../src/orchestration/modules/development/benchmark/catalog.js";
 import type {
   BenchmarkEvent,
   BenchmarkOptions,
-} from "../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
+} from "../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
 import { parseVariant, type VariantSpec } from "../../src/orchestration/modules/development/benchmark/variant.js";
 import type { OwnedBenchmarkRuntime } from "../shared/runtime.js";
-import { readJsonFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
-import { realDirectoryUnder } from "../../src/orchestration/modules/development/benchmark/paths.js";
-import { createPersonaStore } from "../../src/orchestration/modules/development/benchmark/persona-store.js";
-import { runningSourceIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { readJsonFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
+import { realDirectoryUnder } from "../../src/orchestration/modules/development/benchmark/campaign/paths.js";
+import { createPersonaStore } from "../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
+import { runningSourceIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -180,8 +180,8 @@ export async function main(
     { admitBenchmark, benchmarkPreflightReport, benchmarkModelSeats, personaCampaignJudge },
     { loadBenchmarkPersona, planPersonaBenchmark, runPersonaBenchmark },
   ] = await Promise.all([
-    import("../../src/orchestration/modules/development/benchmark/admission.js"),
-    import("../../src/orchestration/modules/development/benchmark/persona-benchmark.js"),
+    import("../../src/orchestration/modules/development/benchmark/persona/admission.js"),
+    import("../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js"),
   ]);
   const catalog = createBenchmarkCatalog(projectRoot, {
     ...(args.personaDir ? { personaOverlayDir: args.personaDir } : {}),
@@ -200,13 +200,14 @@ export async function main(
     const [{ createLauncherScope, createProcessSupervisor, guardianCommand }, { ownedCommandRunner }, { regradeRecords }] = await Promise.all([
       import("../../src/infra/process-supervisor.js"),
       import("../../src/infra/owned-command.js"),
-      import("../../src/orchestration/modules/development/benchmark/regrade.js"),
+      import("../../src/orchestration/modules/development/benchmark/records/regrade.js"),
     ]);
     const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
     const scope = createLauncherScope(supervisor);
     try {
       const { graded, current, skipped } = await regradeRecords(catalog, ownedCommandRunner(scope));
       console.log(`Regraded ${graded} implementer cells; ${current} already had the current grade; ${skipped} skipped (task removed, or changed what the candidate answered).`);
+      if (graded > 0) await publishPages(catalog);
     } finally {
       await scope.close();
       await supervisor.dispose();
@@ -236,11 +237,14 @@ export async function main(
     return;
   }
   const controller = new AbortController();
-  // An interrupt cancels the run instead of killing it mid-cell: the service
-  // aborts every cell, judge call and command it owns and settles them before
-  // it returns, so the results directory stays readable.
+  // An interrupt or a stop cancels the run instead of killing it mid-cell: the
+  // service aborts every cell, judge call and command it owns and settles them
+  // before it returns, so the results directory stays readable and every
+  // temporary workspace is removed. A background stop sends SIGTERM, whose
+  // default action exits at once and skips that cleanup.
   const onInterrupt = (): void => controller.abort();
   process.once("SIGINT", onInterrupt);
+  process.once("SIGTERM", onInterrupt);
   try {
     const outcome = await runPersonaBenchmark(plan, {
       runtime: admission.runtime,
@@ -251,18 +255,28 @@ export async function main(
       concurrency: args.concurrency,
       sourceIdentity: await runningSourceIdentity([join(REPO_ROOT, "bench", "shared")]),
     });
-    if (outcome.status === "completed") console.log(outcome.report);
-    else process.exitCode = 1;
+    if (outcome.status === "completed") {
+      console.log(outcome.report);
+      await publishPages(catalog);
+    } else process.exitCode = 1;
   } finally {
     process.off("SIGINT", onInterrupt);
+    process.off("SIGTERM", onInterrupt);
   }
+}
+
+/** Regenerate the results pages after a command appended records (ARCH-DIRECTORIES-023); commit them with the records. */
+async function publishPages(catalog: ReturnType<typeof createBenchmarkCatalog>): Promise<void> {
+  const { publishResultsPages } = await import("../../src/orchestration/modules/development/benchmark/persona/results-pages.js");
+  const written = await publishResultsPages(catalog);
+  console.error(written.length === 0 ? "Results pages already match the records." : `Results pages regenerated; commit them with the records:\n${written.join("\n")}`);
 }
 
 /** Score the current, unscored record cells of `persona` with the `--judge` judge (ARCH-DIRECTORIES-020). */
 async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeof createBenchmarkCatalog>, createRuntime: CreateRuntime, projectRoot: string): Promise<void> {
   const requested = args.judge!;
   const [{ admitBenchmark, personaCampaignJudge }, { rejudgeRecords }] = await Promise.all([
-    import("../../src/orchestration/modules/development/benchmark/admission.js"),
+    import("../../src/orchestration/modules/development/benchmark/persona/admission.js"),
     import("../../src/orchestration/modules/development/benchmark/rejudge.js"),
   ]);
   await using owned = new AsyncDisposableStack();
@@ -296,18 +310,22 @@ async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeo
   const controller = new AbortController();
   const onInterrupt = (): void => controller.abort();
   process.once("SIGINT", onInterrupt);
+  process.once("SIGTERM", onInterrupt);
   try {
     const outcome = await rejudgeRecords({ catalog, persona, judge: requested, openJudge, signal: controller.signal });
     console.log(`Rejudged ${persona} with ${requested.model}:${requested.effort}: ${outcome.scored} scored, ${outcome.failed} failed of ${outcome.pending} pending. Judge evidence: ${outcome.evidenceDirectory}`);
+    if (outcome.scored > 0) await publishPages(catalog);
     if (outcome.failed > 0 || controller.signal.aborted) process.exitCode = 1;
   } finally {
     process.off("SIGINT", onInterrupt);
+    process.off("SIGTERM", onInterrupt);
   }
 }
 
 if (import.meta.main) {
   const load = createRequire(import.meta.url);
   installModuleCatalog({
+    credentialProviders: () => load("../../src/orchestration/credential-provider-modules.js").CREDENTIAL_PROVIDER_MODULES,
     otherModules: () => [
       ...load("../../src/orchestration/modules.js").SHIPPED_OTHER_MODULES,
       ...load("../../src/orchestration/development-modules.js").DEVELOPMENT_MODULES,

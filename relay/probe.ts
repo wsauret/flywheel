@@ -1,6 +1,7 @@
-import { RELAY_PROTOCOL_VERSION } from "../src/protocol/modules/remote/relay-protocol.js"
+import { DEFAULT_RELAY_URL, DEV_RELAY_URL, RELAY_PROTOCOL_VERSION } from "../src/protocol/modules/remote/relay-protocol.js"
 
-/** Reads the relay protocol version the hosted relay speaks.
+/** Reads the relay protocol version the hosted relay speaks, or with `--dev`
+ *  the dev relay that source runs dial.
  *
  *  With no argument it requires the live relay to speak this tree's version:
  *  a deploy runs it after the Worker goes out, and `bun run release` runs it
@@ -11,7 +12,9 @@ import { RELAY_PROTOCOL_VERSION } from "../src/protocol/modules/remote/relay-pro
  *  does not answer is no reason to stop a deploy, which may be what repairs
  *  it. */
 
-const HEALTH_URL = "https://relay.flywl.sh/health"
+const relay = new URL(process.argv.includes("--dev") ? DEV_RELAY_URL : DEFAULT_RELAY_URL)
+relay.protocol = "https:"
+const HEALTH_URL = `${relay.origin}/health`
 const beforeDeploy = process.argv.includes("--before-deploy")
 
 async function liveVersion(): Promise<number> {

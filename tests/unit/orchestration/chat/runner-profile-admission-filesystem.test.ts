@@ -2,10 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
-import { authDir } from "../../../../src/infra/paths.js"
+import { AuthProfileStore } from "../../../../src/infra/providers/auth/store/auth-profile-store.js"
+import { authDir } from "../../../../src/infra/platform/files/paths.js"
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js"
-import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile.js"
+import { createSessionAuthAdmission } from "../../../../src/orchestration/auth/session-auth-profile.js"
 
 const roots: string[] = []
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })

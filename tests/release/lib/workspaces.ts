@@ -1,6 +1,6 @@
 import { join } from "node:path"
 
-import { accountServeSocketPath } from "../../../src/infra/paths.js"
+import { accountServeSocketPath } from "../../../src/infra/platform/files/paths.js"
 
 /** The longest unix socket path that every supported POSIX kernel binds.
  *  macOS holds 104 bytes in `sun_path`, the terminating NUL included, and

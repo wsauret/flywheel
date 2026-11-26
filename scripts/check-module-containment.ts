@@ -1,9 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { declaredFactRetentionTypes, factOwner } from "../src/infra/fact-retention-registry.js";
+import { declaredFactRetentionTypes, factOwner } from "../src/infra/substrate/store/fact-retention-registry.js";
 import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js";
-import { SHIPPED_MODULES } from "../src/orchestration/modules.js";
-import { MODULE_IDS } from "../src/protocol/module-ids.js";
+import { SHIPPED_MODULES } from "./shipped-modules.js";
+import { MODULE_IDS } from "../src/protocol/runtime/module-ids.js";
 import { PROTOCOL_MODULES } from "../src/protocol/modules.js";
 import { isUnderAny, MODULE_REGISTRIES, moduleFactHomes, moduleHomeId, moduleHomeImportViolation, moduleHomes } from "./module-homes.js";
 import { CAPABILITY_PHRASES, findCapabilityTableDrift, findCapabilityTermViolations, isCapabilityTermArgument, realCapabilityVocabulary } from "./capability-terms.js";
@@ -152,14 +152,14 @@ const SCAN_ROOTS = ["src", "webview/src", "webview/phone", "vscode/src", "relay"
 const NON_SOURCE_DIRS = new Set(["node_modules", "dist", "out"]);
 
 // The retention registry names every family's owner by module id.
-const MODULE_ID_READERS: readonly string[] = [...MODULE_REGISTRIES, "src/protocol/module-ids.ts", "src/orchestration/development-modules.ts", "src/infra/fact-retention-registry.ts"];
+const MODULE_ID_READERS: readonly string[] = [...MODULE_REGISTRIES, "src/protocol/runtime/module-ids.ts", "src/orchestration/development-modules.ts", "src/infra/substrate/store/fact-retention-registry.ts"];
 const DOMAIN_READERS: readonly string[] = ["src/protocol/modules.ts", "src/protocol/protocol-module.ts"];
 // The retention registry classifies every family, `events search` presents
 // every family, and maintenance prunes the retired ones.
 const FACT_READERS: readonly string[] = [
-  "src/infra/fact-retention-registry.ts",
-  "src/cli/event-search-format.ts",
-  "src/orchestration/session/event-store-maintenance.ts",
+  "src/infra/substrate/store/fact-retention-registry.ts",
+  "src/cli/events/event-search-format.ts",
+  "src/orchestration/session/persistence/storage/event-store-maintenance.ts",
 ];
 
 const MODULE_SYSTEM_FILE = /(^|-)modules?(-|\.|$)/;

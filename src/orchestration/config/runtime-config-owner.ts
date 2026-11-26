@@ -1,16 +1,15 @@
-import { deepFreeze } from "../../infra/deep-freeze.js";
-import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
-import { createOrderedLane } from "../../infra/ordered-lane.js";
-import type { FlywheelConfig } from "./schema.js";
-import { CONFIG_DEFAULTS } from "./schema.js";
+import { deepFreeze } from "../../infra/guards/deep-freeze.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
+import { Log } from "../../infra/diagnostics/log.js";
+import { createOrderedLane } from "../../infra/async/ordered-lane.js";
+import type { FlywheelConfig } from "./schema/schema.js";
+import { CONFIG_DEFAULTS } from "./schema/schema.js";
 import { ConfigPublicationError, heldConfigIdentity, publishedConfigIdentity, readConfigAt, watchConfigFile, withConfigOwnership, type ConfigFileLocation, type ConfigReadResult, type ConfigWatchOptions } from "./config-file.js";
 import { ConfigLoadError, decodeCanonicalConfigText, type ConfigDiagnostic } from "./loader.js";
-import type { ModuleConfigSection } from "./config-section.js";
-import { configSection } from "./config-section.js";
+import { type ModuleConfigSection, configSection, installedModuleConfigSettings } from "./schema/config-section.js";
 import type { Schema } from "effect";
-import { installedModuleConfigSettings, installedProviderSettings } from "../modules.js";
-import { PERSISTED_SETTING_DEFINITIONS, PROJECT_SHOW_BUILD_DEFAULT, profileBooleanSettingDefinition, settingDefinitions, type ApplicationMode, type PersistedSettingDefinition, type ProfileBooleanSettingId, type SettingApplication, type SettingDefinition, type SettingDefinitionId } from "./setting-definitions.js";
+import { installedProviderSettings } from "../module-contract/module-catalog.js";
+import { PERSISTED_SETTING_DEFINITIONS, PROJECT_SHOW_BUILD_DEFAULT, profileBooleanSettingDefinition, settingDefinitions, type ApplicationMode, type PersistedSettingDefinition, type ProfileBooleanSettingId, type SettingApplication, type SettingDefinition, type SettingDefinitionId } from "./schema/setting-definitions.js";
 import { ConfigWriteError, patchDefinedSetting, patchProfileBoolean, patchProfileProviderSetting, patchProjectShowBuild } from "./writer.js";
 import { hasRetiredConfigTables, retireConfigTables } from "./retired-config-tables.js";
 

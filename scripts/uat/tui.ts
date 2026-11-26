@@ -1,3 +1,5 @@
+// A standalone process: it loads both module registries before anything reads the catalog.
+import "../shipped-modules.js"
 import { parseArgs } from "node:util"
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"

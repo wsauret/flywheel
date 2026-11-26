@@ -1,5 +1,5 @@
-import { contentEvidence } from "../../../../infra/content-evidence.js"
-import type { StoredFact } from "../../../../infra/event-store-types.js"
+import { contentEvidence } from "../../../../infra/substrate/runtime-facts/content-evidence.js"
+import type { StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
 import { parseSubagentRunFact, type SubagentRunFact } from "../facts.js"
 import type {
   SubagentCompletionInput,

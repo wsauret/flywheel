@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../../../src/protocol/client/modules/module-domain.js"
 import type { ProjectNotificationEpisode } from "../../../../../src/protocol/modules/project-notifications.js"
 import { createToastState, type ToastInput } from "../../../../../src/tui/context/toast.js"
 import { presentProjectNotifications } from "../../../../../src/tui/modules/project-notifications/presence.js"

@@ -219,7 +219,7 @@ export function verifyStringEditPlanner(planStringEdits: StringEditPlanner): str
 /** The planners are TypeScript compiled into every binary; this probe runs them from source. The import
  *  is resolved only here, so the harness stays self-contained when a container mounts it alone. */
 async function probeStringEditPlanner(): Promise<string> {
-  const { planStringEdits } = await import("../src/infra/file-edit/string-edit.js");
+  const { planStringEdits } = await import("../src/infra/substrate/file-mutations/file-edit/string-edit.js");
   return verifyStringEditPlanner(planStringEdits);
 }
 

@@ -1,6 +1,7 @@
 import { Schema } from "effect"
-import type { ModuleId } from "./module-ids.js"
-import type { RuntimeDeliveryPolicy, RuntimeDomainDelivery, RuntimePatchContent, RuntimePosition } from "./runtime-ui-protocol-types.js"
+import type { ModuleId } from "./runtime/module-ids.js"
+import type { RuntimePosition } from "./runtime/runtime-ui-protocol-types.js"
+import type { RuntimeDeliveryPolicy, RuntimeDomainDelivery, RuntimePatchContent } from "./rpc/runtime-delivery-policy.js"
 
 /** The generic contract a module's runtime UI protocol is declared against.
  *

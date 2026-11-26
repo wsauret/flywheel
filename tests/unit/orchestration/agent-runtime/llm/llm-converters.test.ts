@@ -1,12 +1,12 @@
-import { applyHistoryLowering, lowerProviderHistory, planHistoryLowering } from "../../../../../src/orchestration/agent-runtime/llm/provider-history.js";
+import { applyHistoryLowering, lowerProviderHistory, planHistoryLowering } from "../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js";
 import { describe, expect, test } from "bun:test";
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { toOpenAIResponsesRequestInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 import { toAnthropicMessagesRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { toGoogleGenerativeAiRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/google-generative-ai.js";
-import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions-messages.js";
+import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions-messages.js";
 import { ProviderIdConversionError } from "../../../../../src/orchestration/agent-runtime/llm/conversions/provider-id.js";
-import { openAIResponsesTarget } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
+import { openAIResponsesTarget } from "../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-adapter-helpers.js";
 
 const openai = { sharedHost: false, accessProvider: "openai_api" as const, provider: "openai" as const, api: "openai-responses" as const, model: "o4" };
 const anthropic = { sharedHost: false, accessProvider: "anthropic_api" as const, provider: "anthropic" as const, api: "anthropic-messages" as const, model: "claude-sonnet-5-5" };
@@ -401,6 +401,40 @@ describe("Google Generative AI converter", () => {
 
     expect(JSON.stringify(toGoogleGenerativeAiRequest(google, history))).toContain("YWJjZA==");
     expect(JSON.stringify(toGoogleGenerativeAiRequest({ ...google, accessProvider: "github_copilot" }, history))).not.toContain("YWJjZA==");
+  });
+
+  // Gemini 3 and later reject an unsigned first functionCall of each step of the current turn with HTTP 400. A
+  // failover between google_vertex and google_api, or a model switch, mid tool loop drops the foreign signature.
+  test("signs the first unsigned call of each active-turn step with the skip value after a route change", () => {
+    const neon = { ...google, model: "gemini-4-neon" };
+    const vertex = { provider: "google" as const, api: "google-generative-ai" as const, accessProvider: "google_vertex" as const, model: "gemini-4-neon" };
+    const history: ConversationMessage[] = [
+      { kind: "user", content: "earlier question" },
+      { kind: "assistant", ...neon, content: [{ type: "tool_use", id: "old", name: "read", input: { path: "o" }, thoughtSignature: "T0xETw==" }] },
+      { kind: "toolResult", toolUseId: "old", content: [{ type: "text", text: "O" }] },
+      { kind: "assistant", ...neon, content: [{ type: "text", text: "Earlier answer.", signature: "VFRUVA==" }] },
+      { kind: "user", content: "read two files" },
+      { kind: "assistant", ...vertex, content: [
+        { type: "tool_use", id: "c1", name: "read", input: { path: "a" }, thoughtSignature: "QUFBQQ==" },
+        { type: "tool_use", id: "c2", name: "read", input: { path: "b" } },
+      ] },
+      { kind: "toolResult", toolUseId: "c1", content: [{ type: "text", text: "A" }] },
+      { kind: "toolResult", toolUseId: "c2", content: [{ type: "text", text: "B" }] },
+      { kind: "assistant", ...vertex, content: [{ type: "text", text: "Next." }, { type: "tool_use", id: "c3", name: "read", input: { path: "c" } }] },
+      { kind: "toolResult", toolUseId: "c3", content: [{ type: "text", text: "C" }] },
+    ];
+    const signatures = (target: { model: string }) => toGoogleGenerativeAiRequest({ ...google, ...target }, history)
+      .filter((content) => content.role === "model")
+      .map((content) => content.parts?.map((part) => part.thoughtSignature ?? null));
+
+    expect(signatures(neon)).toEqual([
+      ["T0xETw=="],
+      ["VFRUVA=="],
+      ["skip_thought_signature_validator", null],
+      [null, "skip_thought_signature_validator"],
+    ]);
+    // A model before Gemini 3 validates no signatures, so it gets none.
+    expect(signatures({ model: "gemini-2.5-pro" }).slice(2)).toEqual([[null, null], [null, null]]);
   });
 
   test("orphan functionResponse is dropped, matched one keeps its tool name", () => {

@@ -8,21 +8,22 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Effect, Exit, Scope } from "effect"
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js"
+import { providerModelInfo } from "../../../../../src/infra/providers/llm/catalog/provider-model-info.js"
 import type { AcpRequests } from "../../../../../src/orchestration/modules/provider-google-antigravity/acp/schema.js"
-import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"
-import { limitOutput } from "../../../../../src/orchestration/agent-runtime/compaction/truncation.js"
+import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"
+import { limitOutput } from "../../../../../src/orchestration/agent-runtime/tools/results/truncation.js"
 import { toGoogleGenerativeAiRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/google-generative-ai.js"
 import { ContextLengthExceededError, LlmStreamError, RouteUnavailableError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
-import { lowerProviderHistory } from "../../../../../src/orchestration/agent-runtime/llm/provider-history.js"
-import type { ContentBlock, ConversationMessage, LLMClient, ProviderStreamEvent, ToolDef, ToolOutputOwners } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { ProviderTransportContext } from "../../../../../src/orchestration/session/provider-request-audit-types.js"
-import { PRIMER_TEXT } from "../../../../../src/orchestration/modules/provider-google-antigravity/bridge.js"
+import { lowerProviderHistory } from "../../../../../src/orchestration/agent-runtime/llm/history/provider-history.js"
+import type { LLMClient, ProviderStreamEvent, ToolDef, ToolOutputOwners } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ContentBlock, ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js"
+import type { ProviderTransportContext } from "../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
+import { PRIMER_TEXT } from "../../../../../src/orchestration/modules/provider-google-antigravity/request/bridge.js"
 import { createAntigravityClient } from "../../../../../src/orchestration/modules/provider-google-antigravity/client.js"
-import type { EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine-process.js"
-import { createEngineRegistry, type EngineRegistry } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine-registry.js"
-import { createLoginObservations } from "../../../../../src/orchestration/modules/provider-google-antigravity/login-status.js"
-import { CONTINUATION_PROMPT } from "../../../../../src/orchestration/modules/provider-google-antigravity/request-plan.js"
+import type { EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-process.js"
+import { createEngineRegistry, type EngineRegistry } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-registry.js"
+import { createLoginObservations } from "../../../../../src/orchestration/modules/provider-google-antigravity/login/login-status.js"
+import { CONTINUATION_PROMPT } from "../../../../../src/orchestration/modules/provider-google-antigravity/request/request-plan.js"
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js"
 import { openEngineHarness, type EngineHarness, type HarnessLogin } from "./_engine.js"
 import type { FakeRequest } from "./_fake-gemini.js"
@@ -90,6 +91,7 @@ async function openRig(fake: Parameters<typeof openEngineHarness>[1] = {}): Prom
           engineCalls.push("session/cancel")
           return engine.cancel(sessionId)
         },
+        conversationRows: (sessionId, afterIdx) => engine.conversationRows(sessionId, afterIdx),
         configure(method, params) {
           engineCalls.push(`${method} ${configured(params)}`)
           return engine.configure(method, params)

@@ -69,13 +69,13 @@
 
 import { randomBytes } from "node:crypto";
 import * as path from "node:path";
-import type { ContainedDirectory } from "../descriptor-directory-contract.js";
-import { openExistingContainedDirectory } from "../descriptor-directory.js";
-import { errorMessage } from "../error-message.js";
-import { Log } from "../log.js";
-import { updateAuthorityDbFile, versionsDir } from "../paths.js";
-import { isProcessAlive } from "../process-liveness.js";
-import { coalesceRepeats } from "../repeat-coalescer.js";
+import type { ContainedDirectory } from "../platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../platform/files/descriptor-directory.js";
+import { errorMessage } from "../diagnostics/error-message.js";
+import { Log } from "../diagnostics/log.js";
+import { updateAuthorityDbFile, versionsDir } from "../platform/files/paths.js";
+import { isProcessAlive } from "../platform/process-liveness.js";
+import { coalesceRepeats } from "../diagnostics/repeat-coalescer.js";
 import { activeBuildDir, PENDING_ACTIVATION } from "./active-build.js";
 import { BUILD_METADATA_FILE, buildExecutable } from "./build-identity.js";
 import { liveBuildIds, ownBuildId } from "./live-builds.js";

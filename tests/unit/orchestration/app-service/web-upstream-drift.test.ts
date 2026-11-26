@@ -21,7 +21,7 @@ interface UpstreamLedger {
 const repositoryRoot = resolve(import.meta.dir, "../../../..")
 const ledgerPath = resolve(
   repositoryRoot,
-  "src/orchestration/app-service/web-serving/upstream-ledger.json",
+  "src/orchestration/app-service/account/web-serving/upstream-ledger.json",
 )
 const fixturePath = resolve(repositoryRoot, "tests/fixtures/upstream/web/upstream-slices.json")
 const UpstreamFixtureSchema = Schema.Struct({

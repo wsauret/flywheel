@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, spyOn } from "bun:test"
-import { EventBus, createEmit } from "../../../../src/infra/event-bus.js"
-import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
-import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js"
+import { EventBus, createEmit } from "../../../../src/infra/substrate/events/event-bus.js"
+import { createRuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js"
+import type { RuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-types.js"
 import type { ChatEntryPatch } from "../../../../src/orchestration/session-store/types.js"
 import { SessionEventAdapter } from "../../../../src/orchestration/session-store/event-adapter.js"
-import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
+import { createOutputSession } from "../../../../src/orchestration/session-store/output-session.js"
 
 type Emit = ReturnType<typeof createEmit>
 

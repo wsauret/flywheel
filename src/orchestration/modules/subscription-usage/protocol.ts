@@ -1,5 +1,5 @@
 import { subscriptionUsageProtocol } from "../../../protocol/modules/subscription-usage.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../protocol/subscription-spend-consent-protocol-types.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 import type { ModuleProtocolRuntime, ModuleProtocolServices } from "../../app-service/module-protocol-host.js"
 import { subscriptionUsageService } from "./service.js"
 import { createSessionStatsReader } from "./session-stats.js"

@@ -1,6 +1,6 @@
-import type { CapabilityRequest } from "../../src/protocol/client/editor-host.js"
-import { HOST_CONTRACT_VERSION } from "../../src/protocol/client/host-contract.js"
-import { ClientHostUpgradeRequired } from "../src/client/input-reload.js"
+import type { CapabilityRequest } from "../../src/protocol/client/host/editor-host.js"
+import { HOST_CONTRACT_VERSION } from "../../src/protocol/client/host/host-contract.js"
+import { ClientHostUpgradeRequired } from "../src/client/input/input-reload.js"
 
 /** Negotiates replacement before sending any vocabulary an older host cannot serve. */
 export function editorClientReplacement(invoke: (request: CapabilityRequest) => Promise<void>, hostContract: number, generation: number) {

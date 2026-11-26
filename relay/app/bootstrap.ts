@@ -1,11 +1,11 @@
-import { HOST_CONTRACT_VERSION } from "../../src/protocol/client/host-contract.js"
+import { HOST_CONTRACT_VERSION } from "../../src/protocol/client/host/host-contract.js"
 import { readNotificationAddress } from "../../src/protocol/modules/remote/notification-address.js"
 import type { PhoneBootstrap } from "../../src/protocol/modules/remote/phone-bootstrap.js"
 import { pairDevice } from "../../src/protocol/modules/remote/relay-pairing.js"
-import { deviceIdentity, type DeviceStore, type PairedRuntime } from "../../src/protocol/modules/remote/relay-device.js"
+import { deviceIdentity, type PairedRuntime } from "../../src/protocol/modules/remote/relay-device.js"
 import { scanPairingCode } from "../../webview/phone/qr-scan.js"
 import { assetOrigin, currentClient, type ClientSource, type KnownRuntime } from "./client-choice.js"
-import { openDeviceStore } from "./device-store.js"
+import { openDeviceStore, type PageDeviceStore } from "./device-store.js"
 import { installManifestHref, isInstallCarry, readInstallCarry, type CarriedDevice } from "./install-carry.js"
 import { createPageStart, type PairingRequest } from "./page-start.js"
 import "./bootstrap.css"
@@ -52,7 +52,7 @@ async function takeInstallCarry(): Promise<CarriedDevice | undefined> {
 
 /** Safari uses the first manifest link the page inserts in a load, also one
  *  inserted after the store's first read, and ignores a later change to it. */
-async function insertManifest(store: DeviceStore): Promise<void> {
+async function insertManifest(store: PageDeviceStore): Promise<void> {
   const link = document.createElement("link")
   link.rel = "manifest"
   link.href = await installManifestHref(location.origin, store)
@@ -85,7 +85,7 @@ async function currentClients(paired: readonly PairedRuntime[], preferred: strin
 
 /** Loads one client build's phone shell. Resolves once its script ran, and
  *  rejects when the relay could not serve it. */
-function loadShell(root: HTMLElement, source: ClientSource): Promise<void> {
+function loadShell(root: HTMLElement, source: ClientSource, bootstrap: PhoneBootstrap): Promise<void> {
   const base = `${assetOrigin(source.relay)}/client/${source.runtimeId}/${source.identity}/phone`
   for (const stale of document.querySelectorAll("[data-flywheel-client]")) stale.remove()
   // The shell renders into `#root`, so the page's own screen leaves first.
@@ -104,6 +104,7 @@ function loadShell(root: HTMLElement, source: ClientSource): Promise<void> {
     script.addEventListener("load", () => resolve(), { once: true })
     script.addEventListener("error", () => reject(new Error(`the relay did not serve ${script.src}`)), { once: true })
   })
+  window.flywheelPhoneBootstrap = bootstrap
   document.head.append(style, script)
   return loaded
 }
@@ -125,7 +126,7 @@ function element<K extends keyof HTMLElementTagNameMap>(tag: K, properties: Part
 /** The pairing screen. It shows when no machine is paired, when the page
  *  opens with a pairing link, and when every paired machine is asleep or
  *  offline, which it then says above the steps, with a way to try again. */
-function showPairing(root: HTMLElement, store: DeviceStore, request: PairingRequest): void {
+function showPairing(root: HTMLElement, store: PageDeviceStore, request: PairingRequest): void {
   const status = element("p", { className: "status" })
   status.setAttribute("role", "status")
   const controls: (HTMLButtonElement | HTMLInputElement)[] = []
@@ -185,7 +186,7 @@ function showPairing(root: HTMLElement, store: DeviceStore, request: PairingRequ
  *  arrives as a hash change, which the shell pairs from itself; the page
  *  learns of that pairing from the store (`page-start.ts`). */
 function takePairingCode(): string | undefined {
-  if (!location.hash.includes("p=")) return undefined
+  if (!new URLSearchParams(location.hash.slice(1)).has("p")) return undefined
   const code = location.hash
   history.replaceState(history.state, "", location.pathname)
   return code
@@ -195,7 +196,6 @@ async function boot(): Promise<void> {
   const root = pageRoot()
   const store = await openDeviceStore(await takeInstallCarry())
   if (!installed()) await insertManifest(store)
-  window.flywheelPhoneBootstrap = { store } satisfies PhoneBootstrap
   const page = createPageStart({
     store,
     installed: installed(),
@@ -204,8 +204,14 @@ async function boot(): Promise<void> {
     takePairingCode,
     notificationAddress: () => readNotificationAddress(location.hash),
     currentClients,
-    pairDevice: (code) => pairDevice(code, { publicKey: store.device.publicKey, sign: deviceIdentity(store.device).sign, label: store.label() }),
-    loadShell: (source) => loadShell(root, source),
+    pairDevice: (code, device) => pairDevice(code, { publicKey: device.publicKey, sign: deviceIdentity(device).sign, label: store.label() }),
+    // A shell loads only for a phone that has paired, so its key exists. The
+    // shell's store is the page's, with the key it reads as a plain field.
+    loadShell: async (source) => {
+      const device = await store.committedDevice()
+      if (device === undefined) throw new Error("this phone has machines but no key")
+      return loadShell(root, source, { store: { ...store, device } })
+    },
     showPairing: (request) => showPairing(root, store, request),
   })
   await page.start()

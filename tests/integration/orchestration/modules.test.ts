@@ -18,36 +18,38 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { ContainedDirectory } from "../../../src/infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../src/infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
 import { heldDirectoryPrototype } from "../../helpers/contained-directory-spies.js";
-import { moduleProtocolRows, type ModuleId, composeFirstPartyModules, composeRealmModuleSnapshot, SHIPPED_MODULES, migrateLegacyCapabilityModules, effectiveModuleIds } from "../../../src/orchestration/modules.js";
-import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
+import { moduleProtocolRows, type ModuleId, effectiveModuleIds } from "../../../src/orchestration/module-contract/module-catalog.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../src/orchestration/module-contract/module-composition.js";
+import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
+import { migrateLegacyCapabilityModules, decodeModuleState } from "../../../src/orchestration/config/module-descriptor.js";
+import { composeModuleRuntimes } from "../../../src/infra/definitions/modules/module-runtime.js";
 import { capabilityAccessFor } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
-import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/_bash-fixtures.js";
-import { requestCapabilities, type PlannedRequest } from "../../../src/orchestration/agent-runtime/request-tool-surface.js";
-import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";
-import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
-import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/tool-registry.js";
+import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/bash/_bash-fixtures.js";
+import { requestCapabilities, type PlannedRequest } from "../../../src/orchestration/agent-runtime/request/request-tool-surface.js";
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/session/control/background-work/background-work.js";
+import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
+import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/dispatch/tool-registry.js";
 import type { SkillManageToolDeps } from "../../../src/orchestration/modules/learning/tools/skill-manage.js";
-import type { WorkflowToolDeps } from "../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
-import type { AskUserController } from "../../../src/orchestration/runner/ask-user-controller.js";
-import { createModuleProjection } from "../../../src/orchestration/app-service/module-projection.js";
+import type { WorkflowToolDeps } from "../../../src/orchestration/agent-runtime/tools/definitions/workflow-tool.js";
+import type { AskUserController } from "../../../src/orchestration/agent-runtime/tools/sessions/ask-user-controller.js";
+import { createModuleProjection } from "../../../src/orchestration/app-service/projections/module-projection.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
-import { createCommandCatalogProjection } from "../../../src/orchestration/app-service/command-catalog-projection.js";
-import { createDefinitionAvailability } from "../../../src/orchestration/app-service/definition-availability.js";
-import { watchDefinitionRoots } from "../../../src/orchestration/app-service/definition-root-watcher.js";
-import type { RuntimeUiPatchInput } from "../../../src/protocol/runtime-ui-protocol-types.js";
-import type { RuntimeModulesView } from "../../../src/protocol/module-protocol-types.js";
-import { startModulePolicy } from "../../../src/orchestration/config/module-policy.js";
-import { decodeModuleState } from "../../../src/orchestration/config/module-descriptor.js";
-import { admitWorkflowOperation } from "../../../src/orchestration/workflow-host/workflow-admission.js";
-import { loadWorkflowFile } from "../../../src/workflows/workflow-file.js";
-import { moduleRequirementsForContribution } from "../../../src/orchestration/module-requirements.js";
-import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
+import { createCommandCatalogProjection } from "../../../src/orchestration/app-service/definitions/commands/command-catalog-projection.js";
+import { createDefinitionAvailability } from "../../../src/orchestration/config/policy/definition-availability.js";
+import { watchDefinitionRoots } from "../../../src/orchestration/app-service/definitions/definition-root-watcher.js";
+import type { RuntimeUiPatchInput } from "../../../src/protocol/runtime/runtime-ui-protocol-types.js";
+import type { RuntimeModulesView } from "../../../src/protocol/runtime/module-protocol-types.js";
+import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
+import { admitWorkflowOperation } from "../../../src/orchestration/workflow-host/lifecycle/workflow-admission.js";
+import { loadWorkflowFile } from "../../../src/workflows/vm/admission/workflow-file.js";
+import { moduleRequirementsForContribution } from "../../../src/orchestration/module-contract/module-requirements.js";
+import { createProjectDefinitionRegistry } from "../../../src/workflows/definitions/definition-registry.js";
 import { makeContext } from "../../unit/orchestration/agent-runtime/tools/_fixtures.js";
-import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
-import { canonicalModuleIds, missingModuleIds, MODULE_IDS, moduleDisabledReason } from "../../../src/protocol/module-ids.js";
+import { accessProviderRegistry } from "../../../src/orchestration/config/models/access-provider-registry.js";
+import { canonicalModuleIds, missingModuleIds, MODULE_IDS, moduleDisabledReason } from "../../../src/protocol/runtime/module-ids.js";
 
 const REPO = join(import.meta.dir, "..", "..", "..");
 /** One installed workflow every case admits against. */
@@ -391,7 +393,7 @@ describe("one runtime's optional capability surfaces", () => {
     // shipped after it, so migration reads them as enabled.
     const harness = await startHarness('modules = ["skills"]\n');
 
-    expect(harness.moduleProjection.view().capabilities).toEqual(canonicalModuleIds(["definition-overrides", "experiments", "mcp", "papercuts", "project-notifications", ...MODULE_IDS.filter((id) => id.startsWith("provider-")), "side-question", "skills"]));
+    expect(harness.moduleProjection.view().capabilities).toEqual(canonicalModuleIds(["definition-overrides", "experiments", "mcp", "papercuts", "project-notifications", ...MODULE_IDS.filter((id) => id.startsWith("provider-")), "reclaim-storage", "side-question", "skills"]));
     expect(composeRealmModuleSnapshot(harness.policy.state()).enabledModuleIds).toContain("experiments");
     expect(builtIn(harness, "experiment")).toBe(true);
   });
@@ -541,8 +543,7 @@ describe("one runtime's optional capability surfaces", () => {
     const barrier = join(harness.skillRoot, "..", "go");
     const script = join(harness.skillRoot, "..", "capability-worker.ts");
     writeFileSync(script, `
-import { existsSync } from "node:fs";
-import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/module-selection-writer.js")).href)};
+import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/policy/module-selection-writer.js")).href)};
 
 const feature = process.argv[2];
 while (!existsSync(${JSON.stringify(barrier)})) await Bun.sleep(1);
@@ -583,9 +584,8 @@ if (!result.ok) {
     const barrier = join(harness.skillRoot, "..", "same-member-go");
     const script = join(harness.skillRoot, "..", "same-member-worker.ts");
     writeFileSync(script, `
-import { existsSync } from "node:fs";
 import { ConfigStaleWriteError } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/writer.js")).href)};
-import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/module-selection-writer.js")).href)};
+import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/policy/module-selection-writer.js")).href)};
 
 while (!existsSync(${JSON.stringify(barrier)})) await Bun.sleep(1);
 const result = await updateModuleMember("learning", true, false, { configPath: ${JSON.stringify(harness.configPath)} });

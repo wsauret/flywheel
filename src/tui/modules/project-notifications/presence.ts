@@ -8,7 +8,7 @@ import type { TuiPresenceProps } from "../../tui-module.js"
  *  new when its id was not held before, whether a patch or a resnapshot
  *  brought it, and the toast reads the current row so a resolution or a
  *  dismissal changes or clears it in place. */
-export function presentProjectNotifications(props: TuiPresenceProps): void {
+export function presentProjectNotifications(props: Pick<TuiPresenceProps, "read" | "showToast">): void {
   const view = () => props.read(projectNotificationsDomain)
   let held: ReadonlySet<string> | undefined
 

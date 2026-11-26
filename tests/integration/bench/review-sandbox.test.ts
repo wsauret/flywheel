@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { planPersonaBenchmark, runPersonaBenchmark } from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
+import { planPersonaBenchmark, runPersonaBenchmark } from "../../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
 import { benchmarkDeps, fakeRuntime, REVIEWER_DEFINITION } from "../../unit/bench/_persona-benchmark-fixtures.js";
 

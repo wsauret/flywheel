@@ -9,10 +9,10 @@
  * none can.
  */
 import { describe, it, expect } from "bun:test";
-import { streamAssistantTurn } from "../../../src/orchestration/agent-runtime/assistant-turn-stream.js";
+import { streamAssistantTurn } from "../../../src/orchestration/agent-runtime/loop/turn/assistant-turn-stream.js";
 import { estimateMessageTokens } from "../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import { stableSystemPrompt } from "../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { resolveModelInteractionProfile } from "../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { resolveModelInteractionProfile } from "../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js";
 import type { ModelClient, ProviderStreamEvent } from "../../../src/orchestration/agent-runtime/llm/types.js";
 import { LIVE_MODEL, withLiveClient } from "./_live-client.js";
 import { temporaryDirectories } from "../../helpers/directories.js";

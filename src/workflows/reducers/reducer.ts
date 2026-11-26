@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import type { WorkflowTreeCoverage } from "../../protocol/workflow-view-protocol-types.js";
+import type { WorkflowTreeCoverage } from "../../protocol/session/workflow-view-protocol-types.js";
 import type { CompiledField } from "../output-contract/compile.js";
 import type { FieldMap, FieldType } from "../output-contract/grammar.js";
 

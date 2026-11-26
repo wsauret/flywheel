@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import * as ownership from "../../src/infra/container-mark.js";
-import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import * as ownership from "../../src/infra/process/container/container-mark.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { REPO_ROOT } from "./harness-paths.js";
 import { benchmarkHarnessIdentity } from "./source-treatment.js";
 
@@ -22,7 +22,7 @@ export async function benchmarkInfrastructureIdentity(repoRoot = REPO_ROOT): Pro
     Bun.file(join(repoRoot, "package.json")).bytes(),
     Bun.file(join(repoRoot, "bun.lock")).bytes(),
     Bun.file(join(repoRoot, "scripts/source-cli.ts")).bytes(),
-    Bun.file(join(repoRoot, "src/orchestration/module-catalog.ts")).bytes(),
+    Bun.file(join(repoRoot, "src/orchestration/module-contract/module-catalog.ts")).bytes(),
     benchmarkHarnessIdentity(repoRoot),
   ]);
   return structuredIdentity({

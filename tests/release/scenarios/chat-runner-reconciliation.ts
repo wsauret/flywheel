@@ -9,10 +9,10 @@ import {
   RECONCILIATION_PARENT_MARKER,
   RECONCILIATION_PARENT_NAME,
 } from "../fixtures/generate-store.js"
-import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath } from "../../../src/infra/paths.js"
-import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/socket-runtime-client.js"
-import { encodeAccountAttach } from "../../../src/protocol/account-attach.js"
-import type { RuntimeClient } from "../../../src/protocol/app-service-types.js"
+import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath } from "../../../src/infra/platform/files/paths.js"
+import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"
+import { encodeAccountAttach } from "../../../src/protocol/runtime/account-attach.js"
+import type { RuntimeClient } from "../../../src/protocol/runtime/app-service-types.js"
 import { readDebugLogRecords, type DebugLogRecord } from "../lib/debug-log-reader.js"
 import { runRevisionDriver } from "../lib/revision-driver.js"
 import { writeAccountConfig } from "../lib/isolated-serve.js"

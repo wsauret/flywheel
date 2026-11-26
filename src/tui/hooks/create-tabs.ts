@@ -1,26 +1,17 @@
 import type { Accessor } from "solid-js"
 import { createMemo, createSignal, mapArray } from "solid-js"
-import { effectiveSessionShortTitle, type SessionCatalogRow } from "../../protocol/app-service-types.js"
-import { isWorkingStatus } from "../../protocol/status-protocol-types.js"
-import { isEmptyNewChat } from "../session-empty-state.js"
-import type { ForegroundTarget, ShellSignals } from "./shell-state.js"
-
-interface TabPresentation {
-  id: string
-  title: string
-  isForeground: boolean
-  // Runner is currently processing a chat turn.
-  isBusy: boolean
-  // Agent has emitted an `ask_user` question and is parked waiting on an answer.
-  isBlocked: boolean
-}
+import { effectiveSessionShortTitle, type SessionCatalogRow } from "../../protocol/runtime/app-service-types.js"
+import { isWorkingStatus } from "../../protocol/session/status-protocol-types.js"
+import { isEmptyNewChat } from "./state/session-empty-state.js"
+import type { TabPresentation } from "../components/chrome/tabs-bar.js"
+import type { ForegroundTarget, ShellSignals } from "./state/shell-state.js"
 
 export type TabInfo = TabPresentation & ({ readonly kind: "session" } | { readonly kind: "pending" })
 
 interface TabsDeps {
   sessions: Accessor<readonly SessionCatalogRow[]>
   openSessionIds: Accessor<readonly string[]>
-  signals: Pick<ShellSignals, "foregroundId" | "sessionShortTitle" | "statusView" | "questionView">
+  signals: Pick<ShellSignals, "foregroundId" | "sessionShortTitle" | "statusView" | "waitingSessions">
 }
 
 interface TabStateDeps {
@@ -44,16 +35,14 @@ interface LiveState { isBusy: boolean; isBlocked: boolean }
 function deriveLiveState(deps: TabsDeps, id: string): LiveState {
   const status = deps.signals.statusView(id)
   const isBusy = isWorkingStatus(status)
-  // The non-evicting question cache is authoritative, so a background tab's
-  // blocked indicator survives transcript eviction.
-  const isBlocked = deps.signals.questionView(id) !== undefined
+  const isBlocked = deps.signals.waitingSessions().has(id)
   return { isBusy, isBlocked }
 }
 
 /** Tabs are the sessions this shell instance explicitly opened. The catalog still
  *  supplies titles and live lifecycle metadata, but global runtime
- *  `active` state is not tab membership. Busy and blocked state remain
- *  status/output-domain reads. */
+ *  `active` state is not tab membership. Busy state is a status read, and
+ *  blocked state is a read of the project's waiting set. */
 function createTabs(deps: TabsDeps): Accessor<readonly TabInfo[]> {
   const summariesById = createMemo(() => new Map(deps.sessions().map((session) => [session.id, session])))
 

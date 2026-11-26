@@ -13,14 +13,14 @@ import { commandsToOptions, commandSpecs } from "../../../src/tui/commands/comma
 import { buildCommandCatalog, publishedCommands } from "../../helpers/command-catalog.js"
 import { buildCommandDefinitions } from "../../../src/tui/commands/command-definitions.js"
 import { createCommandDispatch } from "../../../src/tui/commands/command-dispatch.js"
-import { useCommands, type CommandDeps } from "../../../src/tui/hooks/use-commands.js"
-import type { BuiltInCommandDescriptor, OffCommandDescriptor, RuntimeCommandInvocation } from "../../../src/protocol/command-catalog-protocol-types.js"
-import type { ChatInput } from "../../../src/infra/chat-input.js"
-import { createSessionCreator, type SessionCreator } from "../../../src/tui/hooks/create-session-creator.js"
-import { createDraftCache } from "../../../src/tui/hooks/create-draft-cache.js"
+import { useCommands, type CommandDeps } from "../../../src/tui/hooks/composer/use-commands.js"
+import type { BuiltInCommandDescriptor, OffCommandDescriptor, RuntimeCommandInvocation } from "../../../src/protocol/commands/command-catalog-protocol-types.js"
+import type { ChatInput } from "../../../src/infra/substrate/events/chat-input.js"
+import { createSessionCreator, type SessionCreator } from "../../../src/tui/hooks/sessions/create-session-creator.js"
+import { createDraftCache } from "../../../src/tui/components/composer/create-draft-cache.js"
 import { createTabState } from "../../../src/tui/hooks/create-tabs.js"
-import type { ForegroundTarget, ShellServices, ShellSignals } from "../../../src/tui/hooks/shell-state.js"
-import type { FrontendMutation, MutationResult } from "../../../src/protocol/app-service-types.js"
+import type { ForegroundTarget, ShellServices, ShellSignals } from "../../../src/tui/hooks/state/shell-state.js"
+import type { FrontendMutation, MutationResult } from "../../../src/protocol/runtime/app-service-types.js"
 import { testCommandContext } from "../../helpers/command-context.js"
 import { recordedDispatch, runtimeDispatch } from "../../helpers/runtime-dispatch.js"
 
@@ -101,7 +101,7 @@ function createLandingHarness(id?: string, mode: "chat" | null = null) {
       sessionState: () => null,
       sessionShortTitle: () => "",
       statusView: () => undefined,
-      questionView: () => undefined,
+      waitingSessions: () => new Set<string>(),
       outputView: () => undefined,
     }
     const draftCache = createDraftCache()

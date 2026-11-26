@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import { clearMocks, configValues, COPILOT_CAP, createModal, profileConfig } from "./_settings-modal-fixtures.js"
+import { clearMocks, configValues, COPILOT_CAP, createModal, profileConfig } from "./settings/_settings-modal-fixtures.js"
 
 describe("createSettingsStore", () => {
   it.each(["idleCompaction", "shellWriteGuard"] as const)("turns %s off through the generated Settings presentation", async (id) => {

@@ -1,7 +1,7 @@
-import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../src/infra/substrate/store/sqlite-event-store.js"
 import { historicalWorkflowPublicationFacts } from "../release/fixtures/historical-workflow-publication.js"
-import { resolveEventStoreDbFile } from "../../src/infra/paths.js"
-import { isRecord } from "../../src/infra/record.js"
+import { resolveEventStoreDbFile } from "../../src/infra/platform/files/paths.js"
+import { isRecord } from "../../src/infra/guards/record.js"
 
 const CHAT = '{"kind":"chat","command":"chat","conversationId":"parent-conversation","label":"Parent","lifecycleState":"inactive","lastUpdated":"2026-10-16T00:00:00.000Z"}'
 const WORKFLOW = '{"kind":"workflow","command":"workflow","workflowDefinitionId":"implement","label":"Original request","lifecycleState":"inactive","createdAt":"2026-10-16T00:00:00.000Z","lastUpdated":"2026-10-16T00:00:00.000Z","authProfileId":"Personal","roleAssignments":{"defaults":{},"overrides":{}},"launchedFrom":{"parentSessionId":"parent","conversationId":"parent-conversation","toolUseId":"workflow-old","workflowDefinitionId":"implement","description":"Original request"}}'

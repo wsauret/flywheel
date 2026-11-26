@@ -13,7 +13,7 @@ import {
   resultNoUsage,
   usageEvent,
 } from "./_budget-store-fixtures";
-import { createBudgetProjection } from "../../../../src/orchestration/session/budget-projection";
+import { createBudgetProjection } from "../../../../src/orchestration/session/runtime-facts/budget-projection";
 
 afterEach(() => {
   cleanupTmpRoot();

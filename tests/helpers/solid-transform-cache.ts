@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, extname, join } from "node:path"
-import { isRecord } from "../../src/infra/record.js"
+import { isRecord } from "../../src/infra/guards/record.js"
 
 /** Babel compiles the Solid JSX of every test process, and it is the slowest
  *  step before the first test: loading Babel costs about half a second, and

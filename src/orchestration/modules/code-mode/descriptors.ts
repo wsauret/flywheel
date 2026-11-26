@@ -1,10 +1,6 @@
-import { Effect, Schema } from "effect"
-import * as Tool from "../../../infra/code-mode/tool.js"
-import type { JsonSchema, Tool as CodeModeTool } from "../../../infra/code-mode/tool.js"
-import { toolError, type ToolError } from "../../../infra/code-mode/tool-error.js"
-import type { ToolRuntimeError } from "../../../infra/code-mode/tool-runtime.js"
-import type { Tools } from "../../../infra/code-mode/tools.js"
+import { Schema } from "effect"
 import type { BoundedStringCodeModeOutput, RuntimeTool } from "../../agent-runtime/tools/types.js"
+import type { JsonSchema } from "./script/tool-schema.js"
 
 /** What a script sees from every bridged call. */
 export const CodeToolResultSchema = Schema.Struct({
@@ -106,33 +102,3 @@ export function describeCodeModeTools(eligible: ReadonlyMap<string, RuntimeTool>
   }
   return { revision, descriptors, callable, omissions }
 }
-
-type ToolGroup = { [segment: string]: CodeModeTool | ToolGroup }
-
-/** Builds the Code Mode `tools` trie from descriptors whose paths
- *  `describeCodeModeTools` already proved free of prefix collisions. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
-export function toolTrie(descriptors: readonly CodeModeToolDescriptor[], execute: (descriptor: CodeModeToolDescriptor, input: unknown) => Effect.Effect<CodeToolResult, ToolError | ToolRuntimeError>): Tools {
-  const root: ToolGroup = {}
-  for (const descriptor of descriptors) {
-    let group = root
-    for (const segment of descriptor.path.slice(0, -1)) {
-      const child = group[segment] ?? {}
-      if (Tool.isTool(child)) throw new Error(`Code Mode descriptor '${descriptor.name}' continues past a tool`)
-      group[segment] = child
-      group = child
-    }
-    const leaf = descriptor.path.at(-1)
-    if (leaf === undefined || group[leaf] !== undefined) throw new Error(`Code Mode descriptor '${descriptor.name}' collides with another path`)
-    group[leaf] = Tool.make({
-      description: descriptor.description,
-      input: descriptor.inputSchema,
-      output: CodeToolResultSchema,
-      execute: (input) => execute(descriptor, input),
-    })
-  }
-  return root
-}
-
-/** The catalog renders signatures only, so its trie never runs a call. */
-export const catalogOnlyCall = (): Effect.Effect<never, ToolError> => Effect.fail(toolError("A Code Mode catalog trie cannot execute tools"))

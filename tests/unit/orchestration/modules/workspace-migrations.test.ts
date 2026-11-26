@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { installedWorkspaceMigrations } from "../../../../src/orchestration/modules.js"
+import { installedWorkspaceMigrations } from "../../../../src/orchestration/module-contract/module-catalog.js"
 import { workflowsModule } from "../../../../src/orchestration/modules/workflows.js"
 import { subagentsModule } from "../../../../src/orchestration/modules/subagents.js"
 import { learningModule } from "../../../../src/orchestration/modules/learning.js"

@@ -1,4 +1,4 @@
-import { isActiveActivity, type SessionCatalogRow } from "../../src/protocol/app-service-types.js"
+import { isActiveActivity, type SessionCatalogRow } from "../../src/protocol/runtime/app-service-types.js"
 
 /** One row of a chat quick pick. */
 export interface SessionChoice {

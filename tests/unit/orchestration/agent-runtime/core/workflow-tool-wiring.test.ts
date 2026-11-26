@@ -1,15 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import type { AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import type { AgentOptionsOverride } from "../_runner-options.js";
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js";
 import type { ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient } from "../_model-client.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
-import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { capabilityAccessHolding } from "../tools/_fixtures.js";
-import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";
+import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js";
 import { makeDeps as makeSubagentDeps } from "../subagent/_fixtures.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 

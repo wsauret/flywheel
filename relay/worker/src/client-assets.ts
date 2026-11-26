@@ -1,4 +1,4 @@
-import { CLIENT_IDENTITY_PATTERN } from "../../../src/protocol/client-identity.js"
+import { CLIENT_IDENTITY_PATTERN } from "../../../src/protocol/runtime/client-identity.js"
 import { decodeAssetChunk, newAssetRequestId, type RelayControlFrame } from "../../../src/protocol/modules/remote/relay-protocol.js"
 import type { PlacementAnnouncement } from "./admission.js"
 import { CLIENT_FILE_MAX_BYTES, clientFileType, newestClientIdentity, readClientAsset, storeClientAsset, type ClientCacheStorage } from "./client-cache.js"

@@ -6,12 +6,12 @@ import { Effect, Redacted, Stream } from "effect"
 import { Socket } from "effect/socket"
 import * as store from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
 import { createRemoteAccess, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
-import type { AccountServiceInstallation } from "../../../../../src/orchestration/app-service/account-service-installation.js"
+import type { AccountServiceInstallation } from "../../../../../src/orchestration/app-service/account/installation/account-service-platform.js"
 import * as control from "../../../../../src/orchestration/modules/remote/relay-control-channel.js"
-import * as identities from "../../../../../src/orchestration/modules/remote/remote-identity.js"
+import * as identities from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js"
 import { installationOf } from "../../app-service/_account-service-fixtures.js"
 import { RELAY_PING, toBase64Url, type OpenFrame } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 class RemoteSocket extends EventTarget {
   readyState: WebSocket["readyState"] = WebSocket.CONNECTING
@@ -40,7 +40,7 @@ class RemoteSocket extends EventTarget {
 }
 
 const turn = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
-const identity: identities.RemoteIdentity = { runtimeId: "runtime", publicKey: new Uint8Array(32), sign: async () => new Uint8Array(64) }
+const identity: identities.RemoteIdentity = { runtimeId: "runtime", publicKey: new Uint8Array(32), sign: async () => new Uint8Array(64), placementId: (projectRoot) => projectRoot }
 const deviceId = "d".repeat(43)
 const frame: OpenFrame = { type: "open", kind: "device", channelId: "channel", ticket: "ticket", deviceId }
 const restores: (() => void)[] = []

@@ -14,11 +14,8 @@
 import { describe, it, expect } from "bun:test"
 import type { AgentRunResult, Agent, AgentFactory, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { newTestRunner } from "../../../../helpers/agent-runner.js"
-import {
-  forkSessionTitles,
-  generateSessionTitle,
-  type SessionTitles,
-} from "../../../../../src/orchestration/session/session-title.js"
+import { forkSessionTitles, type SessionTitles } from "../../../../../src/orchestration/session/metadata/session-title.js"
+import { generateSessionTitle } from "../../../../../src/orchestration/agent-runtime/session-title-generation.js"
 import { makeCaptureClient } from "../context/_loop-fixtures.js"
 import { testAuth as auth, titleRoots } from "../../../../fixtures/session-title-fixtures.js"
 

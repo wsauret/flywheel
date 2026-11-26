@@ -3,31 +3,31 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { Cause, Effect, Exit, Queue } from "effect";
-import { DebugLog } from "../../../../infra/debug-log.js";
-import type { ModelRefusal } from "../../../../infra/auth/provider-model-catalog-store.js";
-import { asRecord } from "../../../../infra/record.js";
-import { classifyAnthropicError } from "../../../agent-runtime/llm/anthropic-adapter-helpers.js";
+import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
+import type { ModelRefusal } from "../../../../infra/providers/auth/provider-models/provider-model-catalog-store.js";
+import { asRecord } from "../../../../infra/guards/record.js";
+import { classifyAnthropicError } from "../../../agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";
 import { LlmStreamError, ModelAccessRefusedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../agent-runtime/llm/errors.js";
-import { STREAM_TTFT_TIMEOUT_MS } from "../../../agent-runtime/llm/stream-liveness.js";
-import type { ProviderTransportHiddenRequest } from "../../../session/provider-request-audit-types.js";
+import { STREAM_TTFT_TIMEOUT_MS } from "../../../agent-runtime/llm/stream/stream-liveness.js";
+import type { ProviderTransportHiddenRequest } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import type { UsageWindows } from "../account-usage.js";
-import { usageReports, type ExtraUsage, type ExtraUsageStop, type GuardStop } from "../extra-usage-guard.js";
+import { usageReports, type ExtraUsage, type ExtraUsageStop, type GuardStop } from "../bridge/extra-usage-guard.js";
 import { EngineCannotStartError } from "../login-observations.js";
-import { observeEngine } from "../observed-engine.js";
-import type { CliUserFrame, HostLaunch, LaunchedHost } from "../query-launcher.js";
-import { classifySdkMessage, cliFailure, reportsSpentUsage, type CliErrorReport, type CliTurnResult, type QuotaMark } from "../sdk-events.js";
-import { wireFailure, type WireFailure } from "../service-requests.js";
-import { bridgeSessionId } from "../session-id.js";
-import { stepGateFailure, type PluginGateServer } from "../step-gate.js";
-import { createToolGate, type ToolGate } from "../tool-gate.js";
-import { silentDebugOutputFailure, type SilentVersions } from "../stderr-signals.js";
-import { lockSession, sweepLeftBehindSessions, transcriptFiles } from "../transcript.js";
-import { queueIterable } from "../queue-iterable.js";
+import { observeEngine } from "../engine/observed-engine.js";
+import type { EngineValues } from "../query/query-engine.js";
+import type { CliUserFrame, HostLaunch, LaunchedHost } from "../engine/query-launcher.js";
+import { classifySdkMessage, cliFailure, reportsSpentUsage, type CliErrorReport, type CliTurnResult, type QuotaMark } from "../query/sdk-events.js";
+import { wireFailure, type WireFailure } from "../engine/service-requests.js";
+import { bridgeSessionId } from "../engine/session-id.js";
+import { stepGateFailure, type PluginGateServer } from "../engine/step-gate.js";
+import { createToolGate, type ToolGate } from "../query/tool-gate.js";
+import { silentDebugOutputFailure, type SilentVersions } from "../engine/stderr-signals.js";
+import { lockSession, sweepLeftBehindSessions, transcriptFiles } from "../engine/transcript.js";
+import { queueIterable } from "../engine/queue-iterable.js";
 import { CLAUDE_AGENT_SDK_LABEL, TOOL_MCP_PREFIX } from "../names.js";
 import { hostSessionFolder, type AgentFolder } from "./agent-file.js";
 import { DISPATCH_MESSAGE } from "./engine-text.js";
 import { AGENT_HOST_PLUGIN, AGENT_HOST_SOCKET_VARIABLE, createHostGate, serveHostGate, type AgentAdmission, type AgentStepSink, type HostGate, type StepValues } from "./host-gate.js";
-import { COORDINATOR_EFFORT, type Coordinator, type HostValues } from "./host-registry.js";
 import { hostedRequests } from "./hosted-requests.js";
 
 /** The dispatcher's whole prompt. It is the same for every host, so its cache entry serves every frame. */
@@ -111,6 +111,25 @@ export interface AgentHost {
   /** Closes the gate, so no step of the host reaches the service, and ends the engine. `error` fails what waits on
    *  the host. Resolves when the engine stopped; a later call resolves with the first close. */
   close(reason: string, error?: Error): Promise<void>;
+}
+
+/** The values that a host's engine fixes for its coordinator and all its agents: the request values that the engine
+ *  sends in every request, and whether the requests state an effort. No model is among them: each agent's definition
+ *  states its own model (`AgentHost.definition`), and the host picks its coordinator's model when it opens
+ *  (`coordinatorCandidates`). The host's gate states each agent's effort for each step that it admits
+ *  (`HostGate.admit`). Each agent's values were prepared for its own model, so agents of different models share a
+ *  host whenever their values are equal. Only a model that the engine does not know names itself in them, through
+ *  `modelCapabilities`. */
+export type HostValues = Omit<EngineValues, "effort" | "wireModelId" | "contextLimit"> & { readonly statesEffort: boolean };
+
+/** The effort of every coordinator step of a host whose requests state an effort, which keeps its calls short. */
+export const COORDINATOR_EFFORT = "low";
+
+/** One model on which a host's coordinator can run: its wire id, and its launch model in the engine's spelling
+ *  (`engineModelId`). */
+export interface Coordinator {
+  readonly wireModelId: string;
+  readonly model: string;
 }
 
 /** What one host is: its login and launcher, where it runs, and the request values that its engine fixes. */

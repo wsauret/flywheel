@@ -1,5 +1,5 @@
-import type { ServeLane } from "../infra/cli-subprocess.js"
-import type { FaultReach, ReleaseInstall } from "../protocol/client/runtime-fault-copy.js"
+import type { ServeLane } from "../infra/platform/cli-subprocess.js"
+import type { FaultReach, ReleaseInstall } from "../protocol/client/runtime/copy/runtime-fault-copy.js"
 
 /** How this terminal reaches the runtime that serves its project (ARCH-RUNTIME-005).
  *  A terminal on the runtime's own machine attaches through the local account

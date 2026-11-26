@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { cleanup, closeFixtures, fixture } from "./_project-state-worker-fixture.js"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store.js"
 import {
   asAsyncEventReadSurface,
   capturedFacts,
@@ -15,10 +15,10 @@ import {
   type FactQuery,
   type LocalSqliteEventStore,
   type StoredFact,
-} from "../../../../src/infra/event-store-types.js"
-import { extractContent, resolveToolContentReference } from "../../../../src/infra/tool-content.js"
-import { InvariantViolation } from "../../../../src/infra/invariant.js"
-import { contentEvidence } from "../../../../src/infra/content-evidence.js"
+} from "../../../../src/infra/substrate/store/event-store-types.js"
+import { extractContent, resolveToolContentReference } from "../../../../src/infra/substrate/runtime-facts/tool-content.js"
+import { InvariantViolation } from "../../../../src/infra/guards/invariant.js"
+import { contentEvidence } from "../../../../src/infra/substrate/runtime-facts/content-evidence.js"
 
 afterEach(closeFixtures)
 

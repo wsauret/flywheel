@@ -16,7 +16,7 @@ describe("binary build typecheck gate", () => {
     // path patch walks every emitted script rather than four named files.
     expect(buildBinarySource).toContain('for (const output of bundleResult.outputs) {\n  if (!output.path.endsWith(".js")) continue;\n  const patched = patchBundleScript(')
     for (const role of ["projectExecutor", "guardian", "commandSupervisor", "binaryInstall"]) {
-      expect(cliIndexSource).toMatch(new RegExp(`\\[EXECUTABLE_ROLES\\.${role}\\]: async \\(\\) => \\{\\n\\s+const \\{ \\w+ \\} = await import\\(`))
+      expect(cliIndexSource).toMatch(new RegExp(`\\[EXECUTABLE_ROLES\\.${role}\\]: async \\(\\) => \\{\\n\\s+const \\{ \\w+ \\} = await (?:importComposing\\(\\(\\) => )?import\\(`))
     }
   })
 })

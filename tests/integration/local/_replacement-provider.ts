@@ -1,10 +1,9 @@
 import * as path from "node:path"
 import * as fs from "node:fs"
 
-import { CONTINUATION_MESSAGES } from "../../../src/orchestration/agent-runtime/continuation-messages.js"
-import { interruptedTurnMessage } from "../../../src/orchestration/session/conversation/turn-end-record.js"
-import { interruptedWorkMessage } from "../../../src/orchestration/session/conversation/interrupted-turn-summary.js"
-import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash-script.js"
+import { CONTINUATION_MESSAGES, interruptedTurnMessage } from "../../../src/orchestration/session/conversation/turn-end-record.js"
+import { interruptedWorkMessage } from "../../../src/orchestration/session/conversation/tree/interrupted-turn-summary.js"
+import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash/bash-script.js"
 import { isSessionTitleRequest } from "./_session-title-request.js"
 
 export const MODEL = "gpt-5"

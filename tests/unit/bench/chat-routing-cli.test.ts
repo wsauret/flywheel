@@ -6,13 +6,13 @@ import { createRoutingConfig, executeRoutingBenchmark, main, planRoutingMatrix, 
 import { createRoutingRunStore, type RoutingAttemptRecord, type RoutingConfig, type RoutingRunRecord } from "../../../src/orchestration/modules/development/benchmark/chat-routing-store.js";
 import { chatRoutingGuidance, runChatRoutingTask } from "../../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
-import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
-import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/admission.js";
+import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { RESEARCH_SNAPSHOT } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import type { AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
-import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
-import { publishSkillRevision } from "../../../src/workflows/skill-schema.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
+import { publishSkillRevision } from "../../../src/workflows/skills/skill-schema.js";
 import { dryRunBenchmarkAdmission, dryRunBenchmarkRuntime } from "../../helpers/benchmark-admission.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 

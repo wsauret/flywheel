@@ -1,6 +1,6 @@
-import type { ResolvedAgent } from "../agent-resolution.js";
+import type { ResolvedAgent } from "../definitions/agent-resolution.js";
 import { BLOCKED_WORK_ARTIFACT_ID, JOIN_EXPANSION_CAP_BYTES, type AccumulatedContext, type HandoffEntry } from "./context.js";
-import { renderBlockedWork } from "../vm/blocked-work.js";
+import { renderBlockedWork } from "../output-contract/blocked-work.js";
 import { renderAgentOutput } from "../output-contract/render.js";
 import { renderWorkflowRequestSection } from "./workflow-request.js";
 import type { AttemptRow } from "../view/types.js";

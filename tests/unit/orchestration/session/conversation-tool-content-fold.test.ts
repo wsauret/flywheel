@@ -3,11 +3,11 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { contentEvidence } from "../../../../src/infra/content-evidence"
-import { asAsyncEventReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../src/infra/event-store-types"
+import { contentEvidence } from "../../../../src/infra/substrate/runtime-facts/content-evidence"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types"
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import type { ToolContentRow } from "../../../../src/infra/tool-content"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store"
+import type { ToolContentRow } from "../../../../src/infra/substrate/runtime-facts/tool-content"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader"
 

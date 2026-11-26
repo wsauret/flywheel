@@ -1,23 +1,24 @@
 import { describe, expect, test } from "bun:test"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { isExternalLoginDefinition } from "../../../../../src/infra/llm/access-provider.js"
-import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
-import { composePortableModuleServices } from "../../../../../src/orchestration/app-service/module-service-host.js"
-import { installedAccessProviderDefinitions } from "../../../../../src/orchestration/credential-provider-modules.js"
-import { composeFirstPartyModules, moduleProtocolRows, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js"
-import type { EngineLaunchOptions, EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine-process.js"
+import { isExternalLoginDefinition } from "../../../../../src/infra/providers/auth/provider-account.js"
+import { accessProviderRegistry } from "../../../../../src/orchestration/config/models/access-provider-registry.js"
+import { composePortableModuleServices } from "../../../../../src/orchestration/app-service/executor/execution/module-service-host.js"
+import { installedAccessProviderDefinitions, composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js"
+import { moduleProtocolRows } from "../../../../../src/orchestration/module-contract/module-catalog.js"
+import { SHIPPED_MODULES } from "../../../../../scripts/shipped-modules.js"
+import type { EngineLaunchOptions, EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-process.js"
 import { Effect, Exit, Scope } from "effect"
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js"
-import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"
+import { providerModelInfo } from "../../../../../src/infra/providers/llm/catalog/provider-model-info.js"
+import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"
 import { RouteUnavailableError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
-import { ProviderAuthenticationError } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js"
+import { ProviderAuthenticationError } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js"
 import { fakeAvailability } from "../../agent-runtime/llm/_provider-chain-harness.js"
-import { currentEngineRuntime, openEngineRuntime } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine-runtime.js"
-import { registerLiveEngine } from "../../../../../src/orchestration/modules/provider-google-antigravity/live-engines.js"
-import { loginGateAddress } from "../../../../../src/orchestration/modules/provider-google-antigravity/login-gate.js"
+import { currentEngineRuntime, openEngineRuntime } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-runtime.js"
+import { registerLiveEngine } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/live-engines.js"
+import { loginGateAddress } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/login-gate.js"
 import { createGoogleAntigravityModule, googleAntigravityModule } from "../../../../../src/orchestration/modules/provider-google-antigravity/module.js"
-import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js"
+import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js"
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js"
 import { moduleProcessServices } from "../../../../helpers/module-kernel.js"
 import { AGY, fakeAgy, pastePorts } from "./_fake-agy.js"
@@ -33,7 +34,7 @@ function fakeEngine(options: EngineLaunchOptions, closes: string[], busy: Promis
   const unused = () => Promise.reject(new Error("the test engine serves no session"))
   return {
     processId: crypto.randomUUID(), loginDir: options.loginDir, toolNames: new Set(options.tools.map((tool) => tool.name)), served: false, ended: ended.promise,
-    openSession: unused, releaseSession: () => {}, prompt: unused, cancel: unused, configure: unused, idle: () => false, whenIdle: () => busy,
+    openSession: unused, releaseSession: () => {}, prompt: unused, cancel: unused, conversationRows: () => { throw new Error("the test engine serves no session") }, configure: unused, idle: () => false, whenIdle: () => busy,
     close: async (reason) => {
       closes.push(reason)
       ended.resolve({ reason, served: false })

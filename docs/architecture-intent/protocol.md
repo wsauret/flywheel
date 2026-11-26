@@ -357,7 +357,7 @@ Not: A frame cap as the only size limit a person can meet.
 
 ## ARCH-PROTOCOL-068: Pending questions cross from the durable question projection
 
-Every client derives the question it docks at the prompt from the durable question projection, which committed question facts alone advance, never from transcript rows or runner state. The transcript's question row settles from the same committed answer, skip, or withdrawal on every settlement path, and a settlement that the runtime refuses returns its reason to the client. The same projection publishes the set of project sessions with a pending question, closed ones included, and clients derive every waiting mark from it.
+Every client derives the question it docks at the prompt from the durable question projection, which committed question facts alone advance, never from transcript rows or runner state. The transcript's question row settles from the same committed answer, skip, or withdrawal on every settlement path, and a settlement that the runtime refuses returns its reason to the client. The account service holds the set of project sessions with a pending question, closed ones included, from the same facts and the same fold, so it answers while no executor runs. Clients derive every waiting mark from it.
 
 Not: A dock derived from live transcript rows, which stays after a settlement that the live display never received, a question field on a session row, or a client request for each listed session.
 
@@ -370,6 +370,11 @@ Not: A change to a manifest field or a home-screen head tag that asks people to 
 
 ## ARCH-PROTOCOL-071: One account activity feed reports projects and questions
 
-The account socket offers one feed of known projects with their state, and of each question that starts or ends in an open project, read from the open compositions without holding them. Hosts that page across projects read this feed.
-Because: A session waiting on a question keeps its project open, so the open compositions already hold every question that can page.
+The account socket offers one feed of known projects with their state, and of each question that starts or ends and each chat that stops for the person in an open project. It reads them from the open compositions without holding them. Hosts that page across projects read this feed.
+Because: A question keeps its project open and a chat stops only while its project is open, so the open compositions already hold everything that can page.
 Not: A host that holds every project open to hear its questions.
+
+## ARCH-PROTOCOL-072: Stopped and unread chats cross as one project set
+
+The account service holds, beside the set of sessions with a pending question, the project's stopped chats and each chat's unread state. It folds them from committed stop, start, receipt, and conversation facts as they are stored, with no read per change and none per listed session. It publishes them with the workspace snapshot and its patches. Clients derive every stopped and unread mark, count, and notification from it.
+Not: A client that compares its own transcript with a local read position.

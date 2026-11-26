@@ -2,8 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { resolve } from "node:path"
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { branchBlocks } from "../../../helpers/branch-blocks"
-import { contextResetRecordId, interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record"
-import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages"
+import { contextResetRecordId, interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, CONTINUATION_MESSAGES } from "../../../../src/orchestration/session/conversation/turn-end-record"
 
 const CWD = resolve("/scratch/project")
 const T0 = "2026-07-02T10:00:00.000Z"

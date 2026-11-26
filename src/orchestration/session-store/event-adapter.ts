@@ -1,9 +1,9 @@
-import type { EventBus, Unsubscribe } from "../../infra/event-bus.js"
-import { FLYWHEEL_EVENT_TYPES, type FlywheelEvent, toRuntimeEvent } from "../../infra/events.js"
-import { formatCompactionReport } from "../../protocol/client/format.js"
-import { RUNTIME_EVENT_TYPES, type RuntimeEvent } from "../../infra/runtime-event-types.js"
-import type { OutputProjectionEvent } from "../../infra/output/output-projection-events.js"
-import type { OutputSession } from "../runner/output-session.js"
+import type { EventBus, Unsubscribe } from "../../infra/substrate/events/event-bus.js"
+import { FLYWHEEL_EVENT_TYPES, type FlywheelEvent, toRuntimeEvent } from "../../infra/substrate/events/events.js"
+import { formatCompactionReport } from "../session/conversation/transcript/conversation-block-projection.js"
+import { RUNTIME_EVENT_TYPES, type RuntimeEvent } from "../../infra/substrate/runtime-facts/runtime-event-types.js"
+import type { OutputProjectionEvent } from "../../infra/substrate/output/output-projection-events.js"
+import type { OutputSession } from "./output-session.js"
 import type { ChatEntryPatch } from "./types.js"
 
 const compactionTypes = new Set<RuntimeEvent["type"]>(["agent.compaction.started", "agent.compaction.completed"])

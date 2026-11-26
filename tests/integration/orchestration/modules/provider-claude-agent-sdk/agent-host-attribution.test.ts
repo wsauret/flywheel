@@ -4,7 +4,7 @@
  * must reach its own agent by the keys of the engine's debug output, never by order.
  */
 import { afterEach, describe, expect, test } from "bun:test";
-import { isFailoverFailure, ProviderAttemptFailure, type ProviderFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { isFailoverFailure, ProviderAttemptFailure, type ProviderFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { processAgentHosts } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { agentLoop, hostScript, lastUserTexts, lookupThenAnswer, TREE } from "./_agent-host.js";

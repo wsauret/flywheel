@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../../src/infra/event-store-types.js"
-import { InvariantViolation } from "../../../../../src/infra/invariant.js"
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { InvariantViolation } from "../../../../../src/infra/guards/invariant.js"
 import { parseSubagentRunFact, type SubagentRunFact } from "../../../../../src/orchestration/modules/subagents/facts.js"
 import { buildDurableSubagentCreated, buildSubagentCompleted, buildSubagentPaused, buildSubagentResumed } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { loadSubagentRunsFromEvents } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"

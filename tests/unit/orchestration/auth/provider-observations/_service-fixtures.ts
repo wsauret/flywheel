@@ -1,13 +1,13 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { AccessProviderDefinition } from "../../../../../src/infra/llm/access-provider.js"
-import { composeModules } from "../../../../../src/infra/module-descriptor.js"
-import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/llm/subscription-usage.js"
+import type { AccessProviderDefinition } from "../../../../../src/infra/providers/llm/access/access-provider.js"
+import { composeModules } from "../../../../../src/infra/definitions/module-descriptor.js"
+import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/providers/llm/usage/subscription-usage.js"
 
-import { accessProviderRegistry, type AccessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
-import type { AccessProviderFactory } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"
-import type { FirstPartyModule } from "../../../../../src/orchestration/modules.js"
+import { accessProviderRegistry, type AccessProviderRegistry } from "../../../../../src/orchestration/config/models/access-provider-registry.js"
+import type { AccessProviderFactory } from "../../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js"
+import type { FirstPartyModule } from "../../../../../src/orchestration/module-contract/module-catalog.js"
 /** Creates isolated profiles. Each test file must register cleanup in its own afterEach hook. */
 export function createProfileFixture() {
   const roots: string[] = []

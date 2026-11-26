@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js";
+import { NO_MODULE_SERVICES } from "../../../../../src/infra/definitions/modules/module-service.js";
 
 import * as os from "node:os";
 import * as path from "node:path";
@@ -8,13 +8,13 @@ import { rmSync } from "node:fs";
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { forkAssignment } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { loadStandalonePersonaRegistry } from "../../../../../src/workflows/agents/registry.js";
-import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
-import type { SubagentDispatchDeps } from "../../../../../src/orchestration/modules/subagents/execution/dispatch-deps.js";
+import type { ConversationMessage } from "../../../../../src/infra/providers/llm/conversation/conversation-message.js";
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js";
+import type { SubagentDispatchDeps } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-deps.js";
 import { buildRegistry, grantOf, makeContext, makeDeps, makeMockRunnerFactory, runnerEffort, TEST_RATIONALE, childTask } from "./_fixtures.js";
-import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch-preparation.js";
-import type { ContinuationTarget } from "../../../../../src/orchestration/modules/subagents/execution/control-actions.js";
-import { canUseCheckpoint } from "../../../../../src/infra/agent-assets/session-notes.js";
+import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.js";
+import type { ContinuationTarget } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/control-actions.js";
+import { canUseCheckpoint } from "../../../../../src/infra/definitions/agent-assets/session-notes.js";
 import { noSkills } from "../../../../helpers/project-definitions.js";
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js";
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { moduleDomainReader } from "../../../src/protocol/client/module-domain.js"
+import { moduleDomainReader } from "../../../src/protocol/client/modules/module-domain.js"
 import { moduleRows, type ProtocolModuleDomainName, type ProtocolModuleView } from "../../../src/protocol/modules.js"
 import { defineProtocolModule, type DomainReader, type ProtocolModule } from "../../../src/protocol/protocol-module.js"
 

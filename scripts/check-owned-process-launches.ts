@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Node, Tree } from "web-tree-sitter";
-import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js";
+import { loadTreeSitterParser } from "../src/infra/parsing/tree-sitter-parser.js";
 
 // Every external process Flywheel starts must come from the owned boundary
 // (ARCH-TOOLS-022): `spawnOwned`, `runOwnedCommand`, or `openExternalUrl`. Only the
@@ -49,14 +49,16 @@ const CONSOLE_ROOTS = ["src", "scripts", "tests", "bench", "bin/flywheel"] as co
 
 /** The only modules allowed to hold a raw platform launch. */
 export const RAW_LAUNCH_AUTHORITY_FILES: ReadonlySet<string> = new Set([
-  "src/infra/owned-subprocess-backend.ts",
-  "src/infra/inherited-command.ts",
-  "src/infra/process-container.ts",
-  "src/infra/owned-command-supervisor.ts",
+  "src/infra/supervision/launch/owned-subprocess-backend.ts",
+  "src/infra/supervision/commands/inherited-command.ts",
+  "src/infra/process/container/process-container.ts",
+  "src/infra/supervision/launch/owned-command-supervisor.ts",
   "src/infra/process-supervisor.ts",
-  "src/infra/persistent-subprocess.ts",
-  "src/infra/windows-private-directory-acl.ts",
-  "src/infra/foreground-successor.ts",
+  "src/infra/supervision/persistent/persistent-subprocess.ts",
+  // `CreateProcessW` through FFI, which only the persistent authority imports.
+  "src/infra/process/container/windows-breakaway-launch.ts",
+  "src/infra/platform/files/windows/windows-private-directory-acl.ts",
+  "src/infra/update/distribution/foreground-successor.ts",
 ]);
 
 /** Exported symbols of the authority modules that build a launcher inside
@@ -72,6 +74,7 @@ const RAW_LAUNCH_FACTORY_SYMBOLS: ReadonlySet<string> = new Set([
   "ownUnixContainer",
   "commandSupervisorArgv",
   "persistentSubprocessPlatform",
+  "launchBreakaway",
 ]);
 
 const AUTHORITY_MODULE_STEMS: ReadonlySet<string> = new Set(

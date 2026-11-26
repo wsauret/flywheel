@@ -1,22 +1,23 @@
-import { readAppVersion } from "../infra/app-version.js"
-import type { StartupDirectories } from "../infra/directory-authorities.js"
-import { errorDetail, errorMessage } from "../infra/error-message.js"
-import type { LaunchState } from "../infra/launch-state.js"
-import { Log } from "../infra/log.js"
+import { importComposing } from "./composition/module-registries.js"
+import { readAppVersion } from "../infra/update/distribution/app-version.js"
+import type { StartupDirectories } from "../infra/platform/files/directory-authorities.js"
+import { errorDetail, errorMessage } from "../infra/diagnostics/error-message.js"
+import type { LaunchState } from "../infra/update/distribution/launch-state.js"
+import { Log } from "../infra/diagnostics/log.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
-import { createPersistentProcessManager, type PersistentProcessManager } from "../infra/persistent-process-manager.js"
-import { startupTrace } from "../infra/startup-trace.js"
-import type { createStartupTimeline } from "../infra/startup-timeline.js"
+import { createPersistentProcessManager, type PersistentProcessManager } from "../infra/supervision/persistent/persistent-process-manager.js"
+import { startupTrace } from "../infra/diagnostics/startup-trace.js"
+import type { createStartupTimeline } from "../infra/diagnostics/startup-timeline.js"
 import { HEADLESS_USAGE, hasHeadlessFlag, headlessChatAttaches, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, isHeadlessChat, needsHeadlessUsage } from "./headless-args.js"
-import { createCliLauncher } from "./runtime-launch.js"
-import type { CliLauncher, TerminalLaunch, TerminalRuntime } from "./runtime-launch.js"
-import type { TerminalHandoff } from "./terminal-handoff.js"
-import { publishFailedHeadlessTerminal, type CliStartup } from "./startup.js"
+import { createCliLauncher } from "./account-service/runtime-launch.js"
+import type { CliLauncher, TerminalLaunch, TerminalRuntime } from "./account-service/runtime-launch.js"
+import type { TerminalHandoff } from "./account-service/terminal-handoff.js"
+import { publishFailedHeadlessTerminal, type CliStartup } from "./startup/startup.js"
 import type { SubcommandDispatch } from "./subcommands.js"
-import type { HeadlessOutputObserver } from "../orchestration/headless/headless-output.js"
-import type { HeadlessTaskResult } from "../orchestration/headless/run-headless-task.js"
-import { shutdownSignals } from "../infra/shutdown-signals.js"
-import { watchTerminalInput } from "../tui/terminal-input.js"
+import type { HeadlessOutputObserver } from "../orchestration/app-service/headless/headless-output.js"
+import type { HeadlessTaskResult } from "../orchestration/app-service/headless/run-headless-task.js"
+import { shutdownSignals } from "../infra/process/shutdown-signals.js"
+import { watchTerminalInput } from "../tui/terminal/terminal-input.js"
 
 type MutationResult = number | undefined | { readonly kind: "task"; result: HeadlessTaskResult }
 
@@ -105,7 +106,7 @@ async function runCommand(args: readonly string[], subcommand: SubcommandDispatc
   }
   // Must branch before startTUI() registers a global terminal raw-mode handler
   if (hasHeadlessFlag(args)) {
-    const { composeFirstPartyModules } = await import("../orchestration/modules.js")
+    const { composeFirstPartyModules } = await importComposing(() => import("../orchestration/module-contract/module-composition.js"))
     for (const warning of composeFirstPartyModules().warnings) Log.Default.warn(warning)
 
     // A headless command that hosts its runtime prepares it here. The
@@ -120,7 +121,7 @@ async function runCommand(args: readonly string[], subcommand: SubcommandDispatc
     // Headless runs agent turns too: without parent-death detection, a closed
     // terminal or killed CI runner leaves a detached flywheel process spending
     // provider tokens. Exit promptly; the watchdog's SIGKILL clock backstops.
-    const { installProcessWatchdog } = await import("../infra/process-watchdog.js")
+    const { installProcessWatchdog } = await import("../infra/supervision/process-watchdog.js")
     installProcessWatchdog(() => {
       Log.Default.error("parent process died; exiting headless run")
       void Log.closeGlobal().finally(() => process.exit(1))
@@ -141,12 +142,12 @@ async function runHeadless(args: readonly string[], directories: StartupDirector
   })
   const progressWriter = (line: string) => { process.stderr.write(`${line}\n`) }
   if (headlessChatAttaches(args)) {
-    const { runAttachedAcpChat } = await import("./attached-acp-chat.js")
+    const { runAttachedAcpChat } = await importComposing(() => import("./account-service/attached-acp-chat.js"))
     return await runAttachedAcpChat({ directories, allowPersistentProcesses, authProfile: headlessAuthProfile(args), input: process.stdin, write, progressWriter })
   }
   if (isHeadlessChat(args)) {
-    const { runHeadlessChat } = await import("../orchestration/headless/run-headless-chat.js")
-    const { runtimeWorkerUrl } = await import("./runtime-launch.js")
+    const { runHeadlessChat } = await importComposing(() => import("../orchestration/app-service/headless/run-headless-chat.js"))
+    const { runtimeWorkerUrl } = await import("./account-service/runtime-launch.js")
     return await runHeadlessChat({
       headlessAuth: { profile: headlessAuthProfile(args), snapshotPath: headlessAuthSnapshot(args) },
       ...directories, launcher: launcher.scope,
@@ -162,7 +163,7 @@ async function runHeadless(args: readonly string[], directories: StartupDirector
 }
 
 async function runHeadlessTaskMode(task: string, args: readonly string[], directories: StartupDirectories, launcher: LauncherContext, persistentProcessManager: PersistentProcessManager, allowPersistentProcesses: boolean, disabledTools: readonly string[], output?: HeadlessOutputObserver): Promise<MutationResult> {
-  const { runHeadlessTask } = await import("../orchestration/headless/run-headless-task.js")
+  const { runHeadlessTask } = await importComposing(() => import("../orchestration/app-service/headless/run-headless-task.js"))
   const result = await runHeadlessTask(task, {
     directories,
     launcher: launcher.scope,
@@ -180,7 +181,7 @@ async function runHeadlessTaskMode(task: string, args: readonly string[], direct
     connectEventBus: output ? (bus) => output.connect(bus) : undefined,
   })
   if (!output) {
-    const { formatLegacyTaskOutput } = await import("../orchestration/headless/headless-output.js")
+    const { formatLegacyTaskOutput } = await import("../orchestration/app-service/headless/headless-output.js")
     process.stdout.write(formatLegacyTaskOutput(result))
   }
   return { kind: "task", result }
@@ -189,11 +190,11 @@ async function runHeadlessTaskMode(task: string, args: readonly string[], direct
 async function runTUI(directories: StartupDirectories, launcher: CliLauncher, terminal: TerminalLaunch, handoff: TerminalHandoff, launchState: LaunchState | undefined, timeline?: ReturnType<typeof createStartupTimeline>): Promise<number> {
   startupTrace("runTUI start")
   const endImports = timeline?.begin("client.imports")
-  const { armProcessWatchdog, installProcessWatchdog } = await import("../infra/process-watchdog.js")
-  const { startTUI } = await import("../tui/launcher.js");
+  const { armProcessWatchdog, installProcessWatchdog } = await import("../infra/supervision/process-watchdog.js")
+  const { startTUI } = await import("../tui/shell/launcher.js");
   startupTrace("tui launcher imported")
-  const { exitTUI, registerPreExitCleanup } = await import("../tui/exit.js");
-  const { RUNTIME_SHUTDOWN_HARD_EXIT_MS } = await import("../orchestration/app-service/runtime-shutdown.js")
+  const { exitTUI, registerPreExitCleanup } = await import("../tui/terminal/exit.js");
+  const { RUNTIME_SHUTDOWN_HARD_EXIT_MS } = await import("../orchestration/app-service/runtime/runtime-shutdown.js")
   // Parent death without a signal (SIGKILLed shell, crashed terminal emulator)
   // attempts the same graceful path as SIGHUP; the watchdog Worker's hard-exit
   // clock is armed independently, so a wedged main thread still dies bounded.
@@ -211,7 +212,7 @@ async function runTUI(directories: StartupDirectories, launcher: CliLauncher, te
   // the relay, and a relay launch none of the local attach.
   const launchers = terminal.kind === "relay"
     ? { kind: "relay" as const, remote: terminal.remote, module: await import("./remote-terminal.js") }
-    : { kind: "local" as const, terminal, modules: await Promise.all([import("./runtime-launch.js"), import("./runtime-attach.js")]) }
+    : { kind: "local" as const, terminal, modules: await Promise.all([import("./account-service/runtime-launch.js"), import("./account-service/runtime-identity-record.js")]) }
   startupTrace("runtime launcher imported")
   endImports?.()
   const endClientCreate = timeline?.begin("client.client_create")

@@ -1,9 +1,9 @@
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { Result, Schema, SchemaIssue } from "effect";
-import { errorMessage } from "../../infra/error-message.js";
-import { JsonSyntaxError, parseJsonSource, type JsonSource } from "../../infra/json-source.js";
-import { isRecord, type UnknownRecord } from "../../infra/record.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
+import { JsonSyntaxError, parseJsonSource, type JsonSource } from "./json-source.js";
+import { isRecord, type UnknownRecord } from "../../infra/guards/record.js";
 import type { CompiledOutput, OutputCheckContext } from "./compile.js";
 import { canonicalizeCommandRuns, isRecordedCommandRunPath, resolveCommandRuns, type CommandRunRepair } from "./evidence.js";
 import { declaredPayload, withoutEmptyOptionals } from "./leniency.js";

@@ -2,7 +2,7 @@ import { describe, expect, it, spyOn } from "bun:test"
 import { TextareaRenderable } from "@opentui/core"
 import { createTestRenderer } from "@opentui/core/testing"
 import { createRoot, createSignal, type Accessor } from "solid-js"
-import { createComposerFocus } from "../../../../src/tui/hooks/create-composer-focus.js"
+import { createComposerFocus } from "../../../../src/tui/components/composer/create-composer-focus.js"
 
 async function flushFocusSync(): Promise<void> {
   await Bun.sleep(0)

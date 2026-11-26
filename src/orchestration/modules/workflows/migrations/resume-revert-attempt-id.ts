@@ -1,7 +1,7 @@
-import { isRecord } from "../../../../infra/record.js"
-import type { EventPayload } from "../../../../infra/event-store-types.js"
+import { isRecord } from "../../../../infra/guards/record.js"
+import type { EventPayload } from "../../../../infra/substrate/store/event-store-types.js"
 import { parseWorkflowQueueFact } from "../../../../workflows/view/view-facts.js"
-import { migrateFactVersions, unreadableWhenRefused, type FactMigrationResult } from "../../../migrations/engine.js"
+import { migrateFactVersions, unreadableWhenRefused, type FactMigrationResult } from "../../../workspace-state/migrations/engine.js"
 
 const RESUME_REVERT_ATTEMPT_ID_MIGRATION_ID = "resume-revert-attempt-id-v1"
 

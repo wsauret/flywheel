@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types";
-import { Log } from "../../../../../src/infra/log";
-import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../../src/infra/retained-operation-hosts";
-import { createLazyWorkflowController } from "../../../../../src/orchestration/app-service/lazy-workflow-controller";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types";
+import { Log } from "../../../../../src/infra/diagnostics/log";
+import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../../src/infra/definitions/modules/retained-operation-hosts";
+import { createLazyWorkflowController } from "../../../../../src/orchestration/app-service/executor/execution/lazy-workflow-controller";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work";
 import { workflowLaunchRetainedOperation } from "../../../../../src/orchestration/modules/workflows/launch-operation";
-import type { ConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree";
-import { createConversationTreeWriter } from "../../../../../src/orchestration/session/conversation/conversation-tree-writer";
+import type { ConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree";
+import { createConversationTreeWriter } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
 import { turnEndEntryId } from "../../../../../src/orchestration/session/conversation/turn-end-record";
 import {
   WORKFLOW_LAUNCH_OPERATION_KIND,
   workflowLaunchHost,
   type WorkflowLaunchHost,
   type WorkflowLaunchOperation,
-} from "../../../../../src/orchestration/workflow-host/launch-operation-contract";
+} from "../../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract";
 import { fakeManager, fakeSessionStore, workflowController } from "../../app-service/app-service-doubles";
 import { createSavePointContext, disposeSavePointContext, type SavePointTestContext } from "../../session/_save-point-fixtures";
 

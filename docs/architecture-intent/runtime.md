@@ -11,7 +11,7 @@ Not: A runtime or mode registry that switches agent semantics per caller.
 
 ## ARCH-RUNTIME-002: The runner host consumes authorities and owns none of them
 
-The runner host owns runner-context construction, one logical turn lease, explicit resume, interruption, settlement, and the prepared model presentation of each serving attempt. It does not own provider-request admission, workflow control, session lifecycle, durable conversation authority, benchmark policy, or capability admission: it consumes those owners through ports and mirrors none of their state.
+The runner host owns runner-context construction, one logical generation and its recovery, interruption, settlement, and the prepared model presentation of each serving attempt. The turn slot of the chat runner owns the turn lease of the chat, its reservation, and explicit resume. It does not own provider-request admission, workflow control, session lifecycle, durable conversation authority, benchmark policy, or capability admission: it consumes those owners through ports and mirrors none of their state.
 
 ## ARCH-RUNTIME-003: One recovery policy restarts unattended runs
 
@@ -201,6 +201,12 @@ An attached terminal follows the serving account service's announced build ident
 A client finds the account service or starts it. Where a service-manager registration in the login home is loaded and enabled, that job is the only starter. The client asks the manager to start it and never launches a twin beside it. A client launches the service itself only where nothing is registered and enabled. That launch is the explicitly authorized persistent kind and uses its lane's entry: the installed build, or the checkout's source. A client that has begun to exit starts no service.
 Not: A client-launched service beside a registered job, which holds the address while the job parks or respawns against it.
 
+## ARCH-RUNTIME-085: A Windows client starts the service outside every job and proves it before the service runs
+
+On Windows, a client starts the account service suspended, with a request to break away from every job, and checks that the suspended process is in no job before it lets it run. When Windows refuses the breakaway, or the process is still in a job, the client ends the suspended process and starts the service through WMI instead. The service's output goes to its spool files in both paths.
+Because: The service must outlive an editor's kill-on-close job, a client sees only its innermost job, and a WMI start costs hundreds of milliseconds.
+Not: A WMI start on every launch, or trust in a breakaway that Windows reports as done while an editor's outer job still holds the process.
+
 ## ARCH-RUNTIME-038: Only a proven login home registers or changes a registration
 
 Process initiation registers the service with the platform service manager only when the account home is the login home; an isolated account home registers nothing and reports initiation unavailable. A running service writes, reloads, or re-registers its own registration only when its manager started it and the login home is proven, and an unanswered proof is never remembered.
@@ -238,9 +244,9 @@ Because: Maintenance contends for the store's write lock, so readiness comes fir
 
 ## ARCH-RUNTIME-045: The account service owns the login-shell PATH
 
-The account service learns the login shell's PATH once, after it listens and off the attach path, through the owned command authority at background priority within a bound, and reads only PATH from the probe. Each executor generation receives that PATH on its lifecycle channel and never probes itself. A failure is not kept, so a generation that opens while PATH is unknown asks the account to probe again, and a PATH once found is kept for the service's life.
+The account service learns the interactive login shell's PATH once, falling back to the login shell, after it listens and off the attach path, through the owned command authority at background priority within a bound. It reads only PATH from the probe. Each executor generation receives that PATH on its lifecycle channel and never probes itself. A failure is not kept, so a generation that opens while PATH is unknown asks the account to probe again, and a PATH once found is kept for the service's life.
 
-Because: A service started by a service manager has only that manager's minimal PATH, so only the login shell's PATH resolves the same binaries on every launch lane.
+Because: A service manager gives only a minimal PATH, and tools add their directories in interactive startup files, so only the interactive login shell's PATH resolves the same binaries on every lane.
 
 ## ARCH-RUNTIME-046: Shell load is admitted by processor use, not by container count
 

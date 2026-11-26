@@ -1,9 +1,9 @@
 import { expect, it, mock } from "bun:test"
 import { createComponent, createEffect, createRoot, createSignal } from "solid-js"
-import type { RuntimeQuery } from "../../../../src/protocol/app-service-types.js"
-import { createMutationEvidenceReader, type MutationEvidenceReader } from "../../../../src/protocol/client/mutation-evidence.js"
+import type { RuntimeQuery } from "../../../../src/protocol/runtime/app-service-types.js"
+import { createMutationEvidenceReader, type MutationEvidenceReader } from "../../../../src/protocol/client/chat/transcript/mutation-evidence.js"
 import { MutationEvidenceProvider, useMutationEvidence, type OpenMutationEvidence } from "../../../../src/tui/context/mutation-evidence.js"
-import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
+import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { fakeRuntimeClient } from "../hooks/_output-transcript-cache-fixtures.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
@@ -130,21 +130,21 @@ it("exposes only the existing resident session reader and retires it with the ca
   createRoot((cleanup) => {
     dispose = cleanup
     cache = createOutputTranscriptCache({ appService: fake.client, maxSessions: 1 })
-    createEffect(() => { observed = cache.mutationEvidence("first") })
+    createEffect(() => { observed = cache.bindSession(() => "first").mutationEvidence() })
   })
   try {
     expect(observed).toBeUndefined()
     expect(cache.residentSessionIds()).toEqual([])
     cache.startKnownEmpty("first")
-    const reader = cache.mutationEvidence("first")
+    const reader = cache.bindSession(() => "first").mutationEvidence()
     expect(reader).toBeDefined()
     expect(observed).toBe(reader)
     cache.ensure("first")
-    expect(cache.mutationEvidence("first")).toBe(reader)
+    expect(cache.bindSession(() => "first").mutationEvidence()).toBe(reader)
     cache.startKnownEmpty("second")
     expect(observed).toBeUndefined()
-    expect(cache.mutationEvidence("first")).toBeUndefined()
-    expect(cache.mutationEvidence("second")).not.toBe(reader)
+    expect(cache.bindSession(() => "first").mutationEvidence()).toBeUndefined()
+    expect(cache.bindSession(() => "second").mutationEvidence()).not.toBe(reader)
   } finally {
     dispose()
   }

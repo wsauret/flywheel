@@ -1,4 +1,4 @@
-import { MODULE_IDS, type ModuleId } from "../../src/protocol/module-ids.js"
+import { MODULE_IDS, type ModuleId } from "../../src/protocol/runtime/module-ids.js"
 
 /** The `when` clause context of the project's modules: `flywheel.modulesKnown`
  *  once the client has named the enabled modules, and `flywheel.module.<id>`

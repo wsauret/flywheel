@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { presentationChannel } from "../../../../../src/infra/error-presentation.js"
+import { presentationChannel } from "../../../../../src/infra/substrate/events/error-presentation.js"
 
 describe("project notification producers", () => {
   it("keeps durable provider conditions off the removed pinned notice channel", () => {

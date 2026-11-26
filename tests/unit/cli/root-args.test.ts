@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { rootCliAction } from "../../../src/cli/root-args.js"
 import { rootUsage } from "../../../src/cli/root-help.js"
 import { SUBCOMMANDS, isSubcommand } from "../../../src/cli/subcommands.js"
-import { installedCliNouns } from "../../../src/orchestration/modules.js"
+import { installedCliNouns } from "../../../src/orchestration/module-contract/module-catalog.js"
 
 describe("root CLI args", () => {
   test("refuses retired headless workflow selectors before startup", async () => {

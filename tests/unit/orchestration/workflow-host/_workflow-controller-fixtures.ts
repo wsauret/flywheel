@@ -3,51 +3,52 @@ import { initializedWorkflowFacts } from "../../../helpers/workflow-root-fixture
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
-import { resolveEventStoreDbFile, resolveSessionDir } from "../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types"
+import { resolveEventStoreDbFile, resolveSessionDir } from "../../../../src/infra/platform/files/paths"
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store"
+import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/substrate/output/output-block-delta"
 import {
   createWorkflowController,
   type WorkflowController,
   type WorkflowControllerDeps,
-} from "../../../../src/orchestration/workflow-host/controller"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../src/infra/event-store-types"
-import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../src/infra/retained-operation-hosts"
-import type { HeldRetainedOperation, RetainedOperationAcceptance, RetainedOperationCommitResult } from "../../../../src/orchestration/module-seams"
-import { bindRetainedOperations } from "../../../../src/orchestration/session/module-session-operations"
-import { workflowLaunchHost, type WorkflowLaunchHost } from "../../../../src/orchestration/workflow-host/launch-operation-contract"
-import { loadPathWorkflow } from "../../../../src/orchestration/workflow-host/path-workflow"
-import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/publish"
+} from "../../../../src/orchestration/workflow-host/lifecycle/controller"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types"
+import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../../../src/infra/definitions/modules/retained-operation-hosts"
+import type { HeldRetainedOperation, RetainedOperationAcceptance, RetainedOperationCommitResult } from "../../../../src/orchestration/module-contract/module-seams"
+import { bindRetainedOperations } from "../../../../src/orchestration/session/control/module-session-operations"
+import { workflowLaunchHost, type WorkflowLaunchHost } from "../../../../src/orchestration/workflow-host/lifecycle/launch-operation-contract"
+import { loadPathWorkflow } from "../../../../src/orchestration/workflow-host/lifecycle/path-workflow"
+import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/lifecycle/publish"
 import type { SessionStore, SessionEntry } from "../../../../src/orchestration/session-store/types"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager"
 import type { WorkflowView } from "../../../../src/workflows/view/types"
-import type { WorkflowCapabilityBoundary } from "../../../../src/workflows/run-facts"
-import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema"
-import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config"
-import type { WorkflowDeps } from "../../../../src/orchestration/workflow-host/deps"
+import type { WorkflowCapabilityBoundary } from "../../../../src/workflows/run/run-facts"
+import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema/schema"
+import { captureRuntimeConfigRequest } from "../../../../src/orchestration/config/request-config"
+import type { WorkflowDeps } from "../../../../src/orchestration/agent-runtime/runner/workflow-deps"
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, repoModules } from "../../../helpers/project-definitions"
 import { testDirectories } from "../../../helpers/directories"
 import { testCapabilityModules, testEligibility, testProviderRegistry } from "../../../helpers/provider-authority"
-import { composeRealmModuleSnapshot, type ModuleId } from "../../../../src/orchestration/modules"
-import { MODULE_IDS, moduleDisabledReason } from "../../../../src/protocol/module-ids.js"
-import type { WorkflowsMode } from "../../../../src/protocol/module-protocol-types.js"
-import { createDefinitionAvailability, type DefinitionAvailabilityOwner } from "../../../../src/orchestration/app-service/definition-availability"
-import type { CapabilityRequest, ModulePolicy } from "../../../../src/orchestration/config/module-policy"
+import { composeRealmModuleSnapshot } from "../../../../src/orchestration/module-contract/module-composition.js"
+import { type ModuleId, workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-contract/module-catalog.js"
+import { MODULE_IDS, moduleDisabledReason } from "../../../../src/protocol/runtime/module-ids.js"
+import type { WorkflowsMode } from "../../../../src/protocol/runtime/module-protocol-types.js"
+import { createDefinitionAvailability, type DefinitionAvailabilityOwner } from "../../../../src/orchestration/config/policy/definition-availability"
+import type { CapabilityRequest, ModulePolicy } from "../../../../src/orchestration/config/policy/module-policy"
 import type { ModuleState } from "../../../../src/orchestration/config/module-descriptor"
-import { modelWorkflowLaunchOrigin, workflowLaunchDecision, type ModelWorkflowLaunchOrigin, type WorkflowLaunchTarget } from "../../../../src/orchestration/workflow-host/launch-origin"
+import { modelWorkflowLaunchOrigin, type ModelWorkflowLaunchOrigin } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin"
+import { workflowLaunchDecision, type WorkflowLaunchTarget } from "../../../../src/orchestration/agent-runtime/tools/definitions/workflow-launch.js"
 import { fullAuthority } from "../../../helpers/launch-authority"
 import { stagedWorkflowContent } from "../../../helpers/workflow-files.js"
 type WorkflowLaunchDecision = ReturnType<typeof workflowLaunchDecision>["decision"]
-import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile"
+import { createSessionAuthAdmission } from "../../../../src/orchestration/auth/session-auth-profile"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager"
-import { captureProviderConnection } from "../../../../src/infra/auth/auth-context"
+import { captureProviderConnection } from "../../../../src/infra/providers/auth/auth-context"
 import { fakeModelInfos, fakeModelsClient } from "../../../helpers/model-tier-fixtures"
 import { authProviders } from "../../../helpers/auth-context.js"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures.js"
-import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-host/auth-owner.js"
-import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { createWorkflowAuthOwner } from "../../../../src/orchestration/auth/session-auth-profile.js"
 import { planEveryCapability } from "../../../helpers/attempt-brief.js"
 
 /** Account authorities every fixture deps object publishes. They name the
@@ -86,19 +87,10 @@ export function createMockSessionStore(): SessionStore & {
     has: (id: string) => entries.has(id),
     isRunning: (id: string) => entries.has(id),
     abort: mock(async (id: string) => { abortCalls.push(id); return true }),
-    prepareForShutdown: mock(() => {}),
-    interruptForReplacement: mock(async () => false),
-    interrupt: mock(() => false),
-    releaseForegroundBash: () => false,
-    transferForegroundForReplacement: async () => {},
-    terminateBackgroundWork: () => {},
+    activeRunner: () => null,
     remove: mock(async () => {}),
     updateEntry: mock(() => {}),
     updateChatEntry: mock(() => {}),
-    answerQuestion: mock(() => false),
-    compactConversation: async () => false,
-    learnFromSession: () => false,
-    cancelQuestion: mock(() => false),
     runningCount: () => entries.size,
     allIds: () => [...entries.keys()],
     revision: () => 0,

@@ -1,15 +1,16 @@
 import { Redacted } from "effect";
-import { apiKey } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
-import { fetchCatalog } from "../../../infra/llm/model-listing.js";
-import { openRouterRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
-import { ApiError } from "../../agent-runtime/errors.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { createModelReminders } from "../../agent-runtime/llm/runtime-reminders.js";
+import { apiKey } from "../../../infra/providers/auth/auth-context.js";
+import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { extractDataCatalogRows } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
+import { fetchCatalog } from "../../../infra/providers/llm/access/model-listing.js";
+import { openRouterRequestHeaders } from "../../../infra/providers/llm/provider-request-identity.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
+import { createModelReminders } from "../../agent-runtime/llm/history/runtime-reminders.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/provider-affordability.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/routing/provider-affordability.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { createOpenRouterAffordability } from "./affordability.js";
 import { OPENROUTER_API_BASE, OPENROUTER_API_HOST } from "./api.js";
 import { canonicalizeOpenRouterCatalogRow, canonicalizeOpenRouterWireId, openRouterModelOutputCap } from "./model-support.js";
@@ -62,7 +63,7 @@ const createClient: AccessProviderFactory = async (build) => {
   }, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No OpenRouter API key in the active auth profile. Run: flywheel auth login --openrouter", recovery: { kind: "none" } });
-    const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/chat-completions.js")]);
+    const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/adapters/chat-completions/chat-completions.js")]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: OPENROUTER_API_BASE, defaultHeaders: await openRouterRequestHeaders(), maxRetries: 0 });
     return createChatCompletionsAdapter(client, build.model, info, {
       accessProvider: definition.id, candidate: build.candidate, wireModelId: build.wireModelId,

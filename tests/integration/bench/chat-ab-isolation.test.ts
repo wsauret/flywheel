@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { cellIsolation, inheritedCellEnvironment } from "../../../bench/chat-ab/isolation.js";
-import { createCliLauncher } from "../../../src/cli/runtime-launch.js";
+import { createCliLauncher } from "../../../src/cli/account-service/runtime-launch.js";
 import { ownedCommandRunner } from "../../../src/infra/owned-command.js";
 import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js";
 import { temporaryDirectories } from "../../helpers/directories.js";

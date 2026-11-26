@@ -15,12 +15,13 @@
 // subcommand that starts a process launches it into the one generation the
 // composition root owns.
 
-import type { StartupDirectories } from "../infra/directory-authorities.js"
+import { importComposing } from "./composition/module-registries.js"
+import type { StartupDirectories } from "../infra/platform/files/directory-authorities.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
-import type { ProjectStateStandby } from "../orchestration/app-service/project-state-standby.js"
-import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/modules.js"
-import type { CliVerbSummary, CommandProcessResources } from "../orchestration/cli-contribution.js"
-import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/account-attach.js"
+import type { ProjectStateStandby } from "../orchestration/app-service/project-state/project-state-standby.js"
+import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/module-contract/module-catalog.js"
+import type { CliVerbSummary, CommandProcessResources } from "../orchestration/module-contract/cli-contribution.js"
+import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/runtime/account-attach.js"
 
 export type SubcommandDispatch = (args: readonly string[], directories: StartupDirectories, launcher: LauncherContext, resources: CommandProcessResources) => void | Promise<void>
 
@@ -44,23 +45,23 @@ function nounDispatch(usage: string, verbs: Readonly<Subcommands>): SubcommandDi
 
 const EVENT_VERBS: Readonly<Subcommands> = {
   evidence: async (args, directories) => {
-    const { runEventEvidence } = await import("./event-evidence.js")
+    const { runEventEvidence } = await import("./events/event-evidence.js")
     await runEventEvidence(args, directories.projectRoot)
   },
   search: async (args, directories) => {
-    const { runEventSearch } = await import("./event-search.js")
+    const { runEventSearch } = await import("./events/event-search.js")
     await runEventSearch(args, directories.projectRoot)
   },
   maintain: async (args, directories) => {
-    const { runMaintain } = await import("./event-maintain.js")
+    const { runMaintain } = await importComposing(() => import("./events/event-maintain.js"))
     await runMaintain(args, directories.projectRoot)
   },
 }
 
 const HEADLESS_VERBS: Readonly<Subcommands> = {
   "snapshot-auth": async (args, directories, launcher) => {
-    const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/auth/resolve-key.js")
-    const { runHeadlessSnapshotAuth, snapshotAuthProviders } = await import("./headless-snapshot-auth.js")
+    const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/providers/auth/resolve-key.js")
+    const { runHeadlessSnapshotAuth, snapshotAuthProviders } = await importComposing(() => import("./commands/headless-snapshot-auth.js"))
     await runHeadlessSnapshotAuth(args, directories, createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope)), await snapshotAuthProviders(directories))
   },
 }
@@ -91,13 +92,13 @@ export const SUBCOMMANDS: KernelNouns = {
       { syntax: "logout --provider <id>", description: "Remove a [custom_providers] entry's credentials." },
     ],
     dispatch: async (args, directories, launcher) => {
-      const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/auth/resolve-key.js")
-      const { openExternalUrl } = await import("../infra/open-external-url.js")
+      const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/providers/auth/resolve-key.js")
+      const { openExternalUrl } = await import("../infra/substrate/output/notify/open-external-url.js")
       const { promptFromReadline } = await import("./readline-prompt.js")
-      const { composeRealmModuleSnapshot } = await import("../orchestration/modules.js")
-      const { MODULE_IDS } = await import("../protocol/module-ids.js")
-      const { AUTH_OPERATIONS, runAuth } = await import("./auth.js")
-      const { createCatalogSettlement } = await import("../orchestration/auth/catalog-settlement.js")
+      const { composeRealmModuleSnapshot } = await importComposing(() => import("../orchestration/module-contract/module-composition.js"))
+      const { MODULE_IDS } = await import("../protocol/runtime/module-ids.js")
+      const { AUTH_OPERATIONS, runAuth } = await importComposing(() => import("./commands/auth.js"))
+      const { createCatalogSettlement } = await importComposing(() => import("../orchestration/auth/catalog-settlement.js"))
       const resolveKey = createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope))
       await runAuth([...args], directories, {
         actions: AUTH_OPERATIONS,
@@ -127,21 +128,21 @@ export const SUBCOMMANDS: KernelNouns = {
   serve: {
     verbs: [{ syntax: "[install|uninstall]", description: "Run or manage the account service." }],
     dispatch: async (args, directories, launcher, resources) => {
-      const { Log } = await import("../infra/log.js")
+      const { Log } = await import("../infra/diagnostics/log.js")
       // A start pre-starts the first project's state Worker, which loads that
       // role's code while this thread loads the service's. Nothing
       // proves at this point who asked for the start: a client that finds a
       // registered service down asks its service manager, exactly as the
       // manager starts it at login, so every start pre-starts it.
-      const { startsService } = await import("./serve-contract.js")
+      const { startsService } = await import("./account-service/serve-contract.js")
       let stateStandby: ProjectStateStandby | undefined
       if (startsService(args)) {
-        const { runtimeWorkerUrl } = await import("./runtime-launch.js")
-        const { startProjectStateStandby } = await import("../orchestration/app-service/project-state-standby.js")
+        const { runtimeWorkerUrl } = await import("./account-service/runtime-launch.js")
+        const { startProjectStateStandby } = await import("../orchestration/app-service/project-state/project-state-standby.js")
         stateStandby = startProjectStateStandby(runtimeWorkerUrl())
       }
       try {
-        const { releaseHarnessRuntimeOptions, runServe } = await import("./serve.js")
+        const { releaseHarnessRuntimeOptions, runServe } = await importComposing(() => import("./account-service/serve.js"))
         process.exitCode = await runServe(
           args,
           directories,
@@ -159,13 +160,13 @@ export const SUBCOMMANDS: KernelNouns = {
   web: {
     verbs: [{ syntax: "", description: "Open this project's sessions in the local browser." }],
     dispatch: async (args, directories, launcher, resources) => {
-      const { Log } = await import("../infra/log.js")
+      const { Log } = await import("../infra/diagnostics/log.js")
       // Diagnostics go to the project's debug log the way every attach does;
       // the terminal shows the link and nothing else.
       await Log.init({ dir: directories.projectRoot })
-      const { createAccountRuntimeAttach } = await import("./runtime-attach.js")
-      const { openExternalUrl } = await import("../infra/open-external-url.js")
-      const { runWeb } = await import("./web.js")
+      const { createAccountRuntimeAttach } = await import("./account-service/runtime-attach.js")
+      const { openExternalUrl } = await import("../infra/substrate/output/notify/open-external-url.js")
+      const { runWeb } = await import("./commands/web.js")
       const attach = createAccountRuntimeAttach({ ...directories, allowPersistentProcesses: resources.allowPersistentProcesses })
       await runWeb(args, directories, attach, (url) => openExternalUrl(launcher.scope, url))
     },
@@ -173,10 +174,10 @@ export const SUBCOMMANDS: KernelNouns = {
   kill: {
     verbs: [{ syntax: "[--dry-run]", description: "Stop every Flywheel process on this machine. The hard reset, for a runtime nothing else will end." }],
     dispatch: async (args, directories) => {
-      const { Log } = await import("../infra/log.js")
+      const { Log } = await import("../infra/diagnostics/log.js")
       // The account log, where the services this command ends write theirs.
       await Log.init({ dir: directories.accountHome })
-      const { runKill } = await import("./kill.js")
+      const { runKill } = await import("./commands/kill.js")
       process.exitCode = await runKill(args, directories)
     },
   },
@@ -188,7 +189,7 @@ export const SUBCOMMANDS: KernelNouns = {
       { syntax: "reset", description: "Show the Flywheel font tip again." },
     ],
     dispatch: async (args, directories, launcher) => {
-      const { runFont } = await import("./font.js")
+      const { runFont } = await importComposing(() => import("./commands/font.js"))
       await runFont([...args], directories, launcher.scope)
     },
   },
@@ -203,7 +204,7 @@ export const SUBCOMMANDS: KernelNouns = {
   update: {
     verbs: [{ syntax: "", description: "Check for a newer Flywheel and install it." }],
     dispatch: async (args, directories, launcher) => {
-      const { runUpdate } = await import("./update.js")
+      const { runUpdate } = await importComposing(() => import("./commands/update.js"))
       await runUpdate(args, directories, launcher)
     },
   },
@@ -219,8 +220,8 @@ export const SUBCOMMANDS: KernelNouns = {
  *  cannot act on selects nothing, and its reason is the line before the
  *  refusal. */
 async function projectModuleSelection(directories: StartupDirectories, modules: readonly FirstPartyModule[] | undefined): Promise<FirstPartyModuleComposition> {
-  const { startModulePolicy } = await import("../orchestration/config/module-policy.js")
-  const { composeRealmModuleSnapshot } = await import("../orchestration/modules.js")
+  const { startModulePolicy } = await importComposing(() => import("../orchestration/config/policy/module-policy.js"))
+  const { composeRealmModuleSnapshot } = await importComposing(() => import("../orchestration/module-contract/module-composition.js"))
   const started = await startModulePolicy({ userDataRoot: directories.userDataRoot })
   try {
     if (started.notice) console.error(started.notice)
@@ -251,7 +252,7 @@ function moduleNounDispatch(noun: InstalledCliNoun, catalog: readonly FirstParty
       return
     }
     const accountRequest = async (request: AccountModuleRequest, onAnswer: AccountModuleAnswerHandler): Promise<void> => {
-      const { createAccountRuntimeAttach } = await import("./runtime-attach.js")
+      const { createAccountRuntimeAttach } = await import("./account-service/runtime-attach.js")
       const attach = createAccountRuntimeAttach({ ...directories, allowPersistentProcesses: resources.allowPersistentProcesses })
       try {
         await attach.ensure(() => {})
@@ -271,7 +272,7 @@ function moduleNounDispatch(noun: InstalledCliNoun, catalog: readonly FirstParty
 export async function subcommandDispatch(name: string, modules?: readonly FirstPartyModule[]): Promise<SubcommandDispatch | undefined> {
   if (Object.hasOwn(SUBCOMMANDS, name)) return SUBCOMMANDS[name]?.dispatch
   if (name.startsWith("-")) return undefined
-  const { installedCliNouns } = await import("../orchestration/modules.js")
+  const { installedCliNouns } = await importComposing(() => import("../orchestration/module-contract/module-catalog.js"))
   const noun = installedCliNouns(modules).get(name)
   return noun && moduleNounDispatch(noun, modules)
 }

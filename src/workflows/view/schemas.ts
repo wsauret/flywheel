@@ -1,22 +1,9 @@
 import { Schema, SchemaTransformation } from "effect";
-import { CanonicalToolScopingSchema } from "../../infra/workflow-types.js";
-import { ArtifactIdsSchema } from "../artifact-contracts.js";
-import type { WorkflowTree, WorkflowTreeNode } from "../../protocol/workflow-view-protocol-types.js";
+import { CanonicalToolScopingSchema } from "../../infra/definitions/workflow/workflow-types.js";
+import { ArtifactIdsSchema } from "../schema/artifact-contracts.js";
+import type { WorkflowTree, WorkflowTreeNode } from "../../protocol/session/workflow-view-protocol-types.js";
 import type { AttemptRow, StepThen } from "./types.js";
-
-export const AttemptStatusSchema = Schema.Union([
-  Schema.Literal("pending"),
-  Schema.Literal("running"),
-  Schema.Literal("completed"),
-  Schema.Literal("blocked"),
-  Schema.Literal("failed"),
-  Schema.Literal("skipped"),
-]);
-
-const BriefPersonaSlotSchema = Schema.Struct({
-  role: Schema.String,
-  personas: Schema.mutable(Schema.Array(Schema.String)),
-});
+import { AttemptRowSchema, AttemptStatusSchema, BriefPersonaSlotSchema } from "../schema/attempt-row.js";
 
 const OptionalStringValueSchema = Schema.UndefinedOr(Schema.String);
 const HistoricalToolScopingSchema = Schema.Struct({
@@ -85,25 +72,6 @@ export const StepRowV9Schema = Schema.Struct({
     iteration: Schema.optionalKey(Schema.UndefinedOr(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)))),
     previousSignal: Schema.optionalKey(OptionalStringValueSchema),
   }))),
-});
-
-/** One attempt of an agent of the workflow, as the view rows record it. */
-export const AttemptRowSchema: Schema.Codec<AttemptRow> = Schema.Struct({
-  id: Schema.String,
-  definitionId: Schema.NonEmptyString,
-  briefId: Schema.NonEmptyString,
-  workflowDefinitionId: Schema.NonEmptyString,
-  name: Schema.String,
-  status: AttemptStatusSchema,
-  description: Schema.optionalKey(Schema.String),
-  item: Schema.optionalKey(Schema.Unknown),
-  subagents: Schema.optionalKey(Schema.Array(BriefPersonaSlotSchema)),
-  writes: Schema.Array(Schema.String),
-  lastConversationId: Schema.optionalKey(Schema.String),
-  resumeRevertCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
-  startedAt: Schema.optionalKey(Schema.Number),
-  completedAt: Schema.optionalKey(Schema.Number),
-  toolUses: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
 });
 
 /** A stored version 9 row as an attempt row. The row's `then`, `retry`,

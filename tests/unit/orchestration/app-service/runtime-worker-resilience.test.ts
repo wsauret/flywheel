@@ -4,21 +4,21 @@ import { Database } from "bun:sqlite"
 import { existsSync, readdirSync } from "node:fs"
 import { dirname } from "node:path"
 
-import { availabilityAuthorityDbFile } from "../../../../src/infra/paths.js"
-import { AVAILABILITY_PROTOCOL_VERSION } from "../../../../src/infra/llm/availability-store.js"
+import { availabilityAuthorityDbFile } from "../../../../src/infra/platform/files/paths.js"
+import { AVAILABILITY_PROTOCOL_VERSION } from "../../../../src/infra/providers/llm/access/availability-store.js"
 import {
   acquireSharedProviderAvailability,
   disposeSharedProviderAvailability,
   getSharedProviderAvailability,
-} from "../../../../src/orchestration/agent-runtime/llm/shared-provider-availability.js"
-import { runAccountShutdownBarrier, runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
-import type { RuntimeShutdownOwner, RuntimeShutdownRequest, RuntimeShutdownResult } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
+} from "../../../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js"
+import { runAccountShutdownBarrier, runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
+import type { RuntimeShutdownOwner, RuntimeShutdownRequest, RuntimeShutdownResult } from "../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
 import { Cause, Effect, Exit } from "effect"
 import { RpcTest } from "effect/rpc"
-import { runtimeHandlers } from "../../../../src/orchestration/app-service/runtime-protocol-handlers.js"
-import { createOutputWatches } from "../../../../src/orchestration/app-service/output-watches.js"
-import { RuntimeProtocolError, RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
-import { diagnosticTier, isRegisteredDiagnostic } from "../../../../src/infra/diagnostics-registry.js"
+import { runtimeHandlers } from "../../../../src/orchestration/app-service/account/connections/runtime-protocol-handlers.js"
+import { createOutputWatches } from "../../../../src/orchestration/app-service/account/projects/output-watches.js"
+import { RuntimeProtocolError, RuntimeProtocolRpc } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
+import { diagnosticTier, isRegisteredDiagnostic } from "../../../../src/infra/diagnostics/diagnostics-registry.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
 /** An owner whose interruption request and settlement the case drives by hand,

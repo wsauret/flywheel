@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted, Schema } from "effect";
 
-import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account-project-registry.js";
+import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account/account-project-registry.js";
 import { importLegacyRemotePlacements, mutateRemotePairingStore, mutateRemotePushStore, readRemotePairingStore, readRemotePushStore } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js";
-import { ensureRemoteIdentity, remoteIdentityFrom } from "../../../../../src/orchestration/modules/remote/remote-identity.js";
+import { ensureRemoteIdentity, remoteIdentityFrom } from "../../../../../src/orchestration/modules/remote/pairing/remote-identity.js";
 import { asKeyPair, keyDigest, toBase64Url } from "../../../../../src/protocol/modules/remote/relay-protocol.js";
 
 const ReleaseBase64Url = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]+$/));
@@ -56,6 +56,10 @@ describe("remote pairing store", () => {
       expect(store.vapid?.publicKey).toBeDefined();
       const signature = await first.sign(new TextEncoder().encode("hello"));
       expect(signature.byteLength).toBe(64);
+      // The placement id is keyed by the stored identity, so a restart that reads it again names each project the same.
+      const restarted = await remoteIdentityFrom(readRemotePairingStore(root, "installed"));
+      expect(restarted.placementId("/work/tool")).toBe(first.placementId("/work/tool"));
+      expect(first.placementId("/work/tool")).not.toBe(first.placementId("/work/other"));
     }));
 
   test("keeps the private keys redacted in memory and out of JSON.stringify", () =>
@@ -152,6 +156,7 @@ describe("remote pairing store", () => {
       const pushKey = readRemotePairingStore(root, "installed").vapid?.publicKey;
       const [installed] = await Promise.all([ensureRemoteIdentity(root, "installed"), ensureRemoteIdentity(root, "dev")]);
       expect(dev.runtimeId).not.toBe(installed.runtimeId);
+      expect(dev.placementId("/work/tool")).not.toBe(installed.placementId("/work/tool"));
       expect(pushKey).toBeDefined();
       expect(readRemotePairingStore(root, "installed").vapid?.publicKey).toBe(pushKey);
       expect(readRemotePairingStore(root, "dev").vapid).toBeUndefined();

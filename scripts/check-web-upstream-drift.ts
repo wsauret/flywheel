@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { relative, resolve } from "node:path"
-import ledger from "../src/orchestration/app-service/web-serving/upstream-ledger.json"
+import ledger from "../src/orchestration/app-service/account/web-serving/upstream-ledger.json"
 
 // Run after inspiration/openclaw is synced. An optional checkout path supports an isolated audit.
 const repositoryRoot = resolve(import.meta.dir, "..")

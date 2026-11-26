@@ -7,18 +7,18 @@
 
 import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
-import { memoryWrittenFact } from "../../../../workflows/memory/memory-fact-writers.js";
-import type { MemoryWrittenFact } from "../../../../workflows/memory/memory-facts.js";
-import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
-import type { CapabilityCheck } from "../../../../infra/capability-text.js";
-import { Log } from "../../../../infra/log.js";
-import { normalizeMemoryTitle } from "../../../../infra/tools/memory-title.js";
-import type { LearningScope } from "../../../../infra/learning-scope.js";
-import type { MutationEvidence } from "../../../../infra/mutation-evidence.js";
-import { buildMutationDiffEvidence } from "../../../../infra/mutation-diff-evidence.js";
-import { openPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../learning-journal.js";
-import { requireContainedDirectory } from "../../../../infra/write-file-under.js";
-import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
+import { memoryWrittenFact } from "../../../../workflows/learning/memory/memory-fact-writers.js";
+import type { MemoryWrittenFact } from "../../../../workflows/learning/memory/memory-facts.js";
+import type { AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js";
+import type { CapabilityCheck } from "../../../../infra/definitions/capability-text.js";
+import { Log } from "../../../../infra/diagnostics/log.js";
+import { normalizeMemoryTitle } from "../../../../infra/substrate/output/tools/memory-title.js";
+import type { LearningScope } from "../../../../infra/definitions/learning/learning-scope.js";
+import type { MutationEvidence } from "../../../../infra/substrate/file-mutations/mutation-evidence.js";
+import { buildMutationDiffEvidence } from "../../../../infra/substrate/file-mutations/mutation-diff-evidence.js";
+import { openPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../skills/learning-journal.js";
+import { requireContainedDirectory } from "../../../../infra/platform/files/write-file-under.js";
+import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 import {
   applyMemoryBatch,
   applyMemoryOperation,

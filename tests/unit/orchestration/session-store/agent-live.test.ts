@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test"
-import { agentLive } from "../../../../src/orchestration/modules/workflows/compact-activity.js"
-import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
-import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js"
-import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js"
-import { buildMutationDiffEntries } from "../../../../src/infra/mutation-diff-evidence.js"
-import { buildMutationEvidence } from "../../../../src/infra/mutation-evidence.js"
+import { agentLive } from "../../../../src/orchestration/modules/workflows/protocol/compact-activity.js"
+import { createOutputSession } from "../../../../src/orchestration/session-store/output-session.js"
+import { createRuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js"
+import { OutputProjector } from "../../../../src/infra/substrate/output/projector/output-projector.js"
+import { RuntimeEventProjector } from "../../../../src/infra/substrate/output/projector/runtime-event-projector.js"
+import { buildMutationDiffEntries } from "../../../../src/infra/substrate/file-mutations/mutation-diff-evidence.js"
+import { buildMutationEvidence } from "../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
 import { sessionContentFixture } from "../../../helpers/session-content.js"
 
 test("derives compact activity from the member's ordinary transcript without publishing a second transcript", () => {

@@ -1,10 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Node } from "web-tree-sitter";
-import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js";
-
-// The vendored code-mode interpreter retains donor casts and non-null assertions for direct upstream comparison.
-const SAFETY_EXEMPT_DIRECTORIES = ["src/infra/code-mode/"];
+import { loadTreeSitterParser } from "../src/infra/parsing/tree-sitter-parser.js";
 
 // `docs/elegance.md` "TypeScript Discipline": no `as Type` (other than `as const`) and no
 // non-null `!` without a `// SAFETY:` comment naming the invariant that makes it
@@ -163,12 +160,8 @@ if (isCli) {
   const repoRoot = path.resolve(import.meta.dir, "..");
   const files: string[] = [];
   listFiles(path.join(repoRoot, "src"), files);
-  const checkedFiles = files.filter((file) => {
-    const relative = path.relative(repoRoot, file).split(path.sep).join("/");
-    return !SAFETY_EXEMPT_DIRECTORIES.some((directory) => relative.startsWith(directory));
-  });
   const violations: Violation[] = [];
-  for (const file of checkedFiles) violations.push(...await findUnsafeCasts(file));
+  for (const file of files) violations.push(...await findUnsafeCasts(file));
   violations.sort((a, b) => (a.file === b.file ? a.line - b.line : a.file.localeCompare(b.file)));
   if (violations.length > 0) {
     for (const v of violations) {

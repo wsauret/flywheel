@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import type { SubscriptionUsageReaderContext } from "../../../src/infra/llm/subscription-usage.js";
+import type { SubscriptionUsageReaderContext } from "../../../src/infra/providers/llm/usage/subscription-usage.js";
 import { createCopilotUsageReader } from "../../../src/orchestration/modules/provider-github-copilot/quota-meter.js";
 import { Redacted } from "effect";
-import type { StoredTokens } from "../../../src/infra/auth/openai-auth-types.js";
+import type { StoredTokens } from "../../../src/infra/providers/auth/openai/openai-auth-types.js";
 import { createChatGPTResetConsumer, createChatGPTUsageReader as createRawChatGPTUsageReader } from "../../../src/orchestration/modules/provider-chatgpt/usage-reader.js";
 import { createDeepSeekUsageReader as createRawDeepSeekUsageReader } from "../../../src/orchestration/modules/provider-deepseek/usage-reader.js";
 import { createOpenCodeGoUsageReader as createRawOpenCodeGoUsageReader } from "../../../src/orchestration/modules/provider-opencode-go/usage-reader.js";
 import { createSuperGrokUsageReader as createRawSuperGrokUsageReader } from "../../../src/orchestration/modules/provider-supergrok/usage-reader.js";
 import { OPENCODE_GO_V1_BASE } from "../../../src/orchestration/modules/provider-opencode-go/wire.js";
-import { isFreePlan } from "../../../src/infra/llm/free-plan-accounts.js";
+import { isFreePlan } from "../../../src/infra/providers/llm/access/free-plan-accounts.js";
 import { testProviderSelection } from "../../helpers/provider-authority.js";
 
 

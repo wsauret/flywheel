@@ -1,12 +1,12 @@
 import { Redacted } from "effect";
-import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutations.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { ApiError } from "../../agent-runtime/errors.js";
-import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/provider-affordability.js";
-import type { ProviderAllowanceFactory } from "../../agent-runtime/llm/provider-availability-types.js";
+import { replaceCredentialInstance } from "../../../infra/providers/auth/store/auth-store-mutations.js";
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
+import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/routing/provider-affordability.js";
+import type { ProviderAllowanceFactory } from "../../agent-runtime/llm/routing/provider-availability-types.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { copilotAffordability } from "./affordability.js";
 import { captureCopilotAllowanceAdmission } from "./allowance-admission.js";
 import { copilotTokensToCredential } from "./auth-types.js";
@@ -70,7 +70,7 @@ const createClient: AccessProviderFactory = async (build) => {
     const cred = credentialForCandidate(connection, build.candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No GitHub Copilot tokens found. Run: flywheel auth login --copilot", recovery: { kind: "none" } });
     const [{ buildCopilotClients }, { createAnthropicAdapter, operationsFromAnthropicClient }, { createOpenAIAdapter }, { createChatCompletionsAdapter }] = await Promise.all([
-      import("./clients.js"), import("../../agent-runtime/llm/anthropic.js"), import("../../agent-runtime/llm/openai.js"), import("../../agent-runtime/llm/chat-completions.js"),
+      import("./clients.js"), import("../../agent-runtime/llm/adapters/anthropic/anthropic.js"), import("../../agent-runtime/llm/adapters/openai/openai.js"), import("../../agent-runtime/llm/adapters/chat-completions/chat-completions.js"),
     ]);
     const { anthropic, openai } = buildCopilotClients(
       cred, connection, candidate,

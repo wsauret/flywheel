@@ -1,5 +1,5 @@
 import { bold as stBold, fg as stFg, type RGBA, type TextChunk } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 
 // A command-line is parsed positionally, not as a full shell grammar: the
 // leading word of each command is the program, a following bareword is the

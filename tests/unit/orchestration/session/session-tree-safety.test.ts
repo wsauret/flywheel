@@ -10,14 +10,17 @@ import { POSIX_FILE_MODES } from "../../../helpers/posix-modes.js";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { ensureSessionDir, resolveOwnerPidPath, resolveSessionDir } from "../../../../src/infra/paths";
+import { ensureSessionDir, resolveOwnerPidPath, resolveSessionDir } from "../../../../src/infra/platform/files/paths";
 import {
   createBreadcrumbMaintenance,
   deleteSessionArtifacts,
   sweepIdleScratch,
   writeArtifactBreadcrumb,
-} from "../../../../src/orchestration/session/session-artifacts";
+} from "../../../../src/orchestration/session/persistence/storage/session-artifacts";
 import { isSessionOwnerGone, removeOwnerPid, writeOwnerPid } from "../../../../src/orchestration/session/pid-lock";
+import { mutationGitDirectoryName, mutationGitRuntimeExists } from "../../../../src/orchestration/agent-runtime/tools/bash/git/bash-git-wrapper";
+
+const mutationGit = { current: mutationGitDirectoryName(process.execPath, process.platform), runtimeExists: mutationGitRuntimeExists };
 
 const sessionId = "session-tree-safety";
 let baseDir: string;
@@ -134,7 +137,7 @@ describe("a project root another writer replaced", () => {
     const root = linkedRoot();
 
     expect(() => writeArtifactBreadcrumb({ projectRoot: root, artifactScopeId: sessionId, toolName: "bash", content: "payload" })).toThrow();
-    await expect(sweepIdleScratch({ projectRoot: root, now: Date.now(), signal: new AbortController().signal, runGit: async () => { throw new Error("the sweep reached git"); } }))
+    await expect(sweepIdleScratch({ projectRoot: root, now: Date.now(), signal: new AbortController().signal, runGit: async () => { throw new Error("the sweep reached git"); }, mutationGit }))
       .rejects.toThrow(CONTAINMENT_REFUSAL);
     // The breadcrumb sweep runs as maintenance, which records its refusal.
     createBreadcrumbMaintenance(root).request();

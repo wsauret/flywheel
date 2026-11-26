@@ -80,7 +80,7 @@ Every client attaches to the same live session. Start a job in the terminal, fol
 
 - Open [remote.flywl.sh/local](https://remote.flywl.sh/local) in a browser on the computer where Flywheel runs, and the desktop web client opens. It lists every project on that computer, open or asleep, and starts any project that you open. Only your machine can reach it.
 - `/remote` pairs your phone with a QR code. No account, no password.
-- Your phone connects through a free public relay, with nothing to set up. Every message is sealed end to end, so the relay cannot read it. If you prefer, you can run your own relay on your Cloudflare account.
+- Your phone connects through a free public relay, with nothing to set up. Your chats are sealed end to end, so the relay cannot read them. [What Flywheel sends over the network](docs/privacy.md#remote-access) lists the connection data that the relay sees. If you prefer, you can run your own relay on your Cloudflare account.
 - Your phone always runs the same client version as your computer, so new features reach it with no app update.
 - From your phone, wake a project that is asleep, or clone a repository onto your machine. Your computer stays awake while your phone uses it.
 - `flywheel --remote` drives your main machine from a terminal on another computer.
@@ -138,7 +138,7 @@ Flywheel ships about 40 themes, from Catppuccin to Gruvbox, and a new theme appl
 
 - **Turn anything off.** About 20 capabilities each have one switch. Keep only what you use, and the agent never sees the rest.
 - **Many sessions, one window.** Run as many sessions as you want in tabs in one terminal. `ctrl+n` opens a new tab, and `ctrl+s` finds any earlier session.
-- **No account, no analytics.** Flywheel collects no usage data. [Privacy](#privacy) lists what it sends.
+- **No account, no analytics.** Flywheel has no product analytics. It shows its records of your command and token usage only in your own clients. [Privacy](#privacy) lists what it sends.
 - **Search every chat.** `/find` searches the text of this chat or of every chat in the project.
 - **Measured speed.** `/stats` compares the measured speed of each model and effort.
 - **Streaming diffs.** File edits show as diffs while the model's response streams in, so you see each change as it is written, not after.
@@ -169,7 +169,7 @@ Flywheel agents work without asking you to approve each step. They run shell com
 
 ## Privacy
 
-Flywheel needs no account and collects no analytics or usage data. For model inference, Flywheel sends your prompts and code only to the model providers that you configure. Agent tools can send content to other destinations, such as an MCP server, a web search service, or a host that a shell command reaches. Project state stays in the project's `.flywheel/` directory, and account settings stay in `~/.flywheel/`. Release builds send an automatic crash report with the error, the version, the platform, and recent diagnostic records. A report holds no conversation or file content. Turn off the Bug reports setting to stop crash reports. [What Flywheel sends over the network](docs/privacy.md) lists every request that Flywheel makes on its own, what it holds, and the controls that exist for it.
+Flywheel needs no account and has no product analytics. It keeps records of your command and token usage on your machine and shows them only in your own clients. The remote access relay counts the bytes that it carries for each machine each day, to apply a daily limit. For model inference, Flywheel sends your prompts and code only to the model providers that you configure. Agent tools can send content to other destinations, such as an MCP server, a web search service, or a host that a shell command reaches. Project state stays in the project's `.flywheel/` directory, and account settings stay in `~/.flywheel/`. Flywheel sends no automatic crash report until you agree: the terminal's crash screen asks once, and the Automatic crash reports setting changes your answer. `DO_NOT_TRACK=1` also stops automatic reports, and a terminal that starts with it set turns that setting off. An automatic report holds the error name, the stack frames, the version, the platform, and recent diagnostic records, but no error message, conversation, or file content. A report that you send with `/report` holds your note instead of the error. Flywheel masks the credentials that it recognizes in the note, so do not put other secrets in it. Turn off the Bug reports setting to stop all reports. [What Flywheel sends over the network](docs/privacy.md) lists every request that Flywheel makes on its own, what it holds, and the controls that exist for it.
 
 ## Getting help
 

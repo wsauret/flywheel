@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { ExperimentInitializedFact } from "../facts.js"
+import type { ExperimentInitializedFact } from "../state/facts.js"
 import type { ExperimentOperation } from "../operation-owner.js"
 import { MANDATORY_PROTECTED_PATHS, parseExperimentCharter, type ExperimentCharter } from "../charter.js"
 import { initExperimentSchema } from "../../../agent-runtime/tools/experiment-schemas.js"

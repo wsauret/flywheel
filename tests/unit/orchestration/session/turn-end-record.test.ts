@@ -1,26 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import {
-  carriedTurnEndRecord,
-  chatTurnEndEvidenceOf,
-  chatTurnEndOf,
-  cutRunningToolCall,
-  endsAtTurnEnd,
-  interruptedTurnEnd,
-  interruptedTurnMessage,
-  isResumableTurnEnd,
-  isVisibleTurnEnd,
-  turnEndEntryId,
-  turnEndOfEntry,
-  questionExchangeOf,
-  waitsAtRuntimeInterrupt,
-  waitsForPerson,
-  type TurnEndEntry,
-} from "../../../../src/orchestration/session/conversation/turn-end-record.js"
-import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages.js"
-import { toolResultMessages } from "../../../../src/orchestration/agent-runtime/agent-state.js"
-import { TOOL_OUTCOME_VALUES } from "../../../../src/infra/tool-outcome.js"
-import { DEFAULT_WAIT_SECONDS } from "../../../../src/orchestration/agent-runtime/tools/process.js"
-import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/reply-nudge.js"
+import { carriedTurnEndRecord, chatTurnEndEvidenceOf, chatTurnEndOf, cutRunningToolCall, endsAtTurnEnd, interruptedTurnEnd, interruptedTurnMessage, isResumableTurnEnd, isVisibleTurnEnd, turnEndEntryId, turnEndOfEntry, questionExchangeOf, DEFAULT_WAIT_SECONDS, waitsAtRuntimeInterrupt, waitsForPerson, type TurnEndEntry, CONTINUATION_MESSAGES } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
+import { toolResultMessages } from "../../../../src/orchestration/agent-runtime/loop/turn/agent-state.js"
+import { TOOL_OUTCOME_VALUES } from "../../../../src/infra/substrate/runtime-facts/tool-outcome.js"
+import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/loop/reply-nudge.js"
 
 /** The display-only content Escape markers carried before interrupt became resumable. */
 const LEGACY_USER_INTERRUPT_CONTENT = "Interrupted by user."

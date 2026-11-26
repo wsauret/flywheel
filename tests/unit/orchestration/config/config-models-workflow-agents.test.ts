@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { slotLabel, roleSlot } from "../../../../src/orchestration/config/role-selection.js";
-import { parseBriefRoleId, briefPersonaRoleId, briefDefaultRoleId } from "../../../../src/protocol/brief-role-id.js";
+import { slotLabel, roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
+import { parseBriefRoleId, briefPersonaRoleId, briefDefaultRoleId } from "../../../../src/protocol/auth/brief-role-id.js";
 
 // ---------------------------------------------------------------------------
 // Brief seats of the agents of a workflow

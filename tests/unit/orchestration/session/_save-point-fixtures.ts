@@ -2,14 +2,14 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
+import type { ConversationMessage } from "../../../../src/infra/providers/llm/conversation/conversation-message.js";
 import { createSessionManager } from "../../../../src/orchestration/session/manager";
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
-import { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage";
+import { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
 
 export interface SavePointTestContext {

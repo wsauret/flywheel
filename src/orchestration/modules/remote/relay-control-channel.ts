@@ -1,10 +1,10 @@
 import { Deferred, Effect, Result } from "effect"
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
-import { errorMessage } from "../../../infra/error-message.js"
-import { Log } from "../../../infra/log.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
-import { MAX_RECONNECT_ATTEMPT, reconnectBackoffMs } from "../../../protocol/client/connection.js"
+import { errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
+import { MAX_RECONNECT_ATTEMPT, reconnectBackoffMs } from "../../../protocol/runtime/reconnect-backoff.js"
 import { HEARTBEAT_CLOSE_CODE, HEARTBEAT_CLOSE_REASON, heartbeat, RELAY_HEARTBEAT, type HeartbeatTiming, type RelaySocket } from "../../../protocol/modules/remote/relay-channel.js"
 import {
   ASSET_CHUNK_BYTES,
@@ -23,9 +23,9 @@ import {
 } from "../../../protocol/modules/remote/relay-protocol.js"
 import type { RemoteConnectionState } from "../../../protocol/modules/remote.js"
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
-import type { SettledControlUiAssetState } from "../../app-service/web-serving/control-ui-assets.js"
-import { controlUiContentType } from "../../app-service/web-serving/control-ui-static.js"
-import type { RemoteIdentity } from "./remote-identity.js"
+import type { SettledControlUiAssetState } from "../../app-service/account/web-serving/control-ui-assets.js"
+import { controlUiContentType } from "../../app-service/account/web-serving/control-ui-static.js"
+import type { RemoteIdentity } from "./pairing/remote-identity.js"
 
 /** One outbound control channel to the relay, announcing one placement.
  *

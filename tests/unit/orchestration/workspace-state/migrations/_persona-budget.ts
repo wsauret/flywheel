@@ -1,0 +1,240 @@
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js"
+
+/** A bundled persona with the turn cap that the builds before the persona
+ *  budget cut shipped, whose persona hashes covered the turn cap. A test that
+ *  rebuilds a hash such a build recorded starts from this persona. */
+export function beforeBudgetCut<Definition extends AgentDefinition>(persona: Definition): Definition {
+  const retired = persona.name === "implementer" ? 150
+    : persona.name === "ship" ? 40
+    : persona.name === "advisor" || persona.name.startsWith("reviewer-") ? 50
+    : persona.maxTurns
+  return { ...persona, maxTurns: retired }
+}
+
+/** A bundled persona as the builds before agents chose their tools freely
+ *  shipped it: explorer and advisor still steered agents to the file tools
+ *  over the shell. A test that rebuilds a hash such a build recorded starts
+ *  from this persona. */
+export function beforeToolSteeringCut<Definition extends AgentDefinition>(persona: Definition): Definition {
+  if (persona.kind !== "persona") return persona
+  const systemPrompt = persona.name === "explorer"
+    ? persona.systemPrompt.replace(
+      "- Use whichever tools fit: the file tools or read-only shell commands both work for discovery, search, and reading.\n- For GitHub repository data, use read-only `gh` commands through bash or exec for pull requests",
+      "- Use your dedicated tools for all file operations. NEVER use shell execution for tasks a dedicated tool handles:\n  - File discovery: use list (NOT shell find/ls)\n  - Content search: use search (NOT shell grep/rg/ack)\n  - Reading files: use read (NOT shell cat/head/tail/less)\n  - GitHub repository data: use read-only `gh` commands through bash or exec (NOT web) for pull requests",
+    ).replace(
+      "Use web only when `gh` is unavailable or cannot provide the required data.\n- Stay strictly",
+      "Use web only when `gh` is unavailable or cannot provide the required data.\n  - External pages: use web (NOT shell curl/wget)\n  - Shell execution (bash or exec) is ONLY for commands with no dedicated tool equivalent: git and gh inspection, wc, etc.\n- Stay strictly",
+    )
+    : persona.name === "advisor"
+      ? persona.systemPrompt.replace("your recommendation. Do not implement", "your recommendation. Use dedicated file tools instead of shell commands for file discovery, content search, and file reads. Do not implement")
+      : persona.systemPrompt
+  return { ...persona, systemPrompt }
+}
+
+/** A bundled persona as the builds before subagents shared the step prompt
+ *  shipped it: explorer turned off project context and the engineering
+ *  doctrine in its definition. A test that rebuilds a hash such a build
+ *  recorded starts from this persona. */
+export function beforePromptSwitchCut<Definition extends AgentDefinition>(persona: Definition): Definition {
+  return persona.kind === "persona" && persona.name === "explorer"
+    ? { ...persona, projectContext: false, engineeringDoctrine: false }
+    : persona
+}
+
+/** A bundled persona as the builds before the workflow lexicon shipped it: explorer worked one of two lanes that a
+ *  dispatch brief selected, reviewer-uat named workflow steps, and reviewer-plan-elegance named the parts of a plan
+ *  phases. A test that rebuilds a hash such a build recorded starts from this persona. */
+export function beforeLexiconCut<Definition extends AgentDefinition>(persona: Definition): Definition {
+  if (persona.kind !== "persona") return persona
+  const clauses: readonly (readonly [current: string, retired: string])[] = persona.name === "explorer"
+    ? [
+      ["The brief selects one of two modes, targeted", "The dispatch brief selects one of two lanes, targeted"],
+      ["You are a focused investigator working in one of two modes. The brief selects the mode: work in the targeted mode unless", "You are a focused investigator working one of two lanes. The dispatch brief selects the lane: work the targeted lane unless"],
+      ["## Targeted mode (default)", "## Targeted lane (default)"],
+      ["## Enumerative mode (when", "## Enumerative lane (when"],
+      ["In this mode a missed integration point", "In this lane a missed integration point"],
+    ]
+    : persona.name === "reviewer-uat"
+      ? [["Long model responses or agents of a workflow do not justify", "Long model responses or workflow steps do not justify"]]
+      : persona.name === "reviewer-plan-elegance"
+        ? [["lens across milestones, ownership", "lens across phases, ownership"]]
+        : []
+  const missing = clauses.find(([current]) => !persona.description.includes(current) && !persona.systemPrompt.includes(current))
+  if (missing) throw new Error(`Persona ${persona.name} lacks the clause: ${missing[0]}`)
+  const restore = (text: string) => clauses.reduce((restored, [current, retired]) => restored.replace(current, retired), text)
+  return { ...persona, description: restore(persona.description), systemPrompt: restore(persona.systemPrompt) }
+}
+
+/** A bundled reviewer-uat persona as the builds before it dropped its ten-minute wall-clock budget shipped it. Start
+ *  from {@link beforeLexiconCut}, because those builds also predate the workflow lexicon. */
+export function beforeScenarioBudgetCut<Definition extends AgentDefinition>(persona: Definition): Definition {
+  if (persona.kind !== "persona" || persona.name !== "reviewer-uat") return persona
+  const clauses: readonly (readonly [current: string, retired: string])[] = [
+    [
+      "## The Live Scenario Budget\n\nAllow a live scenario to take as long as the product needs. There is no fixed wall-clock cap. Keep each drive command short, observe its result, then choose the next action. Long model responses or workflow steps do not justify a blind end-to-end script.",
+      "## The 10-Minute Budget\n\nYou have a soft cap of **approximately ten minutes of wall-clock time**. This is not a turn budget; turns don't track wall-clock. A single `bash` call can run for hours. The constraint shapes *which* commands you choose, not just *how many*.",
+    ],
+    [
+      "Bound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:",
+      "Bound every bash invocation with your bash tool's timeout parameter. Do NOT prefix commands with the `timeout` shell utility; it does not exist on macOS. A single command must not be able to consume the entire budget on its own:",
+    ],
+    [
+      "If a scenario needs more than five minutes, split it into bounded actions and observations. Do not increase the per-command ceiling.",
+      "If a command needs more than 5 minutes to produce evidence, you picked the wrong command. Pick a narrower one.",
+    ],
+    [
+      "Choose the highest-leverage narrow checks first. Use the system's public `--help` and live-drive documentation to discover its surfaces.",
+      "The activity ladder below is ordered so the highest-leverage narrow checks come first. Reaching rung 3 with decisive evidence in 7 minutes is the goal; reaching rung 5 in 25 minutes is failure.",
+    ],
+    [
+      "- A P1 has been confirmed; one is enough. Do not pile on.\n\nIf an environment blocker prevents decisive evidence, report the partial evidence and the specific missing prerequisite. Product latency alone is not a blocker.",
+      "- You are nearing the 10-minute budget (roughly: you've spent more than 7-8 minutes and have not yet started rung 4). Report what you confirmed; flag what you didn't reach.\n- A P1 has been confirmed; one is enough. Do not pile on.\n\nIf you cannot reach decisive evidence within the budget with surgical commands, **report partial evidence plus a note about what would require more time**. That's a valid outcome. A clear partial report beats running over budget chasing completeness.",
+    ],
+  ]
+  const systemPrompt = clauses.reduce((restored, [current, retired]) => {
+    if (!restored.includes(current)) throw new Error(`Persona ${persona.name} lacks the clause: ${current.slice(0, 40)}`)
+    return restored.replace(current, retired)
+  }, persona.systemPrompt)
+  return { ...persona, systemPrompt }
+}
+
+/** A bundled reviewer-uat persona as the builds before its scratchpad rule shipped it. Start from
+ *  {@link beforeLeanPersonaText}, because that edit came later. Throws when the rule is missing, so a later edit of
+ *  the rule updates this fixture. */
+export function beforeUatScratchpadRule<Definition extends AgentDefinition>(persona: Definition): Definition {
+  if (persona.kind !== "persona" || persona.name !== "reviewer-uat") return persona
+  const rule = "\n\n{{if:bash}}\nCreate every fixture, isolated home, and evidence file inside your scratchpad, and name each one with a literal path, not a shell variable; the shell refuses other writes.\n{{end}}"
+  if (!persona.systemPrompt.includes(rule)) throw new Error(`Persona ${persona.name} lacks the scratchpad rule`)
+  return { ...persona, systemPrompt: persona.systemPrompt.replace(rule, "") }
+}
+
+/** `persona` with each clause restored to the text it replaced. Throws when a clause is missing, so a later edit of
+ *  the persona updates the fixture that names it. */
+function restoreClauses<Definition extends AgentDefinition>(persona: Definition, clauses: readonly (readonly [current: string, retired: string])[]): Definition {
+  if (persona.kind !== "persona") return persona
+  let { description, systemPrompt } = persona
+  for (const [current, retired] of clauses) {
+    if (description.includes(current)) description = description.replace(current, retired)
+    else if (systemPrompt.includes(current)) systemPrompt = systemPrompt.replace(current, retired)
+    else throw new Error(`Persona ${persona.name} lacks the clause: ${current.slice(0, 40)}`)
+  }
+  return { ...persona, description, systemPrompt }
+}
+
+/** Each clause that the lean-prompt edit of 2026-11-14 rewrote, paired with the text it replaced. */
+const LEAN_TEXT_BEFORE: ReadonlyMap<string, readonly (readonly [current: string, retired: string])[]> = new Map([
+  ["explorer", [
+    [
+      "Fast investigation: codebase questions, git history, and targeted external lookups such as documentation. It answers a targeted question and stops early, or researches exhaustively when the brief asks for full coverage.",
+      "Fast read-only investigation. Answers codebase questions, digs through git history, and makes targeted external lookups such as documentation. Cannot modify files. The brief selects one of two modes, targeted question-answering with early stopping (the default) or exhaustive enumerate-then-read facet research when the brief asks for full coverage.",
+    ],
+  ]],
+  ["implementer", [[
+    "- Follow established local patterns unless the pattern is itself inelegant; report any deliberate deviation.\n- Start with one batched read of every file and test your task names; never read one file per turn.",
+    "Beyond the method composed ahead of these instructions:\n\n- The part of your brief labeled Design intent is fixed. Everything else in the brief is implementation design you may revise when the code requires it; record each deviation in your result.\n- Follow established local patterns unless the pattern is itself inelegant; report any deliberate deviation.\n\nExecution discipline:\n\n- Start with one batched read of every file and test your task names; never read one file per turn.\n- Work in focused read, edit, and test batches. Revisit files when new evidence or a revised approach requires it.\n{{if:read}}\n- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.\n{{else}}\n- Read and change project files with the tools you hold.\n{{end}}\n{{if:search}}\n- Use the search and list tools to find project files and text; shell grep and ls are not substitutes.\n{{end}}\n- Track the files you change yourself and report them in files_modified; never consult git for this.\n\nWhen evidence contradicts the Design intent, or an explicit prohibition of the person or a missing external prerequisite prevents every viable next action, message your parent with message_session and wait for its reply. Never hand off unfinished work as complete.\n\nWhen finished, submit your structured result using the completion tool provided by your environment. Include these fields:\n- summary: outcomes, material plan deviations with evidence and rationale, any work that is not done, and any remaining follow-ups for parent review\n- files_modified: files created or changed\n- commands_run: commands executed with exit codes and the result each proved",
+  ]]],
+  ["reviewer-mechanism", [[
+    "Verifies the runtime claims that a plan or review relies on, such as what survives a crash, what races, what runs when, whether a path is reachable, and whether a write is durable, by tracing each claim to the code. Runs after the domain reviewers, on the premises they tagged UNVERIFIED and the runtime claims of the plan, and returns one verdict with file:line per claim.",
+    "Use this agent to verify the BEHAVIORAL and RUNTIME claims a plan or review relies on - what survives a crash, what races what, what executes when, whether a code path is reachable, whether a write is durable - by tracing them to ground truth in the code instead of reasoning from plausibility. It runs as a second wave after the domain reviewers, on the premises they tagged UNVERIFIED plus any runtime claim the plan itself asserts. It has no severity opinions; it returns one verdict per claim using the reviewer protocol's verdict vocabulary, each with a file:line.",
+  ]]],
+  ["reviewer-uat", [[
+    "User acceptance testing: exercises the live system against the acceptance criteria without reading source, to catch criteria never exercised, cross-cutting regressions, and error paths that fail in practice. Use it when the change touches an exercisable surface (CLI, UI, HTTP, file output), not for internal refactors.",
+    "User acceptance testing (UAT) from outside the code surface: exercises the live system against the ticket's acceptance criteria without reading source. Catches what code-reading reviewers cannot: criteria never actually exercised, cross-cutting regressions, error paths that fail badly in practice. Include when the change touches an exercisable surface (CLI, UI, HTTP, file output); skip for pure internal refactors.",
+  ]]],
+])
+
+const GENERAL_DESCRIPTION_BEFORE_LEAN = "A clone of the dispatching agent that uses your model and system instructions with registry-approved tools derived from your current surface. It also receives its child handoff and declared nested-role tools. Use it when a subtask needs your full intelligence and judgment but you want only its conclusion in your context. Set fork: true to also copy your conversation."
+
+/** A built-in agent as the builds before the lean-prompt edit of 2026-11-14 shipped it (refer to
+ *  {@link LEAN_TEXT_BEFORE}); the general agent read {@link GENERAL_DESCRIPTION_BEFORE_LEAN}. Throws when a rewritten
+ *  clause is missing, so a later edit of these personas updates this fixture. */
+export function beforeLeanPersonaText<Definition extends AgentDefinition>(definition: Definition): Definition {
+  if (definition.kind === "general") return { ...definition, description: GENERAL_DESCRIPTION_BEFORE_LEAN }
+  return restoreClauses(definition, LEAN_TEXT_BEFORE.get(definition.name) ?? [])
+}
+
+/** A bundled persona as the builds before 2026-11-11 shipped it: explorer claimed that it runs on a cheaper model.
+ *  Start from {@link beforeLeanPersonaText}, because that edit came later. */
+export function beforeExplorerModelClaim<Definition extends AgentDefinition>(persona: Definition): Definition {
+  return persona.name === "explorer" ? restoreClauses(persona, [["Fast read-only investigation. Answers", "Fast read-only investigation on a cheaper model. Answers"]]) : persona
+}
+
+/** Each clause that the agent-type edit of 2026-11-10 (588fa3a9f) rewrote, paired with the text it replaced:
+ *  reviewer-uat named its fellow reviewers behind no marker, and explorer and implementer told the dispatcher to
+ *  dispatch general instead. */
+const AGENT_TYPE_TEXT_BEFORE: ReadonlyMap<string, readonly (readonly [current: string, retired: string])[]> = new Map([
+  ["reviewer-uat", [[
+    "{{if:type:reviewer-quality&type:reviewer-performance&type:reviewer-data-integrity&type:reviewer-security&type:reviewer-elegance}}\nThe code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{else}}\nThe code-reading reviewer personas judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{end}}",
+    "The code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.",
+  ]]],
+  ["explorer", [["when the brief asks for full coverage.", "when the brief asks for full coverage. For investigation that needs your full intelligence, dispatch general instead."]]],
+  ["implementer", [["with full tool access.", "with full tool access. For open-ended work that needs your own judgment and conversation context, dispatch general instead."]]],
+])
+
+/** A bundled persona as the builds before the agent-type edit of 2026-11-10 shipped it (refer to
+ *  {@link AGENT_TYPE_TEXT_BEFORE}). Start from {@link beforeUatScratchpadRule} and {@link beforeExplorerModelClaim},
+ *  because those edits came later. */
+export function beforeAgentTypeMarkers<Definition extends AgentDefinition>(persona: Definition): Definition {
+  return restoreClauses(persona, AGENT_TYPE_TEXT_BEFORE.get(persona.name) ?? [])
+}
+
+/** A bundled persona as it read from the capability-text edit of 2026-11-07 (78b5473c9) to the agent-type edit of
+ *  2026-11-10: every later edit undone, and the bundled mark kept. */
+export function atCapabilityMarkers<Definition extends AgentDefinition>(definition: Definition): Definition {
+  return beforeAgentTypeMarkers(beforeUatScratchpadRule(beforeExplorerModelClaim(beforeLeanPersonaText(definition))))
+}
+
+/** Each clause of a bundled persona that the capability-text edit of
+ *  2026-11-07 rewrote, paired with its text at dd2fab076, the last revision
+ *  before that edit. A test of an older proof rebuilds its recorded hashes
+ *  from the personas as they read before it. */
+const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: string, base: string])[]> = new Map([
+  ["advisor", [[
+    "Inspect the repository read-only, only to verify",
+    "Use read, search, list, and read-only shell commands only to verify",
+  ]]],
+  ["explorer", [
+    ["and makes targeted external lookups such as documentation.", "and makes targeted non-repository external lookups such as documentation with the web tool."],
+    [
+      "- **Locate before reading.** Find every plausibly relevant location, then read only the functions or line ranges you need. Do not read entire files to find one function.",
+      "- **Search before reading.** Use search to locate relevant code, then read only the functions or line ranges that matter. Do not read entire files to find one function; use `symbol:` or `offset`/`limit` to read just what you need.",
+    ],
+    [
+      "- **Enumerate before reading.** First find every location plausibly relevant to your facet.",
+      "- **Enumerate before reading.** First surface every location plausibly relevant to your facet with search and list.",
+    ],
+    [
+      "- Use whichever of your tools fit for discovery, search, and reading.\n{{if:bash}}\n- For GitHub repository data, use read-only `gh` commands through bash or exec for pull requests, commits, diffs, reviews, and issues.\n{{end}}\n{{if:web}}\n- Use web only for data that your other tools cannot provide.\n{{end}}",
+      "- Use whichever tools fit: the file tools or read-only shell commands both work for discovery, search, and reading.\n- For GitHub repository data, use read-only `gh` commands through bash or exec for pull requests, commits, diffs, reviews, and issues. Use web only when `gh` is unavailable or cannot provide the required data.",
+    ],
+  ]],
+  ["implementer", [[
+    "{{if:read}}\n- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.\n{{else}}\n- Read and change project files with the tools you hold.\n{{end}}\n{{if:search}}\n- Use the search and list tools to find project files and text; shell grep and ls are not substitutes.\n{{end}}",
+    "- Use the read, search, file edit, and write tools for project files; bash grep, sed, cat, ls, and heredoc scripts are not substitutes.",
+  ]]],
+  ["ship", [
+    ["{{if:bash}}\nFollow the composed Ship method.", "Follow the composed Ship method."],
+    ["Keep commit-message drafts and other publication scratch files", "You may use Write or Bash to create commit-message drafts and other publication scratch files"],
+    ["or modify repository file contents.\n{{else}}\nYou have no shell, so you cannot inspect, commit, or push. Change nothing and return Not published, with the missing shell as the condition that stopped publication.\n{{end}}", "or modify repository file contents."],
+  ]],
+  ["reviewer-uat", [[
+    "{{if:bash}}\nBound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:\n{{else}}\nA single command must remain bounded:\n{{end}}",
+    "Bound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:",
+  ]]],
+]);
+
+/** A bundled persona as it read at dd2fab076, before the capability-text
+ *  edit, which also added the bundled mark to persona identity. Starts from
+ *  {@link atCapabilityMarkers}, because the other edits came later. Throws
+ *  when a rewritten clause is missing, so a later edit of these personas
+ *  updates this fixture. */
+export function atCapabilityTextBase(definition: AgentDefinition): AgentDefinition {
+  if (definition.kind !== "persona") return beforeLeanPersonaText(definition);
+  const { bundled: _mark, ...persona } = atCapabilityMarkers(definition);
+  return restoreClauses(persona, CAPABILITY_TEXT_AT_BASE.get(persona.name) ?? []);
+}
+
+/** Every persona of `personas` as it read at dd2fab076 (refer to {@link atCapabilityTextBase}). */
+export function personasAtCapabilityTextBase(personas: ReadonlyMap<string, AgentDefinition>): ReadonlyMap<string, AgentDefinition> {
+  return new Map([...personas].map(([name, persona]) => [name, atCapabilityTextBase(persona)]));
+}

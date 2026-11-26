@@ -1,4 +1,4 @@
-import { createRelayClient, type RelayClient } from "../../src/protocol/modules/remote/relay-client.js"
+import { createRelayClient, type RelayClient, type RelayClientOptions } from "../../src/protocol/modules/remote/relay-client.js"
 import type { DeviceStore } from "../../src/protocol/modules/remote/relay-device.js"
 import type { MachinePickerSnapshot } from "../../src/protocol/modules/remote/machine-picker.js"
 import type { RemoteHostCapability, RemoteHostSnapshot } from "../src/host.js"
@@ -17,7 +17,7 @@ export interface RelayHost extends Pick<RelayClient, "socket" | "onSelectionChan
   readonly capability: RemoteHostCapability
 }
 
-export async function createRelayHost(store: DeviceStore, options: { readonly scan?: () => Promise<string | undefined> } = {}): Promise<RelayHost> {
+export async function createRelayHost(store: DeviceStore, options: RelayClientOptions & { readonly scan?: () => Promise<string | undefined> } = {}): Promise<RelayHost> {
   const listeners = new Set<(snapshot: RemoteHostSnapshot) => void>()
 
   // Chromium hands over the install prompt as an event to hold and call later;
@@ -53,7 +53,7 @@ export async function createRelayHost(store: DeviceStore, options: { readonly sc
     publish()
   })
 
-  const client = await createRelayClient(store)
+  const client = await createRelayClient(store, options)
   picker = client.snapshot()
   client.onChange((next) => {
     picker = next

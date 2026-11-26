@@ -13,8 +13,8 @@
  */
 import { describe, expect, it } from "bun:test";
 
-import { summarizeSubagentWork } from "../../../src/orchestration/modules/subagents/execution/summarize-work.js";
-import type { SubagentToolCallRecord } from "../../../src/orchestration/modules/subagents/execution/work-log.js";
+import { summarizeSubagentWork } from "../../../src/orchestration/modules/subagents/execution/result/summarize-work.js";
+import type { SubagentToolCallRecord } from "../../../src/orchestration/modules/subagents/execution/result/work-log.js";
 import { LIVE_MODEL, withLiveClient } from "./_live-client.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { checkpointTestPersistences } from "../../helpers/checkpoint-store.js";

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
-import { composeModules } from "../../../../src/infra/module-descriptor"
-import { moduleRuntimeHandle } from "../../../../src/infra/module-runtime"
-import type { FirstPartyModule } from "../../../../src/orchestration/modules"
-import { flushMicrotasks, makeLifecycle } from "./_chat-runner-lifecycle-fixtures"
+import { composeModules } from "../../../../src/infra/definitions/module-descriptor"
+import { moduleRuntimeHandle } from "../../../../src/infra/definitions/modules/module-runtime"
+import type { FirstPartyModule } from "../../../../src/orchestration/module-contract/module-catalog.js"
+import { flushMicrotasks, makeLifecycle } from "./lifecycle/_chat-runner-lifecycle-fixtures"
 
 describe("chat module host session lifetime", () => {
   it("owns a module host before any model turn and retains it across agent generations", async () => {

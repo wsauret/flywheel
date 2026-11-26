@@ -3,9 +3,9 @@ import net from "node:net"
 import {
   createAccountAttachResponseReader,
   encodeAccountAttach,
-} from "../../../src/protocol/account-attach.js"
-import type { HostMessage, ViewMessage } from "../../../src/protocol/client/editor-host.js"
-import type { RuntimeSocketTarget } from "../runtime/node-socket.js"
+} from "../../../src/protocol/runtime/account-attach.js"
+import type { HostMessage, ViewMessage } from "../../../src/protocol/client/host/editor-host.js"
+import type { RuntimeSocketTarget } from "../runtime/connection/node-socket.js"
 
 /** The extension host's half of the byte pump.
  *

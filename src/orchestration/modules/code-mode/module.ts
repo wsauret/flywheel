@@ -1,5 +1,5 @@
-import type { ToolDeclaration } from "../../agent-runtime/tools/tool-registry.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { ToolDeclaration } from "../../module-contract/module-seams.js"
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js"
 import { codeModeRuntime, createCodeModeRuntime } from "./runtime.js"
 import { codeModeService, createCodeModeService } from "./service.js"
 

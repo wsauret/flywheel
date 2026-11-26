@@ -3,8 +3,8 @@ import { describe, expect, it, spyOn } from "bun:test";
 import {
   summarizeSubagentWork,
   type SummarizeSubagentWorkInput,
-} from "../../../../../src/orchestration/modules/subagents/execution/summarize-work.js";
-import type { SubagentToolCallRecord } from "../../../../../src/orchestration/modules/subagents/execution/work-log.js";
+} from "../../../../../src/orchestration/modules/subagents/execution/result/summarize-work.js";
+import type { SubagentToolCallRecord } from "../../../../../src/orchestration/modules/subagents/execution/result/work-log.js";
 import type { ModelClient, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { asModelClient } from "../_model-client.js";

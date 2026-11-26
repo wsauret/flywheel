@@ -1,6 +1,6 @@
 import { createComponent, createRoot } from "solid-js"
 
-import { createElement, insert, nodes } from "../render-ownership-host-fixture.js"
+import { createElement, insert, nodes } from "../../test-support/render-ownership-host-fixture.js"
 import { SheetField } from "./controls.js"
 
 const tick = async (): Promise<void> => {

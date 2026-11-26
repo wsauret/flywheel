@@ -1,17 +1,17 @@
 import { describe, expect, it } from "bun:test";
-import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution.js";
-import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
-import { flattenWorkflowView, restateWorkflowView, workflowViewForProposal } from "../../../../src/workflows/vm/view-flatten.js";
-import { workflowTree as projectTree } from "../../../../src/workflows/vm/view-tree.js";
+import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution.js";
+import { compileWorkflowControl } from "../../../../src/workflows/vm/compile/compile.js";
+import { flattenWorkflowView, restateWorkflowView, workflowViewForProposal } from "../../../../src/workflows/vm/view/view-flatten.js";
+import { workflowTree as projectTree } from "../../../../src/workflows/vm/view/view-tree.js";
 import { MAP_GROUP, PLAN, TAIL, attemptOf, branch, items, stage } from "./_map-fixtures.js";
 
 const IMPLEMENT = `${MAP_GROUP}:phase:1`;
 const REVIEW = `${MAP_GROUP}:phase:2`;
 import { drive, interrupt, mapBindings, mapControl, mapOutcome, phaseControl, startNext, wideControl } from "./_tree-fixtures.js";
-import { completeAttempt, failAttempt, prepareExecution, startExecution } from "../../../../src/workflows/vm/attempt-transitions.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
+import { completeAttempt, failAttempt, prepareExecution, startExecution } from "../../../../src/workflows/vm/transitions/attempt-transitions.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js";
+import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/facts/session-facts.js";
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js";
 import { asThenChain } from "../../../helpers/control-before-phases.js";
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";

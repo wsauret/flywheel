@@ -1,30 +1,29 @@
+import { createHash } from "node:crypto"
 import { Cause, Deferred, Effect, Exit, Scope, Stream } from "effect"
 import { Socket } from "effect/socket"
 
-import type { ServeLane } from "../../../infra/cli-subprocess.js"
-import type { AccountProjectClone, ClonedProject } from "../../app-service/account-project-clone.js"
-import type { AccountProjectRegistry } from "../../app-service/account-project-registry.js"
-import type { AccountService } from "../../app-service/account-service.js"
+import type { ServeLane } from "../../../infra/platform/cli-subprocess.js"
+import type { AccountProjectClone, ClonedProject } from "../../app-service/account/account-project-clone.js"
+import type { AccountProjectRegistry } from "../../app-service/account/account-project-registry.js"
+import type { AccountService } from "../../app-service/account/account-service.js"
 import type { RelayChannelSocket } from "../../../protocol/modules/remote/relay-channel.js"
-import { decodeJsonFrame, DEFAULT_RELAY_URL, DEFAULT_REMOTE_APP_ORIGIN, fromBase64Url, type OpenFrame, type Placement } from "../../../protocol/modules/remote/relay-protocol.js"
+import { decodeJsonFrame, DEFAULT_REMOTE_APP_ORIGIN, fromBase64Url, type OpenFrame, type Placement } from "../../../protocol/modules/remote/relay-protocol.js"
 import { decodeRemoteAccountRequest, type RemoteAccountAnswer, type RemoteAccountRequest } from "../../../protocol/modules/remote/account-requests.js"
-import type { AccountModuleRequestServer } from "../../app-service/module-service-host.js"
-import { decodeProjectCreateRequest, machinePlacementId, type ProjectCreateRequest, type ProjectCreationAnswer } from "../../../protocol/modules/remote/project-creation.js"
+import type { AccountModuleRequestServer } from "../../app-service/account/projects/account-module-services.js"
+import { decodeMachineRequest, machinePlacementId, type MachineAnswer, type MachineRequest } from "../../../protocol/modules/remote/project-creation.js"
 import { sealedSocket } from "../../../protocol/modules/remote/sealed-socket.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../protocol/runtime-liveness.js"
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
-import { importLegacyRemotePlacements, mutateRemotePairingStore, onRemoteStoresWritten, readRemotePairingStore, type PairedDevice } from "./remote-pairing-store.js"
-import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./remote-pairing-exchange.js"
+import { defaultRelayUrl, importLegacyRemotePlacements, mutateRemotePairingStore, onRemoteStoresWritten, readRemotePairingStore, type PairedDevice } from "./remote-pairing-store.js"
+import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./pairing/remote-pairing-exchange.js"
 import { createRelayControlChannel, linkConnection, linkFailure, type RelayControlChannel, type RelayLink, type ServedClient } from "./relay-control-channel.js"
 import { dialRelayDataChannel } from "./relay-data-channel.js"
-import { placementId } from "./remote-access.js"
-import { ensureRemoteIdentity, remoteIdentityFrom, type RemoteIdentity } from "./remote-identity.js"
+import { ensureRemoteIdentity, remoteIdentityFrom, type RemoteIdentity } from "./pairing/remote-identity.js"
 import type { KeepAwake } from "./keep-awake.js"
-import { Log } from "../../../infra/log.js"
-import { errorDetail, errorMessage } from "../../../infra/error-message.js"
-import { durationMs } from "../../../infra/operation-log.js"
-import { createBackgroundLane } from "../../../infra/ordered-lane.js"
-import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
+import { Log } from "../../../infra/diagnostics/log.js"
+import { errorDetail, errorMessage } from "../../../infra/diagnostics/error-message.js"
+import { createBackgroundLane, durationMs } from "../../../infra/diagnostics/operation-log.js"
+import { coalesceRepeats } from "../../../infra/diagnostics/repeat-coalescer.js"
 
 const log = Log.create({ service: "account-relay" })
 
@@ -129,7 +128,7 @@ export function createAccountRelayService(options: {
     return opening
   }
   let devices: readonly string[] = []
-  let relayUrl = DEFAULT_RELAY_URL
+  let relayUrl = defaultRelayUrl(options.lane)
   let identity: RemoteIdentity | undefined
   let pairing: MachinePairing | undefined
   const windows = new Set<MachinePairing>()
@@ -169,8 +168,13 @@ export function createAccountRelayService(options: {
     if (!awakeProjects.delete(root) || awakeProjects.size > 0) return
     await options.keepAwake.release()
   }
+  // Each channel resolves the identity before it reads its placement.
+  const placementIdentity = (): RemoteIdentity => {
+    if (identity === undefined) throw new Error("the placement has no identity yet")
+    return identity
+  }
   const placement = (record: Awaited<ReturnType<AccountProjectRegistry["list"]>>[number]): Placement => ({
-    id: placementId(record.projectRoot),
+    id: placementIdentity().placementId(record.projectRoot),
     projectLabel: record.label,
     version: options.version,
     protocolVersion: RUNTIME_PROTOCOL_VERSION,
@@ -260,30 +264,39 @@ export function createAccountRelayService(options: {
     }
     const inner = yield* Socket.fromTransformStream(Effect.succeed(streams))
     const sealed = sealedSocket(inner, { role: "runtime", publicKey: runtimeIdentity.publicKey, sign: runtimeIdentity.sign }, { kind: "paired", publicKey: fromBase64Url(device.publicKey) })
-    const request = yield* Deferred.make<ProjectCreateRequest, Error>()
+    const request = yield* Deferred.make<MachineRequest, Error>()
     yield* Effect.forkScoped(Stream.runForEach(Socket.toStream(sealed.socket), (bytes) => Effect.sync(() => {
       try {
-        Deferred.doneUnsafe(request, Effect.succeed(decodeJsonFrame(decodeProjectCreateRequest, new TextDecoder().decode(bytes))))
+        Deferred.doneUnsafe(request, Effect.succeed(decodeJsonFrame(decodeMachineRequest, new TextDecoder().decode(bytes))))
       } catch {
         Deferred.doneUnsafe(request, Effect.fail(new Error("the device sent a request this machine cannot read")))
       }
     })), { startImmediately: true })
     const { write } = yield* sealed.socket.writer
     // A device that left meanwhile hears nothing; the creation goes on.
-    const answer = (message: ProjectCreationAnswer) => write(new TextEncoder().encode(JSON.stringify(message))).pipe(Effect.ignore)
+    const answer = (message: MachineAnswer) => write(new TextEncoder().encode(JSON.stringify(message))).pipe(Effect.ignore)
     yield* sealed.established.pipe(Effect.timeoutOrElse({ duration: CREATE_REQUEST_TIMEOUT_MS, orElse: () => Effect.fail(new Error("the device did not complete the handshake in time")) }))
     const asked = yield* Deferred.await(request).pipe(Effect.timeoutOrElse({ duration: CREATE_REQUEST_TIMEOUT_MS, orElse: () => Effect.fail(new Error("the device did not name a repository in time")) }))
     machineChannelFailures.end(device.id)
-    log.info("device asked to create a project", { device: device.id })
-    const creation = createProject(asked.repository)
-    const outcome = yield* Effect.exit(Effect.gen(function*() {
-      const project = yield* Effect.tryPromise({ try: () => creation.cloned, catch: (error) => error })
-      const named = { placementId: placementId(project.projectRoot), projectLabel: project.label }
-      yield* answer({ type: "project.opening", ...named })
-      yield* Effect.tryPromise({ try: () => creation.opened, catch: (error) => error })
-      yield* answer({ type: "project.created", ...named })
-    }))
-    if (Exit.isFailure(outcome)) yield* answer({ type: "project.failed", message: errorMessage(Cause.squash(outcome.cause)) })
+    if (asked.type === "placement.resolve") {
+      const projects = yield* Effect.tryPromise({ try: () => options.registry.list(), catch: (error) => error })
+      // Remove after 2027-05-25: releases before 2026-11-25 announced the
+      // unkeyed SHA-256 of the root, which a device's saved selection still holds.
+      const project = projects.find((candidate) => createHash("sha256").update(candidate.projectRoot).digest("base64url") === asked.placementId)
+      log.info("device resolved an earlier placement id", { device: device.id, found: project !== undefined })
+      yield* answer({ type: "placement.resolved", ...(project === undefined ? {} : { placementId: runtimeIdentity.placementId(project.projectRoot) }) })
+    } else {
+      log.info("device asked to create a project", { device: device.id })
+      const creation = createProject(asked.repository)
+      const outcome = yield* Effect.exit(Effect.gen(function*() {
+        const project = yield* Effect.tryPromise({ try: () => creation.cloned, catch: (error) => error })
+        const named = { placementId: runtimeIdentity.placementId(project.projectRoot), projectLabel: project.label }
+        yield* answer({ type: "project.opening", ...named })
+        yield* Effect.tryPromise({ try: () => creation.opened, catch: (error) => error })
+        yield* answer({ type: "project.created", ...named })
+      }))
+      if (Exit.isFailure(outcome)) yield* answer({ type: "project.failed", message: errorMessage(Cause.squash(outcome.cause)) })
+    }
     // The device closes once it has the answer. Waiting for that, bounded,
     // keeps the answer from being cut off by our own close.
     yield* Effect.promise(() => streams.closed).pipe(Effect.timeoutOption(CREATE_REQUEST_TIMEOUT_MS))
@@ -298,11 +311,7 @@ export function createAccountRelayService(options: {
   const machine = createRelayControlChannel({
     relayUrl: () => (pairing ?? [...windows].at(-1))?.relayUrl ?? relayUrl,
     identity: requireIdentity,
-    placement: () => {
-      // The channel resolves the identity before it reads the placement.
-      if (identity === undefined) throw new Error("the machine placement has no identity yet")
-      return { id: machinePlacementId(identity.runtimeId), projectLabel: machineName(options.lane), version: options.version, protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" }
-    },
+    placement: () => ({ id: machinePlacementId(placementIdentity().runtimeId), projectLabel: machineName(options.lane), version: options.version, protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" }),
     ...(options.client === undefined ? {} : { client: options.client }),
     devices: () => devices,
     wanted: () => wanted() || (!disposed && windows.size > 0),
@@ -469,7 +478,7 @@ export function createAccountRelayService(options: {
     if (disposed) return
     await importLegacyRemotePlacements(options.userDataRoot, options.lane, options.registry)
     const store = readRemotePairingStore(options.userDataRoot, options.lane)
-    relayUrl = store.relayUrl ?? DEFAULT_RELAY_URL
+    relayUrl = store.relayUrl ?? defaultRelayUrl(options.lane)
     const before = devices
     devices = store.devices.map((device) => device.id)
     // An attached channel told the relay its devices only at attach; a

@@ -1,4 +1,4 @@
-import type { AnyBlock } from "../../infra/output-blocks.js"
+import type { AnyBlock } from "../../infra/substrate/events/output-blocks.js"
 import type { SessionEntry, SessionEntryBase, SessionEntryBasePatch } from "./types.js"
 
 // Monotone per-process stamp: one per entry construction, so a projection can

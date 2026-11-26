@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import type { JudgeJob } from "./block-judge.js";
 import { readCampaignArtifact } from "./campaign-artifacts.js";
 import { judgeCampaignPairs, type CampaignJudgeDependencies } from "./campaign-pair-judge.js";
@@ -32,7 +32,7 @@ export async function judgePlanningPairs(options: PlanningJudgeOptions & { reado
   const code = await Promise.all([
     "./planning-judge.ts", "./planning-recall.ts", "./planning-task.ts", "./campaign-pair-judge.ts", "./campaign-artifacts.ts",
     "./campaign-role-evidence.ts", "./block-judge.ts", "./judge-inputs.ts", "./pair-judge.ts",
-    "../../src/orchestration/modules/development/benchmark/judge.ts",
+    "../../src/orchestration/modules/development/benchmark/scoring/judge.ts",
   ].map(async (path) => structuredIdentity(await readFile(new URL(path, import.meta.url), "utf8"))));
   const jobs = new Map<string, { job: JudgeJob<"a" | "b">; identity: string }>();
   const skipped: { task: string; repeat: number; reason: string }[] = [];

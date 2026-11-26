@@ -36,13 +36,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Schema } from "effect";
-import { writeFileAtomic } from "../atomic-write.js";
-import { errorMessage } from "../error-message.js";
-import { Log } from "../log.js";
-import { acquireLockSync, releaseLock } from "../ownership-file-lock.js";
-import { accountServeStartRecordPath } from "../paths.js";
-import { ensurePrivateRootDirectory, PRIVATE_FILE_MODE } from "../private-path.js";
-import { coalesceRepeats } from "../repeat-coalescer.js";
+import { writeFileAtomic } from "../platform/files/atomic-write.js";
+import { errorMessage } from "../diagnostics/error-message.js";
+import { Log } from "../diagnostics/log.js";
+import { acquireLockSync, releaseLock } from "../process/locks/ownership-file-lock.js";
+import { accountServeStartRecordPath } from "../platform/files/paths.js";
+import { ensurePrivateRootDirectory, PRIVATE_FILE_MODE } from "../platform/files/private-path.js";
+import { coalesceRepeats } from "../diagnostics/repeat-coalescer.js";
 import { type BuildRef, BuildRefSchema } from "./build-identity.js";
 
 const log = Log.create({ service: "service-start-record" });

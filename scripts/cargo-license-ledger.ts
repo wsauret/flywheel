@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { readFile, readdir, rename } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
-import { isRecord } from "../src/infra/record.js";
+import { isRecord } from "../src/infra/guards/record.js";
 
 interface CargoPackage {
   readonly name: string;

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js"
+import type { RuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-types.js"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
 import { decodeRuntimeEvent } from "../../../helpers/runtime-events.js"
 import { asModelClient } from "./_model-client.js"

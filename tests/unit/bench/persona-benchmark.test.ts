@@ -1,25 +1,26 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import type { AgentOptions } from "../../../src/orchestration/agent-runtime/types.js";
 import { createBenchmarkCatalog, RESEARCH_SNAPSHOT } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/judge.js";
+import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import {
   planPersonaBenchmark,
   runPersonaBenchmark,
   type BenchmarkEvent,
-} from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
-import { runGroups } from "../../../src/orchestration/modules/development/benchmark/matrix-runner.js";
-import { scoreResearch, type SnapshotLines } from "../../../src/orchestration/modules/development/benchmark/research-scoring.js";
-import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
+} from "../../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
+import { runGroups } from "../../../src/orchestration/modules/development/benchmark/campaign/matrix-runner.js";
+import { scoreResearch, type SnapshotLines } from "../../../src/orchestration/modules/development/benchmark/scoring/research-scoring.js";
+import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona/persona-store.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
-import { loadAllCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
-import type { BenchmarkRuntime } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
-import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
+import { loadAllCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
+import type { BenchmarkRuntime } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
+import { createForegroundBashHoldController } from "../../../src/orchestration/session/control/background-work/foreground-bash-hold.js";
+import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona/persona-run.js";
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
 import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
 import { roleCapture } from "../../helpers/role-capture.js";
@@ -254,6 +255,7 @@ describe("persona benchmark service", () => {
     let running = 0;
     let runningAtCancellation: number | undefined;
     let snapshots = 0;
+    const workspaces = new Set<string>();
     const runtime: BenchmarkRuntime = {
       definitions: fixedDefinitions(),
       userDataRoot: join(tmpdir(), "flywheel-persona-benchmark-user"),
@@ -266,6 +268,8 @@ describe("persona benchmark service", () => {
       // still extracts its workspace: the stop ends that command as it ends a
       // real one.
       runOwnedCommand: async (command, options) => {
+        // A sandbox command's home lies inside the workspace it serves.
+        if (options?.env?.HOME) workspaces.add(dirname(options.env.HOME));
         if (command[0] !== "git" || ++snapshots !== 2) return await succeedingCommands(command, options);
         const signal = options?.signal;
         if (!signal) throw new Error("a benchmark command carries the run's signal");
@@ -312,6 +316,8 @@ describe("persona benchmark service", () => {
     expect(attempts.every((attempt) => attempt.task === plan.tasks[0]?.id)).toBe(true);
     expect(new Set(attempts.map((attempt) => attempt.attemptId)).size).toBe(VARIANTS.length);
     expect(await Bun.file(join(plan.resultsDir, "report.md")).exists()).toBe(false);
+    expect(workspaces.size).toBe(VARIANTS.length);
+    expect([...workspaces].filter((workspace) => existsSync(workspace))).toEqual([]);
   });
 
   it("keeps a sibling that completed and cancels only the sibling still running", async () => {

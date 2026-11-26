@@ -1,12 +1,14 @@
 import { expect, test } from "bun:test"
 
 import type { PairedRuntime, RemoteSelection } from "../../src/protocol/modules/remote/relay-device.js"
+import { pairingCodeUrl } from "../../src/protocol/modules/remote/relay-protocol.js"
 import type { ClientSource, KnownRuntime } from "./client-choice.js"
 import type { PageDeviceStore } from "./device-store.js"
 import { createPageStart, type PairingRequest } from "./page-start.js"
 
 const A = "a".repeat(64)
 const RELAY = "wss://relay.flywl.sh"
+const CODE = pairingCodeUrl("https://remote.flywl.sh", { v: 1, relay: "wss://relay.flywl.sh", publicKey: "k".repeat(43), windowId: "window", secret: "secret", label: "Studio", expiresAt: 1 })
 
 function machine(runtimeId: string, label: string): PairedRuntime {
   return { runtimeId, publicKey: `key-${runtimeId}`, relay: RELAY, label, pairedAt: 1 }
@@ -24,8 +26,16 @@ async function phone(input: { readonly runtimes: readonly PairedRuntime[]; reado
   const events: unknown[] = []
   const screens: PairingRequest[] = []
   const listeners: Parameters<PageDeviceStore["onRuntimePut"]>[0][] = []
+  // A phone that has paired has its key; one that has not makes it at pairing.
+  const ownKey = { keyPair: generated, deviceId: "phone", publicKey: new Uint8Array(32) }
+  let device = input.runtimes.length > 0 ? ownKey : undefined
   const store: PageDeviceStore = {
-    device: { keyPair: generated, deviceId: "phone", publicKey: new Uint8Array(32) },
+    get device() { return device },
+    committedDevice: async () => device,
+    ensureDevice: async () => {
+      device ??= ownKey
+      return device
+    },
     label: () => "iPhone",
     setLabel: async () => {},
     runtimes: async () => runtimes,
@@ -55,8 +65,8 @@ async function phone(input: { readonly runtimes: readonly PairedRuntime[]; reado
       events.push({ asked: paired.map((runtime) => runtime.runtimeId), preferred, waitMs })
       return paired.map((runtime) => ({ runtimeId: runtime.runtimeId, relay: runtime.relay, current: input.current.get(runtime.runtimeId) }))
     },
-    pairDevice: async (text) => {
-      events.push({ paired: text })
+    pairDevice: async (text, as) => {
+      events.push({ paired: text, as: as.deviceId })
       return machine("studio", "Studio")
     },
     loadShell: async (source: ClientSource) => {
@@ -78,14 +88,14 @@ test("a pairing link is used first, before the page asks about the machines it a
   const subject = await phone({
     runtimes: [machine("desk", "Desk"), machine("laptop", "Laptop")],
     selection: { runtimeId: "desk", placementId: "p1" },
-    code: "#p=studio",
+    code: CODE,
     current: new Map([["studio", A]]),
   })
   await subject.page.start()
-  expect(subject.events).toEqual([{ pairing: "#p=studio", unreachable: undefined }])
+  expect(subject.events).toEqual([{ pairing: CODE, unreachable: undefined }])
 
   const labels: string[] = []
-  await subject.screens[0]!.pair("#p=studio", (label) => labels.push(label))
+  await subject.screens[0]!.pair(CODE, (label) => labels.push(label))
   await settle()
   expect(labels).toEqual(["Studio"])
   // The new machine joins the saved ones, and the page loads afresh, so that
@@ -93,7 +103,7 @@ test("a pairing link is used first, before the page asks about the machines it a
   // person installs next (PI-REMOTE-032).
   expect(subject.runtimes().map((runtime) => runtime.runtimeId)).toEqual(["desk", "laptop", "studio"])
   expect(subject.selection()).toBeUndefined()
-  expect(subject.events.slice(1)).toEqual([{ paired: "#p=studio" }, "reload"])
+  expect(subject.events.slice(1)).toEqual([{ paired: CODE, as: "phone" }, "reload"])
 
   // The fresh page opens the new machine: the project selection on another
   // machine was cleared, and the page waits as long as a first pairing does
@@ -142,9 +152,14 @@ test("a pairing the loaded shell makes also loads the page again, and a new name
 test("the installed app loads again after a pairing on the page's screen, and its shell opens a machine it pairs in place", async () => {
   const subject = await phone({ installed: true, runtimes: [], selection: undefined, code: undefined, current: new Map([["studio", A]]) })
   await subject.page.start()
-  await subject.screens[0]!.pair("#p=studio", () => {})
+  // Showing the pairing screen makes no key, and neither does text that is
+  // no pairing code; the pairing does.
+  expect(subject.store.device).toBeUndefined()
+  await expect(subject.screens[0]!.pair("https://remote.flywl.sh/#help=pairing", () => {})).rejects.toThrow("not a Flywheel pairing code")
+  expect(subject.store.device).toBeUndefined()
+  await subject.screens[0]!.pair(CODE, () => {})
   await settle()
-  expect(subject.events).toEqual([{ pairing: undefined, unreachable: undefined }, { paired: "#p=studio" }, "reload"])
+  expect(subject.events).toEqual([{ pairing: undefined, unreachable: undefined }, { paired: CODE, as: "phone" }, "reload"])
 
   // The app has no manifest to rebuild, so the shell keeps the screen it shows.
   await subject.page.start()

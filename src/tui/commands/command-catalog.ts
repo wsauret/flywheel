@@ -1,4 +1,4 @@
-import type { ModalSelectOption } from "../components/modal-select-types.js"
+import type { ModalSelectOption } from "../components/modal/select/modal-select-types.js"
 import type { BuiltInCommandContext, BuiltInCommandDefinition, CommandSpec } from "./command-types.js"
 
 

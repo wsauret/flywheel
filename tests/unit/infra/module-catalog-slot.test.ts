@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createModuleCatalogSlot } from "../../../src/infra/module-descriptor.js";
+import { createModuleCatalogSlot } from "../../../src/infra/definitions/module-descriptor.js";
 
 describe("module catalog slot", () => {
   test("reads undefined until a catalog is installed, then loads it once", () => {

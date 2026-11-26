@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { AuthProfileManager } from "../../../src/orchestration/auth/auth-profile-manager.js"
-import { AuthProfileStore } from "../../../src/infra/auth/auth-profile-store.js"
+import { AuthProfileStore } from "../../../src/infra/providers/auth/store/auth-profile-store.js"
 import { attachProjectRuntime, canonicalDirectories, stopProjectRuntime } from "./_project-runtime.js"
 import { socketTemporaryRoot } from "../../helpers/directories.js"
 

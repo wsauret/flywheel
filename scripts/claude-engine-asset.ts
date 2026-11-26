@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { claudeEngineFile } from "../src/infra/native-assets.js";
+import { claudeEngineFile } from "../src/infra/platform/native-assets.js";
 import { requireDigestMatch, requireExecutable } from "./engine-asset-verify.js";
 
 /**

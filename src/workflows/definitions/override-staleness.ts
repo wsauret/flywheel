@@ -2,10 +2,10 @@ import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 
 import type { BundledDefaultCatalog } from "./bundled-defaults.js"
-import type { DefinitionFamily, DefinitionLayer, DefinitionResolution } from "../../infra/definition-resolution.js"
+import type { DefinitionFamily, DefinitionLayer, DefinitionResolution } from "../../infra/definitions/definition-resolution.js"
 import type { DefinitionOverrideBaselineRecords } from "./override-baselines.js"
 
-import type { MutationDiff } from "../../infra/mutation-diff.js"
+import type { MutationDiff } from "../../infra/substrate/file-mutations/mutation-diff.js"
 type DefinitionStalenessStatus = "current" | "upstream-changed"
 export type OverrideResolutionAction = "keep-mine" | "adopt-default" | "rebase"
 

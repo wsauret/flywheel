@@ -1,5 +1,5 @@
 import type { FlywheelAppServiceDeps } from "../../src/orchestration/app-service/app-service.js"
-import type { AuthLoginService } from "../../src/orchestration/app-service/auth-login-service.js"
+import type { AuthLoginService } from "../../src/orchestration/app-service/auth/login/auth-login-service.js"
 
 /** The services the auth mutations reach, for a test that exercises other
  *  ones. An auth refresh settles and a profile change cancels any login, so

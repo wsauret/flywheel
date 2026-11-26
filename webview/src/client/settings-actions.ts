@@ -1,11 +1,11 @@
-import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
-import type { RuntimeConfigMutation, RuntimeConfigMutationResult } from "../../../src/protocol/runtime-config-protocol-types.js"
+import type { RuntimeConnection } from "../../../src/protocol/client/runtime/connection.js"
+import type { RuntimeConfigMutation, RuntimeConfigMutationResult } from "../../../src/protocol/settings/runtime-config-protocol-types.js"
 import type { PanelModuleSetting, PanelProviderSetting, PanelSettings } from "./session-settings.js"
-import type { WriteSyntaxThemeId } from "../../../src/protocol/write-syntax-theme.js"
-import type { UpdateAutoInstall } from "../../../src/protocol/update-protocol-types.js"
-import type { BinaryModule } from "../../../src/protocol/module-protocol-types.js"
+import type { WriteSyntaxThemeId } from "../../../src/protocol/settings/write-syntax-theme.js"
+import type { UpdateAutoInstall } from "../../../src/protocol/runtime/update-protocol-types.js"
+import type { BinaryModule } from "../../../src/protocol/runtime/module-protocol-types.js"
 import { stepWorkflowsMode } from "../../../src/protocol/client/capabilities.js"
-import { autoInstallOverride, autoInstallSaved, persistentProcessesOverride, persistentProcessesSaved } from "../../../src/protocol/client/runtime-policy-copy.js"
+import { autoInstallCopy, persistentProcessesCopy } from "../../../src/protocol/client/runtime/copy/runtime-policy-copy.js"
 import { actionKey } from "./action-key.js"
 
 /** The settings the client changes in place, without a picker.
@@ -185,7 +185,8 @@ export async function applyInlineSetting(connection: RuntimeConnection, action: 
       const state = current.persistentProcesses
       const enabled = !state.persisted
       const result = await connection.dispatch({ type: "settings.set_persistent_processes", expected: state.persisted, enabled })
-      return policyOutcome(result, persistentProcessesOverride(state) === undefined ? undefined : persistentProcessesSaved(state, enabled))
+      const copy = persistentProcessesCopy(state)
+      return policyOutcome(result, copy.override === undefined ? undefined : copy.saved)
     }
     case "toggle-auto-install": {
       const state = autoInstall
@@ -194,7 +195,8 @@ export async function applyInlineSetting(connection: RuntimeConnection, action: 
       // from it, and writing back the derived value would fight the override.
       const enabled = !state.persisted
       const result = await connection.dispatch({ type: "settings.set_update_auto_install", expected: state.persisted, value: enabled })
-      return policyOutcome(result, autoInstallOverride(state) === undefined ? undefined : autoInstallSaved(state, enabled))
+      const copy = autoInstallCopy(state)
+      return policyOutcome(result, copy.override === undefined ? undefined : copy.saved)
     }
     case "set-module-setting": {
       const setting = moduleSettingInForce(current, action.setting)

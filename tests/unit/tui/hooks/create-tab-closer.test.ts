@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createComputed, createMemo, createRoot, createSignal } from "solid-js"
-import type { FrontendMutation, MutationResult, SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendMutation, MutationResult, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 import { createTabCloser } from "../../../../src/tui/hooks/create-tab-closer.js"
 import type { TabInfo } from "../../../../src/tui/hooks/create-tabs.js"

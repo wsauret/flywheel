@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { claudeCodePhases, flywheelPhases } from "../../../bench/chat-ab/phase-timeline.js";
-import type { ExecutionEvidence } from "../../../src/protocol/execution-evidence.js";
+import type { ExecutionEvidence } from "../../../src/protocol/session/execution-evidence.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporary = temporaryDirectories();

@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
 
-import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
-import { asAsyncEventReadSurface, type EventStoreReadSurface } from "../../../../src/infra/event-store-types.js"
-import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
+import { asAsyncEventReadSurface, type EventStoreReadSurface } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { createRuntimeEvent } from "../../../../src/infra/substrate/runtime-facts/runtime-event-factory.js"
 import { childSessionProjectionAttachment } from "../../../../src/orchestration/session-store/child-session-projection.js"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"

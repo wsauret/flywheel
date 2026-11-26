@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { runMemoryShow } from "../../../src/orchestration/modules/learning/cli/memory.js"
-import type { ProjectDirectories } from "../../../src/infra/directory-authorities.js"
+import type { ProjectDirectories } from "../../../src/infra/platform/files/directory-authorities.js"
 import {
   applyMemoryOperation,
   createMemoryStoreConfig,

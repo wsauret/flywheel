@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 
-import { admitPrivateDatabaseFiles } from "../../../../infra/private-path.js"
-import { applySqliteDurabilityPragmas } from "../../../../infra/sqlite-durability.js"
+import { admitPrivateDatabaseFiles } from "../../../../infra/platform/files/private-path.js"
+import { applySqliteDurabilityPragmas } from "../../../../infra/platform/files/sqlite-durability.js"
 
 /** Remove the short-lived per-deletion evidence table from stores opened by the
  * release that introduced it. Sparse workflow sequences need no side ledger. */

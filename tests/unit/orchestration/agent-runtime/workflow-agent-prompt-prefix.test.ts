@@ -1,19 +1,19 @@
 import { describe, expect, test } from "bun:test"
 import { testProviderSessionLifetime } from "../../../helpers/provider-authority.js";
 import { join } from "node:path"
-import { prepareAnthropicRequest } from "../../../../src/orchestration/agent-runtime/llm/anthropic.js"
+import { prepareAnthropicRequest } from "../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic.js"
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js"
-import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runtime-assembly.js"
-import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
+import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/request/prompt/model-interaction-profile.js"
+import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runner/runtime-assembly.js"
+import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/request/runtime-conversation.js"
 import type { RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
-import type { HandoffToolSchema } from "../../../../src/orchestration/workflow-host/handoff-tool-schema.js"
+import type { HandoffToolSchema } from "../../../../src/orchestration/agent-runtime/tools/sessions/handoff-tool-schema.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { asModelClient, ownHistoryTarget } from "./_model-client.js"
 import { checkpointTestPersistences } from "../../../helpers/checkpoint-store.js"
-import { providerModelInfo } from "../../../../src/infra/llm/provider-model-info.js"
+import { providerModelInfo } from "../../../../src/infra/providers/llm/catalog/provider-model-info.js"
 
 const temporaryDirectory = temporaryDirectories()
 const checkpointTestPersistence = checkpointTestPersistences()

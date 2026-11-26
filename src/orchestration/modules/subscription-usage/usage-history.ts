@@ -1,5 +1,5 @@
-import type { SubscriptionUsageHistoryEntry } from "../../../infra/llm/subscription-usage-store.js"
-import type { SubscriptionUsageMetric } from "../../../infra/llm/subscription-usage.js"
+import type { SubscriptionUsageHistoryEntry } from "../../../infra/providers/llm/usage/subscription-usage-store-codec.js"
+import type { SubscriptionUsageMetric } from "../../../infra/providers/llm/usage/subscription-usage.js"
 import type { UsageHistoryObservation } from "./usage-projection.js"
 
 function metricValue(metric: SubscriptionUsageMetric): number {

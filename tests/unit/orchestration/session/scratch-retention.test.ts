@@ -1,11 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { ensureSessionDir, resolveSessionDir } from "../../../../src/infra/paths";
+import { ensureSessionDir, resolveSessionDir, PRIVATE_COPY_RECORD } from "../../../../src/infra/platform/files/paths";
 import type { OwnedCommandRunner } from "../../../../src/infra/owned-command";
-import { PRIVATE_COPY_RECORD } from "../../../../src/orchestration/agent-runtime/tools/bash-private-copy-record";
-import { mutationGitDirectoryName, prepareMutationGitEnvironment } from "../../../../src/orchestration/agent-runtime/tools/bash-git-wrapper";
-import { sweepIdleScratch } from "../../../../src/orchestration/session/session-artifacts";
+import { mutationGitDirectoryName, mutationGitRuntimeExists, prepareMutationGitEnvironment } from "../../../../src/orchestration/agent-runtime/tools/bash/git/bash-git-wrapper";
+import { sweepIdleScratch } from "../../../../src/orchestration/session/persistence/storage/session-artifacts";
 import { temporaryDirectories } from "../../../helpers/directories";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -15,6 +14,7 @@ const SCRATCH_IDLE_DAYS = 3;
 const SCRATCH_ENTRY_LIMIT_BYTES = 100 * 1024 * 1024;
 const MUTATION_GIT_REMOVALS_PER_SWEEP = 200;
 const temporaryDirectory = temporaryDirectories();
+const mutationGit = { current: mutationGitDirectoryName(process.execPath, process.platform), runtimeExists: mutationGitRuntimeExists };
 
 /** A sparse file: its size counts toward the limit without writing the bytes. */
 function plantFile(file: string, bytes: number): string {
@@ -56,7 +56,7 @@ describe("the idle scratch sweep", () => {
     const script = plantFile(path.join(scratch, "audit.ts"), 4_096);
     const { runGit } = recordingGit();
 
-    const swept = await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit });
+    const swept = await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit, mutationGit });
 
     expect(fs.existsSync(path.join(scratch, "clone"))).toBe(false);
     expect(fs.existsSync(note)).toBe(true);
@@ -71,7 +71,7 @@ describe("the idle scratch sweep", () => {
     const pack = plantFile(path.join(scratch, "clone", "pack.bin"), LARGE);
     const { runGit } = recordingGit();
 
-    const swept = await sweepIdleScratch({ projectRoot, now: Date.now() + (SCRATCH_IDLE_DAYS - 1) * DAY_MS, signal: new AbortController().signal, runGit });
+    const swept = await sweepIdleScratch({ projectRoot, now: Date.now() + (SCRATCH_IDLE_DAYS - 1) * DAY_MS, signal: new AbortController().signal, runGit, mutationGit });
 
     expect(fs.existsSync(pack)).toBe(true);
     expect(swept.removedEntries).toBe(0);
@@ -86,7 +86,7 @@ describe("the idle scratch sweep", () => {
     plantFile(path.join(scratch, directory, "copy-small", PRIVATE_COPY_RECORD), 64);
     const { runGit } = recordingGit();
 
-    await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit });
+    await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit, mutationGit });
 
     expect(fs.existsSync(path.join(scratch, directory, "copy-large"))).toBe(false);
     expect(fs.existsSync(small)).toBe(true);
@@ -98,7 +98,7 @@ describe("the idle scratch sweep", () => {
     plantFile(path.join(scratch, "edits", "unfinished", "tree", "a.ts"), 128);
     const recorded = plantFile(path.join(scratch, "edits", "recorded", PRIVATE_COPY_RECORD), 64);
     const { runGit } = recordingGit();
-    const sweep = (after: number) => sweepIdleScratch({ projectRoot, now: Date.now() + after, signal: new AbortController().signal, runGit });
+    const sweep = (after: number) => sweepIdleScratch({ projectRoot, now: Date.now() + after, signal: new AbortController().signal, runGit, mutationGit });
 
     // A copy still being taken has no record yet either; it keeps writing.
     expect((await sweep(10 * 60 * 1000)).removedEntries).toBe(0);
@@ -116,8 +116,8 @@ describe("the idle scratch sweep", () => {
     const current = plantFile(path.join(shims, mutationGitDirectoryName(process.execPath, process.platform), "git"), 128);
     const { runGit } = recordingGit();
 
-    expect((await sweepIdleScratch({ projectRoot, now: Date.now() + (SCRATCH_IDLE_DAYS - 1) * DAY_MS, signal: new AbortController().signal, runGit })).removedEntries).toBe(0);
-    expect((await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit })).removedEntries).toBe(1);
+    expect((await sweepIdleScratch({ projectRoot, now: Date.now() + (SCRATCH_IDLE_DAYS - 1) * DAY_MS, signal: new AbortController().signal, runGit, mutationGit })).removedEntries).toBe(0);
+    expect((await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit, mutationGit })).removedEntries).toBe(1);
 
     expect(fs.existsSync(path.join(shims, "0b6c6a0e-legacy-per-command"))).toBe(false);
     expect(fs.existsSync(current)).toBe(true);
@@ -139,7 +139,7 @@ describe("the idle scratch sweep", () => {
     fs.rmSync(path.dirname(collectedRuntime), { recursive: true });
     const { runGit } = recordingGit();
 
-    expect((await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit })).removedEntries).toBe(1);
+    expect((await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit, mutationGit })).removedEntries).toBe(1);
 
     expect(fs.existsSync(kept)).toBe(true);
     expect(fs.existsSync(collected)).toBe(false);
@@ -150,7 +150,7 @@ describe("the idle scratch sweep", () => {
     const shims = path.join(scratchOf(projectRoot, "session-backlog"), "mutation-git");
     for (let index = 0; index <= MUTATION_GIT_REMOVALS_PER_SWEEP; index += 1) plantFile(path.join(shims, `legacy-${index}`, "git"), 1);
     const { runGit } = recordingGit();
-    const sweep = () => sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit });
+    const sweep = () => sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit, mutationGit });
 
     expect((await sweep()).removedEntries).toBe(MUTATION_GIT_REMOVALS_PER_SWEEP);
     expect(fs.readdirSync(shims)).toHaveLength(1);
@@ -165,7 +165,7 @@ describe("the idle scratch sweep", () => {
     fs.symlinkSync(outside, path.join(scratch, "linked", "big.bin"));
     const { runGit } = recordingGit();
 
-    const swept = await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit });
+    const swept = await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit, mutationGit });
 
     expect(swept.removedEntries).toBe(0);
     expect(fs.existsSync(outside)).toBe(true);
@@ -181,7 +181,7 @@ describe("the idle scratch sweep", () => {
     fs.writeFileSync(path.join(worktree, ".git"), `gitdir: ${repository.replaceAll("\\", "/")}/.git/worktrees/candidate\n`);
     const { runGit, commands } = recordingGit();
 
-    await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit });
+    await sweepIdleScratch({ projectRoot, now: idleNow(), signal: new AbortController().signal, runGit, mutationGit });
 
     expect(commands).toEqual([["git", "--git-dir", path.join(repository, ".git"), "worktree", "remove", "--force", "--force", fs.realpathSync(projectRoot) + worktree.slice(projectRoot.length)]]);
     expect(fs.existsSync(path.join(scratch, "bench"))).toBe(false);

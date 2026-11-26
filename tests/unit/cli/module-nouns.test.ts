@@ -9,12 +9,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import type { StartupDirectories } from "../../../src/infra/directory-authorities.js"
-import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
+import type { StartupDirectories } from "../../../src/infra/platform/files/directory-authorities.js"
+import { createPersistentProcessManager } from "../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import type { LauncherContext } from "../../../src/infra/process-supervisor.js"
 import { isSubcommand, subcommandDispatch, SUBCOMMANDS, type SubcommandDispatch } from "../../../src/cli/subcommands.js"
-import type { FirstPartyModule } from "../../../src/orchestration/modules.js"
-import type { CliCommandContext, CommandProcessResources } from "../../../src/orchestration/cli-contribution.js"
+import type { FirstPartyModule } from "../../../src/orchestration/module-contract/module-catalog.js"
+import type { CliCommandContext, CommandProcessResources } from "../../../src/orchestration/module-contract/cli-contribution.js"
 import { temporaryDirectories, testDirectories } from "../../helpers/directories.js"
 
 const invocations: { readonly args: readonly string[]; readonly context: CliCommandContext }[] = []

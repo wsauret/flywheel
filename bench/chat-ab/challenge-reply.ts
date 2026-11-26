@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { getToolDisplay } from "../../src/infra/tools/tool-display-registry.js";
+import { getToolDisplay } from "../../src/infra/substrate/output/tools/tool-display-registry.js";
 import { parseConversationTreeFact } from "../../src/orchestration/session/conversation/conversation-facts.js";
 
 const Source = Schema.Struct({ source: Schema.String, sessionId: Schema.optionalKey(Schema.String), type: Schema.String });

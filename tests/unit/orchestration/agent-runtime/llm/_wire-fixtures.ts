@@ -1,8 +1,8 @@
 import OpenAI from "openai";
 import { z } from "zod";
-import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
-import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";
+import type { AccessProviderId } from "../../../../../src/infra/providers/llm/access/access-provider.js";
+import type { ModelInfo } from "../../../../../src/infra/providers/llm/models/models.js";
+import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/adapters/chat-completions/chat-completions.js";
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 interface WireFrame { [key: string]: unknown }

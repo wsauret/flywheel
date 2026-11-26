@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import { Schema } from "effect";
-import { structuredIdentity } from "./content-identity.js";
-import { BenchmarkAccountingSchema, BenchmarkCampaignIdentitySchema } from "./evidence.js";
-import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile } from "./json-lines.js";
-import { ensuredDirectoryUnder, realDirectoryUnder } from "./paths.js";
-import type { RunStoreLocation } from "./run-store.js";
+import { structuredIdentity } from "./campaign/content-identity.js";
+import { BenchmarkAccountingSchema, BenchmarkCampaignIdentitySchema } from "./accounting/evidence.js";
+import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile } from "./campaign/json-lines.js";
+import { ensuredDirectoryUnder, realDirectoryUnder } from "./campaign/paths.js";
+import type { RunStoreLocation } from "./scoring/run-store.js";
 
 const ContentIdentitySchema = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/));
 const RepeatSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));

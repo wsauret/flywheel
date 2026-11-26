@@ -71,6 +71,6 @@ While Flywheel installs or starts, the panel says so. If Flywheel is missing, ou
 
 ## Privacy and support
 
-Project sessions and diagnostics stay on the machine where the extension host runs. Model providers and MCP servers receive the context required for the requests you send to them and process it under their own policies.
+Project sessions stay on the machine where the extension host runs. Diagnostics also stay there, except in a bug report: a report that you send with **Report a bug**, or an automatic report of a fault of the background service after you turn on automatic crash reports. A report holds recent diagnostic records with selected metadata only. [What Flywheel sends over the network](https://github.com/wsauret/flywheel/blob/main/docs/privacy.md#bug-reports) lists what a report holds. Model providers and MCP servers receive the context required for the requests you send to them and process it under their own policies.
 
-Use **Report a problem** in the `/` action panel or visit [GitHub Issues](https://github.com/wsauret/flywheel/issues). Remove private source, personal information, and credentials before posting logs or session details publicly.
+Use **Report a bug** in the `/` action panel or visit [GitHub Issues](https://github.com/wsauret/flywheel/issues). Remove private source, personal information, and credentials before posting logs or session details publicly.

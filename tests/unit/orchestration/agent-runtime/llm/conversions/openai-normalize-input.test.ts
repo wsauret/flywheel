@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { toOpenAIResponsesRequestInput } from "../../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
-import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage } from "../../../../../../src/infra/providers/llm/conversation/conversation-message.js";
 
 const openai = { sharedHost: false, accessProvider: "openai_api" as const, provider: "openai" as const, api: "openai-responses" as const, model: "o4" };
 

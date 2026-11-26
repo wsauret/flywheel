@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { join } from "node:path"
 import { writeFileSync } from "node:fs"
-import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access-provider.js"
+import type { AccessProviderCandidate } from "../../../../../src/infra/providers/llm/access/access-provider.js"
 import { captureCopilotAllowanceAdmission } from "../../../../../src/orchestration/modules/provider-github-copilot/allowance-admission.js"
 import { createSubscriptionUsageService, type SubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { createProfileFixture, definition, registry, report, writeAccounts } from "../../auth/provider-observations/_service-fixtures.js"
-import { captureSubscriptionAdmission } from "../../../../../src/orchestration/subscription-spend-consent/admission-capture.js"
-import { createSubscriptionSpendConsentCaptureCache } from "../../../../../src/orchestration/subscription-spend-consent/capture-cache.js"
-import type { SubscriptionSpendConsentCapture } from "../../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js"
+import { captureSubscriptionAdmission } from "../../../../../src/orchestration/auth/subscription-spend-consent/admission-capture.js"
+import { createSubscriptionSpendConsentCaptureCache } from "../../../../../src/orchestration/auth/subscription-spend-consent/capture-cache.js"
+import type { SubscriptionSpendConsentCapture } from "../../../../../src/orchestration/auth/subscription-spend-consent/subscription-spend-consent-service.js"
 import { createSubscriptionUsageServicePool } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
-import type { ProviderAllowanceFactory } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js"
+import type { ProviderAllowanceFactory } from "../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js"
 
 const { profile, cleanup } = createProfileFixture()
 afterEach(cleanup)

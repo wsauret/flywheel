@@ -1,10 +1,11 @@
-import { builtInCommandDeclarations, builtInCommandDescriptor } from "../../src/orchestration/app-service/kernel-commands.js"
-import { composeFirstPartyModules, type FirstPartyModuleComposition } from "../../src/orchestration/modules.js"
-import type { BuiltInCommandDescriptor } from "../../src/protocol/command-catalog-protocol-types.js"
+import { builtInCommandDeclarations, builtInCommandDescriptor } from "../../src/orchestration/app-service/definitions/commands/kernel-commands.js"
+import { composeFirstPartyModules } from "../../src/orchestration/module-contract/module-composition.js"
+import type { FirstPartyModuleComposition } from "../../src/orchestration/module-contract/module-catalog.js"
+import type { BuiltInCommandDescriptor } from "../../src/protocol/commands/command-catalog-protocol-types.js"
 import { commandSpecs } from "../../src/tui/commands/command-catalog.js"
 import { buildCommandDefinitions } from "../../src/tui/commands/command-definitions.js"
 import type { CommandSpec } from "../../src/tui/commands/command-types.js"
-import type { Keymap } from "../../src/tui/keymap/keymap.js"
+import type { Keymap } from "../../src/tui/terminal/keymap/keymap.js"
 
 /** The descriptors the runtime catalog publishes for one module composition,
  *  every installed module on by default. */

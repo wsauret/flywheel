@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { join, resolve } from "node:path";
 import { runPackageSmoke, tarExecutable, verifyPackagedTokenizer, verifyStringEditPlanner, type PackageSmokeDependencies } from "../../../scripts/readiness-package-smoke.js";
-import { planStringEdits } from "../../../src/infra/file-edit/string-edit.js";
+import { planStringEdits } from "../../../src/infra/substrate/file-mutations/file-edit/string-edit.js";
 
 const SMOKE = resolve("/scratch/smoke");
 const workspace = {

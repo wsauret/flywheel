@@ -3,13 +3,13 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted } from "effect";
-import { appendCredentialInstanceWithReceipt, replaceCredentialInstance } from "../../../../../src/infra/auth/auth-store-mutations.js";
-import type { AuthContext } from "../../../../../src/infra/auth/auth-context.js";
-import type { OAuthCredential } from "../../../../../src/infra/auth/auth-store-types.js";
-import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
+import { appendCredentialInstanceWithReceipt, replaceCredentialInstance } from "../../../../../src/infra/providers/auth/store/auth-store-mutations.js";
+import type { AuthContext } from "../../../../../src/infra/providers/auth/auth-context.js";
+import type { OAuthCredential } from "../../../../../src/infra/providers/auth/store/auth-store-types.js";
+import { captureProviderConnection } from "../../../../../src/infra/providers/auth/auth-context.js";
 import { copilotTokensToCredential } from "../../../../../src/orchestration/modules/provider-github-copilot/auth-types.js";
 import { buildCopilotClients } from "../../../../../src/orchestration/modules/provider-github-copilot/clients.js";
-import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
 
 const expired: OAuthCredential = {

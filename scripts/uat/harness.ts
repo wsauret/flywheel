@@ -8,11 +8,11 @@ import { Schema } from "effect"
 import { copyActiveBuild } from "../../tests/helpers/placed-build.js"
 import { RELEASE_HARNESS_ENVIRONMENT } from "../../tests/helpers/real-process-fixture.js"
 import { AuthProfileManager, type AuthProfileManagerOptions } from "../../src/orchestration/auth/auth-profile-manager.js"
-import { openContainedDirectory, openExistingContainedDirectory } from "../../src/infra/descriptor-directory.js"
-import { authDir, requireAuthProfileName } from "../../src/infra/paths.js"
+import { openContainedDirectory, openExistingContainedDirectory } from "../../src/infra/platform/files/descriptor-directory.js"
+import { authDir, requireAuthProfileName } from "../../src/infra/platform/files/paths.js"
 import { resolveInstalledBinary } from "./installed-binary.js"
 import { attachApp, INSTALLED_LAUNCH_EXCLUDED_ENV, killTmuxSession, launchApp, PanePollError, startSessionReaper, type PollOutcome, type TmuxApp } from "./tmux-driver.js"
-import { writeClaudeLoginReferences } from "../../src/orchestration/modules/provider-claude-agent-sdk/cli-login.js"
+import { writeClaudeLoginReferences } from "../../src/orchestration/modules/provider-claude-agent-sdk/login/cli-login.js"
 
 const READY_MARKER = "for fresh chat"
 const READY_TIMEOUT_MS = 45_000
@@ -46,7 +46,7 @@ export interface TuiUatSandbox {
  *  operator's own `flywheel serve` on 41000, and records that origin at one
  *  sandbox path. Whichever launch starts the service, `flywheel web` reads the
  *  same record and opens the sandbox hub. Same contract the release runner
- *  uses (src/cli/release-harness.ts). */
+ *  uses (src/cli/account-service/release-harness.ts). */
 export function sandboxEnvironment(sandbox: Pick<TuiUatSandbox, "root" | "authProfile">, nonSecretEnv?: TuiUatOptions["nonSecretEnv"]) {
   return {
     ...RELEASE_HARNESS_ENVIRONMENT,

@@ -1,6 +1,7 @@
-import type { StartupDirectories } from "../infra/directory-authorities.js"
-import { errorMessage } from "../infra/error-message.js"
-import { Log } from "../infra/log.js"
+import { importComposing } from "./composition/module-registries.js"
+import type { StartupDirectories } from "../infra/platform/files/directory-authorities.js"
+import { errorMessage } from "../infra/diagnostics/error-message.js"
+import { Log } from "../infra/diagnostics/log.js"
 
 /** What every run mode that composes a runtime does before it composes one:
  *  make retired capability authorities canonical, materialize seeded config,
@@ -15,15 +16,15 @@ import { Log } from "../infra/log.js"
  *  it opens with a warning rather than refusing to start over state the user
  *  cannot reach to repair. */
 export async function prepareProjectDefaults(directories: StartupDirectories, options: { readonly publishReferences: boolean }): Promise<void> {
-  const { migrateModelAssignments, seedConfigDefaults } = await import("../orchestration/config/writer.js")
-  const { migrateCapabilityModules } = await import("../orchestration/config/module-selection-writer.js")
+  const { migrateModelAssignments, seedConfigDefaults } = await importComposing(() => import("../orchestration/config/writer.js"))
+  const { migrateCapabilityModules } = await importComposing(() => import("../orchestration/config/policy/module-selection-writer.js"))
   const migration = await migrateCapabilityModules({ userDataRoot: directories.userDataRoot })
   if (!migration.write.ok) Log.Default.warn("capability module migration failed", { error: migration.write.error.message })
   if (migration.notice) Log.Default.warn(migration.notice)
   const modelMigration = migrateModelAssignments({ userDataRoot: directories.userDataRoot })
   if (!modelMigration.ok) Log.Default.warn("model assignment migration failed", { error: modelMigration.error.message })
   try {
-    const { AuthProfileManager } = await import("../orchestration/auth/auth-profile-manager.js")
+    const { AuthProfileManager } = await importComposing(() => import("../orchestration/auth/auth-profile-manager.js"))
     const result = await new AuthProfileManager({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot }).migrateProviderSettings()
     if (!result.ok) Log.Default.warn("provider settings profile migration failed", { error: result.error.message })
   } catch (err) {
@@ -35,7 +36,7 @@ export async function prepareProjectDefaults(directories: StartupDirectories, op
     const [{ publishBundledReferences }, { loadBundledDefaultCatalog }, { shippedDefinitionBundles }] = await Promise.all([
       import("../workflows/definitions/installer.js"),
       import("../workflows/definitions/bundled-defaults.js"),
-      import("../orchestration/modules.js"),
+      importComposing(() => import("../orchestration/module-contract/module-catalog.js")),
     ])
     await publishBundledReferences(directories.userDataRoot, loadBundledDefaultCatalog(shippedDefinitionBundles()))
   } else {

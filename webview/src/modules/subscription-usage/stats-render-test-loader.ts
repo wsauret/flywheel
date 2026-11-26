@@ -1,4 +1,4 @@
-import { buildMemoryHostFixture } from "../../app/budget-render-test-loader.js"
+import { buildMemoryHostFixture } from "../../test-support/budget-render-test-loader.js"
 
 let loaded: Promise<typeof import("./stats-render-fixture.js")> | undefined
 

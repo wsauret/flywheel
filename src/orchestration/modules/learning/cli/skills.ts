@@ -1,21 +1,21 @@
-import { configSection } from "../../../config/config-section.js"
+import { configSection } from "../../../config/schema/config-section.js"
 import { skillsConfigSection } from "../config.js"
-import { errorMessage } from "../../../../infra/error-message.js"
-import type { ProjectDirectories, StartupDirectories } from "../../../../infra/directory-authorities.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
+import type { ProjectDirectories, StartupDirectories } from "../../../../infra/platform/files/directory-authorities.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
-import type { SkillFinding } from "../../../../workflows/skill-health.js"
-import { withEventStore } from "../../../../infra/with-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../infra/event-store-types.js"
-import { applySkillLifecycleTransitions } from "../skill-prune.js"
-import { createSessionFactWriter } from "../../../session/session-fact-writer.js"
-import { reconcileGlobalSkillStores } from "../global-skill-mutation.js"
-import { startModulePolicy } from "../../../config/module-policy.js"
+import type { SkillFinding } from "../../../../workflows/skills/skill-health.js"
+import { withEventStore } from "../../../../infra/substrate/store/with-event-store.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js"
+import { applySkillLifecycleTransitions } from "../maintenance/skill-prune.js"
+import { createSessionFactWriter } from "../../../session/persistence/session-fact-writer.js"
+import { reconcileGlobalSkillStores } from "../skills/global-skill-mutation.js"
+import { startModulePolicy } from "../../../config/policy/module-policy.js"
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
-import { restoreSkill } from "../skill-store.js"
-import type { ProjectDefinitionRegistry } from "../../../../workflows/definition-registry.js"
-import { prepareWorkspaceState } from "../../../workspace-state.js"
-import { moduleRequirementsForContribution } from "../../../module-requirements.js"
-import { createInstalledDefinitionRegistry } from "../../../definition-catalog.js"
+import { restoreSkill } from "../skills/skill-store.js"
+import type { ProjectDefinitionRegistry } from "../../../../workflows/definitions/definition-registry.js"
+import { prepareWorkspaceState } from "../../../workspace-state/workspace-state.js"
+import { moduleRequirementsForContribution } from "../../../module-contract/module-requirements.js"
+import { createInstalledDefinitionRegistry } from "../../../app-service/definitions/definition-catalog.js"
 
 /** Maintenance CLI over the managed skill library: `skills list` makes load
  * counts and dead skills visible, `skills why <name>` traces a package to the
@@ -28,7 +28,7 @@ import {
   collectSkillLoadStats,
   collectSkillWriteRecords,
   skillActivitySource,
-} from "../skill-load-stats.js"
+} from "../skills/skill-load-stats.js"
 
 interface SkillsCliOptions {
   json: boolean
@@ -236,7 +236,7 @@ export async function runSkillsCleanup(args: readonly string[], directories: Sta
     return
   }
 
-  const { runSkillCorpusCleanupForProject } = await import("../skill-corpus-cleanup-host.js")
+  const { runSkillCorpusCleanupForProject } = await import("../maintenance/skill-corpus-cleanup-host.js")
   const result = await withEventStore(directories.projectRoot, (store) => runSkillCorpusCleanupForProject({ directories, launcher, reader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store), force: true }))
   const report = result.kind === "completed"
     ? { outcome: result.kind, corePackages: result.corePackages, candidates: result.candidates, archived: result.archived.length }
@@ -277,7 +277,7 @@ export async function runSkillsDoctor(args: readonly string[], directories: Proj
     return
   }
   await withProjectState(directories, async () => {
-    const { inspectSkillLibrary, repairMovedPaths } = await import("../../../../workflows/skill-health.js")
+    const { inspectSkillLibrary, repairMovedPaths } = await import("../../../../workflows/skills/skill-health.js")
     const definitions = openProject(directories)
     let findings = inspectSkillLibrary({ revision: definitions.skills(), directories, ...(includeUnowned ? { includeUnowned: true } : {}) })
     if (fix) {
@@ -362,7 +362,7 @@ export async function runSkillsMaintain(args: readonly string[], directories: St
     process.exitCode = 1
     return
   }
-  const { runSkillMaintenanceForProject } = await import("../skill-maintenance-host.js")
+  const { runSkillMaintenanceForProject } = await import("../maintenance/skill-maintenance-host.js")
   // Writing is the explicit choice: this pass rewrites durable artifacts, so a
   // bare invocation plans and reports rather than acting.
   const outcome = await runSkillMaintenanceForProject({

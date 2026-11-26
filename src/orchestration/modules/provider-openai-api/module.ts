@@ -1,15 +1,16 @@
 import { Redacted } from "effect";
-import { apiKey } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
-import { fetchCatalog } from "../../../infra/llm/model-listing.js";
-import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
-import { currentOpenAiStandardPricing, openAiPricingFromMetadata, openAiPricingMetadata, refreshOpenAiStandardPricing } from "../../../infra/llm/openai-pricing.js";
-import { isRecord } from "../../../infra/record.js";
-import { ApiError } from "../../agent-runtime/errors.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { apiKey } from "../../../infra/providers/auth/auth-context.js";
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { canonicalizeIdCatalogRow, extractDataCatalogRows } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
+import { fetchCatalog } from "../../../infra/providers/llm/access/model-listing.js";
+import { providerModelInfo } from "../../../infra/providers/llm/catalog/provider-model-info.js";
+import { currentOpenAiStandardPricing, openAiPricingFromMetadata, openAiPricingMetadata, refreshOpenAiStandardPricing } from "../../../infra/providers/llm/models/openai-pricing.js";
+import { isRecord } from "../../../infra/guards/record.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 
 const catalog = { limits: DEFAULT_DYNAMIC_CATALOG_LIMITS, extractRows: extractDataCatalogRows } as const;
 
@@ -73,7 +74,7 @@ const createClient: AccessProviderFactory = async (build) => {
   return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: "openai", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No OpenAI API key in the active auth profile. Run: flywheel auth login --openai", recovery: { kind: "none" } });
-    const { createOpenAIAdapter } = await import("../../agent-runtime/llm/openai.js");
+    const { createOpenAIAdapter } = await import("../../agent-runtime/llm/adapters/openai/openai.js");
     return createOpenAIAdapter({ kind: "apiKey", apiKey: key }, build.wireModelId, info, {
       availability: build.availability, candidate: build.candidate,
     });

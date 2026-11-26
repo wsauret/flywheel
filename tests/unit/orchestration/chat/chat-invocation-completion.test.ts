@@ -1,5 +1,5 @@
 import { expect, it } from "bun:test"
-import { flushMicrotasks, makeLifecycle } from "./_chat-runner-lifecycle-fixtures"
+import { flushMicrotasks, makeLifecycle } from "./lifecycle/_chat-runner-lifecycle-fixtures"
 import { createChatControls } from "../../../../src/orchestration/chat/controls"
 import { createChatInvocationCompletion } from "../../../../src/orchestration/chat/runner-completion"
 

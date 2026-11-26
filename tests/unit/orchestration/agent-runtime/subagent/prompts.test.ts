@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
+import type { AgentDefinition } from "../../../../../src/infra/definitions/agent-definition.js";
 import { renderSubagentRoster } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { subagentToolDefinition } from "../../../../../src/orchestration/modules/subagents/tool.js";
 

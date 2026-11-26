@@ -1,7 +1,7 @@
-import { serveLaneFor } from "../../../infra/cli-subprocess.js"
+import { serveLaneFor } from "../../../infra/platform/cli-subprocess.js"
 import { REMOTE_COMMAND, REMOTE_COMMAND_NAME, REMOTE_SURFACE, remoteProtocol } from "../../../protocol/modules/remote.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
-import type { FirstPartyModule } from "../../modules.js"
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js"
 import { remoteNoun } from "./cli/registration.js"
 import { remoteConfigSection } from "./config.js"
 import { createRemoteProtocol } from "./protocol.js"
@@ -9,7 +9,7 @@ import { createRemoteService, remoteService } from "./service.js"
 import { createAccountRelayService, retiredServiceInstallation } from "./account-relay-service.js"
 import { servedClientOf } from "./relay-control-channel.js"
 import { createKeepAwake, NO_KEEP_AWAKE } from "./keep-awake.js"
-import { configSection } from "../../config/config-section.js"
+import { configSection } from "../../config/schema/config-section.js"
 
 export const remoteModule = {
   id: "remote", dependencies: [],
@@ -41,7 +41,7 @@ export const remoteModule = {
     { domain: "cli", id: "remote", value: remoteNoun },
     // This machine's terminal pairs as a device of other machines. The code
     // loads only for a launch that offers or opens a project on one.
-    { domain: "terminalRemote", id: "remote", value: { load: async () => (await import("./terminal-remote.js")).terminalRemote } },
+    { domain: "terminalRemote", id: "remote", value: { load: async () => (await import("./terminal/terminal-remote.js")).terminalRemote } },
     { domain: "config", id: remoteConfigSection.key, value: remoteConfigSection },
     { domain: "commands", id: REMOTE_COMMAND, value: { id: REMOTE_COMMAND, title: REMOTE_COMMAND_NAME, description: "Pair a phone and manage remote access", aliases: ["pair", "phone"], menu: { group: "top", rank: 80 }, opens: REMOTE_SURFACE } },
     { domain: "settings", id: "remote", value: { control: "binary", group: "Remote", label: "Remote access", description: "Access this machine from paired devices" } },

@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { configSection, type ModuleConfigSection } from "../../config/config-section.js"
+import { configSection, type ModuleConfigSection } from "../../config/schema/config-section.js"
 
 const SubagentsConfigSchema = Schema.Struct({
   disabled_types: Schema.Array(Schema.String).pipe(

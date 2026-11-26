@@ -2,9 +2,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
+import type { LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
 import type { SessionManagerDeps } from "../../../../src/orchestration/session/manager";
 
 export const TMP_ROOT = path.join(

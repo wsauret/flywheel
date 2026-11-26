@@ -1,24 +1,24 @@
 import { existsSync } from "node:fs"
 import { isDeepStrictEqual } from "node:util"
-import { storedTokensToCredential } from "../../../infra/auth/openai-auth-types.js"
-import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutations.js"
-import { captureSubscriptionCredentials, meteredKeyAccount, type SubscriptionCredentials } from "../../../infra/auth/auth-context.js"
-import { loadAuthStoreWithDiagnostics } from "../../../infra/auth/auth-store.js"
+import { storedTokensToCredential } from "../../../infra/providers/auth/openai/openai-auth-types.js"
+import { replaceCredentialInstance } from "../../../infra/providers/auth/store/auth-store-mutations.js"
+import { captureSubscriptionCredentials, meteredKeyAccount, type SubscriptionCredentials } from "../../../infra/providers/auth/auth-context.js"
+import { loadAuthStoreWithDiagnostics } from "../../../infra/providers/auth/store/auth-store.js"
 import {
   createUsageAuthority,
   type SubscriptionUsageAccount,
-  type SubscriptionUsageSnapshot,
   type UsageAuthority,
-} from "../../../infra/llm/usage-authority.js"
-import type { SubscriptionUsageMetric, SubscriptionUsageOutcome, SubscriptionUsageReader, SubscriptionUsageResetConsumer, SubscriptionUsageResetOutcome, SubscriptionUsageRuntimeAccount } from "../../../infra/llm/subscription-usage.js"
+} from "../../../infra/providers/llm/usage/usage-authority.js"
+import type { SubscriptionUsageSnapshot } from "../../../infra/providers/llm/usage/subscription-usage-store-codec.js"
+import type { SubscriptionUsageMetric, SubscriptionUsageOutcome, SubscriptionUsageReader, SubscriptionUsageResetConsumer, SubscriptionUsageResetOutcome, SubscriptionUsageRuntimeAccount } from "../../../infra/providers/llm/usage/subscription-usage.js"
 
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js"
-import { createSubscriptionAccountIdentity, type SubscriptionAccountIdentity } from "../../../infra/llm/subscription-account-identity.js"
-import { expiredSignInMessage } from "../../../infra/llm/auth-error.js"
-import type { AccessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js"
-import { createOrderedLane } from "../../../infra/ordered-lane.js"
-import { credentialSlotClassifier } from "../credential-slot-classifier.js"
-import type { CredentialSlotClassifier } from "../../../infra/auth/auth-store-types.js"
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js"
+import { createSubscriptionAccountIdentity, type SubscriptionAccountIdentity } from "../../../infra/providers/auth/subscription/subscription-account-identity.js"
+import { expiredSignInMessage } from "../../../infra/providers/llm/errors/auth-error.js"
+import type { AccessProviderRegistry } from "../../config/models/access-provider-registry.js"
+import { createOrderedLane } from "../../../infra/async/ordered-lane.js"
+import { credentialSlotClassifier } from "../../module-contract/module-catalog.js"
+import type { CredentialSlotClassifier } from "../../../infra/providers/auth/store/auth-store-types.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
 const SUBSCRIPTION_USAGE_CHECK_INTERVAL_MS = 5 * 60 * 1_000
 const SUBSCRIPTION_USAGE_FRESHNESS_MS = 5 * 60 * 1_000

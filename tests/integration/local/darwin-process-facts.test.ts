@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
-import { darwinProcess } from "../../../src/infra/darwin-process-api.js"
-import { emptyContainers, unixContainer, unixContainerIdentity } from "../../../src/infra/process-container.js"
+import { darwinProcess } from "../../../src/infra/process/kernel/darwin-process-api.js"
+import { emptyContainers, unixContainer, unixContainerIdentity } from "../../../src/infra/process/container/process-container.js"
 
 /** A pid no process holds: macOS pids stay far below it. */
 const FREE_PID = 2_000_000_000

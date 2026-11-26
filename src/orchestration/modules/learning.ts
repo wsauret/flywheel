@@ -1,22 +1,22 @@
-import { createChatLearningReview, learningChatHost } from "./learning/chat-review.js";
-import { ImprovementFactSchemas } from "../../workflows/improvements/improvement-facts.js";
-import { MemoryFactSchemas } from "../../workflows/memory/memory-facts.js";
-import { SkillFactSchemas } from "../../workflows/skill-facts.js";
+import { createChatLearningReview, learningChatHost } from "./learning/review/chat-review.js";
+import { ImprovementFactSchemas } from "../../workflows/learning/improvements/improvement-facts.js";
+import { MemoryFactSchemas } from "../../workflows/learning/memory/memory-facts.js";
+import { SkillFactSchemas } from "../../workflows/skills/skill-facts.js";
 import { createMemoryStoreConfig, renderMemorySnapshot } from "./learning/memory-store.js";
 import { createManagedPackageWrites } from "./learning/managed-package-writes.js";
 import { memoryConfigSection, skillsConfigSection } from "./learning/config.js";
 import { migrateMemoryWrittenFacts } from "./learning/migrations/memory-written.js";
 import { migrateSkillFactReach } from "./learning/migrations/skill-scope.js";
-import type { LearningScope } from "../../infra/learning-scope.js";
-import { Log } from "../../infra/log.js";
-import { moduleRuntimeHandle } from "../../infra/module-runtime.js";
-import type { MutationEvidence } from "../../infra/mutation-evidence.js";
-import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-services.js";
+import type { LearningScope } from "../../infra/definitions/learning/learning-scope.js";
+import { Log } from "../../infra/diagnostics/log.js";
+import { moduleRuntimeHandle } from "../../infra/definitions/modules/module-runtime.js";
+import type { MutationEvidence } from "../../infra/substrate/file-mutations/mutation-evidence.js";
+import type { ModuleRuntimeServices } from "../agent-runtime/request/module-services/module-runtime-services.js";
 import { createMemoryTool, type MemoryToolDeps } from "./learning/tools/memory.js";
 import { createSkillManageTool, type SkillManageToolDeps } from "./learning/tools/skill-manage.js";
-import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js";
-import type { FirstPartyModule } from "../modules.js";
-import type { CliCommandContext, CliNounContribution, CliVerb } from "../cli-contribution.js";
+import type { ToolDeclaration } from "../module-contract/module-seams.js";
+import type { FirstPartyModule } from "../module-contract/module-catalog.js";
+import type { CliCommandContext, CliNounContribution, CliVerb } from "../module-contract/cli-contribution.js";
 
 /** The durable-learning write surfaces of one runner. Both are always built
  *  for an enabled module so the tool schema surface stays identical across
@@ -163,8 +163,8 @@ export const learningModule = {
   facts: { prefixes: ["memory.", "skill.", "improvement."], sessionSchemas: () => [...ImprovementFactSchemas, ...MemoryFactSchemas, ...SkillFactSchemas] as const },
   definitionReconciliation: { prepare: async (input) => (await import("./learning/definition-reconciliation.js")).prepareLearningDefinitionReconciliation(input) },
   maintenance: [
-    { phase: "before-store", run: async (input) => { await (await import("./learning/maintenance.js")).maintainSkillLifecycleIfAdmitted(input) } },
-    { phase: "after-store", run: async (input) => { await (await import("./learning/maintenance.js")).maintainSkillCorpus(input) } },
+    { phase: "before-store", run: async (input) => { await (await import("./learning/maintenance/maintenance.js")).maintainSkillLifecycleIfAdmitted(input) } },
+    { phase: "after-store", run: async (input) => { await (await import("./learning/maintenance/maintenance.js")).maintainSkillCorpus(input) } },
   ],
   retiredConfig: [{ section: "self_improvement", key: "enabled", label: "Learning" }],
   workspaceMigrations: [

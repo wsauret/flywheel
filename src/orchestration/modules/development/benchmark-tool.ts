@@ -13,14 +13,15 @@
  */
 
 import { basename } from "node:path";
-import { mergeAbortSignals } from "../../../infra/abort.js";
-import { stripControlCharacters } from "../../../infra/control-characters.js";
-import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
-import { EFFORT_VALUES } from "../../../infra/workflow-types.js";
-import { admitBenchmark, benchmarkModelSeats, benchmarkPreflightReport, personaCampaignJudge, type BenchmarkAdmission, type JudgeSelection, type BenchmarkAdmissionDeps, type ProviderPlanReport } from "./benchmark/admission.js";
+import { mergeAbortSignals } from "../../../infra/timing/abort.js";
+import { stripControlCharacters } from "../../../infra/substrate/output/control-characters.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
+import { Log } from "../../../infra/diagnostics/log.js";
+import { EFFORT_VALUES } from "../../../infra/definitions/workflow/workflow-types.js";
+import { admitBenchmark, benchmarkModelSeats, benchmarkPreflightReport, personaCampaignJudge, type BenchmarkAdmission, type BenchmarkAdmissionDeps, type ProviderPlanReport } from "./benchmark/persona/admission.js";
+import type { BenchmarkPlan, JudgeSelection } from "./benchmark/persona/benchmark-plan.js";
 import { createBenchmarkCatalog, type BenchmarkCatalog } from "./benchmark/catalog.js";
-import { runningSourceIdentity } from "./benchmark/content-identity.js";
+import { runningSourceIdentity } from "./benchmark/campaign/content-identity.js";
 import {
   loadBenchmarkPersona,
   planPersonaBenchmark,
@@ -28,11 +29,11 @@ import {
   type BenchmarkEvent,
   type BenchmarkOptions,
   type BenchmarkOutcome,
-  type BenchmarkPlan,
-} from "./benchmark/persona-benchmark.js";
-import { formatOverheadAccounting } from "./benchmark/report-accounting.js";
+} from "./benchmark/persona/persona-benchmark.js";
+import { formatOverheadAccounting } from "./benchmark/accounting/report-accounting.js";
+import { publishResultsPages } from "./benchmark/persona/results-pages.js";
 import { variantSeat, type VariantSpec } from "./benchmark/variant.js";
-import type { BackgroundWorkResult } from "../../agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../session/control/background-work/background-work-types.js";
 import { toolCallIdentity, type RuntimeTool, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js";
 
 interface BenchmarkInput {
@@ -247,9 +248,23 @@ function plannedMatrixResult(plan: BenchmarkPlan, admission: BenchmarkAdmission)
   };
 }
 
+/** Regenerate the results pages after a completed campaign. A failed write leaves the campaign's records and outcome
+ *  intact, so it becomes a note that names the command to run, not a failed benchmark. */
+async function resultsPagesNote(catalog: BenchmarkCatalog, resultId: string): Promise<string> {
+  try {
+    const written = await publishResultsPages(catalog);
+    return written.length === 0
+      ? "Results pages already match the records."
+      : `Results pages regenerated; commit them with the record file: ${written.join(", ")}.`;
+  } catch (error) {
+    log.warn("benchmark results pages not regenerated", { resultId, error: errorMessage(error) });
+    return `Results pages were not regenerated (${errorMessage(error)}); run bun run bench:tables and commit the pages with the record file.`;
+  }
+}
+
 /** The terminal notification: where the report is, and what it owes. The report
  *  body itself stays on disk; a notification is a pointer, not a transcript. */
-function completionResult(outcome: BenchmarkOutcome, resultId: string): BackgroundWorkResult {
+function completionResult(outcome: BenchmarkOutcome, resultId: string, pagesNote?: string): BackgroundWorkResult {
   if (outcome.status === "cancelled") {
     return {
       status: "failed",
@@ -262,6 +277,7 @@ function completionResult(outcome: BenchmarkOutcome, resultId: string): Backgrou
       `Benchmark ${resultId} completed. Report: ${outcome.reportPath}.`,
       `Failed judge calls: ${outcome.counts.failedJudgeCalls}. Unsuccessful cell attempts: ${outcome.counts.unsuccessfulAttempts}.`,
       `Judge overhead, separate from the candidate comparison: ${formatOverheadAccounting(outcome.counts.judgeAccounting)}, with ${outcome.counts.judgeAccountingUnavailable} judge call(s) whose accounting was unavailable.`,
+      ...pagesNote ? [pagesNote] : [],
     ].join(" "),
   };
 }
@@ -406,8 +422,13 @@ async function launch(deps: BenchmarkAdmissionDeps, input: BenchmarkInput, conte
         },
         signal,
         sourceIdentity,
-      })).then(
-        (outcome) => progress.attach(completionResult(outcome, resultId)),
+      })).then(async (outcome) => {
+        // A completed campaign appended its records; its results pages follow them (ARCH-DIRECTORIES-023).
+        return outcome.status === "completed"
+          ? completionResult(outcome, resultId, await resultsPagesNote(catalog, resultId))
+          : completionResult(outcome, resultId);
+      }).then(
+        (result) => progress.attach(result),
         (error) => progress.attach(failureResult(error, plan, resultId)),
       ));
 

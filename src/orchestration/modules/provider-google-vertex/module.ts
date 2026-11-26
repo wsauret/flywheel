@@ -1,19 +1,20 @@
 import { Redacted } from "effect";
-import { apiKeyCredential, type OAuthPersistencePolicy, type RuntimeApiKeyCredential } from "../../../infra/auth/auth-context.js";
-import { setMeteredKeyProject } from "../../../infra/auth/auth-store-mutations.js";
-import type { CredentialSlotClassifier } from "../../../infra/auth/auth-store-types.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { awaitWithAbortSignal } from "../../../infra/abort.js";
-import { errorMessage } from "../../../infra/error-message.js";
-import { Log } from "../../../infra/log.js";
-import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows, type CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js";
-import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/llm/model-id.js";
-import { ApiError } from "../../agent-runtime/errors.js";
+import { apiKeyCredential, type OAuthPersistencePolicy, type RuntimeApiKeyCredential } from "../../../infra/providers/auth/auth-context.js";
+import { setMeteredKeyProject } from "../../../infra/providers/auth/store/auth-store-mutations.js";
+import type { CredentialSlotClassifier } from "../../../infra/providers/auth/store/auth-store-types.js";
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { awaitWithAbortSignal } from "../../../infra/timing/abort.js";
+import { errorMessage } from "../../../infra/diagnostics/error-message.js";
+import { Log } from "../../../infra/diagnostics/log.js";
+import { canonicalizeIdCatalogRow, extractDataCatalogRows, type CatalogWireIdentity } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
+import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/providers/model-id.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
 import { LlmStreamError } from "../../agent-runtime/llm/errors.js";
-import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/stream/provider-failure.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 
 /** Vertex AI in express mode: the Gemini wire on aiplatform.googleapis.com,
  *  authenticated with an API key (Google Cloud "AQ." keys). Enterprise keys
@@ -175,7 +176,7 @@ const createClient: AccessProviderFactory = async (build) => {
       if (error instanceof VertexDiscoveryError && (error.status === 401 || error.status === 404)) throw new ApiError({ message: error.message, recovery: { kind: "none" } });
       throw normalizeProviderAttemptFailure(error);
     });
-    const { createGoogleAdapter } = await import("../../agent-runtime/llm/google.js");
+    const { createGoogleAdapter } = await import("../../agent-runtime/llm/adapters/google/google.js");
     return createGoogleAdapter(credential.key, build.wireModelId, info, { vertexProject: project });
   }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };

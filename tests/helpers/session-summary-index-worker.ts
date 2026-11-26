@@ -1,10 +1,10 @@
-import { asAsyncEventReadSurface, type AsyncEventReadSurface } from "../../src/infra/event-store-types.js"
-import { openReadonlyEventReader } from "../../src/infra/sqlite-event-store.js"
-import { acquireSessionSummaryIndex } from "../../src/orchestration/session/session-summary-index.js"
+import { asAsyncEventReadSurface, type AsyncEventReadSurface } from "../../src/infra/substrate/store/event-store-types.js"
+import { openReadonlyEventReader } from "../../src/infra/substrate/store/sqlite-event-store.js"
+import { acquireSessionSummaryIndex } from "../../src/orchestration/session/metadata/catalog/session-summary-index.js"
 // The summary index folds workflow run accounting from the installed catalog,
 // which the module registry publishes into this realm when it loads, as the
 // runtime background Worker does through its own imports.
-import "../../src/orchestration/modules.js"
+import "../../scripts/shipped-modules.js"
 
 declare const self: {
   addEventListener(type: "message", listener: (event: MessageEvent) => void): void

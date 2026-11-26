@@ -1,8 +1,8 @@
 import { mock } from "bun:test"
-import { asAsyncEventReadSurface, type EventStoreReadSurface, type FactQuery, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type EventStoreReadSurface, type FactQuery, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
-import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/mutation-evidence-recovery.js"
-import { readSessionContentRange } from "../../../../src/infra/session-content.js"
+import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/history/mutation-evidence-recovery.js"
+import { readSessionContentRange } from "../../../../src/infra/substrate/session-content.js"
 import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 export const timestamp = "2026-01-01T00:00:00.000Z"

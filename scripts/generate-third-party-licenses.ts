@@ -3,7 +3,7 @@ import { readFile, readdir, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { parse } from "jsonc-parser";
 
-import { isRecord } from "../src/infra/record.js";
+import { isRecord } from "../src/infra/guards/record.js";
 import { readAntigravityPin } from "./antigravity-engine-asset.js";
 import { cargoLicenseLedgerIsCurrent } from "./cargo-license-ledger.js";
 import type { ReviewedRuntimeComponent } from "./review-bun-runtime-licenses.js";
@@ -335,7 +335,7 @@ const ZIG_TOOLCHAIN = {
   ],
 } as const;
 
-// src/infra/llm/models-bundled.txt is a snapshot of the models.dev catalog, which scripts/refresh-models-snapshot.ts
+// src/infra/providers/llm/models/models-bundled.txt is a snapshot of the models.dev catalog, which scripts/refresh-models-snapshot.ts
 // fetches. The catalog data is MIT-licensed, so every binary that bundles the snapshot carries its notice.
 const MODELS_DEV_CATALOG = {
   source: "https://github.com/anomalyco/models.dev/blob/d298380ee36b7e01261e5234d1f62d9a5f2955d3/LICENSE",

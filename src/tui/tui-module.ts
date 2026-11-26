@@ -1,20 +1,21 @@
 import type { Accessor, JSX } from "solid-js"
-import type { RuntimeClient, RuntimeHealth } from "../protocol/app-service-types.js"
-import type { RuntimeFaultCopy } from "../protocol/client/runtime-fault-copy.js"
-import type { ModuleId } from "../protocol/module-ids.js"
-import type { RuntimeAuthView } from "../protocol/auth-status-protocol-types.js"
+import type { RuntimeClient, RuntimeHealth } from "../protocol/runtime/app-service-types.js"
+import type { RuntimeFaultCopy } from "../protocol/client/runtime/copy/runtime-fault-copy.js"
+import type { ModuleId } from "../protocol/runtime/module-ids.js"
+import type { RuntimeAuthView } from "../protocol/auth/auth-status-protocol-types.js"
 import type { ModalContext } from "./components/modal-stack.js"
 import type { DomainReader, ModuleRow } from "../protocol/protocol-module.js"
-import type { ListModalKeyEvent } from "./components/modal-list-keys.js"
-import type { ModalScrollController } from "./components/modal-scroll-controller.js"
+import type { ListModalKeyEvent } from "./components/modal/select/modal-list-keys.js"
+import type { ModalScrollController } from "./components/modal/scroll/modal-scroll-controller.js"
 import type { ToastInput } from "./context/toast.js"
-import type { OpenSettingsDestination } from "./settings-destination.js"
-import type { Clipboard } from "./utils/clipboard.js"
+import type { OpenSettingsDestination } from "./modals/settings/settings-destination.js"
+import type { Clipboard } from "./terminal/clipboard.js"
+import type { SettingsStore } from "./hooks/state/create-settings-store.js"
 
 /** The terminal client's module contract. A module contributes its presence
  *  through the slot map (ARCH-PROTOCOL-034): declarative rows come from its protocol
  *  home, and the component slots below are written once for this client.
- *  The slot host in `hooks/create-module-slots.tsx` renders every registered
+ *  The slot host in `hooks/overlays/create-module-slots.tsx` renders every registered
  *  module from this shape and names none. */
 
 /** What every slot component receives: the session it renders for and a
@@ -76,11 +77,15 @@ export interface TuiComponentSurface {
 }
 
 /** What a module's shell-lifetime presence reads: the foreground session's
- *  views and the toast sink. It runs once under the shell's owner, so an
- *  effect it creates lives as long as the shell. */
+ *  views, the toast sink, the module's admission, and the settings the
+ *  Settings modal reads and writes. It runs once under the shell's owner, so
+ *  an effect it creates lives as long as the shell. */
 export interface TuiPresenceProps {
   readonly read: DomainReader
   readonly showToast: (toast: ToastInput) => void
+  /** Whether the module is enabled, or undefined until the runtime publishes the module selection. */
+  readonly enabled: Accessor<boolean | undefined>
+  readonly settings: Pick<SettingsStore, "configBoolean" | "updateConfigBoolean">
 }
 
 export interface TuiControllerHost {
@@ -119,6 +124,11 @@ export interface TuiErrorReportProps {
 export interface TuiErrorReport {
   readonly status: Accessor<string | undefined>
   readonly failed: Accessor<boolean>
+  /** A yes-or-no question the crash screen asks the person, while one is open. */
+  readonly question: Accessor<string | undefined>
+  readonly answer: (yes: boolean) => void
+  /** Whether the answer is being saved, while the question's buttons take no press. */
+  readonly busy: Accessor<boolean>
   readonly copyText: () => string
 }
 

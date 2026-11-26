@@ -1,21 +1,21 @@
-import { buildMutationDiff, type MutationDiff } from "../../../../src/infra/mutation-diff.js";
+import { buildMutationDiff, type MutationDiff } from "../../../../src/infra/substrate/file-mutations/mutation-diff.js";
 import { parseSchema, safeParse } from "../../../helpers/schema-assertions.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { describe, expect, it } from "bun:test";
-import type { ContentBlock } from "../../../../src/orchestration/agent-runtime/llm/types";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
+import type { ContentBlock } from "../../../../src/infra/providers/llm/conversation/conversation-message";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
 import {
   CompactionEntrySchema,
   LeafEntrySchema,
   MessageEntrySchema,
   ConversationEntrySchema,
 } from "../../../../src/orchestration/session/conversation/conversation-entry-schemas";
-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
-import { forkConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-fork";
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage";
+import { forkConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-fork";
 import { branchBlocks } from "../../../helpers/branch-blocks";
-import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context";
+import { buildSessionContext } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context";
 
 const temporaryDirectory = temporaryDirectories();
 

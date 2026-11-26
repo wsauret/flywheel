@@ -166,6 +166,10 @@ Each file offers Undo, which asks for confirmation and then restores the file to
 
 While a chat waits on a question, the question and its choices appear at the prompt in the command menu's frame, and leave once answered or skipped. On every client, Escape skips the question, and an answer or skip that no longer applies says why. The transcript then records an Ask User entry with one row per question, titled by its header and showing the answer, and marks a skipped question cancelled. A pending question survives a closed session or a stopped Flywheel, and reopening the session shows it at the prompt again, where an answer continues the turn.
 
+## PI-INTERACTION-185: A waiting question holds its chat
+
+While a chat waits on a question, nothing else reaches the agent. Notices from background work, messages from other sessions, and messages that the person sends wait behind the question, and the transcript shows them after the answer in the order they arrived. An answer or a skip always reaches the agent and continues the chat, whether the chat is open, closed, or was restarted, and the chat then shows as working. An answer to a question that an earlier release left behind later entries continues the chat too.
+
 ## PI-INTERACTION-085: Ask User entries read in full in the transcript
 
 Ask User context appears immediately before its question entry as a normal assistant transcript message, with the assistant dot and full Markdown rendering. It is not tool content or question-dock copy. On the web client, saved question titles and answers wrap within the transcript width so their full text stays visible.
@@ -528,7 +532,7 @@ On the web client, every tap or click shows a response at once on any connection
 
 ## PI-INTERACTION-050: Sessions send each other messages
 
-An agent in a chat, a subagent, or a workflow can message another session or a workflow in the same project, and it names which of the two it addresses. A message reaches a working session after its current action and starts a turn in an idle session that a client shows. A chat that no client shows and an interrupted or unexpectedly stopped session hold the message without starting work and tell the sender at once. A person's message continues interrupted work, and a parent's message continues its child unless a person made the latest interrupt.
+An agent in a chat, a subagent, or a workflow can message another session or a workflow in the same project, and it names which it addresses. A message reaches a working session after its current action and starts a turn in an idle session that a client shows. A chat that no client shows, a chat waiting on a question, and an interrupted or unexpectedly stopped session hold the message without starting work and tell the sender at once. A person's message continues interrupted work, and a parent's message continues its child unless a person made the latest interrupt.
 
 ## PI-INTERACTION-131: Senders find and address their message targets
 
@@ -562,9 +566,9 @@ When the parent or the runtime interrupts a child, every reply wait on that chil
 
 A subagent or workflow agent ends its session when an admitted handoff starts. After that it reads no input and makes no tool call or model request, except to rewrite an invalid handoff. Its unread words stay in the parent transcript. They return only to the sending window's open parent composer, after any draft and a blank line. The finished subagent viewer hides its composer and says where those words are kept. A refused send keeps its draft. An unsent draft moves to the parent composer once its pending send settles.
 
-## PI-INTERACTION-052: Desktop notifications page the person only when a session asks a question
+## PI-INTERACTION-052: Desktop notifications page the person when a session asks or stops
 
-While desktop notifications are on, the terminal, the web client, and the desktop app page the person with the same words when any session starts waiting on a question. A turn that ends, and a workflow run that finishes, pauses, or fails, pages no one. Each new question pages again, also in the same session and in the session the person has open. A click on a terminal notification opens no view in the terminal.
+While desktop notifications are on, the terminal, the web client, and the desktop app page the person with the same words when any session starts waiting on a question. They page again when a chat stops for the person unread. A workflow run that finishes, pauses, or fails pages no one, and neither does a turn that ends while work still runs. Each new question pages again, also in the session the person has open. A stop pages no one while the person is at that chat. A click on a terminal notification opens no view in the terminal.
 
 ## PI-INTERACTION-090: A web page notifies only with browser permission and opens the asking session on click
 
@@ -600,11 +604,23 @@ On a web pane wide enough to keep the transcript column beside it, Changes, Back
 
 ## PI-INTERACTION-057: The web session list leads with what needs the person
 
-The web session list shows Needs you, then Working, then Recent, and only a question that waits for the person's answer puts a session in Needs you. A closed chat with such a question is in Needs you too. An interrupted or crashed turn or a reported error keeps a session in its place by work and recency, and an error row keeps the error colour. Each group lists its newest first, and a row shows its state and only its line counts that are not zero. When the list first shows, the open session's row is in view.
+The web session list shows Needs you, then Working, then Recent. Needs you holds every chat with a question that waits for the person's answer, then every chat that stopped and that the person has not read, closed chats included. An interrupted or crashed turn keeps a session in its place by work and recency. Each group lists its newest first within each kind, and a row shows its state and only its line counts that are not zero. When the list first shows, the open session's row is in view.
 
 ## PI-INTERACTION-184: The terminal session picker leads with chats that need an answer
 
-The terminal session picker shows Needs you first: every chat of the project with a question that waits for the person's answer, closed chats included, newest first. Each of these rows carries the mark that a tab waiting on a question carries. The other chats follow in their groups by date. While a chat other than the one in front waits on a question, the terminal shows how many do.
+The terminal session picker shows Needs you first: every chat of the project with a question that waits for the person's answer, then every chat that stopped and that the person has not read. Closed chats are included, newest first within each kind. Each row carries the mark that a tab in that state carries. The other chats follow in their groups by date. While a chat other than the one in front needs the person, the terminal shows how many do.
+
+## PI-INTERACTION-186: A chat that stops for the person says so
+
+A chat stops for the person when its agent ends a turn with nothing still running and nothing awaited, with a final message or on an error. Until the person reads it, every client lists the chat under Needs you. Its row shows the first line of the final message, or the error, and how long ago the chat stopped. A chat whose turn the person interrupted, also by closing the chat, is not listed.
+
+## PI-INTERACTION-187: A chat is read when the person is at it
+
+A chat's messages are read when the chat is in front of a client and the person is at that client. A terminal that reports focus counts while it has focus; any other terminal counts from the person's next key press, click, or scroll. A browser, the phone app, and the editor count while their window is visible and focused. Read state is one per chat for every client and device, and reading on one never moves another's view. The person can mark a chat read or unread from the list.
+
+## PI-INTERACTION-188: Unread messages mark a chat in place
+
+A chat with agent messages that the person has not read shows an unread mark on its row and its tab while its agent still works. The row keeps its place, and nothing notifies the person. Messages from before read tracking existed count as read.
 
 ## PI-INTERACTION-084: The web header names the open session and where it works
 
@@ -642,13 +658,13 @@ When content above the reader changes size or older history loads, the row the r
 
 When a client cannot read data for a surface in the background, the surface keeps what it shows and the client tries again by itself. Flywheel does not show a notice for each failed read. While such reads keep failing, one notice says in plain words that some views could not load and that Flywheel keeps trying, and it disappears once they load. A failed action that the person took still says why.
 
-## PI-INTERACTION-064: Crashes report themselves
+## PI-INTERACTION-064: Crash reports send only after the person agrees
 
-When a client of an official Flywheel release crashes or its runtime reports a fault, Flywheel sends a bug report to the maintainers automatically. The crash screen or fault notice says so, shows a short report id to quote, and says that turning off Bug reports in Settings stops automatic reports. Bug reports are on by default. While they are on, the person can also send a report with an optional note at any time through the report command. Unofficial builds send no report. When no report is sent, the screen says why and offers to copy the report.
+An official release sends no automatic report until the person agrees. The first terminal or phone crash screen asks once whether to send reports automatically. Yes sends the crash report; No sends nothing. A runtime fault never asks. Automatic crash reports in Settings changes the answer. DO_NOT_TRACK=1 or true in the sending process stops them; a terminal started with it saves No and says so. A sent report shows its id; an unsent one says why and offers Copy. A build without an endpoint sends none. While Bug reports is on, the report command sends a report with a note.
 
 ## PI-INTERACTION-107: A bug report carries no conversation content
 
-A bug report holds the error name, message, and stack, the app version and build, the operating system and architecture, the surface, and the session id. It also holds the recent warning and failure records of the client, the account service, and the project executor, which carry only ids, counts, and timings. Secrets and the home directory path are redacted, and the report holds no conversation, prompt, tool output, or file content.
+An automatic report holds the error name and stack frames with file names only, never the error message or other free text. A report that the person sends keeps its full text and note. Every report holds the app version and build, the operating system and architecture, the surface, and the session id. It also holds recent warning, failure, and slow-operation records, which carry only metadata such as ids, codes, counts, sizes, and timings. Recognized credential formats and the home directory path are masked; other note text is sent. No report holds conversation, prompt, tool output, or file content.
 
 ## PI-INTERACTION-065: Unused chats can delete themselves
 

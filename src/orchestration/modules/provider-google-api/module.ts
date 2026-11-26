@@ -1,14 +1,14 @@
 import { Redacted } from "effect";
-import { apiKey } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/llm/model-catalog-resolution.js";
-import { fetchPaginatedCatalog } from "../../../infra/llm/model-listing.js";
-import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
-import { isRecord } from "../../../infra/record.js";
-import { ApiError } from "../../agent-runtime/errors.js";
-import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { apiKey } from "../../../infra/providers/auth/auth-context.js";
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
+import { fetchPaginatedCatalog } from "../../../infra/providers/llm/access/model-listing.js";
+import { providerModelInfo } from "../../../infra/providers/llm/catalog/provider-model-info.js";
+import { isRecord } from "../../../infra/guards/record.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 
 /** The listing pages by `pageToken`, the way the Gemini Developer API's model list does. */
 function nextModelsPage(body: unknown, currentUrl: string): string | undefined {
@@ -83,7 +83,7 @@ const createClient: AccessProviderFactory = async (build) => {
   return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "google", providerHint: "google", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Google API key in the active auth profile. Run: flywheel auth login --google", recovery: { kind: "none" } });
-    const { createGoogleAdapter } = await import("../../agent-runtime/llm/google.js");
+    const { createGoogleAdapter } = await import("../../agent-runtime/llm/adapters/google/google.js");
     return createGoogleAdapter(key, build.wireModelId, info);
   }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };

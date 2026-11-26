@@ -6,7 +6,7 @@
  *  `ps` runs as an awaited child process, never a synchronous one: a scenario
  *  that samples while its loopback servers stream must not hold its own event
  *  loop, or the stream it measures arrives late. */
-import { windowsProcessApi } from "../../../src/infra/windows-process-api.js"
+import { windowsProcessApi } from "../../../src/infra/process/kernel/windows-process-api.js"
 
 /** Longest idle wait before the tree's RSS is taken as settled. */
 const IDLE_SETTLE_CEILING_MS = 30_000

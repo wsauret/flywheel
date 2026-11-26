@@ -1,4 +1,4 @@
-import { configSection } from "../../../../src/orchestration/config/config-section.js";
+import { configSection } from "../../../../src/orchestration/config/schema/config-section.js";
 import { mcpConfigSection } from "../../../../src/orchestration/modules/mcp/config.js";
 import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";

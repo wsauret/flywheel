@@ -17,9 +17,8 @@ import * as path from "node:path";
 import { Readable } from "node:stream";
 import { createGunzip } from "node:zlib";
 import { Schema } from "effect";
-import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
-import { Log } from "../../infra/log.js";
-import { archiveTree, confinedEntryPath } from "../../infra/update/archive-entry.js";
+import type { ContainedDirectory } from "../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import { BUILD_METADATA_FILE } from "../../infra/update/build-identity.js";
 
 const log = Log.create({ service: "update-install" });
@@ -374,4 +373,95 @@ function paxAttributes(data: Uint8Array): PendingAttributes {
     if (key === "size" && /^\d+$/.test(value)) attributes.sizeBytes = Number(value);
   }
   return attributes;
+}
+
+/** Archive admission: where each entry of a release archive lands.
+ *
+ *  An installed client checks a proved archive only for confinement (ARCH-DISTRIBUTION-011):
+ *  every entry lands inside the tree the attempt owns, or the archive is a
+ *  broken release and nothing of it is written. Everything else an archive
+ *  states, such as how many entries it holds, how large they are, which
+ *  modes they carry, and how their names are spelled, is the release's to
+ *  decide, so this reader places what the release ships instead of judging
+ *  it. The release side refuses to publish an archive that a served client
+ *  would refuse (`scripts/release-acceptance.ts`).
+ *
+ *  A name is resolved the way an extractor resolves it, with `/` and `\` both
+ *  separators, so a name means the same place on every platform. Empty and
+ *  `.` components are dropped and `..` steps back. A name that is absolute,
+ *  that steps above the root, or that holds a NUL names no place inside the
+ *  tree. */
+
+class ArchiveEntryError extends Schema.TaggedError<ArchiveEntryError>()("ArchiveEntry", {
+  message: Schema.String,
+  reason: Schema.String,
+}) {}
+
+function refuseEntry(reason: string): never {
+  throw new ArchiveEntryError({ message: `The archive is not safe to extract: ${reason}`, reason });
+}
+
+/** The relative path one entry name places inside the tree, with `/` as its
+ *  one separator, or `""` for the root itself. */
+function confinedEntryPath(name: string): string {
+  if (name.includes("\0")) refuseEntry("an entry name holds a NUL byte");
+  if (/^[\\/]/.test(name) || /^[A-Za-z]:/.test(name)) refuseEntry(`the entry name ${JSON.stringify(name)} is absolute`);
+  const components: string[] = [];
+  for (const component of name.split(/[\\/]/)) {
+    if (component === "" || component === ".") continue;
+    if (component !== "..") {
+      components.push(component);
+      continue;
+    }
+    if (components.length === 0) refuseEntry(`the entry name ${JSON.stringify(name)} steps outside the archive`);
+    components.pop();
+  }
+  return components.join("/");
+}
+
+/** The tree one archive lists, as it is listed.
+ *
+ *  A later entry for a file replaces an earlier one, as every extractor does.
+ *  A directory entry, and the parent of every entry, makes a directory, and
+ *  stating one directory twice changes nothing. The one listing no tree can
+ *  hold is a path that is both a file and a directory, which no tree a
+ *  release built can produce, so it refuses the archive. */
+interface ArchiveTree {
+  /** Record a directory at `path`, a confined path that may be the root. */
+  directory(path: string): void;
+  /** Record a file at `path`, a confined path that is not the root. */
+  file(path: string): void;
+  /** Every directory the tree holds, each after its parent. */
+  directories(): readonly string[];
+}
+
+function archiveTree(): ArchiveTree {
+  const kinds = new Map<string, "file" | "directory">();
+  const ordered: string[] = [];
+
+  const makeDirectory = (entry: string): void => {
+    if (entry === "") return;
+    const kind = kinds.get(entry);
+    if (kind === "directory") return;
+    if (kind === "file") refuseEntry(`${JSON.stringify(entry)} is listed as a file and as a directory`);
+    makeDirectory(parentOf(entry));
+    kinds.set(entry, "directory");
+    ordered.push(entry);
+  };
+
+  return {
+    directory: makeDirectory,
+    file(entry) {
+      if (entry === "") refuseEntry("a file entry names the archive's root");
+      if (kinds.get(entry) === "directory") refuseEntry(`${JSON.stringify(entry)} is listed as a directory and as a file`);
+      makeDirectory(parentOf(entry));
+      kinds.set(entry, "file");
+    },
+    directories: () => ordered,
+  };
+}
+
+function parentOf(entry: string): string {
+  const slash = entry.lastIndexOf("/");
+  return slash === -1 ? "" : entry.slice(0, slash);
 }

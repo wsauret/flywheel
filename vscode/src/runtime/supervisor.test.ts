@@ -7,7 +7,7 @@ import { PassThrough } from "node:stream"
 import { describe, test } from "node:test"
 
 import { RUNTIME_PROTOCOL_VERSION } from "../../../src/protocol/runtime-liveness.js"
-import { createServeStatusReader, encodeServeStartFailure, encodeServeStatusRecord } from "../../../src/protocol/serve-handshake.js"
+import { createServeStatusReader, encodeServeStartFailure, encodeServeStatusRecord } from "../../../src/protocol/runtime/serve-handshake.js"
 import { describeStartFailure, judgeServeStatusLine, prepareAccountRuntime } from "./supervisor.js"
 
 /** What public release v0.0.10 prints when it listens. It predates `lane`, so

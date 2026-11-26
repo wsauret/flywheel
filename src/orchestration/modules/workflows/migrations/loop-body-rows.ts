@@ -1,8 +1,8 @@
-import { isRecord } from "../../../../infra/record.js"
-import type { EventPayload } from "../../../../infra/event-store-types.js"
-import { parseDefinitionProvenanceFact } from "../../../../workflows/definition-provenance-facts.js"
+import { isRecord } from "../../../../infra/guards/record.js"
+import type { EventPayload } from "../../../../infra/substrate/store/event-store-types.js"
+import { parseDefinitionProvenanceFact } from "../../../../workflows/provenance/definition-provenance-facts.js"
 import { parseWorkflowQueueFact } from "../../../../workflows/view/view-facts.js"
-import { migrateFactVersions, unreadableWhenRefused, type FactMigrationResult, type FactUpgrade } from "../../../migrations/engine.js"
+import { migrateFactVersions, unreadableWhenRefused, type FactMigrationResult, type FactUpgrade } from "../../../workspace-state/migrations/engine.js"
 
 interface UnknownRecord {
   readonly [key: string]: unknown

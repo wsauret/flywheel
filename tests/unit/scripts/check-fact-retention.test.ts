@@ -36,7 +36,7 @@ describe("fact retention schema requirements", () => {
   test("still requires a schema for a non-retired declaration", () => {
     withSource(undefined, (root) => {
       expect(findFactRetentionViolations(root, registry({ policy: "history", prunable: [] })).failures).toEqual([
-        'stale declaration: "cache.retired" is classified in src/infra/fact-retention-registry.ts but no defineFact/defineRuntimeFact schema defines it',
+        'stale declaration: "cache.retired" is classified in src/infra/substrate/store/fact-retention-registry.ts but no defineFact/defineRuntimeFact schema defines it',
       ])
     })
   })
@@ -44,7 +44,7 @@ describe("fact retention schema requirements", () => {
   test("requires retired declarations and prune membership to agree in both directions", () => {
     withSource('defineFact({ type: "cache.retired" })', (root) => {
       expect(findFactRetentionViolations(root, registry({ policy: "retired", prunable: [] })).failures).toContain(
-        '"cache.retired" is declared retired but is missing from RETIRED_FACT_TYPES (src/orchestration/session/event-store-maintenance.ts)',
+        '"cache.retired" is declared retired but is missing from RETIRED_FACT_TYPES (src/orchestration/session/persistence/storage/event-store-maintenance.ts)',
       )
       expect(findFactRetentionViolations(root, registry({ policy: "history", prunable: ["cache.retired"] })).failures).toContain(
         '"cache.retired" is in RETIRED_FACT_TYPES but the registry declares it "history"',

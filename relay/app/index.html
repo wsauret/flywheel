@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Images come only from the page itself and from the data the client holds,
+     so text that names an image on another host makes no request to it.
+     Scripts, styles, and connections stay open: the client loads from the
+     relay the phone pairs with, which can be any host. -->
+<meta http-equiv="Content-Security-Policy" content="img-src 'self' data: blob:">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#faf9f7">

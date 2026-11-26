@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 
-import { CLIENT_IDENTITY_PATTERN } from "../../client-identity.js"
+import { CLIENT_IDENTITY_PATTERN } from "../../runtime/client-identity.js"
 
 /** The relay contract: what the runtime, a paired device, and the relay say
  *  to each other before and around the runtime protocol.
@@ -31,6 +31,10 @@ export const RELAY_PROTOCOL_VERSION = 5
 /** The hosted relay every QR code names unless the user deploys their own. A
  *  hostname baked into every pairing code can never change once shipped. */
 export const DEFAULT_RELAY_URL = "wss://relay.flywl.sh"
+/** The hosted dev relay that source runs pair through unless the user names
+ *  another. It keeps Workers Logs, which the hosted relay does not. A pairing
+ *  code names it, because only the hosted relay is implied. */
+export const DEV_RELAY_URL = "wss://relay-dev.flywl.sh"
 /** The hosted phone app. It learns the relay from the code, so one app serves
  *  the hosted relay and every self-hosted one. */
 export const DEFAULT_REMOTE_APP_ORIGIN = "https://remote.flywl.sh"

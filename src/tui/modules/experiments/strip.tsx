@@ -3,9 +3,9 @@
 import { StyledText, bold as stBold, fg as stFg, type TextRenderable } from "@opentui/core"
 import { createEffect, createMemo, Index, Show } from "solid-js"
 import { experimentViewDomain } from "../../../protocol/modules/experiments.js"
-import { Button } from "../../components/button.js"
+import { Button } from "../../components/controls/button.js"
 import { useTheme } from "../../context/theme.js"
-import { useSpinnerFrame } from "../../hooks/use-spinner-frame.js"
+import { useSpinnerFrame } from "../../components/activity/use-spinner-frame.js"
 import type { TuiStripProps } from "../../tui-module.js"
 import { renderDashboardLines } from "./dashboard-lines.js"
 

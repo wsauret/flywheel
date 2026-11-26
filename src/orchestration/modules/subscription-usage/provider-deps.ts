@@ -1,13 +1,12 @@
-import { captureSubscriptionCredentials } from "../../../infra/auth/auth-context.js"
-import { loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../infra/auth/auth-store.js"
-import { subscriptionSpendAccountCorrelationId } from "../../../protocol/subscription-spend-consent-protocol-types.js"
+import { captureSubscriptionCredentials } from "../../../infra/providers/auth/auth-context.js"
+import { loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../infra/providers/auth/store/auth-store.js"
+import { subscriptionSpendAccountCorrelationId } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 import type { MeteredUsageSource } from "./usage-projection.js"
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
-import type { FirstPartyModuleComposition } from "../../modules.js"
+import type { AsyncEventStateReadSurface } from "../../../infra/substrate/store/event-store-types.js"
+import { type FirstPartyModuleComposition, credentialSlotClassifier } from "../../module-contract/module-catalog.js"
 
-import { accessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js"
-import { isUsageAttemptLive, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../agent-runtime/usage-settlement.js"
-import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js"
+import { accessProviderRegistry } from "../../config/models/access-provider-registry.js"
+import { isUsageAttemptLive, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../session/history/usage-settlement.js"
 interface RuntimeUsageDepsOptions {
   readonly moduleSelection: () => FirstPartyModuleComposition
   readonly eventReader: Pick<AsyncEventStateReadSurface, "inFlightProfileKeys">

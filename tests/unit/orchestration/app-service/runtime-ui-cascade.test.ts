@@ -1,18 +1,18 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
-import { probeDrain } from "../../../../src/infra/render-probe.js"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks.js"
+import { probeDrain } from "../../../../src/infra/substrate/output/render-probe.js"
 import type {
   FrontendEvent,
   SessionCatalogRow,
   AttachedRuntimeClient,
-} from "../../../../src/protocol/app-service-types.js"
+} from "../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
-import { outputCursor, type OutputDelta, type OutputView } from "../../../../src/protocol/output-protocol-types.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
-import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
-import { createSessionCatalog } from "../../../../src/tui/hooks/create-session-catalog.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
+import { outputCursor, type OutputDelta, type OutputView } from "../../../../src/protocol/transcript/output-protocol-types.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
+import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
+import { createSessionCatalog } from "../../../../src/tui/hooks/state/create-session-catalog.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { catalogRow, snapshotResult } from "../../../helpers/session-catalog.js"
 

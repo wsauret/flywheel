@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { createComposerHistoryPopup, type ComposerHistoryPopupHook } from "../../../../src/tui/hooks/create-composer-history-popup.js"
+import { createComposerHistoryPopup, type ComposerHistoryPopupHook } from "../../../../src/tui/components/composer/suggestions/create-composer-history-popup.js"
 
 function withHook(
   initial: readonly string[],

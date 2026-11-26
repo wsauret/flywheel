@@ -1,18 +1,18 @@
-import { serveLaneFor } from "../../../../infra/cli-subprocess.js"
-import type { StartupDirectories } from "../../../../infra/directory-authorities.js"
-import { importLegacyRemotePlacements, readRemotePairingStore } from "../remote-pairing-store.js"
+import { serveLaneFor } from "../../../../infra/platform/cli-subprocess.js"
+import type { StartupDirectories } from "../../../../infra/platform/files/directory-authorities.js"
+import { defaultRelayUrl, importLegacyRemotePlacements, readRemotePairingStore } from "../remote-pairing-store.js"
 import type { LauncherContext } from "../../../../infra/process-supervisor.js"
-import { REMOTE_USAGE } from "./registration.js"
-import { DEFAULT_RELAY_URL } from "../../../../protocol/modules/remote/relay-protocol.js"
+import { REMOTE_USAGE } from "./usage.js"
 import { PAIR_FROM_INSTALLED_APP } from "../../../../protocol/modules/remote.js"
 import { decodeRemoteAccountAnswer, type RemoteAccountAnswer, type RemoteAccountRequest } from "../../../../protocol/modules/remote/account-requests.js"
-import type { CliCommandContext } from "../../../cli-contribution.js"
-import { errorMessage } from "../../../../infra/error-message.js"
+import type { CliCommandContext } from "../../../module-contract/cli-contribution.js"
+import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { lingerNotice } from "../../../../protocol/client/process-initiation-copy.js"
-import { qrCodeRows } from "../../../../infra/qr-code.js"
-import { accountServicePlatform, createAccountServiceInstallation, type AccountServiceInstallation } from "../../../app-service/account-service-installation.js"
+import { qrCodeRows } from "../../../../infra/substrate/output/text/qr-code.js"
+import { accountServicePlatform, createAccountServiceInstallation } from "../../../app-service/account/installation/account-service-installation.js"
+import type { AccountServiceInstallation } from "../../../app-service/account/installation/account-service-platform.js"
 import { ownedCommandRunner } from "../../../../infra/owned-command.js"
-import { createAccountProjectRegistry } from "../../../app-service/account-project-registry.js"
+import { createAccountProjectRegistry } from "../../../app-service/account/account-project-registry.js"
 import { retiredServiceInstallation } from "../account-relay-service.js"
 
 interface RemoteCliIo {
@@ -42,7 +42,7 @@ export async function runStatus(directories: StartupDirectories, launcher: Launc
   const store = readRemotePairingStore(directories.userDataRoot, LANE)
   const registry = createAccountProjectRegistry({ userDataRoot: directories.userDataRoot })
   await importLegacyRemotePlacements(directories.userDataRoot, LANE, registry)
-  io.log(`Relay:     ${store.relayUrl ?? DEFAULT_RELAY_URL}`)
+  io.log(`Relay:     ${store.relayUrl ?? defaultRelayUrl(LANE)}`)
   io.log(`Identity:  ${store.identity === undefined ? "not created (created on first pairing)" : store.identity.publicKey}`)
   io.log(`Devices:   ${store.devices.length}`)
   io.log(`Projects:  ${(await registry.list()).length}`)

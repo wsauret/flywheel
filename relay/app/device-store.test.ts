@@ -99,6 +99,31 @@ afterEach(() => {
 
 const settle = () => new Promise((resolve) => { setTimeout(resolve, 20) })
 
+test("a page that never pairs stores nothing, and the key its first pairing makes is the device on every later load", async () => {
+  const opened = await openDeviceStore()
+  expect(opened.device).toBeUndefined()
+  expect(fake.data.size).toBe(0)
+
+  const device = await opened.ensureDevice()
+  expect([...fake.data.keys()].sort()).toEqual(["device-key", "device-label"])
+  expect(fake.data.get("device-label")).toBe(opened.label())
+  expect(opened.device).toBe(device)
+  expect(await opened.ensureDevice()).toBe(device)
+  expect((await openDeviceStore()).device?.deviceId).toBe(device.deviceId)
+})
+
+test("two tabs opened before the first pairing keep the one key the first of them stored", async () => {
+  const [first, second, third] = await Promise.all([openDeviceStore(), openDeviceStore(), openDeviceStore()])
+  expect(await second.committedDevice()).toBeUndefined()
+  await second.setLabel("Kitchen iPad")
+  const paired = await first.ensureDevice()
+  expect(first.label()).toBe("Kitchen iPad")
+  expect((await second.committedDevice())?.deviceId).toBe(paired.deviceId)
+  expect((await third.ensureDevice()).deviceId).toBe(paired.deviceId)
+  expect((await openDeviceStore()).device?.deviceId).toBe(paired.deviceId)
+  expect(fake.data.get("device-label")).toBe("Kitchen iPad")
+})
+
 test("a write resolves only once its transaction has committed, so a page loaded after it reads the new value", async () => {
   const store = await openDeviceStore()
   fake.hold()
@@ -158,6 +183,7 @@ const DESK = { runtimeId: "desk", publicKey: "key-desk", relay: "wss://relay.fly
 test("an installed app opens the carry its browser put in the start URL as the same device, with the same machines and name", async () => {
   const browser = await openDeviceStore()
   await browser.setLabel("Kitchen iPad")
+  const device = await browser.ensureDevice()
   await browser.putRuntime(DESK)
   const fragment = await carriedFragment()
 
@@ -165,26 +191,27 @@ test("an installed app opens the carry its browser put in the start URL as the s
   fake = fakeIndexedDb()
   Object.defineProperty(globalThis, "indexedDB", { configurable: true, value: fake.factory })
   const app = await openDeviceStore(await readInstallCarry(fragment))
-  expect(app.device.deviceId).toBe(browser.device.deviceId)
+  const carried = await app.ensureDevice()
+  expect(carried.deviceId).toBe(device.deviceId)
   expect(await app.runtimes()).toEqual([DESK])
   expect(app.label()).toBe("Kitchen iPad")
-  expect(app.device.keyPair.privateKey.extractable).toBe(false)
-  const signature = await deviceIdentity(app.device).sign(new Uint8Array([1, 2, 3]))
-  expect(await crypto.subtle.verify("Ed25519", browser.device.keyPair.publicKey, new Uint8Array(signature), new Uint8Array([1, 2, 3]))).toBe(true)
+  expect(carried.keyPair.privateKey.extractable).toBe(false)
+  const signature = await deviceIdentity(carried).sign(new Uint8Array([1, 2, 3]))
+  expect(await crypto.subtle.verify("Ed25519", device.keyPair.publicKey, new Uint8Array(signature), new Uint8Array([1, 2, 3]))).toBe(true)
 })
 
 // iOS keeps the start URL's fragment on every launch of the installed app.
 test("a store that already has a key ignores a carry, so a carry never replaces a device or its machines", async () => {
-  const browser = await openDeviceStore()
-  await browser.putRuntime(DESK)
+  const browser = await (await openDeviceStore()).ensureDevice()
+  await (await openDeviceStore()).putRuntime(DESK)
   const fragment = await carriedFragment()
 
   fake = fakeIndexedDb()
   Object.defineProperty(globalThis, "indexedDB", { configurable: true, value: fake.factory })
-  const own = await openDeviceStore()
+  const own = await (await openDeviceStore()).ensureDevice()
   const reopened = await openDeviceStore(await readInstallCarry(fragment))
-  expect(reopened.device.deviceId).toBe(own.device.deviceId)
-  expect(reopened.device.deviceId).not.toBe(browser.device.deviceId)
+  expect(reopened.device?.deviceId).toBe(own.deviceId)
+  expect(reopened.device?.deviceId).not.toBe(browser.deviceId)
   expect(await reopened.runtimes()).toEqual([])
 })
 

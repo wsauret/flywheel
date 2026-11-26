@@ -1,10 +1,10 @@
 import { describe, it, expect } from "bun:test"
 import { fileURLToPath } from "node:url"
-import { runWithResilience } from "../../../src/orchestration/agent-runtime/agent-resilience.js"
-import { workerOutcome } from "../../../src/orchestration/workflow-host/worker-outcome.js"
+import { runWithResilience } from "../../../src/orchestration/agent-runtime/runner/agent-resilience.js"
+import { workerOutcome } from "../../../src/orchestration/workflow-host/attempt/worker-outcome.js"
 import type { AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js"
-import type { ConnectionState } from "../../../src/infra/output-blocks.js"
-import { exhaustedProvidersCopy } from "../../../src/infra/llm/provider-error-copy.js"
+import type { ConnectionState } from "../../../src/infra/substrate/events/output-blocks.js"
+import { exhaustedProvidersCopy } from "../../../src/infra/providers/llm/errors/provider-error-copy.js"
 
 describe("workerOutcome", () => {
   it("returns 'completed' when the run completed cleanly", () => {
@@ -251,7 +251,7 @@ describe("describeAgentFailure (via runWithResilience pushSystemMessage)", () =>
 describe("agent-resilience module boundaries", () => {
   it("has zero imports from chat-session, chat-types, agent-callback, or step-runner", async () => {
     const source = await Bun.file(
-      fileURLToPath(new URL("../../../src/orchestration/agent-runtime/agent-resilience.ts", import.meta.url)),
+      fileURLToPath(new URL("../../../src/orchestration/agent-runtime/runner/agent-resilience.ts", import.meta.url)),
     ).text()
     expect(source).not.toContain("chat-session")
     expect(source).not.toContain("chat-types")

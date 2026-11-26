@@ -27,7 +27,7 @@ export interface ScenarioResult {
 
 import type { MetricValues } from "../lib/metrics.js"
 import { median } from "../lib/metrics.js"
-import type { ReleaseMemoryEvidence } from "../../../src/infra/startup-trace.js"
+import type { ReleaseMemoryEvidence } from "../../../src/infra/diagnostics/startup-trace.js"
 import type { Timeline } from "../lib/timeline.js"
 import { sleep, type TmuxApp } from "../../../scripts/uat/tmux-driver.js"
 

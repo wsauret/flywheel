@@ -1,13 +1,13 @@
 import { describe, expect, it } from "bun:test";
-import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js";
-import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
+import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/control/commands.js";
+import type { CommittedWorkflowControl } from "../../../../src/workflows/control-facts/committed-control.js";
 import {
   initializeWorkflow,
   replayDecodedWorkflow,
   transitionDecodedWorkflow,
-} from "../../../../src/workflows/vm/transition.js";
-import type { DecodedWorkflowEvent } from "../../../../src/workflows/vm/events.js";
-import type { WorkflowMachineState } from "../../../../src/workflows/vm/control-types.js";
+} from "../../../../src/workflows/vm/control/transition.js";
+import type { DecodedWorkflowEvent } from "../../../../src/workflows/control-facts/events.js";
+import type { WorkflowMachineState } from "../../../../src/workflows/vm/control/control-types.js";
 
 /** A follow-up run event as a build before 2026-10-03 proposed it, at
  *  encoding 13, the last that holds one. */

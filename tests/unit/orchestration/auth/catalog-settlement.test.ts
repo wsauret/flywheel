@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
-import type { AuthContext, CapturedSubscriptionCredential } from "../../../../src/infra/auth/auth-context.js"
-import type { resolveProviderModelCatalog } from "../../../../src/orchestration/config/model-assignment-providers.js"
+import type { AuthContext, CapturedSubscriptionCredential } from "../../../../src/infra/providers/auth/auth-context.js"
+import type { resolveProviderModelCatalog } from "../../../../src/orchestration/config/models/model-assignment-providers.js"
 import { createCatalogSettlement } from "../../../../src/orchestration/auth/catalog-settlement.js"
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
-import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
-import type { ResolvedProviderModels } from "../../../../src/infra/llm/provider-model-preferences.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js"
+import { accessProviderAccountKey } from "../../../../src/infra/providers/auth/provider-account.js"
+import type { ResolvedProviderModels } from "../../../../src/infra/providers/auth/provider-models/provider-model-preferences.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 
 const account = { kind: "subscription", providerId: "github_copilot", instanceId: "exact", spendMode: "included" } as const

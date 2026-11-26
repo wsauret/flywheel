@@ -2,9 +2,9 @@
 
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
-import type { BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types.js"
-import type { BackgroundIndexEntry } from "../../../../src/protocol/client/background-index.js"
-import { flattenWithCategories } from "../../../../src/tui/components/modal-select-helpers.js"
+import type { BackgroundWorkRow } from "../../../../src/protocol/session/background-index-protocol-types.js"
+import type { BackgroundIndexEntry } from "../../../../src/protocol/client/work/background-index.js"
+import { flattenWithCategories } from "../../../../src/tui/components/modal/select/modal-select-helpers.js"
 import { contrastRatio } from "../../../../src/tui/context/theme/color-contrast.js"
 
 const [{ testRender }, { createComponent }, { ThemeProvider }, { BackgroundModal }] = await Promise.all([

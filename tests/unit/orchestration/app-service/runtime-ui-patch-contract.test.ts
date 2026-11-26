@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test"
-import { RuntimeUiPatchPayloadSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeUiPatchPayloadSchema } from "../../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { decodeRuntimeUiPatch, encodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
-import { stringDiscriminatorLiterals } from "../../../../src/protocol/schema-union.js"
-import { isGlobalRuntimeInvalidation, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import { isLaneBreak } from "../../../../src/protocol/client/cursor-intake.js"
+import { stringDiscriminatorLiterals } from "../../../../src/protocol/rpc/schema-union.js"
+import type { RuntimeUiPatch } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
+import { isGlobalRuntimeInvalidation } from "../../../../src/protocol/rpc/runtime-invalidation.js"
+import { isLaneBreak } from "../../../../src/protocol/client/runtime/cursor-intake.js"
 import { runtimeUiPatchFixtures } from "../../protocol/runtime-ui-patch-fixtures.js"
 
 describe("runtime UI patch contract", () => {

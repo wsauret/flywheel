@@ -92,8 +92,8 @@ export function windowsPayloadEntries(tag: string): readonly Uint8Array[] {
 }
 
 /** The archive-admission corpus, stated once for whichever root the installer
- *  under test expects. It is the corpus src/infra/update/archive-entry.ts
- *  refuses, so one entry admitted anywhere would be admitted everywhere. */
+ *  under test expects. It is the shared refusal contract of install.sh and
+ *  install.ps1, so both installers refuse the same entries. */
 export function admissionCorpus(root: string): readonly (readonly [string, Uint8Array, string])[] {
   return [
     ["a dot component", tarEntry(`${root}/build/./extra`, "0", "x"), "a dot or an empty component"],

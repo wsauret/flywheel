@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
+import { composeFirstPartyModules } from "../../../src/orchestration/module-contract/module-composition.js";
 
-import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+import { accessProviderRegistry } from "../../../src/orchestration/config/models/access-provider-registry.js";
 
 
 describe("subscription usage provider contributions", () => {

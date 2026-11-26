@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { Effect } from "effect";
-import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
-import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
-import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
+import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";
+import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { boundedStringCodeModeOutput, type RuntimeTool, type ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { HostMessage } from "../../../../../src/orchestration/modules/code-mode/invocation-protocol.js";

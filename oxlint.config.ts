@@ -59,10 +59,6 @@ const antiSlopRules = {
   "anti-slop-martinfowler/mysterious-name": "error",
 } satisfies DummyRuleMap;
 
-const antiSlopDisabledRules = Object.fromEntries(
-  Object.keys(antiSlopRules).map((rule) => [rule, "off"] as const),
-) satisfies DummyRuleMap;
-
 const flywheelEffectRules = {
   "flywheel/no-effect-escape-hatch": "error",
   "flywheel/no-schema-class": "error",
@@ -272,55 +268,6 @@ export default defineConfig({
       rules: { "flywheel/no-expect-promise-modifier": "error" },
     },
     {
-      files: [
-        "src/infra/code-mode/**/*.ts",
-        "tests/unit/infra/code-mode/{callbacks,codemode,enumeration,parity,promise,signature,stdlib,tool-paths}.test.ts",
-        "tests/unit/infra/code-mode/*-test262.test.ts",
-      ],
-      // Preserve the donor snapshot. These demonstrated style and structure rules would otherwise reshape vendored code.
-      rules: {
-        complexity: "off",
-        eqeqeq: "off",
-        "flywheel/no-barrel-file": "off",
-        ...antiSlopDisabledRules,
-        "flywheel/no-record": "off",
-        "import/no-duplicates": "off",
-        "import/no-self-import": "off",
-        "no-console": "off",
-        "no-duplicate-imports": "off",
-        "no-empty": "off",
-        "no-redeclare": "off",
-        "no-shadow": "off",
-        "no-template-curly-in-string": "off",
-        // The guest interpreter loops on the evaluated AST test node, which the rule cannot see change.
-        "no-unmodified-loop-condition": "off",
-        "no-void": "off",
-        "prefer-exponentiation-operator": "off",
-        radix: "off",
-        "typescript/ban-types": "off",
-        "typescript/consistent-generic-constructors": "off",
-        "typescript/consistent-indexed-object-style": "off",
-        "typescript/consistent-type-assertions": "off",
-        "typescript/no-empty-object-type": "off",
-        "typescript/no-extraneous-class": "off",
-        "typescript/no-import-type-side-effects": "off",
-        "typescript/no-this-alias": "off",
-        "unicorn/new-for-builtins": "off",
-        "unicorn/no-array-for-each": "off",
-        "unicorn/no-array-reverse": "off",
-        "unicorn/no-new-array": "off",
-        "unicorn/no-this-assignment": "off",
-        "unicorn/no-useless-collection-argument": "off",
-        "unicorn/no-useless-fallback-in-spread": "off",
-        "unicorn/prefer-math-trunc": "off",
-        "unicorn/prefer-native-coercion-functions": "off",
-        // The guest stdlib implements parseInt and parseFloat, whose prefix parsing Number() does not share.
-        "unicorn/prefer-number-coercion": "off",
-        "unicorn/prefer-number-properties": "off",
-        "unicorn/prefer-string-slice": "off",
-      },
-    },
-    {
       // A command-line verb writes to the terminal, in the composition root
       // and in a module's `cli/` home alike (ARCH-STRUCTURE-022).
       files: ["src/cli/**/*.{ts,tsx}", "src/orchestration/modules/*/cli/**/*.{ts,tsx}", "scripts/**/*.{ts,tsx}", "bench/**/*.{ts,tsx}", "tests/unit/cli/**/*.{ts,tsx}", "tests/unit/orchestration/modules/*/cli/**/*.{ts,tsx}", "tests/release/**/*.{ts,tsx}", "vscode/scripts/**/*.{ts,tsx}", "webview/preview/**/*.{ts,tsx}"],
@@ -344,7 +291,7 @@ export default defineConfig({
       rules: { "anti-slop-effect/no-test-code-in-src": "off" },
     },
     {
-      files: ["src/orchestration/agent-runtime/agent-loop.ts"],
+      files: ["src/orchestration/agent-runtime/loop/agent-loop.ts"],
       rules: {
         // Turn-boundary state machine: queued-input steering, compaction,
         // budget-exhaust finals, stream outcomes, tool batch finalize, todo

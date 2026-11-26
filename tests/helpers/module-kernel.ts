@@ -1,7 +1,7 @@
-import { asAsyncEventReadSurface } from "../../src/infra/event-store-types.js"
-import { NO_MODULE_SERVICES } from "../../src/infra/module-service.js"
-import type { ModuleProcessServices } from "../../src/orchestration/app-service/module-service-host.js"
-import { composeFirstPartyModules } from "../../src/orchestration/modules.js"
+import { asAsyncEventReadSurface } from "../../src/infra/substrate/store/event-store-types.js"
+import { NO_MODULE_SERVICES } from "../../src/infra/definitions/modules/module-service.js"
+import type { ModuleProcessServices } from "../../src/orchestration/app-service/executor/execution/module-service-host.js"
+import { composeFirstPartyModules } from "../../src/orchestration/module-contract/module-composition.js"
 import type { SessionManager } from "../../src/orchestration/session/manager.js"
 import type { SessionStore } from "../../src/orchestration/session-store/types.js"
 import { testDirectories } from "./directories.js"
@@ -60,19 +60,10 @@ const refusingSessionStore: SessionStore = {
   has: refuse("sessionStore.has"),
   isRunning: refuse("sessionStore.isRunning"),
   abort: refuse("sessionStore.abort"),
-  prepareForShutdown: refuse("sessionStore.prepareForShutdown"),
-  interruptForReplacement: refuse("sessionStore.interruptForReplacement"),
-  transferForegroundForReplacement: refuse("sessionStore.transferForegroundForReplacement"),
-  interrupt: refuse("sessionStore.interrupt"),
-  releaseForegroundBash: refuse("sessionStore.releaseForegroundBash"),
-  terminateBackgroundWork: refuse("sessionStore.terminateBackgroundWork"),
+  activeRunner: refuse("sessionStore.activeRunner"),
   remove: refuse("sessionStore.remove"),
   updateEntry: refuse("sessionStore.updateEntry"),
   updateChatEntry: refuse("sessionStore.updateChatEntry"),
-  answerQuestion: refuse("sessionStore.answerQuestion"),
-  cancelQuestion: refuse("sessionStore.cancelQuestion"),
-  compactConversation: refuse("sessionStore.compactConversation"),
-  learnFromSession: refuse("sessionStore.learnFromSession"),
   reorder: refuse("sessionStore.reorder"),
   runningCount: refuse("sessionStore.runningCount"),
   allIds: refuse("sessionStore.allIds"),

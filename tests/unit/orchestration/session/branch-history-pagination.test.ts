@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import type { AnyBlock } from "../../../../src/infra/output-blocks"
-import { threadHistoryRangeIndices } from "../../../../src/orchestration/session/conversation/branch-history-pagination"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder"
+import type { AnyBlock } from "../../../../src/infra/substrate/events/output-blocks"
+import { threadHistoryRangeIndices } from "../../../../src/orchestration/session/conversation/transcript/branch-history-pagination"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder"
 
 const blocks: AnyBlock[] = [
   { kind: "userMessage", id: "u0", content: "zero", timestamp: 0, pending: false, injected: false },

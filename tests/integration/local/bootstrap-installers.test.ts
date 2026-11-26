@@ -6,10 +6,9 @@
  *    resolution and the payload requests cannot mix two releases into one
  *    installation, because every later request names the tag that was resolved.
  *  - An unsafe archive is refused before extraction changes anything. The
- *    corpus below is the one both installers face, and it is the corpus
- *    src/infra/update/archive-entry.ts states: a dot component, an empty
- *    component, a backslash, an absolute name, a repeated path, a link, a
- *    device, and a FIFO.
+ *    corpus below is the shared refusal contract of both installers: a dot
+ *    component, an empty component, a backslash, an absolute name, a
+ *    repeated path, a link, a device, and a FIFO.
  *  - Every bound is a refusal and not a download: the request deadline, the
  *    compressed byte cap, the entry count, one file, and the whole tree.
  *

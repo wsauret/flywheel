@@ -4,10 +4,10 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { unguardedSpawnOwned } from "../../helpers/real-process-fixture.js"
-import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
+import { createPersistentProcessManager } from "../../../src/infra/supervision/persistent/persistent-process-manager.js"
 import { createLauncherScope } from "../../../src/infra/process-supervisor.js"
 import { createTestRuntimeComposition } from "../../helpers/runtime-composition.js"
-import { DebugLog } from "../../../src/infra/debug-log.js"
+import { DebugLog } from "../../../src/infra/diagnostics/debug-log.js"
 
 /** The embedded (in-process) host of the runtime composition: one shutdown
  *  barrier whose last step closes the event store and hands back this project's
@@ -48,16 +48,16 @@ const disposals: string[] = []
 
 // Snapshots, not live namespaces: a module mock replaces the namespace binding
 // too, so a delegating mock that read it back would call itself.
-const realEventStoreEffect = await import("../../../src/infra/event-store-effect.js")
+const realEventStoreEffect = await import("../../../src/infra/substrate/store/event-store-effect.js")
 const realManager = await import("../../../src/orchestration/session/manager.js")
-const realMcp = await import("../../../src/orchestration/modules/mcp/manager.js")
-const realLane = await import("../../../src/orchestration/app-service/runtime-background-lane.js")
-const realWriterLane = await import("../../../src/infra/event-store-writer-lane.js")
+const realMcp = await import("../../../src/orchestration/modules/mcp/manager/manager.js")
+const realLane = await import("../../../src/orchestration/app-service/background/runtime-background-lane.js")
+const realWriterLane = await import("../../../src/infra/substrate/store/event-store-writer-lane.js")
 const realSessionStore = await import("../../../src/orchestration/session-store/store.js")
 const realAppService = await import("../../../src/orchestration/app-service/app-service.js")
-const realAvailability = await import("../../../src/orchestration/agent-runtime/llm/shared-provider-availability.js")
-const realRoleProjection = await import("../../../src/orchestration/app-service/role-protocol-projection.js")
-const realSessionAuth = await import("../../../src/orchestration/session/session-auth-profile.js")
+const realAvailability = await import("../../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js")
+const realRoleProjection = await import("../../../src/orchestration/app-service/auth/models/role-protocol-projection.js")
+const realSessionAuth = await import("../../../src/orchestration/auth/session-auth-profile.js")
 const EventStoreLive = realEventStoreEffect.EventStoreLive
 const createEventStoreWriterLane = realWriterLane.createEventStoreWriterLane
 const createSessionManager = realManager.createSessionManager
@@ -163,7 +163,7 @@ function workspace(name: string) {
       projectRoot,
       accountHome,
       userDataRoot,
-      workerUrl: new URL("../../../src/orchestration/app-service/worker-entry.ts", import.meta.url).href,
+      workerUrl: new URL("../../../src/cli/composition/worker-entry.ts", import.meta.url).href,
       launcher: createLauncherScope({ spawnOwned: unguardedSpawnOwned(), adoptOwned: () => Promise.reject(new Error("no command is adopted here")) }),
       persistentProcesses: persistentProcessManager.client(),
       allowPersistentProcesses: false,

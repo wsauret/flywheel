@@ -4,9 +4,10 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
 
-import { versionsDir } from "../../../../src/infra/paths.js"
+import { versionsDir } from "../../../../src/infra/platform/files/paths.js"
 import { executableBuild } from "../../../../src/infra/update/live-builds.js"
-import { installedBuild, installedBuildId, installedExecutable, processRunningBuild, runningBuildId, runningDisplayBuildId, type RunningBuild } from "../../../../src/orchestration/app-service/runtime-executable.js"
+import { installedBuild, installedBuildId, installedExecutable, runningBuildId } from "../../../../src/orchestration/app-service/runtime-executable.js"
+import { processRunningBuild, runningDisplayBuildId, type RunningBuild } from "../../../../src/infra/update/distribution/running-build.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { useWin32ContainedDirectories } from "../../../helpers/win32-contained-directories.js"
@@ -34,21 +35,13 @@ describe("a source checkout's build identity", () => {
 
   test("is read from the checkout, not from the snapshot a dev service runs", async () => {
     const fixture = snapshotFixture(temporaryDirectory("flywheel-snapshot-protocol-"), ["src/orchestration/app-service/runtime-executable.ts"])
-    mkdirSync(join(fixture.checkout, "src", "protocol"), { recursive: true })
+    mkdirSync(join(fixture.checkout, "src", "protocol", "runtime"), { recursive: true })
     writeFileSync(join(fixture.checkout, "src", "protocol", "runtime-liveness.ts"), `export const RUNTIME_PROTOCOL_VERSION = ${RUNTIME_PROTOCOL_VERSION + 1}\n`)
     const snapshotted = await fixture.importFromSnapshot<typeof import("../../../../src/orchestration/app-service/runtime-executable.js")>("src/orchestration/app-service/runtime-executable.ts")
 
     const directories = sourceDirectories(temporaryDirectory("flywheel-snapshot-protocol-account-"))
     expect(snapshotted.installedBuildId(directories, { execPath: process.execPath })).toBe(`source:protocol-${RUNTIME_PROTOCOL_VERSION + 1}`)
     expect(snapshotted.runningBuildId({ kind: "source" }, directories)).toBe(`source:protocol-${RUNTIME_PROTOCOL_VERSION}`)
-  })
-
-  test("is displayed as the snapshot digest it runs from, and as unknown from a live checkout", async () => {
-    const fixture = snapshotFixture(temporaryDirectory("flywheel-snapshot-display-"), ["src/orchestration/app-service/runtime-executable.ts"])
-    const snapshotted = await fixture.importFromSnapshot<typeof import("../../../../src/orchestration/app-service/runtime-executable.js")>("src/orchestration/app-service/runtime-executable.ts")
-
-    expect(snapshotted.runningDisplayBuildId({ kind: "source" })).toBe("0123456789abcdef")
-    expect(runningDisplayBuildId({ kind: "source" })).toBeNull()
   })
 })
 

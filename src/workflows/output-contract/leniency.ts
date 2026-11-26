@@ -1,4 +1,4 @@
-import { isRecord, type UnknownRecord } from "../../infra/record.js";
+import { isRecord, type UnknownRecord } from "../../infra/guards/record.js";
 import type { Field, FieldMap } from "./grammar.js";
 
 // How the output boundary reads a submission beyond the strict contract. An

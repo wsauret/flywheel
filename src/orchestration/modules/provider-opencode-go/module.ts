@@ -1,12 +1,13 @@
 import { Redacted } from "effect";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { canonicalizeProviderIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
-import { openCodeGoRequestHeaders, providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
-import { fetchCatalog } from "../../../infra/llm/model-listing.js";
-import { ApiError } from "../../agent-runtime/errors.js";
-import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { canonicalizeProviderIdCatalogRow, extractDataCatalogRows } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
+import { openCodeGoRequestHeaders, providerRequestHeaders } from "../../../infra/providers/llm/provider-request-identity.js";
+import { fetchCatalog } from "../../../infra/providers/llm/access/model-listing.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { createOpenCodeGoUsageReader } from "./usage-reader.js";
 import { OPENCODE_GO_API_BASE, OPENCODE_GO_BILLING_URL, OPENCODE_GO_METADATA_PROVIDER, OPENCODE_GO_V1_BASE } from "./wire.js";
 
@@ -58,7 +59,7 @@ const createClient: AccessProviderFactory = async (build) => {
     if (credential?.type !== "api_key") throw new ApiError({ message: "No OpenCode Go API key in the active auth profile. Run: flywheel auth login --opencode-go", recovery: { kind: "none" } });
     const key = credential.key;
     if (endpoint === "anthropic-messages") {
-      const { createAnthropicAdapter } = await import("../../agent-runtime/llm/anthropic.js");
+      const { createAnthropicAdapter } = await import("../../agent-runtime/llm/adapters/anthropic/anthropic.js");
       return createAnthropicAdapter(key, build.wireModelId, info, {
         baseURL: OPENCODE_GO_API_BASE,
         accessProvider: definition.id,
@@ -68,7 +69,7 @@ const createClient: AccessProviderFactory = async (build) => {
       });
     }
     const [{ default: OpenAI }, { createOpenAIAdapter }, { createChatCompletionsAdapter }] = await Promise.all([
-      import("openai"), import("../../agent-runtime/llm/openai.js"), import("../../agent-runtime/llm/chat-completions.js"),
+      import("openai"), import("../../agent-runtime/llm/adapters/openai/openai.js"), import("../../agent-runtime/llm/adapters/chat-completions/chat-completions.js"),
     ]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: OPENCODE_GO_V1_BASE, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
     if (endpoint === "openai-responses") return createOpenAIAdapter({ kind: "apiKey", apiKey: key }, build.wireModelId, info, {

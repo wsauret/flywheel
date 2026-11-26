@@ -102,7 +102,7 @@ describe.skipIf(!POSIX_HOST)("a verified release archive", () => {
     // v0.1.0 refused an extended header over 8 KiB, a build.json over 8 KiB,
     // a GNU long name, and any build not at flywheel-<target>/build. None of
     // them is this client's business. The entry count is not either, and
-    // archive-entry.test.ts lists 20,000 entries.
+    // archive-spool.test.ts lists 20,000 entries.
     const longName = `${"deep/".repeat(40)}file.txt`;
     const archive = await buildArchive({
       root: "release/2.0",

@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/errors.js";
-import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
+import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
+import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
 import { makeCaptureClient } from "./_loop-fixtures.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
@@ -12,7 +12,7 @@ import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runti
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { ProviderRequestValidationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 
 // Item 3 of the Postel adoption list: the handoff correction loop is bounded.
 // Workflow workers run without a maxLLMCalls cap, so without this bound a

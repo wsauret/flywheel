@@ -5,7 +5,7 @@ import { parseMcpArgs } from "../../../../../../src/orchestration/modules/mcp/cl
 import { runMcp } from "../../../../../../src/orchestration/modules/mcp/cli/mcp.js"
 import { canonicalTestDirectory, temporaryDirectories, testDirectories } from "../../../../../helpers/directories.js"
 import type { McpManager } from "../../../../../../src/orchestration/modules/mcp/manager-types.js"
-import type { McpCredential, McpCredentialStore } from "../../../../../../src/orchestration/modules/mcp/credentials.js"
+import type { McpCredential, McpCredentialStore } from "../../../../../../src/orchestration/modules/mcp/oauth/credentials.js"
 import { Redacted } from "effect"
 
 const temporaryDirectory = temporaryDirectories()
@@ -136,7 +136,7 @@ describe("MCP CLI arguments", () => {
     await runMcp(["list", "--local"], directories, { configPath: config })
     expect(lines).toEqual(["work [project, client: Flywheel]: disabled", "extra [project]: disabled"])
     const observed: string[] = []
-    const createManager: typeof import("../../../../../../src/orchestration/modules/mcp/manager.js").createMcpManager = (options) => {
+    const createManager: typeof import("../../../../../../src/orchestration/modules/mcp/manager/manager.js").createMcpManager = (options) => {
       const work = options.servers.work
       observed.push(work !== undefined && "url" in work ? work.url ?? "" : "")
       return { ...emptyManager, authorize: async () => ({ url: "https://identity.example", redirectUrl: "http://127.0.0.1/callback", complete: async () => {}, close: async () => {} }) }

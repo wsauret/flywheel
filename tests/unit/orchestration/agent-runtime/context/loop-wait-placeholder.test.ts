@@ -2,20 +2,21 @@ import { describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
-import { durableSubagentCompletionNotification } from "../../../../../src/orchestration/agent-runtime/background-work-notifications.js";
+import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/loop/agent-loop.js";
+import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/session/control/background-work/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types.js";
+import { durableSubagentCompletionNotification } from "../../../../../src/orchestration/session/control/background-work/background-work-notifications.js";
 import type { ProviderStreamEvent, StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
+import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/process.js";
 import { makeCaptureClient, makeFakeLLMClient } from "./_loop-fixtures.js";
-import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
-import { messageInput } from "../../../../../src/infra/agent-loop-events.js";
-import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js";
-import { createRunnerBusBridge } from "../../../../../src/orchestration/runner/bus-bridge.js";
+import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/sessions/handoff.js";
+import { messageInput } from "../../../../../src/infra/substrate/events/agent-loop-events.js";
+import { createEmit, EventBus } from "../../../../../src/infra/substrate/events/event-bus.js";
+import { createRunnerBusBridge } from "../../../../../src/orchestration/agent-runtime/runner/bus-bridge.js";
 import { SessionEventAdapter } from "../../../../../src/orchestration/session-store/event-adapter.js";
-import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js";
+import { createOutputSession } from "../../../../../src/orchestration/session-store/output-session.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
@@ -320,7 +321,7 @@ describe("agent loop wait settlement", () => {
     // the model again at once, and the model wrote a fake notification of its
     // own. The batch's other calls run first, and the wait settles after the
     // batch, so the dispatch made in this same batch counts as live work.
-    let settle: ((result: BackgroundWorkResult) => void) | null = null;
+    const launched = Promise.withResolvers<BackgroundWorkResult>();
     const queued: ReturnType<typeof messageInput>[] = [];
     let wake: (() => void) | null = null;
     const registry = createBackgroundWorkRegistry({
@@ -338,8 +339,7 @@ describe("agent loop wait settlement", () => {
       inputSchema: { type: "object", properties: {} },
       isConcurrencySafe: true,
       execute: async () => {
-        const done = new Promise<BackgroundWorkResult>((resolve) => { settle = resolve; });
-        registry.track({ done, meta: { id: "bg_1", type: "background_command", description: "spawned mid-turn" } });
+        registry.track({ done: launched.promise, meta: { id: "bg_1", type: "background_command", description: "spawned mid-turn" } });
         return { content: "launched", outcome: "ok" };
       },
     };
@@ -377,7 +377,7 @@ describe("agent loop wait settlement", () => {
         prepareWaitForInput: () => ({
           commit: async () => {
             parkCount++;
-            settle?.({ status: "completed", content: "background result" });
+            launched.resolve({ status: "completed", content: "background result" });
             if (queued.length === 0) await new Promise<void>((resolve) => { wake = resolve; });
             return queued.shift() ?? null;
           },

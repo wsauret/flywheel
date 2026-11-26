@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import type { StoredFact } from "../../../../../src/infra/event-store-types"
+import type { StoredFact } from "../../../../../src/infra/substrate/store/event-store-types"
 import { projectProjectNotifications } from "../../../../../src/orchestration/modules/project-notifications/projection"
 import { parseProjectNotificationFact } from "../../../../../src/orchestration/modules/project-notifications/facts"
 

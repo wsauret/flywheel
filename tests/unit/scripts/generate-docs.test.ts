@@ -6,11 +6,11 @@ import { checkGeneratedDocs, writeGeneratedDocs } from "../../../scripts/generat
 import { constraintSummary, renderConfigurationDocs } from "../../../scripts/render-config-docs.js";
 import { renderCliReference, renderCommandReference } from "../../../scripts/render-reference-docs.js";
 import { commandSyntax, rootHelp } from "../../../src/cli/root-help.js";
-import { configReference } from "../../../src/orchestration/config/config-reference.js";
-import { installedConfigSchema } from "../../../src/orchestration/config/schema.js";
-import { SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
+import { configReference } from "../../../src/orchestration/config/schema/config-reference.js";
+import { installedConfigSchema } from "../../../src/orchestration/config/schema/schema.js";
+import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
-import { createKeymap } from "../../../src/tui/keymap/keymap.js";
+import { createKeymap } from "../../../src/tui/terminal/keymap/keymap.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();

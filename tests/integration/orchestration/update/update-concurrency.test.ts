@@ -19,7 +19,7 @@ import { Database } from "bun:sqlite";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { updateAuthorityDbFile } from "../../../../src/infra/paths.js";
+import { updateAuthorityDbFile } from "../../../../src/infra/platform/files/paths.js";
 import { storedAuthorityState } from "../../../helpers/update-authority-state.js";
 import { BUILD_METADATA_FILE, computeBuildId } from "../../../../src/infra/update/build-identity.js";
 import { createUpdateAuthority, UPDATE_PROTOCOL_VERSION, type UpdateAuthority } from "../../../../src/infra/update/update-authority.js";
@@ -307,7 +307,7 @@ unixClaimants("what the activation order guarantees", () => {
     const source = await payload("1.4.0");
     const engineUrl = new URL("../../../../src/orchestration/update/install-engine.ts", import.meta.url).href;
     const authorityUrl = new URL("../../../../src/infra/update/update-authority.ts", import.meta.url).href;
-    const pathsUrl = new URL("../../../../src/infra/paths.ts", import.meta.url).href;
+    const pathsUrl = new URL("../../../../src/infra/platform/files/paths.ts", import.meta.url).href;
     const placedBuildUrl = new URL("../../../helpers/placed-build.ts", import.meta.url).href;
     const script = `
       const { installBuild } = await import(${JSON.stringify(engineUrl)});

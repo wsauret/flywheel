@@ -1,16 +1,16 @@
 import { describe, expect, it } from "bun:test"
 import { Database } from "bun:sqlite"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type LocalSqliteEventStore } from "../../../../src/infra/substrate/store/event-store-types"
 import { transcriptFixture, transcriptStores } from "./_transcript-projection-fixtures"
 import {
   createToolResultDisplayMetaCursorReader,
   createToolResultDisplayMetaSetReader,
   readToolResultDisplayMeta,
-} from "../../../../src/orchestration/session/conversation/tool-result-meta"
-import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/mutation-evidence-recovery.js"
-import { readMutationEvidenceFiles } from "../../../../src/infra/mutation-evidence.js"
-import { completePatch, resolveRetainedPatch } from "../../../../src/orchestration/session/session-change-sources.js"
+} from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta"
+import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/history/mutation-evidence-recovery.js"
+import { readMutationEvidenceFiles } from "../../../../src/infra/substrate/file-mutations/mutation-evidence.js"
+import { completePatch, resolveRetainedPatch } from "../../../../src/orchestration/session/metadata/catalog/session-change-sources.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
 
 function recoveredReader() {

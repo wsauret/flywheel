@@ -1,4 +1,4 @@
-import type { BriefPersonaSlot, WorkflowTree } from "../../protocol/workflow-view-protocol-types.js";
+import type { BriefPersonaSlot, WorkflowTree } from "../../protocol/session/workflow-view-protocol-types.js";
 
 
 export type AttemptStatus =

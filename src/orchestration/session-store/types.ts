@@ -1,14 +1,21 @@
-import type { Unsubscribe } from "../../infra/event-bus.js"
-import type { AnyBlock, ConnectionState, StreamPhase, ToolStreamingText } from "../../infra/output-blocks.js"
-import type { OutputChangeBatch } from "../../infra/output/output-block-delta.js"
-import type { SessionNotice, SessionNoticeOperation } from "../../infra/session-notice.js"
+import type { Unsubscribe } from "../../infra/substrate/events/event-bus.js"
+import type { AnyBlock, ConnectionState, StreamPhase, ToolStreamingText } from "../../infra/substrate/events/output-blocks.js"
+import type { OutputChangeBatch } from "../../infra/substrate/output/output-block-delta.js"
+import type { SessionNotice, SessionNoticeOperation } from "../../infra/substrate/events/session-notice.js"
 import type { ChatRunner } from "../chat/runner-types.js"
-import type { SessionKind } from "../session/types.js"
-import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
-import type { ActiveBackgroundCommandDescriptor } from "../agent-runtime/background-work.js"
-import type { AgentInputAnswers } from "../../protocol/question-protocol-types.js"
-import type { ControlInterruption, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
+import type { SessionKind } from "../session/metadata/types.js"
+import type { ActiveBackgroundCommandDescriptor } from "../session/control/background-work/background-work.js"
 
+/** What the runner pool calls on the chat runner that an entry holds. */
+export interface PooledRunner {
+  abort(): void
+  /** Seed the display blocks the store accumulated before attach, whose first
+   *  block sits at absolute index `sequenceStart`. The store's
+   *  attachChatRunner calls this in the same synchronous frame that makes the
+   *  runner the block authority, so no pre-runner append can fall between the
+   *  capture and the handoff. */
+  seedDisplayBlocks(blocks: readonly AnyBlock[], sequenceStart: number): void
+}
 
 /** Patch shape for store entries: callers always hand the store a plain block
  *  array; the store owns the per-entry mutable box that `outputBlocks` reads
@@ -188,7 +195,26 @@ interface SessionRuntimeOptionsBase {
 }
 
 
-export interface SessionStore {
+/** What a projection of the store reads: its entries, their revisions, and
+ *  one coalesced change notification. It holds no runner control. */
+export interface SessionStoreReader {
+  get(sessionId: string): SessionEntry | undefined
+  has(sessionId: string): boolean
+  isRunning(sessionId: string): boolean
+  allIds(): string[]
+  /** Monotonic per-session revision, bumped on every UI-visible entry mutation.
+   *  The frontend projection diffs by `id -> revision` to re-project only the
+   *  sessions that changed since the last notify. Absent sessions read 0. */
+  revision(sessionId: string): number
+  /** `label` names this subscriber in slow-loop-unit and stall-attribution
+   *  warnings (session-fairness plan, phase 0). */
+  /** One coalesced notification per burst. `changed` names the sessions whose
+   *  entries moved since the last notification; it is undefined after a
+   *  membership or order change, when every subscriber sweeps the whole store. */
+  onChange(listener: (changed: ReadonlySet<string> | undefined) => void, label?: string): Unsubscribe
+}
+
+export interface SessionStore extends SessionStoreReader {
 
   openSessionRuntime(opts: SessionRuntimeOptions): string
   /** Replace a chat's bounded derived display tail and publish one full resync.
@@ -210,59 +236,28 @@ export interface SessionStore {
    *  store holds no chat for the session. */
   showStartupFailure(sessionId: string, message: string): boolean
 
-  get(sessionId: string): SessionEntry | undefined
-  has(sessionId: string): boolean
-  isRunning(sessionId: string): boolean
   abort(sessionId: string): Promise<boolean>
-  /** The runtime's stop of one chat's runner (`ChatRunner.prepareForShutdown`). */
-  prepareForShutdown(sessionId: string, by: RuntimeInterruption): void
-  /** A planned replacement's cut of one session's running turn, by the
-   *  runtime. A running shell command is never cut: the cut first moves each
-   *  held foreground command to the background, and the stop hands every
-   *  running command to the successor. True when it interrupted a running
-   *  turn. */
-  interruptForReplacement(sessionId: string): Promise<boolean>
-  /** A planned replacement's move of the session's held foreground commands,
-   *  its children's included, to the background. Resolves once the
-   *  session's registries track each moved command or it has ended. */
-  transferForegroundForReplacement(sessionId: string): Promise<void>
-  /** The one Interrupt of a session's running turn or step, by a person or
-   *  by the parent agent of a workflow. Only a person interrupts a
-   *  conversation runner: the parent agent cuts a subagent through its live
-   *  run (`liveChildRun`), and a chat has no parent. */
-  interrupt(sessionId: string, by: ControlInterruption, address?: WorkflowDeliveryAddress): boolean
-  releaseForegroundBash(sessionId: string, toolUseId: string): boolean
-  terminateBackgroundWork(sessionId: string, toolUseId: string): void
+  /** The runner that controls the session now: the runner of an entry that
+   *  has one and that `remove` or `disposeAll` is not ending. Null otherwise,
+   *  so a control of a session that is ending reaches nothing. Every runner
+   *  control (interrupt, the planned replacement's cut and foreground move,
+   *  question settlement, compaction, the /learn review, background stops)
+   *  goes through it; a live workflow member is controlled through its live
+   *  session control instead. */
+  activeRunner(sessionId: string): ChatRunner | null
   remove(sessionId: string): Promise<void>
   /** Shared runtime fields, including activity and metrics. */
   updateEntry(sessionId: string, patch: SessionEntryBasePatch): void
   /** Chat-only fields; no-op unless the entry is a chat session. */
   updateChatEntry(sessionId: string, patch: ChatEntryPatch): void
-  answerQuestion(sessionId: string, toolUseId: string, answers: AgentInputAnswers): boolean
-  cancelQuestion(sessionId: string, toolUseId: string): boolean
-  compactConversation(sessionId: string): Promise<boolean>
-  /** Fire the combined learning review for an active chat session.
-   *  False when the session is absent, inactive, or hosts no review. */
-  learnFromSession(sessionId: string): boolean
   reorder(sessionId: string, beforeSessionId: string | null): boolean
   runningCount(): number
-  allIds(): string[]
-  /** Monotonic per-session revision, bumped on every UI-visible entry mutation.
-   *  The frontend projection diffs by `id -> revision` to re-project only the
-   *  sessions that changed since the last notify. Absent sessions read 0. */
-  revision(sessionId: string): number
   /** Reads and clears the output deltas queued for this session since the
    *  last drain. The app-service output projection is the sole consumer;
    *  each batch is meant to be applied once. Absent/never-queued sessions
    *  read an empty batch. */
   drainOutputChanges(sessionId: string): OutputChangeBatch
   disposeAll(): Promise<void>
-  /** `label` names this subscriber in slow-loop-unit and stall-attribution
-   *  warnings (session-fairness plan, phase 0). */
-  /** One coalesced notification per burst. `changed` names the sessions whose
-   *  entries moved since the last notification; it is undefined after a
-   *  membership or order change, when every subscriber sweeps the whole store. */
-  onChange(listener: (changed: ReadonlySet<string> | undefined) => void, label?: string): Unsubscribe
   /** Reload runtime dependencies for the named sessions, or every active runner
    *  when no session list is supplied. */
   refreshDeps(sessionIds?: readonly string[]): Promise<void>

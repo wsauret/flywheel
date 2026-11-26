@@ -1,56 +1,56 @@
-import { dispatchAuthMutation, isAuthMutation } from "./auth-mutations.js"
-import { ACCOUNT_UPDATES_ONLY, dispatchSettingsMutation, isSettingsMutation } from "./settings-mutations.js"
-import { readAppVersion } from "../../infra/app-version.js"
-import { runningDisplayBuildId } from "./runtime-executable.js"
-import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/app-service-types.js"
-import { mergeCatalogRow } from "../../protocol/client/known-totals.js"
-import { commandCatalogCursor } from "../../protocol/command-catalog-protocol-types.js"
-import type { CommandCatalogProjection } from "./command-catalog-projection.js"
-import { authStatusCursor } from "../../protocol/auth-status-protocol-types.js"
-import type { AuthStatusProjection } from "./auth-status-projection.js"
-import { capabilitiesCursor } from "../../protocol/module-protocol-types.js"
-import type { ModuleProjection } from "./module-projection.js"
-import type { RuntimeConfigProjection } from "./runtime-config-projection.js"
-import { runtimeConfigCursor } from "../../protocol/runtime-config-protocol-types.js"
+import { dispatchAuthMutation, isAuthMutation, type AuthMutationDeps } from "./auth/login/auth-mutations.js"
+import { ACCOUNT_UPDATES_ONLY, dispatchSettingsMutation, isSettingsMutation, type SettingsMutationDeps } from "./mutations/settings-mutations.js"
+import type { RuntimeAuthProfileSelectionService } from "./auth/auth-profile-selection-service.js"
+import type { ModuleProjection } from "./projections/module-projection.js"
+import type { RuntimeConfigProjection } from "./projections/runtime-config-projection.js"
+import type { ProviderModelPreferenceService } from "./auth/models/provider-model-preference-service.js"
+import { readAppVersion } from "../../infra/update/distribution/app-version.js"
+import { runningDisplayBuildId } from "../../infra/update/distribution/running-build.js"
+import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/runtime/app-service-types.js"
+import { mergeCatalogRow } from "../../protocol/client/session/known-totals.js"
+import { commandCatalogCursor } from "../../protocol/commands/command-catalog-protocol-types.js"
+import type { CommandCatalogProjection } from "./definitions/commands/command-catalog-projection.js"
+import { authStatusCursor } from "../../protocol/auth/auth-status-protocol-types.js"
+import type { AuthStatusProjection } from "./auth/auth-status-projection.js"
+import { capabilitiesCursor } from "../../protocol/runtime/module-protocol-types.js"
+import { runtimeConfigCursor } from "../../protocol/settings/runtime-config-protocol-types.js"
 import { isProtocolModuleQuery, moduleMutationRefusal } from "../../protocol/modules.js"
 import type { ModuleProtocolRoutes } from "./module-protocol-host.js"
-import type { SessionDetailProjection } from "./session-detail-projection.js"
-import type { ProjectFilesService } from "./project-files.js"
-import type { BudgetProtocolProjection } from "./budget-protocol-projection.js"
-import type { RuntimeSummaryProjection } from "./runtime-summary-projection.js"
-import type { QuestionProtocolProjection } from "./question-protocol-projection.js"
-import type { RoleProtocolProjection } from "./role-protocol-projection.js"
-import { dispatchFrontendMutation } from "./mutation-handler.js"
-import type { CommandInvokeService } from "./command-invoke-service.js"
-import type { FrontendProjection, SessionChange } from "./frontend-projection.js"
-import type { OutputProjection } from "./output-projection.js"
-import type { StatusProjection } from "./status-projection.js"
-import { outputCursor } from "../../protocol/output-protocol-types.js"
-import type { RuntimeUiBus } from "./runtime-ui-bus.js"
-import { runtimeReadAnchor } from "./runtime-ui-patch-sequencer.js"
-import { sessionCursor, type RuntimeSessionViewsResult, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../protocol/runtime-ui-protocol-types.js"
-import type { RuntimeSupervisor } from "./runtime-supervisor-types.js"
-import type { AdmittedModelAssignmentService } from "./model-assignment-admission.js"
-import type { AuthLoginService } from "./auth-login-service.js"
-import type { RuntimeAuthProfileSelectionService } from "./auth-profile-selection-service.js"
-import { startupTrace } from "../../infra/startup-trace.js"
-import type { RuntimeBackgroundLane } from "./runtime-background-lane.js"
-import { Log } from "../../infra/log.js"
-import { ADMISSION_CLOSED_ERROR, createMutationAdmission, type CommandAdmission } from "./mutation-admission.js"
-import { withLoggedFlywheelAppService } from "./app-service-logging.js"
-import { shutdownOwner, type RuntimeShutdownRequest } from "./runtime-shutdown.js"
-import type { RuntimeModelCatalogRefreshScope, ProviderModelTarget, ProviderModelView, RuntimeDeselectAllProviderModelsMutation, RuntimeProviderModelHiddenResult, RuntimeRecheckProviderModelsMutation, RuntimeSetProviderAutoEnableNewModelsMutation, RuntimeSetProviderAutoEnableNewModelsResult, RuntimeSetProviderFreeRoutesMutation, RuntimeSetProviderModelMutation, RuntimeSetProviderModelResult } from "../../protocol/provider-model-preference-protocol-types.js"
+import type { SessionDetailProjection } from "./projections/session-detail-projection.js"
+import type { ProjectFilesService } from "./projections/project-files.js"
+import type { BudgetProtocolProjection } from "./projections/catalog/budget-protocol-projection.js"
+import type { RuntimeSummaryProjection } from "./projections/catalog/runtime-summary-projection.js"
+import type { QuestionProtocolProjection } from "./projections/catalog/question-protocol-projection.js"
+import type { RoleProtocolProjection } from "./auth/models/role-protocol-projection.js"
+import { dispatchFrontendMutation } from "./mutations/mutation-handler.js"
+import type { CommandInvokeService } from "./definitions/commands/command-invoke-service.js"
+import type { FrontendProjection, SessionChange } from "./projections/frontend-projection.js"
+import type { OutputProjection } from "./projections/output/output-projection.js"
+import type { StatusProjection } from "./projections/catalog/status-projection.js"
+import { outputCursor } from "../../protocol/transcript/output-protocol-types.js"
+import type { RuntimeUiBus } from "./projections/runtime-ui-bus.js"
+import { runtimeReadAnchor } from "./projections/runtime-ui-patch-sequencer.js"
+import { sessionCursor, type RuntimeSessionViewsResult, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../protocol/runtime/runtime-ui-protocol-types.js"
+import type { RuntimeSupervisor } from "./supervisor/runtime-supervisor-types.js"
+import type { AdmittedModelAssignmentService } from "./auth/models/model-assignment-admission.js"
+import { startupTrace } from "../../infra/diagnostics/startup-trace.js"
+import type { RuntimeBackgroundLane } from "./background/runtime-background-lane.js"
+import { Log } from "../../infra/diagnostics/log.js"
+import { createMutationAdmission, type CommandAdmission } from "./mutations/mutation-admission.js"
+import { ADMISSION_CLOSED_ERROR } from "../../infra/process/shutdown-signals.js"
+import { withLoggedAppServiceClient } from "./runtime/app-service-logging.js"
+import { shutdownOwner, type RuntimeShutdownRequest } from "./runtime/runtime-shutdown.js"
 
-import type { SubscriptionSpendConsentMutation, SubscriptionSpendConsentMutationResult } from "../../protocol/subscription-spend-consent-protocol-types.js"
-import { gitAiAttributionCursor } from "../../protocol/git-ai-attribution-protocol-types.js"
-import type { GitAiAttributionProjection } from "./git-ai-attribution-projection.js"
-import { commandUsageCursor } from "../../protocol/command-usage-protocol-types.js"
-import type { CommandUsageProjection } from "./command-usage-projection.js"
-import { changesCursor } from "../../protocol/session-changes-protocol-types.js"
-import type { BackgroundIndexOwner } from "./background-index-publisher.js"
-import type { MutationEvidenceService } from "./mutation-evidence-service.js"
-import type { SessionChangesService } from "./session-changes-service.js"
-import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
+import type { SubscriptionSpendConsentMutation, SubscriptionSpendConsentMutationResult } from "../../protocol/auth/subscription-spend-consent-protocol-types.js"
+import { gitAiAttributionCursor } from "../../protocol/git/git-ai-attribution-protocol-types.js"
+import type { GitAiAttributionProjection } from "./projections/changes/git-ai-attribution-projection.js"
+import { commandUsageCursor } from "../../protocol/commands/command-usage-protocol-types.js"
+import type { CommandUsageProjection } from "./definitions/commands/command-usage-projection.js"
+import { changesCursor } from "../../protocol/session/session-changes-protocol-types.js"
+import type { BackgroundIndexOwner } from "./background/background-index-publisher.js"
+import type { MutationEvidenceService } from "./projections/changes/mutation-evidence-service.js"
+import type { SessionChangesService } from "./projections/changes/session-changes-service.js"
+import type { AsyncEventStateReadSurface } from "../../infra/substrate/store/event-store-types.js"
 
 /** Why an executor refuses a held detail read or its release: only the
  *  account facade holds and publishes `session_detail` (C5). */
@@ -59,6 +59,8 @@ const ACCOUNT_SESSION_DETAIL_ONLY = "Session detail is held through the account 
  *  sends the executor the union of every connection's set on its private
  *  channel (`watchOutput`). */
 const ACCOUNT_OUTPUT_WATCH_ONLY = "Output watches are stated through the account service, never to a project executor"
+/** A restart moves the account service, so only that service answers it. */
+const ACCOUNT_RESTART_ONLY = "A restart is answered by the account service, never by a project executor"
 
 const log = Log.create({ service: "app-service" })
 
@@ -73,14 +75,6 @@ type AdmittedMutationHandlers = {
   readonly [Type in AdmittedMutationType]: (mutation: AdmittedMutations[Type]) => Promise<MutationResult<FrontendMutation>> | MutationResult<FrontendMutation>
 }
 
-export interface ProviderModelPreferenceService {
-  query(profileId: string, target: ProviderModelTarget): Promise<ProviderModelView>
-  set(mutation: RuntimeSetProviderModelMutation): Promise<RuntimeSetProviderModelResult>
-  deselectAll(mutation: RuntimeDeselectAllProviderModelsMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult>
-  recheck(mutation: RuntimeRecheckProviderModelsMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult>
-  setAutoEnableNewModels(mutation: RuntimeSetProviderAutoEnableNewModelsMutation): Promise<RuntimeSetProviderAutoEnableNewModelsResult>
-  setFreeRoutes(mutation: RuntimeSetProviderFreeRoutesMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult>
-}
 /** The server-side face of the runtime protocol: the client contract plus the
  *  two obligations only the hosting runtime holds. Clients compile against
  *  `RuntimeClient` in the protocol package; this extension never crosses the
@@ -114,11 +108,16 @@ export interface FlywheelAppService extends RuntimeClient {
   hideSession(sessionId: string): Promise<void>
 }
 
-export interface FlywheelAppServiceDeps {
+export interface FlywheelAppServiceDeps extends AuthMutationDeps, SettingsMutationDeps {
+  /** The auth mutations' port, with the reads this service answers itself. */
+  readonly authProfileSelection: AuthMutationDeps["authProfileSelection"] & Pick<RuntimeAuthProfileSelectionService, "refresh" | "previewDelete">
+  /** The settings mutations' ports, with the views this service snapshots. */
+  readonly capabilities: ModuleProjection
+  readonly config: RuntimeConfigProjection
   readonly projectionReader: AsyncEventStateReadSurface
   /** The account-held public projection's resolved assignment. Snapshot reads
    * use this explicit input and never query the executor during render. */
-  readonly chatDefault: () => import("../../protocol/app-service-types.js").RuntimeChatDefault
+  readonly chatDefault: () => import("../../protocol/runtime/app-service-types.js").RuntimeChatDefault
   readonly sessionChanges: () => Promise<SessionChangesService>
   readonly mutationEvidence: () => Promise<MutationEvidenceService>
   /** The background index of each session a client follows, held from its
@@ -154,17 +153,7 @@ export interface FlywheelAppServiceDeps {
    * domain data; the app-service bus remains the publication authority. */
   readonly backgroundLane: RuntimeBackgroundLane
 
-  readonly authProfileSelection: Pick<RuntimeAuthProfileSelectionService, "mutate" | "refresh" | "previewDelete"> & { settle(profileId: string, operationId: string): Promise<void> }
-  /** Every client's provider login, disconnect, and rename, in the runtime
-   *  that owns the credentials. */
-  readonly authLogin: AuthLoginService
-  readonly scheduleCatalogRefresh: (scope: RuntimeModelCatalogRefreshScope) => Promise<void>
   readonly subscriptionSpendConsent: { mutate(mutation: SubscriptionSpendConsentMutation): Promise<SubscriptionSpendConsentMutationResult> }
-  /** The runtime's one capability publication and mutation owner. Required: the
-   *  client holds no selection of its own, so a runtime without this projection
-   *  could not answer a Settings row. */
-  readonly capabilities: ModuleProjection
-  readonly config: RuntimeConfigProjection
   readonly gitAiAttribution: GitAiAttributionProjection
   /** Account-global slash-command use counts, the ranking every client shares. */
   readonly commandUsage: CommandUsageProjection
@@ -273,6 +262,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
         return budget ?? null
       })
       case "questionSnapshot": return sessionViews(request.sessionIds, "question", (sessionId) => questionProjection.snapshot(sessionId))
+      case "waitingSessionsSnapshot": throw new Error("The sessions that wait on a question are held through the account service, never through a project executor")
       case "roleSnapshot": return sessionViews(request.sessionIds, "roles", (sessionId) => deps.roleProjection.snapshot(sessionId))
       case "authStatusSnapshot": {
         const snapshotPosition = bus.snapshotPosition({ kind: "cursor", cursor: authStatusCursor(request.scope) })
@@ -282,6 +272,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       // Updates are account-wide work, so the account service answers them and
       // never forwards them to a project executor (ARCH-PROTOCOL-043).
       case "updateSnapshot": throw new Error(ACCOUNT_UPDATES_ONLY)
+      case "restartReadiness": throw new Error(ACCOUNT_RESTART_ONLY)
       case "moduleSnapshot": return { capabilities: deps.capabilities.view(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: capabilitiesCursor() }) }
       case "configSnapshot": return { config: deps.config.view(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: runtimeConfigCursor() }) }
       case "gitAiAttributionSnapshot": return { status: deps.gitAiAttribution.view(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: gitAiAttributionCursor() }) }
@@ -399,7 +390,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
     },
   }
 
-  return withLoggedFlywheelAppService(service, log)
+  return { ...service, ...withLoggedAppServiceClient(service, log) }
 
   async function dispatchMutation(mutation: FrontendMutation): Promise<MutationResult<FrontendMutation>> {
     startupTrace(`app-service dispatch ${mutation.type} start`)
@@ -407,6 +398,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
     if (isSettingsMutation(mutation)) return dispatchSettingsMutation(deps, mutation)
     if (mutation.type === "session_detail.release") throw new Error(ACCOUNT_SESSION_DETAIL_ONLY)
     if (mutation.type === "output.watch") throw new Error(ACCOUNT_OUTPUT_WATCH_ONLY)
+    if (mutation.type === "service.restart") throw new Error(ACCOUNT_RESTART_ONLY)
     // The account sends it once no client follows the session's index.
     if (mutation.type === "background.release") {
       deps.backgroundIndex.release(mutation.sessionId)

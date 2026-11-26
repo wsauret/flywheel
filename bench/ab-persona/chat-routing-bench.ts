@@ -2,21 +2,21 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { selectStartupDirectories } from "../../src/infra/directory-authorities.js";
+import { selectStartupDirectories } from "../../src/infra/platform/files/directory-authorities.js";
 import { createBenchmarkRuntime } from "../shared/runtime.js";
 import { ChatRoutingFailure, chatRoutingGuidance, runChatRoutingTask } from "../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
-import { completionIndex, planMatrix, runMatrix } from "../../src/orchestration/modules/development/benchmark/matrix-runner.js";
+import { completionIndex, planMatrix, runMatrix } from "../../src/orchestration/modules/development/benchmark/campaign/matrix-runner.js";
 import { createRoutingRunStore, type RoutingAttemptRecord, type RoutingConfig, type RoutingRunRecord, type RoutingRunStore } from "../../src/orchestration/modules/development/benchmark/chat-routing-store.js";
 import { parseVariant, type VariantSpec } from "../../src/orchestration/modules/development/benchmark/variant.js";
-import { createBackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js";
-import { createInstalledDefinitionRegistry } from "../../src/orchestration/definition-catalog.js";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { unavailableBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/evidence.js";
-import type { UsageAuthorityGeneration } from "../../src/orchestration/agent-runtime/usage-settlement.js";
-import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/admission.js";
+import { createBackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../src/orchestration/session/control/background-work/background-work.js";
+import { createInstalledDefinitionRegistry } from "../../src/orchestration/app-service/definitions/definition-catalog.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { unavailableBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import type { UsageAuthorityGeneration } from "../../src/orchestration/session/history/usage-settlement.js";
+import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/persona/admission.js";
 import { RESEARCH_SNAPSHOT } from "../../src/orchestration/modules/development/benchmark/catalog.js";
-import { withSnapshotWorkspace } from "../../src/orchestration/modules/development/benchmark/snapshot-workspace.js";
+import { withSnapshotWorkspace } from "../../src/orchestration/modules/development/benchmark/execution/snapshot-workspace.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const RESULTS_ROOT = join(REPO_ROOT, "bench", "results", "chat-routing");
@@ -190,7 +190,7 @@ export interface ChatRoutingCliDeps {
   readonly createRuntime: typeof createBenchmarkRuntime;
   readonly admitModels: typeof admitBenchmark;
   readonly createStore: typeof createRoutingRunStore;
-  readonly createRoutingRegistry: () => ReadonlyMap<string, import("../../src/infra/agent-definition.js").AgentDefinition>;
+  readonly createRoutingRegistry: () => ReadonlyMap<string, import("../../src/infra/definitions/agent-definition.js").AgentDefinition>;
   readonly writeOutput: (text: string) => void;
 }
 

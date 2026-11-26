@@ -1,18 +1,19 @@
 import { Redacted } from "effect";
-import type { RuntimeOAuthCredential } from "../../../infra/auth/auth-context.js";
-import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutations.js";
-import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
-import { type StoredTokens, storedTokensToCredential } from "../../../infra/auth/openai-auth-types.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { canonicalizeProviderIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
-import { classifyFetchFailure, fetchCatalog } from "../../../infra/llm/model-listing.js";
-import { PROVIDER_REASONING_EFFORTS } from "../../../infra/llm/models.js";
-import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
-import { isRecord } from "../../../infra/record.js";
-import { ApiError } from "../../agent-runtime/errors.js";
-import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import type { RuntimeOAuthCredential } from "../../../infra/providers/auth/auth-context.js";
+import { replaceCredentialInstance } from "../../../infra/providers/auth/store/auth-store-mutations.js";
+import { readBoundedJson } from "../../../infra/providers/auth/bounded-json.js";
+import { type StoredTokens, storedTokensToCredential } from "../../../infra/providers/auth/openai/openai-auth-types.js";
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js";
+import { canonicalizeProviderIdCatalogRow, extractDataCatalogRows } from "../../../infra/providers/llm/catalog/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/providers/model-catalog-rows.js";
+import { classifyFetchFailure, fetchCatalog } from "../../../infra/providers/llm/access/model-listing.js";
+import { PROVIDER_REASONING_EFFORTS } from "../../../infra/providers/llm/models/models.js";
+import { providerModelInfo } from "../../../infra/providers/llm/catalog/provider-model-info.js";
+import { isRecord } from "../../../infra/guards/record.js";
+import { ApiError } from "../../agent-runtime/llm/routing/runtime-errors.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import type { FirstPartyModule } from "../../modules.js";
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js";
 import { applyXaiSubscriptionHeaders, XAI_SUBSCRIPTION_BASE_URL } from "./auth-types.js";
 import { loginXai } from "./oauth.js";
 import { createXaiTokenAccessor, ensureFreshXaiTokens, rotateXaiTokens, XaiTokenRefreshError, type XaiTokenAccessor } from "./token-refresh.js";
@@ -177,7 +178,7 @@ const createClient: AccessProviderFactory = async (build) => {
     const cred = credentialForCandidate(build.connection, build.candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No SuperGrok tokens found. Run: flywheel auth login --supergrok", recovery: { kind: "none" } });
     const seed = storedTokens(cred);
-    const [{ createOpenAIAdapter }, { createXaiOpenAIClient }] = await Promise.all([import("../../agent-runtime/llm/openai.js"), import("./client.js")]);
+    const [{ createOpenAIAdapter }, { createXaiOpenAIClient }] = await Promise.all([import("../../agent-runtime/llm/adapters/openai/openai.js"), import("./client.js")]);
     return createOpenAIAdapter({ kind: "apiKey", apiKey: seed.accessToken }, build.wireModelId, info, {
       client: createXaiOpenAIClient(tokenAccessor(build, seed)),
       accessProvider: definition.id, catalogId: definition.catalogId, candidate: build.candidate,

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import { FrontendMutationSchema, RuntimeQuerySchema } from "../../../src/protocol/runtime-protocol-schemas.js"
+import { FrontendMutationSchema, RuntimeQuerySchema } from "../../../src/protocol/rpc/runtime-protocol-schemas.js"
 import { decodeRuntimeUiPatch } from "../../helpers/runtime-ui-patch.js"
 import { workflowsProtocol, workflowLiveCursor } from "../../../src/protocol/modules/workflows.js"
-import { cursorKey } from "../../../src/protocol/runtime-ui-protocol-types.js"
+import { cursorKey } from "../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 
 describe("workflow control wire contract", () => {
   for (const type of ["workflow.interrupt", "workflow.resume"] as const) {

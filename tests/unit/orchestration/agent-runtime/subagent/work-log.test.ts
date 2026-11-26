@@ -5,7 +5,7 @@ import {
   buildSubagentWorkLog,
   createSubagentTurnLog,
   type SubagentToolCallRecord,
-} from "../../../../../src/orchestration/modules/subagents/execution/work-log.js";
+} from "../../../../../src/orchestration/modules/subagents/execution/result/work-log.js";
 
 const record = (overrides: Partial<SubagentToolCallRecord> & Pick<SubagentToolCallRecord, "toolName" | "input">): SubagentToolCallRecord => ({
   status: "done",

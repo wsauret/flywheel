@@ -1,5 +1,5 @@
-import { parseMetricLines } from "./metric-lines.js"
-import type { MetricDirection } from "./types.js"
+import { parseMetricLines } from "./measurement/metric-lines.js"
+import type { MetricDirection } from "./state/types.js"
 
 /** Where the approved charter lives, relative to the experiment work directory. */
 export const EXPERIMENT_CHARTER_PATH = ".experiment/charter.md"

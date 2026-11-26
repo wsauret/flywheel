@@ -1,15 +1,15 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Effect } from "effect";
-import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
-import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
+import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
+import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-concurrency-gate.js";
 import { boundedStringCodeModeOutput, type RuntimeTool, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createCatalogRenderer } from "../../../../../src/orchestration/modules/code-mode/catalog.js";
 import { describeCodeModeTools } from "../../../../../src/orchestration/modules/code-mode/descriptors.js";
 import type { CodeModeLimits } from "../../../../../src/orchestration/modules/code-mode/limits.js";
 import { codeModeRuntimeOver, codeModeServices, codeToolOver, InProcessInvocationWorker, scriptedWorker, workerLog } from "../../../../helpers/code-mode-worker.js";
-import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
-import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
-import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { composeModuleRuntimes } from "../../../../../src/infra/definitions/modules/module-runtime.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/module-contract/module-composition.js";
+import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 import { turnDispatchHarnesses } from "../../agent-runtime/_turn-dispatch.js";
@@ -276,7 +276,7 @@ describe("code tool", () => {
     const run = fixture([]);
     const result = await run.tool.execute({ source: 'console.log("observed"); Promise.reject(new Error("boom")); return "done"' }, run.context);
 
-    expect(result.content).toBe("done\n\nWarnings:\n- [ExecutionFailure] Unhandled rejection from an un-awaited promise: Uncaught: boom\n\nLogs:\nobserved");
+    expect(result.content).toBe("done\n\nWarnings:\n- [ExecutionFailure] Unhandled rejection from an un-awaited promise: Error: boom\n\nLogs:\nobserved");
     expect(result.details).toBeUndefined();
   });
 
@@ -313,15 +313,17 @@ describe("code tool", () => {
 
   it("interleaves small nested rows at retained console positions and keeps terminal logs console-only", async () => {
     const run = fixture([runtimeTool("read", async () => ({ content: "ok", outcome: "ok" }))]);
-    const result = await run.tool.execute({
-      source: `console.log("before"); await tools.read({}); console.log("between"); await tools.read({}); console.log("after"); return "done"`,
-    }, run.context);
+    const result = await run.tool.execute({ source: `console.log("before"); await tools.read({}); console.log("between"); await tools.read({}); console.log("after"); return "done"` }, run.context);
     expect(run.outputs).toEqual([
       "before\n-> tools.read {}",
       "before\n-> tools.read {}\nbetween\n-> tools.read {}",
       "before\n-> tools.read {}\nbetween\n-> tools.read {}\nafter",
     ]);
     expect(result.content).toBe("done\n\nLogs:\nbefore\nbetween\nafter");
+
+    // A call starts where the program makes it, also when the program awaits it later.
+    await run.tool.execute({ source: `console.log("before"); const both = Promise.all([tools.read({}), (console.log("between"), tools.read({}))]); console.log("after"); await both` }, run.context);
+    expect(run.outputs.at(-1)).toBe("before\n-> tools.read {}\nbetween\n-> tools.read {}\nafter");
   });
 
   it("publishes count-only feedback immediately on every nested start after prefix saturation", async () => {

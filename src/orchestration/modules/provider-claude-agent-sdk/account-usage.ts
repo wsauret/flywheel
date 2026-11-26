@@ -1,4 +1,4 @@
-import { boundedProviderText, type SubscriptionUsageMetric, type SubscriptionUsageReport } from "../../../infra/llm/subscription-usage.js";
+import { boundedProviderText, type SubscriptionUsageMetric, type SubscriptionUsageReport } from "../../../infra/providers/llm/usage/subscription-usage.js";
 
 /** One plan window of a Claude account: the share of it used, and when it resets in epoch ms when the source says. */
 interface UsageWindow {

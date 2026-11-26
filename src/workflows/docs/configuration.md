@@ -111,6 +111,21 @@ max_tokens = 0
 max_wall_clock_minutes = 0
 ```
 
+## `bug_reports`
+
+### `bug_reports.automatic`
+
+- Type: `boolean`
+- Default: unset
+- Application: `live`. Applies to the running interface immediately.
+
+Send crash reports automatically? Absent until a crash screen asks.
+
+```toml
+[bug_reports]
+automatic = true
+```
+
 ## `cache_retention`
 
 ### `cache_retention."*"`

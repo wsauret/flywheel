@@ -1,6 +1,6 @@
-import type { StoredFact } from "../../../infra/event-store-types.js"
-import { InvariantViolation, type InvariantKind } from "../../../infra/invariant.js"
-import type { DegradedBlock } from "../../../infra/output-blocks.js"
+import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
+import { InvariantViolation, type InvariantKind } from "../../../infra/guards/invariant.js"
+import type { DegradedBlock } from "../../../infra/substrate/events/output-blocks.js"
 import type { ConversationEntry } from "./conversation-entry-types.js"
 import type { DegradedEntrySource, SalvagedConversationEntry } from "./conversation-facts.js"
 

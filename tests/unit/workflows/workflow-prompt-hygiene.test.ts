@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
-import { renderSkillClosure } from "../../../src/workflows/skill-render.js";
+import { renderSkillClosure } from "../../../src/workflows/skills/skill-render.js";
 import { readSrcFile } from "../../fixtures/read-src-file.js";
 
 function workflowFiles(dir: string): string[] {

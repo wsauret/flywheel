@@ -1,20 +1,21 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { Result, Schema } from "effect";
-import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
-import { configurationReferenceFile } from "../../infra/paths.js";
-import { installedConfigSections, installedModules } from "../module-catalog.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
+import { Log } from "../../infra/diagnostics/log.js";
+import { configurationReferenceFile } from "../../infra/platform/files/paths.js";
+import { installedModules } from "../module-contract/module-catalog.js";
+import { installedConfigSections } from "./schema/config-section.js";
 import { decodeModuleSelection } from "./module-descriptor.js";
 import { buildCustomProvidersFromConfig } from "./custom-providers.js";
 import { readConfigFile, withConfigOwnershipBlocking } from "./config-file.js";
-import { configPath as displayConfigPath, configReference, configReferenceEntry, type ConfigReferenceEntry } from "./config-reference.js";
+import { configPath as displayConfigPath, configReference, configReferenceEntry, type ConfigReferenceEntry } from "./schema/config-reference.js";
 import { applyEnvOverrides } from "./env.js";
 import { configRoleRetention } from "./roles.js";
 import { canonicalRoleId, retiredBriefSeatWorkflow } from "./retired-config-names.js";
 import { hasRetiredConfigTables, retireConfigTables } from "./retired-config-tables.js";
-import { type FlywheelConfig, installedConfigSchema } from "./schema.js";
-import { isPersistedSettingId, PERSISTED_SETTING_DEFINITIONS, type PersistedSettingId } from "./setting-definitions.js";
+import { type FlywheelConfig, installedConfigSchema } from "./schema/schema.js";
+import { isPersistedSettingId, PERSISTED_SETTING_DEFINITIONS, type PersistedSettingId } from "./schema/setting-definitions.js";
 
 type ConfigErrorCode = "FILE_NOT_FOUND" | "FILE_READ_ERROR" | "PARSE_ERROR" | "VALIDATION";
 

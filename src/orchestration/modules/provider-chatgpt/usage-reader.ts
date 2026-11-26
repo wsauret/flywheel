@@ -1,10 +1,10 @@
 import { Redacted } from "effect";
-import type { StoredTokens } from "../../../infra/auth/openai-auth-types.js";
-import type { UnknownRecord } from "../../../infra/record.js";
-import { boundedProviderText, readBoundedSubscriptionUsageJson, unsupportedSubscriptionUsageOutcome, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageResetConsumer, type SubscriptionUsageResetCredits, type SubscriptionUsageJson, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
-import { malformed, oauthTokens, percent, prepaidBalance, readerIdentity, requiredNumber, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/subscription-usage-reader.js";
-import { ensureFreshChatGPTTokens } from "../../agent-runtime/llm/openai-chatgpt.js";
-import { ChatGPTTokenRefreshError } from "../../auth/openai-oauth.js";
+import type { StoredTokens } from "../../../infra/providers/auth/openai/openai-auth-types.js";
+import type { UnknownRecord } from "../../../infra/guards/record.js";
+import { boundedProviderText, readBoundedSubscriptionUsageJson, unsupportedSubscriptionUsageOutcome, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageResetConsumer, type SubscriptionUsageResetCredits, type SubscriptionUsageJson, type SubscriptionUsageSpendSource } from "../../../infra/providers/llm/usage/subscription-usage.js";
+import { malformed, oauthTokens, percent, prepaidBalance, readerIdentity, requiredNumber, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/providers/llm/usage/subscription-usage-reader.js";
+import { ensureFreshChatGPTTokens } from "../../agent-runtime/llm/adapters/openai/openai-chatgpt.js";
+import { ChatGPTTokenRefreshError } from "../../../infra/providers/llm/access/openai-oauth.js";
 
 const CHATGPT_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
 const CHATGPT_RESET_CREDITS_URL = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits";

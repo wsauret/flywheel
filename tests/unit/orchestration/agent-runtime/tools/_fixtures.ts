@@ -4,16 +4,16 @@ import * as os from "node:os";
 import { unguardedSpawnOwned } from "../../../../helpers/real-process-fixture.js";
 import { capabilityAccessFor, type CapabilityAccess, type DispatchedToolContext, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
-import type { CapabilityGrant } from "../../../../../src/orchestration/config/module-policy.js";
-import type { ModuleId } from "../../../../../src/orchestration/modules.js";
-import type { InFlightWrite, StoredFact } from "../../../../../src/infra/event-store-types.js";
-import { parseFileMutationFact, type FileMutationFact } from "../../../../../src/orchestration/session/file-mutation-facts.js";
-import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
+import type { CapabilityGrant } from "../../../../../src/orchestration/config/policy/module-policy.js";
+import type { ModuleId } from "../../../../../src/orchestration/module-contract/module-catalog.js";
+import type { InFlightWrite, StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js";
+import { parseFileMutationFact, type FileMutationFact } from "../../../../../src/orchestration/session/file-mutations/file-mutation-facts.js";
+import type { SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { createExperimentOperation, findExperimentInterruption } from "../../../../../src/orchestration/modules/experiments/operation-owner.js";
-import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js";
-import { moduleDisabledReason } from "../../../../../src/protocol/module-ids"
-import type { SessionContentNode } from "../../../../../src/infra/session-content.js"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js";
+import { moduleDisabledReason } from "../../../../../src/protocol/runtime/module-ids"
+import type { SessionContentNode } from "../../../../../src/infra/substrate/session-content.js"
+import { asAsyncEventReadSurface } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js"
 

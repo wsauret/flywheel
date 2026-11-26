@@ -1,7 +1,7 @@
 import { tmpdir } from "node:os"
 import { describe, expect, test } from "bun:test"
-import { createFrontendProjection, type SessionChange } from "../../../../src/orchestration/app-service/frontend-projection.js"
-import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
+import { createFrontendProjection, type SessionChange } from "../../../../src/orchestration/app-service/projections/frontend-projection.js"
+import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
 import { chatEntry, durableRow, durableSessionFromCatalogRow, fakeManager, fakeSessionStore } from "./_frontend-projection-fixtures.js"
 
 describe("frontend projection metadata invalidation", () => {

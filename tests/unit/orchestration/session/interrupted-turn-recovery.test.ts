@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types";
-import { hydrateToolContentFact } from "../../../../src/infra/tool-content-hydration";
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer";
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/substrate/store/event-store-types";
+import { hydrateToolContentFact } from "../../../../src/infra/substrate/store/tool-content-hydration";
+import { createSqliteEventStore } from "../../../../src/infra/substrate/store/sqlite-event-store";
+import { resolveEventStoreDbFile } from "../../../../src/infra/platform/files/paths";
+import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-user-inputs";
 import { holdQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications";
-import type { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
+import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import {
   assistantMessage,
   assistantToolUseMessage,
@@ -22,8 +22,8 @@ import {
 import {
   checkpointFinalizedToolResult,
   recoverFinalizedToolResultCheckpoints,
-} from "../../../../src/orchestration/session/finalized-tool-result-checkpoint";
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer";
+} from "../../../../src/orchestration/agent-runtime/loop/tool-calls/finalized-tool-result-checkpoint";
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer";
 import { chatTurnEndOf, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record";
 
 // An interrupted turn is reported from the facts its actions already wrote, not

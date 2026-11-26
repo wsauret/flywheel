@@ -1,8 +1,8 @@
-import type { AttachedRuntimeClient, FrontendEvent, FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/app-service-types.js"
+import type { AttachedRuntimeClient, FrontendEvent, FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/runtime/app-service-types.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import { threadHistoryRangeIndices } from "../../../../src/orchestration/session/conversation/branch-history-pagination.js"
+import { blockIdentity } from "../../../../src/protocol/transcript/block-identity.js"
+import { threadHistoryRangeIndices } from "../../../../src/orchestration/session/conversation/transcript/branch-history-pagination.js"
 import type {
   HydratedOutputGroupChildrenBatch,
   HydratedOutputGroupChildren,
@@ -12,9 +12,9 @@ import type {
   OutputRangeRequest,
   OutputWindowRequest,
   OutputWindowSnapshot,
-} from "../../../../src/protocol/transcript-protocol-types.js"
-import { outputCursor, type OutputDelta, type OutputView } from "../../../../src/protocol/output-protocol-types.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+} from "../../../../src/protocol/transcript/transcript-protocol-types.js"
+import { outputCursor, type OutputDelta, type OutputView } from "../../../../src/protocol/transcript/output-protocol-types.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 
 export function deferred<T>() {
   let resolve!: (value: T) => void
@@ -156,7 +156,10 @@ export function fakeRuntimeClient(initial: InitialOutputBlocks = {}) {
   const groupChildrenCalls: { sessionId: string; request: OutputGroupChildrenRequest; settle: (v: HydratedOutputGroupChildrenBatch) => void }[] = []
   const sequencer = createRuntimeUiPatchSequencer()
   const details = new Map(Object.entries(initial))
-  let listener: ((event: FrontendEvent) => void) | null = null
+  // Each resident store subscribes on its own, so an evicted store's
+  // unsubscribe must leave the others listening.
+  const listeners = new Set<(event: FrontendEvent) => void>()
+  const listener = (event: FrontendEvent): void => { for (const each of listeners) each(event) }
   let lastPatch: (FrontendEvent & { type: "patch" }) | null = null
   let outputWindowCalls = 0
   const outputWindowRequests: { sessionId: string; request: OutputWindowRequest }[] = []
@@ -195,8 +198,8 @@ export function fakeRuntimeClient(initial: InitialOutputBlocks = {}) {
   const client: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane" | "watchOutput"> = {
     query,
     subscribe: (l: (event: FrontendEvent) => void) => {
-      listener = l
-      return () => { listener = null }
+      listeners.add(l)
+      return () => { listeners.delete(l) }
     },
     ...lanes.client,
   }
@@ -232,24 +235,24 @@ export function fakeRuntimeClient(initial: InitialOutputBlocks = {}) {
       await cache.open(sessionId)
       if (!hadDetails) details.delete(sessionId)
       lastPatch = { type: "patch", patch: sequencer.publish({ cursor: outputCursor(sessionId), payload: { kind: "output.delta", delta: liveDelta(v) } }) }
-      listener?.(lastPatch)
+      listener(lastPatch)
     },
     liveDelta: (sessionId: string, d: OutputDelta) => {
-      listener?.({ type: "patch", patch: sequencer.publish({ cursor: outputCursor(sessionId), payload: { kind: "output.delta", delta: d } }) })
+      listener({ type: "patch", patch: sequencer.publish({ cursor: outputCursor(sessionId), payload: { kind: "output.delta", delta: d } }) })
     },
-    redeliverLastPatch: () => { if (lastPatch) listener?.(lastPatch) },
+    redeliverLastPatch: () => { if (lastPatch) listener(lastPatch) },
     /** Publish a runtime.invalidate on the session's output cursor (rebase by
      *  default: the server announced a new absolute coordinate baseline). */
     invalidate: (sessionId: string, reason: "overflow" | "rebase" = "rebase") => {
-      listener?.({ type: "patch", patch: sequencer.publish({ cursor: outputCursor(sessionId), payload: { kind: "runtime.invalidate", reason } }) })
+      listener({ type: "patch", patch: sequencer.publish({ cursor: outputCursor(sessionId), payload: { kind: "runtime.invalidate", reason } }) })
     },
     invalidateAll: () => {
-      listener?.({ type: "patch", patch: sequencer.publish({ cursor: { scope: "workspace", domain: "runtime" }, payload: { kind: "runtime.invalidate", reason: "overflow" } }) })
+      listener({ type: "patch", patch: sequencer.publish({ cursor: { scope: "workspace", domain: "runtime" }, payload: { kind: "runtime.invalidate", reason: "overflow" } }) })
     },
     /** Publish a delta skipping a position, forcing a gap on the receiver. */
     skipThenLive: (sessionId: string, v: OutputView) => {
       sequencer.publish({ cursor: outputCursor(sessionId), payload: { kind: "output.delta", delta: liveDelta(liveView([])) } })
-      listener?.({ type: "patch", patch: sequencer.publish({ cursor: outputCursor(sessionId), payload: { kind: "output.delta", delta: liveDelta(v, false) } }) })
+      listener({ type: "patch", patch: sequencer.publish({ cursor: outputCursor(sessionId), payload: { kind: "output.delta", delta: liveDelta(v, false) } }) })
     },
     /** Mint two gap deltas (each skipping a position) BEFORE delivering either, so
      *  both reference the same held epoch. Deliver gap1 then gap2. */
@@ -259,19 +262,19 @@ export function fakeRuntimeClient(initial: InitialOutputBlocks = {}) {
       const gap1 = sequencer.publish({ cursor, payload: { kind: "output.delta", delta: liveDelta(v1, false) } })
       sequencer.publish({ cursor, payload: { kind: "output.delta", delta: liveDelta(liveView([])) } })
       const gap2 = sequencer.publish({ cursor, payload: { kind: "output.delta", delta: liveDelta(v2, false) } })
-      listener?.({ type: "patch", patch: gap1 })
-      listener?.({ type: "patch", patch: gap2 })
+      listener({ type: "patch", patch: gap1 })
+      listener({ type: "patch", patch: gap2 })
     },
     reconnect: () => {
       lanes.end()
-      listener?.(LANE_BREAK)
+      listener(LANE_BREAK)
       lanes.open()
     },
     /** Deliver append-content deltas for one session in a single burst, the
      *  streaming shape that trips the pending-patch-count overflow cap. */
     burstAppend: (sessionId: string, count: number, blockId: string) => {
       for (let i = 0; i < count; i++) {
-        listener?.({
+        listener({
           type: "patch",
           patch: sequencer.publish({
             cursor: outputCursor(sessionId),

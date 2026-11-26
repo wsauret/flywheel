@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { Schema } from "effect";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/evidence.js";
-import { JudgeCallFailure, unavailableJudgeAccounting, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/judge.js";
-import { createJsonLinesLedger, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
+import { JudgeCallFailure, unavailableJudgeAccounting, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
+import { createJsonLinesLedger, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { judgeBlocks, type BlockJudgement, type JudgeJob } from "./block-judge.js";
 import type { CampaignExecutionOutcome } from "./campaign-store.js";
 import type { Redaction } from "./judge-inputs.js";
 import type { compareCampaignRoles } from "./campaign-role-evidence.js";
-import { renderCampaignRoleChanges } from "../../src/orchestration/modules/development/benchmark/campaign-role-changes.js";
+import { renderCampaignRoleChanges } from "../../src/orchestration/modules/development/benchmark/campaign/campaign-role-changes.js";
 import { admitChatAbJudge, type ChatAbJudge } from "./pair-judge.js";
 
 function judgeSchemas<Arm extends string>(arms: readonly Arm[]) {

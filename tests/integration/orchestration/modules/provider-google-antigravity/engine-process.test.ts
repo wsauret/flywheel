@@ -8,7 +8,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { existsSync, readdirSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { ATTRIBUTION_WAIT_MS } from "../../../../../src/orchestration/modules/provider-google-antigravity/retry-watch.js"
+import { ATTRIBUTION_WAIT_MS } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/retry-watch.js"
 import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
@@ -53,9 +53,11 @@ describe("the Antigravity engine process", () => {
     // Each tree's model calls Flywheel's tool once; agy asks permission for each call, then calls the tool on its own
     // process's path, and each model step passes the login gate under its own session id.
     engines.fake.script(["one", "two"].map((tree) => ({ kind: "calls", when: `tree ${tree}`, calls: [{ name: "mcp_runtime_echo", args: { text: tree, toolSummary: "echo" } }] }) as const))
+    // Admit each tree's next step as soon as its previous step passes. A timer can lose the race: on Linux the step
+    // after the tool call reaches the gate about 50 ms after the first one.
     for (const { sessionId } of [a, b]) login.gate.grant(sessionId)
-    const regrant = setInterval(() => { for (const { sessionId } of [a, b]) login.gate.grant(sessionId) }, 50)
-    const results = await Promise.all([first.prompt(a.sessionId, text("tree one")), second.prompt(b.sessionId, text("tree two"))]).finally(() => clearInterval(regrant))
+    const stopRegrant = login.gate.onEvent(({ sessionId, kind }) => { if (kind === "consumed") login.gate.grant(sessionId) })
+    const results = await Promise.all([first.prompt(a.sessionId, text("tree one")), second.prompt(b.sessionId, text("tree two"))]).finally(stopRegrant)
     expect(results.map(({ stopReason }) => stopReason)).toEqual(["end_turn", "end_turn"])
     expect({ a: a.calls, b: b.calls }).toEqual({ a: ['echo {"text":"one"}'], b: ['echo {"text":"two"}'] })
     const consumed = (sessionId: string) => login.gateEvents.filter((event) => event.sessionId === sessionId && event.kind === "consumed").length

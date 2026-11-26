@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { join } from "node:path"
-import { WorkflowDefinitionDriftError } from "../../../../src/workflows/vm/definition-identity.js"
-import { currentDefinitionDriftRejection } from "../../../../src/workflows/vm/recovery.js"
-import { WorkflowDefinitionSchema, type WorkflowDefinition, type WorkflowPhase } from "../../../../src/workflows/workflow-schema.js"
+import { WorkflowDefinitionDriftError } from "../../../../src/workflows/control-facts/definition-identity.js"
+import { currentDefinitionDriftRejection } from "../../../../src/workflows/vm/recovery/recovery.js"
+import { WorkflowDefinitionSchema, type WorkflowDefinition, type WorkflowPhase } from "../../../../src/workflows/schema/workflow-schema.js"
 import { acceptanceWorkflow, SqliteVmDriver } from "./_sqlite-vm-driver.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 

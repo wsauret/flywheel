@@ -1,8 +1,8 @@
 import { createRequire } from "node:module"
 
-import { runningSourceSnapshot } from "../src/infra/cli-subprocess.js"
-import type { SourceEntry } from "../src/infra/source-snapshot.js"
-import { installModuleCatalog } from "../src/orchestration/module-catalog.js"
+import { runningSourceSnapshot } from "../src/infra/platform/cli-subprocess.js"
+import type { SourceEntry } from "../src/infra/update/distribution/source-snapshot.js"
+import { installModuleCatalog } from "../src/orchestration/module-contract/module-catalog.js"
 
 /** Runs the Flywheel CLI from the source tree this file belongs to: the
  *  snapshot of a checkout that the dev entry chose, or a checkout whose
@@ -16,8 +16,8 @@ export async function runSourceCli(entry?: SourceEntry): Promise<void> {
   // A process that runs from a snapshot holds it while it runs, so no sweep
   // removes it. The dev entry already holds the snapshot it chose.
   // A process of a live checkout loads nothing for it.
-  if (entry !== undefined) (await import("../src/infra/source-snapshot.js")).adoptSourceEntry(entry)
-  else if (runningSourceSnapshot() !== undefined) (await import("../src/infra/source-snapshot.js")).holdRunningSnapshot()
+  if (entry !== undefined) (await import("../src/infra/update/distribution/source-snapshot.js")).adoptSourceEntry(entry)
+  else if (runningSourceSnapshot() !== undefined) (await import("../src/infra/update/distribution/source-snapshot.js")).holdRunningSnapshot()
   // A source run composes the shipped catalog plus the development modules,
   // which join the half of the catalog that claims no credential provider.
   // The catalog is installed as a loader, resolved synchronously on the first
@@ -26,6 +26,7 @@ export async function runSourceCli(entry?: SourceEntry): Promise<void> {
   // the CLI import: a composition that reads the catalog first locks it.
   const load = createRequire(import.meta.url)
   installModuleCatalog({
+    credentialProviders: () => load("../src/orchestration/credential-provider-modules.js").CREDENTIAL_PROVIDER_MODULES,
     otherModules: () => [
       ...load("../src/orchestration/modules.js").SHIPPED_OTHER_MODULES,
       ...load("../src/orchestration/development-modules.js").DEVELOPMENT_MODULES,

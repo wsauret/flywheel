@@ -2,8 +2,9 @@
 // (`bun run docs:generate`) both read it, so the two cannot disagree. It
 // stays plain data on the startup path; only the module catalog loads lazily.
 
-import type { CliVerbSummary } from "../orchestration/cli-contribution.js"
-import type { FirstPartyModule } from "../orchestration/modules.js"
+import { importComposing } from "./composition/module-registries.js"
+import type { CliVerbSummary } from "../orchestration/module-contract/cli-contribution.js"
+import type { FirstPartyModule } from "../orchestration/module-contract/module-catalog.js"
 import { HEADLESS_FORMS } from "./headless-args.js"
 import { SUBCOMMANDS } from "./subcommands.js"
 
@@ -81,7 +82,7 @@ interface RootHelp {
 /** The root help of a module catalog. A catalog other than the installed one
  *  is the reference generator's or a test's. */
 export async function rootHelp(modules?: readonly FirstPartyModule[]): Promise<RootHelp> {
-  const { installedCliNouns } = await import("../orchestration/modules.js")
+  const { installedCliNouns } = await importComposing(() => import("../orchestration/module-contract/module-catalog.js"))
   return {
     synopsis: ROOT_SYNOPSIS,
     summary: ROOT_SUMMARY,

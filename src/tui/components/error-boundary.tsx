@@ -1,12 +1,12 @@
 /** @jsxImportSource @opentui/solid */
 
 import { useTheme } from "@tui/context/theme"
-import { BOLD } from "@tui/utils/text-attributes"
+import { BOLD } from "@tui/terminal/text-attributes"
 import { createSignal, For, Show } from "solid-js"
-import type { RuntimeClient } from "../../protocol/app-service-types.js"
-import { createTuiErrorReports } from "../modules.js"
-import { Button } from "./button.js"
-import type { Clipboard } from "../utils/clipboard.js"
+import type { RuntimeClient } from "../../protocol/runtime/app-service-types.js"
+import type { TuiErrorReport, TuiErrorReportProps } from "../tui-module.js"
+import { Button } from "./controls/button.js"
+import type { Clipboard } from "../terminal/clipboard.js"
 
 interface ErrorComponentProps {
   error: Error
@@ -17,12 +17,16 @@ interface ErrorComponentProps {
   appService: Pick<RuntimeClient, "dispatch">
   appVersion: string
   sessionId?: string
+  /** Builds the crash reports of the installed modules, so this screen
+   *  depends on no module registry. */
+  createReports: (props: TuiErrorReportProps) => readonly TuiErrorReport[]
 }
 
 export function ErrorComponent(props: ErrorComponentProps) {
   const { theme } = useTheme()
   const [copied, setCopied] = createSignal(false)
-  const reports = createTuiErrorReports({
+  // eslint-disable-next-line solid/reactivity -- createReports is a static factory from the composition root; the reports read the other props through getters
+  const reports = props.createReports({
     get client() { return props.appService },
     get error() { return props.error },
     get version() { return props.appVersion },
@@ -50,7 +54,16 @@ export function ErrorComponent(props: ErrorComponentProps) {
         <text fg={theme.error} attributes={BOLD} flexShrink={0}>Fatal Error</text>
         <Button label={copied() ? "Copied!" : "Copy Report"} onPress={() => { void copyError() }} />
       </box>
-      <For each={reports}>{(report) => <Show when={report.status()}>{(status) => <text fg={report.failed() ? theme.error : theme.textMuted} flexShrink={0}>{status()}</text>}</Show>}</For>
+      <For each={reports}>{(report) => <>
+        <Show when={report.status()}>{(status) => <text fg={report.failed() ? theme.error : theme.textMuted} flexShrink={0}>{status()}</text>}</Show>
+        <Show when={report.question()}>{(question) => <box flexDirection="column" flexShrink={0} gap={1}>
+          <text fg={theme.text} flexShrink={0}>{question()}</text>
+          <box flexDirection="row" flexShrink={0} gap={2}>
+            <Button label="Send reports" disabled={report.busy()} onPress={() => { report.answer(true) }} />
+            <Button label="Don't send" disabled={report.busy()} onPress={() => { report.answer(false) }} />
+          </box>
+        </box>}</Show>
+      </>}</For>
       <box flexDirection="row" flexShrink={0} gap={2}>
         <text fg={theme.textMuted} flexShrink={0}>Use Exit Now to close this crashed TUI</text>
         <Button label="Exit Now" onPress={handleExit} />

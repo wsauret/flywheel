@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { join, sep } from "node:path"
 
 import { releaseWorkspace } from "../../release/lib/workspaces.js"
-import { accountServeSocketPath } from "../../../src/infra/paths.js"
+import { accountServeSocketPath } from "../../../src/infra/platform/files/paths.js"
 
 // The perf gate's work root for a 20-character account name, under a root
 // that does not exist: `/Users/<name>/.cache/flywheel/perf-gate/run-XXXXXX/w`.

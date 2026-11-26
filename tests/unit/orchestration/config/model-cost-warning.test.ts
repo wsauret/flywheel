@@ -1,15 +1,15 @@
 import { parseSchema } from "../../../helpers/schema-assertions.js";
 import { describe, expect, test } from "bun:test";
-import { listModelOptionsForSlot } from "../../../../src/orchestration/config/model-assignments.js";
-import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { listModelOptionsForSlot } from "../../../../src/orchestration/config/models/model-assignments.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema/schema.js";
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
 import { USER_DATA_ROOT, NO_CREDENTIALS } from "./_config-models-fixtures.js";
-import type { SelectedModelRoute } from "../../../../src/orchestration/config/model-assignment-types.js";
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
+import type { SelectedModelRoute } from "../../../../src/orchestration/config/models/model-assignment-types.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/module-contract/module-composition.js";
 import { testProviderSelection } from "../../../helpers/provider-authority.js";
 
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../src/orchestration/config/models/role-selection.js";
 describe("model input costs", () => {
   test("keeps an unpriced runnable route unranked with no displayed zero cost", async () => {
     const config = parseSchema(installedConfigSchema(), { profiles: { default: { roles: { "chat": { model: "gpt-new", effort: "medium" } } } } });

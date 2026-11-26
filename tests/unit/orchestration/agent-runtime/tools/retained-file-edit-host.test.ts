@@ -3,7 +3,7 @@ import * as fs from "node:fs"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
-import { RetainedFileEditAuthority } from "../../../../../src/orchestration/file-edits/retained-file-edit-host.js"
+import { RetainedFileEditAuthority } from "../../../../../src/orchestration/agent-runtime/tools/file-edits/retained-file-edit-host.js"
 
 const isPosix = process.platform !== "win32"
 let workspace: string

@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs"
 
-import type { StartupDirectories } from "../../../../infra/directory-authorities.js"
-import { terminalDeviceStoreFile } from "../../../../infra/paths.js"
-import { createRelayClient, type RelayClient } from "../../../../protocol/modules/remote/relay-client.js"
-import { openTerminalDeviceStore } from "../terminal-device-store.js"
-import { pickerView, presenceSettled } from "../terminal-remote.js"
-import { REMOTE_USAGE } from "./registration.js"
+import type { StartupDirectories } from "../../../../infra/platform/files/directory-authorities.js"
+import { terminalDeviceStoreFile } from "../../../../infra/platform/files/paths.js"
+import type { RelayClient } from "../../../../protocol/modules/remote/relay-client.js"
+import { openTerminalRelayClient } from "../terminal/terminal-device-store.js"
+import { pickerView, presenceSettled } from "../terminal/terminal-remote.js"
+import { REMOTE_USAGE } from "./usage.js"
 
 interface MachinesIo {
   readonly log: (line: string) => void
@@ -70,7 +70,7 @@ export async function runMachines(args: readonly string[], directories: StartupD
 }
 
 async function withClient(directories: StartupDirectories, use: (client: RelayClient) => Promise<void>): Promise<void> {
-  const client = await createRelayClient(await openTerminalDeviceStore(directories.userDataRoot))
+  const client = await openTerminalRelayClient(directories.userDataRoot)
   try {
     await use(client)
   } finally {

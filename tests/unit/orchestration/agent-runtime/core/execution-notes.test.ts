@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { createExecutionNotesHook } from "../../../../../src/orchestration/agent-runtime/execution-notes.js";
+import { createExecutionNotesHook } from "../../../../../src/orchestration/agent-runtime/loop/nudges/execution-notes.js";
 import type { ToolCall } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { NO_CAPABILITY_ACCESS, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "../tools/_fixtures.js";

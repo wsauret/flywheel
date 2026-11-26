@@ -51,22 +51,22 @@
  *    what that installer wrote. Any other file, directory, link, or extra hard
  *    link blocks installation instead of being deleted. */
 
-import { isExecutableFile } from "../../infra/executable-file.js";
+import { isExecutableFile } from "../../infra/platform/executable-file.js";
 import { cpSync, closeSync, existsSync, fsyncSync, openSync, readdirSync, readFileSync, statSync, type Stats } from "node:fs";
 import { randomBytes } from "node:crypto";
 import * as path from "node:path";
 import { Schema } from "effect";
-import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
-import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/descriptor-directory.js";
-import { errorMessage } from "../../infra/error-message.js";
-import { Log } from "../../infra/log.js";
+import type { ContainedDirectory } from "../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/platform/files/descriptor-directory.js";
+import { errorMessage } from "../../infra/diagnostics/error-message.js";
+import { Log } from "../../infra/diagnostics/log.js";
 import type { OwnedCommandRunner } from "../../infra/owned-command.js";
-import { listProcesses, type ProcessRow } from "../../infra/process-table.js";
-import { CURRENT_BUILD_LINK, updateAuthorityDbFile, versionsDir } from "../../infra/paths.js";
+import { listProcesses, type ProcessRow } from "../../infra/process/container/process-table.js";
+import { CURRENT_BUILD_LINK, updateAuthorityDbFile, versionsDir } from "../../infra/platform/files/paths.js";
 import { ActivationError, openActiveBuild, publishActivation } from "../../infra/update/active-build.js";
 import { assertInstallLocation, BUILD_METADATA_FILE, buildExecutable, type BuildIdentity, buildInstallDir, type BuildRef, computeBuildId, decodeBuildMetadata, NATIVE_DIR } from "../../infra/update/build-identity.js";
 import { launcherName } from "../../infra/update/wrapper-directory.js";
-import { isSharingRefusal } from "../../infra/windows-file-replacement.js";
+import { isSharingRefusal } from "../../infra/platform/files/windows/windows-file-replacement.js";
 import { createUpdateAuthority, UPDATE_PROTOCOL_VERSION, type UpdateAuthority } from "../../infra/update/update-authority.js";
 import { compareReleaseVersions } from "../../infra/update/version-order.js";
 import { createRuntimeConfigOwner } from "../config/runtime-config-owner.js";

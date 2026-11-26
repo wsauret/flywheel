@@ -1,17 +1,18 @@
-import { antigravityEnginePath, pinnedAntigravityBytes } from "../../../infra/antigravity-engine.js"
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js"
-import { moduleServiceHandle } from "../../../infra/module-service.js"
+import { antigravityEnginePath } from "../../../infra/providers/antigravity-engine.js"
+import { pinnedAntigravityBytes } from "../../../infra/update/distribution/antigravity-engine-pin.js"
+import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js"
+import { moduleServiceHandle } from "../../../infra/definitions/modules/module-service.js"
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js"
-import type { AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js"
-import type { ModuleServiceInstance, PortableModuleServices } from "../../app-service/module-service-host.js"
-import type { FirstPartyModule } from "../../modules.js"
-import { antigravityDynamicCatalog } from "./catalog.js"
-import type { EngineLaunchOptions, EngineProcess } from "./engine-process.js"
-import { antigravityEngineHost, currentEngineRuntime, openEngineRuntime } from "./engine-runtime.js"
-import { releaseLiveEngines } from "./live-engines.js"
-import { loginGateHook } from "./login-gate.js"
-import { antigravityLoginHealth, createLoginObservations } from "./login-status.js"
-import { antigravityLogins, googleAntigravityLogin } from "./login.js"
+import type { AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js"
+import type { ModuleServiceInstance, PortableModuleServices } from "../../app-service/executor/execution/module-service-host.js"
+import type { FirstPartyModule } from "../../module-contract/module-catalog.js"
+import { antigravityDynamicCatalog } from "./catalog/catalog.js"
+import type { EngineLaunchOptions, EngineProcess } from "./engine/engine-process.js"
+import { antigravityEngineHost, currentEngineRuntime, openEngineRuntime } from "./engine/engine-runtime.js"
+import { releaseLiveEngines } from "./engine/live-engines.js"
+import { loginGateHook } from "./engine/login-gate.js"
+import { antigravityLoginHealth, createLoginObservations } from "./login/login-status.js"
+import { antigravityLogins, googleAntigravityLogin } from "./login/login.js"
 import { GOOGLE_ANTIGRAVITY_CLI_FLAG, GOOGLE_ANTIGRAVITY_LABEL, GOOGLE_ANTIGRAVITY_LOGIN_COMMAND, GOOGLE_ANTIGRAVITY_MODULE_ID, GOOGLE_ANTIGRAVITY_PROVIDER_ID } from "./names.js"
 
 /** What a test replaces. Production uses none of them. */
@@ -88,7 +89,7 @@ function createGoogleAntigravityService(services: Pick<PortableModuleServices, "
 const createClient: AccessProviderFactory = async (build) => {
   const runtime = currentEngineRuntime()
   if (runtime === undefined) throw new RouteUnavailableError(`The ${GOOGLE_ANTIGRAVITY_LABEL} engines do not run in this process.`)
-  const [{ createAntigravityClient }, { credentialForCandidate }] = await Promise.all([import("./client.js"), import("../../agent-runtime/llm/client-factory.js")])
+  const [{ createAntigravityClient }, { credentialForCandidate }] = await Promise.all([import("./client.js"), import("../../agent-runtime/llm/routing/client-factory.js")])
   const credential = credentialForCandidate(build.connection, build.candidate)
   if (credential?.type !== "external") throw new RouteUnavailableError(`The ${GOOGLE_ANTIGRAVITY_LABEL} provider requires a Google Antigravity login`)
   return createAntigravityClient(build, { registry: runtime.registry, loginDir: () => credential.configDir, gate: (loginDir) => runtime.gate(loginDir), observations })

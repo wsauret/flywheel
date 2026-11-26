@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Schema } from "effect";
-import { renderSessionNotesAutoCompactFallback, renderSessionNotesGuidance } from "../../../../src/infra/agent-assets/session-notes.js";
+import { renderSessionNotesAutoCompactFallback, renderSessionNotesGuidance } from "../../../../src/infra/definitions/agent-assets/session-notes.js";
 import { promptCapabilities } from "../../../helpers/prompt-capabilities.js";
 
 const TOKEN_BUDGET_KEYS = ["guidance_message", "auto_compact_fallback_prompt"] as const;

@@ -3,7 +3,7 @@ import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, wri
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { cloneAuthProfileFiles, prepareTuiUatSandbox, removeUatHome } from "../../../../scripts/uat/harness.js"
-import { windowsDirectoryIsOwnerOnly } from "../../../../src/infra/windows-private-directory-acl.js"
+import { windowsDirectoryIsOwnerOnly } from "../../../../src/infra/platform/files/windows/windows-private-directory-acl.js"
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js"
 
 async function entriesAndModes(root: string): Promise<Map<string, number>> {

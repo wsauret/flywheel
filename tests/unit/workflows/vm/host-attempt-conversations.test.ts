@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
 import { createMemoryStore, initialFacts, recordProposal, sequentialWorkflow, testHost } from "./host-test-support.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 

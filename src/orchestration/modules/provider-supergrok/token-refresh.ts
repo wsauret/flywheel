@@ -1,12 +1,12 @@
 
-import { awaitWithAbortSignal } from "../../../infra/abort.js";
+import { awaitWithAbortSignal } from "../../../infra/timing/abort.js";
 import { createHash } from "node:crypto";
-import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
+import { readBoundedJson } from "../../../infra/providers/auth/bounded-json.js";
 import { Redacted } from "effect";
-import { isRecord } from "../../../infra/record.js";
-import type { StoredTokens } from "../../../infra/auth/openai-auth-types.js";
+import { isRecord } from "../../../infra/guards/record.js";
+import type { StoredTokens } from "../../../infra/providers/auth/openai/openai-auth-types.js";
 import { XAI_OAUTH_CLIENT_ID, XAI_TOKEN_URL } from "./auth-types.js";
-import { oauthExpiryFromLifetimeSeconds } from "../../../infra/auth/oauth-expiry.js";
+import { oauthExpiryFromLifetimeSeconds } from "../../../infra/providers/auth/oauth-expiry.js";
 
 /**
  * Expected token-refresh failure surfaced as a typed value. It carries only a
@@ -119,7 +119,7 @@ export async function rotateXaiTokens(current: StoredTokens, signal?: AbortSigna
   return requestRefreshedTokens(current.refreshToken, signal);
 }
 
-async function refreshXaiTokens(current: StoredTokens, dependencies: XaiTokenRefreshDependencies, persistence: import("../../../infra/auth/auth-context.js").OAuthPersistencePolicy, signal?: AbortSignal): Promise<StoredTokens> {
+async function refreshXaiTokens(current: StoredTokens, dependencies: XaiTokenRefreshDependencies, persistence: import("../../../infra/providers/auth/auth-context.js").OAuthPersistencePolicy, signal?: AbortSignal): Promise<StoredTokens> {
   // An access-only credential carries no refresh token, so this refusal comes
   // first: it names the remedy for a headless snapshot, a new snapshot.
   if (persistence === "access-only") throw new XaiTokenRefreshError({ kind: "refresh_forbidden" });
@@ -132,7 +132,7 @@ async function refreshXaiTokens(current: StoredTokens, dependencies: XaiTokenRef
 /** Returns fresh SuperGrok OAuth tokens, refreshing and persisting on expiry.
  *  Callers provide the immutable credential captured for the provider instance
  *  and its candidate-bound compare-and-set capability. */
-export async function ensureFreshXaiTokens(seed: StoredTokens, dependencies: XaiTokenRefreshDependencies, signal?: AbortSignal, persistence: import("../../../infra/auth/auth-context.js").OAuthPersistencePolicy = "profile"): Promise<StoredTokens> {
+export async function ensureFreshXaiTokens(seed: StoredTokens, dependencies: XaiTokenRefreshDependencies, signal?: AbortSignal, persistence: import("../../../infra/providers/auth/auth-context.js").OAuthPersistencePolicy = "profile"): Promise<StoredTokens> {
   signal?.throwIfAborted();
   if (!isExpired(seed)) return seed;
   return refreshXaiTokens(seed, dependencies, persistence, signal);
@@ -142,7 +142,7 @@ export interface XaiTokenAccessor {
   readonly fresh: () => Promise<StoredTokens>;
 }
 
-export function createXaiTokenAccessor(seed: StoredTokens, dependencies: XaiTokenRefreshDependencies, persistence: import("../../../infra/auth/auth-context.js").OAuthPersistencePolicy = "profile"): XaiTokenAccessor {
+export function createXaiTokenAccessor(seed: StoredTokens, dependencies: XaiTokenRefreshDependencies, persistence: import("../../../infra/providers/auth/auth-context.js").OAuthPersistencePolicy = "profile"): XaiTokenAccessor {
   let current = seed;
   let inFlight: Promise<StoredTokens> | undefined;
   return {

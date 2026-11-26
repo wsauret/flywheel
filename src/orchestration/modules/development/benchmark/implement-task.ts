@@ -1,27 +1,30 @@
 import { Result, Schema } from "effect";
 import { cp, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, posix, relative } from "node:path";
-import type { ContainedDirectory } from "../../../../infra/descriptor-directory-contract.js";
-import { openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js";
-import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../infra/owned-command.js";
+import { join, posix } from "node:path";
+import type { ContainedDirectory } from "../../../../infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../../../../infra/platform/files/descriptor-directory.js";
+import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import { containsSecret } from "../../../../infra/redact-secrets.js";
 import { describeOutputIssues, schemaIssues } from "../../../../workflows/output-contract/accept.js";
 import { compileOutput } from "../../../../workflows/output-contract/compile.js";
 import { decodeOutputObject } from "../../../../workflows/output-contract/grammar.js";
 import planContract from "../../../../workflows/workflows/contracts/implementation-plan.json" with { type: "json" };
-import { bytesIdentity, directoryIdentity, structuredIdentity } from "./content-identity.js";
-import { containedPath, realDirectoryUnder, realFileUnder } from "./paths.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "./campaign/content-identity.js";
+import { containedPath, realDirectoryUnder, realFileUnder } from "./campaign/paths.js";
 import {
+  initSandboxRepository,
   requireCompleteSandboxOutput,
+  requireSandboxSuccess,
   runCheckedSandboxCommand,
   runSandboxCommand,
   SANDBOX_HOME_DIR,
+  type CellEvidence,
   type SandboxCommandOptions,
 } from "./sandbox-command.js";
-import { objectValue, parseImplementSandbox, parseManifestPoints, parseNativePath, stringValue, type ImplementManifest, type ImplementSandboxSpec, type ImplementTaskObject } from "./task-schema.js";
-import { retainImplementStore, retainNativeGradeFailure, type ImplementEvidence } from "./implement-evidence.js";
-import { materializeCommitSnapshot } from "./snapshot-workspace.js";
+import { objectValue, parseImplementSandbox, parseManifestPoints, parseNativePath, stringValue, type ImplementManifest, type ImplementSandboxSpec, type ImplementTaskObject } from "./tasks/task-schema.js";
+import { retainImplementStore, retainNativeGradeFailure } from "./execution/implement-evidence.js";
+import { materializeCommitSnapshot } from "./execution/snapshot-workspace.js";
 
 /** The direct persona harness names this gitignored plan file in its prompt. */
 export const PLAN_FILE = ".bench-plan.json";
@@ -251,14 +254,14 @@ function openSandboxAuthority(dir: string): ContainedDirectory {
   return authority;
 }
 
-async function materializeSandboxSource(projectRoot: string, task: BenchmarkSandboxTask, dir: string, run: OwnedCommandRunner): Promise<ContainedDirectory> {
+async function materializeSandboxSource(projectRoot: string, task: BenchmarkSandboxTask, dir: string, run: OwnedCommandRunner, evidence: CellEvidence | undefined): Promise<ContainedDirectory> {
   if (task.kind === "native") return openSandboxAuthority(dir);
   const sandbox = task.sandbox;
   if (!("commit" in sandbox)) {
     await cp(await realDirectoryUnder(task.taskDir, join(task.taskDir, sandbox.fixtureRepo), "fixtureRepo"), dir, { recursive: true });
     return openSandboxAuthority(dir);
   }
-  await materializeCommitSnapshot(projectRoot, sandbox, dir, run);
+  await materializeCommitSnapshot(projectRoot, sandbox, dir, run, evidence);
   return openSandboxAuthority(dir);
 }
 
@@ -276,48 +279,50 @@ function writeHarnessFiles(directory: ContainedDirectory, plan: ImplementTaskObj
   if (ignoreError) throw ignoreError;
 }
 
-async function commitBaseline(dir: string, run: OwnedCommandRunner): Promise<void> {
-  await runCheckedSandboxCommand(run, ["git", "add", "-A"], { cwd: dir, sandboxDir: dir });
-  await runCheckedSandboxCommand(run, ["git", "-c", "user.email=bench@flywheel.dev", "-c", "user.name=bench", "commit", "-qm", "fixture", "--allow-empty"], { cwd: dir, sandboxDir: dir });
-  await runCheckedSandboxCommand(run, ["git", "update-ref", BASELINE_REF, "HEAD"], { cwd: dir, sandboxDir: dir });
+async function commitBaseline(sandbox: SandboxCommandOptions, run: OwnedCommandRunner): Promise<void> {
+  const options = { ...sandbox, step: "Baseline commit" };
+  await runCheckedSandboxCommand(run, ["git", "add", "-A"], options);
+  await runCheckedSandboxCommand(run, ["git", "-c", "user.email=bench@flywheel.dev", "-c", "user.name=bench", "commit", "-qm", "fixture", "--allow-empty"], options);
+  await runCheckedSandboxCommand(run, ["git", "update-ref", BASELINE_REF, "HEAD"], options);
 }
 
-async function runSetupCommands(task: BenchmarkSandboxTask, dir: string, run: OwnedCommandRunner): Promise<void> {
+async function runSetupCommands(task: BenchmarkSandboxTask, sandbox: SandboxCommandOptions, run: OwnedCommandRunner): Promise<void> {
   if (task.kind === "native") return;
   for (const command of task.sandbox.setup ?? []) {
     if (!command[0]) throw new Error(`Empty setup command for ${task.id}`);
-    await runCheckedSandboxCommand(run, command, { cwd: dir, sandboxDir: dir });
+    await runCheckedSandboxCommand(run, command, { ...sandbox, step: "Setup command" });
   }
 }
 
 /** Create a fresh sandbox and commit its baseline. Native adapters prepare before
  * the baseline; plan fixtures retain their post-baseline setup commands.
- * Failed preparation retains state when evidence is supplied, removes the workspace,
- * and throws. Evidence retention failures do not change the preparation outcome.
+ * Failed preparation retains state and the failed command's output when evidence is supplied,
+ * removes the workspace, and throws. Evidence retention failures do not change the preparation outcome.
  * The workspace folder holds the sandbox; it defaults to the system temporary folder. */
 export async function provisionTaskSandbox(projectRoot: string, task: BenchmarkSandboxTask, run: OwnedCommandRunner,
-  options: { readonly evidence?: ImplementEvidence; readonly workspaceRoot?: string } = {}): Promise<string> {
+  options: { readonly evidence?: CellEvidence; readonly workspaceRoot?: string } = {}): Promise<string> {
   const { evidence, workspaceRoot = tmpdir() } = options;
   const dir = await mkdtemp(join(workspaceRoot, "flywheel-bench-"));
+  const sandbox: SandboxCommandOptions = { cwd: dir, sandboxDir: dir, evidence };
   try {
-    const authority = await materializeSandboxSource(projectRoot, task, dir, run);
+    const authority = await materializeSandboxSource(projectRoot, task, dir, run, evidence);
     try {
       if (task.kind === "native") {
-        requireNativeAdapterSuccess("prepare", await runNativeAdapter(task, "prepare", dir, [], run));
+        await runNativeAdapter(task, "prepare", dir, [], run, evidence);
         // The adapter owns source preparation, not Git history.
         if (await Bun.file(join(dir, ".git", "HEAD")).exists()) throw new Error("Native prepare must not create a Git baseline");
         const ignoreError = authority.writeFile(".gitignore", `${authority.readFile(".gitignore", MAX_HARNESS_FILE_BYTES)?.toString("utf8") ?? ""}\n.flywheel/\n${SANDBOX_HOME_DIR}/\n`);
         if (ignoreError) throw ignoreError;
       }
       // Before initialization, Git can discover an enclosing checkout and silently skip this sandbox's patch.
-      await runCheckedSandboxCommand(run, ["git", "init", "-q"], { cwd: dir, sandboxDir: dir });
+      await initSandboxRepository(run, { ...sandbox, step: "Sandbox repository" });
       if (task.kind !== "native" && task.sandbox.patch) {
         const patch = await realFileUnder(task.taskDir, join(task.taskDir, task.sandbox.patch), "patch");
-        await runCheckedSandboxCommand(run, ["git", "apply", "--whitespace=nowarn"], { cwd: dir, sandboxDir: dir, stdin: await Bun.file(patch).text() });
+        await runCheckedSandboxCommand(run, ["git", "apply", "--whitespace=nowarn"], { ...sandbox, step: "Fixture patch", stdin: await Bun.file(patch).text() });
       }
       if (task.kind !== "native") writeHarnessFiles(authority, task.plan);
-      await commitBaseline(dir, run);
-      if (task.kind !== "native") await runSetupCommands(task, dir, run);
+      await commitBaseline(sandbox, run);
+      if (task.kind !== "native") await runSetupCommands(task, sandbox, run);
     } finally {
       authority.close();
     }
@@ -371,10 +376,10 @@ async function taggedCacheFolders(sandbox: SandboxCommandOptions, run: OwnedComm
 /** Capture all candidate changes against the baseline, including candidate commits.
  * Plan fixtures run restored acceptance tests; native adapters grade the patch
  * in a separate fresh workspace. Infrastructure failures throw instead of scoring.
- * Optional evidence retains native command failures without changing their outcome. */
-export async function captureImplementation(task: ImplementTaskSpec, sandboxDir: string, run: OwnedCommandRunner, evidence?: ImplementEvidence): Promise<CapturedImplementation> {
+ * Optional evidence retains the output of a failed command without changing its outcome. */
+export async function captureImplementation(task: ImplementTaskSpec, sandboxDir: string, run: OwnedCommandRunner, evidence?: CellEvidence): Promise<CapturedImplementation> {
   const harnessPaths = task.kind === "native" ? [".flywheel", SANDBOX_HOME_DIR] : [".flywheel", PLAN_FILE, SANDBOX_HOME_DIR, "acceptance"];
-  const sandbox = { cwd: sandboxDir, sandboxDir } as const;
+  const sandbox: SandboxCommandOptions = { cwd: sandboxDir, sandboxDir, step: "Capture", evidence };
   await runCheckedSandboxCommand(run, ["git", "add", "-A"], sandbox);
   const excludes = [
     ...[...harnessPaths, PYTHON_BYTECODE_CACHES].map(path => ({ magic: "glob", path })),
@@ -415,35 +420,32 @@ const NativeGradeSchema = Schema.Struct({
 });
 const decodeNativeGrade = Schema.decodeUnknownSync(NativeGradeSchema, { onExcessProperty: "error" });
 
-async function runNativeAdapter(task: Pick<NativeImplementTaskSpec, "taskDir" | "native">, action: "prepare" | "grade", workspace: string, artifacts: readonly string[], run: OwnedCommandRunner): Promise<OwnedCommandResult> {
-  return runSandboxCommand(run, [...task.native.command, action, task.taskDir, workspace, ...artifacts], {
-    cwd: task.taskDir, sandboxDir: workspace, timeoutMs: task.native.timeoutMs,
-  });
-}
-
-function requireNativeAdapterSuccess(action: "prepare" | "grade", result: OwnedCommandResult, evidence?: ImplementEvidence): void {
-  if (result.exitCode !== 0 || result.timedOut) {
-    const location = evidence ? `; evidence: ${relative(evidence.resultsDir, evidence.directory)}` : "";
-    throw new Error(`Native ${action} failed: ${result.timedOut ? "timed out" : `exit code ${result.exitCode}`}${location}`);
-  }
+/** Run the trusted adapter and require it to succeed. Its output can exceed the retention bound, so unlike a
+ * checked command it is not required to be complete. */
+async function runNativeAdapter(task: Pick<NativeImplementTaskSpec, "taskDir" | "native">, action: "prepare" | "grade", workspace: string, artifacts: readonly string[], run: OwnedCommandRunner,
+  evidence: CellEvidence | undefined): Promise<void> {
+  const command = [...task.native.command, action, task.taskDir, workspace, ...artifacts];
+  const result = await runSandboxCommand(run, command, { cwd: task.taskDir, sandboxDir: workspace, timeoutMs: task.native.timeoutMs });
+  await requireSandboxSuccess(command, result, { step: `Native ${action}`, evidence });
 }
 
 /** Run the trusted adapter in a fresh workspace. A semantic failure is a valid
  * grade; command failures and invalid reports throw and never become scores.
  * The adapter reconstructs pinned source and original tests from taskDir, then
  * applies captured.patch. It receives: grade, taskDir, workspace, patch, report. */
-export async function gradeNativeImplementation(task: NativeImplementTaskSpec, diff: string, run: OwnedCommandRunner, evidence?: ImplementEvidence): Promise<Pick<CapturedImplementation, "acceptance" | "nativeGrade">> {
+export async function gradeNativeImplementation(task: NativeImplementTaskSpec, diff: string, run: OwnedCommandRunner, evidence?: CellEvidence): Promise<Pick<CapturedImplementation, "acceptance" | "nativeGrade">> {
   const workspace = await mkdtemp(join(tmpdir(), "flywheel-bench-grade-"));
   const artifacts = await mkdtemp(join(tmpdir(), "flywheel-bench-grade-artifacts-"));
   try {
     const patch = join(artifacts, "captured.patch");
     const report = join(artifacts, "result.json");
     await Bun.write(patch, diff);
-    const grade = await runNativeAdapter(task, "grade", workspace, [patch, report], run);
-    if (evidence && (grade.exitCode !== 0 || grade.timedOut)) {
-      await retainNativeGradeFailure(evidence.directory, diff, grade);
+    try {
+      await runNativeAdapter(task, "grade", workspace, [patch, report], run, evidence);
+    } catch (error) {
+      if (evidence) await retainNativeGradeFailure(evidence.directory, diff);
+      throw error;
     }
-    requireNativeAdapterSuccess("grade", grade, evidence);
     const resultPath = await realFileUnder(artifacts, report, "native grade report");
     const nativeGrade = await Bun.file(resultPath).text();
     let result;

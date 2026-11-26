@@ -9,8 +9,8 @@ import {
   recordProviderUsage,
   type ConversationDedup,
   type ProviderRequestAuditContext,
-} from "../../session/provider-request-audit-recorder.js";
-import type { ProviderRequestAuditFact } from "../../session/provider-request-audit-facts.js";
+} from "../../session/diagnostics/provider-request-audit-recorder.js";
+import type { ProviderRequestAuditFact } from "../../session/runtime-facts/provider-request-audit-facts.js";
 import {
   providerRequestAuditOptions,
   type PromptHistoryLowering,
@@ -24,14 +24,15 @@ import {
   type ProviderStreamSummary,
   type ProviderStreamTelemetryCompletedInput,
   type ProviderStreamTelemetryEventInput,
-} from "../../session/provider-request-audit-types.js";
-import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
-import type { ReasoningEffort } from "../../../infra/llm/models.js";
-import type { CacheRetention, ConversationMessage, ProviderRequestAttribution } from "./types.js";
-import type { PromptKind } from "../system-prompt.js";
-import type { ModelInteractionProfileId } from "../model-interaction-profile.js";
-import type { SessionFactWriter } from "../../session/session-fact-writer.js";
-import type { DurableOwner } from "../../../infra/durable-owner.js";
+  type ModelInteractionProfileId,
+} from "../../session/runtime-facts/provider-request-audit-types.js";
+import type { ProviderRequestOptions } from "../../../infra/providers/llm/access/provider-options.js";
+import type { ReasoningEffort } from "../../../infra/providers/llm/models/models.js";
+import type { CacheRetention, ProviderRequestAttribution } from "./types.js";
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js";
+import type { PromptKind } from "../request/prompt/system-prompt.js";
+import type { SessionFactWriter } from "../../session/persistence/session-fact-writer.js";
+import type { DurableOwner } from "../../../infra/substrate/facts/durable-owner.js";
 
 export interface ProviderRequestAuditHandle {
   requestId: string;
