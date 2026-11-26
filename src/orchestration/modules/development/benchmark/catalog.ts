@@ -359,6 +359,8 @@ export interface BenchmarkCatalog {
   readonly recordsRoot: string;
   /** The record file of one campaign. */
   recordsFile(persona: string, stamp: string): string;
+  /** The tracked folder of results pages, one generated page per persona with records (ARCH-DIRECTORIES-023). */
+  readonly tablesRoot: string;
 }
 
 export function createBenchmarkCatalog(projectRoot: string, options: {
@@ -406,5 +408,6 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
     resultsDirById: (resultId) => containedPath(resultsRoot, resultId),
     recordsRoot,
     recordsFile: (persona, stamp) => containedPath(recordsRoot, persona, `${stamp}.jsonl`),
+    tablesRoot: containedPath(projectRoot, "bench", "ab-persona", "tables"),
   };
 }

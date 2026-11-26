@@ -16,7 +16,7 @@ import { combineBenchmarkAccounting } from "../accounting/report-accounting.js";
 // whole catalog corpus.
 
 /** One current task of a persona's corpus. */
-interface RankingTask {
+export interface RankingTask {
   readonly id: string;
   readonly contentIdentity: string;
   /** Seeded defects of a review fixture (0 on a control) or key facts of a research task. Undefined marks a task
@@ -33,7 +33,7 @@ export interface RankingCorpus {
   /** The persona's ranking suite: coverage, pooling, and averaging read these tasks only. */
   readonly tasks: readonly RankingTask[];
   /** Current catalog tasks outside the suite, whose cells stay out of the ranking. */
-  readonly outsideSuite: ReadonlySet<string>;
+  readonly outsideSuite: readonly RankingTask[];
 }
 
 /** The tasks a persona ranks on, for a persona that does not rank on its whole catalog corpus. The catalog keeps
@@ -51,16 +51,13 @@ export function rankingCorpus(persona: string, mode: BenchmarkMode, tasks: reado
   const missing = suite?.filter((id) => !tasks.some((task) => task.id === id)) ?? [];
   if (missing.length > 0) throw new Error(`The ranking suite of ${persona} names tasks the catalog does not hold: ${missing.join(", ")}`);
   const inSuite = (id: string) => suite === undefined || suite.includes(id);
-  return {
-    persona, mode,
-    outsideSuite: new Set(tasks.flatMap(({ id }) => inSuite(id) ? [] : [id])),
-    tasks: tasks.filter(({ id }) => inSuite(id)).map((task) => ({
-      id: task.id,
-      contentIdentity: task.contentIdentity,
-      opportunities: "snapshot" in task ? task.answerKey?.facts.length : "fixtureDir" in task ? task.manifest.defects.length : 0,
-      ...("candidateIdentity" in task ? { implementation: { candidateIdentity: task.candidateIdentity, graderIdentity: task.graderIdentity } } : {}),
-    })),
-  };
+  const rankingTasks: RankingTask[] = tasks.map((task) => ({
+    id: task.id,
+    contentIdentity: task.contentIdentity,
+    opportunities: "snapshot" in task ? task.answerKey?.facts.length : "fixtureDir" in task ? task.manifest.defects.length : 0,
+    ...("candidateIdentity" in task ? { implementation: { candidateIdentity: task.candidateIdentity, graderIdentity: task.graderIdentity } } : {}),
+  }));
+  return { persona, mode, outsideSuite: rankingTasks.filter(({ id }) => !inSuite(id)), tasks: rankingTasks.filter(({ id }) => inSuite(id)) };
 }
 
 export type RankingFamily = "openai" | "anthropic";
@@ -140,7 +137,7 @@ export interface RoleRanking {
 }
 
 /** Per mode: the false measure's weight in the score, its filter slack over the role's minimum, and its labels. */
-const RULE = {
+export const RULE = {
   reviewer: { weight: 5, slack: 0.6, quality: "recall %", false: "false P1/P2 per review" },
   research: { weight: 1, slack: 10, quality: "fact recall %", false: "trap rate %" },
   implement: { weight: 1, slack: 10, quality: "hidden-test pass %", false: "followed false claims %" },
@@ -179,7 +176,7 @@ interface PooledCell extends CellPlace {
 }
 
 /** Strings in code-unit order, as `Array.prototype.sort` orders them by default. */
-function byCodeUnit(a: string, b: string): number {
+export function byCodeUnit(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
@@ -187,7 +184,7 @@ function sameJudge(a: RecordJudge, b: RecordJudge): boolean {
   return a.model === b.model && a.effort === b.effort;
 }
 
-function median(values: readonly number[]): number {
+export function median(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   // The middle value of an odd count, or the two middle values of an even count.
   return mean(sorted.slice((sorted.length - 1) >> 1, (sorted.length >> 1) + 1));
@@ -213,12 +210,19 @@ function taskChange(campaign: CampaignRecords, cell: CellLine, task: RankingTask
   return regradedGrade(campaign, cell, task) ? undefined : "task grader changed (--regrade grades it with the current grader)";
 }
 
+/** Why a cell no longer answers its corpus task, in or outside the suite: the task left the corpus, or it changed
+ *  in a way that no current grade covers. Undefined while the cell is current. */
+export function staleTask(cell: CellLine, campaign: CampaignRecords, corpus: RankingCorpus | undefined): string | undefined {
+  const task = corpus?.tasks.find(({ id }) => id === cell.task) ?? corpus?.outsideSuite.find(({ id }) => id === cell.task);
+  return task ? taskChange(campaign, cell, task) : "task removed from corpus";
+}
+
 /** Where a cell pools in a ranking under `judge`, or why it cannot. */
 export function cellStanding(cell: CellLine, campaign: CampaignRecords, corpus: RankingCorpus | undefined, judge: RecordJudge, version: string): StaleCell | CellPlace {
   const { model, effort } = cell;
   if (model === undefined || effort === undefined) return { reason: "no pinned model" };
   const task = corpus?.tasks.find(({ id }) => id === cell.task);
-  if (corpus?.outsideSuite.has(cell.task)) return { reason: "task outside the ranking suite" };
+  if (corpus?.outsideSuite.some(({ id }) => id === cell.task)) return { reason: "task outside the ranking suite" };
   if (!corpus || !task) return { reason: "task removed from corpus" };
   const changed = taskChange(campaign, cell, task);
   if (changed) return { reason: changed };
@@ -461,7 +465,7 @@ function rankRole(role: string, campaigns: readonly CampaignRecords[], input: Ra
   return {
     role, entry: input.entryOf(role), mode, judge,
     otherJudges: [...otherJudges].map(([label, cells]) => ({ judge: label, cells })).sort((a, b) => a.judge.localeCompare(b.judge)),
-    corpora: corpora.map((corpus) => ({ persona: corpus.persona, tasks: corpus.tasks.filter(scorable).length, outsideSuite: corpus.outsideSuite.size })),
+    corpora: corpora.map((corpus) => ({ persona: corpus.persona, tasks: corpus.tasks.filter(scorable).length, outsideSuite: corpus.outsideSuite.length })),
     guidance: [...guidance.values()],
     settings, thresholds, incomplete, retry, notRanked,
     notPooled: [...notPooledCounts.values()],
@@ -494,38 +498,37 @@ function notPooledTable(rows: readonly NotPooled[]): string[] {
   return ["Not pooled:", "", "| Persona | Campaign | Cells | Reason |", "|---|---|---:|---|", ...rows.map((row) => `| ${row.persona} | ${row.stamp} | ${row.cells} | ${row.reason}${row.command ? ` (\`${row.command}\`)` : ""} |`)];
 }
 
-/** The ranking as Markdown: per role, its inputs, the table, what it left out and why, and the policy it implies. */
-export function renderRanking(rankings: readonly (RoleRanking | UnpooledRole)[]): string {
-  const out: string[] = [];
-  for (const ranking of rankings) {
-    if (!("settings" in ranking)) {
-      out.push(`## ${ranking.role}`, "", ranking.judge ? `No recorded cell of this role can be pooled under ${judgeLabel(ranking.judge)}.` : "No judge has scored a current cell of this role; each campaign's own judge states the reasons below.", "", ...notPooledTable(ranking.notPooled), "");
-      continue;
-    }
-    const rule = RULE[ranking.mode];
-    const cost = (setting: RankedSetting) => `${setting.costLowerBound ? ">= " : ""}$${fixed(setting.cost, 3)}${setting.costLowerBound ? ` (${setting.partlyUnpricedCells} of ${setting.cells} cells partly unpriced)` : ""}`;
-    out.push(
-      `## ${ranking.role}`,
-      "",
-      `Judge: ${judgeLabel(ranking.judge)}${ranking.otherJudges.length > 0 ? ` (other judges in these records: ${ranking.otherJudges.map(({ judge, cells }) => `${judge} ${cells} scores`).join(", ")})` : ""}`,
-      `Corpora: ${ranking.corpora.map(({ persona, tasks, outsideSuite }) => `${persona} (${tasks} tasks${outsideSuite > 0 ? ` of ${tasks + outsideSuite}: its ranking suite` : ""})`).join(", ")}${ranking.corpora.length > 1 ? ", averaged with equal weight" : ""}`,
-      `Persona guidance: ${ranking.guidance.map(({ persona, identity, cells }) => `${persona} ${identity.slice(0, 8)} (${cells} cells)`).join(", ")}`,
-      `Filters: ${rule.quality} >= ${fixed(ranking.thresholds.quality, 1)}, ${rule.false} <= ${fixed(ranking.thresholds.false, 2)}. Score = quality - ${rule.weight} x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.`,
-      "",
-      `| Setting | Family | Tier | ${rule.quality} | ${rule.false} | Cost/cell | Median latency | Score | Filter | Cells |`,
-      "|---|---|---|---:|---:|---:|---:|---:|---|---:|",
-      ...ranking.settings.map((setting) => `| ${setting.setting} | ${setting.family ?? "other"} | ${setting.tier ?? "unpriced"} | ${fixed(setting.quality, 1)} | ${fixed(setting.false, 2)} | ${cost(setting)} | ${fixed(setting.latencySeconds, 0)}s | ${fixed(setting.score, 1)} | ${setting.filter} | ${setting.cells}${setting.timedOutCells > 0 ? ` (${setting.timedOutCells} timed out)` : ""} |`),
-      ...ranking.settings.some((setting) => setting.costLowerBound) ? ["", "A lower-bound cost enters the score as its bound, which can only flatter that setting."] : [],
-      ...ranking.incomplete.length > 0 ? ["", "Incomplete (cells to run next):", ...ranking.incomplete.map(({ setting, missing }) => `- ${setting}: ${missing.join("; ")}`)] : [],
-      ...ranking.retry.length > 0 ? ["", "Cells to retry (failed with no result; a resume runs them again):", ...ranking.retry.map(({ setting, task, repeat, persona, stamp, reason }) => `- ${setting} ${task} #${repeat} (${persona} ${stamp}): ${reason}`)] : [],
-      ...ranking.notRanked.length > 0 ? ["", "Not ranked:", ...ranking.notRanked.map(({ setting, reason }) => `- ${setting}: ${reason}`)] : [],
-      ...ranking.notPooled.length > 0 ? ["", ...notPooledTable(ranking.notPooled)] : [],
-      "", "Policy:", "", "```",
-      `${ranking.role} (ROLE_MODEL_DEFAULTS entry: ${ranking.entry}${ranking.entry === ranking.role ? "" : ", inherited"})`,
-      ...ranking.picks.map((pick, index) => `  ${index + 1}. ${pick.family} ${pick.setting.model} ${pick.setting.effort}${pick.passed ? "" : " (no setting of this family passes the filters)"}`),
-      `  fallback: ${ranking.fallback ? `${ranking.fallback.tier}, ${ranking.fallback.effort}` : "none (no setting passes the filters)"}`,
-      `  evidence: ${ranking.evidence.join(", ")}`, "```", "",
-    );
+/** One role's ranking as Markdown lines, without its heading: its inputs, the table, what it left out and why, and
+ *  the policy it implies. */
+export function renderRoleRanking(ranking: RoleRanking | UnpooledRole): string[] {
+  if (!("settings" in ranking)) {
+    return [ranking.judge ? `No recorded cell of this role can be pooled under ${judgeLabel(ranking.judge)}.` : "No judge has scored a current cell of this role; each campaign's own judge states the reasons below.", "", ...notPooledTable(ranking.notPooled), ""];
   }
-  return out.join("\n");
+  const rule = RULE[ranking.mode];
+  const cost = (setting: RankedSetting) => `${setting.costLowerBound ? ">= " : ""}$${fixed(setting.cost, 3)}${setting.costLowerBound ? ` (${setting.partlyUnpricedCells} of ${setting.cells} cells partly unpriced)` : ""}`;
+  return [
+    `Judge: ${judgeLabel(ranking.judge)}${ranking.otherJudges.length > 0 ? ` (other judges in these records: ${ranking.otherJudges.map(({ judge, cells }) => `${judge} ${cells} scores`).join(", ")})` : ""}`,
+    `Corpora: ${ranking.corpora.map(({ persona, tasks, outsideSuite }) => `${persona} (${tasks} tasks${outsideSuite > 0 ? ` of ${tasks + outsideSuite}: its ranking suite` : ""})`).join(", ")}${ranking.corpora.length > 1 ? ", averaged with equal weight" : ""}`,
+    `Persona guidance: ${ranking.guidance.map(({ persona, identity, cells }) => `${persona} ${identity.slice(0, 8)} (${cells} cells)`).join(", ")}`,
+    `Filters: ${rule.quality} >= ${fixed(ranking.thresholds.quality, 1)}, ${rule.false} <= ${fixed(ranking.thresholds.false, 2)}. Score = quality - ${rule.weight} x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.`,
+    "",
+    `| Setting | Family | Tier | ${rule.quality} | ${rule.false} | Cost/cell | Median latency | Score | Filter | Cells |`,
+    "|---|---|---|---:|---:|---:|---:|---:|---|---:|",
+    ...ranking.settings.map((setting) => `| ${setting.setting} | ${setting.family ?? "other"} | ${setting.tier ?? "unpriced"} | ${fixed(setting.quality, 1)} | ${fixed(setting.false, 2)} | ${cost(setting)} | ${fixed(setting.latencySeconds, 0)}s | ${fixed(setting.score, 1)} | ${setting.filter} | ${setting.cells}${setting.timedOutCells > 0 ? ` (${setting.timedOutCells} timed out)` : ""} |`),
+    ...ranking.settings.some((setting) => setting.costLowerBound) ? ["", "A lower-bound cost enters the score as its bound, which can only flatter that setting."] : [],
+    ...ranking.incomplete.length > 0 ? ["", "Incomplete (cells to run next):", ...ranking.incomplete.map(({ setting, missing }) => `- ${setting}: ${missing.join("; ")}`)] : [],
+    ...ranking.retry.length > 0 ? ["", "Cells to retry (failed with no result; a resume runs them again):", ...ranking.retry.map(({ setting, task, repeat, persona, stamp, reason }) => `- ${setting} ${task} #${repeat} (${persona} ${stamp}): ${reason}`)] : [],
+    ...ranking.notRanked.length > 0 ? ["", "Not ranked:", ...ranking.notRanked.map(({ setting, reason }) => `- ${setting}: ${reason}`)] : [],
+    ...ranking.notPooled.length > 0 ? ["", ...notPooledTable(ranking.notPooled)] : [],
+    "", "Policy:", "", "```",
+    `${ranking.role} (ROLE_MODEL_DEFAULTS entry: ${ranking.entry}${ranking.entry === ranking.role ? "" : ", inherited"})`,
+    ...ranking.picks.map((pick, index) => `  ${index + 1}. ${pick.family} ${pick.setting.model} ${pick.setting.effort}${pick.passed ? "" : " (no setting of this family passes the filters)"}`),
+    `  fallback: ${ranking.fallback ? `${ranking.fallback.tier}, ${ranking.fallback.effort}` : "none (no setting passes the filters)"}`,
+    `  evidence: ${ranking.evidence.join(", ")}`, "```", "",
+  ];
+}
+
+/** The ranking as Markdown: per role, its heading and `renderRoleRanking`. */
+export function renderRanking(rankings: readonly (RoleRanking | UnpooledRole)[]): string {
+  return rankings.flatMap((ranking) => [`## ${ranking.role}`, "", ...renderRoleRanking(ranking)]).join("\n");
 }

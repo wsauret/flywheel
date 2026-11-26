@@ -207,6 +207,7 @@ export async function main(
     try {
       const { graded, current, skipped } = await regradeRecords(catalog, ownedCommandRunner(scope));
       console.log(`Regraded ${graded} implementer cells; ${current} already had the current grade; ${skipped} skipped (task removed, or changed what the candidate answered).`);
+      if (graded > 0) await publishPages(catalog);
     } finally {
       await scope.close();
       await supervisor.dispose();
@@ -251,11 +252,20 @@ export async function main(
       concurrency: args.concurrency,
       sourceIdentity: await runningSourceIdentity([join(REPO_ROOT, "bench", "shared")]),
     });
-    if (outcome.status === "completed") console.log(outcome.report);
-    else process.exitCode = 1;
+    if (outcome.status === "completed") {
+      console.log(outcome.report);
+      await publishPages(catalog);
+    } else process.exitCode = 1;
   } finally {
     process.off("SIGINT", onInterrupt);
   }
+}
+
+/** Regenerate the results pages after a command appended records (ARCH-DIRECTORIES-023); commit them with the records. */
+async function publishPages(catalog: ReturnType<typeof createBenchmarkCatalog>): Promise<void> {
+  const { publishResultsPages } = await import("../../src/orchestration/modules/development/benchmark/persona/results-pages.js");
+  const written = await publishResultsPages(catalog);
+  console.error(written.length === 0 ? "Results pages already match the records." : `Results pages regenerated; commit them with the records:\n${written.join("\n")}`);
 }
 
 /** Score the current, unscored record cells of `persona` with the `--judge` judge (ARCH-DIRECTORIES-020). */
@@ -299,6 +309,7 @@ async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeo
   try {
     const outcome = await rejudgeRecords({ catalog, persona, judge: requested, openJudge, signal: controller.signal });
     console.log(`Rejudged ${persona} with ${requested.model}:${requested.effort}: ${outcome.scored} scored, ${outcome.failed} failed of ${outcome.pending} pending. Judge evidence: ${outcome.evidenceDirectory}`);
+    if (outcome.scored > 0) await publishPages(catalog);
     if (outcome.failed > 0 || controller.signal.aborted) process.exitCode = 1;
   } finally {
     process.off("SIGINT", onInterrupt);

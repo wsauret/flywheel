@@ -123,3 +123,10 @@ Each benchmarked persona ranks on one committed suite of tasks: its whole catalo
 
 Because: A failure that a ranking leaves out flatters the setting that failed.
 Not: Coverage against every catalog task, or a timed-out cell that is retried until it passes.
+
+## ARCH-DIRECTORIES-023: Each benchmarked role has a results page generated from its records
+
+Each benchmarked role has one committed results page generated from the record files alone: its rankings, every recorded cell by task and setting, per-setting totals, coverage gaps, and the campaigns behind it. Every command that appends records regenerates the pages it affects, and lint fails a page that differs from the records.
+
+Because: Results that a reader must rebuild by hand from raw records are results nobody reads.
+Not: A hand-maintained results table, which drifts from the records.

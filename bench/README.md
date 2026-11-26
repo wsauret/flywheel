@@ -130,7 +130,15 @@ bun run --conditions=browser bench/ab-persona/bench.ts --report <historical-resu
 
 Every completed persona campaign that has a judge writes its record file `ab-persona/records/<persona>/<stamp>.jsonl`, which is committed: a campaign header, one line per successful cell (task content identity, output text or diff, accounting, duration, and source), one line per implementer cell that hit its time limit (its limit as duration, its spend, and no diff), one line per absolute score of a cell by one judge, one line per regrade of an implementer cell, and one failure line per other attempt that settled without a result (its attempt id and reason). The full native grader report stays in the local results folder. Run, resume, and rescore append only the lines the file does not hold. The writer replaces the name of another coding agent in candidate output with "another coding agent" when the checkout has the maintainer's harness-name lint. Pair verdicts stay in the campaign's `report.md`.
 
+Each persona with records has one generated results page, `ab-persona/tables/<persona>.md` (ARCH-DIRECTORIES-023). It holds the role's ranking under each judge that scored a current cell of the persona, every recorded cell by task and setting (suite tasks marked), the totals of each setting (cells, full passes or judge measures, timeouts, failed attempts, estimated USD with lower bounds marked, tokens, median latency, and providers), the suite tasks that each setting lacks, the cells to retry, and an index of the campaigns with their settings, judge, and sources. The page is built from the record files and the catalog alone, so every clone builds the same bytes. These rules apply to every campaign:
+
+- A run, resume, or rescore that completes, a `--rejudge` that scores a cell, and a `--regrade` that grades a cell each regenerate the pages when they finish. `bun run bench:tables` regenerates them on demand.
+- Commit the record file and its regenerated pages in the same commit.
+- `bun run lint` runs `bun run lint:bench-tables` (`bench:tables --check`), which fails on each page that is missing or differs from the records.
+- A findings document in `bench/findings/` interprets the results and links the persona's page. It does not restate the page's numbers, because a copy drifts from the records.
+
 ```bash
+bun run bench:tables
 bun run bench:rank
 bun run bench:rank --role reviewer-quality --judge claude-opus-5.5:xhigh
 bun bench/ab-persona/bench.ts --rejudge reviewer-mechanism --judge claude-opus-5.5:xhigh --dry-run
@@ -376,8 +384,8 @@ Persona judges use the live profile's `benchmark-judge` setting, then its coded 
 ## Where results go
 
 1. Raw run artifacts stay in `bench/*/results/<run>/` (configuration, strict ledgers, and reports) on the machine that ran them. Git ignores that folder, so they are not published, and they are never summarized in place.
-2. A completed persona campaign writes its compact record file to `bench/ab-persona/records/<persona>/`. Commit it with the findings: it is what `bench:rank` and `--rejudge` read on every clone.
-3. Findings are written to `bench/findings/<seat>-results.md`: setup, per-variant tables, conclusions, a decision section, caveats, and scoring notes, citing each run by its run id, never by a results path that readers cannot open. When a measured surface is removed, its findings leave `bench/findings/` for the maintainer's dated records.
+2. A completed persona campaign writes its compact record file to `bench/ab-persona/records/<persona>/` and regenerates the persona's results page in `bench/ab-persona/tables/`. Commit both in the same commit: the records are what `bench:rank`, `bench:tables`, and `--rejudge` read on every clone, and the page is what a reader opens (ARCH-DIRECTORIES-023).
+3. Findings are written to `bench/findings/<seat>-results.md`: setup, conclusions, a decision section, caveats, and scoring notes, citing each run by its run id, never by a results path that readers cannot open. A persona campaign's findings link its results page for the numbers and do not copy them into tables. When a measured surface is removed, its findings leave `bench/findings/` for the maintainer's dated records.
 4. Approved role-policy changes go to `ROLE_MODEL_DEFAULTS` in `src/orchestration/config/models/role-model-defaults.ts`. Keep measured findings separate from current policy. Update the owning resolver tests and rebuild the binary (`bun run install:local`).
 
 A challenge that loses still gets recorded in the findings document, so the next audit knows the variant was tested and dominated.
@@ -396,6 +404,7 @@ Every harness entrypoint and its unit tests type-check under a strict tsc gate t
 
 ```bash
 bun run lint:bench
+bun run lint:bench-tables
 bun run lint:doc-coherence
 bun run lint:doc-src-paths
 ```

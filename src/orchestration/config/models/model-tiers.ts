@@ -130,11 +130,12 @@ export async function resolveModelForTierAcrossFamilies(
 
 /** The price tier of `model` from its own provider's models.dev row, which needs no provider listing, so it also prices
  *  a model the profile cannot reach. An admitted archive can omit a model this release codes, so the bundled document
- *  prices it then. A model that neither document prices has the default tier. */
-export function modelPriceTier(model: string, family: ModelFamily, options: TierResolutionOptions): ModelTier {
+ *  prices it then. A model that neither document prices has the default tier. A caller whose output must reproduce from
+ *  the repository alone, such as a committed benchmark results page, reads only `["bundled"]`. */
+export function modelPriceTier(model: string, family: ModelFamily, options: TierResolutionOptions, documents: readonly ("current" | "bundled")[] = ["current", "bundled"]): ModelTier {
   const normalized = normalizeSelectableModelId(model);
   const client = getSharedModelsClient(options.userDataRoot);
-  for (const document of ["current", "bundled"] as const) {
+  for (const document of documents) {
     const row = client.getProviderCatalog([family], Number.MAX_SAFE_INTEGER - 1, document)
       .find((candidate) => normalizeSelectableModelId(candidate.wireModelId) === normalized);
     if (row?.metadata.pricing.status === "available") return tierForInputCost(row.metadata.cost.input);

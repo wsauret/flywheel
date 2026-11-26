@@ -9,15 +9,10 @@
 import "../../scripts/shipped-modules.js";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { selectStartupDirectories } from "../../src/infra/platform/files/directory-authorities.js";
-import { modelPriceTier } from "../../src/orchestration/config/models/model-tiers.js";
-import { ROLE_MODEL_DEFAULTS, roleModelDefault } from "../../src/orchestration/config/models/role-model-defaults.js";
-import { loadAllCampaignRecords } from "../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
-import { benchmarkMode, createBenchmarkCatalog } from "../../src/orchestration/modules/development/benchmark/catalog.js";
-import { planTasks, scoringVersion } from "../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
-import { rankBenchmarkRecords, rankingCorpus, renderRanking, type RankingCorpus, type RankingFamily } from "../../src/orchestration/modules/development/benchmark/records/ranking.js";
+import { createBenchmarkCatalog } from "../../src/orchestration/modules/development/benchmark/catalog.js";
+import { rankBenchmarkRecords, renderRanking } from "../../src/orchestration/modules/development/benchmark/records/ranking.js";
+import { loadRankingInput } from "../../src/orchestration/modules/development/benchmark/persona/results-pages.js";
 import { parseVariant } from "../../src/orchestration/modules/development/benchmark/variant.js";
-import { getPersonaMetadataIndex } from "../../src/workflows/agents/agent-roles.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -49,33 +44,12 @@ export function parseRankArgs(argv: readonly string[]): RankArgs {
 
 export async function main(argv: readonly string[] = process.argv.slice(2), projectRoot = REPO_ROOT): Promise<string> {
   const args = parseRankArgs(argv);
-  const catalog = createBenchmarkCatalog(projectRoot);
-  const campaigns = await loadAllCampaignRecords(catalog.recordsRoot);
-  const personas = getPersonaMetadataIndex();
-  const corpora = new Map<string, RankingCorpus>();
-  for (const persona of new Set(campaigns.map(({ header }) => header.persona))) {
-    const mode = benchmarkMode(persona);
-    corpora.set(persona, rankingCorpus(persona, mode, await planTasks(persona, mode, catalog)));
-  }
-  const { userDataRoot } = selectStartupDirectories({ projectRootOption: projectRoot, env: process.env, cwd: projectRoot });
-  const families: readonly RankingFamily[] = ["openai", "anthropic"];
-  const rankings = rankBenchmarkRecords({
-    campaigns,
-    roleOf: (persona) => personas[persona]?.role,
-    corpora,
-    scoringVersion,
-    classify: (model) => {
-      for (const family of families) {
-        const tier = modelPriceTier(model, family, { userDataRoot });
-        if (tier !== "default") return { family, tier };
-      }
-      return { family: undefined, tier: undefined };
-    },
-    entryOf: (role) => Object.entries(ROLE_MODEL_DEFAULTS).find(([, entry]) => entry === roleModelDefault(role))![0],
+  const input = await loadRankingInput(createBenchmarkCatalog(projectRoot));
+  return renderRanking(rankBenchmarkRecords({
+    ...input,
     ...(args.roles.length > 0 ? { roles: args.roles } : {}),
     ...(args.judge ? { judge: args.judge } : {}),
-  });
-  return renderRanking(rankings);
+  }));
 }
 
 if (import.meta.main) {

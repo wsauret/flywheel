@@ -34,6 +34,8 @@ export const AGGREGATE_READ_ALLOWLIST: readonly AggregateReadAllowance[] = [
   { file: "src/orchestration/session/conversation/transcript/tool-result-meta.ts", scope: "readToolResultDisplayMeta", rule: FULL, reason: "scripts/regenerate-output-seam-corpus.ts:407 decorationFailureOutcomes reads one corpus case per regeneration; no production caller" },
   { file: "src/orchestration/workflow-host/lifecycle/controller.ts", scope: "terminalControl", rule: FULL, reason: "controller.ts:295,463 checks control per explicit Resume or send command; a send to a stopped host also checks again through Resume" },
   { file: "src/orchestration/session/publication/workflow-publication.ts", scope: "adopt", rule: LOOP, reason: "one session.adopt-workflow command, once per old and new parent and per linked member" },
+  { file: "src/orchestration/modules/development/benchmark/persona/results-pages.ts", scope: "writeResultsPages", rule: LOOP, reason: "one `bench:tables` invocation or the end of one benchmark command, once per persona results page file, never a store read" },
+  { file: "src/orchestration/modules/development/benchmark/persona/results-pages.ts", scope: "staleResultsPages", rule: LOOP, reason: "one `bench:tables --check` lint invocation, once per persona results page file, never a store read" },
   { file: "src/orchestration/session/agent-input/agent-input-decision.ts", scope: "voidUnclaimedDecisions", rule: LOOP, reason: "once when a person message supersedes a paused turn, per unclaimed decision" },
 
   // Startup, recovery, and replacement.
