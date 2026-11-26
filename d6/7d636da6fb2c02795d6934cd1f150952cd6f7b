@@ -1,0 +1,40 @@
+README.md
+  h_4b47e9e4a8b456 172
+docs/privacy.md
+  h_4b47e9e4a8b456 20,22,84
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 651
+src/orchestration/modules/bug-reports/module.ts
+  h_4b47e9e4a8b456 3,55
+src/protocol/modules/bug-reports.ts
+  h_4b47e9e4a8b456 4,146-151
+src/tui/hooks/overlays/create-module-slots.tsx
+  h_4b47e9e4a8b456 15,39,96
+src/tui/modules/bug-reports/do-not-track.ts
+  h_4b47e9e4a8b456 1-26
+src/tui/modules/bug-reports/index.ts
+  h_4b47e9e4a8b456 3,10
+src/tui/modules/project-notifications/presence.ts
+  h_4b47e9e4a8b456 11
+src/tui/shell/shell-overlays.ts
+  h_4b47e9e4a8b456 76
+src/tui/tui-module.ts
+  h_4b47e9e4a8b456 13,80-82,86-88
+tests/unit/tui/hooks/overlays/create-module-slots.test.tsx
+  h_4b47e9e4a8b456 47
+tests/unit/tui/modules/bug-reports/do-not-track.test.ts
+  h_4b47e9e4a8b456 1-75
+vscode/README.md
+  h_4b47e9e4a8b456 130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d67d636da6fb2c02795d6934cd1f150952cd6f7b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
