@@ -1,0 +1,14 @@
+webview/src/client/session/workspace/session-live-patches.test.ts
+  h_4b47e9e4a8b456 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bb762456f1a89ff6b1468e6d84788b81f0fed3b5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
